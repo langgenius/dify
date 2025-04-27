@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import logging
 import mimetypes
@@ -79,6 +80,7 @@ from extensions.ext_database import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.workflow import WorkflowNodeExecutionStatus
+
 from .entities import (
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
@@ -94,7 +96,6 @@ from .exc import (
     ModelNotExistError,
     NoPromptFoundError,
     TemplateTypeNotSupportError,
-    UnsupportedPromptContentTypeError,
     VariableNotFoundError,
 )
 from .file_downloader import FileDownloader, SSRFProxyFileDownloader
@@ -328,44 +329,31 @@ class LLMNode(BaseNode[LLMNodeData]):
         # For streaming mode
         model = ""
         prompt_messages: list[PromptMessage] = []
-        full_text = ""
+
         usage = LLMUsage.empty_usage()
         finish_reason = None
+        full_text_buffer = io.StringIO()
         for result in invoke_result:
             contents = result.delta.message.content
-            if contents is None:
-                continue
-
-            if isinstance(contents, str):
-                yield RunStreamChunkEvent(chunk_content=contents, from_variable_selector=[self.node_id, "text"])
-                full_text += contents
-            elif isinstance(contents, list):
-                for content in contents:
-                    if isinstance(content, TextPromptMessageContent):
-                        text_chunk = content.data
-                    elif isinstance(content, ImagePromptMessageContent):
-                        file = self._save_multimodal_image_output(content)
-                        text_chunk = self._image_file_to_markdown(file)
-                    else:
-                        raise UnsupportedPromptContentTypeError(type_name=str(type(content)))
-                    yield RunStreamChunkEvent(chunk_content=text_chunk, from_variable_selector=[self.node_id, "text"])
-                    full_text += text_chunk
+            for text_part in self._save_multimodal_output_and_convert_result_to_markdown(contents):
+                full_text_buffer.write(text_part)
+                yield RunStreamChunkEvent(chunk_content=text_part, from_variable_selector=[self.node_id, "text"])
 
             # Update the whole metadata
             if not model and result.model:
                 model = result.model
             if len(prompt_messages) == 0:
+                # TODO(QuantumGhost): it seems that this update has no visable effect.
+                # What's the purpose of the line below?
                 prompt_messages = list(result.prompt_messages)
             if usage.prompt_tokens == 0 and result.delta.usage:
                 usage = result.delta.usage
             if finish_reason is None and result.delta.finish_reason:
                 finish_reason = result.delta.finish_reason
 
-        yield ModelInvokeCompletedEvent(text=full_text, usage=usage, finish_reason=finish_reason)
+        yield ModelInvokeCompletedEvent(text=full_text_buffer.getvalue(), usage=usage, finish_reason=finish_reason)
 
     def _image_file_to_markdown(self, file: "File", /):
-        # TODO(QuantumGhost): Here we have a problem. We must somehow save the file as
-        # a metadata for the workflow, or we cannot regenerate the link.
         text_chunk = f"![]({file.generate_url()})"
         return text_chunk
 
@@ -1026,28 +1014,12 @@ class LLMNode(BaseNode[LLMNodeData]):
         return prompt_messages
 
     def _handle_blocking_result(self, *, invoke_result: LLMResult) -> ModelInvokeCompletedEvent:
-        contents = invoke_result.message.content
-        if contents is None:
-            message_text = ""
-        elif isinstance(contents, str):
-            message_text = contents
-        elif isinstance(contents, list):
-            # TODO: support multi modal content
-            message_text = ""
-            for item in contents:
-                if isinstance(item, TextPromptMessageContent):
-                    message_text += item.data
-                elif isinstance(item, ImagePromptMessageContent):
-                    file = self._save_multimodal_image_output(item)
-                    self._file_outputs.append(file)
-                    message_text += self._image_file_to_markdown(file)
-                else:
-                    message_text += str(item)
-        else:
-            message_text = str(contents)
+        buffer = io.StringIO()
+        for text_part in self._save_multimodal_output_and_convert_result_to_markdown(invoke_result.message.content):
+            buffer.write(text_part)
 
         return ModelInvokeCompletedEvent(
-            text=message_text,
+            text=buffer.getvalue(),
             usage=invoke_result.usage,
             finish_reason=None,
         )
@@ -1257,6 +1229,38 @@ class LLMNode(BaseNode[LLMNodeData]):
             if bool(model_schema.features and ModelFeature.STRUCTURED_OUTPUT in model_schema.features)
             else SupportStructuredOutputStatus.UNSUPPORTED
         )
+
+    def _save_multimodal_output_and_convert_result_to_markdown(
+        self,
+        contents: str | list[PromptMessageContentUnionTypes] | None,
+    ) -> Generator[str, None, None]:
+        """Convert intermediate prompt messages to strings, and yield it to the caller.
+
+        If there are contents other than `TextPromptMessageContent`, it will be saved and
+        correspond markdown content will be yielded to the caller.
+        """
+
+        # NOTE(QuantumGhost): This function should yield to the caller as soon as there is new
+        # content or new content part available. It should avoid intermediate buffering.
+        # It also should avoid yield empty string. (Yield from an empty list instead.)
+        if contents is None:
+            yield from []
+        if isinstance(contents, str):
+            yield contents
+        elif isinstance(contents, list):
+            for item in contents:
+                if isinstance(item, TextPromptMessageContent):
+                    yield item.data
+                elif isinstance(item, ImagePromptMessageContent):
+                    file = self._save_multimodal_image_output(item)
+                    self._file_outputs.append(file)
+                    yield self._image_file_to_markdown(file)
+                else:
+                    logger.warning("unknown item type encountered, type=%s", type(item))
+                    yield str(item)
+        else:
+            logger.warning("unknown contents type encountered, type=%s", type(contents))
+            yield str(contents)
 
 
 def _combine_message_content_with_role(

@@ -67,7 +67,7 @@ class SavedMessageApi(WebApiResource):
 
         SavedMessageService.delete(app_model, end_user, message_id)
 
-        return {"result": "success"}
+        return {"result": "success"}, 204
 
 
 api.add_resource(SavedMessageListApi, "/saved-messages")

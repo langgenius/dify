@@ -22,7 +22,7 @@ from core.model_runtime.entities.model_entities import (
     PriceType,
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.manager.model import PluginModelManager
+from core.plugin.impl.model import PluginModelClient
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +142,7 @@ class LargeLanguageModel(AIModel):
         result: Union[LLMResult, Generator[LLMResultChunk, None, None]]
 
         try:
-            plugin_model_manager = PluginModelManager()
+            plugin_model_manager = PluginModelClient()
             result = plugin_model_manager.invoke_llm(
                 tenant_id=self.tenant_id,
                 user_id=user or "unknown",
@@ -261,6 +261,16 @@ class LargeLanguageModel(AIModel):
         system_fingerprint = None
         real_model = model
 
+        def _update_message_content(content: str | list[PromptMessageContentUnionTypes] | None):
+            if not content:
+                return
+            if isinstance(content, list):
+                message_content.extend(content)
+                return
+            if isinstance(content, str):
+                message_content.append(TextPromptMessageContent(data=content))
+                return
+
         try:
             for chunk in result:
                 # Following https://github.com/langgenius/dify/issues/17799,
@@ -282,10 +292,8 @@ class LargeLanguageModel(AIModel):
                     callbacks=callbacks,
                 )
 
-                if isinstance(chunk.delta.message.content, list):
-                    message_content.extend(chunk.delta.message.content)
-                elif isinstance(chunk.delta.message.content, str):
-                    message_content.append(TextPromptMessageContent(data=chunk.delta.message.content))
+                _update_message_content(chunk.delta.message.content)
+
                 real_model = chunk.model
                 if chunk.delta.usage:
                     usage = chunk.delta.usage
@@ -332,7 +340,7 @@ class LargeLanguageModel(AIModel):
         :return:
         """
         if dify_config.PLUGIN_BASED_TOKEN_COUNTING_ENABLED:
-            plugin_model_manager = PluginModelManager()
+            plugin_model_manager = PluginModelClient()
             return plugin_model_manager.get_llm_num_tokens(
                 tenant_id=self.tenant_id,
                 user_id="unknown",

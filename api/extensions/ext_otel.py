@@ -36,6 +36,31 @@ from configs import dify_config
 from dify_app import DifyApp
 
 
+class ExceptionLoggingHandler(logging.Handler):
+    """Custom logging handler that creates spans for logging.exception() calls"""
+
+    def emit(self, record):
+        try:
+            if record.exc_info:
+                tracer = get_tracer_provider().get_tracer("dify.exception.logging")
+                with tracer.start_as_current_span(
+                    "log.exception",
+                    attributes={
+                        "log.level": record.levelname,
+                        "log.message": record.getMessage(),
+                        "log.logger": record.name,
+                        "log.file.path": record.pathname,
+                        "log.file.line": record.lineno,
+                    },
+                ) as span:
+                    span.set_status(StatusCode.ERROR)
+                    span.record_exception(record.exc_info[1])
+                    span.set_attribute("exception.type", record.exc_info[0].__name__)
+                    span.set_attribute("exception.message", str(record.exc_info[1]))
+        except Exception:
+            pass
+
+
 @user_logged_in.connect
 @user_loaded_from_request.connect
 def on_user_loaded(_sender, user):
@@ -103,12 +128,18 @@ def init_app(app: DifyApp):
         if not is_celery_worker():
             init_flask_instrumentor(app)
             CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()).instrument()
+        instrument_exception_logging()
         init_sqlalchemy_instrumentor(app)
         atexit.register(shutdown_tracer)
 
 
 def is_celery_worker():
     return "celery" in sys.argv[0].lower()
+
+
+def instrument_exception_logging():
+    exception_handler = ExceptionLoggingHandler()
+    logging.getLogger().addHandler(exception_handler)
 
 
 def init_flask_instrumentor(app: DifyApp):
