@@ -195,6 +195,7 @@ const MemoryConfig: FC<Props> = ({
                   })
                   onChange(newPayload)
                 }}
+                defaultValue={payload.type}
               />
             </div>
             {canSetRoleName && (

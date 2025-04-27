@@ -606,6 +606,17 @@ class WorkflowNodeExecution(Base):
             "triggered_from",
             "node_execution_id",
         ),
+        db.Index(
+            "workflow_node_execution_run_node_status_idx",
+            "workflow_run_id",
+            "node_id",
+            "status",
+        ),
+        db.Index(
+            "workflow_node_execution_run_status_idx",
+            "workflow_run_id",
+            "status",
+        ),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
