@@ -21,6 +21,12 @@ export const generateZodSchema = <T>(fields: InputFieldConfiguration<T>[]) => {
       case InputFieldType.checkbox:
         zodType = z.boolean()
         break
+      case InputFieldType.options:
+        zodType = z.array(z.string())
+        break
+      case InputFieldType.select:
+        zodType = z.string()
+        break
       case InputFieldType.fileTypes:
         zodType = z.array(z.string())
         break

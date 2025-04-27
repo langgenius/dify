@@ -2,6 +2,7 @@ import cn from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import type { LabelProps } from '../label'
 import Label from '../label'
+import type { Options } from '@/app/components/app/configuration/config-var/config-select'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 
 type OptionsFieldProps = {
@@ -15,7 +16,7 @@ const OptionsField = ({
   className,
   labelOptions,
 }: OptionsFieldProps) => {
-  const field = useFieldContext<string[]>()
+  const field = useFieldContext<Options>()
 
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
