@@ -62,10 +62,10 @@ from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
+from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models import Conversation, EndUser, Message, MessageFile

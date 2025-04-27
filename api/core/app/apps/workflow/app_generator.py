@@ -23,8 +23,8 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.repository import RepositoryFactory
-from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.repository import RepositoryFactory
+from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser, Workflow

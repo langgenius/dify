@@ -29,7 +29,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.utils import filter_none_values
-from core.repository.repository_factory import RepositoryFactory
+from core.workflow.repository.repository_factory import RepositoryFactory
 from extensions.ext_database import db
 from models.model import EndUser
 
