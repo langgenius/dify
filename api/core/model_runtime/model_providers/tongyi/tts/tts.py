@@ -1,16 +1,16 @@
 import threading
 from queue import Queue
 from typing import Any, Optional
+from venv import logger
 
 import dashscope  # type: ignore
-from dashscope import SpeechSynthesizer  # type: ignore
-from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse  # type: ignore
-from dashscope.audio.tts import ResultCallback, SpeechSynthesisResult  # type: ignore
-
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.model_providers.tongyi._common import _CommonTongyi
+from dashscope import SpeechSynthesizer  # type: ignore
+from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse  # type: ignore
+from dashscope.audio.tts import ResultCallback, SpeechSynthesisResult  # type: ignore
 
 
 class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
@@ -70,12 +70,14 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         """
         word_limit = self._get_model_word_limit(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
+        logger.info(f"TONGYI: summary content length is less than word limit, content: {content_text}, voice: {voice}")
         try:
             audio_queue: Queue = Queue()
             callback = Callback(queue=audio_queue)
 
             def invoke_remote(content, v, api_key, cb, at, wl):
                 if len(content) < word_limit:
+                    logger.info(f"TONGYI: content length is less than word limit, content: {content}, voice: {v}")
                     sentences = [content]
                 else:
                     sentences = list(self._split_text_into_sentences(org_text=content, max_length=wl))
