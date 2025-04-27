@@ -79,7 +79,6 @@ from extensions.ext_database import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.workflow import WorkflowNodeExecutionStatus
-
 from .entities import (
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
@@ -349,7 +348,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                         text_chunk = self._image_file_to_markdown(file)
                     else:
                         raise UnsupportedPromptContentTypeError(type_name=str(type(content)))
-                    yield RunStreamChunkEvent(chunk_content=text_chunk, from_variable_selector=[self.node_id])
+                    yield RunStreamChunkEvent(chunk_content=text_chunk, from_variable_selector=[self.node_id, "text"])
                     full_text += text_chunk
 
             # Update the whole metadata
