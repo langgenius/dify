@@ -1,6 +1,6 @@
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { useWorkflowStore } from '../store'
-import type { ValueSelector, VarType } from '../types'
+import type { ValueSelector } from '../types'
 import {
   useConversationVarValues,
   useDeleteAllInspectorVars,
@@ -18,12 +18,12 @@ const useInspectVarsCrud = () => {
     appId,
     nodesWithInspectVars,
     setNodeInspectVars,
-    getInspectVar,
     setInspectVarValue,
     renameInspectVarName: renameInspectVarNameInStore,
     deleteAllInspectVars: deleteAllInspectVarsInStore,
     deleteNodeInspectVars: deleteNodeInspectVarsInStore,
     deleteInspectVar: deleteInspectVarInStore,
+    isInspectVarEdited,
     getLastRunVar,
   } = workflowStore.getState()
 
@@ -90,21 +90,17 @@ const useInspectVarsCrud = () => {
     renameInspectVarNameInStore(nodeId, varId, selector)
   }
 
-  const editInspectVarValueType = (varId: string, valueType: VarType) => {
-    console.log('edit var value type', varId, valueType)
-  }
-
-  const isInspectVarEdited = (nodeId: string, key: string) => {
-    return getInspectVar(nodeId, key) !== getLastRunVar(nodeId, key)
+  const editInspectVarValueType = (nodeId: string) => {
+    deleteNodeInspectorVars(nodeId)
   }
 
   const resetToLastRunVar = (nodeId: string, key: string) => {
     const lastRunVar = getLastRunVar(nodeId, key)
     if (lastRunVar)
-      setInspectVarValue(nodeId, key, lastRunVar)
+      editInspectVarValue(nodeId, key, lastRunVar)
   }
 
-  console.log(conversationVars, systemVars)
+  // console.log(conversationVars, systemVars)
 
   return {
     conversationVars: conversationVars || [],
