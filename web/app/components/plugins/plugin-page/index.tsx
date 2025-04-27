@@ -144,10 +144,18 @@ const PluginPage = ({
     return activeTab === PLUGIN_PAGE_TABS_MAP.marketplace || values.includes(activeTab)
   }, [activeTab])
 
+  const handleFileChange = (file: File | null) => {
+    if (!file || !file.name.endsWith('.difypkg')) {
+      setCurrentFile(null)
+      return
+    }
+
+    setCurrentFile(file)
+  }
   const uploaderProps = useUploader({
-    onFileChange: setCurrentFile,
+    onFileChange: handleFileChange,
     containerRef,
-    enabled: isPluginsTab,
+    enabled: isPluginsTab && canManagement,
   })
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
