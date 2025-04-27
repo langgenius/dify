@@ -19,3 +19,9 @@ paginated_conversation_variable_fields = {
     "has_more": fields.Boolean,
     "data": fields.List(fields.Nested(conversation_variable_fields), attribute="data"),
 }
+
+conversation_variable_infinite_scroll_pagination_fields = {
+    "limit": fields.Integer,
+    "has_more": fields.Boolean,
+    "data": fields.List(fields.Nested(conversation_variable_fields)),
+}

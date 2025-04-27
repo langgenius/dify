@@ -6,7 +6,7 @@ from typing import Any, Optional, Union, cast
 from uuid import uuid4
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -49,14 +49,13 @@ from core.file import FILE_MODEL_IDENTITY, File
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.repository import RepositoryFactory
+from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_entry import WorkflowEntry
-from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
@@ -76,26 +75,13 @@ class WorkflowCycleManage:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         workflow_system_variables: dict[SystemVariableKey, Any],
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         self._workflow_run: WorkflowRun | None = None
         self._workflow_node_executions: dict[str, WorkflowNodeExecution] = {}
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
-
-        # Initialize the session factory and repository
-        # We use the global db engine instead of the session passed to methods
-        # Disable expire_on_commit to avoid the need for merging objects
-        self._session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={
-                "tenant_id": self._application_generate_entity.app_config.tenant_id,
-                "app_id": self._application_generate_entity.app_config.app_id,
-                "session_factory": self._session_factory,
-            }
-        )
-
-        # We'll still keep the cache for backward compatibility and performance
-        # but use the repository for database operations
+        self._workflow_node_execution_repository = workflow_node_execution_repository
 
     def _handle_workflow_run_start(
         self,

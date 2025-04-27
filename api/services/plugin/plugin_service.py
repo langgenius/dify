@@ -190,6 +190,9 @@ class PluginService:
         """
         Upgrade plugin with marketplace
         """
+        if not dify_config.MARKETPLACE_ENABLED:
+            raise ValueError("marketplace is not enabled")
+
         if original_plugin_unique_identifier == new_plugin_unique_identifier:
             raise ValueError("you should not upgrade plugin with the same plugin")
 
@@ -316,6 +319,9 @@ class PluginService:
         """
         Fetch marketplace package
         """
+        if not dify_config.MARKETPLACE_ENABLED:
+            raise ValueError("marketplace is not enabled")
+
         manager = PluginInstallationManager()
         try:
             declaration = manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
@@ -333,6 +339,9 @@ class PluginService:
         Install plugin from marketplace package files,
         returns installation task id
         """
+        if not dify_config.MARKETPLACE_ENABLED:
+            raise ValueError("marketplace is not enabled")
+
         manager = PluginInstallationManager()
 
         # check if already downloaded
