@@ -376,6 +376,7 @@ export enum VarInInspectType {
   conversation = 'conversation',
   environment = 'environment',
   node = 'node',
+  system = 'sys',
 }
 
 export type VarInInspect = {

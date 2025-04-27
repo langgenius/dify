@@ -1,20 +1,36 @@
 import { useWorkflowStore } from '../store'
-import { BlockEnum, type ValueSelector, type VarType } from '../types'
-const useCurrentVars = () => {
+import type { ValueSelector, VarType } from '../types'
+import {
+  useConversationVarValues,
+  useDeleteAllInspectorVars,
+  useDeleteInspectVar,
+  useDeleteNodeInspectorVars,
+  useInvalidateConversationVarValues,
+  useInvalidateSysVarValues,
+  useSysVarValues,
+} from '@/service/use-workflow'
+
+const useInspectVarsCrud = () => {
   const workflowStore = useWorkflowStore()
   const {
-    conversationVars,
+    appId,
     nodesWithInspectVars,
     getInspectVar,
     setInspectVar,
     deleteAllInspectVars: deleteAllInspectVarsInStore,
     deleteNodeInspectVars: deleteNodeInspectVarsInStore,
+    deleteInspectVar: deleteInspectVarInStore,
     getLastRunVar,
   } = workflowStore.getState()
 
-  // rag flow don't have start node
-  const startNode = nodesWithInspectVars.find(node => node.nodeType === BlockEnum.Start)
-  const systemVars = startNode?.vars.filter(varItem => varItem.selector[0] === 'sys')
+  const { data: conversationVars } = useConversationVarValues(appId)
+  const invalidateConversationVarValues = useInvalidateConversationVarValues(appId)
+  const { data: systemVars } = useSysVarValues(appId)
+  const invalidateSysVarValues = useInvalidateSysVarValues(appId)
+
+  const { mutate: doDeleteAllInspectorVars } = useDeleteAllInspectorVars(appId)
+  const { mutate: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(appId)
+  const { mutate: doDeleteInspectVar } = useDeleteInspectVar(appId)
 
   const fetchInspectVarValue = (selector: ValueSelector) => {
     const nodeId = selector[0]
@@ -26,6 +42,7 @@ const useCurrentVars = () => {
 
   const editInspectVarValue = (varId: string, value: any) => {
     console.log('edit var', varId, value)
+
     // call api and update store
   }
 
@@ -38,17 +55,20 @@ const useCurrentVars = () => {
     console.log('edit var value type', varId, valueType)
   }
 
-  const deleteInspectVar = async (varId: string) => {
-    console.log('delete var', varId)
+  const deleteInspectVar = async (nodeId: string, varId: string) => {
+    await doDeleteInspectVar(varId)
+    deleteInspectVarInStore(nodeId, varId)
   }
 
   const deleteNodeInspectorVars = async (nodeId: string) => {
-    // todo fetch api
+    await doDeleteNodeInspectorVars(nodeId)
     deleteNodeInspectVarsInStore(nodeId)
   }
 
   const deleteAllInspectorVars = async () => {
-    // todo fetch api
+    await doDeleteAllInspectorVars()
+    await invalidateConversationVarValues()
+    await invalidateSysVarValues()
     deleteAllInspectVarsInStore()
   }
 
@@ -62,9 +82,11 @@ const useCurrentVars = () => {
       setInspectVar(nodeId, key, lastRunVar)
   }
 
+  console.log(conversationVars, systemVars)
+
   return {
-    conversationVars,
-    systemVars,
+    conversationVars: conversationVars || [],
+    systemVars: systemVars || [],
     nodesWithInspectVars,
     fetchInspectVarValue,
     editInspectVarValue,
@@ -78,4 +100,4 @@ const useCurrentVars = () => {
   }
 }
 
-export default useCurrentVars
+export default useInspectVarsCrud

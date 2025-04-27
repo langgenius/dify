@@ -10,8 +10,9 @@ import type {
   WorkflowConfigResponse,
 } from '@/types/workflow'
 import type { CommonResponse } from '@/models/common'
-import { useReset } from './use-base'
+import { useInvalid, useReset } from './use-base'
 import { sleep } from '@/utils'
+import { conversationVars, systemVars } from '@/app/components/workflow/store/workflow/debug/mock-data'
 
 const NAME_SPACE = 'workflow'
 
@@ -120,6 +121,77 @@ export const useLastRun = (appID: string, nodeId: string, enabled: boolean) => {
           finish_reason: '1',
         },
       } as any)
+    },
+  })
+}
+
+const useConversationVarValuesKey = [NAME_SPACE, 'conversation-variable']
+
+export const useConversationVarValues = (appId: string) => {
+  let index = 1
+  return useQuery({
+    queryKey: [...useConversationVarValuesKey, appId],
+    queryFn: async () => {
+      await sleep(1000)
+      return Promise.resolve(conversationVars.map((item) => {
+        return {
+          ...item,
+          value: `${item.value}${index++}`,
+        }
+      }))
+    },
+  })
+}
+
+export const useInvalidateConversationVarValues = (appId: string) => {
+  return useInvalid([...useConversationVarValuesKey, appId])
+}
+
+export const useSysVarValuesKey = [NAME_SPACE, 'sys-variable']
+export const useSysVarValues = (appId: string) => {
+  let index = 1
+
+  return useQuery({
+    queryKey: [...useSysVarValuesKey, appId],
+    queryFn: async () => {
+      await sleep(1000)
+      return Promise.resolve(systemVars.map((item) => {
+        return {
+          ...item,
+          value: `${item.value}${index++}`,
+        }
+      }))
+    },
+  })
+}
+
+export const useInvalidateSysVarValues = (appId: string) => {
+  return useInvalid([...useSysVarValuesKey, appId])
+}
+
+export const useDeleteAllInspectorVars = (appId: string) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'delete all inspector vars', appId],
+    mutationFn: async () => {
+      console.log('remove all inspector vars')
+    },
+  })
+}
+
+export const useDeleteNodeInspectorVars = (appId: string) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'delete node inspector vars', appId],
+    mutationFn: async (nodeId: string) => {
+      console.log('remove node inspector vars', nodeId)
+    },
+  })
+}
+
+export const useDeleteInspectVar = (appId: string) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'delete inspector var', appId],
+    mutationFn: async (varId: string) => {
+      console.log('remove inspector var', varId)
     },
   })
 }

@@ -18,6 +18,7 @@ type InspectVarsActions = {
   getNodeInspectVars: (nodeId: string) => NodeWithVar | undefined
   hasNodeInspectVars: (nodeId: string) => boolean
   setInspectVar: (nodeId: string, name: string, value: any) => void
+  deleteInspectVar: (nodeId: string, varId: string) => void
   getInspectVar: (nodeId: string, name: string) => any // The big value is null
 }
 
@@ -86,6 +87,23 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
               })
               if (needChangeVarIndex !== -1)
                 draft.vars[needChangeVarIndex].value = value
+            })
+          }
+          return node
+        })
+        state.nodesWithInspectVars = nodes
+      }))
+    },
+    deleteInspectVar: (nodeId, varId) => {
+      set(produce((state: InspectVarsSliceShape) => {
+        const nodes = state.nodesWithInspectVars.map((node) => {
+          if (node.nodeId === nodeId) {
+            return produce(node, (draft) => {
+              const needChangeVarIndex = draft.vars.findIndex((varItem) => {
+                return varItem.id === varId
+              })
+              if (needChangeVarIndex !== -1)
+                draft.vars.splice(needChangeVarIndex, 1)
             })
           }
           return node

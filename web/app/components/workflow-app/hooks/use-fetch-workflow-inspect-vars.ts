@@ -3,11 +3,14 @@ import { useWorkflowStore } from '../../workflow/store'
 import { useStoreApi } from 'reactflow'
 import type { Node } from '@/app/components/workflow/types'
 import { fetchAllInspectVars } from '@/service/workflow'
+import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
 
 const useSetWorkflowVarsWithValue = () => {
   const workflowStore = useWorkflowStore()
   const { setNodesWithInspectVars, appId } = workflowStore.getState()
   const store = useStoreApi()
+  const invalidateConversationVarValues = useInvalidateConversationVarValues(appId)
+  const invalidateSysVarValues = useInvalidateSysVarValues(appId)
 
   const addNodeInfo = (inspectVars: VarInInspect[]) => {
     const { getNodes } = store.getState()
@@ -48,6 +51,8 @@ const useSetWorkflowVarsWithValue = () => {
   }
 
   const fetchInspectVars = async () => {
+    invalidateConversationVarValues()
+    invalidateSysVarValues()
     const data = await fetchAllInspectVars(appId)
     addNodeInfo(data)
   }
