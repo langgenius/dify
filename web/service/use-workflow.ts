@@ -195,3 +195,18 @@ export const useDeleteInspectVar = (appId: string) => {
     },
   })
 }
+
+// edit the name or value of the inspector var
+export const useEditInspectorVar = (appId: string) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'edit inspector var', appId],
+    mutationFn: async (params: {
+      nodeId: string
+      varId: string
+      name?: string
+      value?: any
+    }) => {
+      console.log('edit inspector var', params)
+    },
+  })
+}

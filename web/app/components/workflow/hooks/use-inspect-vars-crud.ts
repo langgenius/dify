@@ -5,6 +5,7 @@ import {
   useDeleteAllInspectorVars,
   useDeleteInspectVar,
   useDeleteNodeInspectorVars,
+  useEditInspectorVar,
   useInvalidateConversationVarValues,
   useInvalidateSysVarValues,
   useSysVarValues,
@@ -16,7 +17,7 @@ const useInspectVarsCrud = () => {
     appId,
     nodesWithInspectVars,
     getInspectVar,
-    setInspectVar,
+    setInspectVarValue,
     deleteAllInspectVars: deleteAllInspectVarsInStore,
     deleteNodeInspectVars: deleteNodeInspectVarsInStore,
     deleteInspectVar: deleteInspectVarInStore,
@@ -32,27 +33,14 @@ const useInspectVarsCrud = () => {
   const { mutate: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(appId)
   const { mutate: doDeleteInspectVar } = useDeleteInspectVar(appId)
 
+  const { mutate: doEditInspectorVar } = useEditInspectorVar(appId)
+
   const fetchInspectVarValue = (selector: ValueSelector) => {
     const nodeId = selector[0]
     const isSystemVar = selector[1] === 'sys'
     const isConversationVar = selector[1] === 'conversation'
     console.log(nodeId, isSystemVar, isConversationVar)
     // fetch values under nodeId. system var and conversation var has different fetch method
-  }
-
-  const editInspectVarValue = (varId: string, value: any) => {
-    console.log('edit var', varId, value)
-
-    // call api and update store
-  }
-
-  const editInspectVarSelector = (varId: string, selector: ValueSelector) => {
-    console.log('edit var selector', varId, selector)
-    // call api and update store
-  }
-
-  const editInspectVarValueType = (varId: string, valueType: VarType) => {
-    console.log('edit var value type', varId, valueType)
   }
 
   const deleteInspectVar = async (nodeId: string, varId: string) => {
@@ -72,6 +60,24 @@ const useInspectVarsCrud = () => {
     deleteAllInspectVarsInStore()
   }
 
+  const editInspectVarValue = async (nodeId: string, varId: string, value: any) => {
+    await doEditInspectorVar({
+      nodeId,
+      varId,
+      value,
+    })
+    setInspectVarValue(nodeId, varId, value)
+  }
+
+  const editInspectVarSelector = (varId: string, selector: ValueSelector) => {
+    console.log('edit var selector', varId, selector)
+    // call api and update store
+  }
+
+  const editInspectVarValueType = (varId: string, valueType: VarType) => {
+    console.log('edit var value type', varId, valueType)
+  }
+
   const isInspectVarEdited = (nodeId: string, key: string) => {
     return getInspectVar(nodeId, key) !== getLastRunVar(nodeId, key)
   }
@@ -79,7 +85,7 @@ const useInspectVarsCrud = () => {
   const resetToLastRunVar = (nodeId: string, key: string) => {
     const lastRunVar = getLastRunVar(nodeId, key)
     if (lastRunVar)
-      setInspectVar(nodeId, key, lastRunVar)
+      setInspectVarValue(nodeId, key, lastRunVar)
   }
 
   console.log(conversationVars, systemVars)
