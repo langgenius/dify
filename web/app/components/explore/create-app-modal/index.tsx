@@ -33,6 +33,7 @@ export type CreateAppModalProps = {
     description: string
     use_icon_as_answer_icon?: boolean
   }) => Promise<void>
+  confirmDisabled?: boolean
   onHide: () => void
 }
 
@@ -48,6 +49,7 @@ const CreateAppModal = ({
   appMode,
   appUseIconAsAnswerIcon,
   onConfirm,
+  confirmDisabled,
   onHide,
 }: CreateAppModalProps) => {
   const { t } = useTranslation()
@@ -145,7 +147,7 @@ const CreateAppModal = ({
           {!isEditModal && isAppsFull && <AppsFull loc='app-explore-create' />}
         </div>
         <div className='flex flex-row-reverse'>
-          <Button disabled={!isEditModal && isAppsFull} className='w-24 ml-2' variant='primary' onClick={submit}>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</Button>
+          <Button disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled} className='w-24 ml-2' variant='primary' onClick={submit}>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</Button>
           <Button className='w-24' onClick={onHide}>{t('common.operation.cancel')}</Button>
         </div>
       </Modal>
