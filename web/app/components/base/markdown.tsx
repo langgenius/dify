@@ -289,7 +289,7 @@ export function Markdown(props: { content: string; className?: string; customDis
                 if (node.type === 'element' && node.properties?.ref)
                   delete node.properties.ref
 
-                if (node.type === 'element' && !/^[a-z][a-z0-9]*$/i.test(node.tagName)) {
+                if (node.type === 'element' && !/^[a-z][a-z0-9]*$/i.test(node.tagName) && !(node.tagName.startsWith('wc-') && node.properties?.dataIsWebComponent === '1')) {
                   node.type = 'text'
                   node.value = `<${node.tagName}`
                 }
