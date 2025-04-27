@@ -62,7 +62,7 @@ class AppGeneratorTTSPublisher:
         self.msg_text = ""
         self._audio_queue: queue.Queue[AudioTrunk] = queue.Queue()
         self._msg_queue: queue.Queue[WorkflowQueueMessage | MessageQueueMessage | None] = queue.Queue()
-        self.match = re.compile(r"[。.!?]")
+        self.match = re.compile(r"[。.!?\n]")
         self.model_manager = ModelManager()
         self.model_instance = self.model_manager.get_default_model_instance(
             tenant_id=self.tenant_id, model_type=ModelType.TTS
@@ -73,6 +73,7 @@ class AppGeneratorTTSPublisher:
         if not voice or voice not in values:
             self.voice = self.voices[0].get("value")
         self.MAX_SENTENCE = 2
+        self.MAX_CHARS_WITHOUT_DELIMITER = 100
         self._last_audio_event: Optional[AudioTrunk] = None
         # FIXME better way to handle this threading.start
         threading.Thread(target=self._runtime).start()
@@ -113,13 +114,23 @@ class AppGeneratorTTSPublisher:
                     self.msg_text += message.event.outputs.get("output", "")
                 self.last_message = message
                 sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
-                if len(sentence_arr) >= min(self.MAX_SENTENCE, 7):
+
+                if len(sentence_arr) >= min(self.MAX_SENTENCE, 7) or (
+                    len(sentence_arr) == 0 and text_tmp and len(text_tmp) >= self.MAX_CHARS_WITHOUT_DELIMITER
+                ):
                     self.MAX_SENTENCE += 1
-                    text_content = "".join(sentence_arr)
+
+                    if sentence_arr:
+                        text_content = "".join(sentence_arr)
+                    else:
+                        text_content = text_tmp[: self.MAX_CHARS_WITHOUT_DELIMITER]
+                        text_tmp = text_tmp[self.MAX_CHARS_WITHOUT_DELIMITER :]
+
                     futures_result = self.executor.submit(
                         _invoice_tts, text_content, self.model_instance, self.tenant_id, self.voice
                     )
                     future_queue.put(futures_result)
+
                     if text_tmp:
                         self.msg_text = text_tmp
                     else:
@@ -151,6 +162,8 @@ class AppGeneratorTTSPublisher:
         result = []
         for i in tx:
             end = i.regs[0][1]
-            result.append(org_text[start:end])
+            sentence = org_text[start:end].strip()
+            if sentence:
+                result.append(sentence)
             start = end
         return result, org_text[start:]
