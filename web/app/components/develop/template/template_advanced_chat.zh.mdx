@@ -1361,13 +1361,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      {
-        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
-        "question": "What is your name?",
-        "answer": "I am Dify.",
-        "hit_count": 0,
-        "created_at": 1735625869
-      }
+      "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+      "question": "What is your name?",
+      "answer": "I am Dify.",
+      "hit_count": 0,
+      "created_at": 1735625869
     }
     ```
     </CodeGroup>
@@ -1401,10 +1399,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="PUT"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+      targetCode={`curl --location --request PUT '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \
+    curl --location --request PUT '${props.appDetail.api_base_url}/apps/annotations/{annotation_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -1417,13 +1415,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      {
-        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
-        "question": "What is your name?",
-        "answer": "I am Dify.",
-        "hit_count": 0,
-        "created_at": 1735625869
-      }
+      "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+      "question": "What is your name?",
+      "answer": "I am Dify.",
+      "hit_count": 0,
+      "created_at": 1735625869
     }
     ```
     </CodeGroup>
@@ -1481,10 +1477,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='action' type='string' key='action'>
         动作，只能是 'enable' 或 'disable'
       </Property>
-      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+      <Property name='embedding_provider_name' type='string' key='embedding_provider_name'>
         指定的嵌入模型提供商, 必须先在系统内设定好接入的模型，对应的是provider字段
       </Property>
-      <Property name='embedding_model' type='string' key='embedding_model'>
+      <Property name='embedding_model_name' type='string' key='embedding_model_name'>
         指定的嵌入模型，对应的是model字段
       </Property>
       <Property name='score_threshold' type='number' key='score_threshold'>
