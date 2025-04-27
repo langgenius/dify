@@ -117,7 +117,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [{
         variable: 'type',
-        value: 'text-input',
+        value: InputVarType.textInput,
       }],
       min: 1,
       max: TEXT_MAX_LENGTH,
@@ -128,7 +128,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [{
         variable: 'type',
-        value: 'select',
+        value: InputVarType.select,
       }],
     }, {
       type: InputFieldType.fileTypes,
@@ -137,7 +137,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [{
         variable: 'type',
-        value: 'file',
+        value: InputVarType.singleFile,
       }],
     }, {
       type: InputFieldType.fileTypes,
@@ -146,7 +146,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [{
         variable: 'type',
-        value: 'file-list',
+        value: InputVarType.multiFiles,
       }],
     }, {
       type: InputFieldType.checkbox,
@@ -201,18 +201,29 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: 'text-input',
+        value: InputVarType.textInput,
       }],
       showOptional: true,
     }, {
-      type: InputFieldType.textInput,
+        type: InputFieldType.textInput,
+        label: t('appDebug.variableConfig.defaultValue'),
+        variable: 'default',
+        placeholder: t('appDebug.variableConfig.defaultValuePlaceholder'),
+        required: false,
+        showConditions: [{
+          variable: 'type',
+          value: InputVarType.paragraph,
+        }],
+        showOptional: true,
+    }, {
+      type: InputFieldType.numberInput,
       label: t('appDebug.variableConfig.defaultValue'),
       variable: 'default',
       placeholder: t('appDebug.variableConfig.defaultValuePlaceholder'),
       required: false,
       showConditions: [{
         variable: 'type',
-        value: 'number',
+        value: InputVarType.number,
       }],
       showOptional: true,
     }, {
@@ -222,7 +233,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: 'select',
+        value: InputVarType.select,
       }],
       showOptional: true,
       options: defaultSelectOptions,
@@ -237,18 +248,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: 'text-input',
-      }],
-      showOptional: true,
-    }, {
-      type: InputFieldType.textInput,
-      label: t('appDebug.variableConfig.unit'),
-      variable: 'unit',
-      placeholder: t('appDebug.variableConfig.unitPlaceholder'),
-      required: false,
-      showConditions: [{
-        variable: 'type',
-        value: 'number',
+        value: InputVarType.textInput,
       }],
       showOptional: true,
     }, {
@@ -259,7 +259,29 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: 'number',
+        value: InputVarType.paragraph,
+      }],
+      showOptional: true,
+    }, {
+      type: InputFieldType.textInput,
+      label: t('appDebug.variableConfig.unit'),
+      variable: 'unit',
+      placeholder: t('appDebug.variableConfig.unitPlaceholder'),
+      required: false,
+      showConditions: [{
+        variable: 'type',
+        value: InputVarType.number,
+      }],
+      showOptional: true,
+    }, {
+      type: InputFieldType.textInput,
+      label: t('appDebug.variableConfig.placeholder'),
+      variable: 'placeholder',
+      placeholder: t('appDebug.variableConfig.placeholderPlaceholder'),
+      required: false,
+      showConditions: [{
+        variable: 'type',
+        value: InputVarType.number,
       }],
       showOptional: true,
     }, {
@@ -269,7 +291,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: 'file',
+        value: InputVarType.singleFile,
       }],
     }, {
       type: InputFieldType.uploadMethod,
@@ -278,7 +300,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: 'file-list',
+        value: InputVarType.multiFiles,
       }],
     }, {
       type: InputFieldType.numberSlider,
@@ -287,7 +309,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: 'file-list',
+        value: InputVarType.multiFiles,
       }],
       description: t('appDebug.variableConfig.maxNumberTip', {
         imgLimit: formatFileSize(imgSizeLimit),
