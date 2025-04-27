@@ -38,6 +38,7 @@ from core.model_runtime.entities.model_entities import (
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.model_runtime.utils.helper import convert_llm_result_chunk_to_str
 from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -269,18 +270,7 @@ class LLMNode(BaseNode[LLMNodeData]):
 
     def _handle_invoke_result(self, invoke_result: LLMResult | Generator) -> Generator[NodeEvent, None, None]:
         if isinstance(invoke_result, LLMResult):
-            content = invoke_result.message.content
-            if content is None:
-                message_text = ""
-            elif isinstance(content, str):
-                message_text = content
-            elif isinstance(content, list):
-                # Assuming the list contains PromptMessageContent objects with a "data" attribute
-                message_text = "".join(
-                    item.data if hasattr(item, "data") and isinstance(item.data, str) else str(item) for item in content
-                )
-            else:
-                message_text = str(content)
+            message_text = convert_llm_result_chunk_to_str(invoke_result.message.content)
 
             yield ModelInvokeCompletedEvent(
                 text=message_text,
@@ -295,7 +285,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         usage = None
         finish_reason = None
         for result in invoke_result:
-            text = result.delta.message.content
+            text = convert_llm_result_chunk_to_str(result.delta.message.content)
             full_text += text
 
             yield RunStreamChunkEvent(chunk_content=text, from_variable_selector=[self.node_id, "text"])
