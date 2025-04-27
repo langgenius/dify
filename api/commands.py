@@ -869,6 +869,15 @@ def clear_orphaned_file_records():
     click.echo(
         click.style("This cannot be undone. Please make sure to back up your database before proceeding.", fg="yellow")
     )
+    click.echo(
+        click.style(
+            (
+                "It is also recommended to run this during the maintenance window, "
+                "as this may cause high load on your instance."
+            ),
+            fg="yellow",
+        )
+    )
     click.confirm("Do you want to proceed?", abort=True)
 
     # start the cleanup process
@@ -1008,7 +1017,16 @@ def remove_orphaned_files_on_storage():
         )
     )
     click.echo(
-        click.style("This cannot be undone. Please make sure to back up your database before proceeding.", fg="yellow")
+        click.style("This cannot be undone. Please make sure to back up your storage before proceeding.", fg="yellow")
+    )
+    click.echo(
+        click.style(
+            (
+                "It is also recommended to run this during the maintenance window, "
+                "as this may cause high load on your instance."
+            ),
+            fg="yellow",
+        )
     )
     click.confirm("Do you want to proceed?", abort=True)
 
