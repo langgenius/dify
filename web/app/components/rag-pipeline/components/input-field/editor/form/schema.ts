@@ -16,13 +16,13 @@ export const InputType = z.enum([
   'file-list',
 ])
 
-const TransferMethod = z.enum([
+export const TransferMethod = z.enum([
   'all',
   'local_file',
   'remote_url',
 ])
 
-const SupportedFileTypes = z.enum([
+export const SupportedFileTypes = z.enum([
   'image',
   'document',
   'video',
@@ -77,19 +77,19 @@ export const createInputFieldSchema = (type: InputVarType, t: TFunction, options
   }
   if (type === InputVarType.singleFile) {
     return z.object({
-      allowedFileTypes: z.array(SupportedFileTypes),
+      allowedFileUploadMethods: z.array(TransferMethod),
       allowedTypesAndExtensions: z.object({
-        allowedFileExtensions: z.string().optional(),
-        allowedFileUploadMethods: z.array(TransferMethod),
+        allowedFileExtensions: z.array(z.string()).optional(),
+        allowedFileTypes: z.array(SupportedFileTypes),
       }),
     }).merge(commonSchema).passthrough()
   }
   if (type === InputVarType.multiFiles) {
     return z.object({
-      allowedFileTypes: z.array(SupportedFileTypes),
+      allowedFileUploadMethods: z.array(TransferMethod),
       allowedTypesAndExtensions: z.object({
-        allowedFileExtensions: z.string().optional(),
-        allowedFileUploadMethods: z.array(TransferMethod),
+        allowedFileExtensions: z.array(z.string()).optional(),
+        allowedFileTypes: z.array(SupportedFileTypes),
       }),
       maxLength: z.number().min(1).max(maxFileUploadLimit),
     }).merge(commonSchema).passthrough()

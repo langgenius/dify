@@ -1,6 +1,7 @@
 import type { ZodSchema, ZodString } from 'zod'
 import { z } from 'zod'
 import { type InputFieldConfiguration, InputFieldType } from './types'
+import { SupportedFileTypes, TransferMethod } from '@/app/components/rag-pipeline/components/input-field/editor/form/schema'
 
 export const generateZodSchema = <T>(fields: InputFieldConfiguration<T>[]) => {
   const shape: Record<string, ZodSchema> = {}
@@ -28,13 +29,16 @@ export const generateZodSchema = <T>(fields: InputFieldConfiguration<T>[]) => {
         zodType = z.string()
         break
       case InputFieldType.fileTypes:
-        zodType = z.array(z.string())
+        zodType = z.object({
+          allowedFileExtensions: z.string().optional(),
+          allowedFileTypes: z.array(SupportedFileTypes),
+        })
         break
       case InputFieldType.inputTypeSelect:
         zodType = z.string()
         break
       case InputFieldType.uploadMethod:
-        zodType = z.array(z.string())
+        zodType = z.array(TransferMethod)
         break
       default:
         zodType = z.any()
