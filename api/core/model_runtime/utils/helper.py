@@ -1,5 +1,6 @@
 import pydantic
 from pydantic import BaseModel
+
 from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 
 
