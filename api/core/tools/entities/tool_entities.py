@@ -199,8 +199,15 @@ class ToolInvokeMessage(BaseModel):
         plain text, image url or link url
     """
     message: (
-        JsonMessage | TextMessage | BlobChunkMessage | BlobMessage | LogMessage | FileMessage | None | VariableMessage \
-            | RetrieverResourceMessage
+        JsonMessage
+        | TextMessage
+        | BlobChunkMessage
+        | BlobMessage
+        | LogMessage
+        | FileMessage
+        | None
+        | VariableMessage
+        | RetrieverResourceMessage
     )
     meta: dict[str, Any] | None = None
 
