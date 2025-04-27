@@ -54,8 +54,8 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.enums import SystemVariableKey
+from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole

@@ -11,9 +11,9 @@ from typing import Any
 from sqlalchemy.orm import sessionmaker
 
 from configs import dify_config
-from core.repository.repository_factory import RepositoryFactory
+from core.repositories.workflow_node_execution import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.repository.repository_factory import RepositoryFactory
 from extensions.ext_database import db
-from repositories.workflow_node_execution import SQLAlchemyWorkflowNodeExecutionRepository
 
 logger = logging.getLogger(__name__)
 

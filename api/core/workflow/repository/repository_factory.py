@@ -8,7 +8,7 @@ It does not contain any implementation details or dependencies on specific repos
 from collections.abc import Callable, Mapping
 from typing import Any, Literal, Optional, cast
 
-from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 
 # Type for factory functions - takes a dict of parameters and returns any repository type
 RepositoryFactoryFunc = Callable[[Mapping[str, Any]], Any]
