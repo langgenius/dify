@@ -12,14 +12,14 @@ import Option from './option'
 
 type InputTypeSelectFieldProps = {
   label: string
-  labeOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
+  labelOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
   supportFile: boolean
   className?: string
 } & Omit<CustomSelectProps<FileTypeSelectOption>, 'options' | 'value' | 'onChange' | 'CustomTrigger' | 'CustomOption'>
 
 const InputTypeSelectField = ({
   label,
-  labeOptions,
+  labelOptions,
   supportFile,
   className,
   ...customSelectProps
@@ -39,7 +39,7 @@ const InputTypeSelectField = ({
       <Label
         htmlFor={field.name}
         label={label}
-        {...(labeOptions ?? {})}
+        {...(labelOptions ?? {})}
       />
       <CustomSelect<FileTypeSelectOption>
         value={field.state.value}

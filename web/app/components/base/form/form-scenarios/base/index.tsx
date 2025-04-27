@@ -48,7 +48,7 @@ const BaseForm = <T,>({
             initialData,
             config,
           })
-          return <FieldComponent key={index} form={baseForm} config={config} />
+          return <FieldComponent key={index} form={baseForm} />
         })}
       </div>
       <baseForm.AppForm>

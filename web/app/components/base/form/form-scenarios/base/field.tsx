@@ -13,12 +13,8 @@ const BaseField = <T,>({
   config,
 }: BaseFieldProps<T>) => withForm({
   defaultValues: initialData,
-  props: {
-    config,
-  },
   render: function Render({
     form,
-    config,
   }) {
     const { type, label, placeholder, variable, tooltip, showConditions, max, min, options, required, showOptional } = config
 

@@ -20,7 +20,7 @@ export type NumberConfiguration = {
 }
 
 export type SelectConfiguration = {
-  options?: Option[] // Options for select field
+  options: Option[] // Options for select field
 }
 
 export type BaseConfiguration<T> = {
@@ -33,7 +33,7 @@ export type BaseConfiguration<T> = {
   showConditions: ShowCondition<T>[] // Show this field only when all conditions are met
   type: BaseFieldType
   tooltip?: string // Tooltip for this field
-} & NumberConfiguration & SelectConfiguration
+} & NumberConfiguration & Partial<SelectConfiguration>
 
 export type BaseFormProps<T> = {
   initialData?: T

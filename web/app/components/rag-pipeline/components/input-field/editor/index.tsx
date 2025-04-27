@@ -1,7 +1,8 @@
-import InputFieldForm from '@/app/components/base/form/form-scenarios/input-field'
 import { RiCloseLine } from '@remixicon/react'
-import DialogWrapper from './dialog-wrapper'
+import DialogWrapper from '../dialog-wrapper'
 import type { InputVar } from '@/app/components/workflow/types'
+import InputFieldForm from './form'
+import { convertToInputFieldFormData } from './utils'
 
 type InputFieldEditorProps = {
   show: boolean
@@ -14,6 +15,8 @@ const InputFieldEditor = ({
   onClose,
   initialData,
 }: InputFieldEditorProps) => {
+  const formData = convertToInputFieldFormData(initialData)
+
   return (
     <DialogWrapper
       show={show}
@@ -33,7 +36,7 @@ const InputFieldEditor = ({
           <RiCloseLine className='size-4 text-text-tertiary' />
         </button>
         <InputFieldForm
-          initialData={initialData}
+          initialData={formData}
           supportFile
           onCancel={onClose}
           onSubmit={(value) => {

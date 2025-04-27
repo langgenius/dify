@@ -11,8 +11,6 @@ import FileTypesField from './components/field/file-types'
 import UploadMethodField from './components/field/upload-method'
 import NumberSliderField from './components/field/number-slider'
 
-export type FormType = ReturnType<typeof useFormContext>
-
 export const { fieldContext, useFieldContext, formContext, useFormContext }
   = createFormHookContexts()
 
@@ -35,3 +33,5 @@ export const { useAppForm, withForm } = createFormHook({
   fieldContext,
   formContext,
 })
+
+export type FormType = ReturnType<typeof useFormContext>
