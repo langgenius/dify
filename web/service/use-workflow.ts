@@ -7,13 +7,11 @@ import type {
   NodeTracing,
   PublishWorkflowParams,
   UpdateWorkflowParams,
-  VarInInspect,
   WorkflowConfigResponse,
 } from '@/types/workflow'
 import type { CommonResponse } from '@/models/common'
 import { useReset } from './use-base'
 import { sleep } from '@/utils'
-import { vars } from '@/app/components/workflow/store/workflow/debug/mock-data'
 
 const NAME_SPACE = 'workflow'
 
@@ -122,23 +120,6 @@ export const useLastRun = (appID: string, nodeId: string, enabled: boolean) => {
           finish_reason: '1',
         },
       } as any)
-    },
-  })
-}
-
-export const useWorkflowVars = (appId: string, onSuccess: (data: VarInInspect[]) => void) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'variables', appId],
-    queryFn: async () => {
-      // TODO: mock data. and need to get the rest data if has more data
-      await sleep(1000)
-      const data = await Promise.resolve({
-        items: vars,
-        total: 1,
-      })
-      onSuccess(data.items)
-
-      return data
     },
   })
 }

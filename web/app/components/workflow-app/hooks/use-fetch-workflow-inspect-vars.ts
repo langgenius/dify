@@ -1,8 +1,8 @@
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { useWorkflowStore } from '../../workflow/store'
-import { useWorkflowVars } from '@/service/use-workflow'
 import { useStoreApi } from 'reactflow'
 import type { Node } from '@/app/components/workflow/types'
+import { fetchAllInspectVars } from '@/service/workflow'
 
 const useSetWorkflowVarsWithValue = () => {
   const workflowStore = useWorkflowStore()
@@ -46,7 +46,14 @@ const useSetWorkflowVarsWithValue = () => {
     })
     setNodesWithInspectVars(res)
   }
-  useWorkflowVars(appId, addNodeInfo)
+
+  const fetchInspectVars = async () => {
+    const data = await fetchAllInspectVars(appId)
+    addNodeInfo(data)
+  }
+  return {
+    fetchInspectVars,
+  }
 }
 
 export default useSetWorkflowVarsWithValue

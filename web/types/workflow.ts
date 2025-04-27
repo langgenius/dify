@@ -395,5 +395,5 @@ export type NodeWithVar = {
   title: string
   vars: VarInInspect[]
   isFetchingValues?: boolean
-  isSingRunRunning: boolean
+  isSingRunRunning?: boolean
 }

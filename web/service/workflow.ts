@@ -9,6 +9,9 @@ import type {
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import type { BlockEnum } from '@/app/components/workflow/types'
+import { sleep } from '@/utils'
+import { vars } from '@/app/components/workflow/store/workflow/debug/mock-data'
+import type { VarInInspect } from '@/types/workflow'
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
@@ -69,4 +72,16 @@ export const fetchCurrentValueOfConversationVariable: Fetcher<ConversationVariab
   params: { conversation_id: string }
 }> = ({ url, params }) => {
   return get<ConversationVariableResponse>(url, { params })
+}
+
+export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]> => {
+  // TODO: mock data. and need to get the rest data if has more data
+  await sleep(1000)
+  const data = await Promise.resolve({
+    items: vars,
+    total: 1,
+  })
+  const res = data.items
+
+  return res
 }
