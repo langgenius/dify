@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand'
 import produce from 'immer'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import type { ValueSelector } from '../../../types'
 
 type InspectVarsState = {
   currentFocusNodeId: string | null
@@ -18,6 +19,7 @@ type InspectVarsActions = {
   getNodeInspectVars: (nodeId: string) => NodeWithVar | undefined
   hasNodeInspectVars: (nodeId: string) => boolean
   setInspectVarValue: (nodeId: string, name: string, value: any) => void
+  renameInspectVarName: (nodeId: string, varId: string, selector: ValueSelector) => void
   deleteInspectVar: (nodeId: string, varId: string) => void
   getInspectVar: (nodeId: string, name: string) => any // The big value is null
 }
@@ -87,6 +89,23 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
               })
               if (needChangeVarIndex !== -1)
                 draft.vars[needChangeVarIndex].value = value
+            })
+          }
+          return node
+        })
+        state.nodesWithInspectVars = nodes
+      }))
+    },
+    renameInspectVarName: (nodeId, varId, selector) => {
+      set(produce((state: InspectVarsSliceShape) => {
+        const nodes = state.nodesWithInspectVars.map((node) => {
+          if (node.nodeId === nodeId) {
+            return produce(node, (draft) => {
+              const needChangeVarIndex = draft.vars.findIndex((varItem) => {
+                return varItem.id === varId
+              })
+              if (needChangeVarIndex !== -1)
+                draft.vars[needChangeVarIndex].selector = selector
             })
           }
           return node

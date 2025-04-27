@@ -18,6 +18,7 @@ const useInspectVarsCrud = () => {
     nodesWithInspectVars,
     getInspectVar,
     setInspectVarValue,
+    renameInspectVarName: renameInspectVarNameInStore,
     deleteAllInspectVars: deleteAllInspectVarsInStore,
     deleteNodeInspectVars: deleteNodeInspectVarsInStore,
     deleteInspectVar: deleteInspectVarInStore,
@@ -69,9 +70,13 @@ const useInspectVarsCrud = () => {
     setInspectVarValue(nodeId, varId, value)
   }
 
-  const editInspectVarSelector = (varId: string, selector: ValueSelector) => {
-    console.log('edit var selector', varId, selector)
-    // call api and update store
+  const renameInspectVarName = async (nodeId: string, varId: string, selector: ValueSelector) => {
+    await doEditInspectorVar({
+      nodeId,
+      varId,
+      name: selector[1],
+    })
+    renameInspectVarNameInStore(nodeId, varId, selector)
   }
 
   const editInspectVarValueType = (varId: string, valueType: VarType) => {
@@ -96,7 +101,7 @@ const useInspectVarsCrud = () => {
     nodesWithInspectVars,
     fetchInspectVarValue,
     editInspectVarValue,
-    editInspectVarSelector,
+    renameInspectVarName,
     editInspectVarValueType,
     deleteInspectVar,
     deleteNodeInspectorVars,
