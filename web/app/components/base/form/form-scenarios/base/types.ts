@@ -21,6 +21,12 @@ export type NumberConfiguration = {
 
 export type SelectConfiguration = {
   options: Option[] // Options for select field
+  popupProps?: {
+    wrapperClassName?: string
+    className?: string
+    itemClassName?: string
+    title?: string
+  }
 }
 
 export type BaseConfiguration<T> = {

@@ -1,19 +1,17 @@
 import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
-import type { DeepKeys } from '@tanstack/react-form'
-import { useStore } from '@tanstack/react-form'
 import { ChangeType } from '@/app/components/workflow/types'
 import { useFileUploadConfig } from '@/service/use-common'
-import type { FormData, InputFieldFormProps } from './types'
+import type { InputFieldFormProps } from './types'
 import { useAppForm } from '@/app/components/base/form'
 import { createInputFieldSchema } from './schema'
 import Toast from '@/app/components/base/toast'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
-import { useConfigurations, useHiddenFieldNames } from './hooks'
 import Divider from '@/app/components/base/divider'
 import ShowAllSettings from './show-all-settings'
 import Button from '@/app/components/base/button'
-import InputField from '@/app/components/base/form/form-scenarios/input-field/field'
+import InitialFields from './initial-fields'
+import HiddenFields from './hidden-fields'
 
 const InputFieldForm = ({
   initialData,
@@ -59,24 +57,23 @@ const InputFieldForm = ({
   })
 
   const [showAllSettings, setShowAllSettings] = useState(false)
-  const type = useStore(inputFieldForm.store, state => state.values.type)
-  const options = useStore(inputFieldForm.store, state => state.values.options)
 
-  const setFieldValue = useCallback((fieldName: DeepKeys<FormData>, value: any) => {
-    inputFieldForm.setFieldValue(fieldName, value)
-  }, [inputFieldForm])
-
-  const hiddenFieldNames = useHiddenFieldNames(type)
-  const { initialConfigurations, hiddenConfigurations } = useConfigurations({
-    type,
-    options,
-    setFieldValue,
+  const InitialFieldsComp = InitialFields({
+    initialData,
     supportFile,
+  })
+  const HiddenFieldsComp = HiddenFields({
+    initialData,
   })
 
   const handleShowAllSettings = useCallback(() => {
     setShowAllSettings(true)
   }, [])
+
+  const ShowAllSettingComp = ShowAllSettings({
+    initialData,
+    handleShowAllSettings,
+  })
 
   return (
     <form
@@ -88,30 +85,13 @@ const InputFieldForm = ({
       }}
     >
       <div className='flex flex-col gap-4 px-4 py-2'>
-        {initialConfigurations.map((config, index) => {
-          const FieldComponent = InputField<FormData>({
-            initialData,
-            config,
-          })
-          return <FieldComponent key={`${config.type}-${index}`} form={inputFieldForm} />
-        })}
+        <InitialFieldsComp form={inputFieldForm} />
         <Divider type='horizontal' />
         {!showAllSettings && (
-          <ShowAllSettings
-            handleShowAllSettings={handleShowAllSettings}
-            description={hiddenFieldNames}
-          />
+          <ShowAllSettingComp form={inputFieldForm} />
         )}
         {showAllSettings && (
-          <>
-            {hiddenConfigurations.map((config, index) => {
-              const FieldComponent = InputField<FormData>({
-                initialData,
-                config,
-              })
-              return <FieldComponent key={`hidden-${config.type}-${index}`} form={inputFieldForm} />
-            })}
-          </>
+          <HiddenFieldsComp form={inputFieldForm} />
         )}
       </div>
       <div className='flex items-center justify-end gap-x-2 p-4 pt-2'>

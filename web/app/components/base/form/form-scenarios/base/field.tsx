@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { type BaseConfiguration, BaseFieldType } from './types'
 import { withForm } from '../..'
 import { useStore } from '@tanstack/react-form'
@@ -16,18 +16,30 @@ const BaseField = <T,>({
   render: function Render({
     form,
   }) {
-    const { type, label, placeholder, variable, tooltip, showConditions, max, min, options, required, showOptional } = config
+    const {
+      type,
+      label,
+      placeholder,
+      variable,
+      tooltip,
+      showConditions,
+      max,
+      min,
+      options,
+      required,
+      showOptional,
+      popupProps,
+    } = config
 
-    const fieldValues = useStore(form.store, state => state.values)
-
-    const isAllConditionsMet = useMemo(() => {
+    const isAllConditionsMet = useStore(form.store, (state) => {
+      const fieldValues = state.values
       if (!showConditions.length) return true
       return showConditions.every((condition) => {
         const { variable, value } = condition
         const fieldValue = fieldValues[variable as keyof typeof fieldValues]
         return fieldValue === value
       })
-    }, [fieldValues, showConditions])
+    })
 
     if (!isAllConditionsMet)
       return <></>
@@ -98,6 +110,7 @@ const BaseField = <T,>({
                 showOptional,
               }}
               options={options!}
+              popupProps={popupProps}
             />
           )}
         />

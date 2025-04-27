@@ -64,40 +64,11 @@ export const useHiddenFieldNames = (type: InputVarType) => {
 }
 
 export const useConfigurations = (props: {
-  type: string,
-  options: string[] | undefined,
   setFieldValue: (fieldName: DeepKeys<FormData>, value: any) => void,
   supportFile: boolean
 }) => {
   const { t } = useTranslation()
-  const { type, options, setFieldValue, supportFile } = props
-
-  const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const {
-    imgSizeLimit,
-    docSizeLimit,
-    audioSizeLimit,
-    videoSizeLimit,
-  } = useFileSizeLimit(fileUploadConfigResponse)
-
-  const isSelectInput = type === InputVarType.select
-
-  const defaultSelectOptions = useMemo(() => {
-    if (isSelectInput && options) {
-      const defaultOptions = [
-        {
-          value: '',
-          label: t('appDebug.variableConfig.noDefaultSelected'),
-        },
-      ]
-      const otherOptions = options.map((option: string) => ({
-        value: option,
-        label: option,
-      }))
-      return [...defaultOptions, ...otherOptions]
-    }
-    return []
-  }, [isSelectInput, options, t])
+  const { setFieldValue, supportFile } = props
 
   const handleTypeChange = useCallback((type: string) => {
     if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type as InputVarType)) {
@@ -186,6 +157,41 @@ export const useConfigurations = (props: {
     }]
   }, [handleTypeChange, supportFile, t])
 
+    return initialConfigurations
+}
+
+export const useHiddenConfigurations = (props: {
+  options: string[] | undefined,
+}) => {
+  const { t } = useTranslation()
+
+  const { options } = props
+
+  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const {
+    imgSizeLimit,
+    docSizeLimit,
+    audioSizeLimit,
+    videoSizeLimit,
+  } = useFileSizeLimit(fileUploadConfigResponse)
+
+  const defaultSelectOptions = useMemo(() => {
+    if (options) {
+      const defaultOptions = [
+        {
+          value: '',
+          label: t('appDebug.variableConfig.noDefaultSelected'),
+        },
+      ]
+      const otherOptions = options.map((option: string) => ({
+        value: option,
+        label: option,
+      }))
+      return [...defaultOptions, ...otherOptions]
+    }
+    return []
+  }, [options, t])
+
   const hiddenConfigurations = useMemo((): InputFieldConfiguration<FormData>[] => {
     return [{
       type: InputFieldType.textInput,
@@ -220,6 +226,9 @@ export const useConfigurations = (props: {
       }],
       showOptional: true,
       options: defaultSelectOptions,
+      popupProps: {
+        wrapperClassName: 'z-40',
+      },
     }, {
       type: InputFieldType.textInput,
       label: t('appDebug.variableConfig.placeholder'),
@@ -296,8 +305,5 @@ export const useConfigurations = (props: {
     }]
   }, [defaultSelectOptions, imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit, t])
 
-    return {
-      initialConfigurations,
-      hiddenConfigurations,
-    }
+  return hiddenConfigurations
 }

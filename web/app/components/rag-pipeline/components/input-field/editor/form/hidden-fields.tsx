@@ -1,0 +1,39 @@
+import React from 'react'
+import { withForm } from '@/app/components/base/form'
+import type { FormData } from './types'
+import InputField from '@/app/components/base/form/form-scenarios/input-field/field'
+import { useStore } from '@tanstack/react-form'
+import { useHiddenConfigurations } from './hooks'
+
+type HiddenFieldsProps = {
+  initialData?: FormData
+}
+
+const HiddenFields = ({
+  initialData,
+}: HiddenFieldsProps) => withForm({
+  defaultValues: initialData,
+  render: function Render({
+    form,
+  }) {
+    const options = useStore(form.store, state => state.values.options)
+
+    const hiddenConfigurations = useHiddenConfigurations({
+      options,
+    })
+
+    return (
+      <>
+        {hiddenConfigurations.map((config, index) => {
+            const FieldComponent = InputField<FormData>({
+              initialData,
+              config,
+            })
+          return <FieldComponent key={index} form={form} />
+        })}
+      </>
+    )
+  },
+})
+
+export default HiddenFields

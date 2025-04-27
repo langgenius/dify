@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React from 'react'
 import { type InputFieldConfiguration, InputFieldType } from './types'
 import { withForm } from '../..'
 import { useStore } from '@tanstack/react-form'
@@ -31,18 +31,17 @@ const InputField = <T,>({
       description,
       options,
       listeners,
+      popupProps,
     } = config
 
-    const fieldValues = useStore(form.store, state => state.values)
-
-    const isAllConditionsMet = useMemo(() => {
-      if (!showConditions.length) return true
+    const isAllConditionsMet = useStore(form.store, (state) => {
+      const fieldValues = state.values
       return showConditions.every((condition) => {
         const { variable, value } = condition
         const fieldValue = fieldValues[variable as keyof typeof fieldValues]
         return fieldValue === value
       })
-    }, [fieldValues, showConditions])
+    })
 
     if (!isAllConditionsMet)
       return <></>
@@ -134,6 +133,7 @@ const InputField = <T,>({
                 showOptional,
               }}
               options={options!}
+              popupProps={popupProps}
             />
           )}
         />
