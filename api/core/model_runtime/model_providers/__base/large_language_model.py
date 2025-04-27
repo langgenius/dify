@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Sequence
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
 from pydantic import ConfigDict
 
@@ -282,7 +282,8 @@ class LargeLanguageModel(AIModel):
                 )
 
                 text = convert_llm_result_chunk_to_str(chunk.delta.message.content)
-                assistant_message.content += text
+                current_content = cast(str, assistant_message.content)
+                assistant_message.content = current_content + text
                 real_model = chunk.model
                 if chunk.delta.usage:
                     usage = chunk.delta.usage
