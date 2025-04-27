@@ -6,10 +6,10 @@ from core.plugin.entities.plugin import GenericProviderID
 from core.plugin.entities.plugin_daemon import (
     PluginAgentProviderEntity,
 )
-from core.plugin.manager.base import BasePluginManager
+from core.plugin.impl.base import BasePluginClient
 
 
-class PluginAgentManager(BasePluginManager):
+class PluginAgentClient(BasePluginClient):
     def fetch_agent_strategy_providers(self, tenant_id: str) -> list[PluginAgentProviderEntity]:
         """
         Fetch agent providers for the given tenant.

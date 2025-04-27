@@ -19,10 +19,10 @@ from core.model_runtime.entities.model_entities import (
 )
 from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
-from core.plugin.manager.model import PluginModelManager
+from core.plugin.impl.model import PluginModelClient
 
 
-class MockModelClass(PluginModelManager):
+class MockModelClass(PluginModelClient):
     def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
         """
         Fetch model providers for the given tenant.
@@ -232,7 +232,7 @@ class MockModelClass(PluginModelManager):
                 )
 
     def invoke_llm(
-        self: PluginModelManager,
+        self: PluginModelClient,
         *,
         tenant_id: str,
         user_id: str,

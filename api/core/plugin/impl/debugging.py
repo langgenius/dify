@@ -1,9 +1,9 @@
 from pydantic import BaseModel
 
-from core.plugin.manager.base import BasePluginManager
+from core.plugin.impl.base import BasePluginClient
 
 
-class PluginDebuggingManager(BasePluginManager):
+class PluginDebuggingClient(BasePluginClient):
     def get_debugging_key(self, tenant_id: str) -> str:
         """
         Get the debugging key for the given tenant.

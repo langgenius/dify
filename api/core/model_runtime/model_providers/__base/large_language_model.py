@@ -21,7 +21,7 @@ from core.model_runtime.entities.model_entities import (
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.utils.helper import convert_llm_result_chunk_to_str
-from core.plugin.manager.model import PluginModelManager
+from core.plugin.impl.model import PluginModelClient
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ class LargeLanguageModel(AIModel):
         result: Union[LLMResult, Generator[LLMResultChunk, None, None]]
 
         try:
-            plugin_model_manager = PluginModelManager()
+            plugin_model_manager = PluginModelClient()
             result = plugin_model_manager.invoke_llm(
                 tenant_id=self.tenant_id,
                 user_id=user or "unknown",
@@ -329,7 +329,7 @@ class LargeLanguageModel(AIModel):
         :return:
         """
         if dify_config.PLUGIN_BASED_TOKEN_COUNTING_ENABLED:
-            plugin_model_manager = PluginModelManager()
+            plugin_model_manager = PluginModelClient()
             return plugin_model_manager.get_llm_num_tokens(
                 tenant_id=self.tenant_id,
                 user_id="unknown",
