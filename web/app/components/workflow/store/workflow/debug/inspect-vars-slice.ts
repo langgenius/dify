@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand'
 import produce from 'immer'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import type { ValueSelector } from '../../../types'
+import type { Node } from '@/app/components/workflow/types'
 
 type InspectVarsState = {
   currentFocusNodeId: string | null
@@ -14,7 +15,8 @@ type InspectVarsActions = {
   setNodesWithInspectVars: (payload: NodeWithVar[]) => void
   deleteAllInspectVars: () => void
   getAllInspectVars: () => NodeWithVar[]
-  setNodeInspectVars: (nodeId: string, payload: NodeWithVar) => void
+  setNodeInspectVars: (nodeId: string, payload: VarInInspect[]) => void
+  appendNodeInspectVars: (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => void
   deleteNodeInspectVars: (nodeId: string) => void
   getNodeInspectVars: (nodeId: string) => NodeWithVar | undefined
   hasNodeInspectVars: (nodeId: string) => boolean
@@ -55,11 +57,26 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
         const nodes = produce(prevNodes, (draft) => {
           const index = prevNodes.findIndex(node => node.nodeId === nodeId)
           if (index === -1)
-            draft.push(payload)
-          else
-            draft[index] = payload
+            draft[index].vars = payload
         })
 
+        return {
+          nodesWithInspectVars: nodes,
+        }
+      })
+    },
+    appendNodeInspectVars: (nodeId, payload, allNodes) => {
+      set((state) => {
+        const nodes = state.nodesWithInspectVars
+        const nodeInfo = allNodes.find(node => node.id === nodeId)
+        if (nodeInfo) {
+          nodes.push({
+            nodeId,
+            nodeType: nodeInfo.data.type,
+            title: nodeInfo.data.title,
+            vars: payload,
+          })
+        }
         return {
           nodesWithInspectVars: nodes,
         }

@@ -13,7 +13,7 @@ import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/a
 import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
+import { fetchNodeInspectVars, getIterationSingleNodeRunUrl, getLoopSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
 import Toast from '@/app/components/base/toast'
 import LLMDefault from '@/app/components/workflow/nodes/llm/default'
 import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
@@ -33,7 +33,6 @@ import { ssePost } from '@/service/base'
 import { noop } from 'lodash-es'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
-import { getNodeWithVar } from '../../../utils/debug'
 const { checkValid: checkLLMValid } = LLMDefault
 const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
 const { checkValid: checkIfElseValid } = IfElseDefault
@@ -48,7 +47,9 @@ const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
 const { checkValid: checkDocumentExtractorValid } = DocumentExtractorDefault
 const { checkValid: checkLoopValid } = LoopDefault
-
+import {
+  useStoreApi,
+} from 'reactflow'
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
@@ -154,24 +155,23 @@ const useOneStepRun = <T>({
   const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey].length : 0
   const loopTimes = loopInputKey ? runInputData[loopInputKey].length : 0
 
+  const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const {
+
     setLastRunNodeInfo,
-    setNodeInspectVars,
+    appendNodeInspectVars,
     setShowSingleRunPanel,
   } = workflowStore.getState()
   const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
-  const nodeData = data
-  const setRunResult = useCallback((data: NodeRunResult | null) => {
+  const setRunResult = useCallback(async (data: NodeRunResult | null) => {
     doSetRunResult(data)
     setLastRunNodeInfo(id, data!)
-    setNodeInspectVars(id, getNodeWithVar({
-      nodeId: id,
-      nodeType: nodeData.type,
-      title: nodeData.title,
-      values: data?.outputs || {},
-    }))
-  }, [nodeData, id, setLastRunNodeInfo, setNodeInspectVars])
+    const vars = await fetchNodeInspectVars(appId!, data!.id)
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    appendNodeInspectVars(id, vars, nodes)
+  }, [setLastRunNodeInfo, id, appId, store, appendNodeInspectVars])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)

@@ -1,3 +1,4 @@
+import { fetchNodeInspectVars } from '@/service/workflow'
 import { useWorkflowStore } from '../store'
 import type { ValueSelector, VarType } from '../types'
 import {
@@ -16,6 +17,7 @@ const useInspectVarsCrud = () => {
   const {
     appId,
     nodesWithInspectVars,
+    setNodeInspectVars,
     getInspectVar,
     setInspectVarValue,
     renameInspectVarName: renameInspectVarNameInStore,
@@ -36,12 +38,21 @@ const useInspectVarsCrud = () => {
 
   const { mutate: doEditInspectorVar } = useEditInspectorVar(appId)
 
-  const fetchInspectVarValue = (selector: ValueSelector) => {
+  const fetchInspectVarValue = async (selector: ValueSelector) => {
     const nodeId = selector[0]
     const isSystemVar = selector[1] === 'sys'
     const isConversationVar = selector[1] === 'conversation'
     console.log(nodeId, isSystemVar, isConversationVar)
-    // fetch values under nodeId. system var and conversation var has different fetch method
+    if (isSystemVar) {
+      invalidateSysVarValues()
+      return
+    }
+    if (isConversationVar) {
+      invalidateConversationVarValues()
+      return
+    }
+    const vars = await fetchNodeInspectVars(appId, nodeId)
+    setNodeInspectVars(nodeId, vars)
   }
 
   const deleteInspectVar = async (nodeId: string, varId: string) => {

@@ -1,6 +1,5 @@
-import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
-import type { BlockEnum } from '../types'
 import { VarType } from '../types'
 
 type OutputToVarInInspectParams = {
@@ -23,34 +22,4 @@ export const outputToVarInInspect = ({
     value,
     edited: false,
   }
-}
-
-type NodeWithVarParams = {
-  nodeId: string
-  nodeType: BlockEnum
-  title: string
-  values: Record<string, any>
-}
-export const getNodeWithVar = ({
-  nodeId,
-  nodeType,
-  title,
-  values,
-}: NodeWithVarParams): NodeWithVar => {
-  const res: NodeWithVar = {
-    nodeId,
-    nodeType,
-    title,
-    vars: [],
-  }
-
-  res.vars = Object.entries(values).map(([key, value]) => {
-    return outputToVarInInspect({
-      nodeId,
-      name: key,
-      value,
-    })
-  })
-
-  return res
 }
