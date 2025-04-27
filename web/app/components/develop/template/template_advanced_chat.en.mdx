@@ -1337,13 +1337,11 @@ Chat applications support session persistence, allowing previous chat history to
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      {
-        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
-        "question": "What is your name?",
-        "answer": "I am Dify.",
-        "hit_count": 0,
-        "created_at": 1735625869
-      }
+      "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+      "question": "What is your name?",
+      "answer": "I am Dify.",
+      "hit_count": 0,
+      "created_at": 1735625869
     }
     ```
     </CodeGroup>
@@ -1377,10 +1375,10 @@ Chat applications support session persistence, allowing previous chat history to
       title="Request"
       tag="PUT"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+      targetCode={`curl --location --request PUT '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
+    curl --location --request PUT '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -1393,13 +1391,11 @@ Chat applications support session persistence, allowing previous chat history to
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      {
-        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
-        "question": "What is your name?",
-        "answer": "I am Dify.",
-        "hit_count": 0,
-        "created_at": 1735625869
-      }
+      "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+      "question": "What is your name?",
+      "answer": "I am Dify.",
+      "hit_count": 0,
+      "created_at": 1735625869
     }
     ```
     </CodeGroup>
@@ -1457,10 +1453,10 @@ Chat applications support session persistence, allowing previous chat history to
       <Property name='action' type='string' key='action'>
         Action, can only be 'enable' or 'disable'
       </Property>
-      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+      <Property name='embedding_provider_name' type='string' key='embedding_provider_name'>
         Specified embedding model provider, must be set up in the system first, corresponding to the provider field(Optional)
       </Property>
-      <Property name='embedding_model' type='string' key='embedding_model'>
+      <Property name='embedding_model_name' type='string' key='embedding_model_name'>
         Specified embedding model, corresponding to the model field(Optional)
       </Property>
       <Property name='score_threshold' type='number' key='score_threshold'>
