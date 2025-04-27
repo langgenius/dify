@@ -81,33 +81,66 @@ class AnswersSummaryAnalysisApi(Resource):
         )
 
     def _read_file_with_encoding_detection(self, file_id: str) -> Tuple[Optional[str], Optional[str]]:
-        """Read file content with automatic encoding detection."""
+        """Read file content with automatic encoding detection.
+        Supports both CSV and XLSX files, converting XLSX to CSV text format.
+        """
         try:
             upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+            if not upload_file:
+                return None, None
 
             # Get the file content from storage
             file_content = storage.load_once(upload_file.key)
 
-            # Detect the encoding
-            detection = chardet.detect(file_content)
-            encoding = detection.get('encoding', 'utf-8')
+            # Check if the file is Excel (.xlsx) based on filename or mime type
+            file_extension = upload_file.name.split('.')[-1].lower() if upload_file.name else ''
+            mime_type = upload_file.mime_type if upload_file.mime_type else ''
 
-            # Try multiple encodings if needed
-            encodings_to_try = [encoding, 'utf-8', 'gbk', 'gb2312', 'iso-8859-1', 'latin-1']
-            # Filter out any None values
-            encodings_to_try = [enc for enc in encodings_to_try if enc is not None]
-            decoded_content = None
-            detected_encoding = None
+            is_excel = (
+                file_extension == 'xlsx'
+                or mime_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
 
-            for enc in encodings_to_try:
+            if is_excel:
+                # Process Excel file
+                import io
+
+                import pandas as pd
+
+                # Load Excel data
+                excel_data = io.BytesIO(file_content)
                 try:
-                    decoded_content = file_content.decode(enc)
-                    detected_encoding = enc
-                    break
-                except UnicodeDecodeError:
-                    continue
+                    # Read all sheets, default to first sheet
+                    df = pd.read_excel(excel_data, engine='openpyxl')
 
-            return decoded_content, detected_encoding
+                    # Convert DataFrame to CSV string
+                    csv_content = df.to_csv(index=False)
+                    return csv_content, 'utf-8'
+                except Exception as e:
+                    print(f"Error converting Excel file: {str(e)}")
+                    return None, None
+            else:
+                # Process CSV file with encoding detection
+                # Detect the encoding
+                detection = chardet.detect(file_content)
+                encoding = detection.get('encoding', 'utf-8')
+
+                # Try multiple encodings if needed
+                encodings_to_try = [encoding, 'utf-8', 'gbk', 'gb2312', 'iso-8859-1', 'latin-1']
+                # Filter out any None values
+                encodings_to_try = [enc for enc in encodings_to_try if enc is not None]
+                decoded_content = None
+                detected_encoding = None
+
+                for enc in encodings_to_try:
+                    try:
+                        decoded_content = file_content.decode(enc)
+                        detected_encoding = enc
+                        break
+                    except UnicodeDecodeError:
+                        continue
+
+                return decoded_content, detected_encoding
         except Exception as e:
             print(f"Error reading file: {str(e)}")
             return None, None
