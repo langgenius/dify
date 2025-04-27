@@ -18,10 +18,10 @@ from core.plugin.entities.plugin_daemon import (
     PluginTextEmbeddingNumTokensResponse,
     PluginVoicesResponse,
 )
-from core.plugin.manager.base import BasePluginManager
+from core.plugin.impl.base import BasePluginClient
 
 
-class PluginModelManager(BasePluginManager):
+class PluginModelClient(BasePluginClient):
     def fetch_model_providers(self, tenant_id: str) -> Sequence[PluginModelProviderEntity]:
         """
         Fetch model providers for the given tenant.

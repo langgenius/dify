@@ -231,7 +231,7 @@ const AppPublisher = ({
               >
                 {t('workflow.common.runApp')}
               </SuggestedAction>
-              {appDetail?.mode === 'workflow'
+              {appDetail?.mode === 'workflow' || appDetail?.mode === 'completion'
                 ? (
                   <SuggestedAction
                     disabled={!publishedAt}

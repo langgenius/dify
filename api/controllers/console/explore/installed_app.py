@@ -113,7 +113,7 @@ class InstalledAppApi(InstalledAppResource):
         db.session.delete(installed_app)
         db.session.commit()
 
-        return {"result": "success", "message": "App uninstalled successfully"}
+        return {"result": "success", "message": "App uninstalled successfully"}, 204
 
     def patch(self, installed_app):
         parser = reqparse.RequestParser()

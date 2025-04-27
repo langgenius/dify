@@ -323,7 +323,7 @@ class DocumentDeleteApi(DatasetApiResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class DocumentListApi(DatasetApiResource):

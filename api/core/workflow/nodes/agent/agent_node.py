@@ -7,8 +7,8 @@ from core.agent.plugin_entities import AgentStrategyParameter
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
-from core.plugin.manager.exc import PluginDaemonClientSideError
-from core.plugin.manager.plugin import PluginInstallationManager
+from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.plugin.impl.plugin import PluginInstaller
 from core.provider_manager import ProviderManager
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 from core.tools.tool_manager import ToolManager
@@ -297,7 +297,7 @@ class AgentNode(ToolNode):
         Get agent strategy icon
         :return:
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         plugins = manager.list_plugins(self.tenant_id)
         try:
             current_plugin = next(

@@ -18,7 +18,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginDaemonError, PluginDaemonInnerError
-from core.plugin.manager.exc import (
+from core.plugin.impl.exc import (
     PluginDaemonBadRequestError,
     PluginDaemonInternalServerError,
     PluginDaemonNotFoundError,
@@ -37,7 +37,7 @@ T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 logger = logging.getLogger(__name__)
 
 
-class BasePluginManager:
+class BasePluginClient:
     def _request(
         self,
         method: str,
