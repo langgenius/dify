@@ -356,32 +356,31 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 </Row>
 
 ---
-
 <Heading
   url='/app/feedbacks'
   method='GET'
-  title='获取APP的消息点赞和反馈'
+  title='Get feedbacks of application'
   name='#app-feedbacks'
 />
 <Row>
   <Col>
-    获取应用的终端用户反馈、点赞。
+    Get application's feedbacks.
 
     ### Query
     <Properties>
       <Property name='page' type='string' key='page'>
-       （选填）分页，默认值：1
+       （optional）pagination，default：1
       </Property>
     </Properties>
 
     <Properties>
       <Property name='limit' type='string' key='limit'>
-       （选填）每页数量，默认值：20
+       （optional） records per page default：20
       </Property>
     </Properties>
 
     ### Response
-    - `data` (List) 返回该APP的点赞、反馈列表。
+    - `data` (List) return apps feedback list.
   </Col>
   <Col sticky>
 
@@ -397,23 +396,23 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
-        {
-        "data": [
-            {
-                "id": "8c0fbed8-e2f9-49ff-9f0e-15a35bdd0e25",
-                "app_id": "f252d396-fe48-450e-94ec-e184218e7346",
-                "conversation_id": "2397604b-9deb-430e-b285-4726e51fd62d",
-                "message_id": "709c0b0f-0a96-4a4e-91a4-ec0889937b11",
-                "rating": "like",
-                "content": "message feedback information-3",
-                "from_source": "user",
-                "from_end_user_id": "74286412-9a1a-42c1-929c-01edb1d381d5",
-                "from_account_id": null,
-                "created_at": "2025-04-24T09:24:38",
-                "updated_at": "2025-04-24T09:24:38"
-            }
-        ]
-        }
+      {
+          "data": [
+              {
+                  "id": "8c0fbed8-e2f9-49ff-9f0e-15a35bdd0e25",
+                  "app_id": "f252d396-fe48-450e-94ec-e184218e7346",
+                  "conversation_id": "2397604b-9deb-430e-b285-4726e51fd62d",
+                  "message_id": "709c0b0f-0a96-4a4e-91a4-ec0889937b11",
+                  "rating": "like",
+                  "content": "message feedback information-3",
+                  "from_source": "user",
+                  "from_end_user_id": "74286412-9a1a-42c1-929c-01edb1d381d5",
+                  "from_account_id": null,
+                  "created_at": "2025-04-24T09:24:38",
+                  "updated_at": "2025-04-24T09:24:38"
+              }
+          ]
+      }
     ```
     </CodeGroup>
   </Col>
@@ -706,13 +705,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      {
-        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
-        "question": "What is your name?",
-        "answer": "I am Dify.",
-        "hit_count": 0,
-        "created_at": 1735625869
-      }
+      "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+      "question": "What is your name?",
+      "answer": "I am Dify.",
+      "hit_count": 0,
+      "created_at": 1735625869
     }
     ```
     </CodeGroup>
@@ -746,10 +743,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       title="Request"
       tag="PUT"
       label="/apps/annotations/{annotation_id}"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
+      targetCode={`curl --location --request PUT '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"question": "What is your name?","answer": "I am Dify."}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
+    curl --location --request PUT '${props.apiBaseUrl}/apps/annotations/{annotation_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -762,13 +759,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      {
-        "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
-        "question": "What is your name?",
-        "answer": "I am Dify.",
-        "hit_count": 0,
-        "created_at": 1735625869
-      }
+      "id": "69d48372-ad81-4c75-9c46-2ce197b4d402",
+      "question": "What is your name?",
+      "answer": "I am Dify.",
+      "hit_count": 0,
+      "created_at": 1735625869
     }
     ```
     </CodeGroup>
@@ -826,10 +821,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='action' type='string' key='action'>
         动作，只能是 'enable' 或 'disable'
       </Property>
-      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+      <Property name='embedding_provider_name' type='string' key='embedding_provider_name'>
         指定的嵌入模型提供商, 必须先在系统内设定好接入的模型，对应的是provider字段
       </Property>
-      <Property name='embedding_model' type='string' key='embedding_model'>
+      <Property name='embedding_model_name' type='string' key='embedding_model_name'>
         指定的嵌入模型，对应的是model字段
       </Property>
       <Property name='score_threshold' type='number' key='score_threshold'>

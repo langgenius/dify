@@ -46,6 +46,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
       <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
+          required
         >
           <VarReferencePicker
             readonly={readOnly}
