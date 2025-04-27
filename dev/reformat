@@ -2,20 +2,14 @@
 
 set -x
 
-# style checks rely on commands in path
-if ! command -v ruff &> /dev/null || ! command -v dotenv-linter &> /dev/null; then
-    echo "Installing linting tools (Ruff, dotenv-linter ...) ..."
-    poetry install -C api --only lint
-fi
-
 # run ruff linter
-poetry run -C api ruff check --fix ./
+uv run --directory api --dev ruff check --fix ./
 
 # run ruff formatter
-poetry run -C api ruff format ./
+uv run --directory api --dev ruff format ./
 
 # run dotenv-linter linter
-poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
+uv run --project api --dev dotenv-linter ./api/.env.example ./web/.env.example
 
 # run mypy check
-dev/run-mypy
+dev/mypy-check

@@ -182,10 +182,12 @@ class MessageCycleManage:
             from_variable_selector=from_variable_selector,
         )
 
-    def _message_replace_to_stream_response(self, answer: str) -> MessageReplaceStreamResponse:
+    def _message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:
         """
         Message replace to stream response.
         :param answer: answer
         :return:
         """
-        return MessageReplaceStreamResponse(task_id=self._application_generate_entity.task_id, answer=answer)
+        return MessageReplaceStreamResponse(
+            task_id=self._application_generate_entity.task_id, answer=answer, reason=reason
+        )

@@ -120,6 +120,13 @@ class ToolInvokeMessage(BaseModel):
     class BlobMessage(BaseModel):
         blob: bytes
 
+    class BlobChunkMessage(BaseModel):
+        id: str = Field(..., description="The id of the blob")
+        sequence: int = Field(..., description="The sequence of the chunk")
+        total_length: int = Field(..., description="The total length of the blob")
+        blob: bytes = Field(..., description="The blob data of the chunk")
+        end: bool = Field(..., description="Whether the chunk is the last chunk")
+
     class FileMessage(BaseModel):
         pass
 
@@ -180,12 +187,15 @@ class ToolInvokeMessage(BaseModel):
         VARIABLE = "variable"
         FILE = "file"
         LOG = "log"
+        BLOB_CHUNK = "blob_chunk"
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
-    message: JsonMessage | TextMessage | BlobMessage | LogMessage | FileMessage | None | VariableMessage
+    message: (
+        JsonMessage | TextMessage | BlobChunkMessage | BlobMessage | LogMessage | FileMessage | None | VariableMessage
+    )
     meta: dict[str, Any] | None = None
 
     @field_validator("message", mode="before")

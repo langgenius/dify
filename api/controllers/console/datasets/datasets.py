@@ -657,6 +657,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.ELASTICSEARCH
                 | VectorType.ELASTICSEARCH_JA
                 | VectorType.PGVECTOR
+                | VectorType.VASTBASE
                 | VectorType.TIDB_ON_QDRANT
                 | VectorType.LINDORM
                 | VectorType.COUCHBASE
@@ -664,6 +665,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.OPENGAUSS
                 | VectorType.OCEANBASE
                 | VectorType.TABLESTORE
+                | VectorType.HUAWEI_CLOUD
                 | VectorType.TENCENT
             ):
                 return {
@@ -705,11 +707,13 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.ELASTICSEARCH_JA
                 | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
+                | VectorType.VASTBASE
                 | VectorType.LINDORM
                 | VectorType.OPENGAUSS
                 | VectorType.OCEANBASE
                 | VectorType.TABLESTORE
                 | VectorType.TENCENT
+                | VectorType.HUAWEI_CLOUD
             ):
                 return {
                     "retrieval_method": [

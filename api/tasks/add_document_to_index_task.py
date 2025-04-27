@@ -37,6 +37,10 @@ def add_document_to_index_task(dataset_document_id: str):
     indexing_cache_key = "document_{}_indexing".format(dataset_document.id)
 
     try:
+        dataset = dataset_document.dataset
+        if not dataset:
+            raise Exception(f"Document {dataset_document.id} dataset {dataset_document.dataset_id} doesn't exist.")
+
         segments = (
             db.session.query(DocumentSegment)
             .filter(
@@ -76,11 +80,6 @@ def add_document_to_index_task(dataset_document_id: str):
                         child_documents.append(child_document)
                     document.children = child_documents
             documents.append(document)
-
-        dataset = dataset_document.dataset
-
-        if not dataset:
-            raise Exception("Document has no dataset")
 
         index_type = dataset.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()

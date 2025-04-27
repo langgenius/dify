@@ -15,6 +15,7 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { ToastContext } from '@/app/components/base/toast'
+import type { IndexingStatusResponse } from '@/models/datasets'
 import { ProcessMode, type ProcessRuleResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { asyncRunSafe, sleep } from '@/utils'
@@ -166,7 +167,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
   const localDatasetId = dstId ?? datasetId
   const localDocumentId = docId ?? documentId
 
-  const [indexingStatusDetail, setIndexingStatusDetail] = useState<any>(null)
+  const [indexingStatusDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse | null>(null)
   const fetchIndexingStatus = async () => {
     const status = await doFetchIndexingStatus({ datasetId: localDatasetId, documentId: localDocumentId })
     setIndexingStatusDetail(status)
@@ -193,7 +194,7 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
       await sleep(2500)
       await startQueryStatus()
     }
-    catch (e) {
+    catch {
       await sleep(2500)
       await startQueryStatus()
     }

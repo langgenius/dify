@@ -173,7 +173,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       showClose
       title={t('dataset.metadata.metadata')}
       footer={null}
-      panelClassname='px-4 block !max-w-[420px] my-2 rounded-l-2xl'
+      panelClassName='px-4 block !max-w-[420px] my-2 rounded-l-2xl'
     >
       <div className='h-full overflow-y-auto'>
         <div className='system-sm-regular text-text-tertiary'>{t(`${i18nPrefix}.description`)}</div>

@@ -1,10 +1,10 @@
-from core.plugin.manager.endpoint import PluginEndpointManager
+from core.plugin.impl.endpoint import PluginEndpointClient
 
 
 class EndpointService:
     @classmethod
     def create_endpoint(cls, tenant_id: str, user_id: str, plugin_unique_identifier: str, name: str, settings: dict):
-        return PluginEndpointManager().create_endpoint(
+        return PluginEndpointClient().create_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,
             plugin_unique_identifier=plugin_unique_identifier,
@@ -14,7 +14,7 @@ class EndpointService:
 
     @classmethod
     def list_endpoints(cls, tenant_id: str, user_id: str, page: int, page_size: int):
-        return PluginEndpointManager().list_endpoints(
+        return PluginEndpointClient().list_endpoints(
             tenant_id=tenant_id,
             user_id=user_id,
             page=page,
@@ -23,7 +23,7 @@ class EndpointService:
 
     @classmethod
     def list_endpoints_for_single_plugin(cls, tenant_id: str, user_id: str, plugin_id: str, page: int, page_size: int):
-        return PluginEndpointManager().list_endpoints_for_single_plugin(
+        return PluginEndpointClient().list_endpoints_for_single_plugin(
             tenant_id=tenant_id,
             user_id=user_id,
             plugin_id=plugin_id,
@@ -33,7 +33,7 @@ class EndpointService:
 
     @classmethod
     def update_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str, name: str, settings: dict):
-        return PluginEndpointManager().update_endpoint(
+        return PluginEndpointClient().update_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,
             endpoint_id=endpoint_id,
@@ -43,7 +43,7 @@ class EndpointService:
 
     @classmethod
     def delete_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str):
-        return PluginEndpointManager().delete_endpoint(
+        return PluginEndpointClient().delete_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,
             endpoint_id=endpoint_id,
@@ -51,7 +51,7 @@ class EndpointService:
 
     @classmethod
     def enable_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str):
-        return PluginEndpointManager().enable_endpoint(
+        return PluginEndpointClient().enable_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,
             endpoint_id=endpoint_id,
@@ -59,7 +59,7 @@ class EndpointService:
 
     @classmethod
     def disable_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str):
-        return PluginEndpointManager().disable_endpoint(
+        return PluginEndpointClient().disable_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,
             endpoint_id=endpoint_id,

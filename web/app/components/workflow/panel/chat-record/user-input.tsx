@@ -17,25 +17,25 @@ const UserInput = () => {
     <div
       className={`
         rounded-xl border
-        ${!expanded ? 'border-indigo-100 bg-indigo-25 shadow-none' : 'border-transparent bg-white shadow-xs'}
+        ${!expanded ? 'border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-none' : 'border-transparent bg-white shadow-xs'}
       `}
     >
       <div
         className={`
           flex h-[18px] cursor-pointer items-center px-2 pt-4 text-[13px] font-semibold
-          ${!expanded ? 'text-indigo-800' : 'text-gray-800'}
+          ${!expanded ? 'text-text-accent-secondary' : 'text-text-secondary'}
         `}
         onClick={() => setExpanded(!expanded)}
       >
         <RiArrowDownSLine
-          className={`mr-1 h-3 w-3 ${!expanded ? '-rotate-90 text-indigo-600' : 'text-gray-300'}`}
+          className={`mr-1 h-3 w-3 ${!expanded ? '-rotate-90 text-text-accent' : 'text-text-tertiary'}`}
         />
         {t('workflow.panel.userInputField').toLocaleUpperCase()}
       </div>
       <div className='px-2 pb-3 pt-1'>
         {
           expanded && (
-            <div className='py-2 text-[13px] text-gray-900'>
+            <div className='py-2 text-[13px] text-text-primary'>
               {
                 variables.map((variable: any) => (
                   <div

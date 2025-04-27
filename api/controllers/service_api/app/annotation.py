@@ -98,7 +98,7 @@ class AnnotationUpdateDeleteApi(Resource):
 
         annotation_id = str(annotation_id)
         AppAnnotationService.delete_app_annotation(app_model.id, annotation_id)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 api.add_resource(AnnotationReplyActionApi, "/apps/annotation-reply/<string:action>")

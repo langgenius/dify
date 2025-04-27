@@ -32,6 +32,7 @@ class LindormVectorStoreConfig(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     using_ugc: Optional[bool] = False
+    request_timeout: Optional[float] = 1.0  # timeout units: s
 
     @model_validator(mode="before")
     @classmethod
@@ -251,9 +252,9 @@ class LindormVectorStore(BaseVector):
         query = default_vector_search_query(query_vector=query_vector, k=top_k, filters=filters, **kwargs)
 
         try:
-            params = {}
+            params = {"timeout": self._client_config.request_timeout}
             if self._using_ugc:
-                params["routing"] = self._routing
+                params["routing"] = self._routing  # type: ignore
             response = self._client.search(index=self._collection_name, body=query, params=params)
         except Exception:
             logger.exception(f"Error executing vector search, query: {query}")
@@ -304,8 +305,8 @@ class LindormVectorStore(BaseVector):
             routing=routing,
             routing_field=self._routing_field,
         )
-
-        response = self._client.search(index=self._collection_name, body=full_text_query)
+        params = {"timeout": self._client_config.request_timeout}
+        response = self._client.search(index=self._collection_name, body=full_text_query, params=params)
         docs = []
         for hit in response["hits"]["hits"]:
             docs.append(
@@ -554,6 +555,7 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
             username=dify_config.LINDORM_USERNAME,
             password=dify_config.LINDORM_PASSWORD,
             using_ugc=dify_config.USING_UGC_INDEX,
+            request_timeout=dify_config.LINDORM_QUERY_TIMEOUT,
         )
         using_ugc = dify_config.USING_UGC_INDEX
         if using_ugc is None:

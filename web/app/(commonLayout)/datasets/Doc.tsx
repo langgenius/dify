@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiListUnordered } from '@remixicon/react'
@@ -9,6 +9,9 @@ import TemplateZh from './template/template.zh.mdx'
 import TemplateJa from './template/template.ja.mdx'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
+import cn from '@/utils/classnames'
 
 type DocProps = {
   apiBaseUrl: string
@@ -19,6 +22,7 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
   const { t } = useTranslation()
   const [toc, setToc] = useState<Array<{ href: string; text: string }>>([])
   const [isTocExpanded, setIsTocExpanded] = useState(false)
+  const { theme } = useTheme()
 
   // Set initial TOC expanded state based on screen width
   useEffect(() => {
@@ -67,17 +71,28 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
     }
   }
 
+  const Template = useMemo(() => {
+    switch (locale) {
+      case LanguagesSupported[1]:
+        return <TemplateZh apiBaseUrl={apiBaseUrl} />
+      case LanguagesSupported[7]:
+        return <TemplateJa apiBaseUrl={apiBaseUrl} />
+      default:
+        return <TemplateEn apiBaseUrl={apiBaseUrl} />
+    }
+  }, [apiBaseUrl, locale])
+
   return (
     <div className="flex">
       <div className={`fixed right-20 top-32 z-10 transition-all ${isTocExpanded ? 'w-64' : 'w-10'}`}>
         {isTocExpanded
           ? (
-            <nav className="toc max-h-[calc(100vh-150px)] w-full overflow-y-auto rounded-lg bg-gray-50 p-4 shadow-md">
+            <nav className="toc max-h-[calc(100vh-150px)] w-full overflow-y-auto rounded-lg bg-components-panel-bg p-4 shadow-md">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold">{t('appApi.develop.toc')}</h3>
+                <h3 className="text-lg font-semibold text-text-primary">{t('appApi.develop.toc')}</h3>
                 <button
                   onClick={() => setIsTocExpanded(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-text-tertiary hover:text-text-secondary"
                 >
                   ✕
                 </button>
@@ -87,7 +102,7 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
                   <li key={index}>
                     <a
                       href={item.href}
-                      className="text-gray-600 transition-colors duration-200 hover:text-gray-900 hover:underline"
+                      className="text-text-secondary transition-colors duration-200 hover:text-text-primary hover:underline"
                       onClick={e => handleTocClick(e, item)}
                     >
                       {item.text}
@@ -100,23 +115,14 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
           : (
             <button
               onClick={() => setIsTocExpanded(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 shadow-md transition-colors duration-200 hover:bg-gray-100"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-components-button-secondary-bg shadow-md transition-colors duration-200 hover:bg-components-button-secondary-bg-hover"
             >
-              <RiListUnordered className="h-6 w-6" />
+              <RiListUnordered className="h-6 w-6 text-components-button-secondary-text" />
             </button>
           )}
       </div>
-      <article className='prose-xl prose mx-1 rounded-t-xl bg-white px-4 pt-16 sm:mx-12'>
-        {(() => {
-          switch (locale) {
-            case LanguagesSupported[1]:
-              return <TemplateZh apiBaseUrl={apiBaseUrl} />
-            case LanguagesSupported[7]:
-              return <TemplateJa apiBaseUrl={apiBaseUrl} />
-            default:
-              return <TemplateEn apiBaseUrl={apiBaseUrl} />
-          }
-        })()}
+      <article className={cn('prose-xl prose mx-1 rounded-t-xl bg-background-default px-4 pt-16 sm:mx-12', theme === Theme.dark && 'dark:prose-invert')}>
+        {Template}
       </article>
     </div>
   )

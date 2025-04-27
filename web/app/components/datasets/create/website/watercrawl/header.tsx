@@ -20,10 +20,10 @@ const Header: FC<Props> = ({
     <div className='flex h-6 items-center justify-between'>
       <div className='flex items-center'>
         <div className='text-base font-medium text-text-secondary'>{t(`${I18N_PREFIX}.watercrawlTitle`)}</div>
-        <div className='ml-2 mr-2 w-px h-3.5 bg-divider-regular' />
-        <Button className='flex items-center gap-x-[1px] h-6 px-1.5' onClick={onSetting}>
-          <RiEqualizer2Line className='w-3.5 h-3.5 text-components-button-secondary-text' />
-          <span className='text-components-button-secondary-text text-xs font-medium px-[3px]'>
+        <div className='ml-2 mr-2 h-3.5 w-px bg-divider-regular' />
+        <Button className='flex h-6 items-center gap-x-[1px] px-1.5' onClick={onSetting}>
+          <RiEqualizer2Line className='h-3.5 w-3.5 text-components-button-secondary-text' />
+          <span className='px-[3px] text-xs font-medium text-components-button-secondary-text'>
             {t(`${I18N_PREFIX}.configureWatercrawl`)}
           </span>
         </Button>
@@ -34,7 +34,7 @@ const Header: FC<Props> = ({
         rel='noopener noreferrer'
         className='inline-flex items-center gap-x-1 text-xs font-medium text-text-accent'
       >
-        <RiBookOpenLine className='w-3.5 h-3.5 text-text-accent' />
+        <RiBookOpenLine className='h-3.5 w-3.5 text-text-accent' />
         <span>{t(`${I18N_PREFIX}.watercrawlDoc`)}</span>
       </a>
     </div>

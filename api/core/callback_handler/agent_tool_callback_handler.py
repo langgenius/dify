@@ -109,13 +109,20 @@ class DifyAgentCallbackHandler(BaseModel):
     def on_datasource_start(self, datasource_name: str, datasource_inputs: Mapping[str, Any]) -> None:
         """Run on datasource start."""
         if dify_config.DEBUG:
-            print_text("\n[on_datasource_start] DatasourceCall:" + datasource_name + "\n" + 
-                       str(datasource_inputs) + "\n", color=self.color)
+            print_text(
+                "\n[on_datasource_start] DatasourceCall:" + datasource_name + "\n" + str(datasource_inputs) + "\n",
+                color=self.color,
+            )
 
-    def on_datasource_end(self, datasource_name: str, datasource_inputs: Mapping[str, Any], datasource_outputs: 
-                          Iterable[DatasourceInvokeMessage] | str, message_id: Optional[str] = None, 
-                          timer: Optional[Any] = None, 
-                          trace_manager: Optional[TraceQueueManager] = None) -> None:
+    def on_datasource_end(
+        self,
+        datasource_name: str,
+        datasource_inputs: Mapping[str, Any],
+        datasource_outputs: Iterable[DatasourceInvokeMessage] | str,
+        message_id: Optional[str] = None,
+        timer: Optional[Any] = None,
+        trace_manager: Optional[TraceQueueManager] = None,
+    ) -> None:
         """Run on datasource end."""
         if dify_config.DEBUG:
             print_text("\n[on_datasource_end]\n", color=self.color)
