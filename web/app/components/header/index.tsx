@@ -49,7 +49,7 @@ const Header = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSegment])
   return (
-    <div className='flex flex-1 items-center justify-between bg-background-body px-4'>
+    <div className='relative flex flex-1 items-center justify-between bg-background-body'>
       <div className='flex items-center'>
         {isMobile && <div
           className='flex h-8 w-8 cursor-pointer items-center justify-center'
@@ -59,7 +59,7 @@ const Header = () => {
         </div>}
         {
           !isMobile
-          && <div className='flex w-64 shrink-0 items-center gap-1.5 self-stretch p-2 pl-3'>
+          && <div className='flex shrink-0 items-center gap-1.5 self-stretch pl-3'>
             <Link href="/apps" className='flex h-8 w-8 shrink-0 items-center justify-center gap-2'>
               <LogoSite className='object-contain' />
             </Link>
@@ -84,7 +84,7 @@ const Header = () => {
       )}
       {
         !isMobile && (
-          <div className='flex items-center'>
+          <div className='absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center'>
             {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
             {!isCurrentWorkspaceDatasetOperator && <AppNav />}
             {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
@@ -92,7 +92,7 @@ const Header = () => {
           </div>
         )
       }
-      <div className='flex shrink-0 items-center'>
+      <div className='flex shrink-0 items-center pr-3'>
         <EnvNav />
         <div className='mr-2'>
           <PluginsNav />
