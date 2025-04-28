@@ -11,7 +11,7 @@ import docx
 import pandas as pd
 import pypandoc  # type: ignore
 import pypdfium2  # type: ignore
-import webvtt
+import webvtt # type: ignore
 import yaml  # type: ignore
 from docx.document import Document
 from docx.oxml.table import CT_Tbl
@@ -467,6 +467,7 @@ def _extract_text_from_msg(file_content: bytes) -> str:
         return "\n".join([str(element) for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from MSG: {str(e)}") from e
+
 
 def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
     text = _extract_text_from_plain_text(vtt_bytes)
