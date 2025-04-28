@@ -9,9 +9,9 @@ from typing import Any, cast
 
 import docx
 import pandas as pd
-import webvtt
 import pypandoc  # type: ignore
 import pypdfium2  # type: ignore
+import webvtt
 import yaml  # type: ignore
 from docx.document import Document
 from docx.oxml.table import CT_Tbl
