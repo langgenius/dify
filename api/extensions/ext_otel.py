@@ -18,6 +18,7 @@ from dify_app import DifyApp
 def on_user_loaded(_sender, user):
     if dify_config.ENABLE_OTEL:
         from opentelemetry.trace import get_current_span
+
         if user:
             current_span = get_current_span()
             if current_span:
@@ -26,15 +27,12 @@ def on_user_loaded(_sender, user):
 
 
 def init_app(app: DifyApp):
-
     def is_celery_worker():
         return "celery" in sys.argv[0].lower()
-
 
     def instrument_exception_logging():
         exception_handler = ExceptionLoggingHandler()
         logging.getLogger().addHandler(exception_handler)
-
 
     def init_flask_instrumentor(app: DifyApp):
         meter = get_meter("http_metrics", version=dify_config.CURRENT_VERSION)
@@ -59,12 +57,10 @@ def init_app(app: DifyApp):
             logging.info("Initializing Flask instrumentor")
         instrumentor.instrument_app(app, response_hook=response_hook)
 
-
     def init_sqlalchemy_instrumentor(app: DifyApp):
         with app.app_context():
             engines = list(app.extensions["sqlalchemy"].engines.values())
             SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)
-
 
     def setup_context_propagation():
         # Configure propagators
@@ -105,6 +101,7 @@ def init_app(app: DifyApp):
                         span.set_attribute("exception.message", str(record.exc_info[1]))
             except Exception:
                 pass
+
     from opentelemetry import trace
     from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
@@ -128,6 +125,7 @@ def init_app(app: DifyApp):
     from opentelemetry.trace import Span, get_tracer_provider, set_tracer_provider
     from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
     from opentelemetry.trace.status import StatusCode
+
     setup_context_propagation()
     # Initialize OpenTelemetry
     # Follow Semantic Convertions 1.32.0 to define resource attributes
@@ -195,7 +193,6 @@ def is_enabled():
     """
     return dify_config.ENABLE_OTEL
 
-    
 
 @worker_init.connect(weak=False)
 def init_celery_worker(*args, **kwargs):
@@ -203,6 +200,7 @@ def init_celery_worker(*args, **kwargs):
         from opentelemetry.instrumentation.celery import CeleryInstrumentor
         from opentelemetry.metrics import get_meter_provider
         from opentelemetry.trace import get_tracer_provider
+
         tracer_provider = get_tracer_provider()
         metric_provider = get_meter_provider()
         if dify_config.DEBUG:
