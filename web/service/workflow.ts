@@ -76,6 +76,7 @@ export const fetchCurrentValueOfConversationVariable: Fetcher<ConversationVariab
 
 export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]> => {
   // TODO: mock data. and need to get the rest data if has more data
+  console.log('fetchAllInspectVars', appId)
   await sleep(1000)
   const data = await Promise.resolve({
     items: vars,
