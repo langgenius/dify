@@ -30,6 +30,8 @@ const translation = {
     },
     tryToSolve: 'Tente resolver',
     temporarySystemIssue: 'Desculpe, problema temporário do sistema.',
+    expand: 'Expandir',
+    collapse: 'Contrair',
   },
   generation: {
     tabs: {

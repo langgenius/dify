@@ -30,6 +30,8 @@ const translation = {
     },
     tryToSolve: '尝试解决',
     temporarySystemIssue: '抱歉，临时系统问题。',
+    expand: '展开',
+    collapse: '折叠',
   },
   generation: {
     tabs: {
