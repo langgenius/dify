@@ -2,12 +2,12 @@ import logging
 import time
 import json
 
+from flask import request
+
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
 from dify_app import DifyApp
 from extensions.ext_logging import get_request_id
-
-from flask import request
 
 
 # ----------------------------
