@@ -1,3 +1,4 @@
+import React from 'react'
 import cn from '@/utils/classnames'
 
 type OptionCardProps = {
@@ -37,4 +38,4 @@ const OptionCard = ({
   )
 }
 
-export default OptionCard
+export default React.memo(OptionCard)

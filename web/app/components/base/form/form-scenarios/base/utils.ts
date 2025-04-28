@@ -1,4 +1,4 @@
-import type { ZodSchema, ZodString } from 'zod'
+import type { ZodNumber, ZodSchema, ZodString } from 'zod'
 import { z } from 'zod'
 import { type BaseConfiguration, BaseFieldType } from './types'
 
@@ -26,14 +26,6 @@ export const generateZodSchema = <T>(fields: BaseConfiguration<T>[]) => {
         break
     }
 
-    if (field.required) {
-      if ([BaseFieldType.textInput].includes(field.type))
-        zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
-    }
-    else {
-      zodType = zodType.optional()
-    }
-
     if (field.maxLength) {
       if ([BaseFieldType.textInput].includes(field.type))
         zodType = (zodType as ZodString).max(field.maxLength, `${field.label} exceeds max length of ${field.maxLength}`)
@@ -41,12 +33,20 @@ export const generateZodSchema = <T>(fields: BaseConfiguration<T>[]) => {
 
     if (field.min) {
       if ([BaseFieldType.numberInput].includes(field.type))
-        zodType = (zodType as ZodString).min(field.min, `${field.label} must be at least ${field.min}`)
+        zodType = (zodType as ZodNumber).min(field.min, `${field.label} must be at least ${field.min}`)
     }
 
     if (field.max) {
       if ([BaseFieldType.numberInput].includes(field.type))
-        zodType = (zodType as ZodString).max(field.max, `${field.label} exceeds max value of ${field.max}`)
+        zodType = (zodType as ZodNumber).max(field.max, `${field.label} exceeds max value of ${field.max}`)
+    }
+
+    if (field.required) {
+      if ([BaseFieldType.textInput].includes(field.type))
+        zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
+    }
+    else {
+      zodType = zodType.optional()
     }
 
     shape[field.variable] = zodType

@@ -45,14 +45,6 @@ export const generateZodSchema = <T>(fields: InputFieldConfiguration<T>[]) => {
         break
     }
 
-    if (field.required) {
-      if ([InputFieldType.textInput].includes(field.type))
-        zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
-    }
-    else {
-      zodType = zodType.optional()
-    }
-
     if (field.maxLength) {
       if ([InputFieldType.textInput].includes(field.type))
         zodType = (zodType as ZodString).max(field.maxLength, `${field.label} exceeds max length of ${field.maxLength}`)
@@ -66,6 +58,14 @@ export const generateZodSchema = <T>(fields: InputFieldConfiguration<T>[]) => {
     if (field.max) {
       if ([InputFieldType.numberInput].includes(field.type))
         zodType = (zodType as ZodString).max(field.max, `${field.label} exceeds max value of ${field.max}`)
+    }
+
+    if (field.required) {
+      if ([InputFieldType.textInput].includes(field.type))
+        zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
+    }
+    else {
+      zodType = zodType.optional()
     }
 
     shape[field.variable] = zodType

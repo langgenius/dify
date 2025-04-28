@@ -8,8 +8,6 @@ import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 import LocalFile from './data-source/local-file'
 import produce from 'immer'
-import Button from '@/app/components/base/button'
-import { useTranslation } from 'react-i18next'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DataSourceProvider, type NotionPage } from '@/models/common'
 import Notion from './data-source/notion'
@@ -18,10 +16,11 @@ import { DEFAULT_CRAWL_OPTIONS } from './consts'
 import Firecrawl from './data-source/website/firecrawl'
 import JinaReader from './data-source/website/jina-reader'
 import WaterCrawl from './data-source/website/water-crawl'
+import Actions from './data-source/actions'
+import DocumentProcessing from './document-processing'
 
 const TestRunPanel = () => {
-  const { t } = useTranslation()
-  const [currentStep, setCurrentStep] = useState(1)
+  const [currentStep, setCurrentStep] = useState(2)
   const [dataSource, setDataSource] = useState<string>(DataSourceProvider.waterCrawl)
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
@@ -89,6 +88,10 @@ const TestRunPanel = () => {
 
   const handleNextStep = useCallback(() => {
     setCurrentStep(preStep => preStep + 1)
+  }, [])
+
+  const handleBackStep = useCallback(() => {
+    setCurrentStep(preStep => preStep - 1)
   }, [])
 
   return (
@@ -163,12 +166,19 @@ const TestRunPanel = () => {
                   <VectorSpaceFull />
                 )}
               </div>
-              <div className='flex justify-end p-4 pt-2'>
-                <Button disabled={nextBtnDisabled} variant='primary' onClick={handleNextStep}>
-                  <span className='px-0.5'>{t('datasetCreation.stepOne.button')}</span>
-                </Button>
-              </div>
+              <Actions disabled={nextBtnDisabled} handleNextStep={handleNextStep} />
             </>
+          )
+        }
+        {
+          currentStep === 2 && (
+            <DocumentProcessing
+              payload={{}}
+              onProcess={(data) => {
+                console.log('Processing data:', data)
+              }}
+              onBack={handleBackStep}
+            />
           )
         }
       </div>

@@ -5,7 +5,7 @@ import Button from '../../../button'
 import { useTranslation } from 'react-i18next'
 
 type ActionsProps = {
-  CustomActions?: (form: FormType) => React.ReactNode
+  CustomActions?: (form: FormType) => React.ReactNode | React.JSX.Element
 }
 
 const Actions = ({
