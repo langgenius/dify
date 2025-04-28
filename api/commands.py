@@ -846,7 +846,15 @@ def clear_orphaned_file_records(force: bool):
 
     # notify user and ask for confirmation
     click.echo(
-        click.style("This command will find and delete orphaned file records in the following tables:", fg="yellow")
+        click.style(
+            "This command will first find and delete orphaned file records from the message_files table,", fg="yellow"
+        )
+    )
+    click.echo(
+        click.style(
+            "and then it will find and delete orphaned file records in the following tables:",
+            fg="yellow",
+        )
     )
     for files_table in files_tables:
         click.echo(click.style(f"- {files_table['table']}", fg="yellow"))
@@ -885,6 +893,49 @@ def clear_orphaned_file_records(force: bool):
     # start the cleanup process
     click.echo(click.style("Starting orphaned file records cleanup.", fg="white"))
 
+    # clean up the orphaned records in the message_files table where message_id doesn't exist in messages table
+    try:
+        click.echo(
+            click.style("- Listing message_files records where message_id doesn't exist in messages table", fg="white")
+        )
+        query = (
+            "SELECT mf.id, mf.message_id "
+            "FROM message_files mf LEFT JOIN messages m ON mf.message_id = m.id "
+            "WHERE m.id IS NULL"
+        )
+        orphaned_message_files = []
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(query))
+            for i in rs:
+                orphaned_message_files.append({"id": str(i[0]), "message_id": str(i[1])})
+
+        if orphaned_message_files:
+            click.echo(click.style(f"Found {len(orphaned_message_files)} orphaned message_files records:", fg="white"))
+            for record in orphaned_message_files:
+                click.echo(click.style(f"  - id: {record['id']}, message_id: {record['message_id']}", fg="black"))
+
+            if not force:
+                click.confirm(
+                    (
+                        f"Do you want to proceed "
+                        f"to delete all {len(orphaned_message_files)} orphaned message_files records?"
+                    ),
+                    abort=True,
+                )
+
+            click.echo(click.style("- Deleting orphaned message_files records", fg="white"))
+            query = "DELETE FROM message_files WHERE id IN :ids"
+            with db.engine.begin() as conn:
+                conn.execute(db.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
+            click.echo(
+                click.style(f"Removed {len(orphaned_message_files)} orphaned message_files records.", fg="green")
+            )
+        else:
+            click.echo(click.style("No orphaned message_files records found. There is nothing to delete.", fg="green"))
+    except Exception as e:
+        click.echo(click.style(f"Error deleting orphaned message_files records: {str(e)}", fg="red"))
+
+    # clean up the orphaned records in the rest of the *_files tables
     try:
         # fetch file id and keys from each table
         all_files_in_tables = []
