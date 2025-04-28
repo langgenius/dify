@@ -1,8 +1,9 @@
 import json
-import json_repair
 import logging
 import re
 from typing import Optional, cast
+
+import json_repair
 
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
@@ -19,11 +20,11 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from core.workflow.nodes.llm.exc import LLMNodeError
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.nodes.llm.exc import LLMNodeError
 
 
 class LLMGenerator:
@@ -368,15 +369,20 @@ class LLMGenerator:
                 ),
             )
 
-            generated_json_schema = cast(str, response.message.content)
-            try:
-                generated_json_schema = json.loads(generated_json_schema)
-            except json.JSONDecodeError:
-                generated_json_schema = json_repair.loads(generated_json_schema)
-                if not isinstance(generated_json_schema, (dict | list)):
-                    raise LLMNodeError(f"Failed to parse structured output from llm: {response.message.content}")
-            generated_json_schema = json.dumps(generated_json_schema, indent=2, ensure_ascii=False)
+            raw_content = response.message.content
 
+            if not isinstance(raw_content, str):
+                raise LLMNodeError(f"LLM response content must be a string, got: {type(raw_content)}")
+
+            try:
+                parsed_content = json.loads(raw_content)
+            except json.JSONDecodeError:
+                parsed_content = json_repair.loads(raw_content)
+
+            if not isinstance(parsed_content, (dict, list)):
+                raise LLMNodeError(f"Failed to parse structured output from llm: {raw_content}")
+
+            generated_json_schema = json.dumps(parsed_content, indent=2, ensure_ascii=False)
             return {"output": generated_json_schema, "error": ""}
 
         except InvokeError as e:
