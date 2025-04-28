@@ -83,3 +83,5 @@ export type Callback = {
 export type Feedback = {
   rating: 'like' | 'dislike' | null
 }
+
+export type ChatEventMap = Record<symbol, void>

@@ -20,7 +20,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import cn from '@/utils/classnames'
-
+import { EventEmitterContextProvider } from '@/context/event-emitter'
 type ChatWithHistoryProps = {
   className?: string
 }
@@ -138,7 +138,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,
-    handleStartChat,
     handleChangeConversation,
     handlePinConversation,
     handleUnpinConversation,
@@ -159,6 +158,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    eventEmitter,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -179,7 +179,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       handleNewConversationInputsChange,
       inputsForms,
       handleNewConversation,
-      handleStartChat,
       handleChangeConversation,
       handlePinConversation,
       handleUnpinConversation,
@@ -202,6 +201,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       setIsResponding,
       currentConversationInputs,
       setCurrentConversationInputs,
+      eventEmitter,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>
@@ -242,12 +242,12 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   if (appUnavailable)
     return <AppUnavailable isUnknownReason={isUnknownReason} />
 
-  return (
+  return <EventEmitterContextProvider>
     <ChatWithHistoryWrap
       installedAppInfo={installedAppInfo}
       className={className}
     />
-  )
+  </EventEmitterContextProvider>
 }
 
 export default ChatWithHistoryWrapWithCheckToken
