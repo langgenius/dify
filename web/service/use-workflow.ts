@@ -147,7 +147,7 @@ export const useConversationVarValues = (appId: string) => {
       return Promise.resolve(conversationVars.map((item) => {
         return {
           ...item,
-          value: `${item.value}${index++}`,
+          value: item.value_type === 'string' ? `${item.value}${index++}` : item.value,
         }
       }))
     },

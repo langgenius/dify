@@ -198,7 +198,7 @@ const ValueContent = ({
             disabled={currentVar.type === VarInInspectType.environment}
             className='h-full'
             value={value as any}
-            onChange={debounce(e => handleTextChange(e.target.value))}
+            onChange={e => handleTextChange(e.target.value)}
           />
         )}
         {showJSONEditor && (

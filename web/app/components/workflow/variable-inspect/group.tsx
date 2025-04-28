@@ -5,79 +5,76 @@ import {
   // RiErrorWarningFill,
   // RiLoader2Line,
 } from '@remixicon/react'
-import { useStore } from '../store'
 // import { BlockEnum } from '../types'
 // import Button from '@/app/components/base/button'
 // import ActionButton from '@/app/components/base/action-button'
 // import Tooltip from '@/app/components/base/tooltip'
 // import BlockIcon from '@/app/components/workflow/block-icon'
 import {
-  // BubbleX,
+  BubbleX,
   Env,
 } from '@/app/components/base/icons/src/vender/line/others'
-// import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-// import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import type { currentVarType } from './panel'
+import { VarInInspectType } from '@/types/workflow'
+import type { VarInInspect } from '@/types/workflow'
 import cn from '@/utils/classnames'
 
 type Props = {
-  isEnv?: boolean
-  isChatVar?: boolean
-  isSystem?: boolean
   currentVar?: currentVarType
+  varType: VarInInspectType
+  varList: VarInInspect[]
   handleSelect: (state: any) => void
 }
 
 const Group = ({
-  isEnv,
-  isChatVar,
-  isSystem,
   currentVar,
+  varType,
+  varList,
   handleSelect,
 }: Props) => {
   const { t } = useTranslation()
-
-  const environmentVariables = useStore(s => s.environmentVariables)
-  // const {
-  //   conversationVars,
-  //   systemVars,
-  //   nodesWithInspectVars,
-  // } = useCurrentVars()
-
   const [isCollapsed, setIsCollapsed] = useState(false)
 
+  const isEnv = varType === VarInInspectType.environment
+  const isChatVar = varType === VarInInspectType.conversation
+  const isSystem = varType === VarInInspectType.system
+
   const handleSelectVar = (varItem: any, type?: string) => {
-    if (type === 'env') {
+    if (type === VarInInspectType.environment) {
       handleSelect({
         nodeId: 'env',
         nodeTitle: 'env',
-        nodeType: 'env',
+        nodeType: VarInInspectType.environment,
         var: {
           ...varItem,
-          type: 'env',
+          type: VarInInspectType.environment,
           ...(varItem.value_type === 'secret' ? { value: '******************' } : {}),
         },
       })
       return
     }
-    if (type === 'chat') {
+    if (type === VarInInspectType.conversation) {
       handleSelect({
         nodeId: 'conversation',
         nodeTitle: 'conversation',
-        nodeType: 'conversation',
+        nodeType: VarInInspectType.conversation,
         var: {
           ...varItem,
-          type: 'conversation',
+          type: VarInInspectType.conversation,
         },
       })
       return
     }
-    if (type === 'system') {
+    if (type === VarInInspectType.system) {
       handleSelect({
         nodeId: 'sys',
         nodeTitle: 'sys',
-        nodeType: 'sys',
-        var: varItem,
+        nodeType: VarInInspectType.system,
+        var: {
+          ...varItem,
+          type: VarInInspectType.system,
+        },
       })
       return
     }
@@ -105,18 +102,20 @@ const Group = ({
       {/* var item list */}
       {!isCollapsed && (
         <div className='px-0.5'>
-          {environmentVariables.length > 0 && environmentVariables.map(env => (
+          {varList.length > 0 && varList.map(varItem => (
             <div
-              key={env.id}
+              key={varItem.id}
               className={cn(
                 'relative flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover',
-                env.id === currentVar?.var.id && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
+                varItem.id === currentVar?.var.id && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
               )}
-              onClick={() => handleSelectVar(env, 'env')}
+              onClick={() => handleSelectVar(varItem, varType)}
             >
-              <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />
-              <div className='system-sm-medium grow truncate text-text-secondary'>{env.name}</div>
-              <div className='system-xs-regular shrink-0 text-text-tertiary'>{env.value_type}</div>
+              {isEnv && <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />}
+              {isChatVar && <BubbleX className='h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />}
+              {isSystem && <Variable02 className='h-4 w-4 shrink-0 text-text-accent' />}
+              <div className='system-sm-medium grow truncate text-text-secondary'>{varItem.name}</div>
+              <div className='system-xs-regular shrink-0 text-text-tertiary'>{varItem.value_type}</div>
             </div>
           ))}
         </div>

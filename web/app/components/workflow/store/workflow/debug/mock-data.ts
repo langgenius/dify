@@ -26,6 +26,16 @@ export const conversationVars: VarInInspect[] = [
     value: 'conversation var value...',
     edited: false,
   },
+  {
+    id: 'con2',
+    type: VarInInspectType.conversation,
+    name: 'conversationVar 2',
+    description: '',
+    selector: ['conversation', 'var2'],
+    value_type: VarType.number,
+    value: 456,
+    edited: false,
+  },
 ]
 
 export const systemVars: VarInInspect[] = [

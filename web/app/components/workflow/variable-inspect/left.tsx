@@ -16,6 +16,8 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import Group from './group'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import type { currentVarType } from './panel'
+import type { VarInInspect } from '@/types/workflow'
+import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -52,7 +54,17 @@ const Left = ({
         {/* group ENV */}
         {environmentVariables.length > 0 && (
           <Group
-            isEnv
+            varType={VarInInspectType.environment}
+            varList={environmentVariables as VarInInspect[]}
+            currentVar={currentNodeVar}
+            handleSelect={handleVarSelect}
+          />
+        )}
+        {/* group CHAT VAR */}
+        {conversationVars.length > 0 && (
+          <Group
+            varType={VarInInspectType.conversation}
+            varList={conversationVars}
             currentVar={currentNodeVar}
             handleSelect={handleVarSelect}
           />
