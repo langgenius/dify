@@ -1057,7 +1057,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             model = "gpt-4o"
 
         try:
-            encoding = tiktoken.encoding_for_model(model)
+            encoding = tiktoken.get_encoding(model)
         except KeyError:
             logger.warning("Warning: model not found. Using cl100k_base encoding.")
             model = "cl100k_base"
