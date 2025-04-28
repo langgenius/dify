@@ -5,13 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.datasource.datasource_engine import DatasourceEngine
+from core.datasource.entities.datasource_entities import DatasourceInvokeMessage, DatasourceParameter
+from core.datasource.errors import DatasourceInvokeError
+from core.datasource.utils.message_transformer import DatasourceFileMessageTransformer
 from core.file import File, FileTransferMethod
 from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.plugin.manager.plugin import PluginInstallationManager
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
-from core.tools.errors import ToolInvokeError
-from core.tools.tool_engine import ToolEngine
-from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
@@ -29,11 +29,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .entities import DatasourceNodeData
-from .exc import (
-    ToolFileError,
-    ToolNodeError,
-    ToolParameterError,
-)
+from .exc import DatasourceNodeError, DatasourceParameterError, ToolFileError
 
 
 class DatasourceNode(BaseNode[DatasourceNodeData]):
@@ -60,12 +56,12 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
 
         # get datasource runtime
         try:
-            from core.tools.tool_manager import ToolManager
+            from core.datasource.datasource_manager import DatasourceManager
 
-            tool_runtime = ToolManager.get_workflow_tool_runtime(
+            datasource_runtime = DatasourceManager.get_workflow_datasource_runtime(
                 self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from
             )
-        except ToolNodeError as e:
+        except DatasourceNodeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -78,14 +74,14 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
             return
 
         # get parameters
-        tool_parameters = tool_runtime.get_merged_runtime_parameters() or []
+        datasource_parameters = datasource_runtime.get_merged_runtime_parameters() or []
         parameters = self._generate_parameters(
-            tool_parameters=tool_parameters,
+            datasource_parameters=datasource_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=self.node_data,
         )
         parameters_for_log = self._generate_parameters(
-            tool_parameters=tool_parameters,
+            datasource_parameters=datasource_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=self.node_data,
             for_log=True,
@@ -95,9 +91,9 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
 
         try:
-            message_stream = ToolEngine.generic_invoke(
-                tool=tool_runtime,
-                tool_parameters=parameters,
+            message_stream = DatasourceEngine.generic_invoke(
+                datasource=datasource_runtime,
+                datasource_parameters=parameters,
                 user_id=self.user_id,
                 workflow_tool_callback=DifyWorkflowCallbackHandler(),
                 workflow_call_depth=self.workflow_call_depth,
@@ -105,28 +101,28 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                 app_id=self.app_id,
                 conversation_id=conversation_id.text if conversation_id else None,
             )
-        except ToolNodeError as e:
+        except DatasourceNodeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
-                    metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
-                    error=f"Failed to invoke tool: {str(e)}",
+                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                    error=f"Failed to invoke datasource: {str(e)}",
                     error_type=type(e).__name__,
                 )
             )
             return
 
         try:
-            # convert tool messages
-            yield from self._transform_message(message_stream, tool_info, parameters_for_log)
-        except (PluginDaemonClientSideError, ToolInvokeError) as e:
+            # convert datasource messages
+            yield from self._transform_message(message_stream, datasource_info, parameters_for_log)
+        except (PluginDaemonClientSideError, DatasourceInvokeError) as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
-                    metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
-                    error=f"Failed to transform tool message: {str(e)}",
+                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                    error=f"Failed to transform datasource message: {str(e)}",
                     error_type=type(e).__name__,
                 )
             )
@@ -134,9 +130,9 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
     def _generate_parameters(
         self,
         *,
-        tool_parameters: Sequence[ToolParameter],
+        datasource_parameters: Sequence[DatasourceParameter],
         variable_pool: VariablePool,
-        node_data: ToolNodeData,
+        node_data: DatasourceNodeData,
         for_log: bool = False,
     ) -> dict[str, Any]:
         """
@@ -151,25 +147,25 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
             Mapping[str, Any]: A dictionary containing the generated parameters.
 
         """
-        tool_parameters_dictionary = {parameter.name: parameter for parameter in tool_parameters}
+        datasource_parameters_dictionary = {parameter.name: parameter for parameter in datasource_parameters}
 
         result: dict[str, Any] = {}
-        for parameter_name in node_data.tool_parameters:
-            parameter = tool_parameters_dictionary.get(parameter_name)
+        for parameter_name in node_data.datasource_parameters:
+            parameter = datasource_parameters_dictionary.get(parameter_name)
             if not parameter:
                 result[parameter_name] = None
                 continue
-            tool_input = node_data.tool_parameters[parameter_name]
-            if tool_input.type == "variable":
-                variable = variable_pool.get(tool_input.value)
+            datasource_input = node_data.datasource_parameters[parameter_name]
+            if datasource_input.type == "variable":
+                variable = variable_pool.get(datasource_input.value)
                 if variable is None:
-                    raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                    raise DatasourceParameterError(f"Variable {datasource_input.value} does not exist")
                 parameter_value = variable.value
-            elif tool_input.type in {"mixed", "constant"}:
-                segment_group = variable_pool.convert_template(str(tool_input.value))
+            elif datasource_input.type in {"mixed", "constant"}:
+                segment_group = variable_pool.convert_template(str(datasource_input.value))
                 parameter_value = segment_group.log if for_log else segment_group.text
             else:
-                raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")
+                raise DatasourceParameterError(f"Unknown datasource input type '{datasource_input.type}'")
             result[parameter_name] = parameter_value
 
         return result
@@ -181,15 +177,15 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
 
     def _transform_message(
         self,
-        messages: Generator[ToolInvokeMessage, None, None],
-        tool_info: Mapping[str, Any],
+        messages: Generator[DatasourceInvokeMessage, None, None],
+        datasource_info: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
     ) -> Generator:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """
         # transform message and handle file storage
-        message_stream = ToolFileMessageTransformer.transform_tool_invoke_messages(
+        message_stream = DatasourceFileMessageTransformer.transform_datasource_invoke_messages(
             messages=messages,
             user_id=self.user_id,
             tenant_id=self.tenant_id,
@@ -207,11 +203,11 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
 
         for message in message_stream:
             if message.type in {
-                ToolInvokeMessage.MessageType.IMAGE_LINK,
-                ToolInvokeMessage.MessageType.BINARY_LINK,
-                ToolInvokeMessage.MessageType.IMAGE,
+                DatasourceInvokeMessage.MessageType.IMAGE_LINK,
+                DatasourceInvokeMessage.MessageType.BINARY_LINK,
+                DatasourceInvokeMessage.MessageType.IMAGE,
             }:
-                assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+                assert isinstance(message.message, DatasourceInvokeMessage.TextMessage)
 
                 url = message.message.text
                 if message.meta:
@@ -238,9 +234,9 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                     tenant_id=self.tenant_id,
                 )
                 files.append(file)
-            elif message.type == ToolInvokeMessage.MessageType.BLOB:
+            elif message.type == DatasourceInvokeMessage.MessageType.BLOB:
                 # get tool file id
-                assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+                assert isinstance(message.message, DatasourceInvokeMessage.TextMessage)
                 assert message.meta
 
                 tool_file_id = message.message.text.split("/")[-1].split(".")[0]
@@ -261,14 +257,14 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                         tenant_id=self.tenant_id,
                     )
                 )
-            elif message.type == ToolInvokeMessage.MessageType.TEXT:
-                assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+            elif message.type == DatasourceInvokeMessage.MessageType.TEXT:
+                assert isinstance(message.message, DatasourceInvokeMessage.TextMessage)
                 text += message.message.text
                 yield RunStreamChunkEvent(
                     chunk_content=message.message.text, from_variable_selector=[self.node_id, "text"]
                 )
-            elif message.type == ToolInvokeMessage.MessageType.JSON:
-                assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
+            elif message.type == DatasourceInvokeMessage.MessageType.JSON:
+                assert isinstance(message.message, DatasourceInvokeMessage.JsonMessage)
                 if self.node_type == NodeType.AGENT:
                     msg_metadata = message.message.json_object.pop("execution_metadata", {})
                     agent_execution_metadata = {
@@ -277,13 +273,13 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                         if key in NodeRunMetadataKey.__members__.values()
                     }
                 json.append(message.message.json_object)
-            elif message.type == ToolInvokeMessage.MessageType.LINK:
-                assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+            elif message.type == DatasourceInvokeMessage.MessageType.LINK:
+                assert isinstance(message.message, DatasourceInvokeMessage.TextMessage)
                 stream_text = f"Link: {message.message.text}\n"
                 text += stream_text
                 yield RunStreamChunkEvent(chunk_content=stream_text, from_variable_selector=[self.node_id, "text"])
-            elif message.type == ToolInvokeMessage.MessageType.VARIABLE:
-                assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
+            elif message.type == DatasourceInvokeMessage.MessageType.VARIABLE:
+                assert isinstance(message.message, DatasourceInvokeMessage.VariableMessage)
                 variable_name = message.message.variable_name
                 variable_value = message.message.variable_value
                 if message.message.stream:
@@ -298,13 +294,13 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                     )
                 else:
                     variables[variable_name] = variable_value
-            elif message.type == ToolInvokeMessage.MessageType.FILE:
+            elif message.type == DatasourceInvokeMessage.MessageType.FILE:
                 assert message.meta is not None
                 files.append(message.meta["file"])
-            elif message.type == ToolInvokeMessage.MessageType.LOG:
-                assert isinstance(message.message, ToolInvokeMessage.LogMessage)
+            elif message.type == DatasourceInvokeMessage.MessageType.LOG:
+                assert isinstance(message.message, DatasourceInvokeMessage.LogMessage)
                 if message.message.metadata:
-                    icon = tool_info.get("icon", "")
+                    icon = datasource_info.get("icon", "")
                     dict_metadata = dict(message.message.metadata)
                     if dict_metadata.get("provider"):
                         manager = PluginInstallationManager()
@@ -366,7 +362,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                 outputs={"text": text, "files": files, "json": json, **variables},
                 metadata={
                     **agent_execution_metadata,
-                    NodeRunMetadataKey.TOOL_INFO: tool_info,
+                    NodeRunMetadataKey.DATASOURCE_INFO: datasource_info,
                     NodeRunMetadataKey.AGENT_LOG: agent_logs,
                 },
                 inputs=parameters_for_log,
@@ -379,7 +375,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         *,
         graph_config: Mapping[str, Any],
         node_id: str,
-        node_data: ToolNodeData,
+        node_data: DatasourceNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -389,8 +385,8 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         :return:
         """
         result = {}
-        for parameter_name in node_data.tool_parameters:
-            input = node_data.tool_parameters[parameter_name]
+        for parameter_name in node_data.datasource_parameters:
+            input = node_data.datasource_parameters[parameter_name]
             if input.type == "mixed":
                 assert isinstance(input.value, str)
                 selectors = VariableTemplateParser(input.value).extract_variable_selectors()

@@ -1,16 +1,16 @@
-class ToolNodeError(ValueError):
-    """Base exception for tool node errors."""
+class DatasourceNodeError(ValueError):
+    """Base exception for datasource node errors."""
 
     pass
 
 
-class ToolParameterError(ToolNodeError):
-    """Exception raised for errors in tool parameters."""
+class DatasourceParameterError(DatasourceNodeError):
+    """Exception raised for errors in datasource parameters."""
 
     pass
 
 
-class ToolFileError(ToolNodeError):
-    """Exception raised for errors related to tool files."""
+class DatasourceFileError(DatasourceNodeError):
+    """Exception raised for errors related to datasource files."""
 
     pass

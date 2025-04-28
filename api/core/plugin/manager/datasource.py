@@ -88,13 +88,14 @@ class PluginDatasourceManager(BasePluginManager):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/invoke_first_step",
+            f"plugin/{tenant_id}/dispatch/datasource/{online_document}/pages",
             ToolInvokeMessage,
             data={
                 "user_id": user_id,
                 "data": {
                     "provider": datasource_provider_id.provider_name,
                     "datasource": datasource_name,
+
                     "credentials": credentials,
                     "datasource_parameters": datasource_parameters,
                 },

@@ -7,6 +7,7 @@ class NodeType(StrEnum):
     ANSWER = "answer"
     LLM = "llm"
     KNOWLEDGE_RETRIEVAL = "knowledge-retrieval"
+    KNOWLEDGE_INDEX = "knowledge-index"
     IF_ELSE = "if-else"
     CODE = "code"
     TEMPLATE_TRANSFORM = "template-transform"

@@ -1,0 +1,147 @@
+from collections.abc import Sequence
+from typing import Any, Literal, Optional, Union
+
+from pydantic import BaseModel, Field
+
+from core.workflow.nodes.base import BaseNodeData
+from core.workflow.nodes.llm.entities import VisionConfig
+
+
+class RerankingModelConfig(BaseModel):
+    """
+    Reranking Model Config.
+    """
+
+    provider: str
+    model: str
+
+class VectorSetting(BaseModel):
+    """
+    Vector Setting.
+    """
+
+    vector_weight: float
+    embedding_provider_name: str
+    embedding_model_name: str
+
+
+class KeywordSetting(BaseModel):
+    """
+    Keyword Setting.
+    """
+
+    keyword_weight: float
+
+class WeightedScoreConfig(BaseModel):
+    """
+    Weighted score Config.
+    """
+
+    vector_setting: VectorSetting
+    keyword_setting: KeywordSetting
+
+
+class EmbeddingSetting(BaseModel):
+    """
+    Embedding Setting.
+    """
+    embedding_provider_name: str
+    embedding_model_name: str
+
+
+class EconomySetting(BaseModel):
+    """
+    Economy Setting.
+    """
+
+    keyword_number: int
+
+
+class RetrievalSetting(BaseModel):
+    """
+    Retrieval Setting.
+    """
+    search_method: Literal["semantic_search", "keyword_search", "hybrid_search"]
+    top_k: int
+    score_threshold: Optional[float] = 0.5
+    score_threshold_enabled: bool = False
+    reranking_mode: str = "reranking_model"
+    reranking_enable: bool = True
+    reranking_model: Optional[RerankingModelConfig] = None
+    weights: Optional[WeightedScoreConfig] = None
+
+class IndexMethod(BaseModel):
+    """
+    Knowledge Index Setting.
+    """
+    indexing_technique: Literal["high_quality", "economy"]
+    embedding_setting: EmbeddingSetting
+    economy_setting: EconomySetting
+
+class FileInfo(BaseModel):
+    """
+    File Info.
+    """
+    file_id: str
+
+class OnlineDocumentIcon(BaseModel):
+    """
+    Document Icon.
+    """
+    icon_url: str
+    icon_type: str
+    icon_emoji: str
+
+class OnlineDocumentInfo(BaseModel):
+    """
+    Online document info.
+    """
+    provider: str
+    workspace_id: str
+    page_id: str
+    page_type: str
+    icon: OnlineDocumentIcon
+
+class WebsiteInfo(BaseModel):
+    """
+    website import info.
+    """
+    provider: str   
+    url: str
+
+class GeneralStructureChunk(BaseModel):
+    """
+    General Structure Chunk.
+    """
+    general_chunk: list[str]
+    data_source_info: Union[FileInfo, OnlineDocumentInfo, WebsiteInfo]
+
+
+class ParentChildChunk(BaseModel):
+    """
+    Parent Child Chunk.
+    """
+    parent_content: str
+    child_content: list[str]
+
+
+class ParentChildStructureChunk(BaseModel):
+    """
+    Parent Child Structure Chunk.
+    """
+    parent_child_chunks: list[ParentChildChunk]
+    data_source_info: Union[FileInfo, OnlineDocumentInfo, WebsiteInfo]
+
+
+class KnowledgeIndexNodeData(BaseNodeData):
+    """
+    Knowledge index Node Data.
+    """
+
+    type: str = "knowledge-index" 
+    dataset_id: str
+    index_chunk_variable_selector: list[str]
+    chunk_structure: Literal["general", "parent-child"]
+    index_method: IndexMethod
+    retrieval_setting: RetrievalSetting
+

@@ -3,58 +3,58 @@ from collections.abc import Generator
 from mimetypes import guess_extension
 from typing import Optional
 
+from core.datasource.datasource_file_manager import DatasourceFileManager
+from core.datasource.entities.datasource_entities import DatasourceInvokeMessage
 from core.file import File, FileTransferMethod, FileType
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool_file_manager import ToolFileManager
 
 logger = logging.getLogger(__name__)
 
 
-class ToolFileMessageTransformer:
+class DatasourceFileMessageTransformer:
     @classmethod
-    def transform_tool_invoke_messages(
+    def transform_datasource_invoke_messages(
         cls,
-        messages: Generator[ToolInvokeMessage, None, None],
+        messages: Generator[DatasourceInvokeMessage, None, None],
         user_id: str,
         tenant_id: str,
         conversation_id: Optional[str] = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         """
-        Transform tool message and handle file download
+        Transform datasource message and handle file download
         """
         for message in messages:
-            if message.type in {ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.LINK}:
+            if message.type in {DatasourceInvokeMessage.MessageType.TEXT, DatasourceInvokeMessage.MessageType.LINK}:
                 yield message
-            elif message.type == ToolInvokeMessage.MessageType.IMAGE and isinstance(
-                message.message, ToolInvokeMessage.TextMessage
+            elif message.type == DatasourceInvokeMessage.MessageType.IMAGE and isinstance(
+                message.message, DatasourceInvokeMessage.TextMessage
             ):
                 # try to download image
                 try:
-                    assert isinstance(message.message, ToolInvokeMessage.TextMessage)
+                    assert isinstance(message.message, DatasourceInvokeMessage.TextMessage)
 
-                    file = ToolFileManager.create_file_by_url(
+                    file = DatasourceFileManager.create_file_by_url(
                         user_id=user_id,
                         tenant_id=tenant_id,
                         file_url=message.message.text,
                         conversation_id=conversation_id,
                     )
 
-                    url = f"/files/tools/{file.id}{guess_extension(file.mimetype) or '.png'}"
+                    url = f"/files/datasources/{file.id}{guess_extension(file.mimetype) or '.png'}"
 
-                    yield ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.IMAGE_LINK,
-                        message=ToolInvokeMessage.TextMessage(text=url),
+                    yield DatasourceInvokeMessage(
+                        type=DatasourceInvokeMessage.MessageType.IMAGE_LINK,
+                        message=DatasourceInvokeMessage.TextMessage(text=url),
                         meta=message.meta.copy() if message.meta is not None else {},
                     )
                 except Exception as e:
-                    yield ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.TEXT,
-                        message=ToolInvokeMessage.TextMessage(
+                    yield DatasourceInvokeMessage(
+                        type=DatasourceInvokeMessage.MessageType.TEXT,
+                        message=DatasourceInvokeMessage.TextMessage(
                             text=f"Failed to download image: {message.message.text}: {e}"
                         ),
                         meta=message.meta.copy() if message.meta is not None else {},
                     )
-            elif message.type == ToolInvokeMessage.MessageType.BLOB:
+            elif message.type == DatasourceInvokeMessage.MessageType.BLOB:
                 # get mime type and save blob to storage
                 meta = message.meta or {}
 
@@ -63,12 +63,12 @@ class ToolFileMessageTransformer:
                 filename = meta.get("file_name", None)
                 # if message is str, encode it to bytes
 
-                if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
+                if not isinstance(message.message, DatasourceInvokeMessage.BlobMessage):
                     raise ValueError("unexpected message type")
 
                 # FIXME: should do a type check here.
                 assert isinstance(message.message.blob, bytes)
-                file = ToolFileManager.create_file_by_raw(
+                file = DatasourceFileManager.create_file_by_raw(
                     user_id=user_id,
                     tenant_id=tenant_id,
                     conversation_id=conversation_id,
@@ -77,22 +77,22 @@ class ToolFileMessageTransformer:
                     filename=filename,
                 )
 
-                url = cls.get_tool_file_url(tool_file_id=file.id, extension=guess_extension(file.mimetype))
+                url = cls.get_datasource_file_url(datasource_file_id=file.id, extension=guess_extension(file.mimetype))
 
                 # check if file is image
                 if "image" in mimetype:
-                    yield ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.IMAGE_LINK,
-                        message=ToolInvokeMessage.TextMessage(text=url),
+                    yield DatasourceInvokeMessage(
+                        type=DatasourceInvokeMessage.MessageType.IMAGE_LINK,
+                        message=DatasourceInvokeMessage.TextMessage(text=url),
                         meta=meta.copy() if meta is not None else {},
                     )
                 else:
-                    yield ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.BINARY_LINK,
-                        message=ToolInvokeMessage.TextMessage(text=url),
+                    yield DatasourceInvokeMessage(
+                        type=DatasourceInvokeMessage.MessageType.BINARY_LINK,
+                        message=DatasourceInvokeMessage.TextMessage(text=url),
                         meta=meta.copy() if meta is not None else {},
                     )
-            elif message.type == ToolInvokeMessage.MessageType.FILE:
+            elif message.type == DatasourceInvokeMessage.MessageType.FILE:
                 meta = message.meta or {}
                 file = meta.get("file", None)
                 if isinstance(file, File):
@@ -100,15 +100,15 @@ class ToolFileMessageTransformer:
                         assert file.related_id is not None
                         url = cls.get_tool_file_url(tool_file_id=file.related_id, extension=file.extension)
                         if file.type == FileType.IMAGE:
-                            yield ToolInvokeMessage(
-                                type=ToolInvokeMessage.MessageType.IMAGE_LINK,
-                                message=ToolInvokeMessage.TextMessage(text=url),
+                            yield DatasourceInvokeMessage(
+                                type=DatasourceInvokeMessage.MessageType.IMAGE_LINK,
+                                message=DatasourceInvokeMessage.TextMessage(text=url),
                                 meta=meta.copy() if meta is not None else {},
                             )
                         else:
-                            yield ToolInvokeMessage(
-                                type=ToolInvokeMessage.MessageType.LINK,
-                                message=ToolInvokeMessage.TextMessage(text=url),
+                            yield DatasourceInvokeMessage(
+                                type=DatasourceInvokeMessage.MessageType.LINK,
+                                message=DatasourceInvokeMessage.TextMessage(text=url),
                                 meta=meta.copy() if meta is not None else {},
                             )
                     else:
@@ -117,5 +117,5 @@ class ToolFileMessageTransformer:
                 yield message
 
     @classmethod
-    def get_tool_file_url(cls, tool_file_id: str, extension: Optional[str]) -> str:
-        return f"/files/tools/{tool_file_id}{extension or '.bin'}"
+    def get_datasource_file_url(cls, datasource_file_id: str, extension: Optional[str]) -> str:
+        return f"/files/datasources/{datasource_file_id}{extension or '.bin'}"

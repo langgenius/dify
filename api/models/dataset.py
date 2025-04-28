@@ -59,6 +59,7 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     embedding_model = db.Column(db.String(255), nullable=True)
     embedding_model_provider = db.Column(db.String(255), nullable=True)
+    keyword_number = db.Column(db.Integer, nullable=True, server_default=db.text("10"))
     collection_binding_id = db.Column(StringUUID, nullable=True)
     retrieval_model = db.Column(JSONB, nullable=True)
     built_in_field_enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
