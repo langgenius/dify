@@ -223,8 +223,8 @@ def _extract_text_from_doc(file_content: bytes) -> str:
     """
     from unstructured.partition.api import partition_via_api
 
-    if not (dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY):
-        raise TextExtractionError("UNSTRUCTURED_API_URL and UNSTRUCTURED_API_KEY must be set")
+    if not dify_config.UNSTRUCTURED_API_URL:
+        raise TextExtractionError("UNSTRUCTURED_API_URL must be set")
 
     try:
         with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
