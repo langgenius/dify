@@ -63,5 +63,5 @@ class RerankModelRunner(BaseRerankRunner):
                     rerank_document.metadata["score"] = result.score
                     rerank_documents.append(rerank_document)
 
-        rerank_documents.sort(key=lambda x: x.metadata.get('score', 0.0), reverse=True)
+        rerank_documents.sort(key=lambda x: x.metadata.get("score", 0.0), reverse=True)
         return rerank_documents[:top_n] if top_n else rerank_documents
