@@ -18,7 +18,7 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, AppPermission
 from models.tools import ApiToolProvider
 from services.app_permission_service import AppPermissionService
 from services.tag_service import TagService
@@ -60,6 +60,23 @@ class AppService:
                 filters.append(App.id.in_(target_ids))
             else:
                 return None
+        # Add permission-based filtering
+        from sqlalchemy import or_
+        permission_filters = [
+            # All team members can see apps with permission "all_team_members" or null
+            or_(App.permission == "all_team_members", App.permission == None),
+            # Creator can see their own apps
+            App.created_by == user_id,
+            # Users with explicit permission in app_permissions table
+            App.id.in_(
+                db.session.query(AppPermission.app_id)
+                .filter(
+                    AppPermission.account_id == user_id,
+                    AppPermission.has_permission == True
+                )
+            )
+        ]
+        filters.append(or_(*permission_filters))
 
         app_models = db.paginate(
             db.select(App).where(*filters).order_by(App.created_at.desc()),
