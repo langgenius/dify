@@ -135,6 +135,8 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
             return _extract_text_from_yaml(file_content)
         case "text/vtt":
             return _extract_text_from_vtt(file_content)
+        case "text/properties":
+            return _extract_text_from_properties(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -170,6 +172,8 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_msg(file_content)
         case ".vtt":
             return _extract_text_from_vtt(file_content)
+        case ".properties":
+            return _extract_text_from_properties(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported Extension Type: {file_extension}")
 
@@ -506,3 +510,29 @@ def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
     # Return the result in the specified format: Speaker "text" style
     formatted = [f'{spk or ""} "{txt}"' for spk, txt in merged_results]
     return "\n".join(formatted)
+
+
+def _extract_text_from_properties(file_content: bytes) -> str:
+    try:
+        text = _extract_text_from_plain_text(file_content)
+        lines = text.splitlines()
+        result = []
+        for line in lines:
+            line = line.strip()
+            # Preserve comments and empty lines
+            if not line or line.startswith("#") or line.startswith("!"):
+                result.append(line)
+                continue
+
+            if "=" in line:
+                key, value = line.split("=", 1)
+            elif ":" in line:
+                key, value = line.split(":", 1)
+            else:
+                key, value = line, ""
+
+            result.append(f"{key.strip()}: {value.strip()}")
+
+        return "\n".join(result)
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from properties file: {str(e)}") from e
