@@ -468,8 +468,7 @@ def _extract_text_from_msg(file_content: bytes) -> str:
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from MSG: {str(e)}") from e
 
-
-def _extract_text_from_vtt(vtt_bytes: bytes):
+def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
     text = _extract_text_from_plain_text(vtt_bytes)
 
     # remove bom
