@@ -2,24 +2,21 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import UrlInput from '../base/url-input'
-import OptionsWrap from '../base/options-wrap'
-import CrawledResult from '../base/crawled-result'
+import { useModalContextSelector } from '@/context/modal-context'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
+import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
+import { sleep } from '@/utils'
+import Header from '@/app/components/datasets/create/website/base/header'
+import type { FormData } from './options'
+import Options from './options'
+import { useConfigurations } from './hooks'
 import Crawling from '../base/crawling'
 import ErrorMessage from '../base/error-message'
-import Options from './options'
-import { useModalContext } from '@/context/modal-context'
-import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import Toast from '@/app/components/base/toast'
-import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
-import { sleep } from '@/utils'
-import Header from '../base/header'
+import CrawledResult from '../base/crawled-result'
 
-const ERROR_I18N_PREFIX = 'common.errorMsg'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type Props = {
-  onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
@@ -33,8 +30,7 @@ enum Step {
   finished = 'finished',
 }
 
-const WaterCrawl: FC<Props> = ({
-  onPreview,
+const FireCrawl: FC<Props> = ({
   checkedCrawlResult,
   onCheckedCrawlResultChange,
   onJobIdChange,
@@ -44,39 +40,18 @@ const WaterCrawl: FC<Props> = ({
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
+  const configurations = useConfigurations()
   useEffect(() => {
     if (step !== Step.init)
       setControlFoldOptions(Date.now())
   }, [step])
-  const { setShowAccountSettingModal } = useModalContext()
+
+  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
       payload: 'data-source',
     })
   }, [setShowAccountSettingModal])
-
-  const checkValid = useCallback((url: string) => {
-    let errorMsg = ''
-    if (!url) {
-      errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
-        field: 'url',
-      })
-    }
-
-    if (!errorMsg && !((url.startsWith('http://') || url.startsWith('https://'))))
-      errorMsg = t(`${ERROR_I18N_PREFIX}.urlError`)
-
-    if (!errorMsg && (crawlOptions.limit === null || crawlOptions.limit === undefined || crawlOptions.limit === '')) {
-      errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
-        field: t(`${I18N_PREFIX}.limit`),
-      })
-    }
-
-    return {
-      isValid: !errorMsg,
-      errorMsg,
-    }
-  }, [crawlOptions, t])
 
   const isInit = step === Step.init
   const isCrawlFinished = step === Step.finished
@@ -90,9 +65,9 @@ const WaterCrawl: FC<Props> = ({
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const showError = isCrawlFinished && crawlErrorMessage
 
-  const waitForCrawlFinished = useCallback(async (jobId: string): Promise<any> => {
+  const waitForCrawlFinished = useCallback(async (jobId: string) => {
     try {
-      const res = await checkWatercrawlTaskStatus(jobId) as any
+      const res = await checkFirecrawlTaskStatus(jobId) as any
       if (res.status === 'completed') {
         return {
           isError: false,
@@ -103,7 +78,7 @@ const WaterCrawl: FC<Props> = ({
         }
       }
       if (res.status === 'error' || !res.status) {
-        // can't get the error message from the watercrawl api
+        // can't get the error message from the firecrawl api
         return {
           isError: true,
           errorMessage: res.message,
@@ -131,17 +106,11 @@ const WaterCrawl: FC<Props> = ({
         },
       }
     }
-  }, [crawlOptions.limit])
+  }, [crawlOptions.limit, onCheckedCrawlResultChange])
 
-  const handleRun = useCallback(async (url: string) => {
-    const { isValid, errorMsg } = checkValid(url)
-    if (!isValid) {
-      Toast.notify({
-        message: errorMsg!,
-        type: 'error',
-      })
-      return
-    }
+  const handleRun = useCallback(async (value: FormData) => {
+    const { url, ...crawlOptions } = value
+    onCrawlOptionsChange(crawlOptions)
     setStep(Step.running)
     try {
       const passToServerCrawlOptions: any = {
@@ -150,7 +119,7 @@ const WaterCrawl: FC<Props> = ({
       if (crawlOptions.max_depth === '')
         delete passToServerCrawlOptions.max_depth
 
-      const res = await createWatercrawlTask({
+      const res = await createFirecrawlTask({
         url,
         options: passToServerCrawlOptions,
       }) as any
@@ -173,51 +142,60 @@ const WaterCrawl: FC<Props> = ({
     finally {
       setStep(Step.finished)
     }
-  }, [checkValid, crawlOptions, onJobIdChange, t, waitForCrawlFinished])
+  }, [onCrawlOptionsChange, onJobIdChange, t, waitForCrawlFinished, onCheckedCrawlResultChange])
 
   return (
     <div>
       <Header
+        isInPipeline
         onClickConfiguration={handleSetting}
-        title={t(`${I18N_PREFIX}.watercrawlTitle`)}
-        buttonText={t(`${I18N_PREFIX}.configureWatercrawl`)}
-        docTitle={t(`${I18N_PREFIX}.watercrawlDoc`)}
-        docLink={'https://docs.watercrawl.dev/'}
+        title={t(`${I18N_PREFIX}.firecrawlTitle`)}
+        buttonText={t(`${I18N_PREFIX}.configureFirecrawl`)}
+        docTitle={t(`${I18N_PREFIX}.firecrawlDoc`)}
+        docLink={'https://docs.firecrawl.dev/introduction'}
       />
-      <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0'>
-        <UrlInput onRun={handleRun} isRunning={isRunning} />
-        <OptionsWrap
-          className='mt-4'
+      <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
+        <Options
+          initialData={{
+            ...crawlOptions,
+            url: '',
+          }}
+          configurations={configurations}
+          isRunning={isRunning}
           controlFoldOptions={controlFoldOptions}
-        >
-          <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />
-        </OptionsWrap>
-
-        {!isInit && (
-          <div className='relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl'>
-            {isRunning
-              && <Crawling
-                className='mt-2'
-                crawledNum={crawlResult?.current || 0}
-                totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0}
-              />}
-            {showError && (
-              <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={crawlErrorMessage} />
-            )}
-            {isCrawlFinished && !showError
-              && <CrawledResult
-                className='mb-2'
-                list={crawlResult?.data || []}
-                checkedList={checkedCrawlResult}
-                onSelectedChange={onCheckedCrawlResultChange}
-                onPreview={onPreview}
-                usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
-              />
-            }
-          </div>
-        )}
+          onSubmit={(value) => {
+            handleRun(value)
+            console.log('submit')
+          }}
+        />
       </div>
+      {!isInit && (
+        <div className='relative'>
+          {isRunning && (
+            <Crawling
+              crawledNum={crawlResult?.current || 0}
+              totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0}
+            />
+          )}
+          {showError && (
+            <ErrorMessage
+              className='mt-2'
+              title={t(`${I18N_PREFIX}.exceptionErrorTitle`)}
+              errorMsg={crawlErrorMessage}
+            />
+          )}
+          {isCrawlFinished && !showError && (
+            <CrawledResult
+              className='mt-2'
+              list={crawlResult?.data || []}
+              checkedList={checkedCrawlResult}
+              onSelectedChange={onCheckedCrawlResultChange}
+              usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
+            />
+          )}
+        </div>
+      )}
     </div>
   )
 }
-export default React.memo(WaterCrawl)
+export default React.memo(FireCrawl)

@@ -6,7 +6,7 @@ import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } f
 import { useModalContextSelector } from '@/context/modal-context'
 import NotionConnector from '../notion-connector'
 import { usePreImportNotionPages } from '@/service/knowledge/use-import'
-import Header from './header'
+import Header from '../../datasets/create/website/base/header'
 
 type NotionPageSelectorProps = {
   value?: string[]
@@ -99,7 +99,11 @@ const NotionPageSelector = ({
             <div className='flex flex-col gap-y-2'>
               <Header
                 isInPipeline={isInPipeline}
-                handleConfigureNotion={handleConfigureNotion}
+                onClickConfiguration={handleConfigureNotion}
+                title={'Choose notion pages'}
+                buttonText={'Configure Notion'}
+                docTitle={'Notion docs'}
+                docLink={'https://www.notion.so/docs'}
               />
               <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
                 <div className='flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2'>

@@ -35,12 +35,13 @@ const InputFieldForm = ({
         const result = schema.safeParse(value)
         if (!result.success) {
           const issues = result.error.issues
-          const firstIssue = issues[0].message
+          const firstIssue = issues[0]
+          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
           Toast.notify({
             type: 'error',
-            message: firstIssue,
+            message: errorMessage,
           })
-          return firstIssue
+          return errorMessage
         }
         return undefined
       },

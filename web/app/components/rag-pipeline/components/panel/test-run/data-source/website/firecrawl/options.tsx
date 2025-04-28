@@ -1,0 +1,118 @@
+import Button from '@/app/components/base/button'
+import { useAppForm } from '@/app/components/base/form'
+import BaseField from '@/app/components/base/form/form-scenarios/base/field'
+import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import type { CrawlOptions } from '@/models/datasets'
+import cn from '@/utils/classnames'
+import { RiPlayLargeLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useSchema } from './hooks'
+import Toast from '@/app/components/base/toast'
+
+const I18N_PREFIX = 'datasetCreation.stepOne.website'
+
+export type FormData = {
+  url: string
+} & CrawlOptions
+
+type OptionsProps = {
+  initialData: FormData
+  configurations: BaseConfiguration<FormData>[]
+  isRunning: boolean
+  controlFoldOptions?: number
+  onSubmit: (data: FormData) => void
+}
+
+const Options = ({
+  initialData,
+  configurations,
+  isRunning,
+  controlFoldOptions,
+  onSubmit,
+}: OptionsProps) => {
+  const schema = useSchema()
+  const form = useAppForm({
+    defaultValues: initialData,
+    validators: {
+      onSubmit: ({ value }) => {
+        const result = schema.safeParse(value)
+        if (!result.success) {
+          const issues = result.error.issues
+          const firstIssue = issues[0]
+          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          Toast.notify({
+            type: 'error',
+            message: errorMessage,
+          })
+          return errorMessage
+        }
+        return undefined
+      },
+    },
+    onSubmit: ({ value }) => {
+      onSubmit(value)
+    },
+  })
+
+  const { t } = useTranslation()
+
+  const [fold, {
+    toggle: foldToggle,
+    setTrue: foldHide,
+  }] = useBoolean(false)
+
+  useEffect(() => {
+    if (controlFoldOptions !== 0)
+      foldHide()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlFoldOptions])
+
+  return (
+    <form
+      className='w-full'
+      onSubmit={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        form.handleSubmit()
+      }}
+    >
+      <div className='flex items-center gap-x-1 px-4 py-2'>
+        <div
+          className='flex grow cursor-pointer select-none items-center gap-x-0.5'
+          onClick={foldToggle}
+        >
+          <span className='system-sm-semibold-uppercase text-text-secondary'>
+            {t(`${I18N_PREFIX}.options`)}
+          </span>
+          <ArrowDownRoundFill className={cn('h-4 w-4 shrink-0 text-text-tertiary', fold && '-rotate-90')} />
+        </div>
+        <Button
+          variant='primary'
+          onClick={form.handleSubmit}
+          loading={isRunning}
+          className='shrink-0 gap-x-0.5'
+          spinnerClassName='!ml-0'
+        >
+          <RiPlayLargeLine className='size-4' />
+          <span className='px-0.5'>{!isRunning ? t(`${I18N_PREFIX}.run`) : t(`${I18N_PREFIX}.running`)}</span>
+        </Button>
+      </div>
+      {!fold && (
+        <div className='flex flex-col gap-3 border-t border-divider-subtle px-4 py-3'>
+          {configurations.map((config, index) => {
+            const FieldComponent = BaseField<FormData>({
+              initialData,
+              config,
+            })
+            return <FieldComponent key={index} form={form} />
+          })}
+        </div>
+      )}
+    </form>
+  )
+}
+
+export default Options

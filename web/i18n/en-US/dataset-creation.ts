@@ -78,6 +78,7 @@ const translation = {
       configureWatercrawl: 'Configure Watercrawl',
       configureJinaReader: 'Configure Jina Reader',
       run: 'Run',
+      running: 'Running',
       firecrawlTitle: 'Extract web content with 🔥Firecrawl',
       firecrawlDoc: 'Firecrawl docs',
       firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',

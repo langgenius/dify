@@ -77,6 +77,7 @@ const translation = {
       configureFirecrawl: '配置 Firecrawl',
       configureJinaReader: '配置 Jina Reader',
       run: '运行',
+      running: '运行中',
       firecrawlTitle: '使用 🔥Firecrawl 提取网页内容',
       firecrawlDoc: 'Firecrawl 文档',
       firecrawlDocLink: 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/sync-from-website',
