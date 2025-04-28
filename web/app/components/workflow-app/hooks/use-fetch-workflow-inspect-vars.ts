@@ -12,11 +12,10 @@ const useSetWorkflowVarsWithValue = () => {
   const invalidateConversationVarValues = useInvalidateConversationVarValues(appId)
   const invalidateSysVarValues = useInvalidateSysVarValues(appId)
 
-  const addNodeInfo = (inspectVars: VarInInspect[]) => {
+  const setInspectVarsToStore = (inspectVars: VarInInspect[]) => {
     const { getNodes } = store.getState()
     const nodeArr = getNodes()
     const nodesKeyValue: Record<string, Node> = {}
-    // TODO: handle conversation, env and system variables
     nodeArr.forEach((node) => {
       nodesKeyValue[node.id] = node
     })
@@ -54,7 +53,7 @@ const useSetWorkflowVarsWithValue = () => {
     invalidateConversationVarValues()
     invalidateSysVarValues()
     const data = await fetchAllInspectVars(appId)
-    addNodeInfo(data)
+    setInspectVarsToStore(data)
   }
   return {
     fetchInspectVars,
