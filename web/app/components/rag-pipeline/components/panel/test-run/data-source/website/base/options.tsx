@@ -9,8 +9,8 @@ import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSchema } from './hooks'
 import Toast from '@/app/components/base/toast'
+import type { ZodSchema } from 'zod'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -23,6 +23,7 @@ type OptionsProps = {
   configurations: BaseConfiguration<FormData>[]
   isRunning: boolean
   controlFoldOptions?: number
+  schema: ZodSchema
   onSubmit: (data: FormData) => void
 }
 
@@ -31,9 +32,9 @@ const Options = ({
   configurations,
   isRunning,
   controlFoldOptions,
+  schema,
   onSubmit,
 }: OptionsProps) => {
-  const schema = useSchema()
   const form = useAppForm({
     defaultValues: initialData,
     validators: {

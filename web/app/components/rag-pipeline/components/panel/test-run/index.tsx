@@ -16,11 +16,13 @@ import Notion from './data-source/notion'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import { DEFAULT_CRAWL_OPTIONS } from './consts'
 import Firecrawl from './data-source/website/firecrawl'
+import JinaReader from './data-source/website/jina-reader'
+import WaterCrawl from './data-source/website/water-crawl'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
   const [currentStep, setCurrentStep] = useState(1)
-  const [dataSource, setDataSource] = useState<string>(DataSourceProvider.fireCrawl)
+  const [dataSource, setDataSource] = useState<string>(DataSourceProvider.waterCrawl)
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
@@ -51,8 +53,12 @@ const TestRunPanel = () => {
       return nextDisabled
     if (dataSource === DataSourceType.NOTION)
       return isShowVectorSpaceFull || !notionPages.length
+    if (dataSource === DataSourceProvider.fireCrawl
+      || dataSource === DataSourceProvider.jinaReader
+      || dataSource === DataSourceProvider.waterCrawl)
+      return isShowVectorSpaceFull || !websitePages.length
     return false
-  }, [dataSource, nextDisabled, isShowVectorSpaceFull, notionPages.length])
+  }, [dataSource, nextDisabled, isShowVectorSpaceFull, notionPages.length, websitePages.length])
 
   const handleClose = () => {
     setShowTestRunPanel?.(false)
@@ -128,6 +134,24 @@ const TestRunPanel = () => {
                 )}
                 {dataSource === DataSourceProvider.fireCrawl && (
                   <Firecrawl
+                    checkedCrawlResult={websitePages}
+                    onCheckedCrawlResultChange={setWebsitePages}
+                    onJobIdChange={setWebsiteCrawlJobId}
+                    crawlOptions={crawlOptions}
+                    onCrawlOptionsChange={setCrawlOptions}
+                  />
+                )}
+                {dataSource === DataSourceProvider.jinaReader && (
+                  <JinaReader
+                    checkedCrawlResult={websitePages}
+                    onCheckedCrawlResultChange={setWebsitePages}
+                    onJobIdChange={setWebsiteCrawlJobId}
+                    crawlOptions={crawlOptions}
+                    onCrawlOptionsChange={setCrawlOptions}
+                  />
+                )}
+                {dataSource === DataSourceProvider.waterCrawl && (
+                  <WaterCrawl
                     checkedCrawlResult={websitePages}
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}

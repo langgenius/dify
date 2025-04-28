@@ -23,7 +23,7 @@ const Header = ({
 }: HeaderProps) => {
   return (
     <div className='flex items-center gap-x-2'>
-      <div className='flex grow items-center gap-x-1'>
+      <div className='flex shrink-0 grow items-center gap-x-1'>
         <div className={cn(
           'text-text-secondary',
           isInPipeline ? 'system-sm-semibold' : 'system-md-semibold',
@@ -48,13 +48,13 @@ const Header = ({
         </Button>
       </div>
       <a
-        className='system-xs-medium flex shrink-0 items-center gap-x-1 text-text-accent'
+        className='system-xs-medium flex items-center gap-x-1 overflow-hidden text-text-accent'
         href={docLink}
         target='_blank'
         rel='noopener noreferrer'
       >
-        <RiBookOpenLine className='size-3.5' />
-        <span>{docTitle}</span>
+        <RiBookOpenLine className='size-3.5 shrink-0' />
+        <span className='grow truncate' title={docTitle}>{docTitle}</span>
       </a>
     </div>
   )

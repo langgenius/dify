@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalContextSelector } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
+import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import Header from '@/app/components/datasets/create/website/base/header'
 import type { FormData } from '../base/options'
@@ -15,7 +15,7 @@ import CrawledResult from '../base/crawled-result'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
-type FireCrawlProps = {
+type WaterCrawlProps = {
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
@@ -29,13 +29,13 @@ enum Step {
   finished = 'finished',
 }
 
-const FireCrawl = ({
+const WaterCrawl = ({
   checkedCrawlResult,
   onCheckedCrawlResultChange,
   onJobIdChange,
   crawlOptions,
   onCrawlOptionsChange,
-}: FireCrawlProps) => {
+}: WaterCrawlProps) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
@@ -47,7 +47,7 @@ const FireCrawl = ({
       setControlFoldOptions(Date.now())
   }, [step])
 
-  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
       payload: 'data-source',
@@ -66,9 +66,9 @@ const FireCrawl = ({
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const showError = isCrawlFinished && crawlErrorMessage
 
-  const waitForCrawlFinished = useCallback(async (jobId: string) => {
+  const waitForCrawlFinished = useCallback(async (jobId: string): Promise<any> => {
     try {
-      const res = await checkFirecrawlTaskStatus(jobId) as any
+      const res = await checkWatercrawlTaskStatus(jobId) as any
       if (res.status === 'completed') {
         return {
           isError: false,
@@ -79,7 +79,7 @@ const FireCrawl = ({
         }
       }
       if (res.status === 'error' || !res.status) {
-        // can't get the error message from the firecrawl api
+        // can't get the error message from the watercrawl api
         return {
           isError: true,
           errorMessage: res.message,
@@ -120,7 +120,7 @@ const FireCrawl = ({
       if (crawlOptions.max_depth === '')
         delete passToServerCrawlOptions.max_depth
 
-      const res = await createFirecrawlTask({
+      const res = await createWatercrawlTask({
         url,
         options: passToServerCrawlOptions,
       }) as any
@@ -143,17 +143,17 @@ const FireCrawl = ({
     finally {
       setStep(Step.finished)
     }
-  }, [onCrawlOptionsChange, onJobIdChange, t, waitForCrawlFinished, onCheckedCrawlResultChange])
+  }, [onCrawlOptionsChange, onCheckedCrawlResultChange, onJobIdChange, t, waitForCrawlFinished])
 
   return (
     <div>
       <Header
         isInPipeline
         onClickConfiguration={handleSetting}
-        title={t(`${I18N_PREFIX}.firecrawlTitle`)}
-        buttonText={t(`${I18N_PREFIX}.configureFirecrawl`)}
-        docTitle={t(`${I18N_PREFIX}.firecrawlDoc`)}
-        docLink={'https://docs.firecrawl.dev/introduction'}
+        title={t(`${I18N_PREFIX}.watercrawlTitle`)}
+        buttonText={t(`${I18N_PREFIX}.configureWatercrawl`)}
+        docTitle={t(`${I18N_PREFIX}.watercrawlDoc`)}
+        docLink={'https://docs.watercrawl.dev/'}
       />
       <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <Options
@@ -200,4 +200,4 @@ const FireCrawl = ({
     </div>
   )
 }
-export default React.memo(FireCrawl)
+export default React.memo(WaterCrawl)

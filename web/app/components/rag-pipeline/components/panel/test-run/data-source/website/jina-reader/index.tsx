@@ -1,21 +1,21 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import CrawledResult from '../base/crawled-result'
+import Crawling from '../base/crawling'
+import ErrorMessage from '../base/error-message'
 import { useModalContextSelector } from '@/context/modal-context'
-import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
+import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
 import { sleep } from '@/utils'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Header from '@/app/components/datasets/create/website/base/header'
 import type { FormData } from '../base/options'
 import Options from '../base/options'
 import { useConfigurations, useSchema } from './hooks'
-import Crawling from '../base/crawling'
-import ErrorMessage from '../base/error-message'
-import CrawledResult from '../base/crawled-result'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
-type FireCrawlProps = {
+type JinaReaderProps = {
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
@@ -29,13 +29,13 @@ enum Step {
   finished = 'finished',
 }
 
-const FireCrawl = ({
+const JinaReader = ({
   checkedCrawlResult,
   onCheckedCrawlResultChange,
   onJobIdChange,
   crawlOptions,
   onCrawlOptionsChange,
-}: FireCrawlProps) => {
+}: JinaReaderProps) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
@@ -47,7 +47,7 @@ const FireCrawl = ({
       setControlFoldOptions(Date.now())
   }, [step])
 
-  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
       payload: 'data-source',
@@ -68,7 +68,7 @@ const FireCrawl = ({
 
   const waitForCrawlFinished = useCallback(async (jobId: string) => {
     try {
-      const res = await checkFirecrawlTaskStatus(jobId) as any
+      const res = await checkJinaReaderTaskStatus(jobId) as any
       if (res.status === 'completed') {
         return {
           isError: false,
@@ -78,8 +78,7 @@ const FireCrawl = ({
           },
         }
       }
-      if (res.status === 'error' || !res.status) {
-        // can't get the error message from the firecrawl api
+      if (res.status === 'failed' || !res.status) {
         return {
           isError: true,
           errorMessage: res.message,
@@ -114,26 +113,40 @@ const FireCrawl = ({
     onCrawlOptionsChange(crawlOptions)
     setStep(Step.running)
     try {
-      const passToServerCrawlOptions: any = {
-        ...crawlOptions,
-      }
-      if (crawlOptions.max_depth === '')
-        delete passToServerCrawlOptions.max_depth
-
-      const res = await createFirecrawlTask({
+      const startTime = Date.now()
+      const res = await createJinaReaderTask({
         url,
-        options: passToServerCrawlOptions,
+        options: crawlOptions,
       }) as any
-      const jobId = res.job_id
-      onJobIdChange(jobId)
-      const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
-      if (isError) {
-        setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`))
-      }
-      else {
+
+      if (res.data) {
+        const data = {
+          current: 1,
+          total: 1,
+          data: [{
+            title: res.data.title,
+            markdown: res.data.content,
+            description: res.data.description,
+            source_url: res.data.url,
+          }],
+          time_consuming: (Date.now() - startTime) / 1000,
+        }
         setCrawlResult(data)
-        onCheckedCrawlResultChange(data.data || []) // default select the crawl result
+        onCheckedCrawlResultChange(data.data || [])
         setCrawlErrorMessage('')
+      }
+      else if (res.job_id) {
+        const jobId = res.job_id
+        onJobIdChange(jobId)
+        const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
+        if (isError) {
+          setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`))
+        }
+        else {
+          setCrawlResult(data)
+          onCheckedCrawlResultChange(data.data || []) // default select the crawl result
+          setCrawlErrorMessage('')
+        }
       }
     }
     catch (e) {
@@ -143,17 +156,17 @@ const FireCrawl = ({
     finally {
       setStep(Step.finished)
     }
-  }, [onCrawlOptionsChange, onJobIdChange, t, waitForCrawlFinished, onCheckedCrawlResultChange])
+  }, [onCrawlOptionsChange, onCheckedCrawlResultChange, onJobIdChange, t, waitForCrawlFinished])
 
   return (
     <div>
       <Header
         isInPipeline
         onClickConfiguration={handleSetting}
-        title={t(`${I18N_PREFIX}.firecrawlTitle`)}
-        buttonText={t(`${I18N_PREFIX}.configureFirecrawl`)}
-        docTitle={t(`${I18N_PREFIX}.firecrawlDoc`)}
-        docLink={'https://docs.firecrawl.dev/introduction'}
+        title={t(`${I18N_PREFIX}.jinaReaderTitle`)}
+        buttonText={t(`${I18N_PREFIX}.configureJinaReader`)}
+        docTitle={t(`${I18N_PREFIX}.jinaReaderDoc`)}
+        docLink={'https://jina.ai/reader'}
       />
       <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <Options
@@ -200,4 +213,4 @@ const FireCrawl = ({
     </div>
   )
 }
-export default React.memo(FireCrawl)
+export default React.memo(JinaReader)
