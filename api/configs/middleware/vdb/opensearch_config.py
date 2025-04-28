@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import Field, PositiveInt
 from pydantic_settings import BaseSettings
@@ -32,4 +32,20 @@ class OpenSearchConfig(BaseSettings):
     OPENSEARCH_SECURE: bool = Field(
         description="Whether to use SSL/TLS encrypted connection for OpenSearch (True for HTTPS, False for HTTP)",
         default=False,
+    )
+
+    OPENSEARCH_USE_AWS_MANAGED_IAM: bool = Field(
+        description="Whether to use AWS IAM authentication for OpenSearch clusters "
+        "running in Amazon Managed OpenSearch or OpenSearch Serverless",
+        default=False,
+    )
+
+    OPENSEARCH_AWS_REGION: Optional[str] = Field(
+        description="AWS region for OpenSearch (e.g. 'us-west-2')",
+        default=None,
+    )
+
+    OPENSEARCH_AWS_SERVICE: Literal["es", "aoss"] = Field(
+        description="AWS service for OpenSearch (e.g. 'aoss' for OpenSearch Serverless)",
+        default="aoss"
     )
