@@ -18,6 +18,7 @@ import {
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import type { PanelProps } from '@/types/workflow'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 
 const useConfig = (id: string, payload: LLMNodeType, panelProps?: PanelProps) => {
   const getVarInputs = panelProps?.getInputVars
@@ -33,6 +34,8 @@ const useConfig = (id: string, payload: LLMNodeType, panelProps?: PanelProps) =>
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const inputRef = useRef(inputs)
+
+  const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
   const setInputs = useCallback((newInputs: LLMNodeType) => {
     if (newInputs.memory && !newInputs.memory.role_prefix) {
@@ -298,14 +301,16 @@ const useConfig = (id: string, payload: LLMNodeType, panelProps?: PanelProps) =>
     setInputs(newInputs)
     if (enabled)
       setStructuredOutputCollapsed(false)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [inputs, setInputs, deleteNodeInspectorVars, id])
 
   const handleStructureOutputChange = useCallback((newOutput: StructuredOutput) => {
     const newInputs = produce(inputs, (draft) => {
       draft.structured_output = newOutput
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [inputs, setInputs, deleteNodeInspectorVars, id])
 
   const filterInputVar = useCallback((varPayload: Var) => {
     return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
