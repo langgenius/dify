@@ -10,10 +10,10 @@ from core.plugin.entities.plugin import (
     PluginInstallationSource,
 )
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStartResponse, PluginUploadResponse
-from core.plugin.manager.base import BasePluginManager
+from core.plugin.impl.base import BasePluginClient
 
 
-class PluginInstallationManager(BasePluginManager):
+class PluginInstaller(BasePluginClient):
     def fetch_plugin_by_identifier(
         self,
         tenant_id: str,

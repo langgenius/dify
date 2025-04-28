@@ -28,7 +28,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
-from core.repository.repository_factory import RepositoryFactory
+from core.workflow.repository.repository_factory import RepositoryFactory
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
 

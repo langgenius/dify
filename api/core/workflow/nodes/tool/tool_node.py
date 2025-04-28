@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
-from core.plugin.manager.exc import PluginDaemonClientSideError
-from core.plugin.manager.plugin import PluginInstallationManager
+from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
@@ -307,7 +307,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     icon = tool_info.get("icon", "")
                     dict_metadata = dict(message.message.metadata)
                     if dict_metadata.get("provider"):
-                        manager = PluginInstallationManager()
+                        manager = PluginInstaller()
                         plugins = manager.list_plugins(self.tenant_id)
                         try:
                             current_plugin = next(

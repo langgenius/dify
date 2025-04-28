@@ -81,6 +81,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         {/* {JSON.stringify(inputs, null, 2)} */}
         <Field
           title={t(`${i18nPrefix}.queryVariable`)}
+          required
         >
           <VarReferencePicker
             nodeId={id}
@@ -94,6 +95,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
 
         <Field
           title={t(`${i18nPrefix}.knowledge`)}
+          required
           operations={
             <div className='flex items-center space-x-1'>
               <RetrievalConfig

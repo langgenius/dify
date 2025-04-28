@@ -1,8 +1,8 @@
 from core.plugin.entities.endpoint import EndpointEntityWithInstance
-from core.plugin.manager.base import BasePluginManager
+from core.plugin.impl.base import BasePluginClient
 
 
-class PluginEndpointManager(BasePluginManager):
+class PluginEndpointClient(BasePluginClient):
     def create_endpoint(
         self, tenant_id: str, user_id: str, plugin_unique_identifier: str, name: str, settings: dict
     ) -> bool:
