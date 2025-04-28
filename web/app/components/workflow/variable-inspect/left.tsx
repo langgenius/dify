@@ -5,27 +5,35 @@ import {
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
-// import { useStore } from '../store'
+import { useStore } from '../store'
 import { BlockEnum } from '../types'
 import Button from '@/app/components/base/button'
-//   import ActionButton from '@/app/components/base/action-button'
-//   import Tooltip from '@/app/components/base/tooltip'
+// import ActionButton from '@/app/components/base/action-button'
+// import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
+import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import Group from './group'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import type { currentVarType } from './panel'
 import cn from '@/utils/classnames'
 
 type Props = {
-  handleMenuClick: (state: any) => void
+  currentNodeVar?: currentVarType
+  handleVarSelect: (state: any) => void
 }
 
-const Left = ({ handleMenuClick }: Props) => {
+const Left = ({
+  currentNodeVar,
+  handleVarSelect,
+}: Props) => {
   const { t } = useTranslation()
 
-  // const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
-  // const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+  const environmentVariables = useStore(s => s.environmentVariables)
   const {
+    conversationVars,
+    systemVars,
+    nodesWithInspectVars,
     deleteAllInspectorVars,
   } = useCurrentVars()
 
@@ -42,29 +50,13 @@ const Left = ({ handleMenuClick }: Props) => {
       {/* content */}
       <div className='grow overflow-y-auto py-1'>
         {/* group ENV */}
-        <div className='p-0.5'>
-          {/* node item */}
-          <div className='flex h-6 items-center gap-0.5'>
-            <RiArrowRightSLine className='h-3 w-3 rotate-90 text-text-tertiary' />
-            <div className='flex grow cursor-pointer items-center gap-1'>
-              <div className='system-xs-medium-uppercase truncate text-text-tertiary'>{t('workflow.env.envPanelTitle')}</div>
-            </div>
-          </div>
-          {/* var item list */}
-          <div className='px-0.5'>
-            <div className={cn('relative flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover')} onClick={handleMenuClick}>
-              <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />
-              <div className='system-sm-medium grow truncate text-text-secondary'>SECRET_KEY</div>
-              <div className='system-xs-regular shrink-0 text-text-tertiary'>string</div>
-            </div>
-            <div className={cn('relative flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover', selectedNode && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt')}>
-              {selectedNode && <span className='absolute left-1.5 top-[10.5px] h-[3px] w-[3px] rounded-full bg-text-accent-secondary'></span>}
-              <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />
-              <div className='system-sm-medium grow truncate text-text-secondary'>PORT</div>
-              <div className='system-xs-regular shrink-0 text-text-tertiary'>number</div>
-            </div>
-          </div>
-        </div>
+        {environmentVariables.length > 0 && (
+          <Group
+            isEnv
+            currentVar={currentNodeVar}
+            handleSelect={handleVarSelect}
+          />
+        )}
         {/* group CHAT VAR */}
         <div className='p-0.5'>
           {/* node item */}

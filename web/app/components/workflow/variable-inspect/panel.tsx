@@ -10,7 +10,15 @@ import Empty from './empty'
 import Left from './left'
 import Right from './right'
 import ActionButton from '@/app/components/base/action-button'
+import type { VarInInspect } from '@/types/workflow'
 import cn from '@/utils/classnames'
+
+export type currentVarType = {
+  nodeId: string
+  nodeTitle: string
+  nodeType: string
+  var: VarInInspect
+}
 
 const Panel: FC = () => {
   const { t } = useTranslation()
@@ -18,6 +26,7 @@ const Panel: FC = () => {
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const [showLeftPanel, setShowLeftPanel] = useState(true)
+  const [currentNodeVar, setCurrentNodeVar] = useState<currentVarType>()
 
   const environmentVariables = useStore(s => s.environmentVariables)
   const {
@@ -60,11 +69,17 @@ const Panel: FC = () => {
             : 'block',
         )}
       >
-        <Left handleMenuClick={setShowLeftPanel} />
+        <Left
+          currentNodeVar={currentNodeVar}
+          handleVarSelect={setCurrentNodeVar}
+        />
       </div>
       {/* right */}
       <div className='w-0 grow'>
-        <Right handleOpenMenu={() => setShowLeftPanel(true)} />
+        <Right
+          currentNodeVar={currentNodeVar}
+          handleOpenMenu={() => setShowLeftPanel(true)}
+        />
       </div>
     </div>
   )

@@ -6,7 +6,7 @@ import {
   RiMenuLine,
 } from '@remixicon/react'
 import { useStore } from '../store'
-import { BlockEnum } from '../types'
+import type { BlockEnum } from '../types'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import Empty from './empty'
 import ValueContent from './value-content'
@@ -16,43 +16,29 @@ import CopyFeedback from '@/app/components/base/copy-feedback'
 import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
+import type { currentVarType } from './panel'
 import cn from '@/utils/classnames'
 
-export const currentVar = {
-  id: 'var-jfkldjjfkldaf-dfhekdfj',
-  type: 'node',
-  // type: 'conversation',
-  // type: 'environment',
-  name: 'out_put',
-  var_type: 'string',
-  // var_type: 'number',
-  // var_type: 'object',
-  // var_type: 'array[string]',
-  // var_type: 'array[number]',
-  // var_type: 'array[object]',
-  // var_type: 'file',
-  // var_type: 'array[file]',
-  value: 'tuituitui',
-  edited: true,
-}
-
 type Props = {
+  currentNodeVar?: currentVarType
   handleOpenMenu: () => void
 }
 
-const Right = ({ handleOpenMenu }: Props) => {
+const Right = ({
+  currentNodeVar,
+  handleOpenMenu,
+}: Props) => {
   const { t } = useTranslation()
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
-
-  const current = currentVar
 
   const {
     resetToLastRunVar,
   } = useCurrentVars()
 
   const resetValue = () => {
-    resetToLastRunVar('node_id', current.name)
+    if (!currentNodeVar) return
+    resetToLastRunVar(currentNodeVar.nodeId, currentNodeVar.var.name)
   }
 
   return (
@@ -65,48 +51,48 @@ const Right = ({ handleOpenMenu }: Props) => {
           </ActionButton>
         )}
         <div className='flex w-0 grow items-center gap-1'>
-          {current && (
+          {currentNodeVar && (
             <>
-              {current.type === 'environment' && (
+              {currentNodeVar.nodeType === 'env' && (
                 <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />
               )}
-              {current.type === 'conversation' && (
+              {currentNodeVar.nodeType === 'conversation' && (
                 <BubbleX className='h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />
               )}
-              {current.type === 'node' && (
+              {currentNodeVar.nodeType !== 'env' && currentNodeVar.nodeType !== 'conversation' && currentNodeVar.nodeType !== 'sys' && (
                 <>
                   <BlockIcon
                     className='shrink-0'
-                    type={BlockEnum.LLM}
+                    type={currentNodeVar.nodeType as BlockEnum}
                     size='xs'
                   />
-                  <div className='system-sm-regular shrink-0 text-text-secondary'>LLM</div>
+                  <div className='system-sm-regular shrink-0 text-text-secondary'>{currentNodeVar.nodeTitle}</div>
                   <div className='system-sm-regular shrink-0 text-text-quaternary'>/</div>
                 </>
               )}
-              <div title={current.name} className='system-sm-semibold truncate text-text-secondary'>{current.name}</div>
-              <div className='system-xs-medium ml-1 shrink-0 text-text-tertiary'>{current.var_type}</div>
+              <div title={currentNodeVar.var.name} className='system-sm-semibold truncate text-text-secondary'>{currentNodeVar.var.name}</div>
+              <div className='system-xs-medium ml-1 shrink-0 text-text-tertiary'>{currentNodeVar.var.value_type}</div>
             </>
           )}
         </div>
         <div className='flex shrink-0 items-center gap-1'>
-          {current && (
+          {currentNodeVar && (
             <>
-              {current.edited && (
+              {currentNodeVar.var.edited && (
                 <Badge>
                   <span className='ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary'></span>
                   <span className='system-2xs-semibold-uupercase'>{t('workflow.debug.variableInspect.edited')}</span>
                 </Badge>
               )}
-              {current.edited && (
+              {currentNodeVar.var.edited && (
                 <Tooltip popupContent={t('workflow.debug.variableInspect.reset')}>
                   <ActionButton onClick={resetValue}>
                     <RiArrowGoBackLine className='h-4 w-4' />
                   </ActionButton>
                 </Tooltip>
               )}
-              {(current.type !== 'environment' || current.var_type !== 'secret') && (
-                <CopyFeedback content={current.value ? JSON.stringify(current.value) : ''} />
+              {currentNodeVar.var.value_type !== 'secret' && (
+                <CopyFeedback content={currentNodeVar.var.value ? JSON.stringify(currentNodeVar.var.value) : ''} />
               )}
             </>
           )}
@@ -117,8 +103,8 @@ const Right = ({ handleOpenMenu }: Props) => {
       </div>
       {/* content */}
       <div className='grow p-2'>
-        {!current && <Empty />}
-        {current && <ValueContent />}
+        {!currentNodeVar && <Empty />}
+        {currentNodeVar && <ValueContent currentVar={currentNodeVar.var} />}
       </div>
     </div>
   )

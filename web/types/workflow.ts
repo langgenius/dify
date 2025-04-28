@@ -374,7 +374,7 @@ export type NodeRunResult = NodeTracing
 // Var Inspect
 export enum VarInInspectType {
   conversation = 'conversation',
-  environment = 'environment',
+  environment = 'env',
   node = 'node',
   system = 'sys',
 }

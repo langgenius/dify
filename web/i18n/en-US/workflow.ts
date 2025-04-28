@@ -930,6 +930,9 @@ const translation = {
         cached: 'View cached variables',
         clear: 'Clear',
       },
+      envNode: 'Environment',
+      chatNode: 'Conversation',
+      systemNode: 'System',
     },
   },
 }

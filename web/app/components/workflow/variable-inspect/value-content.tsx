@@ -19,22 +19,24 @@ import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { TransferMethod } from '@/types/app'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import type { VarInInspect } from '@/types/workflow'
+import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
 
-export const currentVar = {
+export const MOCK_DATA = {
   id: 'var-jfkldjjfkldaf-dfhekdfj',
   type: 'node',
   // type: 'conversation',
   // type: 'environment',
   name: 'out_put',
-  // var_type: 'string',
-  // var_type: 'number',
-  // var_type: 'object',
-  // var_type: 'array[string]',
-  // var_type: 'array[number]',
-  // var_type: 'array[object]',
-  // var_type: 'file',
-  var_type: 'array[file]',
+  // value_type: 'string',
+  // value_type: 'number',
+  // value_type: 'object',
+  // value_type: 'array[string]',
+  // value_type: 'array[number]',
+  // value_type: 'array[object]',
+  // value_type: 'file',
+  value_type: 'array[file]',
   // value: 'tuituitui',
   // value: ['aaa', 'bbb', 'ccc'],
   // value: {
@@ -46,34 +48,62 @@ export const currentVar = {
   edited: true,
 }
 
-const ValueContent = () => {
-  const current = currentVar
+type Props = {
+  currentVar: VarInInspect
+}
+
+const ValueContent = ({
+  // currentVar = MOCK_DATA as any, // TODO remove this line
+  currentVar,
+}: Props) => {
   const contentContainerRef = useRef<HTMLDivElement>(null)
   const errorMessageRef = useRef<HTMLDivElement>(null)
   const [editorHeight, setEditorHeight] = useState(0)
-  const showTextEditor = current.var_type === 'secret' || current.var_type === 'string' || current.var_type === 'number'
-  const showJSONEditor = current.var_type === 'object' || current.var_type === 'array[string]' || current.var_type === 'array[number]' || current.var_type === 'array[object]'
-  const showFileEditor = current.var_type === 'file' || current.var_type === 'array[file]'
+  const showTextEditor = currentVar.value_type === 'secret' || currentVar.value_type === 'string' || currentVar.value_type === 'number'
+  const showJSONEditor = currentVar.value_type === 'object' || currentVar.value_type === 'array[string]' || currentVar.value_type === 'array[number]' || currentVar.value_type === 'array[object]'
+  const showFileEditor = currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
 
-  const [value, setValue] = useState<any>(current.value ? JSON.stringify(current.value) : '')
-  const [jsonSchema, setJsonSchema] = useState(current.value || null)
-  const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
+  const [value, setValue] = useState<any>()
+  const [jsonSchema, setJsonSchema] = useState()
+  const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
   const fileFeature = useFeatures(s => s.features.file)
   const [fileValue, setFileValue] = useState<any>(
-    current.var_type === 'array[file]'
-    ? current.value || []
-    : current.value
-      ? [current.value]
+    currentVar.value_type === 'array[file]'
+    ? currentVar.value || []
+    : currentVar.value
+      ? [currentVar.value]
       : [],
   )
 
+  // update default value when id changed
+  useEffect(() => {
+    if (showTextEditor) {
+      if (!currentVar.value)
+        return setValue('')
+      if (currentVar.value_type === 'number')
+        return setValue(JSON.stringify(currentVar.value))
+      setValue(currentVar.value)
+    }
+    if (showJSONEditor) {
+      setJsonSchema(currentVar.value || null)
+      setJson(currentVar.value ? JSON.stringify(currentVar.value, null, 2) : '')
+    }
+    if (showFileEditor) {
+      setFileValue(currentVar.value_type === 'array[file]'
+        ? currentVar.value || []
+        : currentVar.value
+          ? [currentVar.value]
+          : [])
+    }
+  }, [currentVar, showTextEditor, showJSONEditor, showFileEditor])
+
   const handleTextChange = (value: string) => {
-    if (current.var_type === 'string')
+    if (currentVar.value_type === 'string')
       setValue(value)
 
-    if (current.var_type === 'number') {
+    if (currentVar.value_type === 'number') {
       if (/^-?\d+(\.)?(\d+)?$/.test(value))
         setValue(value)
     }
@@ -119,7 +149,7 @@ const ValueContent = () => {
 
   const handleEditorChange = (value: string) => {
     setJson(value)
-    if (jsonValueValidate(value, current.var_type)) {
+    if (jsonValueValidate(value, currentVar.value_type)) {
       const parsed = JSON.parse(value)
       setJsonSchema(parsed)
       // TODO call api of value update
@@ -131,10 +161,10 @@ const ValueContent = () => {
     setFileValue(value)
     // TODO check every file upload progress
     // invoke update api after every file uploaded
-    if (current.var_type === 'file') {
+    if (currentVar.value_type === 'file') {
       // TODO call api of value update
     }
-    if (current.var_type === 'array[file]') {
+    if (currentVar.value_type === 'array[file]') {
       // TODO call api of value update
     }
   }
@@ -164,8 +194,8 @@ const ValueContent = () => {
       <div className={cn('grow')} style={{ height: `${editorHeight}px` }}>
         {showTextEditor && (
           <Textarea
-            readOnly={current.type === 'environment'}
-            disabled={current.type === 'environment'}
+            readOnly={currentVar.type === VarInInspectType.environment}
+            disabled={currentVar.type === VarInInspectType.environment}
             className='h-full'
             value={value as any}
             onChange={debounce(e => handleTextChange(e.target.value))}
@@ -198,7 +228,7 @@ const ValueContent = () => {
                   ...FILE_EXTS[SupportUploadFileTypes.video],
                 ],
                 allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-                number_limits: current.var_type === 'file' ? 1 : (fileFeature as any).fileUploadConfig?.workflow_file_upload_limit || 5,
+                number_limits: currentVar.value_type === 'file' ? 1 : (fileFeature as any).fileUploadConfig?.workflow_file_upload_limit || 5,
                 fileUploadConfig: (fileFeature as any).fileUploadConfig,
               }}
             />

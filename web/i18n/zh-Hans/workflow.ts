@@ -931,6 +931,9 @@ const translation = {
         cached: '查看缓存',
         clear: '清除',
       },
+      envNode: '环境变量',
+      chatNode: '会话变量',
+      systemNode: '系统变量',
     },
   },
 }
