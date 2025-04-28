@@ -379,7 +379,7 @@ class LLMGenerator:
             except json.JSONDecodeError:
                 parsed_content = json_repair.loads(raw_content)
 
-            if not isinstance(parsed_content, (dict, list)):
+            if not isinstance(parsed_content, dict | list):
                 raise LLMNodeError(f"Failed to parse structured output from llm: {raw_content}")
 
             generated_json_schema = json.dumps(parsed_content, indent=2, ensure_ascii=False)
