@@ -29,7 +29,7 @@ def create_flask_app_with_configs() -> DifyApp:
 
         # log request data info
         request_id = get_request_id()
-        if request.headers.get("content-type", "").lower() == "application/json":
+        if "application/json" in request.headers.get("content-type", "").lower():
             logging.info(
                 f"[before request]|request_id: {request_id},"
                 f" method: {request.method}, url: {request.url}, request_data: {request.get_json()}"
