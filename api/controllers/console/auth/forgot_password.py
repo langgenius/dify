@@ -6,13 +6,9 @@ from flask_restful import Resource, reqparse  # type: ignore
 
 from constants.languages import languages
 from controllers.console import api
-from controllers.console.auth.error import (EmailCodeError, InvalidEmailError,
-                                            InvalidTokenError,
-                                            PasswordMismatchError)
-from controllers.console.error import (AccountInFreezeError, AccountNotFound,
-                                       EmailSendIpLimitError)
-from controllers.console.wraps import (email_password_login_enabled,
-                                       setup_required)
+from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError, PasswordMismatchError
+from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
+from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip

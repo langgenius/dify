@@ -85,7 +85,7 @@ sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
 starlette = "0.41.0"
 tencentcloud-sdk-python-hunyuan = "~3.0.1294"
-tiktoken = "~0.8.0"
+tiktoken = "^0.9.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
 unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }

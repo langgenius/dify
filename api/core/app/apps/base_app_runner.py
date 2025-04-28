@@ -15,10 +15,8 @@ from core.app.features.annotation_reply.annotation_reply import AnnotationReplyF
 from core.app.features.hosting_moderation.hosting_moderation import HostingModerationFeature
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
-from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
@@ -31,106 +29,6 @@ if TYPE_CHECKING:
 
 
 class AppRunner:
-    def get_pre_calculate_rest_tokens(
-        self,
-        app_record: App,
-        model_config: ModelConfigWithCredentialsEntity,
-        prompt_template_entity: PromptTemplateEntity,
-        inputs: Mapping[str, str],
-        files: Sequence["File"],
-        query: Optional[str] = None,
-    ) -> int:
-        """
-        Get pre calculate rest tokens
-        :param app_record: app record
-        :param model_config: model config entity
-        :param prompt_template_entity: prompt template entity
-        :param inputs: inputs
-        :param files: files
-        :param query: query
-        :return:
-        """
-        # Invoke model
-        model_instance = ModelInstance(
-            provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
-        )
-
-        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
-
-        max_tokens = 0
-        for parameter_rule in model_config.model_schema.parameter_rules:
-            if parameter_rule.name == "max_tokens" or (
-                parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
-            ):
-                max_tokens = (
-                    model_config.parameters.get(parameter_rule.name)
-                    or model_config.parameters.get(parameter_rule.use_template or "")
-                ) or 0
-
-        if model_context_tokens is None:
-            return -1
-
-        if max_tokens is None:
-            max_tokens = 0
-
-        # get prompt messages without memory and context
-        prompt_messages, stop = self.organize_prompt_messages(
-            app_record=app_record,
-            model_config=model_config,
-            prompt_template_entity=prompt_template_entity,
-            inputs=inputs,
-            files=files,
-            query=query,
-        )
-
-        prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
-
-        rest_tokens: int = model_context_tokens - max_tokens - prompt_tokens
-        if rest_tokens < 0:
-            raise InvokeBadRequestError(
-                "Query or prefix prompt is too long, you can reduce the prefix prompt, "
-                "or shrink the max token, or switch to a llm with a larger token limit size."
-            )
-
-        return rest_tokens
-
-    def recalc_llm_max_tokens(
-        self, model_config: ModelConfigWithCredentialsEntity, prompt_messages: list[PromptMessage]
-    ):
-        # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
-        model_instance = ModelInstance(
-            provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
-        )
-
-        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
-
-        max_tokens = 0
-        for parameter_rule in model_config.model_schema.parameter_rules:
-            if parameter_rule.name == "max_tokens" or (
-                parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
-            ):
-                max_tokens = (
-                    model_config.parameters.get(parameter_rule.name)
-                    or model_config.parameters.get(parameter_rule.use_template or "")
-                ) or 0
-
-        if model_context_tokens is None:
-            return -1
-
-        if max_tokens is None:
-            max_tokens = 0
-
-        prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
-
-        if prompt_tokens + max_tokens > model_context_tokens:
-            max_tokens = max(model_context_tokens - prompt_tokens, 16)
-
-            for parameter_rule in model_config.model_schema.parameter_rules:
-                if parameter_rule.name == "max_tokens" or (
-                    parameter_rule.use_template and parameter_rule.use_template == "max_tokens"
-                ):
-                    model_config.parameters[parameter_rule.name] = max_tokens
-
     def organize_prompt_messages(
         self,
         app_record: App,

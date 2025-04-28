@@ -58,6 +58,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
     # TODO There is invoke issue: context limit on Cohere Model, will add them after fixed.
     CONVERSE_API_ENABLED_MODEL_INFO = [
         {"prefix": "anthropic.claude-v2", "support_system_prompts": True, "support_tool_use": False},
+        {"prefix": "us.deepseek", "support_system_prompts": True, "support_tool_use": False},
         {"prefix": "anthropic.claude-v1", "support_system_prompts": True, "support_tool_use": False},
         {"prefix": "us.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "eu.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},

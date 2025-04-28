@@ -104,7 +104,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
             # recalc llm max tokens
             prompt_messages = self._organize_prompt_messages()
-            self.recalc_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
             chunks = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
