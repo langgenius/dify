@@ -69,6 +69,10 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
         self._prompt_messages_tools = prompt_messages_tools
 
+        metadata_filtering_conditions = app_config.dataset.retrieve_config.metadata_filtering_conditions
+        for key, dataset_retriever_tool in tool_instances.items():
+            dataset_retriever_tool.retrieval_tool.metadata_filtering_conditions = metadata_filtering_conditions
+
         function_call_state = True
         llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
         final_answer = ""

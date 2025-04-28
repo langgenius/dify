@@ -45,6 +45,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
 
+        metadata_filtering_conditions = app_config.dataset.retrieve_config.metadata_filtering_conditions
+        for key, dataset_retriever_tool in tool_instances.items():
+            dataset_retriever_tool.retrieval_tool.metadata_filtering_conditions = metadata_filtering_conditions
+
         assert app_config.agent
 
         iteration_step = 1
