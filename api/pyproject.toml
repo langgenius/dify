@@ -84,6 +84,7 @@ dependencies = [
     "validators==0.21.0",
     "weave~=0.51.34",
     "yarl~=1.18.3",
+    "webvtt-py~=0.5.1",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.

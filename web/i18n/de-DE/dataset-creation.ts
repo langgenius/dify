@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Textdatei hochladen',
-      button: 'Datei hierher ziehen oder',
+      button: 'Dateien und Ordner hierher ziehen oder klicken',
       browse: 'Durchsuchen',
       tip: 'Unterstützt {{supportTypes}}. Maximal {{size}}MB pro Datei.',
       validation: {

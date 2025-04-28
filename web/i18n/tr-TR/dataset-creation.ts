@@ -27,7 +27,7 @@ const translation = {
     },
     uploader: {
       title: 'Dosya yükle',
-      button: 'Dosyayı sürükleyip bırakın veya',
+      button: 'Dosyaları veya klasörleri sürükleyip bırakın veya',
       browse: 'Göz atın',
       tip: 'Destekler {{supportTypes}}. Her biri en fazla {{size}}MB.',
       validation: {

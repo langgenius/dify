@@ -30,7 +30,7 @@ const translation = {
     },
     uploader: {
       title: 'テキストファイルをアップロード',
-      button: 'ファイルをドラッグ＆ドロップするか',
+      button: 'ファイルまたはフォルダをドラッグアンドドロップする',
       browse: '参照',
       tip: '{{supportTypes}}をサポートしています。1つあたりの最大サイズは{{size}}MBです。',
       validation: {

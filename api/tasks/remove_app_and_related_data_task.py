@@ -7,7 +7,7 @@ from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 
-from core.repository import RepositoryFactory
+from core.workflow.repository import RepositoryFactory
 from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
 from models.model import (

@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: '上傳文字檔案',
-      button: '拖拽檔案至此，或者',
+      button: '拖拽檔案或檔案夾至此，或者',
       browse: '選擇檔案',
       tip: '已支援 {{supportTypes}}，每個檔案不超過 {{size}}MB。',
       validation: {
