@@ -1,6 +1,7 @@
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { useWorkflowStore } from '../store'
 import type { ValueSelector } from '../types'
+import { VarInInspectType } from '@/types/workflow'
 import {
   useConversationVarValues,
   useDeleteAllInspectorVars,
@@ -82,7 +83,8 @@ const useInspectVarsCrud = () => {
       varId,
       value,
     })
-    setInspectVarValue(nodeId, varId, value)
+    if (nodeId !== VarInInspectType.conversation && nodeId !== VarInInspectType.system)
+      setInspectVarValue(nodeId, varId, value)
   }, [doEditInspectorVar, setInspectVarValue])
 
   const [currNodeId, setCurrNodeId] = useState<string | null>(null)

@@ -1,19 +1,13 @@
 // import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiArrowRightSLine,
-  RiErrorWarningFill,
-  RiLoader2Line,
-} from '@remixicon/react'
+
 import { useStore } from '../store'
-import { BlockEnum } from '../types'
 import Button from '@/app/components/base/button'
 // import ActionButton from '@/app/components/base/action-button'
 // import Tooltip from '@/app/components/base/tooltip'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Group from './group'
 import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import type { currentVarType } from './panel'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
@@ -36,12 +30,11 @@ const Left = ({
     systemVars,
     nodesWithInspectVars,
     deleteAllInspectorVars,
+    deleteNodeInspectorVars,
   } = useCurrentVars()
+  const { handleNodeSelect } = useNodesInteractions()
 
   const showDivider = environmentVariables.length > 0 || conversationVars.length > 0 || systemVars.length > 0
-
-  // TODO node selection
-  const selectedNode = 3 < 4
 
   return (
     <div className={cn('flex h-full flex-col')}>
@@ -86,64 +79,18 @@ const Left = ({
           </div>
         )}
         {/* group nodes */}
-        <div className='p-0.5'>
-          {/* node item */}
-          <div className='flex h-6 items-center gap-0.5'>
-            <RiArrowRightSLine className='h-3 w-3 rotate-90 text-text-tertiary' />
-            <div className='flex grow cursor-pointer items-center gap-1'>
-              <BlockIcon
-                className='shrink-0'
-                type={BlockEnum.LLM}
-                size='xs'
-              />
-              <div className='system-xs-medium-uppercase truncate text-text-tertiary'>LLM</div>
-            </div>
-          </div>
-          {/* var item list */}
-          <div className='px-0.5'>
-            <div className={cn('relative flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover')}>
-              <Variable02 className='h-4 w-4 text-text-accent' />
-              <div className='system-sm-medium grow truncate text-text-secondary'>chat_history</div>
-              <div className='system-xs-regular shrink-0 text-text-tertiary'>array</div>
-            </div>
-            <div className={cn('relative flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover')}>
-              {selectedNode && <span className='absolute left-1.5 top-[10.5px] h-[3px] w-[3px] rounded-full bg-text-accent-secondary'></span>}
-              <Variable02 className='h-4 w-4 text-text-warning' />
-              <div className='system-sm-medium grow truncate text-text-secondary'>custom_chat_history</div>
-              <div className='system-xs-regular shrink-0 text-text-tertiary'>array</div>
-            </div>
-          </div>
-        </div>
-        {/* group nodes */}
-        <div className='p-0.5'>
-          {/* node item */}
-          <div className='flex h-6 items-center gap-0.5'>
-            <RiLoader2Line className='h-3 w-3 text-text-accent' />
-            <div className='flex grow cursor-pointer items-center gap-1'>
-              <BlockIcon
-                className='shrink-0'
-                type={BlockEnum.QuestionClassifier}
-                size='xs'
-              />
-              <div className='system-xs-medium-uppercase truncate text-text-tertiary'>Question Classifier</div>
-            </div>
-          </div>
-        </div>
-        {/* group nodes */}
-        <div className='p-0.5'>
-          {/* node item */}
-          <div className='flex h-6 items-center gap-0.5'>
-            <RiErrorWarningFill className='h-3 w-3 text-text-destructive' />
-            <div className='flex grow cursor-pointer items-center gap-1'>
-              <BlockIcon
-                className='shrink-0'
-                type={BlockEnum.HttpRequest}
-                size='xs'
-              />
-              <div className='system-xs-medium-uppercase truncate text-text-tertiary'>HTTP Request</div>
-            </div>
-          </div>
-        </div>
+        {nodesWithInspectVars.length > 0 && nodesWithInspectVars.map(group => (
+          <Group
+            key={group.nodeId}
+            varType={VarInInspectType.node}
+            varList={group.vars}
+            nodeData={group}
+            currentVar={currentNodeVar}
+            handleSelect={handleVarSelect}
+            handleView={() => handleNodeSelect(group.nodeId)}
+            handleClear={() => deleteNodeInspectorVars(group.nodeId)}
+          />
+        ))}
       </div>
     </div>
   )

@@ -40,7 +40,6 @@ const ValueContent = ({
   const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query')
 
   const [value, setValue] = useState<any>()
-  const [jsonSchema, setJsonSchema] = useState()
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
@@ -57,7 +56,6 @@ const ValueContent = ({
 
   // update default value when id changed
   useEffect(() => {
-    console.log('currentVar', currentVar)
     if (showTextEditor) {
       if (!currentVar.value)
         return setValue('')
@@ -65,10 +63,9 @@ const ValueContent = ({
         return setValue(JSON.stringify(currentVar.value))
       setValue(currentVar.value)
     }
-    if (showJSONEditor) {
-      setJsonSchema(currentVar.value || null)
+    if (showJSONEditor)
       setJson(currentVar.value ? JSON.stringify(currentVar.value, null, 2) : '')
-    }
+
     if (showFileEditor) {
       setFileValue(currentVar.value_type === 'array[file]'
         ? currentVar.value || []
@@ -130,16 +127,11 @@ const ValueContent = ({
     setJson(value)
     if (jsonValueValidate(value, currentVar.value_type)) {
       const parsed = JSON.parse(value)
-      setJsonSchema(parsed)
       debounceValueChange(currentVar.id, parsed)
     }
   }
 
-  const fileValueValidate = (fileList: any[]) => {
-    if (fileList.every(file => file.upload_file_id))
-      return true
-    return false
-  }
+  const fileValueValidate = (fileList: any[]) => fileList.every(file => file.upload_file_id)
 
   const handleFileChange = (value: any[]) => {
     setFileValue(value)
@@ -168,7 +160,7 @@ const ValueContent = ({
         errorMessageObserver.disconnect()
       }
     }
-  }, [errorMessageRef.current, setEditorHeight])
+  }, [setEditorHeight])
 
   return (
     <div

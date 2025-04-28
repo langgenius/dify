@@ -2,14 +2,15 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiArrowRightSLine,
+  RiDeleteBinLine,
+  RiFileList3Line,
+  RiLoader2Line,
   // RiErrorWarningFill,
-  // RiLoader2Line,
 } from '@remixicon/react'
-// import { BlockEnum } from '../types'
 // import Button from '@/app/components/base/button'
-// import ActionButton from '@/app/components/base/action-button'
-// import Tooltip from '@/app/components/base/tooltip'
-// import BlockIcon from '@/app/components/workflow/block-icon'
+import ActionButton from '@/app/components/base/action-button'
+import Tooltip from '@/app/components/base/tooltip'
+import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   BubbleX,
   Env,
@@ -17,21 +18,27 @@ import {
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import type { currentVarType } from './panel'
 import { VarInInspectType } from '@/types/workflow'
-import type { VarInInspect } from '@/types/workflow'
+import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import cn from '@/utils/classnames'
 
 type Props = {
+  nodeData?: NodeWithVar
   currentVar?: currentVarType
   varType: VarInInspectType
   varList: VarInInspect[]
   handleSelect: (state: any) => void
+  handleView?: () => void
+  handleClear?: () => void
 }
 
 const Group = ({
+  nodeData,
   currentVar,
   varType,
   varList,
   handleSelect,
+  handleView,
+  handleClear,
 }: Props) => {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -43,8 +50,8 @@ const Group = ({
   const handleSelectVar = (varItem: any, type?: string) => {
     if (type === VarInInspectType.environment) {
       handleSelect({
-        nodeId: 'env',
-        nodeTitle: 'env',
+        nodeId: VarInInspectType.environment,
+        title: VarInInspectType.environment,
         nodeType: VarInInspectType.environment,
         var: {
           ...varItem,
@@ -56,9 +63,9 @@ const Group = ({
     }
     if (type === VarInInspectType.conversation) {
       handleSelect({
-        nodeId: 'conversation',
-        nodeTitle: 'conversation',
+        nodeId: VarInInspectType.conversation,
         nodeType: VarInInspectType.conversation,
+        title: VarInInspectType.conversation,
         var: {
           ...varItem,
           type: VarInInspectType.conversation,
@@ -68,9 +75,9 @@ const Group = ({
     }
     if (type === VarInInspectType.system) {
       handleSelect({
-        nodeId: 'sys',
-        nodeTitle: 'sys',
+        nodeId: VarInInspectType.system,
         nodeType: VarInInspectType.system,
+        title: VarInInspectType.system,
         var: {
           ...varItem,
           type: VarInInspectType.system,
@@ -78,29 +85,61 @@ const Group = ({
       })
       return
     }
+    if (!nodeData) return
     handleSelect({
-      nodeId: varItem.nodeId,
-      nodeTitle: varItem.nodeTitle,
-      nodeType: varItem.nodeType,
-      var: varItem.var,
+      nodeId: nodeData.nodeId,
+      nodeType: nodeData.nodeType,
+      title: nodeData.title,
+      var: varItem,
     })
   }
 
   return (
     <div className='p-0.5'>
       {/* node item */}
-      <div className='flex h-6 items-center gap-0.5'>
-        <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} />
+      <div className='group flex h-6 items-center gap-0.5'>
+        {nodeData?.isSingRunRunning && (
+          <RiLoader2Line className='h-3 w-3 animate-spin text-text-accent' />
+        )}
+        {(!nodeData || !nodeData.isSingRunRunning) && (
+          <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} onClick={() => setIsCollapsed(!isCollapsed)} />
+        )}
         <div className='flex grow cursor-pointer items-center gap-1' onClick={() => setIsCollapsed(!isCollapsed)}>
-          <div className='system-xs-medium-uppercase truncate text-text-tertiary'>
-            {isEnv && t('workflow.debug.variableInspect.envNode')}
-            {isChatVar && t('workflow.debug.variableInspect.chatNode')}
-            {isSystem && t('workflow.debug.variableInspect.systemNode')}
-          </div>
+          {nodeData && (
+            <>
+              <BlockIcon
+                className='shrink-0'
+                type={nodeData.nodeType}
+                size='xs'
+              />
+              <div className='system-xs-medium-uppercase truncate text-text-tertiary'>{nodeData.title}</div>
+            </>
+          )}
+          {!nodeData && (
+            <div className='system-xs-medium-uppercase truncate text-text-tertiary'>
+              {isEnv && t('workflow.debug.variableInspect.envNode')}
+              {isChatVar && t('workflow.debug.variableInspect.chatNode')}
+              {isSystem && t('workflow.debug.variableInspect.systemNode')}
+            </div>
+          )}
         </div>
+        {nodeData && !nodeData.isSingRunRunning && (
+          <div className='hidden shrink-0 items-center group-hover:flex'>
+            <Tooltip popupContent={t('workflow.debug.variableInspect.view')}>
+              <ActionButton onClick={handleView}>
+                <RiFileList3Line className='h-4 w-4' />
+              </ActionButton>
+            </Tooltip>
+            <Tooltip popupContent={t('workflow.debug.variableInspect.clearNode')}>
+              <ActionButton onClick={handleClear}>
+                <RiDeleteBinLine className='h-4 w-4' />
+              </ActionButton>
+            </Tooltip>
+          </div>
+        )}
       </div>
       {/* var item list */}
-      {!isCollapsed && (
+      {!isCollapsed && !nodeData?.isSingRunRunning && (
         <div className='px-0.5'>
           {varList.length > 0 && varList.map(varItem => (
             <div
@@ -113,7 +152,7 @@ const Group = ({
             >
               {isEnv && <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />}
               {isChatVar && <BubbleX className='h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />}
-              {isSystem && <Variable02 className='h-4 w-4 shrink-0 text-text-accent' />}
+              {(isSystem || nodeData) && <Variable02 className='h-4 w-4 shrink-0 text-text-accent' />}
               <div className='system-sm-medium grow truncate text-text-secondary'>{varItem.name}</div>
               <div className='system-xs-regular shrink-0 text-text-tertiary'>{varItem.value_type}</div>
             </div>

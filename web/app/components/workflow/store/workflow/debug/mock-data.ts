@@ -6,11 +6,21 @@ export const vars: VarInInspect[] = [
   {
     id: 'xxx',
     type: VarInInspectType.node,
-    name: 'llm 2',
+    name: 'text',
     description: '',
     selector: ['1745476079387', 'text'],
     value_type: VarType.string,
     value: 'text value...',
+    edited: false,
+  },
+  {
+    id: 'fdklajljgldjglkagjlk',
+    type: VarInInspectType.node,
+    name: 'text',
+    description: '',
+    selector: ['1712386917734', 'text'],
+    value_type: VarType.string,
+    value: 'made zhizhang',
     edited: false,
   },
 ]

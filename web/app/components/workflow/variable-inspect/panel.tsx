@@ -15,8 +15,8 @@ import cn from '@/utils/classnames'
 
 export type currentVarType = {
   nodeId: string
-  nodeTitle: string
   nodeType: string
+  title: string
   var: VarInInspect
 }
 
@@ -37,7 +37,7 @@ const Panel: FC = () => {
   const isEmpty = useMemo(() => {
     const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
     return allVars.length === 0
-  }, [conversationVars, systemVars, nodesWithInspectVars])
+  }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   if (isEmpty) {
     return (

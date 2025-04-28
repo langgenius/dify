@@ -77,7 +77,7 @@ const Right = ({
                     type={currentNodeVar.nodeType as BlockEnum}
                     size='xs'
                   />
-                  <div className='system-sm-regular shrink-0 text-text-secondary'>{currentNodeVar.nodeTitle}</div>
+                  <div className='system-sm-regular shrink-0 text-text-secondary'>{currentNodeVar.title}</div>
                   <div className='system-sm-regular shrink-0 text-text-quaternary'>/</div>
                 </>
               )}
