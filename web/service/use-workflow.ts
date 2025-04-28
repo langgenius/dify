@@ -89,11 +89,13 @@ export const usePublishWorkflow = (appId: string) => {
   })
 }
 
+const useLastRunKey = [NAME_SPACE, 'last-run']
 export const useLastRun = (appID: string, nodeId: string, enabled: boolean) => {
   return useQuery<NodeTracing>({
     enabled,
-    queryKey: [NAME_SPACE, 'last-run', appID, nodeId],
+    queryKey: [...useLastRunKey, appID, nodeId],
     queryFn: async () => {
+      console.log(`fetch last run : ${nodeId}`)
       // TODO: mock data
       await sleep(1000)
       return Promise.resolve({
@@ -123,6 +125,15 @@ export const useLastRun = (appID: string, nodeId: string, enabled: boolean) => {
       } as any)
     },
   })
+}
+
+export const useInvalidLastRun = (appId: string, nodeId: string) => {
+  return useInvalid([NAME_SPACE, 'last-run', appId, nodeId])
+}
+
+// Rerun workflow or change the version of workflow
+export const useInvalidAllLastRun = (appId: string) => {
+  return useInvalid([NAME_SPACE, 'last-run', appId])
 }
 
 const useConversationVarValuesKey = [NAME_SPACE, 'conversation-variable']

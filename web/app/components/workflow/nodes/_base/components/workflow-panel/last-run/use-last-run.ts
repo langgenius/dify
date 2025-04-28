@@ -29,10 +29,8 @@ const useLastRun = <T>({
     setSingleRunParams(childPanelRef.current?.singleRunParams)
   }, [doSetRunInputData])
 
-  const [isDataFromHistory, setIsDataFromHistory] = useState(true)
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
   const handleRun = async (data: Record<string, any>) => {
-    setIsDataFromHistory(false)
     setTabType(TabType.lastRun)
     callRunApi(data)
     hideSingleRun()
@@ -40,7 +38,6 @@ const useLastRun = <T>({
 
   const handleTabClicked = useCallback((type: TabType) => {
     setTabType(type)
-    setIsDataFromHistory(true)
   }, [])
   const hasLastRunData = true // TODO: add disabled logic
 
@@ -109,7 +106,6 @@ const useLastRun = <T>({
     setSingleRunParams,
     setRunInputData,
     hasLastRunData,
-    isDataFromHistory,
     handleRun,
     getExistVarValuesInForms,
     getFilteredExistVarForms,

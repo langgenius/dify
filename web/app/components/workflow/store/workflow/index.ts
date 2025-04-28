@@ -28,8 +28,6 @@ import type { WorkflowDraftSliceShape } from './workflow-draft-slice'
 import { createWorkflowDraftSlice } from './workflow-draft-slice'
 import type { WorkflowSliceShape } from './workflow-slice'
 import { createWorkflowSlice } from './workflow-slice'
-import type { LastRunSliceShape } from './debug/last-run-slice'
-import { createLastRunSlice } from './debug/last-run-slice'
 import type { InspectVarsSliceShape } from './debug/inspect-vars-slice'
 import { createInspectVarsSlice } from './debug/inspect-vars-slice'
 
@@ -50,7 +48,6 @@ export type Shape =
   VersionSliceShape &
   WorkflowDraftSliceShape &
   WorkflowSliceShape &
-  LastRunSliceShape &
   InspectVarsSliceShape &
   LayoutSliceShape &
   WorkflowAppSliceShape
@@ -74,7 +71,6 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
     ...createVersionSlice(...args),
     ...createWorkflowDraftSlice(...args),
     ...createWorkflowSlice(...args),
-    ...createLastRunSlice(...args),
     ...createInspectVarsSlice(...args),
     ...createLayoutSlice(...args),
     ...(injectWorkflowStoreSliceFn?.(...args) || {} as WorkflowAppSliceShape),

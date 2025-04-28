@@ -50,6 +50,7 @@ const { checkValid: checkLoopValid } = LoopDefault
 import {
   useStoreApi,
 } from 'reactflow'
+import { useInvalidLastRun } from '@/service/use-workflow'
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
@@ -158,20 +159,19 @@ const useOneStepRun = <T>({
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const {
-
-    setLastRunNodeInfo,
     appendNodeInspectVars,
     setShowSingleRunPanel,
   } = workflowStore.getState()
+  const invalidLastRun = useInvalidLastRun(appId!, id)
   const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
     doSetRunResult(data)
-    setLastRunNodeInfo(id, data!)
+    invalidLastRun()
     const vars = await fetchNodeInspectVars(appId!, data!.id)
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(id, vars, nodes)
-  }, [setLastRunNodeInfo, id, appId, store, appendNodeInspectVars])
+  }, [invalidLastRun, appId, store, appendNodeInspectVars, id])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)

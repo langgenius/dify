@@ -154,7 +154,6 @@ const BasePanel: FC<BasePanelProps> = ({
     setSingleRunParams,
     setRunInputData,
     hasLastRunData,
-    isDataFromHistory,
     handleRun,
     getExistVarValuesInForms,
     getFilteredExistVarForms,
@@ -304,7 +303,7 @@ const BasePanel: FC<BasePanelProps> = ({
         )}
 
         {tabType === TabType.lastRun && (
-          <LastRun appId={appDetail?.id || ''} nodeId={id} runningStatus={runningStatus} isDataFromHistory={isDataFromHistory} />
+          <LastRun appId={appDetail?.id || ''} nodeId={id} runningStatus={runningStatus} />
         )}
 
         {
