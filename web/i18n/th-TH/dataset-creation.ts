@@ -32,7 +32,7 @@ const translation = {
     },
     uploader: {
       title: 'อัปโหลดไฟล์',
-      button: 'ลากและวางไฟล์ หรือ',
+      button: 'ลากและวางไฟล์หรือโฟลเดอร์หรือ',
       browse: 'เล็ม',
       tip: 'รองรับ {{supportTypes}} สูงสุด {{size}}MB แต่ละตัว',
       validation: {
