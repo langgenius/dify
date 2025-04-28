@@ -21,10 +21,10 @@ const useInspectVarsCrud = () => {
     setInspectVarValue,
     renameInspectVarName: renameInspectVarNameInStore,
     deleteAllInspectVars: deleteAllInspectVarsInStore,
+    hasNodeInspectVars,
     deleteNodeInspectVars: deleteNodeInspectVarsInStore,
     deleteInspectVar: deleteInspectVarInStore,
     isInspectVarEdited,
-    getLastRunVar,
   } = workflowStore.getState()
 
   const { data: conversationVars } = useConversationVarValues(appId)
@@ -61,7 +61,9 @@ const useInspectVarsCrud = () => {
   }
 
   const deleteNodeInspectorVars = async (nodeId: string) => {
-    await doDeleteNodeInspectorVars(nodeId)
+    if (hasNodeInspectVars(nodeId))
+      await doDeleteNodeInspectorVars(nodeId)
+
     deleteNodeInspectVarsInStore(nodeId)
   }
 
@@ -95,9 +97,10 @@ const useInspectVarsCrud = () => {
   }
 
   const resetToLastRunVar = (nodeId: string, key: string) => {
-    const lastRunVar = getLastRunVar(nodeId, key)
-    if (lastRunVar)
-      editInspectVarValue(nodeId, key, lastRunVar)
+    // const lastRunVar = getLastRunVar(nodeId, key)
+    // if (lastRunVar)
+    //   editInspectVarValue(nodeId, key, lastRunVar)
+    // TODO
   }
 
   // console.log(conversationVars, systemVars)

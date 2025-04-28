@@ -60,6 +60,7 @@ import {
   useWorkflowReadOnly,
 } from './use-workflow'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
+import useInspectVarsCrud from './use-inspect-vars-crud'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -530,6 +531,8 @@ export const useNodesInteractions = () => {
     setEnteringNodePayload(undefined)
   }, [store, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow])
 
+  const { deleteNodeInspectorVars } = useInspectVarsCrud()
+
   const handleNodeDelete = useCallback((nodeId: string) => {
     if (getNodesReadOnly())
       return
@@ -551,6 +554,7 @@ export const useNodesInteractions = () => {
     if (currentNode.data.type === BlockEnum.Start)
       return
 
+    deleteNodeInspectorVars(nodeId)
     if (currentNode.data.type === BlockEnum.Iteration) {
       const iterationChildren = nodes.filter(node => node.parentId === currentNode.id)
 
