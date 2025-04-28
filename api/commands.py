@@ -818,8 +818,9 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
 
 
+@click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
 @click.command("clear-orphaned-file-records", help="Clear orphaned file records.")
-def clear_orphaned_file_records():
+def clear_orphaned_file_records(force: bool):
     """
     Clear orphaned file records in the database.
     """
@@ -878,7 +879,8 @@ def clear_orphaned_file_records():
             fg="yellow",
         )
     )
-    click.confirm("Do you want to proceed?", abort=True)
+    if not force:
+        click.confirm("Do you want to proceed?", abort=True)
 
     # start the cleanup process
     click.echo(click.style("Starting orphaned file records cleanup.", fg="white"))
@@ -964,7 +966,8 @@ def clear_orphaned_file_records():
     click.echo(click.style(f"Found {len(orphaned_files)} orphaned file records.", fg="white"))
     for file in orphaned_files:
         click.echo(click.style(f"- orphaned file id: {file}", fg="black"))
-    click.confirm(f"Do you want to proceed to delete all {len(orphaned_files)} orphaned file records?", abort=True)
+    if not force:
+        click.confirm(f"Do you want to proceed to delete all {len(orphaned_files)} orphaned file records?", abort=True)
 
     # delete orphaned records for each file
     try:
@@ -979,8 +982,9 @@ def clear_orphaned_file_records():
     click.echo(click.style(f"Removed {len(orphaned_files)} orphaned file records.", fg="green"))
 
 
+@click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
 @click.command("remove-orphaned-files-on-storage", help="Remove orphaned files on the storage.")
-def remove_orphaned_files_on_storage():
+def remove_orphaned_files_on_storage(force: bool):
     """
     Remove orphaned files on the storage.
     """
@@ -1028,7 +1032,8 @@ def remove_orphaned_files_on_storage():
             fg="yellow",
         )
     )
-    click.confirm("Do you want to proceed?", abort=True)
+    if not force:
+        click.confirm("Do you want to proceed?", abort=True)
 
     # start the cleanup process
     click.echo(click.style("Starting orphaned files cleanup.", fg="white"))
@@ -1069,7 +1074,8 @@ def remove_orphaned_files_on_storage():
     click.echo(click.style(f"Found {len(orphaned_files)} orphaned files.", fg="white"))
     for file in orphaned_files:
         click.echo(click.style(f"- orphaned file: {file}", fg="black"))
-    click.confirm(f"Do you want to proceed to remove all {len(orphaned_files)} orphaned files?", abort=True)
+    if not force:
+        click.confirm(f"Do you want to proceed to remove all {len(orphaned_files)} orphaned files?", abort=True)
 
     # delete orphaned files
     removed_files = 0
