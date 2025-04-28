@@ -169,6 +169,10 @@ const translation = {
     description: 'آیا از نماد WebApp برای جایگزینی 🤖 در برنامه مشترک استفاده کنیم یا خیر',
     title: 'از نماد WebApp برای جایگزینی 🤖 استفاده کنید',
   },
+  permissions: 'قابلیت دسترسی',
+  permissionsOnlyMe: 'فقط من',
+  permissionsAllMember: 'همه اعضای تیم',
+  permissionsInvitedMembers: 'اعضای دعوت شده',
   mermaid: {
     handDrawn: 'دست کشیده شده',
     classic: 'کلاسیک',

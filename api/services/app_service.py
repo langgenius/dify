@@ -18,8 +18,9 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, AppPermission
 from models.tools import ApiToolProvider
+from services.app_permission_service import AppPermissionService
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
@@ -59,6 +60,23 @@ class AppService:
                 filters.append(App.id.in_(target_ids))
             else:
                 return None
+        # Add permission-based filtering
+        from sqlalchemy import or_
+        permission_filters = [
+            # All team members can see apps with permission "all_team_members" or null
+            or_(App.permission == "all_team_members", App.permission == None),
+            # Creator can see their own apps
+            App.created_by == user_id,
+            # Users with explicit permission in app_permissions table
+            App.id.in_(
+                db.session.query(AppPermission.app_id)
+                .filter(
+                    AppPermission.account_id == user_id,
+                    AppPermission.has_permission == True
+                )
+            )
+        ]
+        filters.append(or_(*permission_filters))
 
         app_models = db.paginate(
             db.select(App).where(*filters).order_by(App.created_at.desc()),
@@ -66,7 +84,8 @@ class AppService:
             per_page=args["limit"],
             error_out=False,
         )
-
+        for app in app_models.items:
+            app.permission_account_ids = AppPermissionService.get_app_permissions_by_app_id(app.id)
         return app_models
 
     def create_app(self, tenant_id: str, args: dict, account: Account) -> App:
@@ -231,7 +250,16 @@ class AppService:
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.updated_by = current_user.id
         app.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        app.permission = args.get("permission")
         db.session.commit()
+        tenant_id = current_user.current_tenant_id
+        # Handle app permissions
+        if args.get("permission") == "partial_members" and args.get("partial_member_list"):
+            account_ids = args.get("partial_member_list")
+            AppPermissionService.update_app_permissions(tenant_id, app.id, account_ids)
+        # Clear permissions if permission is not partial_members
+        elif args.get("permission") != "partial_members":
+            AppPermissionService.clear_app_permissions(app.id)
 
         return app
 
@@ -304,6 +332,9 @@ class AppService:
         Delete app
         :param app: App instance
         """
+        # Clear app permissions
+        AppPermissionService.clear_app_permissions(app.id)
+        
         db.session.delete(app)
         db.session.commit()
 
@@ -373,3 +404,47 @@ class AppService:
                         meta["tool_icons"][tool_name] = {"background": "#252525", "content": "\ud83d\ude01"}
 
         return meta
+        
+    def get_app_permission_member_list(self, app_id: str) -> list:
+        """
+        Get the list of account IDs that have permission to access the app
+        
+        Args:
+            app_id (str): The ID of the app
+            
+        Returns:
+            list: List of account IDs with permission to access the app
+        """
+        return AppPermissionService.get_app_permissions_by_app_id(app_id)
+        
+    def check_app_permission(self, app: App, user: Account) -> bool:
+        """
+        Check if a user has permission to access an app
+        
+        Args:
+            app (App): The app to check permission for
+            user (Account): The user account to check
+            
+        Returns:
+            bool: True if the user has permission, False otherwise
+        """
+        # App owner always has permission
+        if app.created_by == user.id:
+            return True
+            
+        # Tenant owner/admin always has permission
+        if user.is_owner or user.is_admin:
+            return True
+            
+        # Check app permission setting
+        if not app.permission or app.permission == "all_team_members":
+            # All team members have permission
+            return True
+        elif app.permission == "only_me":
+            # Only the app creator has permission
+            return app.created_by == user.id
+        elif app.permission == "partial_members":
+            # Check if the user is in the partial member list
+            return AppPermissionService.check_app_permission(app.id, user.id)
+            
+        return False

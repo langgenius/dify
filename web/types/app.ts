@@ -359,6 +359,10 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
+  /** Permission */
+  permission: string
+  /** Permission Account IDs */
+  permission_account_ids: string[]
 }
 
 export type AppSSO = {

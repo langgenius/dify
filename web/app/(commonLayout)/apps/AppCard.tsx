@@ -81,6 +81,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     icon_background,
     description,
     use_icon_as_answer_icon,
+    permission,
+    partial_member_list
   }) => {
     try {
       await updateAppInfo({
@@ -91,6 +93,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         icon_background,
         description,
         use_icon_as_answer_icon,
+        permission,
+        partial_member_list
       })
       setShowEditModal(false)
       notify({
@@ -381,6 +385,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           show={showEditModal}
           onConfirm={onEdit}
           onHide={() => setShowEditModal(false)}
+          appPermission={app.permission}
+          appSelectedMemberIDs={app.permission_account_ids}
         />
       )}
       {showDuplicateModal && (

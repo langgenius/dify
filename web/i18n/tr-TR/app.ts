@@ -165,6 +165,10 @@ const translation = {
     title: 'Değiştirmek 🤖 için WebApp simgesini kullanın',
     description: 'Paylaşılan uygulamada değiştirmek 🤖 için WebApp simgesinin kullanılıp kullanılmayacağı',
   },
+  permissions: 'Görünürlük',
+  permissionsOnlyMe: 'Sadece ben',
+  permissionsAllMember: 'Tüm Takım Üyeleri',
+  permissionsInvitedMembers: 'Davetli Üyeler',
   mermaid: {
     handDrawn: 'Elle çizilmiş',
     classic: 'Klasik',

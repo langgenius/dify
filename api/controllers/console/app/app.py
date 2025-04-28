@@ -1,4 +1,5 @@
 import uuid
+import json
 from typing import cast
 
 from flask_login import current_user  # type: ignore
@@ -139,6 +140,8 @@ class AppApi(Resource):
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
         parser.add_argument("use_icon_as_answer_icon", type=bool, location="json")
+        parser.add_argument("permission", type=str, location="json")
+        parser.add_argument("partial_member_list", type=list, location="json")
         args = parser.parse_args()
 
         app_service = AppService()
