@@ -80,7 +80,6 @@ from extensions.ext_database import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.workflow import WorkflowNodeExecutionStatus
-
 from .entities import (
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
@@ -1234,17 +1233,20 @@ class LLMNode(BaseNode[LLMNodeData]):
         self,
         contents: str | list[PromptMessageContentUnionTypes] | None,
     ) -> Generator[str, None, None]:
-        """Convert intermediate prompt messages to strings, and yield it to the caller.
+        """Convert intermediate prompt messages into strings and yield them to the caller.
 
-        If there are contents other than `TextPromptMessageContent`, it will be saved and
-        correspond markdown content will be yielded to the caller.
+        If the messages contain non-textual content (e.g., multimedia like images or videos),
+        it will be saved separately, and the corresponding Markdown representation will
+        be yielded to the caller.
         """
 
-        # NOTE(QuantumGhost): This function should yield to the caller as soon as there is new
-        # content or new content part available. It should avoid intermediate buffering.
-        # It also should avoid yield empty string. (Yield from an empty list instead.)
+        # NOTE(QuantumGhost): This function should yield results to the caller immediately
+        # whenever new content or partial content is available. Avoid any intermediate buffering
+        # of results. Additionally, do not yield empty strings; instead, yield from an empty list
+        # if necessary.
         if contents is None:
             yield from []
+            return
         if isinstance(contents, str):
             yield contents
         elif isinstance(contents, list):
