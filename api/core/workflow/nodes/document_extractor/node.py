@@ -235,7 +235,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
                     file=file,
                     metadata_filename=temp_file.name,
                     api_url=dify_config.UNSTRUCTURED_API_URL,
-                    api_key=dify_config.UNSTRUCTURED_API_KEY,
+                    api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
                 )
             os.unlink(temp_file.name)
         return "\n".join([getattr(element, "text", "") for element in elements])
