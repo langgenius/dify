@@ -596,17 +596,16 @@ const getIterationItemType = ({
     arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
   }
   else {
-    (valueSelector).slice(1).forEach((key, i) => {
+    for (let i = 1; i < valueSelector.length - 1; i++) {
+      const key = valueSelector[i]
       const isLast = i === valueSelector.length - 2
-      curr = curr?.find((v: any) => v.variable === key)
-      if (isLast) {
-        arrayType = curr?.type
-      }
-      else {
-        if (curr?.type === VarType.object || curr?.type === VarType.file)
-          curr = curr.children
-      }
-    })
+      curr = Array.isArray(curr) ? curr.find(v => v.variable === key) : []
+
+      if (isLast)
+      arrayType = curr?.type
+      else if (curr?.type === VarType.object || curr?.type === VarType.file)
+      curr = curr.children || []
+    }
   }
 
   switch (arrayType as VarType) {
@@ -631,7 +630,7 @@ const getLoopItemType = ({
 }: {
   valueSelector: ValueSelector
   beforeNodesOutputVars: NodeOutPutVar[]
-  // eslint-disable-next-line sonarjs/no-identical-functions
+
 }): VarType => {
   const outputVarNodeId = valueSelector[0]
   const isSystem = isSystemVar(valueSelector)
