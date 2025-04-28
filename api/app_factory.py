@@ -30,11 +30,12 @@ def create_flask_app_with_configs() -> DifyApp:
         # log request data info
         request_id = get_request_id()
         if request.headers.get("content-type", "").lower() == "application/json":
-            logging.info(f"[before request]|request_id: {request_id},"
-                         f" method: {request.method}, url: {request.url}, request_data: {request.get_json()}")
+            logging.info(
+                f"[before request]|request_id: {request_id},"
+                f" method: {request.method}, url: {request.url}, request_data: {request.get_json()}"
+            )
         else:
-            logging.info(f"[before request]|request_id: {request_id},"
-                         f" method: {request.method}, url: {request.url}")
+            logging.info(f"[before request]|request_id: {request_id}, method: {request.method}, url: {request.url}")
 
     # add extra `request_id` field for every response data
     @dify_app.after_request
@@ -44,8 +45,7 @@ def create_flask_app_with_configs() -> DifyApp:
             request_id = get_request_id()
             obj["request_id"] = request_id
             resp.set_data(json.dumps(obj))
-            logging.info(f"[finish request]|request_id: {request_id},"
-                         f" response: {obj}")
+            logging.info(f"[finish request]|request_id: {request_id}, response: {obj}")
         return resp
 
     return dify_app
