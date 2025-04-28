@@ -1,10 +1,11 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
 } from '@remixicon/react'
 import { useStore } from '../store'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import Empty from './empty'
 import Left from './left'
 import Right from './right'
@@ -18,7 +19,17 @@ const Panel: FC = () => {
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const [showLeftPanel, setShowLeftPanel] = useState(true)
 
-  const isEmpty = false
+  const environmentVariables = useStore(s => s.environmentVariables)
+  const {
+    conversationVars,
+    systemVars,
+    nodesWithInspectVars,
+  } = useCurrentVars()
+  const isEmpty = useMemo(() => {
+    const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
+    return allVars.length === 0
+  }, [conversationVars, systemVars, nodesWithInspectVars])
+
   if (isEmpty) {
     return (
       <div className={cn('flex h-full flex-col')}>
