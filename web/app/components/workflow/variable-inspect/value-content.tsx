@@ -198,7 +198,7 @@ const ValueContent = () => {
                   ...FILE_EXTS[SupportUploadFileTypes.video],
                 ],
                 allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-                number_limits: current.var_type === 'file' ? 1 : (fileFeature as any).fileUploadConfig.workflow_file_upload_limit,
+                number_limits: current.var_type === 'file' ? 1 : (fileFeature as any).fileUploadConfig?.workflow_file_upload_limit || 5,
                 fileUploadConfig: (fileFeature as any).fileUploadConfig,
               }}
             />

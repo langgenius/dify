@@ -21,13 +21,21 @@ const VariableInspectTrigger: FC = () => {
       return false
     if (workflowRunningData.result.status === WorkflowRunningStatus.Running)
       return true
+    // TODO: step running state use data in inspector
     return (workflowRunningData.tracing || []).some(tracingData => tracingData.status === NodeRunningStatus.Running)
   }, [workflowRunningData])
 
+  const environmentVariables = useStore(s => s.environmentVariables)
   const {
-    nodesWithInspectVars: currentVars,
-    clearCurrentVars,
+    conversationVars,
+    systemVars,
+    nodesWithInspectVars,
+    deleteAllInspectorVars,
   } = useCurrentVars()
+  const currentVars = useMemo(() => {
+    const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
+    return allVars
+  }, [conversationVars, systemVars, nodesWithInspectVars])
 
   // ##TODD stop handle
 
@@ -54,7 +62,7 @@ const VariableInspectTrigger: FC = () => {
           </div>
           <div
             className='system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent hover:text-text-accent'
-            onClick={clearCurrentVars}
+            onClick={deleteAllInspectorVars}
           >
             {t('workflow.debug.variableInspect.trigger.clear')}
           </div>

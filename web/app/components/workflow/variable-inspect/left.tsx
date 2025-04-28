@@ -26,7 +26,7 @@ const Left = ({ handleMenuClick }: Props) => {
   // const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   // const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const {
-    clearCurrentVars,
+    deleteAllInspectorVars,
   } = useCurrentVars()
 
   // TODO node selection
@@ -37,7 +37,7 @@ const Left = ({ handleMenuClick }: Props) => {
       {/* header */}
       <div className='flex shrink-0 items-center justify-between gap-1 pl-4 pr-1 pt-2'>
         <div className='system-sm-semibold-uppercase truncate text-text-primary'>{t('workflow.debug.variableInspect.title')}</div>
-        <Button variant='ghost' size='small' className='shrink-0' onClick={clearCurrentVars}>{t('workflow.debug.variableInspect.clearAll')}</Button>
+        <Button variant='ghost' size='small' className='shrink-0' onClick={deleteAllInspectorVars}>{t('workflow.debug.variableInspect.clearAll')}</Button>
       </div>
       {/* content */}
       <div className='grow overflow-y-auto py-1'>
