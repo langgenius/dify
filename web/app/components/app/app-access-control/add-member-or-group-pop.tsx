@@ -25,7 +25,7 @@ export default function AddMemberOrGroupDialog() {
   const debouncedKeyword = useDebounce(keyword, { wait: 500 })
 
   const lastAvailableGroup = selectedGroupsForBreadcrumb[selectedGroupsForBreadcrumb.length - 1]
-  const { isPending, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates({ keyword: debouncedKeyword, groupId: lastAvailableGroup?.id, resultsPerPage: 10 }, open)
+  const { isLoading, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates({ keyword: debouncedKeyword, groupId: lastAvailableGroup?.id, resultsPerPage: 10 }, open)
   const handleKeywordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setKeyword(e.target.value)
   }
@@ -36,13 +36,13 @@ export default function AddMemberOrGroupDialog() {
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isPending && hasMore)
+        if (entries[0].isIntersecting && !isLoading && hasMore)
           fetchNextPage()
       }, { rootMargin: '20px' })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isPending, fetchNextPage, anchorRef, data])
+  }, [isLoading, fetchNextPage, anchorRef, data])
 
   return <PortalToFollowElem open={open} onOpenChange={setOpen} offset={{ crossAxis: 300 }} placement='bottom-end'>
     <PortalToFollowElemTrigger asChild>
@@ -58,7 +58,7 @@ export default function AddMemberOrGroupDialog() {
           <Input value={keyword} onChange={handleKeywordChange} showLeftIcon placeholder={t('app.accessControlDialog.operateGroupAndMember.searchPlaceholder') as string} />
         </div>
         {
-          isPending
+          isLoading
             ? <div className='p-1'><Loading /></div>
             : (data?.pages?.length ?? 0) > 0
               ? <>
