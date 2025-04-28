@@ -187,10 +187,6 @@ def init_app(app: DifyApp):
 
 
 def is_enabled():
-    """
-    Check if the extension is enabled.
-    Always enable this patch to prevent errors even when OpenTelemetry is disabled.
-    """
     return dify_config.ENABLE_OTEL
 
 
