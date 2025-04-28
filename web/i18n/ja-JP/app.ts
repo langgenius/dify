@@ -170,6 +170,10 @@ const translation = {
     description: '共有アプリケーションの中で Webアプリアイコンを使用して🤖を置き換えるかどうか',
     descriptionInExplore: 'ExploreでWebアプリアイコンを使用して🤖を置き換えるかどうか',
   },
+  permissions: '可視性',
+  permissionsOnlyMe: '私だけ',
+  permissionsAllMember: 'チームのすべてのメンバー',
+  permissionsInvitedMembers: '招待されたメンバー',
   mermaid: {
     handDrawn: '手描き',
     classic: 'クラシック',
