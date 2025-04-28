@@ -42,6 +42,8 @@ export const useSearchForWhiteListCandidates = (query: { keyword?: string; group
         return lastPage.currPage + 1
       return undefined
     },
+    gcTime: 0,
+    staleTime: 0,
     enabled,
   })
 }
