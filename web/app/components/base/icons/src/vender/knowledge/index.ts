@@ -1,3 +1,4 @@
+export { default as ArrowShape } from './ArrowShape'
 export { default as Economic } from './Economic'
 export { default as FullTextSearch } from './FullTextSearch'
 export { default as HighQuality } from './HighQuality'

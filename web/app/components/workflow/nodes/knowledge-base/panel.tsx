@@ -1,12 +1,17 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
+import IndexMethod from './components/index-method'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = () => {
   return (
-    <div className='mb-2 mt-2 space-y-4 px-4'>
-      Knowledge Base
+    <div>
+      <div className='py-2'>
+        <div className='px-4 py-2'>
+          <IndexMethod />
+        </div>
+      </div>
     </div>
   )
 }
