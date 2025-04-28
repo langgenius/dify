@@ -36,7 +36,13 @@ const Right = ({
 
   const {
     resetToLastRunVar,
+    editInspectVarValue,
   } = useCurrentVars()
+
+  const handleValueChange = (varId: string, value: any) => {
+    if (!currentNodeVar) return
+    editInspectVarValue(currentNodeVar.nodeId, varId, value)
+  }
 
   const resetValue = () => {
     if (!currentNodeVar) return
@@ -109,7 +115,7 @@ const Right = ({
       {/* content */}
       <div className='grow p-2'>
         {!currentNodeVar && <Empty />}
-        {currentNodeVar && <ValueContent currentVar={currentNodeVar.var} />}
+        {currentNodeVar && <ValueContent currentVar={currentNodeVar.var} handleValueChange={handleValueChange} />}
       </div>
     </div>
   )

@@ -49,4 +49,14 @@ export const systemVars: VarInInspect[] = [
     value: 'Hello robot!',
     edited: false,
   },
+  {
+    id: 'sys2',
+    type: VarInInspectType.system,
+    name: 'user_id',
+    description: '',
+    selector: ['sys', 'user_id'],
+    value_type: VarType.string,
+    value: 'djflakjerlkjdlksfjslakjsdfl',
+    edited: false,
+  },
 ]

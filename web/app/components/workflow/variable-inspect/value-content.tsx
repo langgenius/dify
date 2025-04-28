@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-// import { useTranslation } from 'react-i18next'
-import { debounce } from 'lodash-es'
+import { useDebounceFn } from 'ahooks'
 import Textarea from '@/app/components/base/textarea'
 import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
@@ -23,38 +22,14 @@ import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
 
-export const MOCK_DATA = {
-  id: 'var-jfkldjjfkldaf-dfhekdfj',
-  type: 'node',
-  // type: 'conversation',
-  // type: 'environment',
-  name: 'out_put',
-  // value_type: 'string',
-  // value_type: 'number',
-  // value_type: 'object',
-  // value_type: 'array[string]',
-  // value_type: 'array[number]',
-  // value_type: 'array[object]',
-  // value_type: 'file',
-  value_type: 'array[file]',
-  // value: 'tuituitui',
-  // value: ['aaa', 'bbb', 'ccc'],
-  // value: {
-  //   abc: '123',
-  //   def: 456,
-  //   fff: true,
-  // },
-  value: [],
-  edited: true,
-}
-
 type Props = {
   currentVar: VarInInspect
+  handleValueChange: (varId: string, value: any) => void
 }
 
 const ValueContent = ({
-  // currentVar = MOCK_DATA as any, // TODO remove this line
   currentVar,
+  handleValueChange,
 }: Props) => {
   const contentContainerRef = useRef<HTMLDivElement>(null)
   const errorMessageRef = useRef<HTMLDivElement>(null)
@@ -62,6 +37,7 @@ const ValueContent = ({
   const showTextEditor = currentVar.value_type === 'secret' || currentVar.value_type === 'string' || currentVar.value_type === 'number'
   const showJSONEditor = currentVar.value_type === 'object' || currentVar.value_type === 'array[string]' || currentVar.value_type === 'array[number]' || currentVar.value_type === 'array[object]'
   const showFileEditor = currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
+  const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query')
 
   const [value, setValue] = useState<any>()
   const [jsonSchema, setJsonSchema] = useState()
@@ -77,8 +53,11 @@ const ValueContent = ({
       : [],
   )
 
+  const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
+
   // update default value when id changed
   useEffect(() => {
+    console.log('currentVar', currentVar)
     if (showTextEditor) {
       if (!currentVar.value)
         return setValue('')
@@ -107,7 +86,7 @@ const ValueContent = ({
       if (/^-?\d+(\.)?(\d+)?$/.test(value))
         setValue(value)
     }
-    // TODO call api of value update
+    debounceValueChange(currentVar.id, value)
   }
 
   const jsonValueValidate = (value: string, type: string) => {
@@ -152,21 +131,26 @@ const ValueContent = ({
     if (jsonValueValidate(value, currentVar.value_type)) {
       const parsed = JSON.parse(value)
       setJsonSchema(parsed)
-      // TODO call api of value update
+      debounceValueChange(currentVar.id, parsed)
     }
   }
 
-  const handleFileChange = (value: any) => {
-    console.log('value', value)
+  const fileValueValidate = (fileList: any[]) => {
+    if (fileList.every(file => file.upload_file_id))
+      return true
+    return false
+  }
+
+  const handleFileChange = (value: any[]) => {
     setFileValue(value)
-    // TODO check every file upload progress
+    // check every file upload progress
     // invoke update api after every file uploaded
-    if (currentVar.value_type === 'file') {
-      // TODO call api of value update
-    }
-    if (currentVar.value_type === 'array[file]') {
-      // TODO call api of value update
-    }
+    if (!fileValueValidate(value))
+      return
+    if (currentVar.value_type === 'file')
+      debounceValueChange(currentVar.id, value[0])
+    if (currentVar.value_type === 'array[file]')
+      debounceValueChange(currentVar.id, value)
   }
 
   // get editor height
@@ -194,8 +178,8 @@ const ValueContent = ({
       <div className={cn('grow')} style={{ height: `${editorHeight}px` }}>
         {showTextEditor && (
           <Textarea
-            readOnly={currentVar.type === VarInInspectType.environment}
-            disabled={currentVar.type === VarInInspectType.environment}
+            readOnly={textEditorDisabled}
+            disabled={textEditorDisabled}
             className='h-full'
             value={value as any}
             onChange={e => handleTextChange(e.target.value)}
@@ -206,7 +190,7 @@ const ValueContent = ({
             className='overflow-y-auto'
             hideTopMenu
             schema={json}
-            onUpdate={debounce(handleEditorChange)}
+            onUpdate={handleEditorChange}
           />
         )}
         {showFileEditor && (

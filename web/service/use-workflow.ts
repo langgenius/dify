@@ -169,7 +169,7 @@ export const useSysVarValues = (appId: string) => {
       return Promise.resolve(systemVars.map((item) => {
         return {
           ...item,
-          value: `${item.value}${index++}`,
+          value: item.value_type === 'string' ? `${item.value}${index++}` : item.value,
         }
       }))
     },
@@ -212,7 +212,6 @@ export const useEditInspectorVar = (appId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'edit inspector var', appId],
     mutationFn: async (params: {
-      nodeId: string
       varId: string
       name?: string
       value?: any

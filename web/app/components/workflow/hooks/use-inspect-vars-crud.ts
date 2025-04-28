@@ -79,7 +79,6 @@ const useInspectVarsCrud = () => {
 
   const editInspectVarValue = useCallback(async (nodeId: string, varId: string, value: any) => {
     await doEditInspectorVar({
-      nodeId,
       varId,
       value,
     })
@@ -101,7 +100,6 @@ const useInspectVarsCrud = () => {
 
   const renameInspectVarName = async (nodeId: string, varId: string, selector: ValueSelector) => {
     await doEditInspectorVar({
-      nodeId,
       varId,
       name: selector[1],
     })
