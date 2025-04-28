@@ -29,19 +29,25 @@ def create_flask_app_with_configs() -> DifyApp:
 
         # log request data info
         request_id = get_request_id()
-        if "application/json" in request.headers.get("content-type", "").lower():
-            logging.info(
-                f"[before request]|request_id: {request_id},"
-                f" method: {request.method}, url: {request.url}, request_data: {request.get_json()}"
-            )
-        else:
-            logging.info(f"[before request]|request_id: {request_id}, method: {request.method}, url: {request.url}")
+
+        try:
+            if request.method.lower() == "post" and "application/json" in request.headers.get("content-type",
+                                                                                              "").lower():
+                logging.info(
+                    f"[before request]|request_id: {request_id},"
+                    f" method: {request.method}, url: {request.url}, request_data: {request.get_json()}"
+                )
+
+            else:
+                logging.info(f"[before request]|request_id: {request_id}, method: {request.method}, url: {request.url}")
+        except Exception as e:
+            logging.info(f"before_request handler err {e}")
 
     # add extra `request_id` field for every response data
     @dify_app.after_request
     def add_extra_info(resp):
         obj = resp.get_json()
-        if isinstance(obj, dict):
+        if obj is not None and isinstance(obj, dict):
             request_id = get_request_id()
             obj["request_id"] = request_id
             resp.set_data(json.dumps(obj))
