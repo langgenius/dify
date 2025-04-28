@@ -2,17 +2,19 @@ import type { ReactNode } from 'react'
 import { memo } from 'react'
 import cn from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
-import { ArrowShape } from '@/app/components/base/icons/src/vender/knowledge'
 import {
   OptionCardEffectBlue,
+  OptionCardEffectBlueLight,
   OptionCardEffectOrange,
   OptionCardEffectPurple,
 } from '@/app/components/base/icons/src/public/knowledge'
+import { ArrowShape } from '@/app/components/base/icons/src/vender/knowledge'
 
-const EffectMap = {
-  blue: <OptionCardEffectBlue className='absolute left-1 top-1 h-14 w-14 fill-util-colors-indigo-indigo-500 text-util-colors-indigo-indigo-500 opacity-80 blur-[80px]' />,
-  orange: <OptionCardEffectOrange className='absolute left-1 top-1 h-14 w-14 opacity-80 blur-[80px]' />,
-  purple: <OptionCardEffectPurple className='absolute left-1 top-1 h-14 w-14 opacity-80 blur-[80px]' />,
+const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
+  'blue': <OptionCardEffectBlue />,
+  'blue-light': <OptionCardEffectBlueLight />,
+  'orange': <OptionCardEffectOrange />,
+  'purple': <OptionCardEffectPurple />,
 }
 type OptionCardProps = {
   showHighlightBorder?: boolean
@@ -24,7 +26,9 @@ type OptionCardProps = {
   isRecommended?: boolean
   children?: ReactNode
   showChildren?: boolean
-  effectColor?: 'blue' | 'orange' | 'purple'
+  effectColor?: string
+  showEffectColor?: boolean
+  onClick?: () => void
 }
 const OptionCard = ({
   showHighlightBorder,
@@ -36,36 +40,42 @@ const OptionCard = ({
   isRecommended,
   children,
   showChildren,
-  effectColor = 'blue',
+  effectColor,
+  showEffectColor,
+  onClick,
 }: OptionCardProps) => {
   return (
-    <div className={cn(
-      'cursor-pointer rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
-      showHighlightBorder && 'border-[2px] border-components-option-card-option-selected-border',
-    )}>
-      <div className='relative flex p-2'>
+    <div
+      className={cn(
+        'cursor-pointer rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
+        showHighlightBorder && 'border-[2px] border-components-option-card-option-selected-border',
+      )}
+      onClick={onClick}
+    >
+      <div className={cn(
+        'relative flex rounded-t-xl p-2',
+      )}>
         {
-          showChildren && (
-            <ArrowShape className='absolute bottom-[-13px] left-[13px] h-4 w-4 text-components-panel-bg' />
+          effectColor && showEffectColor && (
+            <div className='absolute left-[-2px] top-[-2px] h-14 w-14 rounded-full'>
+              {HEADER_EFFECT_MAP[effectColor]}
+            </div>
           )
         }
         {
-          showChildren && effectColor && EffectMap[effectColor]
-        }
-        {
           icon && (
-            <div className='mr-1 shrink-0 p-[3px]'>
+            <div className='mr-1 flex h-[18px] w-[18px] shrink-0 items-center justify-center'>
               {icon}
             </div>
           )
         }
-        <div className='grow py-1'>
+        <div className='grow py-1 pt-[1px]'>
           <div className='flex items-center'>
             <div className='system-sm-medium flex grow items-center text-text-secondary'>
               {title}
               {
                 isRecommended && (
-                  <Badge>
+                  <Badge className='ml-1 h-4 border-text-accent-secondary text-text-accent-secondary'>
                     Recommend
                   </Badge>
                 )
@@ -92,7 +102,8 @@ const OptionCard = ({
       </div>
       {
         children && showChildren && (
-          <div className='p-3'>
+          <div className='relative rounded-b-xl bg-components-panel-bg p-3'>
+            <ArrowShape className='absolute left-[14px] top-[-11px] h-4 w-4 text-components-panel-bg' />
             {children}
           </div>
         )

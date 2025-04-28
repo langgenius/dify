@@ -4,17 +4,18 @@
 		"isRootNode": true,
 		"name": "svg",
 		"attributes": {
-			"xmlns": "http://www.w3.org/2000/svg",
 			"width": "214",
 			"height": "124",
 			"viewBox": "0 0 214 124",
-			"fill": "none"
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
 		},
 		"children": [
 			{
 				"type": "element",
 				"name": "g",
 				"attributes": {
+					"id": "Effect",
 					"opacity": "0.5",
 					"filter": "url(#filter0_f_6128_89310)"
 				},

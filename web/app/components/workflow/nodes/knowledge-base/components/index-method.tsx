@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiQuestionLine } from '@remixicon/react'
 import {
@@ -7,27 +8,52 @@ import {
 import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
+import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import OptionCard from './option-card'
+import cn from '@/utils/classnames'
 
 const IndexMethod = () => {
   const { t } = useTranslation()
+  const [method, setMethod] = useState('high_quality')
 
   return (
-    <div>
-      <div className='system-sm-semibold-uppercase mb-0.5 flex h-6 items-center text-text-secondary'>Index method</div>
+    <Field
+      fieldTitleProps={{
+        title: 'Index method',
+      }}
+    >
       <div className='space-y-1'>
         <OptionCard
-          icon={<HighQuality className='h-[15px] w-[15px] text-util-colors-orange-orange-500' />}
+          icon={
+            <HighQuality
+              className={cn(
+                'h-[15px] w-[15px] text-text-tertiary',
+                method === 'high_quality' && 'text-util-colors-orange-orange-500',
+              )}
+            />
+          }
           title={t('datasetCreation.stepTwo.qualified')}
           description={t('datasetSettings.form.indexMethodHighQualityTip')}
-          showHighlightBorder
+          showHighlightBorder={method === 'high_quality'}
+          onClick={() => setMethod('high_quality')}
+          isRecommended
         ></OptionCard>
         <OptionCard
-          icon={<Economic className='h-[15px] w-[15px] text-text-tertiary' />}
+          icon={
+            <Economic
+              className={cn(
+                'h-[15px] w-[15px] text-text-tertiary',
+                method === 'economy' && 'text-util-colors-indigo-indigo-500',
+              )}
+            />
+          }
           title={t('datasetSettings.form.indexMethodEconomy')}
           description={t('datasetSettings.form.indexMethodEconomyTip')}
-          showChildren
-          showHighlightBorder
+          showChildren={method === 'economy'}
+          showHighlightBorder={method === 'economy'}
+          onClick={() => setMethod('economy')}
+          effectColor='blue'
+          showEffectColor={method === 'economy'}
         >
           <div className='flex items-center'>
             <div className='flex grow items-center'>
@@ -55,7 +81,7 @@ const IndexMethod = () => {
           </div>
         </OptionCard>
       </div>
-    </div>
+    </Field>
   )
 }
 

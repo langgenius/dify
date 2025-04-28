@@ -1,0 +1,69 @@
+import { useState } from 'react'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
+import Button from '@/app/components/base/button'
+import OptionCard from '../option-card'
+import type { Option } from './type'
+
+type SelectorProps = {
+  options: Option[]
+  value: string
+  onChange: (key: string) => void
+}
+const Selector = ({
+  options,
+  value,
+  onChange,
+}: SelectorProps) => {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <PortalToFollowElem
+      placement='bottom-end'
+      offset={{
+        mainAxis: 0,
+        crossAxis: -8,
+      }}
+      open={open}
+      onOpenChange={setOpen}
+    >
+      <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
+        <Button
+          size='small'
+          variant='ghost-accent'
+        >
+          change
+        </Button>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className='z-10'>
+        <div className='w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]'>
+          <div className='system-sm-semibold px-3 pt-3.5 text-text-primary'>
+            change Chunk Structure
+          </div>
+          <div className='space-y-1 p-3 pt-2'>
+            {
+              options.map(option => (
+                <OptionCard
+                  key={option.key}
+                  icon={option.icon}
+                  title={option.title}
+                  description={option.description}
+                  onClick={() => {
+                    onChange(option.key)
+                    setOpen(false)
+                  }}
+                  showHighlightBorder={value === option.key}
+                ></OptionCard>
+              ))
+            }
+          </div>
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
+  )
+}
+
+export default Selector
