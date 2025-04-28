@@ -145,6 +145,7 @@ jobs:
             **.yml
             **Dockerfile
             dev/**
+            **.*
 
       - name: Super-linter
         uses: super-linter/super-linter/slim@v7
@@ -163,3 +164,6 @@ jobs:
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_XML: true
           VALIDATE_YAML: true
+          # EditorConfig validation
+          VALIDATE_EDITORCONFIG: true
+          EDITORCONFIG_FILE_NAME: .editorconfig-checker.json
