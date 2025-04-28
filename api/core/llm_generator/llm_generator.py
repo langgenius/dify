@@ -10,6 +10,7 @@ from core.llm_generator.prompts import (
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
+    SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
@@ -340,3 +341,37 @@ class LLMGenerator:
 
         answer = cast(str, response.message.content)
         return answer.strip()
+
+    @classmethod
+    def generate_structured_output(cls, tenant_id: str, instruction: str, model_config: dict):
+        model_manager = ModelManager()
+        model_instance = model_manager.get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.get("provider", ""),
+            model=model_config.get("name", ""),
+        )
+
+        prompt_messages = [
+            SystemPromptMessage(content=SYSTEM_STRUCTURED_OUTPUT_GENERATE),
+            UserPromptMessage(content=instruction),
+        ]
+        model_parameters = model_config.get("model_parameters", {})
+
+        try:
+            response = cast(
+                LLMResult,
+                model_instance.invoke_llm(
+                    prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
+                ),
+            )
+
+            generated_json_schema = cast(str, response.message.content)
+            return {"output": generated_json_schema, "error": ""}
+
+        except InvokeError as e:
+            error = str(e)
+            return {"output": "", "error": f"Failed to generate JSON Schema. Error: {error}"}
+        except Exception as e:
+            logging.exception(f"Failed to invoke LLM model, model: {model_config.get('name')}")
+            return {"output": "", "error": f"An unexpected error occurred: {str(e)}"}

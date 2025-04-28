@@ -36,9 +36,8 @@ class RagPipelineService:
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)
             result = retrieval_instance.get_pipeline_templates(language)
             if not result.get("pipeline_templates") and language != "en-US":
-                result = PipelineTemplateRetrievalFactory.get_built_in_pipeline_template_retrieval().fetch_pipeline_templates_from_builtin(
-                    "en-US"
-                )
+                template_retrieval = PipelineTemplateRetrievalFactory.get_built_in_pipeline_template_retrieval()
+                result = template_retrieval.fetch_pipeline_templates_from_builtin("en-US")
             return result.get("pipeline_templates")
         else:
             mode = "customized"
@@ -99,24 +98,23 @@ class RagPipelineService:
         db.delete(customized_template)
         db.commit()
 
-
     def get_draft_workflow(self, pipeline: Pipeline) -> Optional[Workflow]:
-            """
-            Get draft workflow
-            """
-            # fetch draft workflow by rag pipeline
-            workflow = (
-                db.session.query(Workflow)
-                .filter(
-                    Workflow.tenant_id == pipeline.tenant_id, 
-                    Workflow.app_id == pipeline.id,
-                    Workflow.version == "draft",
-                )
-                .first()
+        """
+        Get draft workflow
+        """
+        # fetch draft workflow by rag pipeline
+        workflow = (
+            db.session.query(Workflow)
+            .filter(
+                Workflow.tenant_id == pipeline.tenant_id,
+                Workflow.app_id == pipeline.id,
+                Workflow.version == "draft",
             )
+            .first()
+        )
 
-            # return draft workflow
-            return workflow
+        # return draft workflow
+        return workflow
 
     def get_published_workflow(self, pipeline: Pipeline) -> Optional[Workflow]:
         """
@@ -345,7 +343,7 @@ class RagPipelineService:
         db.session.commit()
 
         return workflow_node_execution
-    
+
     def run_datasource_workflow_node(
         self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account
     ) -> WorkflowNodeExecution:
@@ -616,11 +614,11 @@ class RagPipelineService:
         """
         Get second step parameters of rag pipeline
         """
-        
+
         workflow = self.get_published_workflow(pipeline=pipeline)
         if not workflow:
             raise ValueError("Workflow not initialized")
-        
+
         # get second step node
         pipeline_variables = workflow.pipeline_variables
         if not pipeline_variables:

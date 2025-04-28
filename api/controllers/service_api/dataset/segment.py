@@ -117,14 +117,13 @@ class SegmentApi(DatasetApiResource):
         parser.add_argument("keyword", type=str, default=None, location="args")
         args = parser.parse_args()
 
-        status_list = args["status"]
-        keyword = args["keyword"]
-
         segments, total = SegmentService.get_segments(
             document_id=document_id,
             tenant_id=current_user.current_tenant_id,
             status_list=args["status"],
             keyword=args["keyword"],
+            page=page,
+            limit=limit,
         )
 
         response = {
@@ -160,7 +159,7 @@ class DatasetSegmentApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
         SegmentService.delete_segment(segment, document, dataset)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     def post(self, tenant_id, dataset_id, document_id, segment_id):
@@ -345,7 +344,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
 
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")

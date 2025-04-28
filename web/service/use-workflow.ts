@@ -21,10 +21,14 @@ export const useAppWorkflow = (appID: string) => {
   })
 }
 
-export const useWorkflowConfig = (appId: string) => {
+export const useWorkflowConfig = (appId: string, onSuccess: (v: WorkflowConfigResponse) => void) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'config', appId],
-    queryFn: () => get<WorkflowConfigResponse>(`/apps/${appId}/workflows/draft/config`),
+    queryFn: async () => {
+      const data = await get<WorkflowConfigResponse>(`/apps/${appId}/workflows/draft/config`)
+      onSuccess(data)
+      return data
+    },
   })
 }
 

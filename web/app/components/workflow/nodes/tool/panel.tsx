@@ -17,6 +17,8 @@ import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { useToolIcon } from '@/app/components/workflow/hooks'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-log'
+import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
+import { Type } from '../llm/types'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -51,6 +53,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     handleStop,
     runResult,
     outputSchema,
+    hasObjectOutput,
   } = useConfig(id, data)
   const toolIcon = useToolIcon(data)
   const logsParams = useLogs()
@@ -107,14 +110,14 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           <Form
             className='space-y-4'
             itemClassName='!py-0'
-            fieldLabelClassName='!text-[13px] !font-semibold !text-gray-700 uppercase'
+            fieldLabelClassName='!text-[13px] !font-semibold !text-text-secondary uppercase'
             value={toolSettingValue}
             onChange={setToolSettingValue}
             formSchemas={toolSettingSchema as any}
             isEditMode={false}
             showOnVariableMap={{}}
             validating={false}
-            inputClassName='!bg-gray-50'
+            // inputClassName='!bg-gray-50'
             readonly={readOnly}
           />
         </div>
@@ -134,26 +137,45 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           <>
             <VarItem
               name='text'
-              type='String'
+              type='string'
               description={t(`${i18nPrefix}.outputVars.text`)}
+              isIndent={hasObjectOutput}
             />
             <VarItem
               name='files'
-              type='Array[File]'
+              type='array[file]'
               description={t(`${i18nPrefix}.outputVars.files.title`)}
+              isIndent={hasObjectOutput}
             />
             <VarItem
               name='json'
-              type='Array[Object]'
+              type='array[object]'
               description={t(`${i18nPrefix}.outputVars.json`)}
+              isIndent={hasObjectOutput}
             />
             {outputSchema.map(outputItem => (
-              <VarItem
-                key={outputItem.name}
-                name={outputItem.name}
-                type={outputItem.type}
-                description={outputItem.description}
-              />
+              <div key={outputItem.name}>
+                {outputItem.value?.type === 'object' ? (
+                  <StructureOutputItem
+                    rootClassName='code-sm-semibold text-text-secondary'
+                    payload={{
+                      schema: {
+                        type: Type.object,
+                        properties: {
+                          [outputItem.name]: outputItem.value,
+                        },
+                        additionalProperties: false,
+                      },
+                    }} />
+                ) : (
+                  <VarItem
+                    name={outputItem.name}
+                    type={outputItem.type.toLocaleLowerCase()}
+                    description={outputItem.description}
+                    isIndent={hasObjectOutput}
+                  />
+                )}
+              </div>
             ))}
           </>
         </OutputVars>

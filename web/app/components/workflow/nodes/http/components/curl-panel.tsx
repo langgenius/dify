@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { BodyType, type HttpNodeType, Method } from '../types'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { useNodesInteractions } from '@/app/components/workflow/hooks'
 
@@ -141,9 +142,9 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
       className='!w-[400px] !max-w-[400px] !p-4'
     >
       <div>
-        <textarea
+        <Textarea
           value={inputString}
-          className='my-3 h-40 w-full grow rounded-lg border-0 bg-gray-100 p-3 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+          className='my-3 h-40 w-full grow'
           onChange={e => setInputString(e.target.value)}
           placeholder={t('workflow.nodes.http.curl.placeholder')!}
         />

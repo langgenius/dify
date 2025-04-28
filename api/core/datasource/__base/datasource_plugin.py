@@ -18,10 +18,15 @@ class DatasourcePlugin:
     plugin_unique_identifier: str
     runtime_parameters: Optional[list[DatasourceParameter]]
     entity: DatasourceEntity
-    runtime: DatasourceRuntime    
+    runtime: DatasourceRuntime
 
     def __init__(
-        self, entity: DatasourceEntity, runtime: DatasourceRuntime, tenant_id: str, icon: str, plugin_unique_identifier: str
+        self,
+        entity: DatasourceEntity,
+        runtime: DatasourceRuntime,
+        tenant_id: str,
+        icon: str,
+        plugin_unique_identifier: str,
     ) -> None:
         self.entity = entity
         self.runtime = runtime
@@ -72,7 +77,6 @@ class DatasourcePlugin:
             datasource_parameters=datasource_parameters,
             rag_pipeline_id=rag_pipeline_id,
         )
-
 
     def fork_datasource_runtime(self, runtime: DatasourceRuntime) -> "DatasourcePlugin":
         return DatasourcePlugin(

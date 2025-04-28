@@ -125,7 +125,7 @@ export default class AudioPlayer {
         this.receiveAudioData(value)
       }
     }
-    catch (error) {
+    catch {
       this.isLoadData = false
       this.callback && this.callback('error')
     }

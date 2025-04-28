@@ -39,8 +39,9 @@ class DatasourceEngine:
         """
         try:
             # hit the callback handler
-            workflow_tool_callback.on_datasource_start(datasource_name=datasource.entity.identity.name,
-                                                       datasource_inputs=datasource_parameters)
+            workflow_tool_callback.on_datasource_start(
+                datasource_name=datasource.entity.identity.name, datasource_inputs=datasource_parameters
+            )
 
             if datasource.runtime and datasource.runtime.runtime_parameters:
                 datasource_parameters = {**datasource.runtime.runtime_parameters, **datasource_parameters}
@@ -86,7 +87,6 @@ class DatasourceEngine:
             workflow_tool_callback.on_tool_error(e)
             raise e
 
-
     @staticmethod
     def _convert_datasource_response_to_str(datasource_response: list[DatasourceInvokeMessage]) -> str:
         """
@@ -101,7 +101,10 @@ class DatasourceEngine:
                     f"result link: {cast(DatasourceInvokeMessage.TextMessage, response.message).text}."
                     + " please tell user to check it."
                 )
-            elif response.type in {DatasourceInvokeMessage.MessageType.IMAGE_LINK, DatasourceInvokeMessage.MessageType.IMAGE}:
+            elif response.type in {
+                DatasourceInvokeMessage.MessageType.IMAGE_LINK,
+                DatasourceInvokeMessage.MessageType.IMAGE,
+            }:
                 result += (
                     "image has been created and sent to user already, "
                     + "you do not need to create it, just tell the user to check it now."
@@ -123,7 +126,10 @@ class DatasourceEngine:
         Extract datasource response binary
         """
         for response in datasource_response:
-            if response.type in {DatasourceInvokeMessage.MessageType.IMAGE_LINK, DatasourceInvokeMessage.MessageType.IMAGE}:
+            if response.type in {
+                DatasourceInvokeMessage.MessageType.IMAGE_LINK,
+                DatasourceInvokeMessage.MessageType.IMAGE,
+            }:
                 mimetype = None
                 if not response.meta:
                     raise ValueError("missing meta data")

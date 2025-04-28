@@ -19,6 +19,7 @@ file_fields = {
     "mime_type": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
+    "preview_url": fields.String,
 }
 
 remote_file_info_fields = {

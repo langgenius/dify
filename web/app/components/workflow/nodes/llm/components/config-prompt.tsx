@@ -180,7 +180,7 @@ const ConfigPrompt: FC<Props> = ({
                     })()
                     return (
                       <div key={item.id || index} className='group relative'>
-                        {canDrag && <DragHandle className='absolute left-[-14px] top-2 hidden h-3.5 w-3.5 text-gray-400 group-hover:block' />}
+                        {canDrag && <DragHandle className='absolute left-[-14px] top-2 hidden h-3.5 w-3.5 text-text-quaternary group-hover:block' />}
                         <ConfigPromptItem
                           className={cn(canDrag && 'handle')}
                           headerClassName={cn(canDrag && 'cursor-grab')}

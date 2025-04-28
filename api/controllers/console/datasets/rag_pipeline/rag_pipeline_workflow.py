@@ -147,6 +147,7 @@ class DraftRagPipelineApi(Resource):
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
 
+
 class RagPipelineDraftRunIterationNodeApi(Resource):
     @setup_required
     @login_required
@@ -255,6 +256,7 @@ class DraftRagPipelineRunApi(Resource):
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
 
+
 class RagPipelineDatasourceNodeRunApi(Resource):
     @setup_required
     @login_required
@@ -319,6 +321,7 @@ class RagPipelineDraftNodeRunApi(Resource):
 
         return workflow_node_execution
 
+
 class RagPipelineTaskStopApi(Resource):
     @setup_required
     @login_required
@@ -335,6 +338,7 @@ class RagPipelineTaskStopApi(Resource):
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
 
         return {"result": "success"}
+
 
 class PublishedRagPipelineApi(Resource):
     @setup_required
@@ -649,6 +653,7 @@ class RagPipelineByIdApi(Resource):
 
         return None, 204
 
+
 class RagPipelineSecondStepApi(Resource):
     @setup_required
     @login_required
@@ -662,11 +667,11 @@ class RagPipelineSecondStepApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
         datasource_provider = request.args.get("datasource_provider", required=True, type=str)
-        
+
         rag_pipeline_service = RagPipelineService()
-        return rag_pipeline_service.get_second_step_parameters(pipeline=pipeline, 
-                                                               datasource_provider=datasource_provider
-                                                               )
+        return rag_pipeline_service.get_second_step_parameters(
+            pipeline=pipeline, datasource_provider=datasource_provider
+        )
 
 
 api.add_resource(
@@ -727,4 +732,3 @@ api.add_resource(
     RagPipelineByIdApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>",
 )
-

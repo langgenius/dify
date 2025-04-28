@@ -123,7 +123,7 @@ const ChatVariableModal = ({
       case ChatVarType.Number:
         return value || 0
       case ChatVarType.Object:
-        return formatValueFromObject(objectValue)
+        return editInJSON ? value : formatValueFromObject(objectValue)
       case ChatVarType.ArrayString:
       case ChatVarType.ArrayNumber:
       case ChatVarType.ArrayObject:
@@ -178,7 +178,7 @@ const ChatVariableModal = ({
             })
             setObjectValue(newObjectValue)
           }
-          catch (e) {
+          catch {
             // ignore JSON.parse errors
           }
         }
@@ -209,7 +209,7 @@ const ChatVariableModal = ({
         const newValue = JSON.parse(content)
         setValue(newValue)
       }
-      catch (e) {
+      catch {
         // ignore JSON.parse errors
       }
     }
@@ -322,9 +322,11 @@ const ChatVariableModal = ({
           </div>
           <div className='flex'>
             {type === ChatVarType.String && (
-              <Input
-                placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
+              // Input will remove \n\r, so use Textarea just like description area
+              <textarea
+                className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
                 value={value}
+                placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
                 onChange={e => setValue(e.target.value)}
               />
             )}

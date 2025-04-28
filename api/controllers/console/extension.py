@@ -99,7 +99,7 @@ class APIBasedExtensionDetailAPI(Resource):
 
         APIBasedExtensionService.delete(extension_data_from_db)
 
-        return {"result": "success"}
+        return {"result": "success"}, 204
 
 
 api.add_resource(CodeBasedExtensionAPI, "/code-based-extension")

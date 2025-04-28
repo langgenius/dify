@@ -10,6 +10,7 @@ from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
@@ -24,7 +25,7 @@ def account_initialization_required(view):
         # check account initialization
         account = current_user
 
-        if account.status == "uninitialized":
+        if account.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
 
         return view(*args, **kwargs)
@@ -208,5 +209,18 @@ def enterprise_license_required(view):
             raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
 
         return view(*args, **kwargs)
+
+    return decorated
+
+
+def email_password_login_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_system_features()
+        if features.enable_email_password_login:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
 
     return decorated

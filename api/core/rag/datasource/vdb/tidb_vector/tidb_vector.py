@@ -187,7 +187,6 @@ class TiDBVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
-        filter = kwargs.get("filter")
         distance = 1 - score_threshold
 
         query_vector_str = ", ".join(format(x) for x in query_vector)

@@ -368,8 +368,8 @@ const ConfigContent: FC<Props> = ({
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}
-            setModel={onSingleRetrievalModelChange as any}
-            onCompletionParamsChange={onSingleRetrievalModelParamsChange as any}
+            setModel={onSingleRetrievalModelChange}
+            onCompletionParamsChange={onSingleRetrievalModelParamsChange}
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
           />

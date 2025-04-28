@@ -56,6 +56,7 @@ const translation = {
     viewDetails: '詳細を見る',
     copied: 'コピーしました',
     in: '中',
+    format: 'フォーマット',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',

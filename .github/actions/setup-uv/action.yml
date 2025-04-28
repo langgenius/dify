@@ -1,0 +1,34 @@
+name: Setup UV and Python
+
+inputs:
+  python-version:
+    description: Python version to use and the UV installed with
+    required: true
+    default: '3.12'
+  uv-version:
+    description: UV version to set up
+    required: true
+    default: '0.6.14'
+  uv-lockfile:
+    description: Path to the UV lockfile to restore cache from
+    required: true
+    default: ''
+  enable-cache:
+    required: true
+    default: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: ${{ inputs.uv-version }}
+        python-version: ${{ inputs.python-version }}
+        enable-cache: ${{ inputs.enable-cache }}
+        cache-dependency-glob: ${{ inputs.uv-lockfile }}

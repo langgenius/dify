@@ -1,3 +1,4 @@
+import base64
 import json
 from collections.abc import Mapping
 from copy import deepcopy
@@ -87,6 +88,7 @@ class Executor:
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
+        self.ssl_verify = node_data.ssl_verify
         self.params = []
         self.headers = {}
         self.content = None
@@ -259,7 +261,9 @@ class Executor:
             if self.auth.config.type == "bearer":
                 headers[authorization.config.header] = f"Bearer {authorization.config.api_key}"
             elif self.auth.config.type == "basic":
-                headers[authorization.config.header] = f"Basic {authorization.config.api_key}"
+                credentials = authorization.config.api_key
+                encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+                headers[authorization.config.header] = f"Basic {encoded_credentials}"
             elif self.auth.config.type == "custom":
                 headers[authorization.config.header] = authorization.config.api_key or ""
 
@@ -313,6 +317,7 @@ class Executor:
             "headers": headers,
             "params": self.params,
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
+            "ssl_verify": self.ssl_verify,
             "follow_redirects": True,
             "max_retries": self.max_retries,
         }

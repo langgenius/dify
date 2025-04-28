@@ -8,7 +8,9 @@ from libs.login import current_user
 from models.dataset import Pipeline
 
 
-def get_rag_pipeline(view: Optional[Callable] = None,):
+def get_rag_pipeline(
+    view: Optional[Callable] = None,
+):
     def decorator(view_func):
         @wraps(view_func)
         def decorated_view(*args, **kwargs):

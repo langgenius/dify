@@ -149,7 +149,10 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
     def _extract_slice(
         self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
-        value = int(self.graph_runtime_state.variable_pool.convert_template(self.node_data.extract_by.serial).text) - 1
+        value = int(self.graph_runtime_state.variable_pool.convert_template(self.node_data.extract_by.serial).text)
+        if value < 1:
+            raise ValueError(f"Invalid serial index: must be >= 1, got {value}")
+        value -= 1
         if len(variable.value) > int(value):
             result = variable.value[value]
         else:

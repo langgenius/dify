@@ -161,6 +161,10 @@ const translation = {
       title: 'Opik',
       description: 'Opik is an open-source platform for evaluating, testing, and monitoring LLM applications.',
     },
+    weave: {
+      title: 'Weave',
+      description: 'Weave is an open-source platform for evaluating, testing, and monitoring LLM applications.',
+    },
     inUse: 'In use',
     configProvider: {
       title: 'Config ',
@@ -180,6 +184,17 @@ const translation = {
     noParams: 'No parameters needed',
   },
   showMyCreatedAppsOnly: 'Created by me',
+  structOutput: {
+    moreFillTip: 'Showing max 10 levels of nesting',
+    required: 'Required',
+    LLMResponse: 'LLM Response',
+    configure: 'Configure',
+    notConfiguredTip: 'Structured output has not been configured yet',
+    structured: 'Structured',
+    structuredTip: 'Structured Outputs is a feature that ensures the model will always generate responses that adhere to your supplied JSON Schema',
+    modelNotSupported: 'Model not supported',
+    modelNotSupportedTip: 'The current model does not support this feature and is automatically downgraded to prompt injection.',
+  },
 }
 
 export default translation

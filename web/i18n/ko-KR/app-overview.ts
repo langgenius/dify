@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: '챗봇의 색상 테마를 설정하세요',
         chatColorThemeInverted: '반전',
         invalidHexMessage: '잘못된 16진수 값',
+        invalidPrivacyPolicy: '유효하지 않은 개인정보처리방침 링크입니다. http 또는 https로 시작하는 유효한 링크를 사용해 주세요',
         more: {
           entry: '추가 설정 보기',
           copyright: '저작권',

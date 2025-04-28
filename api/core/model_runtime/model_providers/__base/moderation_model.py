@@ -5,7 +5,7 @@ from pydantic import ConfigDict
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.manager.model import PluginModelManager
+from core.plugin.impl.model import PluginModelClient
 
 
 class ModerationModel(AIModel):
@@ -31,7 +31,7 @@ class ModerationModel(AIModel):
         self.started_at = time.perf_counter()
 
         try:
-            plugin_model_manager = PluginModelManager()
+            plugin_model_manager = PluginModelClient()
             return plugin_model_manager.invoke_moderation(
                 tenant_id=self.tenant_id,
                 user_id=user or "unknown",
