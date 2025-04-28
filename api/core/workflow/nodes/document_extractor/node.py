@@ -11,7 +11,7 @@ import docx
 import pandas as pd
 import pypandoc  # type: ignore
 import pypdfium2  # type: ignore
-import webvtt # type: ignore
+import webvtt  # type: ignore
 import yaml  # type: ignore
 from docx.document import Document
 from docx.oxml.table import CT_Tbl
