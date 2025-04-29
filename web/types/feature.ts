@@ -32,6 +32,22 @@ export type SystemFeatures = {
   is_allow_register: boolean
   is_email_setup: boolean
   license: License
+  branding: {
+    enabled: boolean
+    login_page_logo: string
+    workspace_logo: string
+    favicon: string
+    application_title: string
+  }
+  webapp_auth: {
+    enabled: boolean
+    allow_sso: boolean
+    sso_config: {
+      protocol: SSOProtocol | ''
+    }
+    allow_email_code_login: boolean
+    allow_email_password_login: boolean
+  }
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
@@ -50,5 +66,21 @@ export const defaultSystemFeatures: SystemFeatures = {
   license: {
     status: LicenseStatus.NONE,
     expired_at: '',
+  },
+  branding: {
+    enabled: false,
+    login_page_logo: '',
+    workspace_logo: '',
+    favicon: '',
+    application_title: 'test title',
+  },
+  webapp_auth: {
+    enabled: false,
+    allow_sso: false,
+    sso_config: {
+      protocol: '',
+    },
+    allow_email_code_login: false,
+    allow_email_password_login: false,
   },
 }

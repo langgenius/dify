@@ -15,14 +15,14 @@ import WorkflowToolEmpty from '@/app/components/tools/add-tool-modal/empty'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useAllToolProviders } from '@/service/use-tools'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const ProviderList = () => {
   const { t } = useTranslation()
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
 
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'builtin',
@@ -93,43 +93,47 @@ const ProviderList = () => {
               />
             </div>
           </div>
-          {(filteredCollectionList.length > 0 || activeTab !== 'builtin') && (
-            <div className={cn(
-              'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-              !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
-            )}>
-              {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
-              {filteredCollectionList.map(collection => (
-                <div
-                  key={collection.id}
-                  onClick={() => setCurrentProvider(collection)}
-                >
-                  <Card
-                    className={cn(
-                      'cursor-pointer border-[1.5px] border-transparent',
-                      currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
-                    )}
-                    hideCornerMark
-                    payload={{
-                      ...collection,
-                      brief: collection.description,
-                      org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
-                      name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
-                    } as any}
-                    footer={
-                      <CardMoreInfo
-                        tags={collection.labels}
-                      />
-                    }
-                  />
-                </div>
-              ))}
-              {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty /></div>}
-            </div>
-          )}
-          {!filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('tools.noTools')} className='h-[224px] px-12' />
-          )}
+          {
+            (filteredCollectionList.length > 0 || activeTab !== 'builtin') && (
+              <div className={cn(
+                'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+                !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
+              )}>
+                {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
+                {filteredCollectionList.map(collection => (
+                  <div
+                    key={collection.id}
+                    onClick={() => setCurrentProvider(collection)}
+                  >
+                    <Card
+                      className={cn(
+                        'cursor-pointer border-[1.5px] border-transparent',
+                        currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
+                      )}
+                      hideCornerMark
+                      payload={{
+                        ...collection,
+                        brief: collection.description,
+                        org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
+                        name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
+                      } as any}
+                      footer={
+                        <CardMoreInfo
+                          tags={collection.labels}
+                        />
+                      }
+                    />
+                  </div>
+                ))}
+                {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty /></div>}
+              </div>
+            )
+          }
+          {
+            !filteredCollectionList.length && activeTab === 'builtin' && (
+              <Empty lightCard text={t('tools.noTools')} className='h-[224px] px-12' />
+            )
+          }
           {
             enable_marketplace && activeTab === 'builtin' && (
               <Marketplace
@@ -141,8 +145,8 @@ const ProviderList = () => {
               />
             )
           }
-        </div>
-      </div>
+        </div >
+      </div >
       {currentProvider && !currentProvider.plugin_id && (
         <ProviderDetail
           collection={currentProvider}

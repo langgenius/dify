@@ -6,8 +6,9 @@ on:
       - "main"
       - "deploy/dev"
       - "deploy/enterprise"
-    tags:
-      - "*"
+      - "e-300"
+  release:
+    types: [published]
 
 concurrency:
   group: build-push-${{ github.head_ref || github.run_id }}

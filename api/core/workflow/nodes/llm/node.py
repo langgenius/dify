@@ -1193,14 +1193,12 @@ def _handle_memory_chat_mode(
     *,
     memory: TokenBufferMemory | None,
     memory_config: MemoryConfig | None,
-    model_config: ModelConfigWithCredentialsEntity,
+    model_config: ModelConfigWithCredentialsEntity,  # TODO(-LAN-): Needs to remove
 ) -> Sequence[PromptMessage]:
     memory_messages: Sequence[PromptMessage] = []
     # Get messages from memory for chat model
     if memory and memory_config:
-        rest_tokens = _calculate_rest_token(prompt_messages=[], model_config=model_config)
         memory_messages = memory.get_history_prompt_messages(
-            max_token_limit=rest_tokens,
             message_limit=memory_config.window.size if memory_config.window.enabled else None,
         )
     return memory_messages

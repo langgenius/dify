@@ -48,6 +48,13 @@ type ProviderContextState = {
   enableEducationPlan: boolean
   isEducationWorkspace: boolean
   isEducationAccount: boolean
+  webappCopyrightEnabled: boolean
+  licenseLimit: {
+    workspace_members: {
+      size: number
+      limit: number
+    }
+  }
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
@@ -81,6 +88,13 @@ const ProviderContext = createContext<ProviderContextState>({
   enableEducationPlan: false,
   isEducationWorkspace: false,
   isEducationAccount: false,
+  webappCopyrightEnabled: false,
+  licenseLimit: {
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
+  },
 })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -107,6 +121,13 @@ export const ProviderContextProvider = ({
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
   const [modelLoadBalancingEnabled, setModelLoadBalancingEnabled] = useState(false)
   const [datasetOperatorEnabled, setDatasetOperatorEnabled] = useState(false)
+  const [webappCopyrightEnabled, setWebappCopyrightEnabled] = useState(false)
+  const [licenseLimit, setLicenseLimit] = useState({
+    workspace_members: {
+      size: 0,
+      limit: 0,
+    },
+  })
 
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
@@ -135,6 +156,14 @@ export const ProviderContextProvider = ({
         setModelLoadBalancingEnabled(true)
       if (data.dataset_operator_enabled)
         setDatasetOperatorEnabled(true)
+      if (data.model_load_balancing_enabled)
+        setModelLoadBalancingEnabled(true)
+      if (data.dataset_operator_enabled)
+        setDatasetOperatorEnabled(true)
+      if (data.webapp_copyright_enabled)
+        setWebappCopyrightEnabled(true)
+      if (data.workspace_members)
+        setLicenseLimit({ workspace_members: data.workspace_members })
     }
     catch (error) {
       console.error('Failed to fetch plan info:', error)
@@ -192,6 +221,8 @@ export const ProviderContextProvider = ({
       enableEducationPlan,
       isEducationWorkspace,
       isEducationAccount: isEducationAccount?.result || false,
+      webappCopyrightEnabled,
+      licenseLimit,
     }}>
       {children}
     </ProviderContext.Provider>

@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import {
   RiAccountCircleLine,
   RiArrowRightUpLine,
@@ -26,13 +26,13 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
 import { logout } from '@/service/common'
-import AppContext, { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
-import { LicenseStatus } from '@/types/feature'
 import { IS_CLOUD_EDITION } from '@/config'
 import cn from '@/utils/classnames'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export default function AppSelector() {
   const itemClassName = `
@@ -41,7 +41,7 @@ export default function AppSelector() {
   `
   const router = useRouter()
   const [aboutVisible, setAboutVisible] = useState(false)
-  const systemFeatures = useContextSelector(AppContext, v => v.systemFeatures)
+  const { systemFeatures } = useGlobalPublicStore()
 
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
@@ -144,7 +144,7 @@ export default function AppSelector() {
                     <Support />
                     {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
                   </div>
-                  <div className='p-1'>
+                  {!systemFeatures.branding.enabled && <div className='p-1'>
                     <MenuItem>
                       <Link
                         className={cn(itemClassName, 'group justify-between',
@@ -157,7 +157,7 @@ export default function AppSelector() {
                         <RiArrowRightUpLine className='size-[14px] shrink-0 text-text-tertiary' />
                       </Link>
                     </MenuItem>
-                    {systemFeatures.license.status === LicenseStatus.NONE && <MenuItem>
+                    <MenuItem>
                       <Link
                         className={cn(itemClassName, 'group justify-between',
                           'data-[active]:bg-state-base-hover',
@@ -171,7 +171,7 @@ export default function AppSelector() {
                           <GithubStar className='system-2xs-medium-uppercase text-text-tertiary' />
                         </div>
                       </Link>
-                    </MenuItem>}
+                    </MenuItem>
                     {
                       document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
                         <MenuItem>
@@ -188,7 +188,7 @@ export default function AppSelector() {
                         </MenuItem>
                       )
                     }
-                  </div>
+                  </div>}
                   <MenuItem>
                     <div className='p-1' onClick={() => handleLogout()}>
                       <div

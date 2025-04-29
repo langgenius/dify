@@ -5,7 +5,7 @@ const translation = {
     suffix: 'um deine Marke anzupassen.',
   },
   webapp: {
-    title: 'WebApp Marke anpassen',
+    title: 'web app Marke anpassen',
     removeBrand: 'Entferne Powered by Dify',
     changeLogo: 'Ändere Powered by Markenbild',
     changeLogoTip: 'SVG oder PNG Format mit einer Mindestgröße von 40x40px',

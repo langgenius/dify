@@ -6,25 +6,31 @@ import type { Placement } from '@floating-ui/react'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
+import { useRouter } from 'next/navigation'
+import Divider from '../../base/divider'
+import { removeAccessToken } from '../utils'
+import InfoModal from './info-modal'
 import ActionButton from '@/app/components/base/action-button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import InfoModal from './info-modal'
 import type { SiteInfo } from '@/models/share'
 import cn from '@/utils/classnames'
 
 type Props = {
   data?: SiteInfo
   placement?: Placement
+  hideLogout?: boolean
 }
 
 const MenuDropdown: FC<Props> = ({
   data,
   placement,
+  hideLogout,
 }) => {
+  const router = useRouter()
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
   const openRef = useRef(open)
@@ -36,6 +42,11 @@ const MenuDropdown: FC<Props> = ({
   const handleTrigger = useCallback(() => {
     setOpen(!openRef.current)
   }, [setOpen])
+
+  const handleLogout = useCallback(() => {
+    removeAccessToken()
+    router.replace(`/webapp-signin?redirect_url=${window.location.href}`)
+  }, [router])
 
   const [show, setShow] = useState(false)
 
@@ -72,6 +83,17 @@ const MenuDropdown: FC<Props> = ({
                 }}
                 className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
               >{t('common.userProfile.about')}</div>
+              {false && (
+                <>
+                  <Divider />
+                  <div
+                    onClick={() => {
+                      handleLogout()
+                    }}
+                    className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-destructive hover:bg-state-base-hover'
+                  >{t('common.userProfile.logout')}</div>
+                </>
+              )}
             </div>
           </div>
         </PortalToFollowElemContent>

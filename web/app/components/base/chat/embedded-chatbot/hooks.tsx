@@ -36,6 +36,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { noop } from 'lodash-es'
+import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -66,6 +67,8 @@ function getFormattedChatList(messages: any[]) {
 export const useEmbeddedChatbot = () => {
   const isInstalledApp = false
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', fetchAppInfo)
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({ appId: appInfo?.app_id, isInstalledApp })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp })
 
   const appData = useMemo(() => {
     return appInfo
@@ -364,7 +367,9 @@ export const useEmbeddedChatbot = () => {
 
   return {
     appInfoError,
-    appInfoLoading,
+    appInfoLoading: appInfoLoading || isGettingAccessMode || isCheckingPermission,
+    accessMode: appAccessMode?.accessMode,
+    userCanAccess: userCanAccessResult?.result,
     isInstalledApp,
     allowResetChat,
     appId,

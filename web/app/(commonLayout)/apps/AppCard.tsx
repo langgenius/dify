@@ -4,7 +4,8 @@ import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiMoreFill } from '@remixicon/react'
+import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import Toast, { ToastContext } from '@/app/components/base/toast'
@@ -30,7 +31,9 @@ import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
-import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
+import AccessControl from '@/app/components/app/app-access-control'
+import { AccessMode } from '@/models/access-control'
 
 export type AppCardProps = {
   app: App
@@ -53,6 +56,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showAccessControl, setShowAccessControl] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const onConfirmDelete = useCallback(async () => {
@@ -71,8 +75,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       })
     }
     setShowConfirmDelete(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.id])
+  }, [app.id, mutateApps, notify, onPlanInfoChanged, onRefresh, t])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -176,6 +179,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     setShowSwitchModal(false)
   }
 
+  const onUpdateAccessControl = useCallback(() => {
+    if (onRefresh)
+      onRefresh()
+    mutateApps()
+    setShowAccessControl(false)
+  }, [onRefresh, mutateApps, setShowAccessControl])
+
   const Operations = (props: HtmlContentProps) => {
     const onMouseLeave = async () => {
       props.onClose?.()
@@ -209,6 +219,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       props.onClick?.()
       e.preventDefault()
       setShowConfirmDelete(true)
+    }
+    const onClickAccessControl = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      setShowAccessControl(true)
     }
     const onClickInstalledApp = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -253,6 +269,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
         </button>
         <Divider className="!my-1" />
+        {
+          isCurrentWorkspaceEditor && <>
+            <button className='mx-1 flex h-9 cursor-pointer items-center rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={onClickAccessControl}>
+              <span className='text-sm leading-5 text-text-secondary'>{t('app.accessControl')}</span>
+            </button>
+            <Divider />
+          </>
+        }
         <div
           className='group mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
           onClick={onClickDelete}
@@ -301,6 +325,17 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
               {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
             </div>
+          </div>
+          <div className='flex h-5 w-5 shrink-0 items-center justify-center'>
+            {app.access_mode === AccessMode.PUBLIC && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.anyone')}>
+              <RiGlobalLine className='h-4 w-4 text-text-accent' />
+            </Tooltip>}
+            {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.specific')}>
+              <RiLockLine className='h-4 w-4 text-text-quaternary' />
+            </Tooltip>}
+            {app.access_mode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.organization')}>
+              <RiBuildingLine className='h-4 w-4 text-text-quaternary' />
+            </Tooltip>}
           </div>
         </div>
         <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
@@ -358,7 +393,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   popupClassName={
                     (app.mode === 'completion' || app.mode === 'chat')
                       ? '!w-[256px] translate-x-[-224px]'
-                      : '!w-[160px] translate-x-[-128px]'
+                      : '!w-[216px] translate-x-[-128px]'
                   }
                   className={'!z-20 h-fit'}
                 />
@@ -418,6 +453,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
         />
+      )}
+      {showAccessControl && (
+        <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
       )}
     </>
   )
