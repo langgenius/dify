@@ -7,8 +7,8 @@ on:
       - "deploy/dev"
       - "deploy/enterprise"
       - "e-300"
-  release:
-    types: [published]
+    tags:
+      - "*"
 
 concurrency:
   group: build-push-${{ github.head_ref || github.run_id }}
