@@ -151,7 +151,6 @@ jobs:
             **.yml
             **Dockerfile
             dev/**
-            **.*
 
       - name: Super-linter
         uses: super-linter/super-linter/slim@v7
