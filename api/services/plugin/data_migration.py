@@ -86,9 +86,9 @@ limit 1000"""
                             update_retrieval_model_sql = ", retrieval_model = :retrieval_model"
                             params["retrieval_model"] = json.dumps(retrieval_model)
 
-                        sql = f"""update {table_name} 
-                        set {provider_column_name} = 
-                        concat('{DEFAULT_PLUGIN_ID}/', {provider_column_name}, '/', {provider_column_name}) 
+                        sql = f"""update {table_name}
+                        set {provider_column_name} =
+                        concat('{DEFAULT_PLUGIN_ID}/', {provider_column_name}, '/', {provider_column_name})
                         {update_retrieval_model_sql}
                         where id = :record_id"""
                         conn.execute(db.text(sql), params)
@@ -131,10 +131,10 @@ limit 1000"""
 
         while True:
             sql = f"""
-                SELECT id, {provider_column_name} AS provider_name 
+                SELECT id, {provider_column_name} AS provider_name
                 FROM {table_name}
-                WHERE {provider_column_name} NOT LIKE '%/%' 
-                    AND {provider_column_name} IS NOT NULL 
+                WHERE {provider_column_name} NOT LIKE '%/%'
+                    AND {provider_column_name} IS NOT NULL
                     AND {provider_column_name} != ''
                     AND id > :last_id
                 ORDER BY id ASC
@@ -183,8 +183,8 @@ limit 1000"""
 
                 if batch_updates:
                     update_sql = f"""
-                        UPDATE {table_name} 
-                        SET {provider_column_name} = :updated_value 
+                        UPDATE {table_name}
+                        SET {provider_column_name} = :updated_value
                         WHERE id = :record_id
                     """
                     conn.execute(db.text(update_sql), [{"updated_value": u, "record_id": r} for u, r in batch_updates])

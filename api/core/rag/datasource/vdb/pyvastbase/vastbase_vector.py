@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 """
 
 SQL_CREATE_INDEX = """
-CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx ON {table_name} 
+CREATE INDEX IF NOT EXISTS embedding_cosine_v1_idx ON {table_name}
 USING hnsw (embedding floatvector_cosine_ops) WITH (m = 16, ef_construction = 64);
 """
 
