@@ -54,6 +54,5 @@ class OpenSearchConfig(BaseSettings):
     )
 
     OPENSEARCH_AWS_SERVICE: Optional[Literal["es", "aoss"]] = Field(
-        description="AWS service for OpenSearch (e.g. 'aoss' for OpenSearch Serverless)",
-        default=None
+        description="AWS service for OpenSearch (e.g. 'aoss' for OpenSearch Serverless)", default=None
     )
