@@ -17,8 +17,13 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { supportFunctionCall } from '@/utils/tool-call'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
+  const {
+    deleteNodeInspectorVars,
+    renameInspectVarName,
+  } = useInspectVarsCrud()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange } = useWorkflow()
   const isChatMode = useIsChatMode()
@@ -59,9 +64,14 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     })
     setInputs(newInputs)
 
-    if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload)
+    if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload) {
       handleOutVarRenameChange(id, [id, moreInfo.payload.beforeKey], [id, moreInfo.payload.afterKey!])
-  }, [handleOutVarRenameChange, id, inputs, setInputs])
+      renameInspectVarName(id, moreInfo.payload.beforeKey, moreInfo.payload.afterKey!)
+    }
+    else {
+      deleteNodeInspectorVars(id)
+    }
+  }, [deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, renameInspectVarName, setInputs])
 
   const addExtractParameter = useCallback((payload: Param) => {
     const newInputs = produce(inputs, (draft) => {
@@ -70,7 +80,8 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
       draft.parameters.push(payload)
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [deleteNodeInspectorVars, id, inputs, setInputs])
 
   // model
   const model = inputs.model || {
@@ -145,7 +156,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
       return
     setModelChanged(false)
     handleVisionConfigAfterModelChanged()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisionModel, modelChanged])
 
   const {
