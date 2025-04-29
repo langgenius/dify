@@ -28,9 +28,9 @@ class TestOpenSearchConfig:
         config = OpenSearchConfig(
             host="localhost",
             port=9200,
+            secure=True,
             user="admin",
             password="password",
-            secure=True,
         )
 
         params = config.to_opensearch_params()
@@ -60,10 +60,10 @@ class TestOpenSearchConfig:
         config = OpenSearchConfig(
             host=host,
             port=port,
-            use_aws_managed_iam=True,
+            secure=True,
+            auth_method="aws_managed_iam",
             aws_region=aws_region,
             aws_service=aws_service,
-            secure=True,
         )
 
         params = config.to_opensearch_params()
@@ -86,7 +86,7 @@ class TestOpenSearchVector:
         self.example_doc_id = "example_doc_id"
         self.vector = OpenSearchVector(
             collection_name=self.collection_name,
-            config=OpenSearchConfig(host="localhost", port=9200, user="admin", password="password", secure=False),
+            config=OpenSearchConfig(host="localhost", port=9200, secure=False, user="admin", password="password"),
         )
         self.vector._client = MagicMock()
 
