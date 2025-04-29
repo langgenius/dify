@@ -169,8 +169,6 @@ jobs:
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_XML: true
           VALIDATE_YAML: true
-          # EditorConfig validation
-          VALIDATE_EDITORCONFIG: true
 
       - name: EditorConfig checks
         uses: super-linter/super-linter/slim@v7
