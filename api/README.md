@@ -52,7 +52,7 @@
 5. Install dependencies
 
    ```bash
-   uv sync --dev
+   uv sync --dev --default-index https://pypi.tuna.tsinghua.edu.cn/simple
    ```
 
 6. Run migrate
