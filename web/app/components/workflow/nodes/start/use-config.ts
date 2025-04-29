@@ -10,6 +10,7 @@ import {
   useNodesReadOnly,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const useConfig = (id: string, payload: StartNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -17,6 +18,11 @@ const useConfig = (id: string, payload: StartNodeType) => {
   const isChatMode = useIsChatMode()
 
   const { inputs, setInputs } = useNodeCrud<StartNodeType>(id, payload)
+
+  const {
+    deleteNodeInspectorVars,
+    renameInspectVarName,
+  } = useInspectVarsCrud()
 
   const [isShowAddVarModal, {
     setTrue: showAddVarModal,
@@ -46,8 +52,12 @@ const useConfig = (id: string, payload: StartNodeType) => {
     if (moreInfo?.payload?.type === ChangeType.changeVarName) {
       const changedVar = newList[moreInfo.index]
       handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index].variable], [id, changedVar.variable])
+      renameInspectVarName(id, inputs.variables[moreInfo.index].variable, changedVar.variable)
     }
-  }, [handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
+    else { // edit var type
+      deleteNodeInspectorVars(id)
+    }
+  }, [deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, isVarUsedInNodes, renameInspectVarName, setInputs, showRemoveVarConfirm])
 
   const removeVarInNode = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {
@@ -63,7 +73,8 @@ const useConfig = (id: string, payload: StartNodeType) => {
       draft.variables.push(payload)
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [deleteNodeInspectorVars, id, inputs, setInputs])
   return {
     readOnly,
     isChatMode,

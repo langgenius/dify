@@ -23,6 +23,7 @@ const useInspectVarsCrud = () => {
     getNodeInspectVars,
     setNodeInspectVars,
     setInspectVarValue,
+    getVarId,
     renameInspectVarName: renameInspectVarNameInStore,
     deleteAllInspectVars: deleteAllInspectVarsInStore,
     hasNodeInspectVars,
@@ -100,16 +101,21 @@ const useInspectVarsCrud = () => {
     }
   }, [data, currNodeId, currEditVarId, getNodeInspectVars, editInspectVarValue])
 
-  const renameInspectVarName = async (nodeId: string, varId: string, selector: ValueSelector) => {
+  const renameInspectVarName = async (nodeId: string, oldName: string, newName: string) => {
+    const varId = getVarId(nodeId, oldName)
+    if (!varId)
+      return
+
+    const newSelector = [nodeId, newName]
     await doEditInspectorVar({
       varId,
-      name: selector[1],
+      name: newName,
     })
-    renameInspectVarNameInStore(nodeId, varId, selector)
+    renameInspectVarNameInStore(nodeId, varId, newSelector)
   }
 
-  const editInspectVarValueType = (nodeId: string) => {
-    deleteNodeInspectorVars(nodeId)
+  const editInspectVarValueType = async (nodeId: string) => {
+    return await deleteNodeInspectorVars(nodeId)
   }
 
   const resetToLastRunVar = (nodeId: string, varId: string) => {
