@@ -6,12 +6,13 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Logic,
+  sort: 2,
+  type: BlockEnum.Iteration,
+})
 const nodeDefault: NodeDefault<IterationNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Logic,
-    sort: 2,
-    type: BlockEnum.Iteration,
-  }),
+  metaData,
   defaultValue: {
     start_node_id: '',
     iterator_selector: [],

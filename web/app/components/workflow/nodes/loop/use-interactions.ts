@@ -116,7 +116,6 @@ export const useNodeLoopInteractions = () => {
       const childNodeType = child.data.type as BlockEnum
       const {
         defaultValue,
-        title,
       } = nodesMetaDataMap![childNodeType]
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
       const { newNode } = generateNewNode({
@@ -128,7 +127,7 @@ export const useNodeLoopInteractions = () => {
           _isBundled: false,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${title} ${nodesWithSameType.length + 1}` : title,
+          title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
           loop_id: newNodeId,
 
         },

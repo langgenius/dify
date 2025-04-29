@@ -7,12 +7,13 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Utilities,
+  sort: 2,
+  type: BlockEnum.ListFilter,
+})
 const nodeDefault: NodeDefault<ListFilterNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Utilities,
-    sort: 2,
-    type: BlockEnum.ListFilter,
-  }),
+  metaData,
   defaultValue: {
     variable: [],
     filter_by: {

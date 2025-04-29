@@ -292,13 +292,15 @@ export type NodeOutPutVar = {
 }
 
 export type NodeDefault<T = {}> = {
-  classification: BlockClassificationEnum
-  sort: number
-  type: BlockEnum
-  title: string
-  author: string
-  description?: string
-  helpLinkUri?: string
+  metaData: {
+    classification: BlockClassificationEnum
+    sort: number
+    type: BlockEnum
+    title: string
+    author: string
+    description?: string
+    helpLinkUri?: string
+  }
   defaultValue: Partial<T>
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
 }

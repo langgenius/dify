@@ -6,13 +6,14 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Logic,
+  sort: 1,
+  type: BlockEnum.IfElse,
+  helpLinkUri: 'ifelse',
+})
 const nodeDefault: NodeDefault<IfElseNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Logic,
-    sort: 1,
-    type: BlockEnum.IfElse,
-    helpLinkUri: 'ifelse',
-  }),
+  metaData,
   defaultValue: {
     _targetBranches: [
       {

@@ -7,11 +7,12 @@ import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
 const i18nPrefix = 'workflow'
 
+const metaData = genNodeMetaData({
+  sort: 2,
+  type: BlockEnum.KnowledgeRetrieval,
+})
 const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
-  ...genNodeMetaData({
-    sort: 2,
-    type: BlockEnum.KnowledgeRetrieval,
-  }),
+  metaData,
   defaultValue: {
     query_variable_selector: [],
     dataset_ids: [],

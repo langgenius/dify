@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { generateNewNode } from '@/app/components/workflow/utils'
 import {
   NODE_WIDTH_X_OFFSET,
@@ -11,9 +12,14 @@ import answerDefault from '@/app/components/workflow/nodes/answer/default'
 
 export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
+  const { t } = useTranslation()
 
   const { newNode: startNode } = generateNewNode({
-    data: startDefault.defaultValue as StartNodeType,
+    data: {
+      ...startDefault.defaultValue as StartNodeType,
+      type: startDefault.metaData.type,
+      title: t(`workflow.blocks.${startDefault.metaData.type}`),
+    },
     position: START_INITIAL_POSITION,
   })
 
@@ -27,6 +33,8 @@ export const useWorkflowTemplate = () => {
           query_prompt_template: '{{#sys.query#}}',
         },
         selected: true,
+        type: llmDefault.metaData.type,
+        title: t(`workflow.blocks.${llmDefault.metaData.type}`),
       },
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET,
@@ -39,6 +47,8 @@ export const useWorkflowTemplate = () => {
       data: {
         ...answerDefault.defaultValue,
         answer: `{{#${llmNode.id}.text#}}`,
+        type: answerDefault.metaData.type,
+        title: t(`workflow.blocks.${answerDefault.metaData.type}`),
       },
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET * 2,

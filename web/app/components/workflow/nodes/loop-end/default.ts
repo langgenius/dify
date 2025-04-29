@@ -6,12 +6,13 @@ import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Logic,
+  sort: 2,
+  type: BlockEnum.LoopEnd,
+})
 const nodeDefault: NodeDefault<SimpleNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Logic,
-    sort: 2,
-    type: BlockEnum.LoopEnd,
-  }),
+  metaData,
   defaultValue: {},
   checkValid() {
     return {

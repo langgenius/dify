@@ -6,12 +6,13 @@ import { BlockEnum } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  sort: -1,
+  type: BlockEnum.Tool,
+  helpLinkUri: 'tools',
+})
 const nodeDefault: NodeDefault<ToolNodeType> = {
-  ...genNodeMetaData({
-    sort: -1,
-    type: BlockEnum.Tool,
-    helpLinkUri: 'tools',
-  }),
+  metaData,
   defaultValue: {
     tool_parameters: {},
     tool_configurations: {},

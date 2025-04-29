@@ -6,12 +6,13 @@ import { BlockClassificationEnum } from '@/app/components/workflow/block-selecto
 
 const i18nPrefix = 'workflow'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.QuestionUnderstand,
+  sort: 1,
+  type: BlockEnum.QuestionClassifier,
+})
 const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.QuestionUnderstand,
-    sort: 1,
-    type: BlockEnum.QuestionClassifier,
-  }),
+  metaData,
   defaultValue: {
     query_variable_selector: [],
     model: {

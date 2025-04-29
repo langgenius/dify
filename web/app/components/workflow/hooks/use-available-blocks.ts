@@ -19,7 +19,7 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, inContainer?: boolean) 
   const {
     nodes: availableNodes,
   } = useNodesMetaData()
-  const availableNodesType = useMemo(() => availableNodes.map(node => node.type), [availableNodes])
+  const availableNodesType = useMemo(() => availableNodes.map(node => node.metaData.type), [availableNodes])
   const availablePrevBlocks = useMemo(() => {
     if (!nodeType || nodeType === BlockEnum.Start)
       return []

@@ -6,13 +6,13 @@ import { renderI18nObject } from '@/i18n'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
 
+const metaData = genNodeMetaData({
+  sort: 3,
+  type: BlockEnum.Agent,
+})
 const nodeDefault: NodeDefault<AgentNodeType> = {
-  ...genNodeMetaData({
-    sort: 3,
-    type: BlockEnum.Agent,
-  }),
-  defaultValue: {
-  },
+  metaData,
+  defaultValue: {},
   checkValid(payload, t, moreDataForCheckValid: {
     strategyProvider?: StrategyPluginDetail,
     strategy?: StrategyDetail

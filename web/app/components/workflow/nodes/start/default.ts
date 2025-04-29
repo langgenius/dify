@@ -3,11 +3,12 @@ import type { StartNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
 
+const metaData = genNodeMetaData({
+  sort: 0.1,
+  type: BlockEnum.Start,
+})
 const nodeDefault: NodeDefault<StartNodeType> = {
-  ...genNodeMetaData({
-    sort: 0.1,
-    type: BlockEnum.Start,
-  }),
+  metaData,
   defaultValue: {
     variables: [],
   },

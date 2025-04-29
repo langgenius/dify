@@ -5,12 +5,13 @@ import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Utilities,
+  sort: 1,
+  type: BlockEnum.HttpRequest,
+})
 const nodeDefault: NodeDefault<HttpNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Utilities,
-    sort: 1,
-    type: BlockEnum.HttpRequest,
-  }),
+  metaData,
   defaultValue: {
     variables: [],
     method: Method.get,

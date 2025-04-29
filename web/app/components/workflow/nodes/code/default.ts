@@ -6,12 +6,13 @@ import { BlockClassificationEnum } from '@/app/components/workflow/block-selecto
 
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Transform,
+  sort: 1,
+  type: BlockEnum.Code,
+})
 const nodeDefault: NodeDefault<CodeNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Transform,
-    sort: 1,
-    type: BlockEnum.Code,
-  }),
+  metaData,
   defaultValue: {
     code: '',
     code_language: CodeLanguage.python3,

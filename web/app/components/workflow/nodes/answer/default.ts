@@ -3,11 +3,12 @@ import type { AnswerNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
 
+const metaData = genNodeMetaData({
+  sort: 2.1,
+  type: BlockEnum.Answer,
+})
 const nodeDefault: NodeDefault<AnswerNodeType> = {
-  ...genNodeMetaData({
-    sort: 2.1,
-    type: BlockEnum.Answer,
-  }),
+  metaData,
   defaultValue: {
     variables: [],
     answer: '',

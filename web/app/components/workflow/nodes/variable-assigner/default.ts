@@ -6,12 +6,13 @@ import { BlockClassificationEnum } from '@/app/components/workflow/block-selecto
 
 const i18nPrefix = 'workflow'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Transform,
+  sort: 3,
+  type: BlockEnum.VariableAggregator,
+})
 const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Transform,
-    sort: 3,
-    type: BlockEnum.VariableAggregator,
-  }),
+  metaData,
   defaultValue: {
     output_type: VarType.any,
     variables: [],

@@ -3,11 +3,12 @@ import type { EndNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
 
+const metaData = genNodeMetaData({
+  sort: 2.1,
+  type: BlockEnum.End,
+})
 const nodeDefault: NodeDefault<EndNodeType> = {
-  ...genNodeMetaData({
-    sort: 2.1,
-    type: BlockEnum.End,
-  }),
+  metaData,
   defaultValue: {
     outputs: [],
   },
