@@ -90,5 +90,7 @@ export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]
 export const fetchNodeInspectVars = async (appId: string, nodeId: string): Promise<VarInInspect[]> => {
   // TODO
   console.log('fetchNodeInspectVars', appId, nodeId)
-  return []
+  await sleep(1000)
+  const data = await Promise.resolve(vars)
+  return data
 }

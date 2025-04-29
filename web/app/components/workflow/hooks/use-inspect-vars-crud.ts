@@ -1,5 +1,5 @@
 import { fetchNodeInspectVars } from '@/service/workflow'
-import { useWorkflowStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import type { ValueSelector } from '../types'
 import { VarInInspectType } from '@/types/workflow'
 import {
@@ -17,9 +17,9 @@ import { useCallback, useEffect, useState } from 'react'
 
 const useInspectVarsCrud = () => {
   const workflowStore = useWorkflowStore()
+  const nodesWithInspectVars = useStore(s => s.nodesWithInspectVars)
   const {
     appId,
-    nodesWithInspectVars,
     getNodeInspectVars,
     setNodeInspectVars,
     setInspectVarValue,
