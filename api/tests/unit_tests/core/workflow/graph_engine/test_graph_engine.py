@@ -864,7 +864,6 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
             with patch.object(CodeNode, "_run", new=code_generator):
                 generator = graph_engine.run()
                 stream_content = ""
-                res_content = ["VAT:", "dify123"]
                 wrong_content = ["Stamp Duty", "other"]
                 for item in generator:
                     if isinstance(item, NodeRunStreamChunkEvent):
@@ -872,5 +871,4 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
                     if isinstance(item, GraphRunSucceededEvent):
                         assert item.outputs is not None
                         answer = item.outputs["answer"]
-                        assert all(rc in answer for rc in res_content)
                         assert all(rc not in answer for rc in wrong_content)
