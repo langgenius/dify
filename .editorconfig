@@ -22,7 +22,9 @@ indent_size = 2
 indent_size = 4
 indent_style = space
 
-[*.md]
+# Markdown and MDX are whitespace sensitive languages.
+# Do not remove trailing spaces.
+[*.{md,mdx}]
 trim_trailing_whitespace = false
 
 # Matches multiple files with brace expansion notation
@@ -31,7 +33,7 @@ trim_trailing_whitespace = false
 indent_style = space
 indent_size = 2
 
-# Matches the exact files either package.json or .travis.yml
-[{package.json,.travis.yml}]
+# Matches the exact files package.json
+[package.json]
 indent_style = space
 indent_size = 2

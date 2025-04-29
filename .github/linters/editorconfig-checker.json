@@ -4,7 +4,11 @@
     "IgnoreDefaults": false,
     "SpacesAfterTabs": false,
     "NoColor": false,
-    "Exclude": [],
+    "Exclude": [
+        "^web/public/vs/",
+        "^web/public/pdf.worker.min.mjs$",
+        "web/app/components/base/icons/src/vender/"
+    ],
     "AllowedContentTypes": [],
     "PassedFiles": [],
     "Disable": {
