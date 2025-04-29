@@ -47,7 +47,7 @@ const VariableOrConstantInputField = ({
         <SegmentedControl
           className='mr-1 shrink-0'
           value={variableType}
-          onChange={handleVariableOrConstantChange}
+          onChange={handleVariableOrConstantChange as any}
           options={options as any}
         />
       </div>

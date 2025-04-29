@@ -29,8 +29,8 @@ const Blocks = ({
 
   const groups = useMemo(() => {
     return BLOCK_CLASSIFICATIONS.reduce((acc, classification) => {
-      const list = groupBy(blocks, 'classification')[classification].filter((block) => {
-        return block.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.type)
+      const list = groupBy(blocks, 'metaData.classification')[classification].filter((block) => {
+        return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
       })
 
       return {
@@ -42,7 +42,7 @@ const Blocks = ({
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: string) => {
-    const list = groups[classification].sort((a, b) => a.sort - b.sort)
+    const list = groups[classification].sort((a, b) => a.metaData.sort - b.metaData.sort)
 
     return (
       <div
@@ -59,7 +59,7 @@ const Blocks = ({
         {
           list.map(block => (
             <Tooltip
-              key={block.type}
+              key={block.metaData.type}
               position='right'
               popupClassName='w-[200px]'
               popupContent={(
@@ -67,25 +67,25 @@ const Blocks = ({
                   <BlockIcon
                     size='md'
                     className='mb-2'
-                    type={block.type}
+                    type={block.metaData.type}
                   />
-                  <div className='system-md-medium mb-1 text-text-primary'>{block.title}</div>
-                  <div className='system-xs-regular text-text-tertiary'>{block.description}</div>
+                  <div className='system-md-medium mb-1 text-text-primary'>{block.metaData.title}</div>
+                  <div className='system-xs-regular text-text-tertiary'>{block.metaData.description}</div>
                 </div>
               )}
             >
               <div
-                key={block.type}
+                key={block.metaData.type}
                 className='flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
-                onClick={() => onSelect(block.type)}
+                onClick={() => onSelect(block.metaData.type)}
               >
                 <BlockIcon
                   className='mr-2 shrink-0'
-                  type={block.type}
+                  type={block.metaData.type}
                 />
-                <div className='grow text-sm text-text-secondary'>{block.title}</div>
+                <div className='grow text-sm text-text-secondary'>{block.metaData.title}</div>
                 {
-                  block.type === BlockEnum.LoopEnd && (
+                  block.metaData.type === BlockEnum.LoopEnd && (
                     <Badge
                       text={t('workflow.nodes.loop.loopNode')}
                       className='ml-2 shrink-0'
