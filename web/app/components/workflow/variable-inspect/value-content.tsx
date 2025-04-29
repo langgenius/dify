@@ -73,7 +73,7 @@ const ValueContent = ({
           ? [currentVar.value]
           : [])
     }
-  }, [currentVar, showTextEditor, showJSONEditor, showFileEditor])
+  }, [currentVar.id])
 
   const handleTextChange = (value: string) => {
     if (currentVar.value_type === 'string')

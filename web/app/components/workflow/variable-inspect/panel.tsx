@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
@@ -17,6 +17,7 @@ export type currentVarType = {
   nodeId: string
   nodeType: string
   title: string
+  isValueFetched?: boolean
   var: VarInInspect
 }
 
@@ -33,11 +34,27 @@ const Panel: FC = () => {
     conversationVars,
     systemVars,
     nodesWithInspectVars,
+    fetchInspectVarValue,
   } = useCurrentVars()
+
   const isEmpty = useMemo(() => {
     const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
     return allVars.length === 0
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
+
+  const isCurrentNodeVarValueFetching = useMemo(() => {
+    if (!currentNodeVar) return false
+    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentNodeVar.nodeId)
+    if (!targetNode) return false
+    return !targetNode.isValueFetched
+  }, [currentNodeVar, nodesWithInspectVars])
+
+  const handleNodeVarSelect = useCallback((node: currentVarType) => {
+    setCurrentNodeVar(node)
+    const targetNode = nodesWithInspectVars.find(n => n.nodeId === node.nodeId)
+    if (targetNode && !targetNode.isValueFetched)
+      fetchInspectVarValue([node.nodeId])
+  }, [fetchInspectVarValue, nodesWithInspectVars])
 
   if (isEmpty) {
     return (
@@ -71,12 +88,13 @@ const Panel: FC = () => {
       >
         <Left
           currentNodeVar={currentNodeVar}
-          handleVarSelect={setCurrentNodeVar}
+          handleVarSelect={handleNodeVarSelect}
         />
       </div>
       {/* right */}
       <div className='w-0 grow'>
         <Right
+          isValueFetching={isCurrentNodeVarValueFetching}
           currentNodeVar={currentNodeVar}
           handleOpenMenu={() => setShowLeftPanel(true)}
         />

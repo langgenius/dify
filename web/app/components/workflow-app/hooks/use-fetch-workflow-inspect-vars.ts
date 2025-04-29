@@ -43,6 +43,8 @@ const useSetWorkflowVarsWithValue = () => {
         nodeType: node.data.type,
         title: node.data.title,
         vars: varsUnderTheNode,
+        isSingRunRunning: false,
+        isValueFetched: false,
       }
       return nodeWithVar
     })

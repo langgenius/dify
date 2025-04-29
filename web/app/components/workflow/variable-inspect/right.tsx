@@ -1,4 +1,3 @@
-// import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiArrowGoBackLine,
@@ -17,6 +16,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import Loading from '@/app/components/base/loading'
 import type { currentVarType } from './panel'
 import { VarInInspectType } from '@/types/workflow'
 import cn from '@/utils/classnames'
@@ -24,11 +24,13 @@ import cn from '@/utils/classnames'
 type Props = {
   currentNodeVar?: currentVarType
   handleOpenMenu: () => void
+  isValueFetching?: boolean
 }
 
 const Right = ({
   currentNodeVar,
   handleOpenMenu,
+  isValueFetching,
 }: Props) => {
   const { t } = useTranslation()
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
@@ -115,7 +117,12 @@ const Right = ({
       {/* content */}
       <div className='grow p-2'>
         {!currentNodeVar && <Empty />}
-        {currentNodeVar && <ValueContent currentVar={currentNodeVar.var} handleValueChange={handleValueChange} />}
+        {isValueFetching && (
+          <div className='flex h-full items-center justify-center'>
+            <Loading />
+          </div>
+        )}
+        {currentNodeVar && !isValueFetching && <ValueContent currentVar={currentNodeVar.var} handleValueChange={handleValueChange} />}
       </div>
     </div>
   )
