@@ -15,9 +15,14 @@ import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { IterationNodeType } from './types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { Item } from '@/app/components/base/select'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+import { isEqual } from 'lodash-es'
 
 const DELIMITER = '@@@@@'
 const useConfig = (id: string, payload: IterationNodeType) => {
+  const {
+    deleteNodeInspectorVars,
+  } = useInspectVarsCrud()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { isNodeInIteration } = useIsNodeInIteration(id)
   const isChatMode = useIsChatMode()
@@ -43,6 +48,9 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode)
 
   const handleOutputVarChange = useCallback((output: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
+    if (isEqual(inputs.output_selector, output as ValueSelector))
+      return
+
     const newInputs = produce(inputs, (draft) => {
       draft.output_selector = output as ValueSelector || []
       const outputItemType = varInfo?.type || VarType.string
@@ -61,7 +69,8 @@ const useConfig = (id: string, payload: IterationNodeType) => {
       } as Record<VarType, VarType>)[outputItemType] || VarType.arrayString
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [deleteNodeInspectorVars, id, inputs, setInputs])
 
   // single run
   const iteratorInputKey = `${id}.input_selector`

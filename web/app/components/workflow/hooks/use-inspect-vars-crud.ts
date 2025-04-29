@@ -66,6 +66,7 @@ const useInspectVarsCrud = () => {
   }
 
   const deleteNodeInspectorVars = async (nodeId: string) => {
+    // console.log('delete node inspector vars', nodeId)
     if (hasNodeInspectVars(nodeId))
       await doDeleteNodeInspectorVars(nodeId)
 
@@ -114,10 +115,6 @@ const useInspectVarsCrud = () => {
     renameInspectVarNameInStore(nodeId, varId, newSelector)
   }
 
-  const editInspectVarValueType = async (nodeId: string) => {
-    return await deleteNodeInspectorVars(nodeId)
-  }
-
   const resetToLastRunVar = (nodeId: string, varId: string) => {
     setCurrNodeId(nodeId)
     setCurrEditVarId(varId)
@@ -132,7 +129,6 @@ const useInspectVarsCrud = () => {
     fetchInspectVarValue,
     editInspectVarValue,
     renameInspectVarName,
-    editInspectVarValueType,
     deleteInspectVar,
     deleteNodeInspectorVars,
     deleteAllInspectorVars,
