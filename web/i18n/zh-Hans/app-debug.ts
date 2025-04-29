@@ -435,6 +435,7 @@ const translation = {
     writeOpener: '编写开场白',
     placeholder: '在这里写下你的开场白，你可以使用变量，尝试输入 {{variable}}。',
     openingQuestion: '开场问题',
+    openingQuestionPlaceholder: '可以使用变量，尝试输入 {{variable}}。',
     noDataPlaceHolder:
       '在对话型应用中，让 AI 主动说第一段话可以拉近与用户间的距离。',
     varTip: '你可以使用变量， 试试输入 {{variable}}',

@@ -298,6 +298,7 @@ const translation = {
     add: 'Hinzufügen',
     writeOpener: 'Eröffnung schreiben',
     placeholder: 'Schreiben Sie hier Ihre Eröffnungsnachricht, Sie können Variablen verwenden, versuchen Sie {{Variable}} zu tippen.',
+    openingQuestionPlaceholder: 'Sie können Variablen verwenden, versuchen Sie {{variable}} einzugeben.',
     openingQuestion: 'Eröffnungsfragen',
     noDataPlaceHolder:
       'Den Dialog mit dem Benutzer zu beginnen, kann helfen, in konversationellen Anwendungen eine engere Verbindung mit ihnen herzustellen.',
