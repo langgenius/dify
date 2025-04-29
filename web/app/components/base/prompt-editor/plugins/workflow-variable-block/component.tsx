@@ -144,7 +144,7 @@ const WorkflowVariableBlockComponent = ({
   }
 
   if (!node)
-    return null
+    return Item
 
   return (
     <Tooltip

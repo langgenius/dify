@@ -39,6 +39,7 @@ const Input: FC<InputProps> = ({
   return (
     <div className='relative'>
       <input
+        autoComplete="new-password"
         tabIndex={0}
         className={`
           block h-8 w-full appearance-none rounded-lg border border-transparent bg-components-input-bg-normal px-3 text-sm

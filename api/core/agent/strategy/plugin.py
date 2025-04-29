@@ -4,7 +4,7 @@ from typing import Any, Optional
 from core.agent.entities import AgentInvokeMessage
 from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyParameter
 from core.agent.strategy.base import BaseAgentStrategy
-from core.plugin.manager.agent import PluginAgentManager
+from core.plugin.impl.agent import PluginAgentClient
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
 
 
@@ -42,7 +42,7 @@ class PluginAgentStrategy(BaseAgentStrategy):
         """
         Invoke the agent strategy.
         """
-        manager = PluginAgentManager()
+        manager = PluginAgentClient()
 
         initialized_params = self.initialize_parameters(params)
         params = convert_parameters_to_plugin_format(initialized_params)

@@ -35,7 +35,7 @@ const translation = {
     },
     uploader: {
       title: 'Upload file',
-      button: 'Drag and drop file, or',
+      button: 'Drag and drop file or folder, or',
       browse: 'Browse',
       tip: 'Supports {{supportTypes}}. Max {{size}}MB each.',
       validation: {

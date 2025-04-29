@@ -63,7 +63,7 @@ const ClassList: FC<Props> = ({
           return (
             <Item
               nodeId={nodeId}
-              key={index}
+              key={list[index].id}
               payload={item}
               onChange={handleClassChange(index)}
               onRemove={handleRemoveClass(index)}

@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Завантажити текстовий файл',
-      button: 'Перетягніть файл або',
+      button: 'Перетягніть файли або папки або',
       browse: 'Оберіть',
       tip: 'Підтримуються {{supportTypes}}. Максимум {{size}} МБ кожен.',
       validation: {

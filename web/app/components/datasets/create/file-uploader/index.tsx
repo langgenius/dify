@@ -196,22 +196,68 @@ const FileUploader = ({
     e.stopPropagation()
     e.target === dragRef.current && setDragging(false)
   }
+  type FileWithPath = {
+    relativePath?: string
+  } & File
+  const traverseFileEntry = useCallback(
+    (entry: any, prefix = ''): Promise<FileWithPath[]> => {
+      return new Promise((resolve) => {
+        if (entry.isFile) {
+          entry.file((file: FileWithPath) => {
+            file.relativePath = `${prefix}${file.name}`
+            resolve([file])
+          })
+        }
+        else if (entry.isDirectory) {
+          const reader = entry.createReader()
+          const entries: any[] = []
+          const read = () => {
+            reader.readEntries(async (results: FileSystemEntry[]) => {
+              if (!results.length) {
+                const files = await Promise.all(
+                  entries.map(ent =>
+                    traverseFileEntry(ent, `${prefix}${entry.name}/`),
+                  ),
+                )
+                resolve(files.flat())
+              }
+              else {
+                entries.push(...results)
+                read()
+              }
+            })
+          }
+          read()
+        }
+        else {
+          resolve([])
+        }
+      })
+    },
+    [],
+  )
 
-  const handleDrop = useCallback((e: DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragging(false)
-    if (!e.dataTransfer)
-      return
-
-    let files = [...e.dataTransfer.files] as File[]
-    if (notSupportBatchUpload)
-      files = files.slice(0, 1)
-
-    const validFiles = files.filter(isValid)
-    initialUpload(validFiles)
-  }, [initialUpload, isValid, notSupportBatchUpload])
-
+  const handleDrop = useCallback(
+    async (e: DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setDragging(false)
+      if (!e.dataTransfer) return
+      const nested = await Promise.all(
+        Array.from(e.dataTransfer.items).map((it) => {
+          const entry = (it as any).webkitGetAsEntry?.()
+          if (entry) return traverseFileEntry(entry)
+          const f = it.getAsFile?.()
+          return f ? Promise.resolve([f]) : Promise.resolve([])
+        }),
+      )
+      let files = nested.flat()
+      if (notSupportBatchUpload) files = files.slice(0, 1)
+      const valid = files.filter(isValid)
+      initialUpload(valid)
+    },
+    [initialUpload, isValid, notSupportBatchUpload, traverseFileEntry],
+  )
   const selectHandle = () => {
     if (fileUploader.current)
       fileUploader.current.click()

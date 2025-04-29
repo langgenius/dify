@@ -186,7 +186,7 @@ class AnnotationUpdateDeleteApi(Resource):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         AppAnnotationService.delete_app_annotation(app_id, annotation_id)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class AnnotationBatchImportApi(Resource):

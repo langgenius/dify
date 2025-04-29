@@ -46,14 +46,14 @@ class OutputModeration(BaseModel):
         if not self.thread:
             self.thread = self.start_thread()
 
-    def moderation_completion(self, completion: str, public_event: bool = False) -> str:
+    def moderation_completion(self, completion: str, public_event: bool = False) -> tuple[str, bool]:
         self.buffer = completion
         self.is_final_chunk = True
 
         result = self.moderation(tenant_id=self.tenant_id, app_id=self.app_id, moderation_buffer=completion)
 
         if not result or not result.flagged:
-            return completion
+            return completion, False
 
         if result.action == ModerationAction.DIRECT_OUTPUT:
             final_output = result.preset_response
@@ -61,9 +61,14 @@ class OutputModeration(BaseModel):
             final_output = result.text
 
         if public_event:
-            self.queue_manager.publish(QueueMessageReplaceEvent(text=final_output), PublishFrom.TASK_PIPELINE)
+            self.queue_manager.publish(
+                QueueMessageReplaceEvent(
+                    text=final_output, reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
+                ),
+                PublishFrom.TASK_PIPELINE,
+            )
 
-        return final_output
+        return final_output, True
 
     def start_thread(self) -> threading.Thread:
         buffer_size = dify_config.MODERATION_BUFFER_SIZE
@@ -112,7 +117,12 @@ class OutputModeration(BaseModel):
 
                 # trigger replace event
                 if self.thread_running:
-                    self.queue_manager.publish(QueueMessageReplaceEvent(text=final_output), PublishFrom.TASK_PIPELINE)
+                    self.queue_manager.publish(
+                        QueueMessageReplaceEvent(
+                            text=final_output, reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION
+                        ),
+                        PublishFrom.TASK_PIPELINE,
+                    )
 
                 if result.action == ModerationAction.DIRECT_OUTPUT:
                     break

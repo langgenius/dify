@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import React from 'react'
-import { RiResetLeftLine } from '@remixicon/react'
+import React, { useCallback, useEffect, useState } from 'react'
+import { RiCollapseDiagonal2Line, RiExpandDiagonal2Line, RiResetLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { Theme } from '../theme/theme-context'
 import { CssTransform } from '../theme/utils'
@@ -16,6 +16,7 @@ import cn from '@/utils/classnames'
 
 export type IHeaderProps = {
   isMobile?: boolean
+  allowResetChat?: boolean
   customerIcon?: React.ReactNode
   title: string
   theme?: Theme
@@ -23,6 +24,7 @@ export type IHeaderProps = {
 }
 const Header: FC<IHeaderProps> = ({
   isMobile,
+  allowResetChat,
   customerIcon,
   title,
   theme,
@@ -34,6 +36,44 @@ const Header: FC<IHeaderProps> = ({
     currentConversationId,
     inputsForms,
   } = useEmbeddedChatbotContext()
+
+  const isClient = typeof window !== 'undefined'
+  const isIframe = isClient ? window.self !== window.top : false
+  const [parentOrigin, setParentOrigin] = useState('')
+  const [showToggleExpandButton, setShowToggleExpandButton] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+
+  const handleMessageReceived = useCallback((event: MessageEvent) => {
+    let currentParentOrigin = parentOrigin
+    if (!currentParentOrigin && event.data.type === 'dify-chatbot-config') {
+      currentParentOrigin = event.origin
+      setParentOrigin(event.origin)
+    }
+    if (event.origin !== currentParentOrigin)
+      return
+    if (event.data.type === 'dify-chatbot-config')
+      setShowToggleExpandButton(event.data.payload.isToggledByButton && !event.data.payload.isDraggable)
+  }, [parentOrigin])
+
+  useEffect(() => {
+    if (!isIframe) return
+
+    const listener = (event: MessageEvent) => handleMessageReceived(event)
+    window.addEventListener('message', listener)
+
+    window.parent.postMessage({ type: 'dify-chatbot-iframe-ready' }, '*')
+
+    return () => window.removeEventListener('message', listener)
+  }, [isIframe, handleMessageReceived])
+
+  const handleToggleExpand = useCallback(() => {
+    if (!isIframe || !showToggleExpandButton) return
+    setExpanded(!expanded)
+    window.parent.postMessage({
+      type: 'dify-chatbot-expand-change',
+    }, parentOrigin)
+  }, [isIframe, parentOrigin, showToggleExpandButton, expanded])
+
   if (!isMobile) {
     return (
       <div className='flex h-14 shrink-0 items-center justify-end p-3'>
@@ -57,7 +97,22 @@ const Header: FC<IHeaderProps> = ({
           {currentConversationId && (
             <Divider type='vertical' className='h-3.5' />
           )}
-          {currentConversationId && (
+          {
+            showToggleExpandButton && (
+              <Tooltip
+                popupContent={expanded ? t('share.chat.collapse') : t('share.chat.expand')}
+              >
+                <ActionButton size='l' onClick={handleToggleExpand}>
+                  {
+                    expanded
+                      ? <RiCollapseDiagonal2Line className='h-[18px] w-[18px]' />
+                      : <RiExpandDiagonal2Line className='h-[18px] w-[18px]' />
+                  }
+                </ActionButton>
+              </Tooltip>
+            )
+          }
+          {currentConversationId && allowResetChat && (
             <Tooltip
               popupContent={t('share.chat.resetChat')}
             >
@@ -89,7 +144,22 @@ const Header: FC<IHeaderProps> = ({
         </div>
       </div>
       <div className='flex items-center gap-1'>
-        {currentConversationId && (
+        {
+          showToggleExpandButton && (
+            <Tooltip
+              popupContent={expanded ? t('share.chat.collapse') : t('share.chat.expand')}
+            >
+              <ActionButton size='l' onClick={handleToggleExpand}>
+                {
+                  expanded
+                    ? <RiCollapseDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                    : <RiExpandDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
+                }
+              </ActionButton>
+            </Tooltip>
+          )
+        }
+        {currentConversationId && allowResetChat && (
           <Tooltip
             popupContent={t('share.chat.resetChat')}
           >

@@ -80,3 +80,20 @@ class OpenDALStorage(BaseStorage):
             logger.debug(f"file {filename} deleted")
             return
         logger.debug(f"file {filename} not found, skip delete")
+
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        if not self.exists(path):
+            raise FileNotFoundError("Path not found")
+
+        all_files = self.op.scan(path=path)
+        if files and directories:
+            logger.debug(f"files and directories on {path} scanned")
+            return [f.path for f in all_files]
+        if files:
+            logger.debug(f"files on {path} scanned")
+            return [f.path for f in all_files if not f.path.endswith("/")]
+        elif directories:
+            logger.debug(f"directories on {path} scanned")
+            return [f.path for f in all_files if f.path.endswith("/")]
+        else:
+            raise ValueError("At least one of files or directories must be True")
