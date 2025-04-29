@@ -13,7 +13,8 @@ import Datasets from './Datasets'
 import DatasetFooter from './DatasetFooter'
 import ApiServer from '../../components/develop/ApiServer'
 import Doc from './Doc'
-import TabSliderNew from '@/app/components/base/tab-slider-new'
+import SegmentedControl from '@/app/components/base/segmented-control'
+import { RiBook2Line, RiTerminalBoxLine } from '@remixicon/react'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import Button from '@/app/components/base/button'
@@ -42,8 +43,10 @@ const Container = () => {
 
   const options = useMemo(() => {
     return [
-      { value: 'dataset', text: t('dataset.datasets') },
-      ...(currentWorkspace.role === 'dataset_operator' ? [] : [{ value: 'api', text: t('dataset.datasetsApi') }]),
+      { value: 'dataset', text: t('dataset.datasets'), Icon: RiBook2Line, count: 1 },
+      ...(currentWorkspace.role === 'dataset_operator' ? [] : [{
+        value: 'api', text: t('dataset.datasetsApi'), Icon: RiTerminalBoxLine, count: 5,
+      }]),
     ]
   }, [currentWorkspace.role, t])
 
@@ -85,11 +88,13 @@ const Container = () => {
 
   return (
     <div ref={containerRef} className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
-      <div className='sticky top-0 z-10 flex flex-wrap justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]'>
-        <TabSliderNew
+      <div className='sticky top-0 z-10 flex items-center justify-between gap-x-1 bg-background-body px-12 pb-2 pt-4'>
+        <SegmentedControl
           value={activeTab}
-          onChange={newActiveTab => setActiveTab(newActiveTab)}
+          onChange={newActiveTab => setActiveTab(newActiveTab as string)}
           options={options}
+          size='large'
+          activeClassName='text-text-primary'
         />
         {activeTab === 'dataset' && (
           <div className='flex items-center justify-center gap-2'>
