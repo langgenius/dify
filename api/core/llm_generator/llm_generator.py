@@ -24,7 +24,6 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.nodes.llm.exc import LLMNodeError
 
 
 class LLMGenerator:
@@ -372,7 +371,7 @@ class LLMGenerator:
             raw_content = response.message.content
 
             if not isinstance(raw_content, str):
-                raise LLMNodeError(f"LLM response content must be a string, got: {type(raw_content)}")
+                raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
 
             try:
                 parsed_content = json.loads(raw_content)
@@ -380,7 +379,7 @@ class LLMGenerator:
                 parsed_content = json_repair.loads(raw_content)
 
             if not isinstance(parsed_content, dict | list):
-                raise LLMNodeError(f"Failed to parse structured output from llm: {raw_content}")
+                raise ValueError(f"Failed to parse structured output from llm: {raw_content}")
 
             generated_json_schema = json.dumps(parsed_content, indent=2, ensure_ascii=False)
             return {"output": generated_json_schema, "error": ""}
