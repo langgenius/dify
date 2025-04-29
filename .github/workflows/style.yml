@@ -11,6 +11,8 @@ concurrency:
 
 permissions:
   checks: write
+  statuses: write
+  contents: read
 
 
 jobs:
@@ -180,3 +182,4 @@ jobs:
           IGNORE_GITIGNORED_FILES: true
           # EditorConfig validation
           VALIDATE_EDITORCONFIG: true
+          EDITORCONFIG_FILE_NAME: editorconfig-checker.json
