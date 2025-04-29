@@ -1232,7 +1232,6 @@ dependencies = [
     { name = "tokenizers" },
     { name = "transformers" },
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
-    { name = "validators" },
     { name = "weave" },
     { name = "webvtt-py" },
     { name = "yarl" },
@@ -1403,7 +1402,6 @@ requires-dist = [
     { name = "tokenizers", specifier = "~=0.15.0" },
     { name = "transformers", specifier = "~=4.35.0" },
     { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.16.1" },
-    { name = "validators", specifier = "==0.21.0" },
     { name = "weave", specifier = "~=0.51.34" },
     { name = "webvtt-py", specifier = "~=0.5.1" },
     { name = "yarl", specifier = "~=1.18.3" },
@@ -1493,7 +1491,7 @@ vdb = [
     { name = "tidb-vector", specifier = "==0.0.9" },
     { name = "upstash-vector", specifier = "==0.6.0" },
     { name = "volcengine-compat", specifier = "~=1.0.156" },
-    { name = "weaviate-client", specifier = "~=3.21.0" },
+    { name = "weaviate-client", specifier = "~=3.24.0" },
     { name = "xinference-client", specifier = "~=1.2.2" },
 ]
 
@@ -6087,11 +6085,11 @@ wheels = [
 
 [[package]]
 name = "validators"
-version = "0.21.0"
+version = "0.34.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/1f/c5/4095e7a5a6fecc2eca953ad058a3609135d833f986f84951f7e26790d651/validators-0.21.0.tar.gz", hash = "sha256:245b98ab778ed9352a7269c6a8f6c2a839bed5b2a7e3e60273ce399d247dd4b3", size = 20937 }
+sdist = { url = "https://files.pythonhosted.org/packages/64/07/91582d69320f6f6daaf2d8072608a4ad8884683d4840e7e4f3a9dbdcc639/validators-0.34.0.tar.gz", hash = "sha256:647fe407b45af9a74d245b943b18e6a816acf4926974278f6dd617778e1e781f", size = 70955 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/50/18dbf2ac594234ee6249bfe3425fa424c18eeb96f29dcd47f199ed6c51bc/validators-0.21.0-py3-none-any.whl", hash = "sha256:3470db6f2384c49727ee319afa2e97aec3f8fad736faa6067e0fd7f9eaf2c551", size = 27686 },
+    { url = "https://files.pythonhosted.org/packages/6e/78/36828a4d857b25896f9774c875714ba4e9b3bc8a92d2debe3f4df3a83d4f/validators-0.34.0-py3-none-any.whl", hash = "sha256:c804b476e3e6d3786fa07a30073a4ef694e617805eb1946ceee3fe5a9b8b1321", size = 43536 },
 ]
 
 [[package]]
@@ -6221,17 +6219,16 @@ wheels = [
 
 [[package]]
 name = "weaviate-client"
-version = "3.21.0"
+version = "3.24.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "authlib" },
     { name = "requests" },
-    { name = "tqdm" },
     { name = "validators" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b4/a5/c6777a8507249d7a63f4f5d9696eb5f45beac87db0eddfa4438d408cc3b4/weaviate-client-3.21.0.tar.gz", hash = "sha256:ec94ac554883c765e94da8b2947c4f0fa4a0378ed3bbe9f3653df3a5b1745a6d", size = 186970 }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/c1/3285a21d8885f2b09aabb65edb9a8e062a35c2d7175e1bb024fa096582ab/weaviate-client-3.24.2.tar.gz", hash = "sha256:6914c48c9a7e5ad0be9399271f9cb85d6f59ab77476c6d4e56a3925bf149edaa", size = 199332 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/5b/57b55ad36eb071b57e79f1ea7fba5bfe6a2fe49702607f56726569665d60/weaviate_client-3.21.0-py3-none-any.whl", hash = "sha256:420444ded7106fb000f4f8b2321b5f5fa2387825aa7a303d702accf61026f9d2", size = 99944 },
+    { url = "https://files.pythonhosted.org/packages/ab/98/3136d05f93e30cf29e1db280eaadf766df18d812dfe7994bcced653b2340/weaviate_client-3.24.2-py3-none-any.whl", hash = "sha256:bc50ca5fcebcd48de0d00f66700b0cf7c31a97c4cd3d29b4036d77c5d1d9479b", size = 107968 },
 ]
 
 [[package]]
