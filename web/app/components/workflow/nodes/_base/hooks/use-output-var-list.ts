@@ -17,6 +17,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { getDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
+import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 
 type Params<T> = {
   id: string
@@ -34,6 +35,11 @@ function useOutputVarList<T>({
   outputKeyOrders = [],
   onOutputKeyOrdersChange,
 }: Params<T>) {
+  const {
+    deleteNodeInspectorVars,
+    renameInspectVarName,
+  } = useInspectVarsCrud()
+
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
 
   const handleVarsChange = useCallback((newVars: OutputVar, changedIndex?: number, newKey?: string) => {
@@ -52,9 +58,14 @@ function useOutputVarList<T>({
       onOutputKeyOrdersChange(newOutputKeyOrders)
     }
 
-    if (newKey)
+    if (newKey) {
       handleOutVarRenameChange(id, [id, outputKeyOrders[changedIndex!]], [id, newKey])
-  }, [inputs, setInputs, handleOutVarRenameChange, id, outputKeyOrders, varKey, onOutputKeyOrdersChange])
+      renameInspectVarName(id, outputKeyOrders[changedIndex!], newKey)
+    }
+    else if (changedIndex === undefined) {
+      deleteNodeInspectorVars(id)
+    }
+  }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange, handleOutVarRenameChange, id, renameInspectVarName, deleteNodeInspectorVars])
 
   const generateNewKey = useCallback(() => {
     let keyIndex = Object.keys((inputs as any)[varKey]).length + 1
@@ -78,7 +89,8 @@ function useOutputVarList<T>({
     })
     setInputs(newInputs)
     onOutputKeyOrdersChange([...outputKeyOrders, newKey])
-  }, [generateNewKey, inputs, setInputs, onOutputKeyOrdersChange, outputKeyOrders, varKey])
+    deleteNodeInspectorVars(id!)
+  }, [generateNewKey, inputs, setInputs, onOutputKeyOrdersChange, outputKeyOrders, deleteNodeInspectorVars, id, varKey])
 
   const [isShowRemoveVarConfirm, {
     setTrue: showRemoveVarConfirm,
