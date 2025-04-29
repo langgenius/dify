@@ -72,7 +72,7 @@ class ExternalDatasetService:
 
         endpoint = f"{settings['endpoint']}/retrieval"
         api_key = settings["api_key"]
-        
+
         parsed_url = urlparse(endpoint)
         if not all([parsed_url.scheme, parsed_url.netloc]):
             if not endpoint.startswith("http://") and not endpoint.startswith("https://"):
