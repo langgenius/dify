@@ -1,3 +1,5 @@
+import React from 'react'
+
 type LinkProps = {
   Icon: React.ComponentType<{ className?: string }>
   text: string
@@ -23,4 +25,4 @@ const Link = ({
   )
 }
 
-export default Link
+export default React.memo(Link)
