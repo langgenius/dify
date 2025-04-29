@@ -25,6 +25,7 @@ const translation = {
   wordCount: ' k words',
   appCount: ' linked apps',
   createDataset: 'Create Knowledge',
+  createFromPipeline: 'Create from Knowledge Pipeline',
   createNewExternalAPI: 'Create a new External Knowledge API',
   noExternalKnowledge: 'There is no External Knowledge API yet, click here to create',
   createExternalAPI: 'Add an External Knowledge API',

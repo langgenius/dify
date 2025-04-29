@@ -43,9 +43,9 @@ const Container = () => {
 
   const options = useMemo(() => {
     return [
-      { value: 'dataset', text: t('dataset.datasets'), Icon: RiBook2Line, count: 1 },
+      { value: 'dataset', text: t('dataset.datasets'), Icon: RiBook2Line },
       ...(currentWorkspace.role === 'dataset_operator' ? [] : [{
-        value: 'api', text: t('dataset.datasetsApi'), Icon: RiTerminalBoxLine, count: 5,
+        value: 'api', text: t('dataset.datasetsApi'), Icon: RiTerminalBoxLine,
       }]),
     ]
   }, [currentWorkspace.role, t])
