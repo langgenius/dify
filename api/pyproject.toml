@@ -81,7 +81,6 @@ dependencies = [
     "tokenizers~=0.15.0",
     "transformers~=4.35.0",
     "unstructured[docx,epub,md,ppt,pptx]~=0.16.1",
-    "validators==0.34.0",
     "weave~=0.51.34",
     "yarl~=1.18.3",
     "webvtt-py~=0.5.1",

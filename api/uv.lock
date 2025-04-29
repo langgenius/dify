@@ -1232,7 +1232,6 @@ dependencies = [
     { name = "tokenizers" },
     { name = "transformers" },
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
-    { name = "validators" },
     { name = "weave" },
     { name = "webvtt-py" },
     { name = "yarl" },
@@ -1403,7 +1402,6 @@ requires-dist = [
     { name = "tokenizers", specifier = "~=0.15.0" },
     { name = "transformers", specifier = "~=4.35.0" },
     { name = "unstructured", extras = ["docx", "epub", "md", "ppt", "pptx"], specifier = "~=0.16.1" },
-    { name = "validators", specifier = "==0.34.0" },
     { name = "weave", specifier = "~=0.51.34" },
     { name = "webvtt-py", specifier = "~=0.5.1" },
     { name = "yarl", specifier = "~=1.18.3" },
@@ -4052,16 +4050,16 @@ wheels = [
 
 [[package]]
 name = "protobuf"
-version = "4.25.7"
+version = "4.25.6"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/74/63/84fdeac1f03864c2b8b9f0b7fe711c4af5f95759ee281d2026530086b2f5/protobuf-4.25.7.tar.gz", hash = "sha256:28f65ae8c14523cc2c76c1e91680958700d3eac69f45c96512c12c63d9a38807", size = 380612 }
+sdist = { url = "https://files.pythonhosted.org/packages/48/d5/cccc7e82bbda9909ced3e7a441a24205ea07fea4ce23a772743c0c7611fa/protobuf-4.25.6.tar.gz", hash = "sha256:f8cfbae7c5afd0d0eaccbe73267339bff605a2315860bb1ba08eb66670a9a91f", size = 380631 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/ed/9a58076cfb8edc237c92617f1d3744660e9b4457d54f3c2fdf1a4bbae5c7/protobuf-4.25.7-cp310-abi3-win32.whl", hash = "sha256:dc582cf1a73a6b40aa8e7704389b8d8352da616bc8ed5c6cc614bdd0b5ce3f7a", size = 392457 },
-    { url = "https://files.pythonhosted.org/packages/28/b3/e00870528029fe252cf3bd6fa535821c276db3753b44a4691aee0d52ff9e/protobuf-4.25.7-cp310-abi3-win_amd64.whl", hash = "sha256:cd873dbddb28460d1706ff4da2e7fac175f62f2a0bebc7b33141f7523c5a2399", size = 413446 },
-    { url = "https://files.pythonhosted.org/packages/60/1d/f450a193f875a20099d4492d2c1cb23091d65d512956fb1e167ee61b4bf0/protobuf-4.25.7-cp37-abi3-macosx_10_9_universal2.whl", hash = "sha256:4c899f09b0502eb39174c717ccf005b844ea93e31137c167ddcacf3e09e49610", size = 394248 },
-    { url = "https://files.pythonhosted.org/packages/c8/b8/ea88e9857484a0618c74121618b9e620fc50042de43cdabbebe1b93a83e0/protobuf-4.25.7-cp37-abi3-manylinux2014_aarch64.whl", hash = "sha256:6d2f5dede3d112e573f0e5f9778c0c19d9f9e209727abecae1d39db789f522c6", size = 293717 },
-    { url = "https://files.pythonhosted.org/packages/a7/81/d0b68e9a9a76804113b6dedc6fffed868b97048bbe6f1bedc675bdb8523c/protobuf-4.25.7-cp37-abi3-manylinux2014_x86_64.whl", hash = "sha256:d41fb7ae72a25fcb79b2d71e4247f0547a02e8185ed51587c22827a87e5736ed", size = 294636 },
-    { url = "https://files.pythonhosted.org/packages/17/d7/1e7c80cb2ea2880cfe38580dcfbb22b78b746640c9c13fc3337a6967dc4c/protobuf-4.25.7-py3-none-any.whl", hash = "sha256:e9d969f5154eaeab41404def5dcf04e62162178f4b9de98b2d3c1c70f5f84810", size = 156468 },
+    { url = "https://files.pythonhosted.org/packages/42/41/0ff3559d9a0fbdb37c9452f2b84e61f7784d8d7b9850182c7ef493f523ee/protobuf-4.25.6-cp310-abi3-win32.whl", hash = "sha256:61df6b5786e2b49fc0055f636c1e8f0aff263808bb724b95b164685ac1bcc13a", size = 392454 },
+    { url = "https://files.pythonhosted.org/packages/79/84/c700d6c3f3be770495b08a1c035e330497a31420e4a39a24c22c02cefc6c/protobuf-4.25.6-cp310-abi3-win_amd64.whl", hash = "sha256:b8f837bfb77513fe0e2f263250f423217a173b6d85135be4d81e96a4653bcd3c", size = 413443 },
+    { url = "https://files.pythonhosted.org/packages/b7/03/361e87cc824452376c2abcef0eabd18da78a7439479ec6541cf29076a4dc/protobuf-4.25.6-cp37-abi3-macosx_10_9_universal2.whl", hash = "sha256:6d4381f2417606d7e01750e2729fe6fbcda3f9883aa0c32b51d23012bded6c91", size = 394246 },
+    { url = "https://files.pythonhosted.org/packages/64/d5/7dbeb69b74fa88f297c6d8f11b7c9cef0c2e2fb1fdf155c2ca5775cfa998/protobuf-4.25.6-cp37-abi3-manylinux2014_aarch64.whl", hash = "sha256:5dd800da412ba7f6f26d2c08868a5023ce624e1fdb28bccca2dc957191e81fb5", size = 293714 },
+    { url = "https://files.pythonhosted.org/packages/d4/f0/6d5c100f6b18d973e86646aa5fc09bc12ee88a28684a56fd95511bceee68/protobuf-4.25.6-cp37-abi3-manylinux2014_x86_64.whl", hash = "sha256:4434ff8bb5576f9e0c78f47c41cdf3a152c0b44de475784cd3fd170aef16205a", size = 294634 },
+    { url = "https://files.pythonhosted.org/packages/71/eb/be11a1244d0e58ee04c17a1f939b100199063e26ecca8262c04827fe0bf5/protobuf-4.25.6-py3-none-any.whl", hash = "sha256:07972021c8e30b870cfc0863409d033af940213e0e7f64e27fe017b929d2c9f7", size = 156466 },
 ]
 
 [[package]]
@@ -6199,14 +6197,13 @@ wheels = [
 
 [[package]]
 name = "weave"
-version = "0.51.44"
+version = "0.51.43"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "diskcache" },
     { name = "emoji" },
     { name = "gql", extra = ["aiohttp", "requests"] },
     { name = "jsonschema" },
-    { name = "nest-asyncio" },
     { name = "numpy" },
     { name = "packaging" },
     { name = "pydantic" },
@@ -6215,9 +6212,9 @@ dependencies = [
     { name = "uuid-utils" },
     { name = "wandb" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/16/1e4b71078d1af1bfa31dd6f5f28c41a83b3ebf6c9733b18037b40f34ad95/weave-0.51.44.tar.gz", hash = "sha256:6948e1410a52ea3c88e05c12bc177b620152d562672492637fa29304816a59c1", size = 375532 }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/b4/8fb1e21bc0b0442be9c4c5e4644847596cd75a35a313a5887f1eadda8da2/weave-0.51.43.tar.gz", hash = "sha256:bab4ba6f7ba33f1975e5f6399b7fc4ad6b25c0e2cd22d197bb9358a7b9596b91", size = 368936 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/5e/5a33df9eeb1a7fcd520b7300bdf6859e48c4bb4c912942cd76232face3fb/weave-0.51.44-py3-none-any.whl", hash = "sha256:0b88ef54adc71b64e0aeb8a506ded424cba564eaa1cd5888fc1201e65b53ea6e", size = 481509 },
+    { url = "https://files.pythonhosted.org/packages/a8/40/1e374d3f1f8389a4228426b5a87aae7428a7eb74dfa633de98d86796eb41/weave-0.51.43-py3-none-any.whl", hash = "sha256:2e9faa0e21bd5a6fea363142891ee4f2e347951b98f0d7082acb0273432cb940", size = 473685 },
 ]
 
 [[package]]
