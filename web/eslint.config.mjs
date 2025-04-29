@@ -167,7 +167,7 @@ export default combine(
       'sonarjs/max-lines': 'warn', // max 1000 lines
       'sonarjs/no-variable-usage-before-declaration': 'error',
       // security
-      // eslint-disable-next-line sonarjs/no-hardcoded-passwords
+
       'sonarjs/no-hardcoded-passwords': 'off', // detect the wrong code that is not password.
       'sonarjs/no-hardcoded-secrets': 'off',
       'sonarjs/pseudo-random': 'off',

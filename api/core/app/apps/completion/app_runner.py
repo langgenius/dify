@@ -152,9 +152,6 @@ class CompletionAppRunner(AppRunner):
         if hosting_moderation_result:
             return
 
-        # Re-calculate the max tokens if sum(prompt_token +  max_tokens) over model token limit
-        self.recalc_llm_max_tokens(model_config=application_generate_entity.model_conf, prompt_messages=prompt_messages)
-
         # Invoke model
         model_instance = ModelInstance(
             provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,

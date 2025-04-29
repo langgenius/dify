@@ -24,6 +24,7 @@ import cn from '@/utils/classnames'
 
 const Chatbot = () => {
   const {
+    userCanAccess,
     isMobile,
     allowResetChat,
     appInfoError,
@@ -65,6 +66,9 @@ const Chatbot = () => {
       </>
     )
   }
+
+  if (!userCanAccess)
+    return <AppUnavailable code={403} unknownReason='no permission.' />
 
   if (appInfoError) {
     return (
@@ -137,6 +141,8 @@ const EmbeddedChatbotWrapper = () => {
     appInfoError,
     appInfoLoading,
     appData,
+    accessMode,
+    userCanAccess,
     appParams,
     appMeta,
     appChatListDataLoading,
@@ -168,6 +174,8 @@ const EmbeddedChatbotWrapper = () => {
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
+    userCanAccess,
+    accessMode,
     appInfoError,
     appInfoLoading,
     appData,

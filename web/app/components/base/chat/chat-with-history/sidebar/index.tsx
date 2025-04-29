@@ -19,6 +19,7 @@ import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/re
 import LogoSite from '@/app/components/base/logo/logo-site'
 import type { ConversationItem } from '@/models/share'
 import cn from '@/utils/classnames'
+import { AccessMode } from '@/models/access-control'
 
 type Props = {
   isPanel?: boolean
@@ -27,6 +28,8 @@ type Props = {
 const Sidebar = ({ isPanel }: Props) => {
   const { t } = useTranslation()
   const {
+    isInstalledApp,
+    accessMode,
     appData,
     handleNewConversation,
     pinnedConversationList,
@@ -136,7 +139,7 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
       </div>
       <div className='flex shrink-0 items-center justify-between p-3'>
-        <MenuDropdown placement='top-start' data={appData?.site} />
+        <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} placement='top-start' data={appData?.site} />
         {/* powered by */}
         <div className='shrink-0'>
           {!appData?.custom_config?.remove_webapp_brand && (
@@ -153,25 +156,25 @@ const Sidebar = ({ isPanel }: Props) => {
             </div>
           )}
         </div>
+        {!!showConfirm && (
+          <Confirm
+            title={t('share.chat.deleteConversation.title')}
+            content={t('share.chat.deleteConversation.content') || ''}
+            isShow
+            onCancel={handleCancelConfirm}
+            onConfirm={handleDelete}
+          />
+        )}
+        {showRename && (
+          <RenameModal
+            isShow
+            onClose={handleCancelRename}
+            saveLoading={conversationRenaming}
+            name={showRename?.name || ''}
+            onSave={handleRename}
+          />
+        )}
       </div>
-      {!!showConfirm && (
-        <Confirm
-          title={t('share.chat.deleteConversation.title')}
-          content={t('share.chat.deleteConversation.content') || ''}
-          isShow
-          onCancel={handleCancelConfirm}
-          onConfirm={handleDelete}
-        />
-      )}
-      {showRename && (
-        <RenameModal
-          isShow
-          onClose={handleCancelRename}
-          saveLoading={conversationRenaming}
-          name={showRename?.name || ''}
-          onSave={handleRename}
-        />
-      )}
     </div>
   )
 }

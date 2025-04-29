@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: '探索 Dify 的應用',
+    title: '探索應用',
     description: '使用這些模板應用程式，或根據模板自定義您自己的應用程式。',
     allCategories: '推薦',
   },

@@ -28,6 +28,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
+    userCanAccess,
     appInfoError,
     appData,
     appInfoLoading,
@@ -58,6 +59,8 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
       <Loading type='app' />
     )
   }
+  if (!userCanAccess)
+    return <AppUnavailable code={403} unknownReason='no permission.' />
 
   if (appInfoError) {
     return (
@@ -124,6 +127,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const {
     appInfoError,
     appInfoLoading,
+    accessMode,
+    userCanAccess,
     appData,
     appParams,
     appMeta,
@@ -166,6 +171,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       appInfoError,
       appInfoLoading,
       appData,
+      accessMode,
+      userCanAccess,
       appParams,
       appMeta,
       appChatListDataLoading,

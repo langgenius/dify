@@ -13,6 +13,7 @@ import { checkOrSetAccessToken } from '../utils'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
+import AppUnavailable from '../../base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
@@ -38,6 +39,8 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import LogoSite from '@/app/components/base/logo/logo-site'
 import cn from '@/utils/classnames'
+import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
+import { AccessMode } from '@/models/access-control'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -105,6 +108,9 @@ const TextGeneration: FC<IMainProps> = ({
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
+
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({ appId, isInstalledApp })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({ appId, isInstalledApp })
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
@@ -521,12 +527,14 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   )
 
-  if (!appId || !siteInfo || !promptConfig) {
+  if (!appId || !siteInfo || !promptConfig || isGettingAccessMode || isCheckingPermission) {
     return (
       <div className='flex h-screen items-center'>
         <Loading type='app' />
       </div>)
   }
+  if (!userCanAccessResult?.result)
+    return <AppUnavailable code={403} unknownReason='no permission.' />
 
   return (
     <div className={cn(
@@ -552,7 +560,7 @@ const TextGeneration: FC<IMainProps> = ({
               imageUrl={siteInfo.icon_url}
             />
             <div className='system-md-semibold grow truncate text-text-secondary'>{siteInfo.title}</div>
-            <MenuDropdown data={siteInfo} />
+            <MenuDropdown hideLogout={isInstalledApp || appAccessMode?.accessMode === AccessMode.PUBLIC} data={siteInfo} />
           </div>
           {siteInfo.description && (
             <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>
@@ -657,7 +665,7 @@ const TextGeneration: FC<IMainProps> = ({
                 showResultPanel()
             }}
           >
-            <div className='h-1 w-8 cursor-grab rounded bg-divider-solid'/>
+            <div className='h-1 w-8 cursor-grab rounded bg-divider-solid' />
           </div>
         )}
         {renderResWrap}

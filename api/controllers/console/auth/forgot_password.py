@@ -24,7 +24,7 @@ from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
 
@@ -117,6 +117,9 @@ class ForgotPasswordResetApi(Resource):
         # Validate token and get reset data
         reset_data = AccountService.get_reset_password_data(args["token"])
         if not reset_data:
+            raise InvalidTokenError()
+        # Must use token in reset phase
+        if reset_data.get("phase", "") != "reset":
             raise InvalidTokenError()
         # Must use token in reset phase
         if reset_data.get("phase", "") != "reset":

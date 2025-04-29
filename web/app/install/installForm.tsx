@@ -17,6 +17,7 @@ import Button from '@/app/components/base/button'
 import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/common'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 import { basePath } from '@/utils/var'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
@@ -34,6 +35,7 @@ const accountFormSchema = z.object({
 type AccountFormValues = z.infer<typeof accountFormSchema>
 
 const InstallForm = () => {
+  useDocumentTitle('')
   const { t } = useTranslation()
   const router = useRouter()
   const [showPassword, setShowPassword] = React.useState(false)
