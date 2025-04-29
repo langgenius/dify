@@ -444,13 +444,13 @@ def convert_to_agent_apps():
             WHERE a.mode = 'chat'
             AND am.agent_mode is not null
             AND (
-				am.agent_mode like '%"strategy": "function_call"%'
+                am.agent_mode like '%"strategy": "function_call"%'
                 OR am.agent_mode  like '%"strategy": "react"%'
-			)
+            )
             AND (
-				am.agent_mode like '{"enabled": true%'
+                am.agent_mode like '{"enabled": true%'
                 OR am.agent_mode like '{"max_iteration": %'
-			) ORDER BY a.created_at DESC LIMIT 1000
+            ) ORDER BY a.created_at DESC LIMIT 1000
         """
 
         with db.engine.begin() as conn:

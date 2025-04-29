@@ -259,7 +259,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     <div
       id='workflow-container'
       className={`
-        relative h-full w-full min-w-[960px] 
+        relative h-full w-full min-w-[960px]
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}

@@ -17,7 +17,7 @@ Some additional information is provided below. Always adhere to these instructio
 </instruction>
 Steps:
 1. Review the chat history provided within the <histories> tags.
-2. Extract the relevant information based on the criteria given, output multiple values if there is multiple relevant information that match the criteria in the given text. 
+2. Extract the relevant information based on the criteria given, output multiple values if there is multiple relevant information that match the criteria in the given text.
 3. Generate a well-formatted output using the defined functions and arguments.
 4. Use the `extract_parameter` function to create structured outputs with appropriate parameters.
 5. Do not include any XML tags in your output.
@@ -89,13 +89,13 @@ Some extra information are provided below, I should always follow the instructio
 </instructions>
 
 ### Extract parameter Workflow
-I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted. 
+I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted.
 <information to be extracted>
 {{ structure }}
 </information to be extracted>
 
 Step 1: Carefully read the input and understand the structure of the expected output.
-Step 2: Extract relevant parameters from the provided text based on the name and description of object. 
+Step 2: Extract relevant parameters from the provided text based on the name and description of object.
 Step 3: Structure the extracted parameters to JSON object as specified in <structure>.
 Step 4: Ensure that the JSON object is properly formatted and valid. The output should not contain any XML tags. Only the JSON object should be outputted.
 
@@ -106,10 +106,10 @@ Here are the chat histories between human and assistant, inside <histories></his
 </histories>
 
 ### Structure
-Here is the structure of the expected output, I should always follow the output structure. 
+Here is the structure of the expected output, I should always follow the output structure.
 {{γγγ
-  'properties1': 'relevant text extracted from input', 
-  'properties2': 'relevant text extracted from input', 
+  'properties1': 'relevant text extracted from input',
+  'properties2': 'relevant text extracted from input',
 }}γγγ
 
 ### Input Text
@@ -119,7 +119,7 @@ Inside <text></text> XML tags, there is a text that I should extract parameters 
 </text>
 
 ### Answer
-I should always output a valid JSON object. Output nothing other than the JSON object. 
+I should always output a valid JSON object. Output nothing other than the JSON object.
 ```JSON
 """  # noqa: E501
 

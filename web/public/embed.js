@@ -23,7 +23,7 @@
     </svg>
     `;
 
-  
+
   const originalIframeStyleText = `
     position: absolute;
     display: flex;
