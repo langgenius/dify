@@ -381,6 +381,8 @@ class WorkflowCycleManage:
         workflow_node_execution.elapsed_time = elapsed_time
         workflow_node_execution.execution_metadata = execution_metadata
 
+        self._workflow_node_execution_repository.update(workflow_node_execution)
+
         return workflow_node_execution
 
     def _handle_workflow_node_execution_retried(

@@ -57,7 +57,7 @@
     left: unset;
     min-width: 24rem;
     width: 48%;
-    max-width: calc(100vw - 2rem);
+    max-width: 40rem; /* Match mobile breakpoint*/
     min-height: 43.75rem;
     height: 88%;
     max-height: calc(100vh - 6rem);
