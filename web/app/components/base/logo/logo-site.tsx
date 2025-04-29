@@ -5,14 +5,16 @@ import classNames from '@/utils/classnames'
 
 type LogoSiteProps = {
   className?: string
+  logoPath?: string
 }
 
 const LogoSite: FC<LogoSiteProps> = ({
   className,
+  logoPath,
 }) => {
   return (
     <img
-      src={`${basePath}/logo/logo.png`}
+      src={logoPath || `${basePath}/logo/logo.png`}
       className={classNames('block w-[22.651px] h-[24.5px]', className)}
       alt='logo'
     />
