@@ -11,19 +11,17 @@ type Props = {
   appId: string
   nodeId: string
   runningStatus?: NodeRunningStatus
+  onSingleRunClicked: () => void
 }
 
 const LastRun: FC<Props> = ({
   appId,
   nodeId,
   runningStatus,
+  onSingleRunClicked,
 }) => {
   const isRunning = runningStatus === NodeRunningStatus.Running
   const { data: runResult, isFetching } = useLastRun(appId, nodeId, !isRunning)
-
-  const handleSingleRun = () => {
-    console.log('run')
-  }
 
   if (isFetching)
     return <Loading />
@@ -33,7 +31,7 @@ const LastRun: FC<Props> = ({
 
   if (!runResult) {
     return (
-      <NoData onSingleRun={handleSingleRun} />
+      <NoData onSingleRun={onSingleRunClicked} />
     )
   }
   return (

@@ -127,15 +127,8 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     const submitData: Record<string, any> = {}
     let parseErrorJsonField = ''
-    forms.forEach((form, i) => {
-      const existVarValuesInForm = existVarValuesInForms[i]
-
+    forms.forEach((form) => {
       form.inputs.forEach((input) => {
-        if (input.variable in existVarValuesInForm) {
-          // TODO: wait for api if need to pass exist var values
-          submitData[input.variable] = existVarValuesInForm[input.variable]
-          return
-        }
         try {
           const value = formatValue(form.values[input.variable], input.type)
           submitData[input.variable] = value

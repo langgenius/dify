@@ -6,6 +6,9 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-single-run-form-params'
 import { BlockEnum } from '@/app/components/workflow/types'
+import {
+  useNodesSyncDraft,
+} from '@/app/components/workflow/hooks'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
@@ -43,6 +46,8 @@ type Params<T> = OneStepRunParams<T>
 const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+
   const {
     id,
     data,
@@ -50,12 +55,13 @@ const useLastRun = <T>({
   const oneStepRunRes = useOneStepRun(oneStepRunParams)
   const {
     hideSingleRun,
-    handleRun: callRunApi,
+    handleRun: doCallRunApi,
     getInputVars,
     toVarInputs,
     runInputData,
     runInputDataRef,
     setRunInputData,
+    showSingleRun,
   } = oneStepRunRes
 
   const singleRunParams = useSingleRunFormParamsHooks(data.type)({
@@ -68,8 +74,13 @@ const useLastRun = <T>({
     toVarInputs,
   })
 
+  const callRunApi = async (data: Record<string, any>) => {
+    await handleSyncWorkflowDraft(true)
+    doCallRunApi(data)
+  }
+
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
-  const handleRun = async (data: Record<string, any>) => {
+  const handleRunWithParams = async (data: Record<string, any>) => {
     setTabType(TabType.lastRun)
     callRunApi(data)
     hideSingleRun()
@@ -141,6 +152,14 @@ const useLastRun = <T>({
     return res
   }
 
+  const handleSingleRun = () => {
+    const filteredExistVarForms = getFilteredExistVarForms(singleRunParams.forms)
+    if (filteredExistVarForms.length > 0)
+      showSingleRun()
+    else
+      callRunApi({})// no need to pass params
+  }
+
   return {
     ...oneStepRunRes,
     tabType,
@@ -148,7 +167,8 @@ const useLastRun = <T>({
     singleRunParams,
     setRunInputData,
     hasLastRunData,
-    handleRun,
+    handleSingleRun,
+    handleRunWithParams,
     getExistVarValuesInForms,
     getFilteredExistVarForms,
   }

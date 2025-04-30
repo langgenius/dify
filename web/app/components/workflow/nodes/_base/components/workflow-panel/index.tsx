@@ -152,7 +152,8 @@ const BasePanel: FC<BasePanelProps> = ({
     singleRunParams,
     setRunInputData,
     hasLastRunData,
-    handleRun,
+    handleSingleRun,
+    handleRunWithParams,
     getExistVarValuesInForms,
     getFilteredExistVarForms,
   } = useLastRun<typeof data>({
@@ -178,7 +179,7 @@ const BasePanel: FC<BasePanelProps> = ({
             nodeType={data.type}
             onHide={hideSingleRun}
             runningStatus={runningStatus}
-            onRun={handleRun}
+            onRun={handleRunWithParams}
             onStop={handleStop}
             {...singleRunParams!}
             existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
@@ -228,18 +229,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   >
                     <div
                       className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
-                      onClick={() => {
-                        const filteredExistVarForms = getFilteredExistVarForms(singleRunParams.forms)
-                        if (filteredExistVarForms.length > 0) {
-                          showSingleRun()
-                        }
-                        else {
-                          // TODO: check valid
-                          // TODO: all value is setted. wait for api if need to pass exist var values
-                          handleRun({})
-                        }
-                        handleSyncWorkflowDraft(true)
-                      }}
+                      onClick={handleSingleRun}
                     >
                       <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
                     </div>
@@ -323,7 +313,12 @@ const BasePanel: FC<BasePanelProps> = ({
         )}
 
         {tabType === TabType.lastRun && (
-          <LastRun appId={appDetail?.id || ''} nodeId={id} runningStatus={runningStatus} />
+          <LastRun
+            appId={appDetail?.id || ''}
+            nodeId={id}
+            runningStatus={runningStatus}
+            onSingleRunClicked={handleSingleRun}
+          />
         )}
       </div>
     </div>
