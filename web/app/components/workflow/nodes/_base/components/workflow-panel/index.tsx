@@ -316,6 +316,7 @@ const BasePanel: FC<BasePanelProps> = ({
           <LastRun
             appId={appDetail?.id || ''}
             nodeId={id}
+            canSingleRun={isSupportSingleRun}
             runningStatus={runningStatus}
             onSingleRunClicked={handleSingleRun}
           />

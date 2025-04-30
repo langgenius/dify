@@ -7,10 +7,12 @@ import { RiPlayLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 
 type Props = {
+  canSingleRun: boolean
   onSingleRun: () => void
 }
 
 const NoData: FC<Props> = ({
+  canSingleRun,
   onSingleRun,
 }) => {
   const { t } = useTranslation()
@@ -18,14 +20,16 @@ const NoData: FC<Props> = ({
     <div className='flex h-0 grow flex-col items-center justify-center'>
       <ClockPlay className='h-8 w-8 text-text-quaternary' />
       <div className='system-xs-regular my-2 text-text-tertiary'>{t('workflow.debug.noData.description')}</div>
-      <Button
-        className='flex'
-        size='small'
-        onClick={onSingleRun}
-      >
-        <RiPlayLine className='mr-1 h-3.5 w-3.5' />
-        <div>{t('workflow.debug.noData.runThisNode')}</div>
-      </Button>
+      {canSingleRun && (
+        <Button
+          className='flex'
+          size='small'
+          onClick={onSingleRun}
+        >
+          <RiPlayLine className='mr-1 h-3.5 w-3.5' />
+          <div>{t('workflow.debug.noData.runThisNode')}</div>
+        </Button>
+      )}
     </div>
   )
 }
