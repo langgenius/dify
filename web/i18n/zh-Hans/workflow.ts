@@ -481,6 +481,10 @@ const translation = {
             title: '手动',
             subTitle: '手动添加元数据过滤条件',
           },
+          complexConditions: {
+            title: '手动多重条件',
+            subTitle: '手动添加元数据多重过滤条件',
+          },
         },
         panel: {
           title: '元数据过滤条件',

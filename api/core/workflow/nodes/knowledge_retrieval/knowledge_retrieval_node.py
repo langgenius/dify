@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
-from sqlalchemy import Integer, and_, func, or_, text
+from sqlalchemy import ColumnElement, Integer, and_, func, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -44,7 +44,11 @@ from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
 from models.workflow import WorkflowNodeExecutionStatus
 from services.feature_service import FeatureService
 
-from .entities import KnowledgeRetrievalNodeData, ModelConfig
+from .entities import (
+    KnowledgeRetrievalNodeData,
+    MetadataFilteringComplexCondition,
+    ModelConfig,
+)
 from .exc import (
     InvalidModelTypeError,
     KnowledgeRetrievalNodeError,
@@ -316,6 +320,74 @@ class KnowledgeRetrievalNode(LLMNode):
                 item["metadata"]["position"] = position
         return retrieval_resource_list
 
+    def _recursive_metadata_filter(
+        self, metadata_filtering_complex_conditions: MetadataFilteringComplexCondition, filters
+    ):
+        logical_operator = metadata_filtering_complex_conditions.logical_operator
+        conditions = metadata_filtering_complex_conditions.conditions
+        sub_conditions = metadata_filtering_complex_conditions.sub_conditions
+
+        sub_filters = []
+        if sub_conditions:
+            for sub_condition in sub_conditions:
+                sub_filter = self._recursive_metadata_filter(sub_condition, [])
+                sub_filters.extend(sub_filter)
+
+        temp_filters: list = []
+        if conditions:
+            for sequence, condition in enumerate(conditions):
+                metadata_name = condition.name
+                expected_value = condition.value
+                if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
+                    if isinstance(expected_value, str):
+                        expected_value = self.graph_runtime_state.variable_pool.convert_template(expected_value).value[
+                            0
+                        ]
+                        if expected_value.value_type == "number":  # type: ignore
+                            expected_value = expected_value.value  # type: ignore
+                        elif expected_value.value_type == "string":  # type: ignore
+                            expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
+                        else:
+                            raise ValueError("Invalid expected metadata value type")
+                    temp_filters = self._process_metadata_filter_func(
+                        sequence,
+                        condition.comparison_operator,
+                        metadata_name,
+                        expected_value,
+                        temp_filters,
+                    )
+
+        sub_filters_result: ColumnElement
+        temp_filters_result: ColumnElement
+        if temp_filters and sub_filters:
+            if logical_operator == "and":  # type: ignore
+                all_sub_filters = and_(*sub_filters)
+                all_temp_filters = and_(*temp_filters)
+                sub_filters_result = and_(all_temp_filters, all_sub_filters)
+            else:
+                all_sub_filters = or_(*sub_filters)
+                all_temp_filters = or_(*temp_filters)
+                sub_filters_result = or_(all_sub_filters, all_temp_filters)
+            filters.append(sub_filters_result)
+            return filters
+
+        if temp_filters:  # text
+            if logical_operator == "and":  # type: ignore
+                temp_filters_result = and_(*temp_filters)
+            else:
+                temp_filters_result = or_(*temp_filters)
+            filters.append(temp_filters_result)
+            return filters
+
+        if sub_filters:  # Boolean
+            if logical_operator == "and":  # type: ignore
+                sub_filters_result = and_(*sub_filters)
+            else:
+                sub_filters_result = or_(*sub_filters)
+            filters.append(sub_filters_result)
+
+        return filters
+
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
     ) -> tuple[Optional[dict[str, list[str]]], Optional[MetadataCondition]]:
@@ -329,6 +401,23 @@ class KnowledgeRetrievalNode(LLMNode):
         metadata_condition = None
         if node_data.metadata_filtering_mode == "disabled":
             return None, None
+        elif node_data.metadata_filtering_mode == "complex_conditions":
+            # todo: do not support external_knowledge_retrieval
+            if node_data.metadata_filtering_complex_conditions:
+                # Enable forward references
+                MetadataFilteringComplexCondition.model_rebuild()
+                metadata_filtering_complex_conditions = MetadataFilteringComplexCondition(
+                    **node_data.metadata_filtering_complex_conditions.model_dump()
+                )
+                filters = self._recursive_metadata_filter(metadata_filtering_complex_conditions, filters)
+                if filters:
+                    document_query = document_query.filter(*filters)
+            documents = document_query.all()
+            # group by dataset_id
+            metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
+            for document in documents:
+                metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
+            return metadata_filter_document_ids, MetadataCondition()
         elif node_data.metadata_filtering_mode == "automatic":
             automatic_metadata_filters = self._automatic_metadata_filter_func(dataset_ids, query, node_data)
             if automatic_metadata_filters:
@@ -358,7 +447,7 @@ class KnowledgeRetrievalNode(LLMNode):
             if node_data.metadata_filtering_conditions:
                 metadata_condition = MetadataCondition(**node_data.metadata_filtering_conditions.model_dump())
                 if node_data.metadata_filtering_conditions:
-                    for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
+                    for sequence, condition in enumerate(metadata_condition.conditions):  # type: ignore
                         metadata_name = condition.name
                         expected_value = condition.value
                         if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
