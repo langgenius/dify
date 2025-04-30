@@ -1,8 +1,10 @@
 from datetime import UTC, datetime
 
+from sqlalchemy.orm import Session
+
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from events.message_event import message_was_created
-from extensions.ext_database import Session, db
+from extensions.ext_database import db
 from models.provider import Provider
 
 last_used_cache = {}
@@ -31,7 +33,6 @@ def try_flush_cache_to_db():
 
 @message_was_created.connect
 def handle(sender, **kwargs):
-    message = sender
     application_generate_entity = kwargs.get("application_generate_entity")
 
     if not isinstance(application_generate_entity, ChatAppGenerateEntity | AgentChatAppGenerateEntity):
