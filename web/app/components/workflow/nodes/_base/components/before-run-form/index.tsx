@@ -21,7 +21,7 @@ import type { BlockEnum } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
-
+// import { useWhyDidYouUpdate } from 'ahooks'
 const i18nPrefix = 'workflow.singleRun'
 
 export type BeforeRunFormProps = {
@@ -77,9 +77,13 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 }) => {
   const { t } = useTranslation()
 
+  // useWhyDidYouUpdate('BeforeRunForm', { nodeName, nodeType, toolIcon, onHide, onRun, onStop, runningStatus, result, forms, showSpecialResultPanel, filteredExistVarForms, existVarValuesInForms, ...restResultPanelParams })
+
   const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed || runningStatus === NodeRunningStatus.Exception
   const isRunning = runningStatus === NodeRunningStatus.Running
   const isFileLoaded = (() => {
+    if (!forms || forms.length === 0)
+      return true
     // system files
     const filesForm = forms.find(item => !!item.values['#files#'])
     if (!filesForm)

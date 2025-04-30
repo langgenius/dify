@@ -147,11 +147,9 @@ const BasePanel: FC<BasePanelProps> = ({
     runResult,
     getInputVars,
     toVarInputs,
-    childPanelRef,
     tabType,
     setTabType,
     singleRunParams,
-    setSingleRunParams,
     setRunInputData,
     hasLastRunData,
     handleRun,
@@ -162,6 +160,35 @@ const BasePanel: FC<BasePanelProps> = ({
     data,
     defaultRunInputData: NODES_EXTRA_DATA[data.type]?.defaultRunInputData || {},
   })
+
+  if (isShowSingleRun) {
+    return (
+      <div className={cn(
+        'relative mr-1  h-full',
+      )}>
+        <div
+          ref={containerRef}
+          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+          style={{
+            width: `${nodePanelWidth}px`,
+          }}
+        >
+          <BeforeRunForm
+            nodeName={data.title}
+            nodeType={data.type}
+            onHide={hideSingleRun}
+            runningStatus={runningStatus}
+            onRun={handleRun}
+            onStop={handleStop}
+            {...singleRunParams!}
+            existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
+            filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
+            result={<></>}
+          />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={cn(
@@ -202,14 +229,8 @@ const BasePanel: FC<BasePanelProps> = ({
                     <div
                       className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
                       onClick={() => {
-                        if (!childPanelRef.current?.singleRunParams) {
-                          // handleNodeDataUpdate({ id, data: { _isSingleRun: true } })
-                          console.error('childPanelRef is not set')
-                          return
-                        }
-                        const filteredExistVarForms = getFilteredExistVarForms(childPanelRef.current?.singleRunParams.forms)
+                        const filteredExistVarForms = getFilteredExistVarForms(singleRunParams.forms)
                         if (filteredExistVarForms.length > 0) {
-                          setSingleRunParams(childPanelRef.current?.singleRunParams)
                           showSingleRun()
                         }
                         else {
@@ -266,7 +287,6 @@ const BasePanel: FC<BasePanelProps> = ({
                   runResult,
                   runInputDataRef,
                 },
-                ref: childPanelRef,
               })}
             </div>
             <Split />
@@ -305,23 +325,6 @@ const BasePanel: FC<BasePanelProps> = ({
         {tabType === TabType.lastRun && (
           <LastRun appId={appDetail?.id || ''} nodeId={id} runningStatus={runningStatus} />
         )}
-
-        {
-          isShowSingleRun && (
-            <BeforeRunForm
-              nodeName={data.title}
-              nodeType={data.type}
-              onHide={hideSingleRun}
-              runningStatus={runningStatus}
-              onRun={handleRun}
-              onStop={handleStop}
-              {...singleRunParams!}
-              existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
-              filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
-              result={<></>}
-            />
-          )
-        }
       </div>
     </div>
   )

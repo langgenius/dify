@@ -17,16 +17,9 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
-import type { PanelProps } from '@/types/workflow'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 
-const useConfig = (id: string, payload: LLMNodeType, panelProps?: PanelProps) => {
-  const getVarInputs = panelProps?.getInputVars
-  const toVarInputs = panelProps?.toVarInputs
-  const runInputData = panelProps?.runInputData || {}
-  const runInputDataRef = panelProps?.runInputDataRef || { current: {} }
-  const setRunInputData = panelProps?.setRunInputData
-
+const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
@@ -332,59 +325,6 @@ const useConfig = (id: string, payload: LLMNodeType, panelProps?: PanelProps) =>
     filterVar: filterMemoryPromptVar,
   })
 
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .filter(key => !['#context#', '#files#'].includes(key))
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    const newVars = {
-      ...newPayload,
-      '#context#': runInputDataRef.current['#context#'],
-      '#files#': runInputDataRef.current['#files#'],
-    }
-    setRunInputData?.(newVars)
-  }, [runInputDataRef, setRunInputData])
-
-  const contexts = runInputData['#context#']
-  const setContexts = useCallback((newContexts: string[]) => {
-    setRunInputData?.({
-      ...runInputDataRef.current,
-      '#context#': newContexts,
-    })
-  }, [runInputDataRef, setRunInputData])
-
-  const visionFiles = runInputData['#files#']
-  const setVisionFiles = useCallback((newFiles: any[]) => {
-    setRunInputData?.({
-      ...runInputDataRef.current,
-      '#files#': newFiles,
-    })
-  }, [runInputDataRef, setRunInputData])
-
-  const allVarStrArr = (() => {
-    const arr = isChatModel ? (inputs.prompt_template as PromptItem[]).filter(item => item.edition_type !== EditionType.jinja2).map(item => item.text) : [(inputs.prompt_template as PromptItem).text]
-    if (isChatMode && isChatModel && !!inputs.memory) {
-      arr.push('{{#sys.query#}}')
-      arr.push(inputs.memory.query_prompt_template)
-    }
-
-    return arr
-  })()
-
-  const varInputs = (() => {
-    const vars = getVarInputs?.(allVarStrArr) || []
-    if (isShowVars)
-      return [...vars, ...(toVarInputs ? (toVarInputs(inputs.prompt_config?.jinja2_variables || [])) : [])]
-
-    return vars
-  })()
-
   return {
     readOnly,
     isChatMode,
@@ -411,13 +351,6 @@ const useConfig = (id: string, payload: LLMNodeType, panelProps?: PanelProps) =>
     handleSyeQueryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    inputVarValues,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
-    contexts,
-    setContexts,
-    varInputs,
     isModelSupportStructuredOutput,
     handleStructureOutputChange,
     structuredOutputCollapsed,

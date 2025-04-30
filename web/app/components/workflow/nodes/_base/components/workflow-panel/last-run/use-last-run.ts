@@ -1,33 +1,72 @@
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import { useCallback, useRef, useState } from 'react'
-import type { PanelExposedType } from '@/types/workflow'
+import { useCallback, useState } from 'react'
 import { TabType } from '../tab'
-import { sleep } from '@/utils'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-single-run-form-params'
+import { BlockEnum } from '@/app/components/workflow/types'
+
+const singleRunFormParamsHooks: Record<BlockEnum, any> = {
+  [BlockEnum.LLM]: useLLMSingleRunFormParams,
+  [BlockEnum.Start]: undefined,
+  [BlockEnum.End]: undefined,
+  [BlockEnum.Answer]: undefined,
+  [BlockEnum.KnowledgeRetrieval]: undefined,
+  [BlockEnum.QuestionClassifier]: undefined,
+  [BlockEnum.IfElse]: undefined,
+  [BlockEnum.Code]: undefined,
+  [BlockEnum.TemplateTransform]: undefined,
+  [BlockEnum.HttpRequest]: undefined,
+  [BlockEnum.VariableAssigner]: undefined,
+  [BlockEnum.VariableAggregator]: undefined,
+  [BlockEnum.Tool]: undefined,
+  [BlockEnum.ParameterExtractor]: undefined,
+  [BlockEnum.Iteration]: undefined,
+  [BlockEnum.DocExtractor]: undefined,
+  [BlockEnum.ListFilter]: undefined,
+  [BlockEnum.IterationStart]: undefined,
+  [BlockEnum.Assigner]: undefined,
+  [BlockEnum.Agent]: undefined,
+  [BlockEnum.Loop]: undefined,
+  [BlockEnum.LoopStart]: undefined,
+  [BlockEnum.LoopEnd]: undefined,
+}
+
+const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
+  return (params: any) => {
+    return singleRunFormParamsHooks[nodeType]?.(params) || {}
+  }
+}
 
 type Params<T> = OneStepRunParams<T>
 const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
-  const childPanelRef = useRef<PanelExposedType>(null)
-
+  const {
+    id,
+    data,
+  } = oneStepRunParams
   const oneStepRunRes = useOneStepRun(oneStepRunParams)
   const {
     hideSingleRun,
     handleRun: callRunApi,
-    setRunInputData: doSetRunInputData,
+    getInputVars,
+    toVarInputs,
+    runInputData,
+    runInputDataRef,
+    setRunInputData,
   } = oneStepRunRes
 
-  const [singleRunParams, setSingleRunParams] = useState<PanelExposedType['singleRunParams'] | undefined>(undefined)
-
-  const setRunInputData = useCallback(async (data: Record<string, any>) => {
-    doSetRunInputData(data)
-    // console.log(childPanelRef.current?.singleRunParams)
-    await sleep(0) // wait for childPanelRef.current?.singleRunParams refresh
-    setSingleRunParams(childPanelRef.current?.singleRunParams)
-  }, [doSetRunInputData])
+  const singleRunParams = useSingleRunFormParamsHooks(data.type)({
+    id,
+    payload: data,
+    runInputData,
+    runInputDataRef,
+    getInputVars,
+    setRunInputData,
+    toVarInputs,
+  })
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
   const handleRun = async (data: Record<string, any>) => {
@@ -46,6 +85,9 @@ const useLastRun = <T>({
     getInspectVar,
   } = workflowStore.getState()
   const getExistVarValuesInForms = (forms: FormProps[]) => {
+    if (!forms || forms.length === 0)
+      return []
+
     // if (!singleRunParams)
     const valuesArr = forms.map((form) => {
       const values: Record<string, any> = {}
@@ -83,6 +125,8 @@ const useLastRun = <T>({
   }
 
   const getFilteredExistVarForms = (forms: FormProps[]) => {
+    if (!forms || forms.length === 0)
+      return []
     const existVarValuesInForms = getExistVarValuesInForms(forms)
 
     const res = forms.map((form, i) => {
@@ -99,11 +143,9 @@ const useLastRun = <T>({
 
   return {
     ...oneStepRunRes,
-    childPanelRef,
     tabType,
     setTabType: handleTabClicked,
     singleRunParams,
-    setSingleRunParams,
     setRunInputData,
     hasLastRunData,
     handleRun,
