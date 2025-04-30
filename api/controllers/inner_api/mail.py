@@ -5,13 +5,13 @@ from flask_restful import (
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api
-from controllers.inner_api.wraps import inner_api_only
+from controllers.inner_api.wraps import enterprise_inner_api_only
 from services.enterprise.mail_service import DifyMail, EnterpriseMailService
 
 
 class EnterpriseMail(Resource):
     @setup_required
-    @inner_api_only
+    @enterprise_inner_api_only
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("to", type=str, action="append", required=True)
