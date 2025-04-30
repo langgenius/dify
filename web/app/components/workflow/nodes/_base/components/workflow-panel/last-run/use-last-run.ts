@@ -8,6 +8,7 @@ import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-s
 import useKnowledgeRetrievalSingleRunFormParams from '../../../../knowledge-retrieval/use-single-run-form-params'
 import useCodeSingleRunFormParams from '../../../../code/use-single-run-form-params'
 import useTemplateTransformSingleRunFormParams from '../../../../template-transform/use-single-run-form-params'
+import useQuestionClassifierSingleRunFormParams from '../../../../question-classifier/use-single-run-form-params'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -18,10 +19,10 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.KnowledgeRetrieval]: useKnowledgeRetrievalSingleRunFormParams,
   [BlockEnum.Code]: useCodeSingleRunFormParams,
   [BlockEnum.TemplateTransform]: useTemplateTransformSingleRunFormParams,
+  [BlockEnum.QuestionClassifier]: useQuestionClassifierSingleRunFormParams,
   [BlockEnum.Start]: undefined,
   [BlockEnum.End]: undefined,
   [BlockEnum.Answer]: undefined,
-  [BlockEnum.QuestionClassifier]: undefined,
   [BlockEnum.IfElse]: undefined,
   [BlockEnum.HttpRequest]: undefined,
   [BlockEnum.VariableAssigner]: undefined,
