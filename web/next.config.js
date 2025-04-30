@@ -1,5 +1,7 @@
 const { basePath, assetPrefix } = require('./utils/var-basePath')
 const { codeInspectorPlugin } = require('code-inspector-plugin')
+const withRspack = require('next-rspack')
+
 const withMDX = require('@next/mdx')({
   extension: /\.mdx?$/,
   options: {
@@ -50,4 +52,4 @@ const nextConfig = {
   output: 'standalone',
 }
 
-module.exports = withMDX(nextConfig)
+module.exports = withRspack(withMDX(nextConfig))
