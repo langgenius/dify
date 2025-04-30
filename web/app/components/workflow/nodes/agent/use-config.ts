@@ -13,7 +13,6 @@ import type { Memory, Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import produce from 'immer'
-import type { PanelProps } from '@/types/workflow'
 
 export type StrategyStatus = {
   plugin: {
@@ -63,9 +62,7 @@ export const useStrategyInfo = (
   }
 }
 
-const useConfig = (id: string, payload: AgentNodeType, panelProps?: PanelProps) => {
-  const getInputVars = panelProps?.getInputVars
-
+const useConfig = (id: string, payload: AgentNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<AgentNodeType>(id, payload)
   // variables
@@ -133,19 +130,6 @@ const useConfig = (id: string, payload: AgentNodeType, panelProps?: PanelProps) 
 
   // single run
 
-  const allVarStrArr = (() => {
-    const arr = currentStrategy?.parameters.filter(item => item.type === 'string').map((item) => {
-      return formData[item.name]
-    }) || []
-
-    return arr
-  })()
-  const varInputs = (() => {
-    const vars = getInputVars?.(allVarStrArr)
-
-    return vars
-  })()
-
   const outputSchema = useMemo(() => {
     const res: any[] = []
     if (!inputs.output_schema)
@@ -184,7 +168,6 @@ const useConfig = (id: string, payload: AgentNodeType, panelProps?: PanelProps) 
     pluginDetail: pluginDetail.data?.plugins.at(0),
     availableVars,
     availableNodesWithParent,
-    varInputs,
     outputSchema,
     handleMemoryChange,
     isChatMode,

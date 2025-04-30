@@ -1,4 +1,5 @@
-import { forwardRef, memo, useImperativeHandle } from 'react'
+import type { FC } from 'react'
+import { memo } from 'react'
 import type { NodePanelProps } from '../../types'
 import { AgentFeature, type AgentNodeType } from './types'
 import Field from '../_base/components/field'
@@ -8,13 +9,10 @@ import { useTranslation } from 'react-i18next'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import type { StrategyParamItem } from '@/app/components/plugins/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useLogs } from '@/app/components/workflow/run/hooks'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { toType } from '@/app/components/tools/utils/to-form-schema'
 import { useStore } from '../../store'
 import Split from '../_base/components/split'
 import MemoryConfig from '../_base/components/memory-config'
-import type { PanelExposedType } from '@/types/workflow'
 const i18nPrefix = 'workflow.nodes.agent'
 
 export function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
@@ -27,11 +25,7 @@ export function strategyParamToCredientialForm(param: StrategyParamItem): Creden
   }
 }
 
-const AgentPanel = forwardRef<PanelExposedType, NodePanelProps<AgentNodeType>>((props, ref) => {
-  const {
-    runInputData,
-    setRunInputData,
-  } = props.panelProps
+const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const {
     inputs,
     setInputs,
@@ -42,38 +36,12 @@ const AgentPanel = forwardRef<PanelExposedType, NodePanelProps<AgentNodeType>>((
     availableNodesWithParent,
     availableVars,
     readOnly,
-    varInputs,
     outputSchema,
     handleMemoryChange,
-  } = useConfig(props.id, props.data, props.panelProps)
+  } = useConfig(props.id, props.data)
   const { t } = useTranslation()
 
-  const logsParams = useLogs()
-  const singleRunForms = (() => {
-    const forms: FormProps[] = []
-
-    if (varInputs!.length > 0) {
-      forms.push(
-        {
-          label: t(`${i18nPrefix}.singleRun.variable`)!,
-          inputs: varInputs!,
-          values: runInputData,
-          onChange: setRunInputData,
-        },
-      )
-    }
-
-    return forms
-  })()
-
   const resetEditor = useStore(s => s.setControlPromptEditorRerenderKey)
-
-  useImperativeHandle(ref, () => ({
-    singleRunParams: {
-      forms: singleRunForms,
-      logsParams,
-    },
-  }))
 
   return <div className='my-2'>
     <Field title={t('workflow.nodes.agent.strategy.label')} className='px-4 py-2' tooltip={t('workflow.nodes.agent.strategy.tooltip')} >
@@ -147,7 +115,7 @@ const AgentPanel = forwardRef<PanelExposedType, NodePanelProps<AgentNodeType>>((
       </OutputVars>
     </div>
   </div>
-})
+}
 
 AgentPanel.displayName = 'AgentPanel'
 
