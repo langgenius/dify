@@ -116,7 +116,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
             )}
             onClick={() => onChange(option.value)}
           >
-            <Icon className='size-4' />
+            <Icon className='size-4 shrink-0' />
             {text && (
               <div className={cn('inline-flex items-center gap-x-1', ItemTextWrapperVariants({ size }))}>
                 <span>{text}</span>

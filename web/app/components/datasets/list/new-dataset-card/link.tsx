@@ -19,8 +19,8 @@ const Link = ({
       className='flex w-full items-center gap-x-2 rounded-lg bg-transparent px-4 py-2 text-text-tertiary shadow-shadow-shadow-3 hover:bg-background-default-dodge hover:text-text-secondary hover:shadow-xs'
       href={href}
     >
-      <Icon className='h-4 w-4' />
-      <span className='system-sm-medium'>{text}</span>
+      <Icon className='h-4 w-4 shrink-0' />
+      <span className='system-sm-medium grow'>{text}</span>
     </a>
   )
 }

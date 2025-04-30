@@ -3,6 +3,8 @@ const translation = {
   chunkingMode: {
     general: 'General',
     parentChild: 'Parent-child',
+    qa: 'Q&A',
+    graph: 'Graph',
   },
   parentMode: {
     paragraph: 'Paragraph',
@@ -22,8 +24,13 @@ const translation = {
   externalAPIPanelDocumentation: 'Learn how to create an External Knowledge API',
   localDocs: 'Local Docs',
   documentCount: ' docs',
+  docAllEnabled_one: 'All {{count}} document enabled',
+  docAllEnabled_other: 'All {{count}} documents enabled',
+  partialEnabled_one: 'Total of {{count}} document, {{num}} available',
+  partialEnabled_other: 'Total of {{count}} documents, {{num}} available',
   wordCount: ' k words',
   appCount: ' linked apps',
+  updated: 'Updated',
   createDataset: 'Create Knowledge',
   createFromPipeline: 'Create from Knowledge Pipeline',
   createNewExternalAPI: 'Create a new External Knowledge API',

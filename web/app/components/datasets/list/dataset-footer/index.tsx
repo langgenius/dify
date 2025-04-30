@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 const DatasetFooter = () => {
@@ -16,4 +17,4 @@ const DatasetFooter = () => {
   )
 }
 
-export default DatasetFooter
+export default React.memo(DatasetFooter)

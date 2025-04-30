@@ -21,6 +21,7 @@ export enum ChunkingMode {
   text = 'text_model', // General text
   qa = 'qa_model', // General QA
   parentChild = 'hierarchical_model', // Parent-Child
+  graph = 'graph', // Graph
 }
 
 export type MetadataInDoc = {
@@ -45,6 +46,7 @@ export type DataSet = {
   app_count: number
   doc_form: ChunkingMode
   document_count: number
+  available_document_count?: number
   word_count: number
   provider: string
   embedding_model: string

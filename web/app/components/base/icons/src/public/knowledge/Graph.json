@@ -1,0 +1,1058 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "18",
+			"height": "18",
+			"viewBox": "0 0 18 18",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M10.5996 0.5C11.7113 0.5 12.5755 0.500118 13.2676 0.556641C13.9655 0.61366 14.5329 0.730378 15.043 0.990234L15.3525 1.16406C16.0576 1.59644 16.6322 2.21605 17.0098 2.95703L17.1006 3.15137C17.2979 3.61108 17.3935 4.12184 17.4434 4.73242C17.4999 5.42447 17.5 6.28869 17.5 7.40039V10.5996C17.5 11.7113 17.4999 12.5755 17.4434 13.2676C17.3935 13.8782 17.2979 14.3889 17.1006 14.8486L17.0098 15.043C16.6322 15.7839 16.0576 16.4036 15.3525 16.8359L15.043 17.0098C14.5329 17.2696 13.9655 17.3863 13.2676 17.4434C12.5755 17.4999 11.7113 17.5 10.5996 17.5H7.40039C6.28869 17.5 5.42447 17.4999 4.73242 17.4434C4.12184 17.3935 3.61108 17.2979 3.15137 17.1006L2.95703 17.0098C2.21605 16.6322 1.59644 16.0576 1.16406 15.3525L0.990234 15.043C0.730378 14.5329 0.61366 13.9655 0.556641 13.2676C0.500118 12.5755 0.5 11.7113 0.5 10.5996V7.40039C0.5 6.28869 0.500118 5.42447 0.556641 4.73242C0.61366 4.03453 0.730378 3.46707 0.990234 2.95703L1.16406 2.64746C1.59644 1.94243 2.21605 1.36778 2.95703 0.990234L3.15137 0.899414C3.61108 0.702129 4.12184 0.606527 4.73242 0.556641C5.42447 0.500118 6.28869 0.5 7.40039 0.5H10.5996Z",
+					"stroke": "white"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M1 7.4C1 5.15979 1 4.03969 1.43597 3.18404C1.81947 2.43139 2.43139 1.81947 3.18404 1.43597C4.03969 1 5.15979 1 7.4 1H10.6C12.8402 1 13.9603 1 14.816 1.43597C15.5686 1.81947 16.1805 2.43139 16.564 3.18404C17 4.03969 17 5.15979 17 7.4V10.6C17 12.8402 17 13.9603 16.564 14.816C16.1805 15.5686 15.5686 16.1805 14.816 16.564C13.9603 17 12.8402 17 10.6 17H7.4C5.15979 17 4.03969 17 3.18404 16.564C2.43139 16.1805 1.81947 15.5686 1.43597 14.816C1 13.9603 1 12.8402 1 10.6V7.4Z",
+					"fill": "#7839EE"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M1 7.4C1 5.15979 1 4.03969 1.43597 3.18404C1.81947 2.43139 2.43139 1.81947 3.18404 1.43597C4.03969 1 5.15979 1 7.4 1H10.6C12.8402 1 13.9603 1 14.816 1.43597C15.5686 1.81947 16.1805 2.43139 16.564 3.18404C17 4.03969 17 5.15979 17 7.4V10.6C17 12.8402 17 13.9603 16.564 14.816C16.1805 15.5686 15.5686 16.1805 14.816 16.564C13.9603 17 12.8402 17 10.6 17H7.4C5.15979 17 4.03969 17 3.18404 16.564C2.43139 16.1805 1.81947 15.5686 1.43597 14.816C1 13.9603 1 12.8402 1 10.6V7.4Z",
+					"fill": "url(#paint0_linear_5617_78246)"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M7.40039 1.5H10.5996C11.728 1.5 12.5446 1.50029 13.1865 1.55273C13.7434 1.59824 14.1352 1.68127 14.4561 1.81934L14.5889 1.88184C15.1651 2.17543 15.6471 2.62172 15.9834 3.16992L16.1182 3.41113C16.2942 3.75672 16.3953 4.17741 16.4473 4.81348C16.4997 5.4554 16.5 6.27204 16.5 7.40039V10.5996C16.5 11.728 16.4997 12.5446 16.4473 13.1865C16.4018 13.7434 16.3187 14.1352 16.1807 14.4561L16.1182 14.5889C15.8246 15.1651 15.3783 15.6471 14.8301 15.9834L14.5889 16.1182C14.2433 16.2942 13.8226 16.3953 13.1865 16.4473C12.5446 16.4997 11.728 16.5 10.5996 16.5H7.40039C6.27204 16.5 5.4554 16.4997 4.81348 16.4473C4.2566 16.4018 3.8648 16.3187 3.54395 16.1807L3.41113 16.1182C2.83494 15.8246 2.35287 15.3783 2.0166 14.8301L1.88184 14.5889C1.70575 14.2433 1.60471 13.8226 1.55273 13.1865C1.50029 12.5446 1.5 11.728 1.5 10.5996V7.40039C1.5 6.27204 1.50029 5.4554 1.55273 4.81348C1.59824 4.2566 1.68127 3.8648 1.81934 3.54395L1.88184 3.41113C2.17543 2.83494 2.62172 2.35287 3.16992 2.0166L3.41113 1.88184C3.75672 1.70575 4.17741 1.60471 4.81348 1.55273C5.4554 1.50029 6.27204 1.5 7.40039 1.5Z",
+					"stroke": "#101828",
+					"stroke-opacity": "0.08"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"clip-path": "url(#clip0_5617_78246)"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "g",
+						"attributes": {
+							"filter": "url(#filter0_d_5617_78246)"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.00004 5.31818C9.27619 5.31818 9.50004 5.54204 9.50004 5.81818V8.09091C9.50004 8.36705 9.27619 8.59091 9.00004 8.59091C8.7239 8.59091 8.50004 8.36705 8.50004 8.09091V5.81818C8.50004 5.54204 8.7239 5.31818 9.00004 5.31818Z",
+									"fill": "url(#paint1_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.00004 9.40909C9.27619 9.40909 9.50004 9.63295 9.50004 9.90909V12.1818C9.50004 12.458 9.27619 12.6818 9.00004 12.6818C8.7239 12.6818 8.50004 12.458 8.50004 12.1818V9.90909C8.50004 9.63295 8.7239 9.40909 9.00004 9.40909Z",
+									"fill": "url(#paint2_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M8.64355 5.1094C8.77894 5.35007 8.6936 5.65493 8.45293 5.79033L6.40065 6.94487C6.15998 7.08027 5.85512 6.99492 5.71973 6.75425C5.58433 6.51358 5.66968 6.20872 5.91035 6.07332L7.96262 4.91878C8.20329 4.78338 8.50815 4.86873 8.64355 5.1094Z",
+									"fill": "url(#paint3_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.35653 5.1094C9.49193 4.86873 9.79679 4.78338 10.0375 4.91878L12.0897 6.07332C12.3304 6.20872 12.4158 6.51358 12.2804 6.75425C12.145 6.99492 11.8401 7.08027 11.5994 6.94487L9.54715 5.79033C9.30648 5.65493 9.22114 5.35007 9.35653 5.1094Z",
+									"fill": "url(#paint4_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M5.71973 11.2458C5.85512 11.0051 6.15998 10.9197 6.40065 11.0551L8.45293 12.2097C8.6936 12.3451 8.77894 12.6499 8.64355 12.8906C8.50815 13.1313 8.20329 13.2166 7.96262 13.0812L5.91035 11.9267C5.66968 11.7913 5.58433 11.4864 5.71973 11.2458Z",
+									"fill": "url(#paint5_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M12.2804 11.2458C12.4158 11.4864 12.3304 11.7913 12.0897 11.9267L10.0375 13.0812C9.79679 13.2166 9.49193 13.1313 9.35653 12.8906C9.22114 12.6499 9.30648 12.3451 9.54715 12.2097L11.5994 11.0551C11.8401 10.9197 12.145 11.0051 12.2804 11.2458Z",
+									"fill": "url(#paint6_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M5.36368 7.36364C5.63982 7.36364 5.86368 7.58749 5.86368 7.86364V10.1364C5.86368 10.4125 5.63982 10.6364 5.36368 10.6364C5.08754 10.6364 4.86368 10.4125 4.86368 10.1364V7.86364C4.86368 7.58749 5.08754 7.36364 5.36368 7.36364Z",
+									"fill": "url(#paint7_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M12.6364 7.36364C12.9126 7.36364 13.1364 7.58749 13.1364 7.86364V10.1364C13.1364 10.4125 12.9126 10.6364 12.6364 10.6364C12.3603 10.6364 12.1364 10.4125 12.1364 10.1364V7.86364C12.1364 7.58749 12.3603 7.36364 12.6364 7.36364Z",
+									"fill": "url(#paint8_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M5.71928 7.1544C5.85467 6.91373 6.15953 6.82838 6.4002 6.96377L8.45338 8.11877C8.69406 8.25416 8.77941 8.55902 8.64402 8.79969C8.50863 9.04037 8.20377 9.12572 7.96309 8.99033L5.90991 7.83533C5.66924 7.69994 5.58389 7.39508 5.71928 7.1544Z",
+									"fill": "url(#paint9_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M12.2799 7.15488C12.4153 7.39557 12.3299 7.70042 12.0892 7.8358L10.0374 8.98989C9.79675 9.12527 9.49189 9.0399 9.35652 8.79922C9.22114 8.55854 9.30651 8.25368 9.54719 8.1183L11.599 6.96421C11.8397 6.82884 12.1445 6.9142 12.2799 7.15488Z",
+									"fill": "url(#paint10_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M8.64402 9.20031C8.77941 9.44099 8.69406 9.74585 8.45338 9.88124L6.4002 11.0362C6.15953 11.1716 5.85467 11.0863 5.71928 10.8456C5.58389 10.6049 5.66924 10.3001 5.90991 10.1647L7.96309 9.00968C8.20377 8.87429 8.50863 8.95964 8.64402 9.20031Z",
+									"fill": "url(#paint11_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.35652 9.20078C9.49189 8.9601 9.79675 8.87473 10.0374 9.01011L12.0892 10.1642C12.3299 10.2996 12.4153 10.6044 12.2799 10.8451C12.1445 11.0858 11.8397 11.1712 11.599 11.0358L9.54719 9.8817C9.30651 9.74632 9.22114 9.44146 9.35652 9.20078Z",
+									"fill": "url(#paint12_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M5.36368 10.6364C5.13775 10.6364 4.95459 10.8195 4.95459 11.0455C4.95459 11.2714 5.13775 11.4545 5.36368 11.4545C5.58962 11.4545 5.77277 11.2714 5.77277 11.0455C5.77277 10.8195 5.58962 10.6364 5.36368 10.6364ZM3.95459 11.0455C3.95459 10.2672 4.58546 9.63636 5.36368 9.63636C6.1419 9.63636 6.77277 10.2672 6.77277 11.0455C6.77277 11.8237 6.1419 12.4545 5.36368 12.4545C4.58546 12.4545 3.95459 11.8237 3.95459 11.0455Z",
+									"fill": "url(#paint13_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M5.36368 6.54545C5.13775 6.54545 4.95459 6.72861 4.95459 6.95455C4.95459 7.18048 5.13775 7.36364 5.36368 7.36364C5.58962 7.36364 5.77277 7.18048 5.77277 6.95455C5.77277 6.72861 5.58962 6.54545 5.36368 6.54545ZM3.95459 6.95455C3.95459 6.17633 4.58546 5.54545 5.36368 5.54545C6.1419 5.54545 6.77277 6.17633 6.77277 6.95455C6.77277 7.73276 6.1419 8.36364 5.36368 8.36364C4.58546 8.36364 3.95459 7.73276 3.95459 6.95455Z",
+									"fill": "url(#paint14_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M12.6364 10.6364C12.4105 10.6364 12.2273 10.8195 12.2273 11.0455C12.2273 11.2714 12.4105 11.4545 12.6364 11.4545C12.8623 11.4545 13.0455 11.2714 13.0455 11.0455C13.0455 10.8195 12.8623 10.6364 12.6364 10.6364ZM11.2273 11.0455C11.2273 10.2672 11.8582 9.63636 12.6364 9.63636C13.4146 9.63636 14.0455 10.2672 14.0455 11.0455C14.0455 11.8237 13.4146 12.4545 12.6364 12.4545C11.8582 12.4545 11.2273 11.8237 11.2273 11.0455Z",
+									"fill": "url(#paint15_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M12.6364 6.54545C12.4105 6.54545 12.2273 6.72861 12.2273 6.95455C12.2273 7.18048 12.4105 7.36364 12.6364 7.36364C12.8623 7.36364 13.0455 7.18048 13.0455 6.95455C13.0455 6.72861 12.8623 6.54545 12.6364 6.54545ZM11.2273 6.95455C11.2273 6.17633 11.8582 5.54545 12.6364 5.54545C13.4146 5.54545 14.0455 6.17633 14.0455 6.95455C14.0455 7.73276 13.4146 8.36364 12.6364 8.36364C11.8582 8.36364 11.2273 7.73276 11.2273 6.95455Z",
+									"fill": "url(#paint16_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.00004 8.59091C8.77411 8.59091 8.59095 8.77407 8.59095 9C8.59095 9.22593 8.77411 9.40909 9.00004 9.40909C9.22598 9.40909 9.40914 9.22593 9.40914 9C9.40914 8.77407 9.22598 8.59091 9.00004 8.59091ZM7.59095 9C7.59095 8.22178 8.22182 7.59091 9.00004 7.59091C9.77826 7.59091 10.4091 8.22178 10.4091 9C10.4091 9.77822 9.77826 10.4091 9.00004 10.4091C8.22182 10.4091 7.59095 9.77822 7.59095 9Z",
+									"fill": "url(#paint17_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.00004 4.5C8.77411 4.5 8.59095 4.68316 8.59095 4.90909C8.59095 5.13503 8.77411 5.31818 9.00004 5.31818C9.22598 5.31818 9.40914 5.13503 9.40914 4.90909C9.40914 4.68316 9.22598 4.5 9.00004 4.5ZM7.59095 4.90909C7.59095 4.13087 8.22182 3.5 9.00004 3.5C9.77826 3.5 10.4091 4.13087 10.4091 4.90909C10.4091 5.68731 9.77826 6.31818 9.00004 6.31818C8.22182 6.31818 7.59095 5.68731 7.59095 4.90909Z",
+									"fill": "url(#paint18_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.00004 12.6818C8.77411 12.6818 8.59095 12.865 8.59095 13.0909C8.59095 13.3168 8.77411 13.5 9.00004 13.5C9.22598 13.5 9.40914 13.3168 9.40914 13.0909C9.40914 12.865 9.22598 12.6818 9.00004 12.6818ZM7.59095 13.0909C7.59095 12.3127 8.22182 11.6818 9.00004 11.6818C9.77826 11.6818 10.4091 12.3127 10.4091 13.0909C10.4091 13.8691 9.77826 14.5 9.00004 14.5C8.22182 14.5 7.59095 13.8691 7.59095 13.0909Z",
+									"fill": "url(#paint19_linear_5617_78246)",
+									"shape-rendering": "crispEdges"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "filter",
+						"attributes": {
+							"id": "filter0_d_5617_78246",
+							"x": "3.45459",
+							"y": "3.25",
+							"width": "11.0908",
+							"height": "12",
+							"filterUnits": "userSpaceOnUse",
+							"color-interpolation-filters": "sRGB"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "feFlood",
+								"attributes": {
+									"flood-opacity": "0",
+									"result": "BackgroundImageFix"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feColorMatrix",
+								"attributes": {
+									"in": "SourceAlpha",
+									"type": "matrix",
+									"values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
+									"result": "hardAlpha"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feOffset",
+								"attributes": {
+									"dy": "0.25"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feGaussianBlur",
+								"attributes": {
+									"stdDeviation": "0.25"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feComposite",
+								"attributes": {
+									"in2": "hardAlpha",
+									"operator": "out"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feColorMatrix",
+								"attributes": {
+									"type": "matrix",
+									"values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2 0"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feBlend",
+								"attributes": {
+									"mode": "normal",
+									"in2": "BackgroundImageFix",
+									"result": "effect1_dropShadow_5617_78246"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feBlend",
+								"attributes": {
+									"mode": "normal",
+									"in": "SourceGraphic",
+									"in2": "effect1_dropShadow_5617_78246",
+									"result": "shape"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint0_linear_5617_78246",
+							"x1": "1",
+							"y1": "1",
+							"x2": "17",
+							"y2": "17",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white",
+									"stop-opacity": "0.12"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.08"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint1_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint2_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint3_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint4_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint5_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint6_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint7_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint8_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint9_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint10_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint11_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint12_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint13_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint14_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint15_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint16_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint17_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint18_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint19_linear_5617_78246",
+							"x1": "9.00004",
+							"y1": "3.5",
+							"x2": "9.00004",
+							"y2": "14.5",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.9"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "clipPath",
+						"attributes": {
+							"id": "clip0_5617_78246"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "rect",
+								"attributes": {
+									"width": "12",
+									"height": "12",
+									"fill": "white",
+									"transform": "translate(3 3)"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "Graph"
+}

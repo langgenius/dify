@@ -5,7 +5,7 @@ import useSWRInfinite from 'swr/infinite'
 import { debounce } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import NewDatasetCard from './new-dataset-card'
-import DatasetCard from './DatasetCard'
+import DatasetCard from './dataset-card'
 import type { DataSetListResponse, FetchDatasetsParams } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
@@ -84,7 +84,7 @@ const Datasets = ({
   }, [onScroll, containerRef])
 
   return (
-    <nav className='grid shrink-0 grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
+    <nav className='grid shrink-0 grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
       { isCurrentWorkspaceEditor && <NewDatasetCard ref={anchorRef} /> }
       {data?.map(({ data: datasets }) => datasets.map(dataset => (
         <DatasetCard key={dataset.id} dataset={dataset} onSuccess={mutate} />),
