@@ -15,6 +15,7 @@ import { useProviderContext } from '@/context/provider-context'
 import GridMask from '@/app/components/base/grid-mask'
 import { useAppContext } from '@/context/app-context'
 import classNames from '@/utils/classnames'
+import { useGetPricingPageLanguage } from '@/context/i18n'
 
 type Props = {
   onCancel: () => void
@@ -32,6 +33,11 @@ const Pricing: FC<Props> = ({
   const [currentPlan, setCurrentPlan] = React.useState<string>('cloud')
 
   useKeyPress(['esc'], onCancel)
+
+  const pricingPageLanguage = useGetPricingPageLanguage()
+  const pricingPageURL = pricingPageLanguage
+    ? `https://dify.ai/${pricingPageLanguage}/pricing#plans-and-features`
+    : 'https://dify.ai/pricing#plans-and-features'
 
   return createPortal(
     <div
@@ -127,7 +133,7 @@ const Pricing: FC<Props> = ({
           </div>
           <div className='flex items-center justify-center py-4'>
             <div className='flex items-center justify-center gap-x-0.5 rounded-lg px-3 py-2 text-components-button-secondary-accent-text hover:cursor-pointer hover:bg-state-accent-hover'>
-              <Link href='https://dify.ai/pricing#plans-and-features' className='system-sm-medium'>{t('billing.plansCommon.comparePlanAndFeatures')}</Link>
+              <Link href={pricingPageURL} className='system-sm-medium'>{t('billing.plansCommon.comparePlanAndFeatures')}</Link>
               <RiArrowRightUpLine className='size-4' />
             </div>
           </div>
