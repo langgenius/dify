@@ -69,7 +69,7 @@ class PdfExtractor(BaseExtractor):
             with pdfplumber.open(file_obj) as pdf:
                 for page_number, page in enumerate(pdf.pages):
                     # Extract text with layout preservation and encoding detection
-                    content = page.extract_text(layout=True)
+                    content = page.extract_text(layout=True) or ""
                     # Try to detect and fix encoding issues
                     try:
                         # First try to decode as UTF-8
