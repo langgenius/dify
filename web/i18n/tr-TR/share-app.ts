@@ -26,6 +26,8 @@ const translation = {
     },
     tryToSolve: 'Çözmeyi Dene',
     temporarySystemIssue: 'Üzgünüz, geçici sistem sorunu.',
+    expand: 'Genişlet',
+    collapse: 'Kısıtla',
   },
   generation: {
     tabs: {

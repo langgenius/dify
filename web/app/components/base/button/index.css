@@ -22,7 +22,7 @@
   }
 
   .btn-primary {
-    @apply 
+    @apply
     shadow
     bg-components-button-primary-bg
     border-components-button-primary-border
@@ -32,7 +32,7 @@
   }
 
   .btn-primary.btn-destructive {
-    @apply 
+    @apply
     bg-components-button-destructive-primary-bg
     border-components-button-destructive-primary-border
     hover:bg-components-button-destructive-primary-bg-hover
@@ -41,7 +41,7 @@
   }
 
   .btn-primary.btn-disabled {
-    @apply 
+    @apply
     shadow-none
     bg-components-button-primary-bg-disabled
     border-components-button-primary-border-disabled
@@ -49,7 +49,7 @@
   }
 
   .btn-primary.btn-destructive.btn-disabled {
-    @apply 
+    @apply
     shadow-none
     bg-components-button-destructive-primary-bg-disabled
     border-components-button-destructive-primary-border-disabled
@@ -57,130 +57,130 @@
   }
 
   .btn-secondary {
-    @apply 
+    @apply
     border-[0.5px]
     shadow-xs
-    bg-components-button-secondary-bg 
-    border-components-button-secondary-border 
-    hover:bg-components-button-secondary-bg-hover 
-    hover:border-components-button-secondary-border-hover 
+    bg-components-button-secondary-bg
+    border-components-button-secondary-border
+    hover:bg-components-button-secondary-bg-hover
+    hover:border-components-button-secondary-border-hover
     text-components-button-secondary-text;
   }
 
   .btn-secondary.btn-disabled {
-    @apply 
-    bg-components-button-secondary-bg-disabled 
-    border-components-button-secondary-border-disabled 
+    @apply
+    bg-components-button-secondary-bg-disabled
+    border-components-button-secondary-border-disabled
     text-components-button-secondary-text-disabled;
   }
 
   .btn-secondary.btn-destructive {
-    @apply 
-    bg-components-button-destructive-secondary-bg 
-    border-components-button-destructive-secondary-border 
-    hover:bg-components-button-destructive-secondary-bg-hover 
-    hover:border-components-button-destructive-secondary-border-hover 
+    @apply
+    bg-components-button-destructive-secondary-bg
+    border-components-button-destructive-secondary-border
+    hover:bg-components-button-destructive-secondary-bg-hover
+    hover:border-components-button-destructive-secondary-border-hover
     text-components-button-destructive-secondary-text;
   }
 
   .btn-secondary.btn-destructive.btn-disabled {
-    @apply 
-    bg-components-button-destructive-secondary-bg-disabled 
-    border-components-button-destructive-secondary-border-disabled 
+    @apply
+    bg-components-button-destructive-secondary-bg-disabled
+    border-components-button-destructive-secondary-border-disabled
     text-components-button-destructive-secondary-text-disabled;
   }
 
-  
+
   .btn-secondary-accent {
-    @apply 
+    @apply
     border-[0.5px]
     shadow-xs
-    bg-components-button-secondary-bg 
-    border-components-button-secondary-border 
-    hover:bg-components-button-secondary-bg-hover 
-    hover:border-components-button-secondary-border-hover 
+    bg-components-button-secondary-bg
+    border-components-button-secondary-border
+    hover:bg-components-button-secondary-bg-hover
+    hover:border-components-button-secondary-border-hover
     text-components-button-secondary-accent-text;
   }
 
   .btn-secondary-accent.btn-disabled {
-    @apply 
-    bg-components-button-secondary-bg-disabled 
-    border-components-button-secondary-border-disabled 
+    @apply
+    bg-components-button-secondary-bg-disabled
+    border-components-button-secondary-border-disabled
     text-components-button-secondary-accent-text-disabled;
   }
 
   .btn-warning {
-    @apply 
-    bg-components-button-destructive-primary-bg 
-    border-components-button-destructive-primary-border 
-    hover:bg-components-button-destructive-primary-bg-hover 
-    hover:border-components-button-destructive-primary-border-hover 
+    @apply
+    bg-components-button-destructive-primary-bg
+    border-components-button-destructive-primary-border
+    hover:bg-components-button-destructive-primary-bg-hover
+    hover:border-components-button-destructive-primary-border-hover
     text-components-button-destructive-primary-text;
   }
 
   .btn-warning.btn-disabled {
-    @apply 
-    bg-components-button-destructive-primary-bg-disabled 
-    border-components-button-destructive-primary-border-disabled 
+    @apply
+    bg-components-button-destructive-primary-bg-disabled
+    border-components-button-destructive-primary-border-disabled
     text-components-button-destructive-primary-text-disabled;
   }
 
   .btn-tertiary {
-    @apply 
-    bg-components-button-tertiary-bg 
-    hover:bg-components-button-tertiary-bg-hover 
+    @apply
+    bg-components-button-tertiary-bg
+    hover:bg-components-button-tertiary-bg-hover
     text-components-button-tertiary-text;
   }
 
   .btn-tertiary.btn-disabled {
-    @apply 
-    bg-components-button-tertiary-bg-disabled 
+    @apply
+    bg-components-button-tertiary-bg-disabled
     text-components-button-tertiary-text-disabled;
   }
 
   .btn-tertiary.btn-destructive {
-    @apply 
-    bg-components-button-destructive-tertiary-bg 
-    hover:bg-components-button-destructive-tertiary-bg-hover 
+    @apply
+    bg-components-button-destructive-tertiary-bg
+    hover:bg-components-button-destructive-tertiary-bg-hover
     text-components-button-destructive-tertiary-text;
   }
 
   .btn-tertiary.btn-destructive.btn-disabled {
-    @apply 
-    bg-components-button-destructive-tertiary-bg-disabled 
+    @apply
+    bg-components-button-destructive-tertiary-bg-disabled
     text-components-button-destructive-tertiary-text-disabled;
   }
 
   .btn-ghost {
-    @apply 
-    hover:bg-components-button-ghost-bg-hover 
+    @apply
+    hover:bg-components-button-ghost-bg-hover
     text-components-button-ghost-text;
   }
 
   .btn-ghost.btn-disabled {
-    @apply 
+    @apply
     text-components-button-ghost-text-disabled;
   }
 
   .btn-ghost.btn-destructive {
-    @apply 
-    hover:bg-components-button-destructive-ghost-bg-hover 
+    @apply
+    hover:bg-components-button-destructive-ghost-bg-hover
     text-components-button-destructive-ghost-text;
   }
 
   .btn-ghost.btn-destructive.btn-disabled {
-    @apply 
+    @apply
     text-components-button-destructive-ghost-text-disabled;
   }
 
   .btn-ghost-accent {
-    @apply 
+    @apply
     hover:bg-state-accent-hover
     text-components-button-secondary-accent-text;
   }
 
   .btn-ghost-accent.btn-disabled {
-    @apply 
+    @apply
     text-components-button-secondary-accent-text-disabled;
   }
 }

@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Télécharger le fichier texte',
-      button: 'Glisser et déposer le fichier, ou',
+      button: 'Faites glisser et déposez des fichiers ou des dossiers, ou',
       browse: 'Parcourir',
       tip: 'Prend en charge {{supportTypes}}. Max {{size}}MB chacun.',
       validation: {

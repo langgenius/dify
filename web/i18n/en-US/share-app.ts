@@ -34,6 +34,8 @@ const translation = {
     },
     tryToSolve: 'Try to solve',
     temporarySystemIssue: 'Sorry, temporary system issue.',
+    expand: 'Expand',
+    collapse: 'Collapse',
   },
   generation: {
     tabs: {

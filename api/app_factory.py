@@ -52,7 +52,6 @@ def initialize_extensions(app: DifyApp):
         ext_mail,
         ext_migrate,
         ext_otel,
-        ext_otel_patch,
         ext_proxy_fix,
         ext_redis,
         ext_repositories,
@@ -85,7 +84,6 @@ def initialize_extensions(app: DifyApp):
         ext_proxy_fix,
         ext_blueprints,
         ext_commands,
-        ext_otel_patch,  # Apply patch before initializing OpenTelemetry
         ext_otel,
     ]
     for ext in extensions:
