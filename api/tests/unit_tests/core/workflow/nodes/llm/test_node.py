@@ -1,10 +1,10 @@
-from unittest import mock
-
 import base64
-import pytest
 import uuid
 from collections.abc import Sequence
 from typing import Optional
+from unittest import mock
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
@@ -626,7 +626,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         # Rather than asserting the complete URL returned by _save_multimodal_output_and_convert_result_to_markdown,
         # we verify that the result includes the markdown image syntax and the expected file URL path.
         expected_file_url_path = f"/files/tools/{mock_saved_file.related_id}.png"
-        assert yielded_strs[0].startswith(f"![](")
+        assert yielded_strs[0].startswith("![](")
         assert expected_file_url_path in yielded_strs[0]
         assert yielded_strs[0].endswith(")")
         mock_file_saver.save_binary_string.assert_called_once_with(
