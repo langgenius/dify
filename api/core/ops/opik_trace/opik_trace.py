@@ -22,7 +22,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from core.repository.repository_factory import RepositoryFactory
+from core.workflow.repository.repository_factory import RepositoryFactory
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
 

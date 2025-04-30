@@ -22,10 +22,6 @@ export function preprocessMermaidCode(code: string): string {
     .replace(/section\s+([^:]+):/g, (match, sectionName) => `section ${sectionName}：`)
     // Fix common syntax issues
     .replace(/fifopacket/g, 'rect')
-    // Ensure graph has direction
-    .replace(/^graph\s+((?:TB|BT|RL|LR)*)/, (match, direction) => {
-      return direction ? match : 'graph TD'
-    })
     // Clean up empty lines and extra spaces
     .trim()
 }
