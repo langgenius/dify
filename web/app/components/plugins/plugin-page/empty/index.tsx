@@ -6,19 +6,19 @@ import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-f
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { usePluginPageContext } from '../context'
 import { Group } from '@/app/components/base/icons/src/vender/other'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import Line from '../../marketplace/empty/line'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import { useTranslation } from 'react-i18next'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { noop } from 'lodash-es'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const Empty = () => {
   const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const setActiveTab = usePluginPageContext(v => v.setActiveTab)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
