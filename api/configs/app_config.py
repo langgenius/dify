@@ -2,7 +2,7 @@ import logging
 from typing import Any
 
 from pydantic.fields import FieldInfo
-from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
 from .deploy import DeploymentConfig
 from .enterprise import EnterpriseFeatureConfig
@@ -99,4 +99,5 @@ class DifyConfig(
             RemoteSettingsSourceFactory(settings_cls),
             dotenv_settings,
             file_secret_settings,
+            TomlConfigSettingsSource(settings_cls, toml_file="pyproject.toml"),
         )

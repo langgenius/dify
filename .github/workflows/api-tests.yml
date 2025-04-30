@@ -47,6 +47,10 @@ jobs:
       - name: Run Unit tests
         run: |
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
+
+      - name: Coverage summary
+        if: false
+        run: |
           # Extract coverage percentage and create a summary
           TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
 
