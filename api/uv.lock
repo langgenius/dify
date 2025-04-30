@@ -1198,6 +1198,7 @@ wheels = [
 
 [[package]]
 name = "dify-api"
+version = "1.4.3"
 source = { virtual = "." }
 dependencies = [
     { name = "authlib" },
