@@ -16,6 +16,7 @@ import { flow } from 'lodash-es'
 import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
 import SVGBtn from '@/app/components/base/svg'
+import HTMLPreviewBtn from '@/app/components/base/html-preview-button'
 import Flowchart from '@/app/components/base/mermaid'
 import ImageGallery from '@/app/components/base/image-gallery'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
@@ -29,6 +30,7 @@ import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
 import SVGRenderer from './svg-gallery'
+import { getPureContent, isCompleteHTML } from './utils'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -191,14 +193,17 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   if (inline || !match)
     return <code {...props} className={className}>{children}</code>
 
+  const pureCode = getPureContent(children)
+
   return (
     <div className='relative'>
       <div className='flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3'>
         <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
         <div className='flex items-center gap-1'>
           {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
+          {(['html']).includes(language!) && <HTMLPreviewBtn content={pureCode} completed={isCompleteHTML(pureCode)} />}
           <ActionButton>
-            <CopyIcon content={String(children).replace(/\n$/, '')} />
+            <CopyIcon content={pureCode} />
           </ActionButton>
         </div>
       </div>
