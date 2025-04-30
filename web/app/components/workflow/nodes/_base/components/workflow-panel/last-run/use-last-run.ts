@@ -9,6 +9,7 @@ import useKnowledgeRetrievalSingleRunFormParams from '../../../../knowledge-retr
 import useCodeSingleRunFormParams from '../../../../code/use-single-run-form-params'
 import useTemplateTransformSingleRunFormParams from '../../../../template-transform/use-single-run-form-params'
 import useQuestionClassifierSingleRunFormParams from '../../../../question-classifier/use-single-run-form-params'
+import useIterationSingleRunFormParams from '../../../../iteration/use-single-run-form-params'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -20,22 +21,22 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.Code]: useCodeSingleRunFormParams,
   [BlockEnum.TemplateTransform]: useTemplateTransformSingleRunFormParams,
   [BlockEnum.QuestionClassifier]: useQuestionClassifierSingleRunFormParams,
+  [BlockEnum.HttpRequest]: undefined,
+  [BlockEnum.Tool]: undefined,
+  [BlockEnum.ParameterExtractor]: undefined,
+  [BlockEnum.Iteration]: useIterationSingleRunFormParams,
+  [BlockEnum.Agent]: undefined,
+  [BlockEnum.DocExtractor]: undefined,
+  [BlockEnum.Loop]: undefined,
   [BlockEnum.Start]: undefined,
   [BlockEnum.End]: undefined,
   [BlockEnum.Answer]: undefined,
   [BlockEnum.IfElse]: undefined,
-  [BlockEnum.HttpRequest]: undefined,
   [BlockEnum.VariableAssigner]: undefined,
   [BlockEnum.VariableAggregator]: undefined,
-  [BlockEnum.Tool]: undefined,
-  [BlockEnum.ParameterExtractor]: undefined,
-  [BlockEnum.Iteration]: undefined,
-  [BlockEnum.DocExtractor]: undefined,
   [BlockEnum.ListFilter]: undefined,
   [BlockEnum.IterationStart]: undefined,
   [BlockEnum.Assigner]: undefined,
-  [BlockEnum.Agent]: undefined,
-  [BlockEnum.Loop]: undefined,
   [BlockEnum.LoopStart]: undefined,
   [BlockEnum.LoopEnd]: undefined,
 }
