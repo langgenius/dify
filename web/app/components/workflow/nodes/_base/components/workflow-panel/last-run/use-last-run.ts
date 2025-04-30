@@ -5,6 +5,7 @@ import { TabType } from '../tab'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-single-run-form-params'
+import useKnowledgeRetrievalSingleRunFormParams from '../../../../knowledge-retrieval/use-single-run-form-params'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -12,10 +13,10 @@ import {
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
+  [BlockEnum.KnowledgeRetrieval]: useKnowledgeRetrievalSingleRunFormParams,
   [BlockEnum.Start]: undefined,
   [BlockEnum.End]: undefined,
   [BlockEnum.Answer]: undefined,
-  [BlockEnum.KnowledgeRetrieval]: undefined,
   [BlockEnum.QuestionClassifier]: undefined,
   [BlockEnum.IfElse]: undefined,
   [BlockEnum.Code]: undefined,
