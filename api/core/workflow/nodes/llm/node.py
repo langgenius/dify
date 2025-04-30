@@ -2,7 +2,6 @@ import base64
 import io
 import json
 import logging
-import mimetypes
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
@@ -10,7 +9,6 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 import json_repair
 
 from configs import dify_config
-from constants.mimetypes import DEFAULT_EXTENSION, DEFAULT_MIME_TYPE
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
@@ -98,8 +96,7 @@ from .exc import (
     TemplateTypeNotSupportError,
     VariableNotFoundError,
 )
-from .file_downloader import FileDownloader, SSRFProxyFileDownloader
-from .file_saver import MultiModalFile, MultiModalFileSaver, StorageFileSaver
+from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
@@ -117,8 +114,8 @@ class LLMNode(BaseNode[LLMNodeData]):
     # Instance attributes specific to LLMNode.
     # Output variable for file
     _file_outputs: list["File"]
-    _file_downloader: FileDownloader
-    _multi_modal_file_saver: MultiModalFileSaver
+
+    _llm_file_saver: LLMFileSaver
 
     def __init__(
         self,
@@ -130,8 +127,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         previous_node_id: Optional[str] = None,
         thread_pool_id: Optional[str] = None,
         *,
-        file_downloader: FileDownloader | None = None,
-        multi_modal_file_saver: MultiModalFileSaver | None = None,
+        llm_file_saver: LLMFileSaver | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -144,12 +140,13 @@ class LLMNode(BaseNode[LLMNodeData]):
         )
         # LLM file outputs, used for MultiModal outputs.
         self._file_outputs: list[File] = []
-        if file_downloader is None:
-            file_downloader = SSRFProxyFileDownloader()
-        self._file_downloader = file_downloader
-        if multi_modal_file_saver is None:
-            multi_modal_file_saver = StorageFileSaver()
-        self._multi_modal_file_saver = multi_modal_file_saver
+
+        if llm_file_saver is None:
+            llm_file_saver = FileSaverImpl(
+                user_id=graph_init_params.user_id,
+                tenant_id=graph_init_params.tenant_id,
+            )
+        self._llm_file_saver = llm_file_saver
 
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         def process_structured_output(text: str) -> Optional[dict[str, Any] | list[Any]]:
@@ -1035,40 +1032,19 @@ class LLMNode(BaseNode[LLMNodeData]):
         Currently, only image files are supported.
         """
         # Inject the saver somehow...
-        _saver = self._multi_modal_file_saver
+        _saver = self._llm_file_saver
 
         # If this
         if content.url != "":
-            mmf = self._download_file(content.url, FileType.IMAGE)
-            saved_file = _saver.save_file(mmf)
-            self._file_outputs.append(saved_file)
-            return saved_file
+            saved_file = _saver.save_remote_url(content.url, FileType.IMAGE)
         else:
-            mmf = MultiModalFile(
-                user_id=self.user_id,
-                tenant_id=self.tenant_id,
+            saved_file = _saver.save_binary_string(
                 data=base64.b64decode(content.base64_data),
                 mime_type=content.mime_type,
                 file_type=FileType.IMAGE,
-                extension_override=None,
             )
-            saved_file = _saver.save_file(mmf)
-            self._file_outputs.append(saved_file)
-            return saved_file
-
-    def _download_file(self, url: str, file_type: FileType) -> MultiModalFile:
-        downloader = self._file_downloader
-        # try to download image
-        response = downloader.get(url)
-        content_type, extension = _extract_content_type_and_extension(url, response.content_type)
-        return MultiModalFile(
-            user_id=self.user_id,
-            tenant_id=self.tenant_id,
-            file_type=file_type,
-            data=response.body,
-            mime_type=content_type,
-            extension_override=extension,
-        )
+        self._file_outputs.append(saved_file)
+        return saved_file
 
     def _handle_native_json_schema(self, model_parameters: dict, rules: list[ParameterRule]) -> dict:
         """
@@ -1451,15 +1427,3 @@ def convert_boolean_to_string(schema: dict) -> None:
             for item in value:
                 if isinstance(item, dict):
                     convert_boolean_to_string(item)
-
-
-def _extract_content_type_and_extension(url: str, content_type_header: str | None) -> tuple[str, str]:
-    """_extract_content_type_and_extension tries to
-    guess content type of file from url and `Content-Type` header in response.
-    """
-    if content_type_header:
-        extension = mimetypes.guess_extension(content_type_header) or DEFAULT_EXTENSION
-        return content_type_header, extension
-    content_type = mimetypes.guess_type(url)[0] or DEFAULT_MIME_TYPE
-    extension = mimetypes.guess_extension(content_type) or DEFAULT_EXTENSION
-    return content_type, extension
