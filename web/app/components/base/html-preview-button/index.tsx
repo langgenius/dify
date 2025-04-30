@@ -30,7 +30,7 @@ const CreateIframeModal = ({ show, onClose, content }: CreateIframeModalProps) =
     >
       <iframe
         srcDoc={content}
-        sandbox="allow-scripts"
+        sandbox="allow-scripts allow-same-origin"
         title={t(`${prefixPreview}`)}
         style={{ width: '100%', height: '100%', border: 'none' }}
       />
