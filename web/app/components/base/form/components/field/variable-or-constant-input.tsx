@@ -1,8 +1,11 @@
+import type { ChangeEvent } from 'react'
 import { useState } from 'react'
 import { RiEditLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import SegmentedControl from '@/app/components/base/segmented-control'
 import { VariableX } from '@/app/components/base/icons/src/vender/workflow'
+import Input from '@/app/components/base/input'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import type { LabelProps } from '../label'
 import Label from '../label'
 
@@ -22,18 +25,24 @@ const VariableOrConstantInputField = ({
   const options = [
     {
       Icon: VariableX,
-      text: '',
       value: 'variable',
     },
     {
       Icon: RiEditLine,
-      text: '',
       value: 'constant',
     },
   ]
 
   const handleVariableOrConstantChange = (value: string) => {
     setVariableType(value)
+  }
+
+  const handleVariableValueChange = () => {
+    console.log('Variable value changed')
+  }
+
+  const handleConstantValueChange = (e: ChangeEvent<HTMLInputElement>) => {
+    console.log('Constant value changed:', e.target.value)
   }
 
   return (
@@ -50,6 +59,25 @@ const VariableOrConstantInputField = ({
           onChange={handleVariableOrConstantChange as any}
           options={options as any}
         />
+        {
+          variableType === 'variable' && (
+            <VarReferencePicker
+              className='grow'
+              nodeId=''
+              readonly={false}
+              value={[]}
+              onChange={handleVariableValueChange}
+            />
+          )
+        }
+        {
+          variableType === 'constant' && (
+            <Input
+              className='ml-1'
+              onChange={handleConstantValueChange}
+            />
+          )
+        }
       </div>
     </div>
   )
