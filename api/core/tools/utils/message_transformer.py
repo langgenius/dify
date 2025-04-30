@@ -60,7 +60,7 @@ class ToolFileMessageTransformer:
 
                 mimetype = meta.get("mime_type", "application/octet-stream")
                 # get filename from meta
-                filename = meta.get("file_name", None)
+                filename = meta.get("filename", None)
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
