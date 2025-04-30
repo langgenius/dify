@@ -6,15 +6,14 @@ import socket
 import sys
 from typing import Union
 
+import httpx  # To get httpx.Response type hint
+import requests  # To get requests.Response type hint
 from celery.signals import worker_init  # type: ignore
 from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
+from opentelemetry.semconv.trace import SpanAttributes
 
 from configs import dify_config
 from dify_app import DifyApp
-
-import requests # To get requests.Response type hint
-import httpx # To get httpx.Response type hint
-from opentelemetry.semconv.trace import SpanAttributes
 
 
 @user_logged_in.connect
@@ -111,9 +110,9 @@ def init_app(app: DifyApp):
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.instrumentation.celery import CeleryInstrumentor
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
-    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-    from opentelemetry.instrumentation.requests import RequestsInstrumentor
     from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+    from opentelemetry.instrumentation.requests import RequestsInstrumentor
+    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
     from opentelemetry.metrics import get_meter, get_meter_provider, set_meter_provider
     from opentelemetry.propagate import set_global_textmap
     from opentelemetry.propagators.b3 import B3Format
@@ -130,7 +129,7 @@ def init_app(app: DifyApp):
     from opentelemetry.semconv.resource import ResourceAttributes
     from opentelemetry.trace import Span, get_tracer_provider, set_tracer_provider
     from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-    from opentelemetry.trace.status import StatusCode, Status
+    from opentelemetry.trace.status import Status, StatusCode
 
     setup_context_propagation()
     # Initialize OpenTelemetry

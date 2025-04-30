@@ -1373,7 +1373,7 @@ requires-dist = [
     { name = "opentelemetry-instrumentation", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-celery", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-flask", specifier = "==0.48b0" },
-    { name = "opentelemetry-instrumentation-httpx", specifier = ">=0.48b0" },
+    { name = "opentelemetry-instrumentation-httpx", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-requests", specifier = "==0.48b0" },
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = "==0.48b0" },
     { name = "opentelemetry-propagator-b3", specifier = "==1.27.0" },
