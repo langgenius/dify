@@ -53,7 +53,7 @@ class PluginUploadFileApi(Resource):
             raise Forbidden("Invalid request.")
 
         try:
-            tool_file = ToolFileManager.create_file_by_raw(
+            tool_file = ToolFileManager().create_file_by_raw(
                 user_id=user.id,
                 tenant_id=tenant_id,
                 file_binary=file.read(),
