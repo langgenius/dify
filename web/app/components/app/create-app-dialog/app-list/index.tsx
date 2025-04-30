@@ -191,14 +191,16 @@ const Apps = ({
       </div>
       <div className='relative flex flex-1 overflow-y-auto'>
         {!searchKeywords && <div className='h-full w-[200px] p-4'>
-          <Sidebar current={currCategory as AppCategories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
+          <Sidebar current={currCategory as AppCategories} categories={categories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
         </div>}
         <div className='h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2'>
           {searchFilteredList && searchFilteredList.length > 0 && <>
             <div className='pb-1 pt-4'>
               {searchKeywords
                 ? <p className='title-md-semi-bold text-text-tertiary'>{searchFilteredList.length > 1 ? t('app.newApp.foundResults', { count: searchFilteredList.length }) : t('app.newApp.foundResult', { count: searchFilteredList.length })}</p>
-                : <AppCategoryLabel category={currCategory as AppCategories} className='title-md-semi-bold text-text-primary' />}
+                : <div className='flex h-[22px] items-center'>
+                  <AppCategoryLabel category={currCategory as AppCategories} className='title-md-semi-bold text-text-primary' />
+                </div>}
             </div>
             <div
               className={cn(

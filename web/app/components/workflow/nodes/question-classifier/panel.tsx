@@ -103,6 +103,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
       <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nPrefix}.model`)}
+          required
         >
           <ModelParameterModal
             popupClassName='!w-[387px]'
@@ -121,6 +122,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
         </Field>
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
+          required
         >
           <VarReferencePicker
             readonly={readOnly}
@@ -143,6 +145,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
         />
         <Field
           title={t(`${i18nPrefix}.class`)}
+          required
         >
           <ClassList
             nodeId={id}

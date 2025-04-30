@@ -31,21 +31,27 @@ export const useAvailableNodesMetaData = () => {
   }, [language])
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
+    const { metaData } = node
+    const title = t(`workflow.blocks.${metaData.type}`)
+    const description = t(`workflow.blocksAbout.${metaData.type}`)
     return {
       ...node,
+      metaData: {
+        ...metaData,
+        title,
+        description,
+        helpLinkUri: `${prefixLink}${metaData.helpLinkUri}`,
+      },
       defaultValue: {
         ...node.defaultValue,
-        type: node.type,
+        type: metaData.type,
+        title,
       },
-      title: t(`workflow.blocks.${node.type}`),
-      description: t(`workflow.blocksAbout.${node.type}`),
-      helpLinkUri: `${prefixLink}${node.helpLinkUri}`,
-
     }
   }), [mergedNodesMetaData, t, prefixLink])
 
   const availableNodesMetaDataMap = useMemo(() => availableNodesMetaData.reduce((acc, node) => {
-    acc![node.type] = node
+    acc![node.metaData.type] = node
     return acc
   }, {} as AvailableNodesMetaData['nodesMap']), [availableNodesMetaData])
 

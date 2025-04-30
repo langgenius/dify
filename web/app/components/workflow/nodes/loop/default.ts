@@ -8,13 +8,14 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Logic,
+  sort: 3,
+  type: BlockEnum.Loop,
+  author: 'AICT-Team',
+})
 const nodeDefault: NodeDefault<LoopNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Logic,
-    sort: 3,
-    type: BlockEnum.Loop,
-    // author: 'AICT-Team',
-  }),
+  metaData,
   defaultValue: {
     start_node_id: '',
     break_conditions: [],

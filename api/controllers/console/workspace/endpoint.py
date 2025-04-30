@@ -5,7 +5,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.manager.exc import PluginPermissionDeniedError
+from core.plugin.impl.exc import PluginPermissionDeniedError
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 

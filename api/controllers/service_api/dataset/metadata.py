@@ -63,7 +63,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
-        return 200
+        return 204
 
 
 class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):

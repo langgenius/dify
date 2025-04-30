@@ -11,13 +11,16 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
     const result = availableNodesMetaData?.nodes || []
 
     return result.filter((block) => {
-      if (block.type === BlockEnum.Start)
+      if (block.metaData.type === BlockEnum.Start)
         return false
 
-      if (block.type === BlockEnum.IterationStart)
+      if (block.metaData.type === BlockEnum.DataSource)
         return false
 
-      if (block.type === BlockEnum.LoopStart)
+      if (block.metaData.type === BlockEnum.IterationStart)
+        return false
+
+      if (block.metaData.type === BlockEnum.LoopStart)
         return false
 
       return true

@@ -26,7 +26,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderEntity
-from core.plugin.manager.model import PluginModelManager
+from core.plugin.impl.model import PluginModelClient
 
 
 class AIModel(BaseModel):
@@ -141,7 +141,7 @@ class AIModel(BaseModel):
         :param credentials: model credentials
         :return: model schema
         """
-        plugin_model_manager = PluginModelManager()
+        plugin_model_manager = PluginModelClient()
         cache_key = f"{self.tenant_id}:{self.plugin_id}:{self.provider_name}:{self.model_type.value}:{model}"
         # sort credentials
         sorted_credentials = sorted(credentials.items()) if credentials else []

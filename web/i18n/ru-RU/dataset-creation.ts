@@ -27,7 +27,7 @@ const translation = {
     },
     uploader: {
       title: 'Загрузить файл',
-      button: 'Перетащите файл или',
+      button: 'Перетащите файлы или папки или',
       browse: 'Обзор',
       tip: 'Поддерживаются {{supportTypes}}. Максимум {{size}} МБ каждый.',
       validation: {

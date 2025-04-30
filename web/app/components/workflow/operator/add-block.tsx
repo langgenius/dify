@@ -59,13 +59,12 @@ const AddBlock = ({
     const nodesWithSameType = nodes.filter(node => node.data.type === type)
     const {
       defaultValue,
-      title,
     } = nodesMetaDataMap![type]
     const { newNode } = generateNewNode({
       type: getNodeCustomTypeByNodeDataType(type),
       data: {
         ...(defaultValue as any),
-        title: nodesWithSameType.length > 0 ? `${title} ${nodesWithSameType.length + 1}` : title,
+        title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
         ...(toolDefaultValue || {}),
         _isCandidate: true,
       },

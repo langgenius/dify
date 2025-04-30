@@ -6,11 +6,12 @@ import { BlockEnum } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  sort: 1,
+  type: BlockEnum.LLM,
+})
 const nodeDefault: NodeDefault<LLMNodeType> = {
-  ...genNodeMetaData({
-    sort: 1,
-    type: BlockEnum.LLM,
-  }),
+  metaData,
   defaultValue: {
     model: {
       provider: '',

@@ -79,7 +79,7 @@ class AnnotationListApi(Resource):
 class AnnotationUpdateDeleteApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     @marshal_with(annotation_fields)
-    def post(self, app_model: App, end_user: EndUser, annotation_id):
+    def put(self, app_model: App, end_user: EndUser, annotation_id):
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -98,7 +98,7 @@ class AnnotationUpdateDeleteApi(Resource):
 
         annotation_id = str(annotation_id)
         AppAnnotationService.delete_app_annotation(app_model.id, annotation_id)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 api.add_resource(AnnotationReplyActionApi, "/apps/annotation-reply/<string:action>")

@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Încărcați fișier text',
-      button: 'Trageți și fixați fișierul, sau',
+      button: 'Trageți și plasați fișiere sau foldere sau',
       browse: 'Răsfoire',
       tip: 'Acceptă {{supportTypes}}. Maxim {{size}}MB fiecare.',
       validation: {

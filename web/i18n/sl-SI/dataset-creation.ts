@@ -32,7 +32,7 @@ const translation = {
     },
     uploader: {
       title: 'Naloži datoteko',
-      button: 'Povleci in spusti datoteko ali',
+      button: 'Povleci in spusti datoteke ali mape oz',
       browse: 'Prebrskaj',
       tip: 'Podprti tipi datotek: {{supportTypes}}. Največ {{size}}MB na datoteko.',
       validation: {

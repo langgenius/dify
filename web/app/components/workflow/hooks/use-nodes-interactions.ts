@@ -685,7 +685,6 @@ export const useNodesInteractions = () => {
     const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
     const {
       defaultValue,
-      title,
     } = nodesMetaDataMap![nodeType]
     const {
       newNode,
@@ -695,7 +694,7 @@ export const useNodesInteractions = () => {
       type: getNodeCustomTypeByNodeDataType(nodeType),
       data: {
         ...(defaultValue as any),
-        title: nodesWithSameType.length > 0 ? `${title} ${nodesWithSameType.length + 1}` : title,
+        title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
         ...(toolDefaultValue || {}),
         selected: true,
         _showAddVariablePopup: (nodeType === BlockEnum.VariableAssigner || nodeType === BlockEnum.VariableAggregator) && !!prevNodeId,
@@ -1121,7 +1120,6 @@ export const useNodesInteractions = () => {
     const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
     const {
       defaultValue,
-      title,
     } = nodesMetaDataMap![nodeType]
     const {
       newNode: newCurrentNode,
@@ -1131,7 +1129,7 @@ export const useNodesInteractions = () => {
       type: getNodeCustomTypeByNodeDataType(nodeType),
       data: {
         ...(defaultValue as any),
-        title: nodesWithSameType.length > 0 ? `${title} ${nodesWithSameType.length + 1}` : title,
+        title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
         ...(toolDefaultValue || {}),
         _connectedSourceHandleIds: [],
         _connectedTargetHandleIds: [],

@@ -5,13 +5,14 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Transform,
+  sort: 4,
+  type: BlockEnum.DocExtractor,
+  helpLinkUri: 'doc-extractor',
+})
 const nodeDefault: NodeDefault<DocExtractorNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Transform,
-    sort: 4,
-    type: BlockEnum.DocExtractor,
-    helpLinkUri: 'doc-extractor',
-  }),
+  metaData,
   defaultValue: {
     variable_selector: [],
     is_array_file: false,

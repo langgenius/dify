@@ -4,8 +4,8 @@ Extension for initializing repositories.
 This extension registers repository implementations with the RepositoryFactory.
 """
 
+from core.repositories.repository_registry import register_repositories
 from dify_app import DifyApp
-from repositories.repository_registry import register_repositories
 
 
 def init_app(_app: DifyApp) -> None:

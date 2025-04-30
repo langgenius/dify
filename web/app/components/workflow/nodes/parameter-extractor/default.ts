@@ -5,12 +5,13 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Transform,
+  sort: 6,
+  type: BlockEnum.ParameterExtractor,
+})
 const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Transform,
-    sort: 6,
-    type: BlockEnum.ParameterExtractor,
-  }),
+  metaData,
   defaultValue: {
     query: [],
     model: {

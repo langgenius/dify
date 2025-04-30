@@ -5,13 +5,14 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  classification: BlockClassificationEnum.Transform,
+  sort: 2,
+  type: BlockEnum.TemplateTransform,
+  helpLinkUri: 'template',
+})
 const nodeDefault: NodeDefault<TemplateTransformNodeType> = {
-  ...genNodeMetaData({
-    classification: BlockClassificationEnum.Transform,
-    sort: 2,
-    type: BlockEnum.TemplateTransform,
-    helpLinkUri: 'template',
-  }),
+  metaData,
   defaultValue: {
     template: '',
     variables: [],

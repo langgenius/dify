@@ -6,7 +6,7 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
   const availableNodesMetaData = useNodesMetaData()
 
   const link = useMemo(() => {
-    const result = availableNodesMetaData?.nodesMap?.[nodeType]?.helpLinkUri || ''
+    const result = availableNodesMetaData?.nodesMap?.[nodeType]?.metaData.helpLinkUri || ''
 
     return result
   }, [availableNodesMetaData, nodeType])

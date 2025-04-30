@@ -55,7 +55,7 @@ const PanelOperatorPopup = ({
   const edge = edges.find(edge => edge.target === id)
   const author = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
-      return nodesExtraData![data.type].author
+      return nodesExtraData![data.type].metaData.author
 
     if (data.provider_type === CollectionType.builtIn)
       return buildInTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.author
@@ -68,7 +68,7 @@ const PanelOperatorPopup = ({
 
   const about = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
-      return nodesExtraData![data.type].description
+      return nodesExtraData![data.type].metaData.description
 
     if (data.provider_type === CollectionType.builtIn)
       return buildInTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.description[language]

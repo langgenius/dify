@@ -59,7 +59,7 @@ class WorkflowRunDetailApi(Resource):
         Get a workflow task running detail
         """
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
+        if app_mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
             raise NotWorkflowAppError()
 
         workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()

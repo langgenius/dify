@@ -129,6 +129,7 @@ export const useNodeIterationInteractions = () => {
           _connectedTargetHandleIds: [],
           title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${childNodeType}`),
           iteration_id: newNodeId,
+          type: childNodeType,
         },
         position: child.position,
         positionAbsolute: child.positionAbsolute,

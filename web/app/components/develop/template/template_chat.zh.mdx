@@ -894,6 +894,106 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 ---
 
 <Heading
+  url='/conversations/:conversation_id/variables'
+  method='GET'
+  title='获取对话变量'
+  name='#conversation-variables'
+/>
+<Row>
+  <Col>
+    从特定对话中检索变量。此端点对于提取对话过程中捕获的结构化数据非常有用。
+
+    ### 路径参数
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        要从中检索变量的对话ID。
+      </Property>
+    </Properties>
+
+    ### 查询参数
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        用户标识符，由开发人员定义的规则，在应用程序内必须唯一。
+      </Property>
+      <Property name='last_id' type='string' key='last_id'>
+        （选填）当前页最后面一条记录的 ID，默认 null
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+        （选填）一次请求返回多少条记录，默认 20 条，最大 100 条，最小 1 条。
+      </Property>
+    </Properties>
+
+    ### 响应
+
+    - `limit` (int) 每页项目数
+    - `has_more` (bool) 是否有更多项目
+    - `data` (array[object]) 变量列表
+      - `id` (string) 变量ID
+      - `name` (string) 变量名称
+      - `value_type` (string) 变量类型（字符串、数字、布尔等）
+      - `value` (string) 变量值
+      - `description` (string) 变量描述
+      - `created_at` (int) 创建时间戳
+      - `updated_at` (int) 最后更新时间戳
+
+    ### 错误
+    - 404, `conversation_not_exists`, 对话不存在
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/conversations/:conversation_id/variables" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \\\n--header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Request with variable name filter">
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123&variable_name=customer_name' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "limit": 100,
+      "has_more": false,
+      "data": [
+        {
+          "id": "variable-uuid-1",
+          "name": "customer_name",
+          "value_type": "string",
+          "value": "John Doe",
+          "description": "客户名称（从对话中提取）",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        },
+        {
+          "id": "variable-uuid-2",
+          "name": "order_details",
+          "value_type": "json",
+          "value": "{\"product\":\"Widget\",\"quantity\":5,\"price\":19.99}",
+          "description": "客户的订单详情",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/audio-to-text'
   method='POST'
   title='语音转文字'

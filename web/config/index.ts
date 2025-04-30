@@ -306,12 +306,12 @@ export const MAX_ITERATIONS_NUM = maxIterationsNum
 
 export const ENABLE_WEBSITE_JINAREADER = process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER !== undefined
   ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER === 'true'
-  : true
+  : globalThis.document?.body?.getAttribute('data-public-enable-website-jinareader') === 'true' || true
 
 export const ENABLE_WEBSITE_FIRECRAWL = process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL !== undefined
   ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL === 'true'
-  : true
+  : globalThis.document?.body?.getAttribute('data-public-enable-website-firecrawl') === 'true' || true
 
 export const ENABLE_WEBSITE_WATERCRAWL = process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL !== undefined
   ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL === 'true'
-  : true
+  : globalThis.document?.body?.getAttribute('data-public-enable-website-watercrawl') === 'true' || true
