@@ -14,4 +14,4 @@ class PyProjectTomlConfig(BaseSettings):
     """
 
     # [project] section
-    project: PyProjectConfig  # type: ignore
+    project: PyProjectConfig
