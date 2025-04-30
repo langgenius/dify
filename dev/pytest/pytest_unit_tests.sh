@@ -2,4 +2,5 @@
 set -x
 
 # libs
-pytest api/tests/unit_tests
+cd api
+pytest tests/unit_tests
