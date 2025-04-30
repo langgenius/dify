@@ -564,6 +564,8 @@ const translation = {
         '-=': '-=',
         'append': '附加',
         'clear': '清除',
+        'remove-first': '移除首項',
+        'remove-last': '移除末項',
       },
       'noAssignedVars': '沒有可用的已分配變數',
       'variables': '變數',
