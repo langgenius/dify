@@ -315,3 +315,5 @@ export const ENABLE_WEBSITE_FIRECRAWL = process.env.NEXT_PUBLIC_ENABLE_WEBSITE_F
 export const ENABLE_WEBSITE_WATERCRAWL = process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL !== undefined
   ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL === 'true'
   : globalThis.document?.body?.getAttribute('data-public-enable-website-watercrawl') === 'true' || true
+
+export const POSSESSION_TEXT = `© ${new Date().getFullYear()} Custom Subject, Inc. All rights reserved.`

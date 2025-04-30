@@ -2,6 +2,7 @@ import React from 'react'
 import Header from '../signin/_header'
 import InstallForm from './installForm'
 import cn from '@/utils/classnames'
+import { POSSESSION_TEXT } from '@/config'
 
 const Install = () => {
   return (
@@ -10,7 +11,7 @@ const Install = () => {
         <Header />
         <InstallForm />
         <div className='px-8 py-6 text-sm font-normal text-text-tertiary'>
-          © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
+          { POSSESSION_TEXT || `© ${new Date().getFullYear()} LangGenius, Inc. All rights reserved.` }
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import Header from './_header'
 
 import cn from '@/utils/classnames'
+import { POSSESSION_TEXT } from '@/config'
 
 export default async function SignInLayout({ children }: any) {
   return <>
@@ -13,7 +14,7 @@ export default async function SignInLayout({ children }: any) {
           </div>
         </div>
         <div className='system-xs-regular px-8 py-6 text-text-tertiary'>
-          © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
+          { POSSESSION_TEXT || `© ${new Date().getFullYear()} LangGenius, Inc. All rights reserved.` }
         </div>
       </div>
     </div>
