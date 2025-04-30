@@ -845,6 +845,106 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
+  url='/conversations/:conversation_id/variables'
+  method='GET'
+  title='会話変数の取得'
+  name='#conversation-variables'
+/>
+<Row>
+  <Col>
+    特定の会話から変数を取得します。このエンドポイントは、会話中に取得された構造化データを抽出するのに役立ちます。
+
+    ### パスパラメータ
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        変数を取得する会話のID。
+      </Property>
+    </Properties>
+
+    ### クエリパラメータ
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        ユーザー識別子。開発者によって定義されたルールに従い、アプリケーション内で一意である必要があります。
+      </Property>
+      <Property name='last_id' type='string' key='last_id'>
+          (Optional)現在のページの最後の記録のID、デフォルトはnullです。
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+          (Optional)1回のリクエストで返す記録の数、デフォルトは最新の20件です。最大100、最小1。
+      </Property>
+    </Properties>
+
+    ### レスポンス
+
+    - `limit` (int) ページごとのアイテム数
+    - `has_more` (bool) さらにアイテムがあるかどうか
+    - `data` (array[object]) 変数のリスト
+      - `id` (string) 変数ID
+      - `name` (string) 変数名
+      - `value_type` (string) 変数タイプ（文字列、数値、真偽値など）
+      - `value` (string) 変数値
+      - `description` (string) 変数の説明
+      - `created_at` (int) 作成タイムスタンプ
+      - `updated_at` (int) 最終更新タイムスタンプ
+
+    ### エラー
+    - 404, `conversation_not_exists`, 会話が見つかりません
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/conversations/:conversation_id/variables" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \\\n--header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Request with variable name filter">
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations/{conversation_id}/variables?user=abc-123&variable_name=customer_name' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "limit": 100,
+      "has_more": false,
+      "data": [
+        {
+          "id": "variable-uuid-1",
+          "name": "customer_name",
+          "value_type": "string",
+          "value": "John Doe",
+          "description": "会話から抽出された顧客名",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        },
+        {
+          "id": "variable-uuid-2",
+          "name": "order_details",
+          "value_type": "json",
+          "value": "{\"product\":\"Widget\",\"quantity\":5,\"price\":19.99}",
+          "description": "顧客の注文詳細",
+          "created_at": 1650000000000,
+          "updated_at": 1650000000000
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/audio-to-text'
   method='POST'
   title='音声からテキストへ'

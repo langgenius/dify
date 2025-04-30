@@ -27,7 +27,7 @@ const translation = {
     },
     uploader: {
       title: 'بارگذاری فایل',
-      button: 'کشیدن و رها کردن فایل، یا',
+      button: 'فایل ها یا پوشه ها را بکشید و رها کنید یا',
       browse: 'مرور',
       tip: 'پشتیبانی از {{supportTypes}}. حداکثر {{size}}MB هر کدام.',
       validation: {

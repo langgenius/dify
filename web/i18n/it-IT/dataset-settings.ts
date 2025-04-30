@@ -40,6 +40,7 @@ const translation = {
     helpText: 'Scopri come scrivere una buona descrizione del set di dati.',
     upgradeHighQualityTip: 'Una volta effettuato l\'aggiornamento alla modalità Alta qualità, il ripristino della modalità Risparmio non è disponibile',
     indexMethodChangeToEconomyDisabledTip: 'Non disponibile per il downgrade da HQ a ECO',
+    searchModel: 'Cerca modello',
   },
 }
 

@@ -3,8 +3,8 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum
-from typing import TYPE_CHECKING, Optional
+from enum import Enum, StrEnum
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
@@ -13,9 +13,6 @@ from services.plugin.plugin_service import PluginService
 if TYPE_CHECKING:
     from models.workflow import Workflow
 
-from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal, cast
-
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin  # type: ignore
@@ -23,6 +20,7 @@ from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
+from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
@@ -442,7 +440,7 @@ class AppModelConfig(Base):
             else {
                 "image": {
                     "enabled": False,
-                    "number_limits": 3,
+                    "number_limits": DEFAULT_FILE_NUMBER_LIMITS,
                     "detail": "high",
                     "transfer_methods": ["remote_url", "local_file"],
                 }
@@ -1014,7 +1012,9 @@ class Message(db.Model):  # type: ignore[name-defined]
                 sign_url = file_helpers.get_signed_file_url(upload_file_id)
             else:
                 continue
-
+            # if as_attachment is in the url, add it to the sign_url.
+            if "as_attachment" in url:
+                sign_url += "&as_attachment=true"
             re_sign_file_url_answer = re_sign_file_url_answer.replace(url, sign_url)
 
         return re_sign_file_url_answer
@@ -1090,12 +1090,7 @@ class Message(db.Model):  # type: ignore[name-defined]
 
     @property
     def retriever_resources(self):
-        return (
-            db.session.query(DatasetRetrieverResource)
-            .filter(DatasetRetrieverResource.message_id == self.id)
-            .order_by(DatasetRetrieverResource.position.asc())
-            .all()
-        )
+        return self.message_metadata_dict.get("retriever_resources") if self.message_metadata else []
 
     @property
     def message_files(self):
@@ -1154,7 +1149,7 @@ class Message(db.Model):  # type: ignore[name-defined]
             files.append(file)
 
         result = [
-            {"belongs_to": message_file.belongs_to, **file.to_dict()}
+            {"belongs_to": message_file.belongs_to, "upload_file_id": message_file.upload_file_id, **file.to_dict()}
             for (file, message_file) in zip(files, message_files)
         ]
 

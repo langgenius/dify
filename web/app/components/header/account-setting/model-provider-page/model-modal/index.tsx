@@ -278,30 +278,31 @@ const ModelModal: FC<ModelModalProps> = ({
     <PortalToFollowElem open>
       <PortalToFollowElemContent className='z-[60] h-full w-full'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl'>
+          <div className='mx-2 w-[640px] overflow-auto rounded-2xl bg-components-panel-bg shadow-xl'>
             <div className='px-8 pt-8'>
               <div className='mb-2 flex items-center'>
                 <div className='text-xl font-semibold text-text-primary'>{renderTitlePrefix()}</div>
               </div>
 
-              <Form
-                value={value}
-                onChange={handleValueChange}
-                formSchemas={formSchemas}
-                validating={validating}
-                validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
-                showOnVariableMap={showOnVariableMap}
-                isEditMode={isEditMode}
-              />
-
-              <div className='mb-4 mt-1 border-t-[0.5px] border-t-divider-regular' />
-              <ModelLoadBalancingConfigs withSwitch {...{
-                draftConfig,
-                setDraftConfig,
-                provider,
-                currentCustomConfigurationModelFixedFields,
-                configurationMethod: configurateMethod,
-              }} />
+              <div className='max-h-[calc(100vh-320px)] overflow-y-auto'>
+                <Form
+                  value={value}
+                  onChange={handleValueChange}
+                  formSchemas={formSchemas}
+                  validating={validating}
+                  validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
+                  showOnVariableMap={showOnVariableMap}
+                  isEditMode={isEditMode}
+                />
+                <div className='mb-4 mt-1 border-t-[0.5px] border-t-divider-regular' />
+                <ModelLoadBalancingConfigs withSwitch {...{
+                  draftConfig,
+                  setDraftConfig,
+                  provider,
+                  currentCustomConfigurationModelFixedFields,
+                  configurationMethod: configurateMethod,
+                }} />
+              </div>
 
               <div className='sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-between gap-y-2 bg-components-panel-bg px-2 pb-6 pt-4'>
                 {

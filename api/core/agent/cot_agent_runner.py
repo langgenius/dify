@@ -69,6 +69,13 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
         self._prompt_messages_tools = prompt_messages_tools
 
+        # fix metadata filter not work
+        if app_config.dataset is not None:
+            metadata_filtering_conditions = app_config.dataset.retrieve_config.metadata_filtering_conditions
+            for key, dataset_retriever_tool in tool_instances.items():
+                if hasattr(dataset_retriever_tool, "retrieval_tool"):
+                    dataset_retriever_tool.retrieval_tool.metadata_filtering_conditions = metadata_filtering_conditions
+
         function_call_state = True
         llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
         final_answer = ""
@@ -191,7 +198,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     # action is final answer, return final answer directly
                     try:
                         if isinstance(scratchpad.action.action_input, dict):
-                            final_answer = json.dumps(scratchpad.action.action_input)
+                            final_answer = json.dumps(scratchpad.action.action_input, ensure_ascii=False)
                         elif isinstance(scratchpad.action.action_input, str):
                             final_answer = scratchpad.action.action_input
                         else:

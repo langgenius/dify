@@ -26,6 +26,8 @@ const translation = {
     },
     tryToSolve: 'Спробувати вирішити',
     temporarySystemIssue: 'Вибачте, тимчасова системна проблема.',
+    expand: 'Розгорнути',
+    collapse: 'Згорнути',
   },
   generation: {
     tabs: {

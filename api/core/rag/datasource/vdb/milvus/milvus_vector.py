@@ -27,11 +27,12 @@ class MilvusConfig(BaseModel):
 
     uri: str  # Milvus server URI
     token: Optional[str] = None  # Optional token for authentication
-    user: str  # Username for authentication
-    password: str  # Password for authentication
+    user: Optional[str] = None  # Username for authentication
+    password: Optional[str] = None  # Password for authentication
     batch_size: int = 100  # Batch size for operations
     database: str = "default"  # Database name
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
+    analyzer_params: Optional[str] = None  # Analyzer params
 
     @model_validator(mode="before")
     @classmethod
@@ -42,10 +43,11 @@ class MilvusConfig(BaseModel):
         """
         if not values.get("uri"):
             raise ValueError("config MILVUS_URI is required")
-        if not values.get("user"):
-            raise ValueError("config MILVUS_USER is required")
-        if not values.get("password"):
-            raise ValueError("config MILVUS_PASSWORD is required")
+        if not values.get("token"):
+            if not values.get("user"):
+                raise ValueError("config MILVUS_USER is required")
+            if not values.get("password"):
+                raise ValueError("config MILVUS_PASSWORD is required")
         return values
 
     def to_milvus_params(self):
@@ -58,6 +60,7 @@ class MilvusConfig(BaseModel):
             "user": self.user,
             "password": self.password,
             "db_name": self.database,
+            "analyzer_params": self.analyzer_params,
         }
 
 
@@ -300,14 +303,19 @@ class MilvusVector(BaseVector):
 
                 # Create the text field, enable_analyzer will be set True to support milvus automatically
                 # transfer text to sparse_vector, reference: https://milvus.io/docs/full-text-search.md
-                fields.append(
-                    FieldSchema(
-                        Field.CONTENT_KEY.value,
-                        DataType.VARCHAR,
-                        max_length=65_535,
-                        enable_analyzer=self._hybrid_search_enabled,
-                    )
-                )
+                content_field_kwargs: dict[str, Any] = {
+                    "max_length": 65_535,
+                    "enable_analyzer": self._hybrid_search_enabled,
+                }
+                if (
+                    self._hybrid_search_enabled
+                    and self._client_config.analyzer_params is not None
+                    and self._client_config.analyzer_params.strip()
+                ):
+                    content_field_kwargs["analyzer_params"] = self._client_config.analyzer_params
+
+                fields.append(FieldSchema(Field.CONTENT_KEY.value, DataType.VARCHAR, **content_field_kwargs))
+
                 # Create the primary key field
                 fields.append(FieldSchema(Field.PRIMARY_KEY.value, DataType.INT64, is_primary=True, auto_id=True))
                 # Create the vector field, supports binary or float vectors
@@ -349,11 +357,14 @@ class MilvusVector(BaseVector):
                 )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def _init_client(self, config) -> MilvusClient:
+    def _init_client(self, config: MilvusConfig) -> MilvusClient:
         """
         Initialize and return a Milvus client.
         """
-        client = MilvusClient(uri=config.uri, user=config.user, password=config.password, db_name=config.database)
+        if config.token:
+            client = MilvusClient(uri=config.uri, token=config.token, db_name=config.database)
+        else:
+            client = MilvusClient(uri=config.uri, user=config.user, password=config.password, db_name=config.database)
         return client
 
 
@@ -383,5 +394,6 @@ class MilvusVectorFactory(AbstractVectorFactory):
                 password=dify_config.MILVUS_PASSWORD or "",
                 database=dify_config.MILVUS_DATABASE or "",
                 enable_hybrid_search=dify_config.MILVUS_ENABLE_HYBRID_SEARCH or False,
+                analyzer_params=dify_config.MILVUS_ANALYZER_PARAMS or "",
             ),
         )

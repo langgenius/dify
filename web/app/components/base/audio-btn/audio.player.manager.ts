@@ -33,7 +33,7 @@ export class AudioPlayerManager {
           this.audioPlayers.cacheBuffers = []
           this.audioPlayers.sourceBuffer?.abort()
         }
-        catch (e) {
+        catch {
         }
       }
 

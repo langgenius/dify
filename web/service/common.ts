@@ -338,7 +338,7 @@ export const sendResetPasswordCode = (email: string, language = 'en-US') =>
   post<CommonResponse & { data: string; message?: string; code?: string }>('/forgot-password', { body: { email, language } })
 
 export const verifyResetPasswordCode = (body: { email: string; code: string; token: string }) =>
-  post<CommonResponse & { is_valid: boolean }>('/forgot-password/validity', { body })
+  post<CommonResponse & { is_valid: boolean; token: string }>('/forgot-password/validity', { body })
 
 export const sendDeleteAccountCode = () =>
   get<CommonResponse & { data: string }>('/account/delete/verify')

@@ -15,7 +15,7 @@ import type {
   Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
-import { buildChatItemTree, getProcessedInputsFromUrlParams } from '../utils'
+import { buildChatItemTree, getProcessedInputsFromUrlParams, getProcessedSystemVariablesFromUrlParams } from '../utils'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import {
   fetchAppInfo,
@@ -72,23 +72,62 @@ export const useEmbeddedChatbot = () => {
   }, [appInfo])
   const appId = useMemo(() => appData?.app_id, [appData])
 
+  const [userId, setUserId] = useState<string>()
+  const [conversationId, setConversationId] = useState<string>()
   useEffect(() => {
-    if (appInfo?.site.default_language)
-      changeLanguage(appInfo.site.default_language)
+    getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
+      setUserId(user_id)
+      setConversationId(conversation_id)
+    })
+  }, [])
+
+  useEffect(() => {
+    const setLanguageFromParams = async () => {
+      // Check URL parameters for language override
+      const urlParams = new URLSearchParams(window.location.search)
+      const localeParam = urlParams.get('locale')
+
+      // Check for encoded system variables
+      const systemVariables = await getProcessedSystemVariablesFromUrlParams()
+      const localeFromSysVar = systemVariables.locale
+
+      if (localeParam) {
+        // If locale parameter exists in URL, use it instead of default
+        changeLanguage(localeParam)
+      }
+      else if (localeFromSysVar) {
+        // If locale is set as a system variable, use that
+        changeLanguage(localeFromSysVar)
+      }
+      else if (appInfo?.site.default_language) {
+        // Otherwise use the default from app config
+        changeLanguage(appInfo.site.default_language)
+      }
+    }
+
+    setLanguageFromParams()
   }, [appInfo])
 
-  const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, string>>(CONVERSATION_ID_INFO, {
+  const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
-  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || ''] || '', [appId, conversationIdInfo])
+  const allowResetChat = !conversationId
+  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '',
+    [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
+      let prevValue = conversationIdInfo?.[appId || '']
+      if (typeof prevValue === 'string')
+        prevValue = {}
       setConversationIdInfo({
         ...conversationIdInfo,
-        [appId || '']: changeConversationId,
+        [appId || '']: {
+          ...prevValue,
+          [userId || 'DEFAULT']: changeConversationId,
+        },
       })
     }
-  }, [appId, conversationIdInfo, setConversationIdInfo])
+  }, [appId, conversationIdInfo, setConversationIdInfo, userId])
 
   const [newConversationId, setNewConversationId] = useState('')
   const chatShouldReloadKey = useMemo(() => {
@@ -327,6 +366,7 @@ export const useEmbeddedChatbot = () => {
     appInfoError,
     appInfoLoading,
     isInstalledApp,
+    allowResetChat,
     appId,
     currentConversationId,
     currentConversationItem,

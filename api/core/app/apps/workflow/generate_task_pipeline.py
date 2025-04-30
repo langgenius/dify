@@ -55,6 +55,7 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
+from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole
@@ -82,6 +83,7 @@ class WorkflowAppGenerateTaskPipeline:
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
         stream: bool,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
@@ -109,6 +111,7 @@ class WorkflowAppGenerateTaskPipeline:
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
                 SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
             },
+            workflow_node_execution_repository=workflow_node_execution_repository,
         )
 
         self._application_generate_entity = application_generate_entity
@@ -279,10 +282,9 @@ class WorkflowAppGenerateTaskPipeline:
                         session=session, workflow_run_id=self._workflow_run_id
                     )
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_retried(
-                        session=session, workflow_run=workflow_run, event=event
+                        workflow_run=workflow_run, event=event
                     )
                     response = self._workflow_cycle_manager._workflow_node_retry_to_stream_response(
-                        session=session,
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -300,10 +302,9 @@ class WorkflowAppGenerateTaskPipeline:
                         session=session, workflow_run_id=self._workflow_run_id
                     )
                     workflow_node_execution = self._workflow_cycle_manager._handle_node_execution_start(
-                        session=session, workflow_run=workflow_run, event=event
+                        workflow_run=workflow_run, event=event
                     )
                     node_start_response = self._workflow_cycle_manager._workflow_node_start_to_stream_response(
-                        session=session,
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -313,17 +314,14 @@ class WorkflowAppGenerateTaskPipeline:
                 if node_start_response:
                     yield node_start_response
             elif isinstance(event, QueueNodeSucceededEvent):
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_success(
-                        session=session, event=event
-                    )
-                    node_success_response = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
-                        session=session,
-                        event=event,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_node_execution=workflow_node_execution,
-                    )
-                    session.commit()
+                workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_success(
+                    event=event
+                )
+                node_success_response = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                    event=event,
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_node_execution=workflow_node_execution,
+                )
 
                 if node_success_response:
                     yield node_success_response
@@ -334,18 +332,14 @@ class WorkflowAppGenerateTaskPipeline:
                 | QueueNodeInLoopFailedEvent
                 | QueueNodeExceptionEvent,
             ):
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
-                        session=session,
-                        event=event,
-                    )
-                    node_failed_response = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
-                        session=session,
-                        event=event,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_node_execution=workflow_node_execution,
-                    )
-                    session.commit()
+                workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
+                    event=event,
+                )
+                node_failed_response = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                    event=event,
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_node_execution=workflow_node_execution,
+                )
 
                 if node_failed_response:
                     yield node_failed_response
@@ -627,6 +621,7 @@ class WorkflowAppGenerateTaskPipeline:
         workflow_app_log.created_by = self._user_id
 
         session.add(workflow_app_log)
+        session.commit()
 
     def _text_chunk_to_stream_response(
         self, text: str, from_variable_selector: Optional[list[str]] = None

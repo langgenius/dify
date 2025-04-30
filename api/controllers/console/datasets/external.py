@@ -21,12 +21,6 @@ def _validate_name(name):
     return name
 
 
-def _validate_description_length(description):
-    if description and len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
-
-
 class ExternalApiTemplateListApi(Resource):
     @setup_required
     @login_required
@@ -141,7 +135,7 @@ class ExternalApiTemplateApi(Resource):
             raise Forbidden()
 
         ExternalDatasetService.delete_external_knowledge_api(current_user.current_tenant_id, external_knowledge_api_id)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class ExternalApiUseCheckApi(Resource):

@@ -1,6 +1,7 @@
+from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Generic, Optional, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -158,3 +159,11 @@ class PluginInstallTaskStartResponse(BaseModel):
 class PluginUploadResponse(BaseModel):
     unique_identifier: str = Field(description="The unique identifier of the plugin.")
     manifest: PluginDeclaration
+
+
+class PluginOAuthAuthorizationUrlResponse(BaseModel):
+    authorization_url: str = Field(description="The URL of the authorization.")
+
+
+class PluginOAuthCredentialsResponse(BaseModel):
+    credentials: Mapping[str, Any] = Field(description="The credentials of the OAuth.")

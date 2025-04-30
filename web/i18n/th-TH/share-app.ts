@@ -26,6 +26,8 @@ const translation = {
     },
     tryToSolve: 'พยายามแก้',
     temporarySystemIssue: 'ขออภัย ปัญหาระบบชั่วคราว',
+    expand: 'ขยาย',
+    collapse: 'ย่อ',
   },
   generation: {
     tabs: {

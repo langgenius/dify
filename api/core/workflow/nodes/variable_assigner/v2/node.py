@@ -64,7 +64,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
                 # Get value from variable pool
                 if (
                     item.input_type == InputType.VARIABLE
-                    and item.operation != Operation.CLEAR
+                    and item.operation not in {Operation.CLEAR, Operation.REMOVE_FIRST, Operation.REMOVE_LAST}
                     and item.value is not None
                 ):
                     value = self.graph_runtime_state.variable_pool.get(item.value)
@@ -165,5 +165,15 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
                 return variable.value * value
             case Operation.DIVIDE:
                 return variable.value / value
+            case Operation.REMOVE_FIRST:
+                # If array is empty, do nothing
+                if not variable.value:
+                    return variable.value
+                return variable.value[1:]
+            case Operation.REMOVE_LAST:
+                # If array is empty, do nothing
+                if not variable.value:
+                    return variable.value
+                return variable.value[:-1]
             case _:
                 raise OperationNotSupportedError(operation=operation, variable_type=variable.value_type)

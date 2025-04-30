@@ -17,6 +17,9 @@ import TemplateChatZh from './template/template_chat.zh.mdx'
 import TemplateChatJa from './template/template_chat.ja.mdx'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
+import cn from '@/utils/classnames'
 
 type IDocProps = {
   appDetail: any
@@ -27,6 +30,7 @@ const Doc = ({ appDetail }: IDocProps) => {
   const { t } = useTranslation()
   const [toc, setToc] = useState<Array<{ href: string; text: string }>>([])
   const [isTocExpanded, setIsTocExpanded] = useState(false)
+  const { theme } = useTheme()
 
   const variables = appDetail?.model_config?.configs?.prompt_variables || []
   const inputs = variables.reduce((res: any, variable: any) => {
@@ -83,12 +87,12 @@ const Doc = ({ appDetail }: IDocProps) => {
       <div className={`fixed right-8 top-32 z-10 transition-all ${isTocExpanded ? 'w-64' : 'w-10'}`}>
         {isTocExpanded
           ? (
-            <nav className="toc w-full rounded-lg bg-gray-50 p-4 shadow-md">
+            <nav className="toc max-h-[calc(100vh-150px)] w-full overflow-y-auto rounded-lg bg-components-panel-bg p-4 shadow-md">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold">{t('appApi.develop.toc')}</h3>
+                <h3 className="text-lg font-semibold text-text-primary">{t('appApi.develop.toc')}</h3>
                 <button
                   onClick={() => setIsTocExpanded(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-text-tertiary hover:text-text-secondary"
                 >
                   ✕
                 </button>
@@ -98,7 +102,7 @@ const Doc = ({ appDetail }: IDocProps) => {
                   <li key={index}>
                     <a
                       href={item.href}
-                      className="text-gray-600 transition-colors duration-200 hover:text-gray-900 hover:underline"
+                      className="text-text-secondary transition-colors duration-200 hover:text-text-primary hover:underline"
                       onClick={e => handleTocClick(e, item)}
                     >
                       {item.text}
@@ -111,13 +115,13 @@ const Doc = ({ appDetail }: IDocProps) => {
           : (
             <button
               onClick={() => setIsTocExpanded(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 shadow-md transition-colors duration-200 hover:bg-gray-100"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-components-button-secondary-bg shadow-md transition-colors duration-200 hover:bg-components-button-secondary-bg-hover"
             >
-              <RiListUnordered className="h-6 w-6" />
+              <RiListUnordered className="h-6 w-6 text-components-button-secondary-text" />
             </button>
           )}
       </div>
-      <article className="prose-xl prose" >
+      <article className={cn('prose-xl prose', theme === Theme.dark && 'dark:prose-invert')} >
         {(appDetail?.mode === 'chat' || appDetail?.mode === 'agent-chat') && (
           (() => {
             switch (locale) {

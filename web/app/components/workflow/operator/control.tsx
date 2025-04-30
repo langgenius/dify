@@ -21,6 +21,7 @@ import { useStore } from '../store'
 import Divider from '../../base/divider'
 import AddBlock from './add-block'
 import TipPopup from './tip-popup'
+import ExportImage from './export-image'
 import { useOperator } from './hooks'
 import cn from '@/utils/classnames'
 
@@ -83,6 +84,7 @@ const Control = () => {
         </div>
       </TipPopup>
       <Divider type='vertical' className='mx-0.5 h-3.5' />
+      <ExportImage />
       <TipPopup title={t('workflow.panel.organizeBlocks')} shortcuts={['ctrl', 'o']}>
         <div
           className={cn(

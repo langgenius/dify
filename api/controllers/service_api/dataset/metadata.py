@@ -13,18 +13,6 @@ from services.entities.knowledge_entities.knowledge_entities import (
 from services.metadata_service import MetadataService
 
 
-def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
-
-
-def _validate_description_length(description):
-    if len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
-
-
 class DatasetMetadataCreateServiceApi(DatasetApiResource):
     def post(self, tenant_id, dataset_id):
         parser = reqparse.RequestParser()
@@ -75,7 +63,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
-        return 200
+        return 204
 
 
 class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):

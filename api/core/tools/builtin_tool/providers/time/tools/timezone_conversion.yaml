@@ -19,7 +19,7 @@ parameters:
       zh_Hans: 当前时间
     human_description:
       en_US: current time, such as 2024-1-1 0:0:0
-      zh_Hans: 当前时间, 比如2024-1-1 0:0:0
+      zh_Hans: 当前时间，比如 2024-1-1 0:0:0
   - name: current_timezone
     type: string
     required: true
@@ -29,7 +29,7 @@ parameters:
       zh_Hans: 当前时区
     human_description:
       en_US: Current Timezone, such as Asia/Shanghai
-      zh_Hans: 当前时区, 比如Asia/Shanghai
+      zh_Hans: 当前时区，比如 Asia/Shanghai
     default: Asia/Shanghai
   - name: target_timezone
     type: string
@@ -40,5 +40,5 @@ parameters:
       zh_Hans: 目标时区
     human_description:
       en_US: Target Timezone, such as Asia/Tokyo
-      zh_Hans: 目标时区, 比如Asia/Tokyo
+      zh_Hans: 目标时区，比如 Asia/Tokyo
     default: Asia/Tokyo

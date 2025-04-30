@@ -130,7 +130,7 @@ const JinaReader: FC<Props> = ({
         },
       }
     }
-  }, [crawlOptions.limit])
+  }, [crawlOptions.limit, onCheckedCrawlResultChange])
 
   const handleRun = useCallback(async (url: string) => {
     const { isValid, errorMsg } = checkValid(url)
@@ -186,7 +186,7 @@ const JinaReader: FC<Props> = ({
     finally {
       setStep(Step.finished)
     }
-  }, [checkValid, crawlOptions, onJobIdChange, t, waitForCrawlFinished])
+  }, [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, t, waitForCrawlFinished])
 
   return (
     <div>

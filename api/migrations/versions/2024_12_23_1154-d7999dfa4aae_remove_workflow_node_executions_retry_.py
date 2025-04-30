@@ -23,7 +23,7 @@ def upgrade():
     conn = op.get_bind()
     inspector = inspect(conn)
     has_column = 'retry_index' in [col['name'] for col in inspector.get_columns('workflow_node_executions')]
-    
+
     if has_column:
         with op.batch_alter_table('workflow_node_executions', schema=None) as batch_op:
             batch_op.drop_column('retry_index')

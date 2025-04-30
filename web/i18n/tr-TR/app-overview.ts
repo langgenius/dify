@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'Sohbet botunun renk temasını ayarlayın',
         chatColorThemeInverted: 'Tersine çevrilmiş',
         invalidHexMessage: 'Geçersiz hex değeri',
+        invalidPrivacyPolicy: 'Geçersiz gizlilik politikası bağlantısı. Lütfen http veya https ile başlayan geçerli bir bağlantı kullanın',
         more: {
           entry: 'Daha fazla ayarı göster',
           copyright: 'Telif Hakkı',

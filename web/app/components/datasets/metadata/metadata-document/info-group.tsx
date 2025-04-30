@@ -57,7 +57,7 @@ const InfoGroup: FC<Props> = ({
   }
 
   return (
-    <div className={cn('bg-white', className)}>
+    <div className={cn(className)}>
       {!noHeader && (
         <div className='flex items-center justify-between'>
           <div className='flex items-center space-x-1'>

@@ -8,7 +8,7 @@
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Samostojno gostovanje</a> ·
   <a href="https://docs.dify.ai">Dokumentacija</a> ·
-  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">Povpraševanje za podjetja</a>
+  <a href="https://dify.ai/pricing">Pregled ponudb izdelkov Dify</a>
 </p>
 
 <p align="center">

@@ -2,7 +2,8 @@
 import type { FC, ReactNode } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiApps2Line, RiBook2Line, RiBrain2Line, RiChatAiLine, RiFileEditLine, RiFolder6Line, RiGroupLine, RiHardDrive3Line, RiHistoryLine, RiProgress3Line, RiQuestionLine, RiSeoLine } from '@remixicon/react'
+import { RiApps2Line, RiBook2Line, RiBrain2Line, RiChatAiLine, RiFileEditLine, RiFolder6Line, RiGroupLine, RiHardDrive3Line, RiHistoryLine, RiProgress3Line, RiQuestionLine, RiSeoLine, RiTerminalBoxLine } from '@remixicon/react'
+import type { BasicPlan } from '../type'
 import { Plan } from '../type'
 import { ALL_PLANS, NUM_INFINITE } from '../config'
 import Toast from '../../base/toast'
@@ -15,8 +16,8 @@ import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
 
 type Props = {
-  currentPlan: Plan
-  plan: Plan
+  currentPlan: BasicPlan
+  plan: BasicPlan
   planRange: PlanRange
   canPay: boolean
 }
@@ -127,8 +128,8 @@ const PlanItem: FC<Props> = ({
       <div className='flex flex-col gap-y-1'>
         {style[plan].icon}
         <div className='flex items-center'>
-          <div className='text-lg font-semibold uppercase leading-[125%] text-text-primary'>{t(`${i18nPrefix}.name`)}</div>
-          {isMostPopularPlan && <div className='ml-1 flex items-center justify-center rounded-full border-[0.5px] bg-price-premium-badge-background px-1 py-[3px] text-components-premium-badge-grey-text-stop-0 shadow-xs'>
+          <div className='grow text-lg font-semibold uppercase leading-[125%] text-text-primary'>{t(`${i18nPrefix}.name`)}</div>
+          {isMostPopularPlan && <div className='ml-1 flex shrink-0 items-center justify-center rounded-full border-[0.5px] bg-price-premium-badge-background px-1 py-[3px] text-components-premium-badge-grey-text-stop-0 shadow-xs'>
             <div className='pl-0.5'>
               <SparklesSoft className='size-3' />
             </div>
@@ -204,6 +205,14 @@ const PlanItem: FC<Props> = ({
           icon={<RiSeoLine />}
           label={t('billing.plansCommon.documentsRequestQuota', { count: planInfo.documentsRequestQuota })}
           tooltip={t('billing.plansCommon.documentsRequestQuotaTooltip')}
+        />
+        <KeyValue
+          icon={<RiTerminalBoxLine />}
+          label={
+            planInfo.apiRateLimit === NUM_INFINITE ? `${t('billing.plansCommon.unlimitedApiRate')}`
+              : `${t('billing.plansCommon.apiRateLimitUnit', { count: planInfo.apiRateLimit })} ${t('billing.plansCommon.apiRateLimit')}`
+          }
+          tooltip={planInfo.apiRateLimit === NUM_INFINITE ? null : t('billing.plansCommon.apiRateLimitTooltip') as string}
         />
         <KeyValue
           icon={<RiProgress3Line />}

@@ -64,6 +64,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
       <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
+          required
         >
           <>
             <VarReferencePicker
@@ -106,7 +107,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
                   required: true,
                 }],
                 values: { files },
-                onChange: keyValue => setFiles((keyValue as any).files),
+                onChange: keyValue => setFiles(keyValue.files),
               },
             ]}
             runningStatus={runningStatus}

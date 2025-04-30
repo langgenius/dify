@@ -111,7 +111,7 @@ const VoiceInput = ({
       onConverted(audioResponse.text)
       onCancel()
     }
-    catch (e) {
+    catch {
       onConverted('')
       onCancel()
     }
@@ -125,7 +125,7 @@ const VoiceInput = ({
       if (canvasRef.current && ctxRef.current)
         drawRecord()
     }
-    catch (e) {
+    catch {
       onCancel()
     }
   }

@@ -15,14 +15,13 @@ from core.model_runtime.entities import (
     LLMResultChunkDelta,
     LLMUsage,
     PromptMessage,
-    PromptMessageContent,
     PromptMessageContentType,
     SystemPromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
@@ -45,6 +44,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
+
+        # fix metadata filter not work
+        if app_config.dataset is not None:
+            metadata_filtering_conditions = app_config.dataset.retrieve_config.metadata_filtering_conditions
+            for key, dataset_retriever_tool in tool_instances.items():
+                if hasattr(dataset_retriever_tool, "retrieval_tool"):
+                    dataset_retriever_tool.retrieval_tool.metadata_filtering_conditions = metadata_filtering_conditions
 
         assert app_config.agent
 
@@ -395,7 +401,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         Organize user query
         """
         if self.files:
-            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             prompt_message_contents.append(TextPromptMessageContent(data=query))
 
             # get image detail config

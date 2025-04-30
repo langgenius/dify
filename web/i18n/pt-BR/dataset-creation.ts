@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Enviar arquivo de texto',
-      button: 'Arraste e solte o arquivo, ou',
+      button: 'Arraste e solte arquivos ou pastas, ou',
       browse: 'Navegar',
       tip: 'Suporta {{supportTypes}}. Máximo de {{size}}MB cada.',
       validation: {

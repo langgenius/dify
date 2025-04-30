@@ -9,6 +9,7 @@ import { getNodeInfoById, isConversationVar, isENV, isSystemVar } from './variab
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
+import { RiMoreLine } from '@remixicon/react'
 type Props = {
   nodeId: string
   value: string
@@ -45,6 +46,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
       const isChatVar = isConversationVar(value)
       const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0]))?.data
       const varName = `${isSystem ? 'sys.' : ''}${value[value.length - 1]}`
+      const isShowAPart = value.length > 2
 
       return (<span key={index}>
         <span className='relative top-[-3px] leading-[16px]'>{str}</span>
@@ -59,6 +61,12 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
               </div>
               <div className='mx-0.5 max-w-[60px] truncate text-xs font-medium text-text-secondary' title={node?.title}>{node?.title}</div>
               <Line3 className='mr-0.5'></Line3>
+            </div>
+          )}
+          {isShowAPart && (
+            <div className='flex items-center'>
+              <RiMoreLine className='h-3 w-3 text-text-secondary' />
+              <Line3 className='mr-0.5 text-divider-deep'></Line3>
             </div>
           )}
           <div className='flex items-center text-text-accent'>
