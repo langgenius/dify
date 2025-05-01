@@ -34,6 +34,7 @@ class LicenseStatus(StrEnum):
     EXPIRING = "expiring"
     EXPIRED = "expired"
     LOST = "lost"
+    CUSTOMIZE = "customize"
 
 
 class LicenseModel(BaseModel):
@@ -81,7 +82,6 @@ class SystemFeatureModel(BaseModel):
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
-
 
 class FeatureService:
     @classmethod
