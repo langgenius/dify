@@ -13,7 +13,9 @@ const headerEnvClassName: { [k: string]: string } = {
 const EnvNav = () => {
   const { t } = useTranslation()
   const { langeniusVersionInfo } = useAppContext()
-  const showEnvTag = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
+  // const showEnvTag = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
+  // [todo] 之后改为读取配置项或页面控制关联
+  const showEnvTag = false
 
   if (!showEnvTag)
     return null
