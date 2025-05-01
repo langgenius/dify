@@ -39,7 +39,7 @@ class LicenseStatus(StrEnum):
 class LicenseModel(BaseModel):
     # status: LicenseStatus = LicenseStatus.NONE
     # expired_at: str = ""
-    status: LicenseStatus = dify_config.LICENSE_STATUS
+    status: LicenseStatus = LicenseStatus(dify_config.LICENSE_STATUS)
     expired_at: str = dify_config.LICENSE_EXPIRED_AT
 
 class FeatureModel(BaseModel):
