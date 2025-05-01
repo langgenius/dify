@@ -1,6 +1,8 @@
+from enum import StrEnum
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from enum import StrEnum
+
 
 class LicenseStatus(StrEnum):
     NONE = "none"
