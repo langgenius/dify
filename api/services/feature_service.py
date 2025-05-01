@@ -6,7 +6,6 @@ from configs import dify_config
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
-
 class SubscriptionModel(BaseModel):
     plan: str = "sandbox"
     interval: str = ""
@@ -37,9 +36,10 @@ class LicenseStatus(StrEnum):
 
 
 class LicenseModel(BaseModel):
-    status: LicenseStatus = LicenseStatus.NONE
-    expired_at: str = ""
-
+    # status: LicenseStatus = LicenseStatus.NONE
+    # expired_at: str = ""
+    status: LicenseStatus = dify_config.LICENSE_STATUS
+    expired_at: str = dify_config.LICENSE_EXPIRED_AT
 
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()

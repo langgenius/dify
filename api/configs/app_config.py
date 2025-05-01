@@ -8,6 +8,7 @@ from .deploy import DeploymentConfig
 from .enterprise import EnterpriseFeatureConfig
 from .extra import ExtraServiceConfig
 from .feature import FeatureConfig
+from .license import LicenseConfig
 from .middleware import MiddlewareConfig
 from .observability import ObservabilityConfig
 from .packaging import PackagingInfo
@@ -70,6 +71,7 @@ class DifyConfig(
     # Enterprise feature configs
     # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     EnterpriseFeatureConfig,
+    LicenseConfig
 ):
     model_config = SettingsConfigDict(
         # read from dotenv format config file
