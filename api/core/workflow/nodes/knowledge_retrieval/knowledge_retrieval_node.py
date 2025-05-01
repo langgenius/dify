@@ -32,11 +32,11 @@ from core.workflow.nodes.knowledge_retrieval.template_prompts import (
     METADATA_FILTER_COMPLETION_PROMPT,
     METADATA_FILTER_SYSTEM_PROMPT,
     METADATA_FILTER_USER_PROMPT_1,
+    METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
 from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate
 from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.nodes.question_classifier.template_prompts import QUESTION_CLASSIFIER_USER_PROMPT_2
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
@@ -618,7 +618,7 @@ class KnowledgeRetrievalNode(LLMNode):
             )
             prompt_messages.append(assistant_prompt_message_1)
             user_prompt_message_2 = LLMNodeChatModelMessage(
-                role=PromptMessageRole.USER, text=QUESTION_CLASSIFIER_USER_PROMPT_2
+                role=PromptMessageRole.USER, text=METADATA_FILTER_USER_PROMPT_2
             )
             prompt_messages.append(user_prompt_message_2)
             assistant_prompt_message_2 = LLMNodeChatModelMessage(
