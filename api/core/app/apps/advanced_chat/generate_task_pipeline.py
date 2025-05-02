@@ -5,9 +5,6 @@ from collections.abc import Generator, Mapping
 from threading import Thread
 from typing import Any, Optional, Union
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -69,6 +66,8 @@ from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatedByRole
 from models.workflow import Workflow, WorkflowRunStatus
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -236,35 +235,27 @@ class AdvancedChatAppGenerateTaskPipeline:
 
         start_listener_time = time.time()
 
-        is_end_with_finish = False
         # timeout
         while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
             try:
                 if not tts_publisher:
-                    logger.info("TTS: tts_publisher is None")
                     break
                 audio_trunk = tts_publisher.check_and_get_audio()
                 if audio_trunk is None:
                     # release cpu
                     # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
                     time.sleep(TTS_AUTO_PLAY_YIELD_CPU_TIME)
-                    logger.info(f"TTS: audio trunk is None, waiting. message_id: {self._message_id}")
                     continue
 
                 if audio_trunk.status == "finish":
-                    is_end_with_finish = True
                     break
                 else:
-                    logger.info(
-                        f"TTS: audio trunk status: {audio_trunk.status}, task_id: {task_id}, audio: {audio_trunk.audio}"
-                    )
                     start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception:
                 logger.exception(f"Failed to listen audio message, task_id: {task_id}")
                 break
 
-        logger.info(f"TTS: audio end, is_end_with_finish: {is_end_with_finish}")
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
