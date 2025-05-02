@@ -17,8 +17,8 @@ class ModelConfigEntity(BaseModel):
     provider: str
     model: str
     mode: Optional[str] = None
-    parameters: dict[str, Any] = {}
-    stop: list[str] = []
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    stop: list[str] = Field(default_factory=list)
 
 
 class AdvancedChatMessageEntity(BaseModel):
@@ -132,7 +132,7 @@ class ExternalDataVariableEntity(BaseModel):
 
     variable: str
     type: str
-    config: dict[str, Any] = {}
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class DatasetRetrieveConfigEntity(BaseModel):
@@ -188,7 +188,7 @@ class SensitiveWordAvoidanceEntity(BaseModel):
     """
 
     type: str
-    config: dict[str, Any] = {}
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class TextToSpeechEntity(BaseModel):

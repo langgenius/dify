@@ -17,6 +17,7 @@ class NodeRunMetadataKey(StrEnum):
     TOTAL_PRICE = "total_price"
     CURRENCY = "currency"
     TOOL_INFO = "tool_info"
+    AGENT_LOG = "agent_log"
     ITERATION_ID = "iteration_id"
     ITERATION_INDEX = "iteration_index"
     PARALLEL_ID = "parallel_id"
@@ -48,3 +49,8 @@ class NodeRunResult(BaseModel):
 
     # single step node run retry
     retry_index: int = 0
+
+
+class AgentNodeStrategyInit(BaseModel):
+    name: str
+    icon: str | None = None

@@ -38,6 +38,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 
 type UpdateDSLModalProps = {
   onCancel: () => void
@@ -61,6 +62,7 @@ const UpdateDSLModal = ({
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
+  const { handleCheckPluginDependencies } = usePluginDependencies()
 
   const readFile = (file: File) => {
     const reader = new FileReader()
@@ -79,7 +81,7 @@ const UpdateDSLModal = ({
       setFileContent('')
   }
 
-  const handleWorkflowUpdate = async (app_id: string) => {
+  const handleWorkflowUpdate = useCallback(async (app_id: string) => {
     const {
       graph,
       features,
@@ -122,7 +124,7 @@ const UpdateDSLModal = ({
         hash,
       },
     } as any)
-  }
+  }, [eventEmitter])
 
   const isCreatingRef = useRef(false)
   const handleImport: MouseEventHandler = useCallback(async () => {
@@ -136,6 +138,7 @@ const UpdateDSLModal = ({
         setLoading(true)
         const response = await importDSL({ mode: DSLImportMode.YAML_CONTENT, yaml_content: fileContent, app_id: appDetail.id })
         const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
+
         if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
           if (!app_id) {
             notify({ type: 'error', message: t('workflow.common.importFailure') })
@@ -149,6 +152,7 @@ const UpdateDSLModal = ({
             message: t(status === DSLImportStatus.COMPLETED ? 'workflow.common.importSuccess' : 'workflow.common.importWarning'),
             children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('workflow.common.importWarningDetails'),
           })
+          await handleCheckPluginDependencies(app_id)
           setLoading(false)
           onCancel()
         }
@@ -169,12 +173,13 @@ const UpdateDSLModal = ({
         }
       }
     }
+    // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       setLoading(false)
       notify({ type: 'error', message: t('workflow.common.importFailure') })
     }
     isCreatingRef.current = false
-  }, [currentFile, fileContent, onCancel, notify, t, eventEmitter, appDetail, onImport])
+  }, [currentFile, fileContent, onCancel, notify, t, appDetail, onImport, handleWorkflowUpdate, handleCheckPluginDependencies])
 
   const onUpdateDSLConfirm: MouseEventHandler = async () => {
     try {
@@ -192,6 +197,7 @@ const UpdateDSLModal = ({
           return
         }
         handleWorkflowUpdate(app_id)
+        await handleCheckPluginDependencies(app_id)
         if (onImport)
           onImport()
         notify({ type: 'success', message: t('workflow.common.importSuccess') })
@@ -203,6 +209,7 @@ const UpdateDSLModal = ({
         notify({ type: 'error', message: t('workflow.common.importFailure') })
       }
     }
+    // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
       setLoading(false)
       notify({ type: 'error', message: t('workflow.common.importFailure') })
@@ -222,12 +229,12 @@ const UpdateDSLModal = ({
             <RiCloseLine className='w-[18px] h-[18px] text-text-tertiary' />
           </div>
         </div>
-        <div className='flex relative p-2 mb-2 gap-0.5 flex-grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xs overflow-hidden'>
-          <div className='absolute top-0 left-0 w-full h-full opacity-40 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)]' />
+        <div className='flex relative p-2 mb-2 gap-0.5 grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xs overflow-hidden'>
+          <div className='absolute top-0 left-0 w-full h-full opacity-40 bg-toast-warning-bg' />
           <div className='flex p-1 justify-center items-start'>
-            <RiAlertFill className='w-4 h-4 flex-shrink-0 text-text-warning-secondary' />
+            <RiAlertFill className='w-4 h-4 shrink-0 text-text-warning-secondary' />
           </div>
-          <div className='flex py-1 flex-col items-start gap-0.5 flex-grow'>
+          <div className='flex py-1 flex-col items-start gap-0.5 grow'>
             <div className='text-text-primary system-xs-medium whitespace-pre-line'>{t('workflow.common.importDSLTip')}</div>
             <div className='flex pt-1 pb-0.5 items-start gap-1 self-stretch'>
               <Button
@@ -275,7 +282,7 @@ const UpdateDSLModal = ({
       >
         <div className='flex pb-4 flex-col items-start gap-2 self-stretch'>
           <div className='text-text-primary title-2xl-semi-bold'>{t('app.newApp.appCreateDSLErrorTitle')}</div>
-          <div className='flex flex-grow flex-col text-text-secondary system-md-regular'>
+          <div className='flex grow flex-col text-text-secondary system-md-regular'>
             <div>{t('app.newApp.appCreateDSLErrorPart1')}</div>
             <div>{t('app.newApp.appCreateDSLErrorPart2')}</div>
             <br />

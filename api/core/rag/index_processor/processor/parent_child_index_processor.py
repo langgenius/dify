@@ -47,6 +47,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 embedding_model_instance=kwargs.get("embedding_model_instance"),
             )
             for document in documents:
+                if kwargs.get("preview") and len(all_documents) >= 10:
+                    return all_documents
                 # document clean
                 document_text = CleanProcessor.clean(document.page_content, process_rule)
                 document.page_content = document_text

@@ -52,7 +52,7 @@ const translation = {
       communityForums: '社区论坛',
       emailSupport: '电子邮件支持',
       priorityEmail: '优先电子邮件和聊天支持',
-      logoChange: 'Logo更改',
+      logoChange: 'Logo 更改',
       SSOAuthentication: 'SSO 认证',
       personalizedSupport: '个性化支持',
       dedicatedAPISupport: '专用 API 支持',

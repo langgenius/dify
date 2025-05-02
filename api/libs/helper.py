@@ -9,7 +9,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
@@ -19,7 +19,9 @@ from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.file import helpers as file_helpers
 from extensions.ext_redis import redis_client
-from models.account import Account
+
+if TYPE_CHECKING:
+    from models.account import Account
 
 
 def run(script):
@@ -192,9 +194,7 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def compact_generate_response(
-    response: Union[Mapping[str, Any], RateLimitGenerator, Generator[str, None, None]],
-) -> Response:
+def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
     else:
@@ -210,7 +210,7 @@ class TokenManager:
     def generate_token(
         cls,
         token_type: str,
-        account: Optional[Account] = None,
+        account: Optional["Account"] = None,
         email: Optional[str] = None,
         additional_data: Optional[dict] = None,
     ) -> str:

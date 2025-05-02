@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
+    QueueAgentLogEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -24,6 +25,7 @@ from core.app.entities.queue_entities import (
     QueueParallelBranchRunSucceededEvent,
 )
 from core.app.entities.task_entities import (
+    AgentLogStreamResponse,
     IterationNodeCompletedStreamResponse,
     IterationNodeNextStreamResponse,
     IterationNodeStartStreamResponse,
@@ -320,9 +322,8 @@ class WorkflowCycleManage:
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
-        execution_metadata = (
-            json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
-        )
+        execution_metadata_dict = dict(event.execution_metadata or {})
+        execution_metadata = json.dumps(jsonable_encoder(execution_metadata_dict)) if execution_metadata_dict else None
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
@@ -540,6 +541,7 @@ class WorkflowCycleManage:
                 parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                 iteration_id=event.in_iteration_id,
                 parallel_run_id=event.parallel_mode_run_id,
+                agent_strategy=event.agent_strategy,
             ),
         )
 
@@ -842,4 +844,25 @@ class WorkflowCycleManage:
         if node_execution_id not in self._workflow_node_executions:
             raise ValueError(f"Workflow node execution not found: {node_execution_id}")
         cached_workflow_node_execution = self._workflow_node_executions[node_execution_id]
-        return cached_workflow_node_execution
+        return session.merge(cached_workflow_node_execution)
+
+    def _handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
+        """
+        Handle agent log
+        :param task_id: task id
+        :param event: agent log event
+        :return:
+        """
+        return AgentLogStreamResponse(
+            task_id=task_id,
+            data=AgentLogStreamResponse.Data(
+                node_execution_id=event.node_execution_id,
+                id=event.id,
+                parent_id=event.parent_id,
+                label=event.label,
+                error=event.error,
+                status=event.status,
+                data=event.data,
+                metadata=event.metadata,
+            ),
+        )

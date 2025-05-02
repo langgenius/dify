@@ -112,6 +112,7 @@ const translation = {
           operation: 'Documentation',
         },
       },
+      launch: 'Lancer',
     },
     apiInfo: {
       title: 'API de service Backend',

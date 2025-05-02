@@ -27,8 +27,8 @@ const APIKeyInfoPanel: FC = () => {
     return null
 
   return (
-    <div className={cn('bg-[#EFF4FF] border-[#D1E0FF]', 'mb-6 relative  rounded-2xl shadow-md border  p-8 ')}>
-      <div className={cn('text-[24px] text-gray-800 font-semibold', isCloud ? 'flex items-center h-8 space-x-1' : 'leading-8 mb-6')}>
+    <div className={cn('bg-components-panel-bg border-components-panel-border', 'mb-6 relative rounded-2xl shadow-md border p-8 ')}>
+      <div className={cn('text-[24px] text-text-primary font-semibold', isCloud ? 'flex items-center h-8 space-x-1' : 'leading-8 mb-6')}>
         {isCloud && <em-emoji id={'😀'} />}
         {isCloud
           ? (
@@ -42,11 +42,11 @@ const APIKeyInfoPanel: FC = () => {
           )}
       </div>
       {isCloud && (
-        <div className='mt-1 text-sm text-gray-600 font-normal'>{t(`appOverview.apiKeyInfo.cloud.${'trial'}.description`)}</div>
+        <div className='mt-1 text-sm text-text-tertiary font-normal'>{t(`appOverview.apiKeyInfo.cloud.${'trial'}.description`)}</div>
       )}
       <Button
         variant='primary'
-        className='space-x-2'
+        className='mt-2 space-x-2'
         onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
       >
         <div className='text-sm font-medium'>{t('appOverview.apiKeyInfo.setAPIBtn')}</div>
@@ -65,7 +65,7 @@ const APIKeyInfoPanel: FC = () => {
       <div
         onClick={() => setIsShow(false)}
         className='absolute right-4 top-4 flex items-center justify-center w-8 h-8 cursor-pointer '>
-        <RiCloseLine className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-text-tertiary' />
       </div>
     </div>
   )

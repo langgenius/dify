@@ -133,7 +133,7 @@ const translation = {
         language: '言語',
         authorPublisher: '著者/出版社',
         publishDate: '公開日',
-        topicsKeywords: 'トピック/キーワード',
+        topicKeywords: 'トピック/キーワード',
         description: '説明',
       },
       paper: {

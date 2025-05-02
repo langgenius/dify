@@ -30,7 +30,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     appInfoError,
     appData,
     appInfoLoading,
-    appPrevChatList,
+    appPrevChatTree,
     showConfigPanelBeforeChat,
     appChatListDataLoading,
     chatShouldReloadKey,
@@ -38,7 +38,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     themeBuilder,
   } = useChatWithHistoryContext()
 
-  const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
+  const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatTree.length)
   const customConfig = appData?.custom_config
   const site = appData?.site
 
@@ -76,9 +76,9 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
           <HeaderInMobile />
         )
       }
-      <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && !appPrevChatList.length && 'flex items-center justify-center'}`}>
+      <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && !appPrevChatTree.length && 'flex items-center justify-center'}`}>
         {
-          showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length && (
+          showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatTree.length && (
             <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
               <ConfigPanel />
             </div>
@@ -120,7 +120,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appChatListDataLoading,
     currentConversationId,
     currentConversationItem,
-    appPrevChatList,
+    appPrevChatTree,
     pinnedConversationList,
     conversationList,
     showConfigPanelBeforeChat,
@@ -154,7 +154,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       appChatListDataLoading,
       currentConversationId,
       currentConversationItem,
-      appPrevChatList,
+      appPrevChatTree,
       pinnedConversationList,
       conversationList,
       showConfigPanelBeforeChat,

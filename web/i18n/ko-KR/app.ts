@@ -184,6 +184,12 @@ const translation = {
     searchAllTemplate: '모든 템플릿 검색...',
   },
   showMyCreatedAppsOnly: '내가 만든 앱만 보기',
+  appSelector: {
+    params: '앱 매개 변수',
+    noParams: '매개 변수가 필요하지 않습니다.',
+    label: '앱',
+    placeholder: '앱 선택...',
+  },
 }
 
 export default translation

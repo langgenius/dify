@@ -14,6 +14,9 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
+import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+
 type Props = {
   readOnly: boolean
   nodeId: string
@@ -46,12 +49,14 @@ const InputVarList: FC<Props> = ({
   const paramType = (type: string) => {
     if (type === FormTypeEnum.textNumber)
       return 'Number'
-    else if (type === FormTypeEnum.file)
-      return 'File'
-    else if (type === FormTypeEnum.files)
+    else if (type === FormTypeEnum.file || type === FormTypeEnum.files)
       return 'Files'
-    else if (type === FormTypeEnum.select)
-      return 'Options'
+    else if (type === FormTypeEnum.appSelector)
+      return 'AppSelector'
+    else if (type === FormTypeEnum.modelSelector)
+      return 'ModelSelector'
+    else if (type === FormTypeEnum.toolSelector)
+      return 'ToolSelector'
     else
       return 'String'
   }
@@ -73,7 +78,7 @@ const InputVarList: FC<Props> = ({
       })
       onChange(newValue)
     }
-  }, [value, onChange, isSupportConstantValue])
+  }, [value, onChange])
 
   const handleMixedTypeChange = useCallback((variable: string) => {
     return (itemValue: string) => {
@@ -105,6 +110,30 @@ const InputVarList: FC<Props> = ({
     }
   }, [value, onChange])
 
+  const handleAppChange = useCallback((variable: string) => {
+    return (app: {
+      app_id: string
+      inputs: Record<string, any>
+      files?: any[]
+    }) => {
+      const newValue = produce(value, (draft: ToolVarInputs) => {
+        draft[variable] = app as any
+      })
+      onChange(newValue)
+    }
+  }, [onChange, value])
+  const handleModelChange = useCallback((variable: string) => {
+    return (model: any) => {
+      const newValue = produce(value, (draft: ToolVarInputs) => {
+        draft[variable] = {
+          ...draft[variable],
+          ...model,
+        } as any
+      })
+      onChange(newValue)
+    }
+  }, [onChange, value])
+
   const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
   const handleInputFocus = useCallback((variable: string) => {
     return (value: boolean) => {
@@ -129,13 +158,16 @@ const InputVarList: FC<Props> = ({
             type,
             required,
             tooltip,
+            scope,
           } = schema
           const varInput = value[variable]
           const isNumber = type === FormTypeEnum.textNumber
           const isSelect = type === FormTypeEnum.select
-          const isFile = type === FormTypeEnum.file
-          const isFileArray = type === FormTypeEnum.files
-          const isString = !isNumber && !isSelect && !isFile && !isFileArray
+          const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
+          const isAppSelector = type === FormTypeEnum.appSelector
+          const isModelSelector = type === FormTypeEnum.modelSelector
+          // const isToolSelector = type === FormTypeEnum.toolSelector
+          const isString = !isNumber && !isSelect && !isFile && !isAppSelector && !isModelSelector
 
           return (
             <div key={variable} className='space-y-1'>
@@ -181,19 +213,26 @@ const InputVarList: FC<Props> = ({
                   onChange={handleFileChange(variable)}
                   onOpen={handleOpen(index)}
                   defaultVarKindType={VarKindType.variable}
-                  filterVar={(varPayload: Var) => varPayload.type === VarType.file}
+                  filterVar={(varPayload: Var) => varPayload.type === VarType.file || varPayload.type === VarType.arrayFile}
                 />
               )}
-              {isFileArray && (
-                <VarReferencePicker
+              {isAppSelector && (
+                <AppSelector
+                  disabled={readOnly}
+                  scope={scope || 'all'}
+                  value={varInput as any}
+                  onSelect={handleAppChange(variable)}
+                />
+              )}
+              {isModelSelector && (
+                <ModelParameterModal
+                  popupClassName='!w-[387px]'
+                  isAdvancedMode
+                  isInWorkflow
+                  value={varInput as any}
+                  setModel={handleModelChange(variable)}
                   readonly={readOnly}
-                  isShowNodeName
-                  nodeId={nodeId}
-                  value={varInput?.value || []}
-                  onChange={handleFileChange(variable)}
-                  onOpen={handleOpen(index)}
-                  defaultVarKindType={VarKindType.variable}
-                  filterVar={(varPayload: Var) => varPayload.type === VarType.arrayFile}
+                  scope={scope}
                 />
               )}
               {tooltip && <div className='text-text-tertiary body-xs-regular'>{tooltip[language] || tooltip.en_US}</div>}

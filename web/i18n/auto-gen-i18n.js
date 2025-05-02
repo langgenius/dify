@@ -30,10 +30,15 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
       }
       else {
         try {
-          if (!sourceObj[key]) {
+          const source = sourceObj[key]
+          if (!source) {
             targetObject[key] = ''
             return
           }
+          // not support translate with '(' or ')'
+          if (source.includes('(') || source.includes(')'))
+            return
+
           const { translation } = await translate(sourceObj[key], null, languageKeyMap[toLanguage])
           targetObject[key] = translation
         }
@@ -82,7 +87,12 @@ async function main() {
 
   await Promise.all(files.map(async (file) => {
     await Promise.all(Object.keys(languageKeyMap).map(async (language) => {
-      await autoGenTrans(file, language)
+      try {
+        await autoGenTrans(file, language)
+      }
+      catch (e) {
+        console.error(`Error translating ${file} to ${language}`, e)
+      }
     }))
   }))
 }

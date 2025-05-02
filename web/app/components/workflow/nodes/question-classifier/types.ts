@@ -1,6 +1,6 @@
 import type { CommonNodeType, Memory, ModelConfig, ValueSelector, VisionSetting } from '@/app/components/workflow/types'
 
-export type Topic = {
+export interface Topic {
   id: string
   name: string
 }

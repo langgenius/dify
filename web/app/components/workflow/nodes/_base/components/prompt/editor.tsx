@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React, { useCallback, useRef } from 'react'
 import {
   RiDeleteBinLine,
@@ -68,6 +68,14 @@ type Props = {
   onEditionTypeChange?: (editionType: EditionType) => void
   varList?: Variable[]
   handleAddVariable?: (payload: any) => void
+  containerBackgroundClassName?: string
+  gradientBorder?: boolean
+  titleTooltip?: ReactNode
+  inputClassName?: string
+  editorContainerClassName?: string
+  placeholderClassName?: string
+  titleClassName?: string
+  required?: boolean
 }
 
 const Editor: FC<Props> = ({
@@ -96,6 +104,14 @@ const Editor: FC<Props> = ({
   handleAddVariable,
   onGenerated,
   modelConfig,
+  containerBackgroundClassName: containerClassName,
+  gradientBorder = true,
+  titleTooltip,
+  inputClassName,
+  placeholderClassName,
+  titleClassName,
+  editorContainerClassName,
+  required,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -129,10 +145,13 @@ const Editor: FC<Props> = ({
 
   return (
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
-      <div ref={ref} className={cn(isFocus ? s.gradientBorder : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5')}>
-        <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
-          <div className={cn(headerClassName, 'pt-1 pl-3 pr-2 flex justify-between items-center')}>
-            <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
+      <div ref={ref} className={cn(isFocus ? (gradientBorder && s.gradientBorder) : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5', containerClassName)}>
+        <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg', containerClassName)}>
+          <div className={cn('pt-1 pl-3 pr-2 flex justify-between items-center', headerClassName)}>
+            <div className='flex gap-2'>
+              <div className={cn('leading-4 text-xs font-semibold text-gray-700 uppercase', titleClassName)}>{title} {required && <span className='text-red-500'>*</span>}</div>
+              {titleTooltip && <Tooltip popupContent={titleTooltip} />}
+            </div>
             <div className='flex items-center'>
               <div className='leading-[18px] text-xs font-medium text-gray-500'>{value?.length || 0}</div>
               {isSupportPromptGenerator && (
@@ -201,12 +220,13 @@ const Editor: FC<Props> = ({
           <div className={cn('pb-2', isExpand && 'flex flex-col grow')}>
             {!(isSupportJinja && editionType === EditionType.jinja2)
               ? (
-                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
+                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto', editorContainerClassName)}>
                   <PromptEditor
                     key={controlPromptEditorRerenderKey}
+                    placeholderClassName={placeholderClassName}
                     instanceId={instanceId}
                     compact
-                    className='min-h-[56px]'
+                    className={cn('min-h-[56px]', inputClassName)}
                     style={isExpand ? { height: editorExpandHeight - 5 } : {}}
                     value={value}
                     contextBlock={{
@@ -254,7 +274,7 @@ const Editor: FC<Props> = ({
                 </div>
               )
               : (
-                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
+                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto', editorContainerClassName)}>
                   <CodeEditor
                     availableVars={nodesOutputVars || []}
                     varList={varList}
@@ -266,6 +286,7 @@ const Editor: FC<Props> = ({
                     onChange={onChange}
                     noWrapper
                     isExpand={isExpand}
+                    className={inputClassName}
                   />
                 </div>
               )}

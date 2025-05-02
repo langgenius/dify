@@ -1,0 +1,4 @@
+# PD Configuration File reference:
+# https://docs.pingcap.com/tidb/stable/pd-configuration-file#pd-configuration-file
+[replication]
+max-replicas = 1

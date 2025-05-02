@@ -49,7 +49,7 @@ const EmbeddingSkeleton = () => {
   return (
     <div className='relative flex flex-col grow overflow-y-hidden z-10'>
       <div className='absolute top-0 left-0 w-full h-full bg-dataset-chunk-list-mask-bg z-20' />
-      {[...Array(5)].map((_, index) => {
+      {[...Array.from({ length: 5 })].map((_, index) => {
         return (
           <div key={index} className='w-full px-11'>
             <CardSkelton />

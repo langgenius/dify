@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 
+from core.workflow.nodes.agent.agent_node import AgentNode
 from core.workflow.nodes.answer import AnswerNode
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code import CodeNode
@@ -100,5 +101,9 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     NodeType.LIST_OPERATOR: {
         LATEST_VERSION: ListOperatorNode,
         "1": ListOperatorNode,
+    },
+    NodeType.AGENT: {
+        LATEST_VERSION: AgentNode,
+        "1": AgentNode,
     },
 }

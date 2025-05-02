@@ -173,6 +173,12 @@ const translation = {
       removeConfirmContent: 'The current configuration is in use, removing it will turn off the Tracing feature.',
     },
   },
+  appSelector: {
+    label: 'APP',
+    placeholder: 'Select an app...',
+    params: 'APP PARAMETERS',
+    noParams: 'No parameters needed',
+  },
   showMyCreatedAppsOnly: 'Created by me',
 }
 

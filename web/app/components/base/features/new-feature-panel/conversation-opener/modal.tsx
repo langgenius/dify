@@ -6,12 +6,14 @@ import { ReactSortable } from 'react-sortablejs'
 import { RiAddLine, RiAsterisk, RiCloseLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import { getInputKeys } from '@/app/components/base/block-input'
 import type { PromptVariable } from '@/models/debug'
 import type { InputVar } from '@/app/components/workflow/types'
 import { getNewVar } from '@/utils/var'
+import cn from '@/utils/classnames'
 
 type OpeningSettingModalProps = {
   data: OpeningStatement
@@ -86,16 +88,19 @@ const OpeningSettingModal = ({
     handleSave(true)
   }, [handleSave, hideConfirmAddVar, notIncludeKeys, onAutoAddPromptVariable])
 
+  const [focusID, setFocusID] = useState<number | null>(null)
+  const [deletingID, setDeletingID] = useState<number | null>(null)
+
   const renderQuestions = () => {
     return (
       <div>
         <div className='flex items-center py-2'>
-          <div className='shrink-0 flex space-x-0.5 leading-[18px] text-xs font-medium text-gray-500'>
+          <div className='shrink-0 flex space-x-0.5 leading-[18px] text-xs font-medium text-text-tertiary'>
             <div className='uppercase'>{t('appDebug.openingStatement.openingQuestion')}</div>
             <div>·</div>
             <div>{tempSuggestedQuestions.length}/{MAX_QUESTION_NUM}</div>
           </div>
-          <div className='ml-3 grow w-0 h-px bg-[#243, 244, 246]'></div>
+          <Divider bgStyle='gradient' className='ml-3 grow w-0 h-px'/>
         </div>
         <ReactSortable
           className="space-y-1"
@@ -112,8 +117,15 @@ const OpeningSettingModal = ({
         >
           {tempSuggestedQuestions.map((question, index) => {
             return (
-              <div className='group relative rounded-lg border border-gray-200 flex items-center pl-2.5 hover:border-gray-300 hover:bg-white' key={index}>
-                <RiDraggable className='handle w-4 h-4 cursor-grab' />
+              <div
+                className={cn(
+                  'group relative rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg flex items-center pl-2.5 hover:bg-components-panel-on-panel-item-bg-hover',
+                  focusID === index && 'border-components-input-border-active hover:border-components-input-border-active bg-components-input-bg-active hover:bg-components-input-bg-active',
+                  deletingID === index && 'border-components-input-border-destructive hover:border-components-input-border-destructive bg-state-destructive-hover hover:bg-state-destructive-hover',
+                )}
+                key={index}
+              >
+                <RiDraggable className='handle w-4 h-4 text-text-quaternary cursor-grab' />
                 <input
                   type="input"
                   value={question || ''}
@@ -126,14 +138,18 @@ const OpeningSettingModal = ({
                       return item
                     }))
                   }}
-                  className={'w-full overflow-x-auto pl-1.5 pr-8 text-sm leading-9 text-gray-900 border-0 grow h-9 bg-transparent focus:outline-none cursor-pointer rounded-lg'}
+                  className={'w-full overflow-x-auto pl-1.5 pr-8 text-sm leading-9 text-text-secondary border-0 grow h-9 bg-transparent focus:outline-none cursor-pointer rounded-lg'}
+                  onFocus={() => setFocusID(index)}
+                  onBlur={() => setFocusID(null)}
                 />
 
                 <div
-                  className='block absolute top-1/2 translate-y-[-50%] right-1.5 p-1 rounded-md cursor-pointer hover:bg-[#FEE4E2] hover:text-[#D92D20]'
+                  className='block absolute top-1/2 translate-y-[-50%] right-1.5 p-1 rounded-md cursor-pointer text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
                   onClick={() => {
                     setTempSuggestedQuestions(tempSuggestedQuestions.filter((_, i) => index !== i))
                   }}
+                  onMouseEnter={() => setDeletingID(index)}
+                  onMouseLeave={() => setDeletingID(null)}
                 >
                   <RiDeleteBinLine className='w-3.5 h-3.5' />
                 </div>
@@ -143,9 +159,9 @@ const OpeningSettingModal = ({
         {tempSuggestedQuestions.length < MAX_QUESTION_NUM && (
           <div
             onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
-            className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-gray-400  bg-gray-100 hover:bg-gray-200'>
+            className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-components-button-tertiary-text  bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover'>
             <RiAddLine className='w-4 h-4' />
-            <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConfig.addOption')}</div>
+            <div className='system-sm-medium text-[13px]'>{t('appDebug.variableConfig.addOption')}</div>
           </div>
         )}
       </div>

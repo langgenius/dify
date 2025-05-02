@@ -4,7 +4,7 @@ import React from 'react'
 import cn from '@/utils/classnames'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
-type Props = {
+interface Props {
   className?: string
   title: string
   errorMsg?: string

@@ -187,6 +187,12 @@ const translation = {
     byCategories: '按類別',
   },
   showMyCreatedAppsOnly: '我建立的',
+  appSelector: {
+    placeholder: '選擇應用程式...',
+    noParams: '無需參數',
+    params: '應用程式參數',
+    label: '應用程式',
+  },
 }
 
 export default translation

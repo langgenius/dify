@@ -106,7 +106,7 @@ const translation = {
     customDisclaimer: 'カスタム免責事項',
     customDisclaimerPlaceholder: 'カスタム免責事項を入力してください',
     confirmTitle: '保存しますか？',
-    confirmTip: '新しバージョン保存すると、このツールを使用されているアプリは影響を受けます',
+    confirmTip: 'このツールを使用しているアプリは影響を受けます',
     deleteToolConfirmTitle: 'このツールを削除しますか？',
     deleteToolConfirmContent: 'ツールの削除は取り消しできません。ユーザーはもうあなた様のツールにアクセスできません。',
   },
@@ -133,6 +133,7 @@ const translation = {
     number: '数',
     required: '必須',
     infoAndSetting: '情報と設定',
+    file: 'ファイル',
   },
   noCustomTool: {
     title: 'カスタムツールがありません！',
@@ -150,6 +151,8 @@ const translation = {
   howToGet: '取得方法',
   openInStudio: 'スタジオで開く',
   toolNameUsageTip: 'ツール呼び出し名、エージェントの推論とプロンプトの単語に使用されます',
+  copyToolName: '名前をコピー',
+  noTools: 'ツールが見つかりませんでした',
 }
 
 export default translation

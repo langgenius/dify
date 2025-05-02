@@ -47,6 +47,46 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='text' type='string' key='text'>
         文档内容
       </Property>
+      <Property name='doc_type' type='string' key='doc_type'>
+        文档类型（选填）
+          - <code>book</code> 图书 Book
+          - <code>web_page</code> 网页 Web page
+          - <code>paper</code> 学术论文/文章 Academic paper/article 
+          - <code>social_media_post</code> 社交媒体帖子 Social media post
+          - <code>wikipedia_entry</code> 维基百科条目 Wikipedia entry
+          - <code>personal_document</code> 个人文档 Personal document
+          - <code>business_document</code> 商业文档 Business document
+          - <code>im_chat_log</code> 即时通讯记录 Chat log
+          - <code>synced_from_notion</code> Notion同步文档 Notion document
+          - <code>synced_from_github</code> GitHub同步文档 GitHub document
+          - <code>others</code> 其他文档类型 Other document types
+      </Property>
+      <Property name='doc_metadata' type='object' key='doc_metadata'>
+      
+        文档元数据（如提供文档类型则必填）。字段因文档类型而异：
+          
+          针对图书 For <code>book</code>:
+          - <code>title</code> 书名 Book title 
+          - <code>language</code> 图书语言 Book language
+          - <code>author</code> 作者 Book author
+          - <code>publisher</code> 出版社 Publisher name
+          - <code>publication_date</code> 出版日期 Publication date
+          - <code>isbn</code> ISBN号码 ISBN number
+          - <code>category</code> 图书分类 Book category
+
+          针对网页 For <code>web_page</code>:
+          - <code>title</code> 页面标题 Page title
+          - <code>url</code> 页面网址 Page URL
+          - <code>language</code> 页面语言 Page language
+          - <code>publish_date</code> 发布日期 Publish date
+          - <code>author/publisher</code> 作者/发布者 Author or publisher
+          - <code>topic/keywords</code> 主题/关键词 Topic or keywords
+          - <code>description</code> 页面描述 Page description
+
+          请查看 [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) 了解各文档类型所需字段的详细信息。
+
+          针对"其他"类型文档，接受任何有效的JSON对象
+      </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         索引方式
           - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
@@ -194,6 +234,68 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
           - <code>text_model</code> text 文档直接 embedding，经济模式默认为该模式
           - <code>hierarchical_model</code> parent-child 模式
           - <code>qa_model</code> Q&A 模式：为分片文档生成 Q&A 对，然后对问题进行 embedding
+        - <code>doc_type</code> 文档类型（选填）Type of document (optional)
+          - <code>book</code> 图书
+            文档记录一本书籍或出版物
+          - <code>web_page</code> 网页
+            网页内容的文档记录
+          - <code>paper</code> 学术论文/文章
+            学术论文或研究文章的记录
+          - <code>social_media_post</code> 社交媒体帖子
+            社交媒体上的帖子内容
+          - <code>wikipedia_entry</code> 维基百科条目
+            维基百科的词条内容
+          - <code>personal_document</code> 个人文档
+            个人相关的文档记录
+          - <code>business_document</code> 商业文档
+            商业相关的文档记录
+          - <code>im_chat_log</code> 即时通讯记录
+            即时通讯的聊天记录
+          - <code>synced_from_notion</code> Notion同步文档
+            从Notion同步的文档内容
+          - <code>synced_from_github</code> GitHub同步文档
+            从GitHub同步的文档内容
+          - <code>others</code> 其他文档类型
+            其他未列出的文档类型
+
+        - <code>doc_metadata</code> 文档元数据（如提供文档类型则必填
+          字段因文档类型而异
+
+          针对图书类型 For <code>book</code>:
+          - <code>title</code> 书名
+            书籍的标题
+          - <code>language</code> 图书语言
+            书籍的语言
+          - <code>author</code> 作者
+            书籍的作者
+          - <code>publisher</code> 出版社
+            出版社的名称
+          - <code>publication_date</code> 出版日期
+            书籍的出版日期
+          - <code>isbn</code> ISBN号码
+            书籍的ISBN编号
+          - <code>category</code> 图书分类
+            书籍的分类类别
+
+          针对网页类型 For <code>web_page</code>:
+          - <code>title</code> 页面标题
+            网页的标题
+          - <code>url</code> 页面网址
+            网页的URL地址
+          - <code>language</code> 页面语言
+            网页的语言
+          - <code>publish_date</code> 发布日期
+            网页的发布日期
+          - <code>author/publisher</code> 作者/发布者
+            网页的作者或发布者
+          - <code>topic/keywords</code> 主题/关键词
+            网页的主题或关键词
+          - <code>description</code> 页面描述
+            网页的描述信息
+
+          请查看 [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) 了解各文档类型所需字段的详细信息。
+
+          针对"其他"类型文档，接受任何有效的JSON对象
 
         - <code>doc_language</code> 在 Q&A 模式下，指定文档的语言，例如：<code>English</code>、<code>Chinese</code>
 
@@ -504,6 +606,46 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='text' type='string' key='text'>
         文档内容（选填）
       </Property>
+      <Property name='doc_type' type='string' key='doc_type'>
+        文档类型（选填）
+          - <code>book</code> 图书 Book
+          - <code>web_page</code> 网页 Web page
+          - <code>paper</code> 学术论文/文章 Academic paper/article 
+          - <code>social_media_post</code> 社交媒体帖子 Social media post
+          - <code>wikipedia_entry</code> 维基百科条目 Wikipedia entry
+          - <code>personal_document</code> 个人文档 Personal document
+          - <code>business_document</code> 商业文档 Business document
+          - <code>im_chat_log</code> 即时通讯记录 Chat log
+          - <code>synced_from_notion</code> Notion同步文档 Notion document
+          - <code>synced_from_github</code> GitHub同步文档 GitHub document
+          - <code>others</code> 其他文档类型 Other document types
+      </Property>
+      <Property name='doc_metadata' type='object' key='doc_metadata'>
+      
+        文档元数据（如提供文档类型则必填）。字段因文档类型而异：
+          
+          针对图书 For <code>book</code>:
+          - <code>title</code> 书名 Book title 
+          - <code>language</code> 图书语言 Book language
+          - <code>author</code> 作者 Book author
+          - <code>publisher</code> 出版社 Publisher name
+          - <code>publication_date</code> 出版日期 Publication date
+          - <code>isbn</code> ISBN号码 ISBN number
+          - <code>category</code> 图书分类 Book category
+
+          针对网页 For <code>web_page</code>:
+          - <code>title</code> 页面标题 Page title
+          - <code>url</code> 页面网址 Page URL
+          - <code>language</code> 页面语言 Page language
+          - <code>publish_date</code> 发布日期 Publish date
+          - <code>author/publisher</code> 作者/发布者 Author or publisher
+          - <code>topic/keywords</code> 主题/关键词 Topic or keywords
+          - <code>description</code> 页面描述 Page description
+
+          请查看 [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) 了解各文档类型所需字段的详细信息。
+
+          针对"其他"类型文档，接受任何有效的JSON对象
+      </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则（选填）
           - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
@@ -624,6 +766,68 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
               - <code>separator</code> 分段标识符，目前仅允许设置一个分隔符。默认为 <code>***</code>
               - <code>max_tokens</code> 最大长度 (token) 需要校验小于父级的长度
               - <code>chunk_overlap</code> 分段重叠指的是在对数据进行分段时，段与段之间存在一定的重叠部分（选填）
+            - <code>doc_type</code> 文档类型（选填）Type of document (optional)
+              - <code>book</code> 图书
+                文档记录一本书籍或出版物
+              - <code>web_page</code> 网页
+                网页内容的文档记录
+              - <code>paper</code> 学术论文/文章
+                学术论文或研究文章的记录
+              - <code>social_media_post</code> 社交媒体帖子
+                社交媒体上的帖子内容
+              - <code>wikipedia_entry</code> 维基百科条目
+                维基百科的词条内容
+              - <code>personal_document</code> 个人文档
+                个人相关的文档记录
+              - <code>business_document</code> 商业文档
+                商业相关的文档记录
+              - <code>im_chat_log</code> 即时通讯记录
+                即时通讯的聊天记录
+              - <code>synced_from_notion</code> Notion同步文档
+                从Notion同步的文档内容
+              - <code>synced_from_github</code> GitHub同步文档
+                从GitHub同步的文档内容
+              - <code>others</code> 其他文档类型
+                其他未列出的文档类型
+
+            - <code>doc_metadata</code> 文档元数据（如提供文档类型则必填
+              字段因文档类型而异
+
+              针对图书类型 For <code>book</code>:
+              - <code>title</code> 书名
+                书籍的标题
+              - <code>language</code> 图书语言
+                书籍的语言
+              - <code>author</code> 作者
+                书籍的作者
+              - <code>publisher</code> 出版社
+                出版社的名称
+              - <code>publication_date</code> 出版日期
+                书籍的出版日期
+              - <code>isbn</code> ISBN号码
+                书籍的ISBN编号
+              - <code>category</code> 图书分类
+                书籍的分类类别
+
+              针对网页类型 For <code>web_page</code>:
+              - <code>title</code> 页面标题
+                网页的标题
+              - <code>url</code> 页面网址
+                网页的URL地址
+              - <code>language</code> 页面语言
+                网页的语言
+              - <code>publish_date</code> 发布日期
+                网页的发布日期
+              - <code>author/publisher</code> 作者/发布者
+                网页的作者或发布者
+              - <code>topic/keywords</code> 主题/关键词
+                网页的主题或关键词
+              - <code>description</code> 页面描述
+                网页的描述信息
+
+              请查看 [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) 了解各文档类型所需字段的详细信息。
+
+              针对"其他"类型文档，接受任何有效的JSON对象
       </Property>
     </Properties>
   </Col>

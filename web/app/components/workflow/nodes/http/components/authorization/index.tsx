@@ -17,7 +17,7 @@ import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.http.authorization'
 
-type Props = {
+interface Props {
   nodeId: string
   payload: AuthorizationPayloadType
   onChange: (payload: AuthorizationPayloadType) => void

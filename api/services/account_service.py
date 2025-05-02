@@ -50,6 +50,7 @@ from services.errors.account import (
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 from sqlalchemy import func  # type: ignore
+from sqlalchemy.orm import Session
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_email_code_login import send_email_code_login_mail_task
@@ -83,6 +84,7 @@ class AccountService:
         time_window=60 * 1,
     )
     LOGIN_MAX_ERROR_LIMITS = 5
+    FORGOT_PASSWORD_MAX_ERROR_LIMITS = 5
 
     @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
@@ -112,7 +114,7 @@ class AccountService:
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
-        account = Account.query.filter_by(id=user_id).first()
+        account = db.session.query(Account).filter_by(id=user_id).first()
         if not account:
             return None
 
@@ -157,7 +159,7 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: Optional[str] = None) -> Account:
         """authenticate account with email and password"""
 
-        account = Account.query.filter_by(email=email).first()
+        account = db.session.query(Account).filter_by(email=email).first()
         if not account:
             raise AccountNotFoundError()
 
@@ -554,6 +556,32 @@ class AccountService:
     @staticmethod
     def reset_login_error_rate_limit(email: str):
         key = f"login_error_rate_limit:{email}"
+        redis_client.delete(key)
+
+    @staticmethod
+    def add_forgot_password_error_rate_limit(email: str) -> None:
+        key = f"forgot_password_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            count = 0
+        count = int(count) + 1
+        redis_client.setex(key, dify_config.FORGOT_PASSWORD_LOCKOUT_DURATION, count)
+
+    @staticmethod
+    def is_forgot_password_error_rate_limit(email: str) -> bool:
+        key = f"forgot_password_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            return False
+
+        count = int(count)
+        if count > AccountService.FORGOT_PASSWORD_MAX_ERROR_LIMITS:
+            return True
+        return False
+
+    @staticmethod
+    def reset_forgot_password_error_rate_limit(email: str):
+        key = f"forgot_password_error_rate_limit:{email}"
         redis_client.delete(key)
 
     @staticmethod
@@ -1080,16 +1108,14 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls,
-        tenant: Tenant,
-        email: str,
-        language: str,
-        role: str = "normal",
-        inviter: Optional[Account] = None,
+        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None
     ) -> str:
+        if not inviter:
+            raise ValueError("Inviter is required")
+
         """Invite new member"""
-        account = Account.query.filter_by(email=email).first()
-        assert inviter is not None, "Inviter must be provided."
+        with Session(db.engine) as session:
+            account = session.query(Account).filter_by(email=email).first()
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")

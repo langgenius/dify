@@ -5,6 +5,8 @@ from typing import Optional
 import requests
 from flask import current_app, redirect, request
 from flask_restful import Resource  # type: ignore
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -135,7 +137,8 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
     account: Optional[Account] = Account.get_by_openid(provider, user_info.id)
 
     if not account:
-        account = Account.query.filter_by(email=user_info.email).first()
+        with Session(db.engine) as session:
+            account = session.execute(select(Account).filter_by(email=user_info.email)).scalar_one_or_none()
 
     return account
 

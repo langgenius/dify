@@ -70,9 +70,6 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const handleCancel = (actionType: 'esc' | 'add' = 'esc') => {
     if (actionType === 'esc' || !addAnother)
       onCancel()
-    setQuestion('')
-    setAnswer('')
-    setKeywords([])
   }
 
   const { mutateAsync: addSegment } = useAddSegment()

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
@@ -14,8 +14,9 @@ import Loading from '@/app/components/base/loading'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
-import { useRetryDetailShowInSingleRun } from '@/app/components/workflow/nodes/_base/components/retry/hooks'
 import { useToolIcon } from '@/app/components/workflow/hooks'
+import { useLogs } from '@/app/components/workflow/run/hooks'
+import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-log'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -49,12 +50,15 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     handleRun,
     handleStop,
     runResult,
+    outputSchema,
   } = useConfig(id, data)
   const toolIcon = useToolIcon(data)
-  const {
-    retryDetails,
-    handleRetryDetailsChange,
-  } = useRetryDetailShowInSingleRun()
+  const logsParams = useLogs()
+  const nodeInfo = useMemo(() => {
+    if (!runResult)
+      return null
+    return formatToTracingNodeList([runResult], t)[0]
+  }, [runResult, t])
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -143,6 +147,14 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               type='Array[Object]'
               description={t(`${i18nPrefix}.outputVars.json`)}
             />
+            {outputSchema.map(outputItem => (
+              <VarItem
+                key={outputItem.name}
+                name={outputItem.name}
+                type={outputItem.type}
+                description={outputItem.description}
+              />
+            ))}
           </>
         </OutputVars>
       </div>
@@ -157,9 +169,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
-          retryDetails={retryDetails}
-          onRetryDetailBack={handleRetryDetailsChange}
-          result={<ResultPanel {...runResult} showSteps={false} onShowRetryDetail={handleRetryDetailsChange} />}
+          {...logsParams}
+          result={<ResultPanel {...runResult} showSteps={false} {...logsParams} nodeInfo={nodeInfo} />}
         />
       )}
     </div>

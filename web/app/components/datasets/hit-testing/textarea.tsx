@@ -15,7 +15,7 @@ import { asyncRunSafe } from '@/utils'
 import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 import promptS from '@/app/components/app/configuration/config-prompt/style.module.css'
 
-type TextAreaWithButtonIProps = {
+interface TextAreaWithButtonIProps {
   datasetId: string
   onUpdateList: () => void
   setHitResult: (res: HitTestingResponse) => void

@@ -1,3 +1,7 @@
 export { default as Google } from './Google'
+export { default as PartnerDark } from './PartnerDark'
+export { default as PartnerLight } from './PartnerLight'
+export { default as VerifiedDark } from './VerifiedDark'
+export { default as VerifiedLight } from './VerifiedLight'
 export { default as WebReader } from './WebReader'
 export { default as Wikipedia } from './Wikipedia'

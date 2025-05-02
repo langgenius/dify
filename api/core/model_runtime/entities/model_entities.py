@@ -18,7 +18,6 @@ class ModelType(Enum):
     SPEECH2TEXT = "speech2text"
     MODERATION = "moderation"
     TTS = "tts"
-    TEXT2IMG = "text2img"
 
     @classmethod
     def value_of(cls, origin_model_type: str) -> "ModelType":
@@ -37,8 +36,6 @@ class ModelType(Enum):
             return cls.SPEECH2TEXT
         elif origin_model_type in {"tts", cls.TTS.value}:
             return cls.TTS
-        elif origin_model_type in {"text2img", cls.TEXT2IMG.value}:
-            return cls.TEXT2IMG
         elif origin_model_type == cls.MODERATION.value:
             return cls.MODERATION
         else:
@@ -62,8 +59,6 @@ class ModelType(Enum):
             return "tts"
         elif self == self.MODERATION:
             return "moderation"
-        elif self == self.TEXT2IMG:
-            return "text2img"
         else:
             raise ValueError(f"invalid model type {self}")
 

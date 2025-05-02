@@ -25,7 +25,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import AppIcon from '@/app/components/base/app-icon'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-type SwitchAppModalProps = {
+interface SwitchAppModalProps {
   show: boolean
   appDetail: App
   onSuccess?: () => void

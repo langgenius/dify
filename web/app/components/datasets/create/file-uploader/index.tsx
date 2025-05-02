@@ -16,8 +16,8 @@ import { fetchSupportFileTypes } from '@/service/datasets'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
 import { IS_CE_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
 import { Theme } from '@/types/app'
+import useTheme from '@/hooks/use-theme'
 
 const FILES_NUMBER_LIMIT = 20
 
@@ -226,7 +226,7 @@ const FileUploader = ({
     initialUpload(files.filter(isValid))
   }, [isValid, initialUpload])
 
-  const { theme } = useAppContext()
+  const { theme } = useTheme()
   const chartColor = useMemo(() => theme === Theme.dark ? '#5289ff' : '#296dff', [theme])
 
   useEffect(() => {

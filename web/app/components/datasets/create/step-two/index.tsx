@@ -37,7 +37,7 @@ import Button from '@/app/components/base/button'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
-import { type RetrievalConfig } from '@/types/app'
+import type { RetrievalConfig } from '@/types/app'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
@@ -98,7 +98,7 @@ export enum IndexingType {
 const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
 const DEFAULT_MAXIMUM_CHUNK_LENGTH = 500
 const DEFAULT_OVERLAP = 50
-const MAXIMUM_CHUNK_TOKEN_LENGTH = parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
+const MAXIMUM_CHUNK_TOKEN_LENGTH = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
 
 type ParentChildConfig = {
   chunkForContext: ParentMode
@@ -206,7 +206,7 @@ const StepTwo = ({
     if (value === ChunkingMode.parentChild && indexType === IndexingType.ECONOMICAL)
       setIndexType(IndexingType.QUALIFIED)
     setDocForm(value)
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     currentEstimateMutation.reset()
   }
 
@@ -1073,10 +1073,9 @@ const StepTwo = ({
               }
               {
                 currentDocForm !== ChunkingMode.qa
-                && <Badge text={t(
-                  'datasetCreation.stepTwo.previewChunkCount', {
-                    count: estimate?.total_segments || 0,
-                  }) as string}
+                && <Badge text={t('datasetCreation.stepTwo.previewChunkCount', {
+                  count: estimate?.total_segments || 0,
+                }) as string}
                 />
               }
             </div>

@@ -6,11 +6,11 @@ import useSWR from 'swr'
 import Input from '@/app/components/base/input'
 import { fetchAnnotationsCount } from '@/service/log'
 
-export type QueryParam = {
+export interface QueryParam {
   keyword?: string
 }
 
-type IFilterProps = {
+interface IFilterProps {
   appId: string
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void

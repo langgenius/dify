@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'Bilgi Oluştur',
       update: 'Veri ekle',
+      fallbackRoute: 'Bilgi',
     },
     one: 'Veri kaynağı seçin',
     two: 'Metin Ön İşleme ve Temizleme',

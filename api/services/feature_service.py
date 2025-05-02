@@ -58,6 +58,8 @@ class SystemFeatureModel(BaseModel):
     sso_enforced_for_web: bool = False
     sso_enforced_for_web_protocol: str = ""
     enable_web_sso_switch_component: bool = False
+    enable_marketplace: bool = True
+    max_plugin_package_size: int = dify_config.PLUGIN_MAX_PACKAGE_SIZE
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
@@ -89,6 +91,9 @@ class FeatureService:
             system_features.enable_web_sso_switch_component = True
 
             cls._fulfill_params_from_enterprise(system_features)
+
+        if dify_config.MARKETPLACE_ENABLED:
+            system_features.enable_marketplace = True
 
         return system_features
 

@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchSetupStatus } from '@/service/common'
 
-type SwrInitorProps = {
+interface SwrInitorProps {
   children: ReactNode
 }
 const SwrInitor = ({

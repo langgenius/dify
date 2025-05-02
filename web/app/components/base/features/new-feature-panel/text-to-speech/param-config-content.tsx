@@ -93,13 +93,13 @@ const VoiceParamConfig = ({
         >
           <div className='relative h-8'>
             <Listbox.Button
-              className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
-              <span className={classNames('block truncate text-left', !languageItem?.name && 'text-gray-400')}>
+              className={'w-full h-full rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-state-base-hover group-hover:bg-state-base-hover cursor-pointer'}>
+              <span className={classNames('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
                 {languageItem?.name ? t(`common.voice.language.${languageItem?.value.replace('-', '')}`) : localLanguagePlaceholder}
               </span>
               <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                 <ChevronDownIcon
-                  className="h-5 w-5 text-gray-400"
+                  className="h-4 w-4 text-text-tertiary"
                   aria-hidden="true"
                 />
               </span>
@@ -112,12 +112,12 @@ const VoiceParamConfig = ({
             >
 
               <Listbox.Options
-                className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
+                className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm">
                 {languages.map((item: Item) => (
                   <Listbox.Option
                     key={item.value}
                     className={({ active }) =>
-                      `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''
+                      `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-state-base-hover text-text-secondary ${active ? 'bg-state-base-active' : ''
                       }`
                     }
                     value={item}
@@ -130,10 +130,10 @@ const VoiceParamConfig = ({
                         {(selected || item.value === text2speech?.language) && (
                           <span
                             className={classNames(
-                              'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
+                              'absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',
                             )}
                           >
-                            <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                            <CheckIcon className="h-4 w-4" aria-hidden="true"/>
                           </span>
                         )}
                       </>
@@ -161,12 +161,12 @@ const VoiceParamConfig = ({
           >
             <div className={'grow relative h-8'}>
               <Listbox.Button
-                className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
+                className={'w-full h-full rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-state-base-hover group-hover:bg-state-base-hover cursor-pointer'}>
                 <span
-                  className={classNames('block truncate text-left', !voiceItem?.name && 'text-gray-400')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
+                  className={classNames('block truncate text-left text-text-secondary', !voiceItem?.name && 'text-text-tertiary')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                   <ChevronDownIcon
-                    className="h-5 w-5 text-gray-400"
+                    className="h-4 w-4 text-text-tertiary"
                     aria-hidden="true"
                   />
                 </span>
@@ -179,12 +179,12 @@ const VoiceParamConfig = ({
               >
 
                 <Listbox.Options
-                  className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
+                  className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-components-panel-bg py-1 text-base shadow-lg border-components-panel-border border-[0.5px] focus:outline-none sm:text-sm">
                   {voiceItems?.map((item: Item) => (
                     <Listbox.Option
                       key={item.value}
                       className={({ active }) =>
-                        `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''
+                        `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-state-base-hover text-text-secondary ${active ? 'bg-state-base-active' : ''
                         }`
                       }
                       value={item}
@@ -196,10 +196,10 @@ const VoiceParamConfig = ({
                           {(selected || item.value === text2speech?.voice) && (
                             <span
                               className={classNames(
-                                'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
+                                'absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',
                               )}
                             >
-                              <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                              <CheckIcon className="h-4 w-4" aria-hidden="true"/>
                             </span>
                           )}
                         </>

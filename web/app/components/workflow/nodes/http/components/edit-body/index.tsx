@@ -15,7 +15,7 @@ import { VarType } from '@/app/components/workflow/types'
 
 const UNIQUE_ID_PREFIX = 'key-value-'
 
-type Props = {
+interface Props {
   readonly: boolean
   nodeId: string
   payload: Body

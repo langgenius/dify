@@ -50,6 +50,10 @@ const translation = {
     submit: 'Отправить',
     skip: 'Корабль',
     imageCopied: 'Скопированное изображение',
+    deleteApp: 'Удалить приложение',
+    copied: 'Скопированы',
+    in: 'в',
+    viewDetails: 'Подробнее',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',
@@ -126,6 +130,8 @@ const translation = {
       Custom: 'Пользовательский',
     },
     addMoreModel: 'Перейдите в настройки, чтобы добавить больше моделей',
+    capabilities: 'Мультимодальные возможности',
+    settingsLink: 'Настройки поставщика моделей',
   },
   menus: {
     status: 'бета',
@@ -138,6 +144,7 @@ const translation = {
     newApp: 'Новое приложение',
     newDataset: 'Создать знания',
     tools: 'Инструменты',
+    exploreMarketplace: 'Подробнее о Marketplace',
   },
   userProfile: {
     settings: 'Настройки',
@@ -163,6 +170,7 @@ const translation = {
     dataSource: 'Источник данных',
     plugin: 'Плагины',
     apiBasedExtension: 'API расширение',
+    generalGroup: 'ОБЩЕЕ',
   },
   account: {
     avatar: 'Аватар',
@@ -290,6 +298,7 @@ const translation = {
       usedUp: 'Пробная квота исчерпана. Добавьте собственного поставщика модели.',
       useYourModel: 'В настоящее время используется собственный поставщик модели.',
       close: 'Закрыть',
+      trialQuotaTip: 'Ваша квота на пробную версию Anthropic истечет 11.03.2025 и больше не будет доступна. Пожалуйста, используйте его вовремя.',
     },
     anthropic: {
       using: 'Возможность встраивания использует',
@@ -401,6 +410,12 @@ const translation = {
     loadBalancingLeastKeyWarning: 'Для включения балансировки нагрузки необходимо включить не менее 2 ключей.',
     loadBalancingInfo: 'По умолчанию балансировка нагрузки использует стратегию Round-robin. Если срабатывает ограничение скорости, будет применен 1-минутный период охлаждения.',
     upgradeForLoadBalancing: 'Обновите свой тарифный план, чтобы включить балансировку нагрузки.',
+    emptyProviderTitle: 'Поставщик модели не настроен',
+    toBeConfigured: 'Подлежит настройке',
+    configureTip: 'Настройте api-ключ или добавьте модель для использования',
+    emptyProviderTip: 'Сначала установите поставщик модели.',
+    discoverMore: 'Узнайте больше в',
+    installProvider: 'Установка поставщиков моделей',
   },
   dataSource: {
     add: 'Добавить источник данных',
@@ -530,6 +545,8 @@ const translation = {
       hitScore: 'Оценка совпадения:',
     },
     inputPlaceholder: 'Поговорить с ботом',
+    thinking: 'Мыслящий...',
+    thought: 'Мысль',
   },
   promptEditor: {
     placeholder: 'Напишите здесь свое ключевое слово подсказки, введите \'{\', чтобы вставить переменную, введите \'/\', чтобы вставить блок содержимого подсказки',

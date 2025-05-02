@@ -5,14 +5,16 @@ from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
+from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     setup_required,
 )
 from extensions.ext_database import db
-from fields.app_fields import app_import_fields
+from fields.app_fields import app_import_check_dependencies_fields, app_import_fields
 from libs.login import login_required
 from models import Account
+from models.model import App
 from services.app_dsl_service import AppDslService, ImportStatus
 
 
@@ -87,4 +89,21 @@ class AppImportConfirmApi(Resource):
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED.value:
             return result.model_dump(mode="json"), 400
+        return result.model_dump(mode="json"), 200
+
+
+class AppImportCheckDependenciesApi(Resource):
+    @setup_required
+    @login_required
+    @get_app_model
+    @account_initialization_required
+    @marshal_with(app_import_check_dependencies_fields)
+    def get(self, app_model: App):
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        with Session(db.engine) as session:
+            import_service = AppDslService(session)
+            result = import_service.check_dependencies(app_model=app_model)
+
         return result.model_dump(mode="json"), 200

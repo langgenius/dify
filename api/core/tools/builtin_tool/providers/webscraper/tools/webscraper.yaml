@@ -1,0 +1,60 @@
+identity:
+  name: webscraper
+  author: Dify
+  label:
+    en_US: Web Scraper
+    zh_Hans: 网页爬虫
+    pt_BR: Web Scraper
+description:
+  human:
+    en_US: A tool for scraping webpages.
+    zh_Hans: 一个用于爬取网页的工具。
+    pt_BR: A tool for scraping webpages.
+  llm: A tool for scraping webpages. Input should be a URL.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL
+      zh_Hans: 网页链接
+      pt_BR: URL
+    human_description:
+      en_US: used for linking to webpages
+      zh_Hans: 用于链接到网页
+      pt_BR: used for linking to webpages
+    llm_description: url for scraping
+    form: llm
+  - name: user_agent
+    type: string
+    required: false
+    label:
+      en_US: User Agent
+      zh_Hans: User Agent
+      pt_BR: User Agent
+    human_description:
+      en_US: used for identifying the browser.
+      zh_Hans: 用于识别浏览器。
+      pt_BR: used for identifying the browser.
+    form: form
+    default: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.1000.0 Safari/537.36
+  - name: generate_summary
+    type: boolean
+    required: false
+    label:
+      en_US: Whether to generate summary
+      zh_Hans: 是否生成摘要
+    human_description:
+      en_US: If true, the crawler will only return the page summary content.
+      zh_Hans: 如果启用，爬虫将仅返回页面摘要内容。
+    form: form
+    options:
+      - value: "true"
+        label:
+          en_US: "Yes"
+          zh_Hans: 是
+      - value: "false"
+        label:
+          en_US: "No"
+          zh_Hans: 否
+    default: "false"

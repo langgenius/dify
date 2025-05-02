@@ -47,6 +47,44 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='text' type='string' key='text'>
         Document content
       </Property>
+      <Property name='doc_type' type='string' key='doc_type'>
+        Type of document (optional):
+          - <code>book</code> Book
+          - <code>web_page</code> Web page
+          - <code>paper</code> Academic paper/article 
+          - <code>social_media_post</code> Social media post
+          - <code>wikipedia_entry</code> Wikipedia entry
+          - <code>personal_document</code> Personal document
+          - <code>business_document</code> Business document
+          - <code>im_chat_log</code> Chat log
+          - <code>synced_from_notion</code> Notion document
+          - <code>synced_from_github</code> GitHub document
+          - <code>others</code> Other document types
+      </Property>
+      <Property name='doc_metadata' type='object' key='doc_metadata'>
+        Document metadata (required if doc_type is provided). Fields vary by doc_type:
+          For <code>book</code>:
+          - <code>title</code> Book title 
+          - <code>language</code> Book language
+          - <code>author</code> Book author
+          - <code>publisher</code> Publisher name
+          - <code>publication_date</code> Publication date
+          - <code>isbn</code> ISBN number
+          - <code>category</code> Book category
+
+          For <code>web_page</code>:
+          - <code>title</code> Page title
+          - <code>url</code> Page URL
+          - <code>language</code> Page language
+          - <code>publish_date</code> Publish date
+          - <code>author/publisher</code> Author or publisher
+          - <code>topic/keywords</code> Topic or keywords
+          - <code>description</code> Page description
+
+          Please check [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) for more details on the fields required for each doc_type.
+
+          For doc_type "others", any valid JSON object is accepted
+      </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index mode
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
@@ -195,6 +233,68 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
           - <code>hierarchical_model</code> Parent-child mode
           - <code>qa_model</code> Q&A Mode: Generates Q&A pairs for segmented documents and then embeds the questions
 
+        - <code>doc_type</code> Type of document (optional)
+          - <code>book</code> Book
+            Document records a book or publication
+          - <code>web_page</code> Web page 
+            Document records web page content
+          - <code>paper</code> Academic paper/article
+            Document records academic paper or research article
+          - <code>social_media_post</code> Social media post
+            Content from social media posts
+          - <code>wikipedia_entry</code> Wikipedia entry
+            Content from Wikipedia entries
+          - <code>personal_document</code> Personal document
+            Documents related to personal content
+          - <code>business_document</code> Business document
+            Documents related to business content
+          - <code>im_chat_log</code> Chat log
+            Records of instant messaging chats
+          - <code>synced_from_notion</code> Notion document
+            Documents synchronized from Notion
+          - <code>synced_from_github</code> GitHub document
+            Documents synchronized from GitHub
+          - <code>others</code> Other document types
+            Other document types not listed above
+
+        - <code>doc_metadata</code> Document metadata (required if doc_type is provided)
+          Fields vary by doc_type:
+
+          For <code>book</code>:
+          - <code>title</code> Book title
+            Title of the book
+          - <code>language</code> Book language
+            Language of the book
+          - <code>author</code> Book author
+            Author of the book
+          - <code>publisher</code> Publisher name
+            Name of the publishing house
+          - <code>publication_date</code> Publication date
+            Date when the book was published
+          - <code>isbn</code> ISBN number
+            International Standard Book Number
+          - <code>category</code> Book category
+            Category or genre of the book
+
+          For <code>web_page</code>:
+          - <code>title</code> Page title
+            Title of the web page
+          - <code>url</code> Page URL
+            URL address of the web page
+          - <code>language</code> Page language
+            Language of the web page
+          - <code>publish_date</code> Publish date
+            Date when the web page was published
+          - <code>author/publisher</code> Author or publisher
+            Author or publisher of the web page
+          - <code>topic/keywords</code> Topic or keywords
+            Topics or keywords of the web page
+          - <code>description</code> Page description
+            Description of the web page content
+
+          Please check [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) for more details on the fields required for each doc_type.
+          For doc_type "others", any valid JSON object is accepted
+
         - <code>doc_language</code> In Q&A mode, specify the language of the document, for example: <code>English</code>, <code>Chinese</code>
 
         - <code>process_rule</code> Processing rules
@@ -306,6 +406,44 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='description' type='string' key='description'>
         Knowledge description (optional)
+      </Property>
+      <Property name='doc_type' type='string' key='doc_type'>
+        Type of document (optional):
+          - <code>book</code> Book
+          - <code>web_page</code> Web page
+          - <code>paper</code> Academic paper/article 
+          - <code>social_media_post</code> Social media post
+          - <code>wikipedia_entry</code> Wikipedia entry
+          - <code>personal_document</code> Personal document
+          - <code>business_document</code> Business document
+          - <code>im_chat_log</code> Chat log
+          - <code>synced_from_notion</code> Notion document
+          - <code>synced_from_github</code> GitHub document
+          - <code>others</code> Other document types
+      </Property>
+      <Property name='doc_metadata' type='object' key='doc_metadata'>
+        Document metadata (required if doc_type is provided). Fields vary by doc_type:
+          For <code>book</code>:
+          - <code>title</code> Book title 
+          - <code>language</code> Book language
+          - <code>author</code> Book author
+          - <code>publisher</code> Publisher name
+          - <code>publication_date</code> Publication date
+          - <code>isbn</code> ISBN number
+          - <code>category</code> Book category
+
+          For <code>web_page</code>:
+          - <code>title</code> Page title
+          - <code>url</code> Page URL
+          - <code>language</code> Page language
+          - <code>publish_date</code> Publish date
+          - <code>author/publisher</code> Author or publisher
+          - <code>topic/keywords</code> Topic or keywords
+          - <code>description</code> Page description
+
+          Please check [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) for more details on the fields required for each doc_type.
+
+          For doc_type "others", any valid JSON object is accepted
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index technique (optional)
@@ -624,6 +762,67 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
               - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
               - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
               - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
+            - <code>doc_type</code> Type of document (optional)
+              - <code>book</code> Book
+                Document records a book or publication
+              - <code>web_page</code> Web page 
+                Document records web page content
+              - <code>paper</code> Academic paper/article
+                Document records academic paper or research article
+              - <code>social_media_post</code> Social media post
+                Content from social media posts
+              - <code>wikipedia_entry</code> Wikipedia entry
+                Content from Wikipedia entries
+              - <code>personal_document</code> Personal document
+                Documents related to personal content
+              - <code>business_document</code> Business document
+                Documents related to business content
+              - <code>im_chat_log</code> Chat log
+                Records of instant messaging chats
+              - <code>synced_from_notion</code> Notion document
+                Documents synchronized from Notion
+              - <code>synced_from_github</code> GitHub document
+                Documents synchronized from GitHub
+              - <code>others</code> Other document types
+                Other document types not listed above
+
+            - <code>doc_metadata</code> Document metadata (required if doc_type is provided)
+              Fields vary by doc_type:
+
+              For <code>book</code>:
+              - <code>title</code> Book title
+                Title of the book
+              - <code>language</code> Book language
+                Language of the book
+              - <code>author</code> Book author
+                Author of the book
+              - <code>publisher</code> Publisher name
+                Name of the publishing house
+              - <code>publication_date</code> Publication date
+                Date when the book was published
+              - <code>isbn</code> ISBN number
+                International Standard Book Number
+              - <code>category</code> Book category
+                Category or genre of the book
+
+              For <code>web_page</code>:
+              - <code>title</code> Page title
+                Title of the web page
+              - <code>url</code> Page URL
+                URL address of the web page
+              - <code>language</code> Page language
+                Language of the web page
+              - <code>publish_date</code> Publish date
+                Date when the web page was published
+              - <code>author/publisher</code> Author or publisher
+                Author or publisher of the web page
+              - <code>topic/keywords</code> Topic or keywords
+                Topics or keywords of the web page
+              - <code>description</code> Page description
+                Description of the web page content
+
+              Please check [api/services/dataset_service.py](https://github.com/langgenius/dify/blob/main/api/services/dataset_service.py#L475) for more details on the fields required for each doc_type.
+              For doc_type "others", any valid JSON object is accepted
       </Property>
     </Properties>
   </Col>

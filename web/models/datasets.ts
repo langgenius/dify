@@ -9,12 +9,16 @@ export enum DataSourceType {
   WEB = 'website_crawl',
 }
 
-export type DatasetPermission = 'only_me' | 'all_team_members' | 'partial_members'
+export enum DatasetPermission {
+  onlyMe = 'only_me',
+  allTeamMembers = 'all_team_members',
+  partialMembers = 'partial_members',
+}
 
 export enum ChunkingMode {
-  'text' = 'text_model', // General text
-  'qa' = 'qa_model', // General QA
-  'parentChild' = 'hierarchical_model', // Parent-Child
+  text = 'text_model', // General text
+  qa = 'qa_model', // General QA
+  parentChild = 'hierarchical_model', // Parent-Child
 }
 
 export type DataSet = {
@@ -40,7 +44,7 @@ export type DataSet = {
   retrieval_model_dict: RetrievalConfig
   retrieval_model: RetrievalConfig
   tags: Tag[]
-  partial_member_list?: any[]
+  partial_member_list?: string[]
   external_knowledge_info: {
     external_knowledge_id: string
     external_knowledge_api_id: string
@@ -136,9 +140,10 @@ export type FetchDatasetsParams = {
   url: string
   params: {
     page: number
+    ids?: string[]
     tag_ids?: string[]
-    limit: number
-    include_all: boolean
+    limit?: number
+    include_all?: boolean
     keyword?: string
   }
 }
@@ -452,6 +457,7 @@ export type SegmentDetailModel = {
   position: number
   document_id: string
   content: string
+  sign_content: string
   word_count: number
   tokens: number
   keywords: string[]
@@ -520,6 +526,7 @@ export type Segment = {
   id: string
   document: Document
   content: string
+  sign_content: string
   position: number
   word_count: number
   tokens: number

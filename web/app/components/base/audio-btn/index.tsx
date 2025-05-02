@@ -7,7 +7,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 
-type AudioBtnProps = {
+interface AudioBtnProps {
   id?: string
   voice?: string
   value?: string

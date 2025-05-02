@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import Input from '@/app/components/base/input'
 
-export type IConfigStringProps = {
+export interface IConfigStringProps {
   value: number | undefined
   maxLength: number
   modelId: string
@@ -28,7 +28,7 @@ const ConfigString: FC<IConfigStringProps> = ({
         min={1}
         value={value || ''}
         onChange={(e) => {
-          let value = parseInt(e.target.value, 10)
+          let value = Number.parseInt(e.target.value, 10)
           if (value > maxLength)
             value = maxLength
 

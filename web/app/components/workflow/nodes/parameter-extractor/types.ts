@@ -10,7 +10,7 @@ export enum ParamType {
   arrayObject = 'array[object]',
 }
 
-export type Param = {
+export interface Param {
   name: string
   type: ParamType
   options?: string[]

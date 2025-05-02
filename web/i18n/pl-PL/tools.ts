@@ -123,6 +123,7 @@ const translation = {
     number: 'liczba',
     required: 'Wymagane',
     infoAndSetting: 'Informacje i Ustawienia',
+    file: 'plik',
   },
   noCustomTool: {
     title: 'Brak niestandardowych narzędzi!',
@@ -154,6 +155,8 @@ const translation = {
   openInStudio: 'Otwieranie w Studio',
   customToolTip: 'Dowiedz się więcej o niestandardowych narzędziach Dify',
   toolNameUsageTip: 'Nazwa wywołania narzędzia do wnioskowania i podpowiadania agentowi',
+  noTools: 'Nie znaleziono narzędzi',
+  copyToolName: 'Kopiuj nazwę',
 }
 
 export default translation

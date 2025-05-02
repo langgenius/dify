@@ -14,7 +14,7 @@ export type Item = {
   name: string
 } & Record<string, any>
 
-type Props = {
+interface Props {
   order?: string
   value: number | string
   items: Item[]

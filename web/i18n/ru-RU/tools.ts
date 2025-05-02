@@ -133,6 +133,7 @@ const translation = {
     number: 'число',
     required: 'Обязательно',
     infoAndSetting: 'Информация и настройки',
+    file: 'файл',
   },
   noCustomTool: {
     title: 'Нет пользовательских инструментов!',
@@ -150,6 +151,8 @@ const translation = {
   howToGet: 'Как получить',
   openInStudio: 'Открыть в Studio',
   toolNameUsageTip: 'Название вызова инструмента для рассуждений агента и подсказок',
+  copyToolName: 'Копировать имя',
+  noTools: 'Инструменты не найдены',
 }
 
 export default translation

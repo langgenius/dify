@@ -98,37 +98,37 @@ const SecretKeyModal = ({
 
   return (
     <Modal isShow={isShow} onClose={onClose} title={`${t('appApi.apiKeyModal.apiSecretKey')}`} className={`${s.customModal} px-8 flex flex-col`}>
-      <XMarkIcon className={`w-6 h-6 absolute cursor-pointer text-gray-500 ${s.close}`} onClick={onClose} />
-      <p className='mt-1 text-[13px] text-gray-500 font-normal leading-5 flex-shrink-0'>{t('appApi.apiKeyModal.apiSecretKeyTips')}</p>
+      <XMarkIcon className={`w-6 h-6 absolute cursor-pointer text-text-tertiary ${s.close}`} onClick={onClose} />
+      <p className='mt-1 text-[13px] text-text-tertiary font-normal leading-5 shrink-0'>{t('appApi.apiKeyModal.apiSecretKeyTips')}</p>
       {!apiKeysList && <div className='mt-4'><Loading /></div>}
       {
         !!apiKeysList?.data?.length && (
-          <div className='flex flex-col flex-grow mt-4 overflow-hidden'>
-            <div className='flex items-center flex-shrink-0 text-xs font-semibold text-gray-500 border-b border-solid h-9'>
-              <div className='flex-shrink-0 w-64 px-3'>{t('appApi.apiKeyModal.secretKey')}</div>
-              <div className='flex-shrink-0 px-3 w-[200px]'>{t('appApi.apiKeyModal.created')}</div>
-              <div className='flex-shrink-0 px-3 w-[200px]'>{t('appApi.apiKeyModal.lastUsed')}</div>
-              <div className='flex-grow px-3'></div>
+          <div className='flex flex-col grow mt-4 overflow-hidden'>
+            <div className='flex items-center shrink-0 text-xs font-semibold text-text-tertiary border-b border-solid h-9'>
+              <div className='shrink-0 w-64 px-3'>{t('appApi.apiKeyModal.secretKey')}</div>
+              <div className='shrink-0 px-3 w-[200px]'>{t('appApi.apiKeyModal.created')}</div>
+              <div className='shrink-0 px-3 w-[200px]'>{t('appApi.apiKeyModal.lastUsed')}</div>
+              <div className='grow px-3'></div>
             </div>
-            <div className='flex-grow overflow-auto'>
+            <div className='grow overflow-auto'>
               {apiKeysList.data.map(api => (
-                <div className='flex items-center text-sm font-normal text-gray-700 border-b border-solid h-9' key={api.id}>
-                  <div className='flex-shrink-0 w-64 px-3 font-mono truncate'>{generateToken(api.token)}</div>
-                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
-                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
-                  <div className='flex flex-grow px-3'>
+                <div className='flex items-center text-sm font-normal text-text-secondary border-b border-solid h-9' key={api.id}>
+                  <div className='shrink-0 w-64 px-3 font-mono truncate'>{generateToken(api.token)}</div>
+                  <div className='shrink-0 px-3 truncate w-[200px]'>{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
+                  <div className='shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
+                  <div className='flex grow px-3'>
                     <Tooltip
                       popupContent={copyValue === api.token ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
                       popupClassName='mr-1'
                     >
-                      <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 mr-1 rounded-lg cursor-pointer hover:bg-gray-100 ${s.copyIcon} ${copyValue === api.token ? s.copied : ''}`} onClick={() => {
+                      <div className={`flex items-center justify-center shrink-0 w-6 h-6 mr-1 rounded-lg cursor-pointer hover:bg-state-base-hover ${s.copyIcon} ${copyValue === api.token ? s.copied : ''}`} onClick={() => {
                         // setIsCopied(true)
                         copy(api.token)
                         setCopyValue(api.token)
                       }}></div>
                     </Tooltip>
                     {isCurrentWorkspaceManager
-                      && <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
+                      && <div className={`flex items-center justify-center shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
                         setDelKeyId(api.id)
                         setShowConfirmDelete(true)
                       }}>
@@ -142,12 +142,12 @@ const SecretKeyModal = ({
         )
       }
       <div className='flex'>
-        <Button className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
-          <PlusIcon className='flex flex-shrink-0 w-4 h-4' />
-          <div className='text-xs font-medium text-gray-800'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
+        <Button className={`flex shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
+          <PlusIcon className='flex shrink-0 w-4 h-4 mr-1' />
+          <div className='text-xs font-medium text-text-secondary'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
         </Button>
       </div>
-      <SecretKeyGenerateModal className='flex-shrink-0' isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
+      <SecretKeyGenerateModal className='shrink-0' isShow={isVisible} onClose={() => setVisible(false)} newKey={newKey} />
       {showConfirmDelete && (
         <Confirm
           title={`${t('appApi.actionMsg.deleteConfirmTitle')}`}

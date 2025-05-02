@@ -16,7 +16,7 @@ import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-tog
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 
-type Props = {
+interface Props {
   className?: string
   title: JSX.Element | string
   headerRight?: JSX.Element

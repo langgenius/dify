@@ -17,6 +17,7 @@ import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/gene
 import Confirm from '@/app/components/base/confirm'
 import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import Toast from '@/app/components/base/toast'
+import Divider from '@/app/components/base/divider'
 
 type Props = {
   appId: string
@@ -122,7 +123,8 @@ const ProviderConfigModal: FC<Props> = ({
     }
 
     if (type === TracingProvider.opik) {
-      const postData = config as OpikConfig
+      // todo: check field validity
+      // const postData = config as OpikConfig
     }
 
     return errorMessage
@@ -166,11 +168,11 @@ const ProviderConfigModal: FC<Props> = ({
         ? (
           <PortalToFollowElem open>
             <PortalToFollowElemContent className='w-full h-full z-[60]'>
-              <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-                <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
+              <div className='fixed inset-0 flex items-center justify-center bg-background-overlay'>
+                <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-components-panel-bg shadow-xl rounded-2xl overflow-y-auto'>
                   <div className='px-8 pt-8'>
                     <div className='flex justify-between items-center mb-4'>
-                      <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
+                      <div className='title-2xl-semibold text-text-primary'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
                     </div>
 
                     <div className='space-y-4'>
@@ -276,16 +278,16 @@ const ProviderConfigModal: FC<Props> = ({
                         {isEdit && (
                           <>
                             <Button
-                              className='h-9 text-sm font-medium text-gray-700'
+                              className='h-9 text-sm font-medium text-text-secondary'
                               onClick={showRemoveConfirm}
                             >
                               <span className='text-[#D92D20]'>{t('common.operation.remove')}</span>
                             </Button>
-                            <div className='mx-3 w-px h-[18px] bg-gray-200'></div>
+                            <Divider className='mx-3 h-[18px]' />
                           </>
                         )}
                         <Button
-                          className='mr-2 h-9 text-sm font-medium text-gray-700'
+                          className='mr-2 h-9 text-sm font-medium text-text-secondary'
                           onClick={onCancel}
                         >
                           {t('common.operation.cancel')}
@@ -302,9 +304,9 @@ const ProviderConfigModal: FC<Props> = ({
 
                     </div>
                   </div>
-                  <div className='border-t-[0.5px] border-t-black/5'>
-                    <div className='flex justify-center items-center py-3 bg-gray-50 text-xs text-gray-500'>
-                      <Lock01 className='mr-1 w-3 h-3 text-gray-500' />
+                  <div className='border-t-[0.5px] border-divider-regular'>
+                    <div className='flex justify-center items-center py-3 bg-background-section-burn text-xs text-text-tertiary'>
+                      <Lock01 className='mr-1 w-3 h-3 text-text-tertiary' />
                       {t('common.modelProvider.encrypted.front')}
                       <a
                         className='text-primary-600 mx-1'

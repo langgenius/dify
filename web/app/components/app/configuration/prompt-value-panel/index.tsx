@@ -157,7 +157,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             ))}
             {visionConfig?.enabled && (
               <div className="mt-3 xl:flex justify-between">
-                <div className="mr-1 py-2 shrink-0 w-[120px] text-sm text-gray-900">{t('common.imageUploader.imageUpload')}</div>
+                <div className="mr-1 py-2 shrink-0 w-[120px] text-sm text-text-primary">{t('common.imageUploader.imageUpload')}</div>
                 <div className='grow'>
                   <TextGenerationImageUploader
                     settings={visionConfig}

@@ -44,12 +44,11 @@ package-lock.json
 .pnp.cjs
 .pnp.loader.mjs
 .yarn/
-.yarnrc.yml
-
-# pmpm
-pnpm-lock.yaml
 
 .favorites.json
+
+# storybook
+/storybook-static
 *storybook.log
 
 # mise

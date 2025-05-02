@@ -1,5 +1,8 @@
-from core.tools.tool.api_tool import ApiTool
-from core.tools.tool.tool import Tool
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.custom_tool.tool import ApiTool
+from core.tools.entities.common_entities import I18nObject
+from core.tools.entities.tool_bundle import ApiToolBundle
+from core.tools.entities.tool_entities import ToolEntity, ToolIdentity
 from tests.integration_tests.tools.__mock.http import setup_http_mock
 
 tool_bundle = {
@@ -29,7 +32,13 @@ parameters = {
 
 
 def test_api_tool(setup_http_mock):
-    tool = ApiTool(api_bundle=tool_bundle, runtime=Tool.Runtime(credentials={"auth_type": "none"}))
+    tool = ApiTool(
+        entity=ToolEntity(
+            identity=ToolIdentity(provider="", author="", name="", label=I18nObject()),
+        ),
+        api_bundle=ApiToolBundle(**tool_bundle),
+        runtime=ToolRuntime(tenant_id="", credentials={"auth_type": "none"}),
+    )
     headers = tool.assembling_request(parameters)
     response = tool.do_http_request(tool.api_bundle.server_url, tool.api_bundle.method, headers, parameters)
 

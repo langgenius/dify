@@ -1,11 +1,11 @@
 import time
-from abc import abstractmethod
 from typing import Optional
 
 from pydantic import ConfigDict
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.ai_model import AIModel
+from core.plugin.manager.model import PluginModelManager
 
 
 class ModerationModel(AIModel):
@@ -31,19 +31,15 @@ class ModerationModel(AIModel):
         self.started_at = time.perf_counter()
 
         try:
-            return self._invoke(model, credentials, text, user)
+            plugin_model_manager = PluginModelManager()
+            return plugin_model_manager.invoke_moderation(
+                tenant_id=self.tenant_id,
+                user_id=user or "unknown",
+                plugin_id=self.plugin_id,
+                provider=self.provider_name,
+                model=model,
+                credentials=credentials,
+                text=text,
+            )
         except Exception as e:
             raise self._transform_invoke_error(e)
-
-    @abstractmethod
-    def _invoke(self, model: str, credentials: dict, text: str, user: Optional[str] = None) -> bool:
-        """
-        Invoke large language model
-
-        :param model: model name
-        :param credentials: model credentials
-        :param text: text to moderate
-        :param user: unique user id
-        :return: false if text is safe, true otherwise
-        """
-        raise NotImplementedError

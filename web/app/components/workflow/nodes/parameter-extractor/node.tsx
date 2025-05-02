@@ -21,6 +21,7 @@ const Node: FC<NodeProps<ParameterExtractorNodeType>> = ({
         <ModelSelector
           defaultModel={{ provider, model: modelId }}
           modelList={textGenerationModelList}
+          triggerClassName='!h-6 !rounded-md'
           readonly
         />
       )}

@@ -2,8 +2,11 @@ import os
 
 from flask import session
 from flask_restful import Resource, reqparse  # type: ignore
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from configs import dify_config
+from extensions.ext_database import db
 from libs.helper import StrLen
 from models.model import DifySetup
 from services.account_service import TenantService
@@ -42,7 +45,11 @@ class InitValidateAPI(Resource):
 def get_init_validate_status():
     if dify_config.EDITION == "SELF_HOSTED":
         if os.environ.get("INIT_PASSWORD"):
-            return session.get("is_init_validated") or DifySetup.query.first()
+            if session.get("is_init_validated"):
+                return True
+
+            with Session(db.engine) as db_session:
+                return db_session.execute(select(DifySetup)).scalar_one_or_none()
 
     return True
 

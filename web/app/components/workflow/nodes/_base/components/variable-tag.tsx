@@ -19,7 +19,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 
-type VariableTagProps = {
+interface VariableTagProps {
   valueSelector: ValueSelector
   varType: VarType
   isShort?: boolean

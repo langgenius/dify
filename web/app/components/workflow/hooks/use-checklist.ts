@@ -24,6 +24,9 @@ import { useNodesExtraData } from './use-nodes-data'
 import { useToastContext } from '@/app/components/base/toast'
 import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
+import type { AgentNodeType } from '../nodes/agent/types'
+import { useStrategyProviders } from '@/service/use-strategy'
+import { canFindTool } from '@/utils'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -33,6 +36,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
+  const { data: strategyProviders } = useStrategyProviders()
 
   const needWarningNodes = useMemo(() => {
     const list = []
@@ -48,13 +52,26 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
         moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
         if (provider_type === CollectionType.builtIn)
-          toolIcon = buildInTools.find(tool => tool.id === node.data.provider_id)?.icon
+          toolIcon = buildInTools.find(tool => canFindTool(tool.id, node.data.provider_id || ''))?.icon
 
         if (provider_type === CollectionType.custom)
           toolIcon = customTools.find(tool => tool.id === node.data.provider_id)?.icon
 
         if (provider_type === CollectionType.workflow)
           toolIcon = workflowTools.find(tool => tool.id === node.data.provider_id)?.icon
+      }
+
+      if (node.data.type === BlockEnum.Agent) {
+        const data = node.data as AgentNodeType
+        const isReadyForCheckValid = !!strategyProviders
+        const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
+        const strategy = provider?.declaration.strategies?.find(s => s.identity.name === data.agent_strategy_name)
+        moreDataForCheckValid = {
+          provider,
+          strategy,
+          language,
+          isReadyForCheckValid,
+        }
       }
 
       if (node.type === CUSTOM_NODE) {
@@ -92,7 +109,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     }
 
     return list
-  }, [t, nodes, edges, nodesExtraData, buildInTools, customTools, workflowTools, language, isChatMode])
+  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders])
 
   return needWarningNodes
 }
@@ -107,6 +124,7 @@ export const useChecklistBeforePublish = () => {
   const isChatMode = useIsChatMode()
   const store = useStoreApi()
   const nodesExtraData = useNodesExtraData()
+  const { data: strategyProviders } = useStrategyProviders()
 
   const handleCheckBeforePublish = useCallback(() => {
     const {
@@ -129,6 +147,19 @@ export const useChecklistBeforePublish = () => {
       let moreDataForCheckValid
       if (node.data.type === BlockEnum.Tool)
         moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
+
+      if (node.data.type === BlockEnum.Agent) {
+        const data = node.data as AgentNodeType
+        const isReadyForCheckValid = !!strategyProviders
+        const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
+        const strategy = provider?.declaration.strategies?.find(s => s.identity.name === data.agent_strategy_name)
+        moreDataForCheckValid = {
+          provider,
+          strategy,
+          language,
+          isReadyForCheckValid,
+        }
+      }
 
       const { errorMessage } = nodesExtraData[node.data.type as BlockEnum].checkValid(node.data, t, moreDataForCheckValid)
 
@@ -154,7 +185,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [nodesExtraData, notify, t, store, isChatMode, buildInTools, customTools, workflowTools, language])
+  }, [store, isChatMode, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders])
 
   return {
     handleCheckBeforePublish,

@@ -11,7 +11,7 @@ import {
   RiRobot2Line,
 } from '@remixicon/react'
 import Nav from '../nav'
-import { type NavItem } from '../nav/nav-selector'
+import type { NavItem } from '../nav/nav-selector'
 import { fetchAppList } from '@/service/apps'
 import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
 import CreateAppModal from '@/app/components/app/create-app-modal'

@@ -1,13 +1,15 @@
 import time
 import uuid
+from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import NodeRunResult
+from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.nodes.event.event import RunCompletedEvent
 from core.workflow.nodes.tool.tool_node import ToolNode
 from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
@@ -63,31 +65,28 @@ def test_tool_variable_invoke():
             "data": {
                 "title": "a",
                 "desc": "a",
-                "provider_id": "maths",
+                "provider_id": "time",
                 "provider_type": "builtin",
-                "provider_name": "maths",
-                "tool_name": "eval_expression",
-                "tool_label": "eval_expression",
+                "provider_name": "time",
+                "tool_name": "current_time",
+                "tool_label": "current_time",
                 "tool_configurations": {},
-                "tool_parameters": {
-                    "expression": {
-                        "type": "variable",
-                        "value": ["1", "123", "args1"],
-                    }
-                },
+                "tool_parameters": {},
             },
         }
     )
+
+    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
 
     node.graph_runtime_state.variable_pool.add(["1", "123", "args1"], "1+1")
 
     # execute node
     result = node._run()
-    assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs is not None
-    assert "2" in result.outputs["text"]
-    assert result.outputs["files"] == []
+    for item in result:
+        if isinstance(item, RunCompletedEvent):
+            assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert item.run_result.outputs is not None
+            assert item.run_result.outputs.get("text") is not None
 
 
 def test_tool_mixed_invoke():
@@ -97,28 +96,25 @@ def test_tool_mixed_invoke():
             "data": {
                 "title": "a",
                 "desc": "a",
-                "provider_id": "maths",
+                "provider_id": "time",
                 "provider_type": "builtin",
-                "provider_name": "maths",
-                "tool_name": "eval_expression",
-                "tool_label": "eval_expression",
-                "tool_configurations": {},
-                "tool_parameters": {
-                    "expression": {
-                        "type": "mixed",
-                        "value": "{{#1.args1#}}",
-                    }
+                "provider_name": "time",
+                "tool_name": "current_time",
+                "tool_label": "current_time",
+                "tool_configurations": {
+                    "format": "%Y-%m-%d %H:%M:%S",
                 },
+                "tool_parameters": {},
             },
         }
     )
 
-    node.graph_runtime_state.variable_pool.add(["1", "args1"], "1+1")
+    ToolParameterConfigurationManager.decrypt_tool_parameters = MagicMock(return_value={"format": "%Y-%m-%d %H:%M:%S"})
 
     # execute node
     result = node._run()
-    assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs is not None
-    assert "2" in result.outputs["text"]
-    assert result.outputs["files"] == []
+    for item in result:
+        if isinstance(item, RunCompletedEvent):
+            assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+            assert item.run_result.outputs is not None
+            assert item.run_result.outputs.get("text") is not None

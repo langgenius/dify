@@ -1,6 +1,6 @@
 import AudioPlayer from '@/app/components/base/audio-btn/audio'
 declare global {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+  // eslint-disable-next-line ts/consistent-type-definitions
   interface AudioPlayerManager {
     instance: AudioPlayerManager
   }
@@ -12,6 +12,7 @@ export class AudioPlayerManager {
   private audioPlayers: AudioPlayer | null = null
   private msgId: string | undefined
 
+  // eslint-disable-next-line
   private constructor() {
   }
 

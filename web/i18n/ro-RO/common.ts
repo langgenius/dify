@@ -50,6 +50,10 @@ const translation = {
     submit: 'Prezinte',
     skip: 'Navă',
     imageCopied: 'Imagine copiată',
+    deleteApp: 'Ștergeți aplicația',
+    copied: 'Copiat',
+    in: 'în',
+    viewDetails: 'Vezi detalii',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -122,6 +126,8 @@ const translation = {
       Custom: 'Personalizat',
     },
     addMoreModel: 'Mergeți la setări pentru a adăuga mai multe modele',
+    capabilities: 'Capacități multimodale',
+    settingsLink: 'Setările furnizorului de modele',
   },
   menus: {
     status: 'beta',
@@ -134,6 +140,7 @@ const translation = {
     newApp: 'Aplicație nouă',
     newDataset: 'Creează Cunoștințe',
     tools: 'Instrumente',
+    exploreMarketplace: 'Explorați Marketplace',
   },
   userProfile: {
     settings: 'Setări',
@@ -159,6 +166,7 @@ const translation = {
     dataSource: 'Sursă de date',
     plugin: 'Plugin-uri',
     apiBasedExtension: 'Extensie API',
+    generalGroup: 'GENERAL',
   },
   account: {
     avatar: 'Avatar',
@@ -286,6 +294,7 @@ const translation = {
       usedUp: 'Cota de probă a fost epuizată. Adăugați propriul furnizor de modele.',
       useYourModel: 'În prezent se utilizează propriul furnizor de modele.',
       close: 'Închide',
+      trialQuotaTip: 'Cota de încercare Anthropic va expira pe 11.03.2025 și nu va mai fi disponibilă ulterior. Vă rugăm să o utilizați la timp.',
     },
     anthropic: {
       using: 'Capacitatea de încorporare utilizează',
@@ -397,6 +406,12 @@ const translation = {
     editConfig: 'Editați configurația',
     configLoadBalancing: 'Echilibrarea încărcării de configurare',
     upgradeForLoadBalancing: 'Actualizați-vă planul pentru a activa Load Balancing.',
+    configureTip: 'Configurați api-key sau adăugați modelul de utilizat',
+    installProvider: 'Instalarea furnizorilor de modele',
+    emptyProviderTitle: 'Furnizorul de modele nu este configurat',
+    discoverMore: 'Descoperă mai multe în',
+    emptyProviderTip: 'Vă rugăm să instalați mai întâi un furnizor de modele.',
+    toBeConfigured: 'De configurat',
   },
   dataSource: {
     add: 'Adăugați o sursă de date',
@@ -526,6 +541,8 @@ const translation = {
       hitScore: 'Scor de recuperare:',
     },
     inputPlaceholder: 'Vorbește cu Bot',
+    thinking: 'Gândire...',
+    thought: 'Gând',
   },
   promptEditor: {
     placeholder: 'Scrieți aici prompt-ul, introduceți \'{}\' pentru a insera o variabilă, introduceți \'/\' pentru a insera un bloc de conținut prompt',

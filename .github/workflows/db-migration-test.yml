@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - plugins/beta
     paths:
       - api/migrations/**
       - .github/workflows/db-migration-test.yml
@@ -19,6 +20,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Poetry and Python
         uses: ./.github/actions/setup-poetry

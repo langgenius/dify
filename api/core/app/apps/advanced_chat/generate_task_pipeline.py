@@ -5,54 +5,42 @@ from collections.abc import Generator, Mapping
 from threading import Thread
 from typing import Any, Optional, Union
 
-from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
-from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
+from constants.tts_auto_play_timeout import (TTS_AUTO_PLAY_TIMEOUT,
+                                             TTS_AUTO_PLAY_YIELD_CPU_TIME)
+from core.app.apps.advanced_chat.app_generator_tts_publisher import (
+    AppGeneratorTTSPublisher, AudioTrunk)
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
+from core.app.entities.app_invoke_entities import (
+    AdvancedChatAppGenerateEntity, InvokeFrom)
 from core.app.entities.queue_entities import (
-    QueueAdvancedChatMessageEndEvent,
-    QueueAnnotationReplyEvent,
-    QueueErrorEvent,
-    QueueIterationCompletedEvent,
-    QueueIterationNextEvent,
-    QueueIterationStartEvent,
-    QueueMessageReplaceEvent,
-    QueueNodeExceptionEvent,
-    QueueNodeFailedEvent,
-    QueueNodeInIterationFailedEvent,
-    QueueNodeRetryEvent,
-    QueueNodeStartedEvent,
-    QueueNodeSucceededEvent,
-    QueueParallelBranchRunFailedEvent,
-    QueueParallelBranchRunStartedEvent,
-    QueueParallelBranchRunSucceededEvent,
-    QueuePingEvent,
-    QueueRetrieverResourcesEvent,
-    QueueStopEvent,
-    QueueTextChunkEvent,
-    QueueWorkflowFailedEvent,
-    QueueWorkflowPartialSuccessEvent,
-    QueueWorkflowStartedEvent,
-    QueueWorkflowSucceededEvent,
-)
-from core.app.entities.task_entities import (
-    ChatbotAppBlockingResponse,
-    ChatbotAppStreamResponse,
-    ErrorStreamResponse,
-    MessageAudioEndStreamResponse,
-    MessageAudioStreamResponse,
-    MessageEndStreamResponse,
-    StreamResponse,
-    WorkflowTaskState,
-)
-from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
+    QueueAdvancedChatMessageEndEvent, QueueAgentLogEvent,
+    QueueAnnotationReplyEvent, QueueErrorEvent, QueueIterationCompletedEvent,
+    QueueIterationNextEvent, QueueIterationStartEvent,
+    QueueMessageReplaceEvent, QueueNodeExceptionEvent, QueueNodeFailedEvent,
+    QueueNodeInIterationFailedEvent, QueueNodeRetryEvent,
+    QueueNodeStartedEvent, QueueNodeSucceededEvent,
+    QueueParallelBranchRunFailedEvent, QueueParallelBranchRunStartedEvent,
+    QueueParallelBranchRunSucceededEvent, QueuePingEvent,
+    QueueRetrieverResourcesEvent, QueueStopEvent, QueueTextChunkEvent,
+    QueueWorkflowFailedEvent, QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowStartedEvent, QueueWorkflowSucceededEvent)
+from core.app.entities.task_entities import (ChatbotAppBlockingResponse,
+                                             ChatbotAppStreamResponse,
+                                             ErrorStreamResponse,
+                                             MessageAudioEndStreamResponse,
+                                             MessageAudioStreamResponse,
+                                             MessageEndStreamResponse,
+                                             StreamResponse, WorkflowTaskState)
+from core.app.task_pipeline.based_generate_task_pipeline import \
+    BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.graph_engine.entities.graph_runtime_state import \
+    GraphRuntimeState
 from core.workflow.nodes import NodeType
 from events.message_event import message_was_created
 from extensions.ext_database import db
@@ -212,7 +200,9 @@ class AdvancedChatAppGenerateTaskPipeline:
             and features_dict["text_to_speech"].get("enabled")
             and features_dict["text_to_speech"].get("autoPlay") == "enabled"
         ):
-            tts_publisher = AppGeneratorTTSPublisher(tenant_id, features_dict["text_to_speech"].get("voice"))
+            tts_publisher = AppGeneratorTTSPublisher(
+                tenant_id, features_dict["text_to_speech"].get("voice"), features_dict["text_to_speech"].get("language")
+            )
 
         for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
             while True:
@@ -249,8 +239,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                     )
                     start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
-            except Exception as e:
-                logger.exception(f"TTS: Failed to listen audio message, task_id: {task_id}")
+            except Exception:
+                logger.exception(f"Failed to listen audio message, task_id: {task_id}")
                 break
 
         logger.info(f"TTS: audio end, is_end_with_finish: {is_end_with_finish}")
@@ -644,6 +634,10 @@ class AdvancedChatAppGenerateTaskPipeline:
                     session.commit()
 
                 yield self._message_end_to_stream_response()
+            elif isinstance(event, QueueAgentLogEvent):
+                yield self._workflow_cycle_manager._handle_agent_log(
+                    task_id=self._application_generate_entity.task_id, event=event
+                )
             else:
                 continue
 

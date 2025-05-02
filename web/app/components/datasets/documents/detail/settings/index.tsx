@@ -16,7 +16,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import type { NotionPage } from '@/models/common'
 import { useDocumentDetail, useInvalidDocumentDetailKey } from '@/service/knowledge/use-document'
 
-type DocumentSettingsProps = {
+interface DocumentSettingsProps {
   datasetId: string
   documentId: string
 }

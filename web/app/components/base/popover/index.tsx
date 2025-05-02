@@ -33,15 +33,15 @@ export default function CustomPopover({
   disabled = false,
 }: IPopover) {
   const buttonRef = useRef<HTMLButtonElement>(null)
-  const timeOutRef = useRef<NodeJS.Timeout | null>(null)
+  const timeOutRef = useRef<number | null>(null)
 
   const onMouseEnter = (isOpen: boolean) => {
-    timeOutRef.current && clearTimeout(timeOutRef.current)
+    timeOutRef.current && window.clearTimeout(timeOutRef.current)
     !isOpen && buttonRef.current?.click()
   }
 
   const onMouseLeave = (isOpen: boolean) => {
-    timeOutRef.current = setTimeout(() => {
+    timeOutRef.current = window.setTimeout(() => {
       isOpen && buttonRef.current?.click()
     }, timeoutDuration)
   }

@@ -64,6 +64,10 @@ class ConditionProcessor:
                     expected=expected_value,
                 )
             group_results.append(result)
+            # Implemented short-circuit evaluation for logical conditions
+            if (operator == "and" and not result) or (operator == "or" and result):
+                final_result = result
+                return input_conditions, group_results, final_result
 
         final_result = all(group_results) if operator == "and" else any(group_results)
         return input_conditions, group_results, final_result

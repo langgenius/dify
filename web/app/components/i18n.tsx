@@ -2,7 +2,6 @@
 
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
-import { changeLanguage } from '@/i18n/i18next-config'
 import I18NContext from '@/context/i18n'
 import type { Locale } from '@/i18n'
 import { setLocaleOnClient } from '@/i18n'
@@ -16,7 +15,7 @@ const I18n: FC<II18nProps> = ({
   children,
 }) => {
   useEffect(() => {
-    changeLanguage(locale)
+    setLocaleOnClient(locale, false)
   }, [locale])
 
   return (

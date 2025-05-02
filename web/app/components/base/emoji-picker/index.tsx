@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import s from './style.module.css'
 import EmojiPickerInner from './Inner'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
@@ -37,12 +36,12 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
       isShow
       closable={false}
       wrapperClassName={className}
-      className={cn(s.container, '!w-[362px] !p-0')}
+      className={cn('flex flex-col max-h-[552px] border-[0.5px] border-divider-subtle rounded-xl shadow-xl p-0')}
     >
       <EmojiPickerInner
         className="pt-3"
         onSelect={handleSelectEmoji} />
-      <Divider className='m-0' />
+      <Divider className='mb-0 mt-3' />
       <div className='w-full flex items-center justify-center p-3 gap-2'>
         <Button className='w-full' onClick={() => {
           onClose && onClose()

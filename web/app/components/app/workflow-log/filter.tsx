@@ -6,7 +6,7 @@ import type { QueryParam } from './index'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 
-type IFilterProps = {
+interface IFilterProps {
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
 }

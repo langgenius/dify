@@ -73,7 +73,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
         <div
           className={`
             flex items-center max-w-[200px] h-8 px-2 rounded-lg cursor-pointer
-            ${open && 'bg-gray-100'}
+            ${open && 'bg-state-base-hover'}
             ${currentModel && currentModel.status !== ModelStatusEnum.active && '!bg-[#FFFAEB]'}
           `}
         >
@@ -88,27 +88,27 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           }
           {
             !currentProvider && (
-              <div className='flex items-center justify-center mr-1 w-4 h-4 rounded border border-dashed border-primary-100'>
-                <CubeOutline className='w-[11px] h-[11px] text-primary-600' />
+              <div className='flex items-center justify-center mr-1 w-4 h-4 rounded'>
+                <CubeOutline className='w-4 h-4 text-text-accent' />
               </div>
             )
           }
           {
             currentModel && (
               <ModelName
-                className='mr-0.5 text-gray-800'
+                className='mr-0.5 text-text-secondary'
                 modelItem={currentModel}
               />
             )
           }
           {
             !currentModel && (
-              <div className='mr-0.5 text-[13px] font-medium text-primary-600 truncate'>
+              <div className='mr-0.5 text-[13px] font-medium text-text-accent truncate'>
                 {t('common.modelProvider.selectModel')}
               </div>
             )
           }
-          <RiArrowDownSLine className={`w-3 h-3 ${(currentModel && currentProvider) ? 'text-gray-800' : 'text-primary-600'}`} />
+          <RiArrowDownSLine className={`w-3 h-3 ${(currentModel && currentProvider) ? 'text-text-tertiary' : 'text-text-accent'}`} />
           {
             currentModel && currentModel.status !== ModelStatusEnum.active && (
               <Tooltip popupContent={MODEL_STATUS_TEXT[currentModel.status][language]}>

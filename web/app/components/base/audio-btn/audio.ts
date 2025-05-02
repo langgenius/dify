@@ -2,7 +2,7 @@ import Toast from '@/app/components/base/toast'
 import { textToAudioStream } from '@/service/share'
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+  // eslint-disable-next-line ts/consistent-type-definitions
   interface Window {
     ManagedMediaSource: any
   }

@@ -1,9 +1,13 @@
+import threading
 from typing import Optional
 
 import pytz
 from flask_login import current_user  # type: ignore
 
+import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
+from core.plugin.manager.agent import PluginAgentManager
+from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from models.account import Account
@@ -16,7 +20,10 @@ class AgentService:
         """
         Service to get agent logs
         """
-        conversation: Optional[Conversation] = (
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+
+        conversation: Conversation | None = (
             db.session.query(Conversation)
             .filter(
                 Conversation.id == conversation_id,
@@ -59,6 +66,10 @@ class AgentService:
 
         timezone = pytz.timezone(current_user.timezone)
 
+        app_model_config = app_model.app_model_config
+        if not app_model_config:
+            raise ValueError("App model config not found")
+
         result = {
             "meta": {
                 "status": "success",
@@ -66,16 +77,16 @@ class AgentService:
                 "start_time": message.created_at.astimezone(timezone).isoformat(),
                 "elapsed_time": message.provider_response_latency,
                 "total_tokens": message.answer_tokens + message.message_tokens,
-                "agent_mode": app_model.app_model_config.agent_mode_dict.get("strategy", "react"),
+                "agent_mode": app_model_config.agent_mode_dict.get("strategy", "react"),
                 "iterations": len(agent_thoughts),
             },
             "iterations": [],
             "files": message.message_files,
         }
 
-        agent_config = AgentConfigManager.convert(app_model.app_model_config.to_dict())
+        agent_config = AgentConfigManager.convert(app_model_config.to_dict())
         if not agent_config:
-            return result
+            raise ValueError("Agent config not found")
 
         agent_tools = agent_config.tools or []
 
@@ -89,7 +100,7 @@ class AgentService:
             tool_labels = agent_thought.tool_labels
             tool_meta = agent_thought.tool_meta
             tool_inputs = agent_thought.tool_inputs_dict
-            tool_outputs = agent_thought.tool_outputs_dict
+            tool_outputs = agent_thought.tool_outputs_dict or {}
             tool_calls = []
             for tool in tools:
                 tool_name = tool
@@ -144,3 +155,22 @@ class AgentService:
             )
 
         return result
+
+    @classmethod
+    def list_agent_providers(cls, user_id: str, tenant_id: str):
+        """
+        List agent providers
+        """
+        manager = PluginAgentManager()
+        return manager.fetch_agent_strategy_providers(tenant_id)
+
+    @classmethod
+    def get_agent_provider(cls, user_id: str, tenant_id: str, provider_name: str):
+        """
+        Get agent provider
+        """
+        manager = PluginAgentManager()
+        try:
+            return manager.fetch_agent_strategy_provider(tenant_id, provider_name)
+        except PluginDaemonClientSideError as e:
+            raise ValueError(str(e)) from e

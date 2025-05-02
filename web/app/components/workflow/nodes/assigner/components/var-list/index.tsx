@@ -128,7 +128,7 @@ const VarList: FC<Props> = ({
 
         return (
           <div className='flex items-start gap-1 self-stretch' key={index}>
-            <div className='flex flex-col items-start gap-1 flex-grow'>
+            <div className='flex flex-col items-start gap-1 grow'>
               <div className='flex items-center gap-1 self-stretch'>
                 <VarReferencePicker
                   readonly={readonly}
@@ -212,7 +212,7 @@ const VarList: FC<Props> = ({
             </div>
             <ActionButton
               size='l'
-              className='flex-shrink-0 group hover:!bg-state-destructive-hover'
+              className='shrink-0 group hover:!bg-state-destructive-hover'
               onClick={handleVarRemove(index)}
             >
               <RiDeleteBinLine className='text-text-tertiary w-4 h-4 group-hover:text-text-destructive' />

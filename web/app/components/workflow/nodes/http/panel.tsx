@@ -18,7 +18,6 @@ import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
-import { useRetryDetailShowInSingleRun } from '@/app/components/workflow/nodes/_base/components/retry/hooks'
 
 const i18nPrefix = 'workflow.nodes.http'
 
@@ -61,10 +60,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     hideCurlPanel,
     handleCurlImport,
   } = useConfig(id, data)
-  const {
-    retryDetails,
-    handleRetryDetailsChange,
-  } = useRetryDetailShowInSingleRun()
   // To prevent prompt editor in body not update data.
   if (!isDataReady)
     return null
@@ -198,9 +193,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
-          retryDetails={retryDetails}
-          onRetryDetailBack={handleRetryDetailsChange}
-          result={<ResultPanel {...runResult} showSteps={false} onShowRetryDetail={handleRetryDetailsChange} />}
+          result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
       {(isShowCurlPanel && !readOnly) && (

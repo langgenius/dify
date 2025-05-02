@@ -189,6 +189,12 @@ const translation = {
     searchAllTemplate: 'すべてのテンプレートを検索...',
   },
   showMyCreatedAppsOnly: '自分が作成したアプリ',
+  appSelector: {
+    label: 'アプリ',
+    params: 'アプリパラメータ',
+    noParams: 'パラメータは必要ありません',
+    placeholder: 'アプリを選択...',
+  },
 }
 
 export default translation

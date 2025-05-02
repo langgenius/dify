@@ -112,6 +112,7 @@ const translation = {
           operation: 'مستندات',
         },
       },
+      launch: 'راه اندازی',
     },
     apiInfo: {
       title: 'API سرویس بک‌اند',

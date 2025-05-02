@@ -34,7 +34,7 @@ const InputNumberWithSlider: FC<Props> = ({
   }, [defaultValue, max, min, onChange, value])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(parseFloat(e.target.value))
+    onChange(Number.parseFloat(e.target.value))
   }, [onChange])
 
   return (

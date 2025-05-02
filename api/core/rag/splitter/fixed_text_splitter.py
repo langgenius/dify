@@ -30,14 +30,14 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
         disallowed_special: Union[Literal["all"], Collection[str]] = "all",  # noqa: UP037
         **kwargs: Any,
     ):
-        def _token_encoder(text: str) -> int:
-            if not text:
-                return 0
+        def _token_encoder(texts: list[str]) -> list[int]:
+            if not texts:
+                return []
 
             if embedding_model_instance:
-                return embedding_model_instance.get_text_embedding_num_tokens(texts=[text])
+                return embedding_model_instance.get_text_embedding_num_tokens(texts=texts)
             else:
-                return GPT2Tokenizer.get_num_tokens(text)
+                return [GPT2Tokenizer.get_num_tokens(text) for text in texts]
 
         if issubclass(cls, TokenTextSplitter):
             extra_kwargs = {
@@ -65,8 +65,9 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
             chunks = [text]
 
         final_chunks = []
-        for chunk in chunks:
-            if self._length_function(chunk) > self._chunk_size:
+        chunks_lengths = self._length_function(chunks)
+        for chunk, chunk_length in zip(chunks, chunks_lengths):
+            if chunk_length > self._chunk_size:
                 final_chunks.extend(self.recursive_split_text(chunk))
             else:
                 final_chunks.append(chunk)
@@ -93,8 +94,8 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         # Now go merging things, recursively splitting longer texts.
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
-        for s in splits:
-            s_len = self._length_function(s)
+        s_lens = self._length_function(splits)
+        for s, s_len in zip(splits, s_lens):
             if s_len < self._chunk_size:
                 _good_splits.append(s)
                 _good_splits_lengths.append(s_len)

@@ -10,6 +10,7 @@ from werkzeug.local import LocalProxy
 from configs import dify_config
 from extensions.ext_database import db
 from models.account import Account, Tenant, TenantAccountJoin
+from models.model import EndUser
 
 #: A proxy for the current user. If no user is logged in, this will be an
 #: anonymous user
@@ -96,11 +97,11 @@ def login_required(func):
     return decorated_view
 
 
-def _get_user():
+def _get_user() -> EndUser | Account | None:
     if has_request_context():
         if "_login_user" not in g:
             current_app.login_manager._load_user()  # type: ignore
 
-        return g._login_user
+        return g._login_user  # type: ignore
 
     return None

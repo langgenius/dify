@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { memo } from 'react'
 import Textarea from '@/app/components/base/textarea'
 
-type InputProps = {
+interface InputProps {
   form: any
   value: string
   onChange: (variable: string, value: string) => void

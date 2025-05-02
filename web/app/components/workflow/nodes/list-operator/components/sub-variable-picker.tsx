@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SUB_VARIABLES } from '../../if-else/default'
+import { SUB_VARIABLES } from '../../constants'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'

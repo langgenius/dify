@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'ایجاد دانش',
       update: 'افزودن داده',
+      fallbackRoute: 'دانش',
     },
     one: 'انتخاب منبع داده',
     two: 'پیشپردازش و پاکسازی متن',

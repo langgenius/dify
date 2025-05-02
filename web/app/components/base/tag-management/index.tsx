@@ -30,7 +30,7 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
     setTagList(res)
   }
 
-  const [pending, setPending] = useState<Boolean>(false)
+  const [pending, setPending] = useState<boolean>(false)
   const [name, setName] = useState<string>('')
   const createNewTag = async () => {
     if (!name)

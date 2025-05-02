@@ -2,12 +2,13 @@ import type { FC } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
+import Button from '@/app/components/base/button'
 import Dropdown from '@/app/components/base/dropdown'
-import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { Brush01 } from '@/app/components/base/icons/src/vender/solid/editor'
 import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAndECommerce'
 import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { TONE_LIST } from '@/config'
+import cn from '@/utils/classnames'
 
 type PresetsParameterProps = {
   onSelect: (toneId: number) => void
@@ -18,19 +19,16 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
   const { t } = useTranslation()
   const renderTrigger = useCallback((open: boolean) => {
     return (
-      <div
-        className={`
-          flex items-center px-[7px] h-7 rounded-md border-[0.5px] border-gray-200 shadow-xs
-          text-xs font-medium text-gray-700 cursor-pointer
-          ${open && 'bg-gray-100'}
-        `}
+      <Button
+        size={'small'}
+        variant={'secondary'}
+        className={cn(open && 'bg-state-base-hover')}
       >
-        <SlidersH className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
         {t('common.modelProvider.loadPresets')}
-        <RiArrowDownSLine className='ml-0.5 w-3.5 h-3.5 text-gray-500' />
-      </div>
+        <RiArrowDownSLine className='ml-0.5 w-3.5 h-3.5' />
+      </Button>
     )
-  }, [])
+  }, [t])
   const getToneIcon = (toneId: number) => {
     const className = 'mr-2 w-[14px] h-[14px]'
     const res = ({

@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: '建立知識庫',
       update: '上傳檔案',
+      fallbackRoute: '知識',
     },
     one: '選擇資料來源',
     two: '文字分段與清洗',

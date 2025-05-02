@@ -1,8 +1,29 @@
 import { pinyin } from 'pinyin-pro'
 import type { FC, RefObject } from 'react'
+import type { ToolWithProvider } from '../types'
+import { CollectionType } from '../../tools/types'
+import classNames from '@/utils/classnames'
 
-export const groupItems = (items: Array<any>, getFirstChar: (item: string) => string) => {
-  const groups = items.reduce((acc, item) => {
+export const CUSTOM_GROUP_NAME = '@@@custom@@@'
+export const WORKFLOW_GROUP_NAME = '@@@workflow@@@'
+export const AGENT_GROUP_NAME = '@@@agent@@@'
+/*
+{
+  A: {
+    'google': [ // plugin organize name
+      ...tools
+    ],
+    'custom': [ // custom tools
+      ...tools
+    ],
+    'workflow': [ // workflow as tools
+      ...tools
+    ]
+  }
+}
+*/
+export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolWithProvider) => string) => {
+  const groups = items.reduce((acc: Record<string, Record<string, ToolWithProvider[]>>, item) => {
     const firstChar = getFirstChar(item)
     if (!firstChar || firstChar.length === 0)
       return acc
@@ -19,9 +40,23 @@ export const groupItems = (items: Array<any>, getFirstChar: (item: string) => st
       letter = '#'
 
     if (!acc[letter])
-      acc[letter] = []
+      acc[letter] = {}
 
-    acc[letter].push(item)
+    let groupName: string = ''
+    if (item.type === CollectionType.builtIn)
+      groupName = item.author
+    else if (item.type === CollectionType.custom)
+      groupName = CUSTOM_GROUP_NAME
+    else if (item.type === CollectionType.workflow)
+      groupName = WORKFLOW_GROUP_NAME
+    else
+      groupName = AGENT_GROUP_NAME
+
+    if (!acc[letter][groupName])
+      acc[letter][groupName] = []
+
+    acc[letter][groupName].push(item)
+
     return acc
   }, {})
 
@@ -38,16 +73,18 @@ export const groupItems = (items: Array<any>, getFirstChar: (item: string) => st
 type IndexBarProps = {
   letters: string[]
   itemRefs: RefObject<{ [key: string]: HTMLElement | null }>
+  className?: string
 }
 
-const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs }) => {
+const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className }) => {
   const handleIndexClick = (letter: string) => {
     const element = itemRefs.current?.[letter]
     if (element)
       element.scrollIntoView({ behavior: 'smooth' })
   }
   return (
-    <div className="index-bar fixed right-4 top-36 flex flex-col items-center text-xs font-medium text-text-quaternary">
+    <div className={classNames('index-bar absolute right-0 top-36 flex flex-col items-center w-6 justify-center text-xs font-medium text-text-quaternary', className)}>
+      <div className='absolute left-0 top-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]'></div>
       {letters.map(letter => (
         <div className="hover:text-text-secondary cursor-pointer" key={letter} onClick={() => handleIndexClick(letter)}>
           {letter}

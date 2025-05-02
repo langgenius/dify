@@ -93,6 +93,11 @@ class RetrievalModel(BaseModel):
     score_threshold: Optional[float] = None
 
 
+class MetaDataConfig(BaseModel):
+    doc_type: str
+    doc_metadata: dict
+
+
 class KnowledgeConfig(BaseModel):
     original_document_id: Optional[str] = None
     duplicate: bool = True
@@ -105,6 +110,7 @@ class KnowledgeConfig(BaseModel):
     embedding_model: Optional[str] = None
     embedding_model_provider: Optional[str] = None
     name: Optional[str] = None
+    metadata: Optional[MetaDataConfig] = None
 
 
 class SegmentUpdateArgs(BaseModel):

@@ -119,12 +119,12 @@ const ImageList: FC<ImageListProps> = ({
               type="button"
               className={cn(
                 'absolute z-10 -top-[9px] -right-[9px] items-center justify-center w-[18px] h-[18px]',
-                'bg-white hover:bg-gray-50 border-[0.5px] border-black/2 rounded-2xl shadow-lg',
+                'hover:bg-state-base-hover rounded-2xl shadow-lg',
                 item.progress === -1 ? 'flex' : 'hidden group-hover:flex',
               )}
               onClick={() => onRemove && onRemove(item._id)}
             >
-              <RiCloseLine className="w-3 h-3 text-gray-500" />
+              <RiCloseLine className="w-3 h-3 text-text-tertiary" />
             </button>
           )}
         </div>

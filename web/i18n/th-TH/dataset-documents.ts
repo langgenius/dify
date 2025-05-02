@@ -132,7 +132,7 @@ const translation = {
         language: 'ภาษา',
         authorPublisher: 'ผู้เขียน/สํานักพิมพ์',
         publishDate: 'วันที่เผยแพร่',
-        topicsKeywords: 'หัวข้อ/คําสําคัญ',
+        topicKeywords: 'หัวข้อ/คําสําคัญ',
         description: 'คำอธิบาย',
       },
       paper: {

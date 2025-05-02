@@ -46,14 +46,14 @@ export default function ChartView({ appId }: IChartViewProps) {
 
   return (
     <div>
-      <div className='flex flex-row items-center mt-8 mb-4 text-gray-900 text-base'>
+      <div className='flex flex-row items-center mt-8 mb-4 system-xl-semibold text-text-primary'>
         <span className='mr-3'>{t('appOverview.analysis.title')}</span>
         <SimpleSelect
           items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
           className='mt-0 !w-40'
           onSelect={(item) => {
             const id = item.value
-            const value = TIME_PERIOD_MAPPING[id]?.value || '-1'
+            const value = TIME_PERIOD_MAPPING[id]?.value ?? '-1'
             const name = item.name || t('appLog.filter.period.allTime')
             onSelect({ value, name })
           }}

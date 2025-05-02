@@ -15,6 +15,7 @@ const AppDetail: FC<IAppDetail> = ({ children }) => {
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
       return router.replace('/datasets')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isCurrentWorkspaceDatasetOperator])
 
   return (

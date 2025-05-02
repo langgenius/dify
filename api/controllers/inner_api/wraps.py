@@ -10,7 +10,7 @@ from extensions.ext_database import db
 from models.model import EndUser
 
 
-def inner_api_only(view):
+def enterprise_inner_api_only(view):
     @wraps(view)
     def decorated(*args, **kwargs):
         if not dify_config.INNER_API:
@@ -18,7 +18,7 @@ def inner_api_only(view):
 
         # get header 'X-Inner-Api-Key'
         inner_api_key = request.headers.get("X-Inner-Api-Key")
-        if not inner_api_key or inner_api_key != dify_config.INNER_API_KEY:
+        if not inner_api_key or inner_api_key != dify_config.INNER_API_KEY_FOR_PLUGIN:
             abort(401)
 
         return view(*args, **kwargs)
@@ -26,7 +26,7 @@ def inner_api_only(view):
     return decorated
 
 
-def inner_api_user_auth(view):
+def enterprise_inner_api_user_auth(view):
     @wraps(view)
     def decorated(*args, **kwargs):
         if not dify_config.INNER_API:
@@ -56,6 +56,22 @@ def inner_api_user_auth(view):
             return view(*args, **kwargs)
 
         kwargs["user"] = db.session.query(EndUser).filter(EndUser.id == user_id).first()
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def plugin_inner_api_only(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        if not dify_config.PLUGIN_DAEMON_KEY:
+            abort(404)
+
+        # get header 'X-Inner-Api-Key'
+        inner_api_key = request.headers.get("X-Inner-Api-Key")
+        if not inner_api_key or inner_api_key != dify_config.INNER_API_KEY_FOR_PLUGIN:
+            abort(404)
 
         return view(*args, **kwargs)
 

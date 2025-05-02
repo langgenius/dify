@@ -1,5 +1,7 @@
+import threading
 from typing import Optional
 
+import contexts
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
@@ -118,6 +120,9 @@ class WorkflowRunService:
         Get workflow run node execution list
         """
         workflow_run = self.get_workflow_run(app_model, run_id)
+
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         if not workflow_run:
             return []

@@ -44,17 +44,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        streaming: Literal[True],
-    ) -> Generator[str, None, None]: ...
-
-    @overload
-    def generate(
-        self,
-        app_model: App,
-        workflow: Workflow,
-        user: Union[Account, EndUser],
-        args: Mapping[str, Any],
-        invoke_from: InvokeFrom,
         streaming: Literal[False],
     ) -> Mapping[str, Any]: ...
 
@@ -64,20 +53,31 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping[str, Any],
+        args: Mapping,
         invoke_from: InvokeFrom,
-        streaming: bool = True,
-    ) -> Union[Mapping[str, Any], Generator[str, None, None]]: ...
+        streaming: Literal[True],
+    ) -> Generator[Mapping | str, None, None]: ...
+
+    @overload
+    def generate(
+        self,
+        app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: Mapping,
+        invoke_from: InvokeFrom,
+        streaming: bool,
+    ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]: ...
 
     def generate(
         self,
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: Mapping[str, Any],
+        args: Mapping,
         invoke_from: InvokeFrom,
         streaming: bool = True,
-    ):
+    ) -> Mapping[str, Any] | Generator[str | Mapping, None, None]:
         """
         Generate App response.
 
@@ -157,6 +157,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_run_id=workflow_run_id,
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         return self._generate(
             workflow=workflow,
@@ -168,8 +170,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         )
 
     def single_iteration_generate(
-        self, app_model: App, workflow: Workflow, node_id: str, user: Account, args: dict, streaming: bool = True
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+        self,
+        app_model: App,
+        workflow: Workflow,
+        node_id: str,
+        user: Account | EndUser,
+        args: Mapping,
+        streaming: bool = True,
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         """
         Generate App response.
 
@@ -206,6 +214,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             ),
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         return self._generate(
             workflow=workflow,
@@ -225,7 +235,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         conversation: Optional[Conversation] = None,
         stream: bool = True,
-    ) -> Mapping[str, Any] | Generator[str, None, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         """
         Generate App response.
 

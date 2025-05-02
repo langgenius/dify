@@ -7,7 +7,7 @@ import Button from '@/app/components/base/button'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
-type Props = {
+interface Props {
   isRunning: boolean
   onRun: (url: string) => void
 }

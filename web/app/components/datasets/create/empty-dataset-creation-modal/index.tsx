@@ -12,7 +12,7 @@ import Button from '@/app/components/base/button'
 import { ToastContext } from '@/app/components/base/toast'
 import { createEmptyDataset } from '@/service/datasets'
 
-type IProps = {
+interface IProps {
   show: boolean
   onHide: () => void
 }

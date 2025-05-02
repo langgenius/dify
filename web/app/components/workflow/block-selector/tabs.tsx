@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
+import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
 import type { BlockEnum } from '../types'
 import { useTabs } from './hooks'
 import type { ToolDefaultValue } from './types'
@@ -12,6 +13,7 @@ export type TabsProps = {
   activeTab: TabsEnum
   onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string
+  tags: string[]
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
   noBlocks?: boolean
@@ -19,12 +21,16 @@ export type TabsProps = {
 const Tabs: FC<TabsProps> = ({
   activeTab,
   onActiveTabChange,
+  tags,
   searchText,
   onSelect,
   availableBlocksTypes,
   noBlocks,
 }) => {
   const tabs = useTabs()
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
 
   return (
     <div onClick={e => e.stopPropagation()}>
@@ -62,8 +68,13 @@ const Tabs: FC<TabsProps> = ({
       {
         activeTab === TabsEnum.Tools && (
           <AllTools
+            className='w-[315px]'
             searchText={searchText}
             onSelect={onSelect}
+            tags={tags}
+            buildInTools={buildInTools || []}
+            customTools={customTools || []}
+            workflowTools={workflowTools || []}
           />
         )
       }

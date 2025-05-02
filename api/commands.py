@@ -28,6 +28,8 @@ from models.dataset import DocumentSegment
 from models.model import App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
+from services.plugin.data_migration import PluginDataMigration
+from services.plugin.plugin_migration import PluginMigration
 from werkzeug.exceptions import NotFound
 
 
@@ -527,7 +529,7 @@ def add_qdrant_doc_id_index(field: str):
                         )
                     )
 
-    except Exception as e:
+    except Exception:
         click.echo(click.style("Failed to create Qdrant client.", fg="red"))
 
     click.echo(click.style(f"Index creation complete. Created {create_count} collection indexes.", fg="green"))
@@ -596,7 +598,7 @@ def upgrade_db():
 
             click.echo(click.style("Database migration successful!", fg="green"))
 
-        except Exception as e:
+        except Exception:
             logging.exception("Failed to execute database migration")
         finally:
             lock.release()
@@ -642,7 +644,7 @@ where sites.id is null limit 1000"""
                         account = accounts[0]
                         print("Fixing missing site for app {}".format(app.id))
                         app_was_created.send(app, account=account)
-                except Exception as e:
+                except Exception:
                     failed_app_ids.append(app_id)
                     click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
                     logging.exception(f"Failed to fix app related site missing issue, app_id: {app_id}")
@@ -1106,3 +1108,69 @@ def upload_local_files_to_cloud_storage():
             fg="green",
         )
     )
+
+
+@click.command("migrate-data-for-plugin", help="Migrate data for plugin.")
+def migrate_data_for_plugin():
+    """
+    Migrate data for plugin.
+    """
+    click.echo(click.style("Starting migrate data for plugin.", fg="white"))
+
+    PluginDataMigration.migrate()
+
+    click.echo(click.style("Migrate data for plugin completed.", fg="green"))
+
+
+@click.command("extract-plugins", help="Extract plugins.")
+@click.option("--output_file", prompt=True, help="The file to store the extracted plugins.", default="plugins.jsonl")
+@click.option("--workers", prompt=True, help="The number of workers to extract plugins.", default=10)
+def extract_plugins(output_file: str, workers: int):
+    """
+    Extract plugins.
+    """
+    click.echo(click.style("Starting extract plugins.", fg="white"))
+
+    PluginMigration.extract_plugins(output_file, workers)
+
+    click.echo(click.style("Extract plugins completed.", fg="green"))
+
+
+@click.command("extract-unique-identifiers", help="Extract unique identifiers.")
+@click.option(
+    "--output_file",
+    prompt=True,
+    help="The file to store the extracted unique identifiers.",
+    default="unique_identifiers.json",
+)
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+def extract_unique_plugins(output_file: str, input_file: str):
+    """
+    Extract unique plugins.
+    """
+    click.echo(click.style("Starting extract unique plugins.", fg="white"))
+
+    PluginMigration.extract_unique_plugins_to_file(input_file, output_file)
+
+    click.echo(click.style("Extract unique plugins completed.", fg="green"))
+
+
+@click.command("install-plugins", help="Install plugins.")
+@click.option(
+    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+)
+@click.option(
+    "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
+)
+@click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
+def install_plugins(input_file: str, output_file: str, workers: int):
+    """
+    Install plugins.
+    """
+    click.echo(click.style("Starting install plugins.", fg="white"))
+
+    PluginMigration.install_plugins(input_file, output_file, workers)
+
+    click.echo(click.style("Install plugins completed.", fg="green"))

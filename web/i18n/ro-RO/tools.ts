@@ -121,6 +121,7 @@ const translation = {
     number: 'număr',
     required: 'Obligatoriu',
     infoAndSetting: 'Informații și Setări',
+    file: 'fișier',
   },
   noCustomTool: {
     title: 'Niciun instrument personalizat!',
@@ -150,6 +151,8 @@ const translation = {
   openInStudio: 'Deschide în Studio',
   customToolTip: 'Aflați mai multe despre instrumentele personalizate Dify',
   toolNameUsageTip: 'Numele de apel al instrumentului pentru raționamentul și solicitarea agentului',
+  copyToolName: 'Copiază numele',
+  noTools: 'Nu s-au găsit unelte',
 }
 
 export default translation

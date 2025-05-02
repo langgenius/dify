@@ -31,6 +31,8 @@ import ModelLoadBalancingModal from '@/app/components/header/account-setting/mod
 import OpeningSettingModal from '@/app/components/base/features/new-feature-panel/conversation-opener/modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
+import type { UpdatePluginPayload } from '@/app/components/plugins/types'
+import UpdatePlugin from '@/app/components/plugins/update-plugin'
 
 export type ModalState<T> = {
   payload: T
@@ -52,6 +54,7 @@ export type LoadBalancingEntryModalType = ModelModalType & {
   entry?: ModelLoadBalancingConfigEntry
   index?: number
 }
+
 export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
@@ -68,6 +71,7 @@ export type ModalContextState = {
     workflowVariables?: InputVar[]
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>>
+  setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: () => { },
@@ -81,13 +85,13 @@ const ModalContext = createContext<ModalContextState>({
   setShowModelLoadBalancingModal: () => { },
   setShowModelLoadBalancingEntryModal: () => { },
   setShowOpeningModal: () => { },
+  setShowUpdatePluginModal: () => { },
 })
 
 export const useModalContext = () => useContext(ModalContext)
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
-// eslint-disable-next-line @typescript-eslint/comma-dangle
 export const useModalContextSelector = <T,>(selector: (state: ModalContextState) => T): T =>
   useContextSelector(ModalContext, selector)
 
@@ -110,6 +114,8 @@ export const ModalContextProvider = ({
     workflowVariables?: InputVar[]
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>(null)
+  const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
+
   const searchParams = useSearchParams()
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
@@ -229,6 +235,7 @@ export const ModalContextProvider = ({
       setShowModelLoadBalancingModal,
       setShowModelLoadBalancingEntryModal,
       setShowOpeningModal,
+      setShowUpdatePluginModal,
     }}>
       <>
         {children}
@@ -339,6 +346,22 @@ export const ModalContextProvider = ({
             onAutoAddPromptVariable={showOpeningModal.payload.onAutoAddPromptVariable}
           />
         )}
+
+        {
+          !!showUpdatePluginModal && (
+            <UpdatePlugin
+              {...showUpdatePluginModal.payload}
+              onCancel={() => {
+                setShowUpdatePluginModal(null)
+                showUpdatePluginModal.onCancelCallback?.()
+              }}
+              onSave={() => {
+                setShowUpdatePluginModal(null)
+                showUpdatePluginModal.onSaveCallback?.({} as any)
+              }}
+            />
+          )
+        }
       </>
     </ModalContext.Provider>
   )

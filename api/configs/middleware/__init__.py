@@ -1,3 +1,4 @@
+import os
 from typing import Any, Literal, Optional
 from urllib.parse import quote_plus
 
@@ -164,6 +165,11 @@ class DatabaseConfig(BaseSettings):
     SQLALCHEMY_ECHO: bool | str = Field(
         description="If True, SQLAlchemy will log all SQL statements.",
         default=False,
+    )
+
+    RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
+        description="Number of processes for the retrieval service, default to CPU cores.",
+        default=os.cpu_count(),
     )
 
     @computed_field

@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'Criar Conhecimento',
       update: 'Adicionar dados',
+      fallbackRoute: 'Conhecimento',
     },
     one: 'Escolher fonte de dados',
     two: 'Pré-processamento e Limpeza de Texto',
