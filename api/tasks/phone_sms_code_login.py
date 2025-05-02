@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
+
 from extensions.ext_phone_sms import phone_sms
 
 
