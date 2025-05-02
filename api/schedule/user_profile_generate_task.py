@@ -1,14 +1,13 @@
 import time
 from datetime import datetime
 
-import click
-from sqlalchemy import asc, func, or_
-
 import app
+import click
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import App, EndUser, Message, db
 from services.app_generate_service import AppGenerateService
+from sqlalchemy import asc, func, or_
 
 
 @app.celery.task(queue="dataset")
@@ -145,7 +144,7 @@ def process_user_memory(user: EndUser, new_messages: str):
         click.echo(click.style("No memory generation app_id provided, skipping memory generation.", fg="yellow"))
         return
 
-    memory_app_model = App.query.filter(App.id == memory_app_id).first()
+    memory_app_model = db.session.query(App).filter(App.id == memory_app_id).first()
     if memory_app_model is None:
         click.echo(click.style(f"App not found for memory generation app_id {memory_app_id}", fg="yellow"))
         return
@@ -190,7 +189,7 @@ def process_user_health_summary(user: EndUser, new_messages: str):
         click.echo(click.style("No health_summary_app_id provided, skipping health summary generation.", fg="yellow"))
         return
 
-    health_summary_app_model = App.query.filter(App.id == health_summary_app_id).first()
+    health_summary_app_model = db.session.query(App).filter(App.id == health_summary_app_id).first()
     if health_summary_app_model is None:
         click.echo(
             click.style(f"App not found for health summary generation app_id {health_summary_app_id}", fg="yellow")
