@@ -6,10 +6,10 @@ from alibabacloud_dysmsapi20170525 import models as dysmsapi_20170525_models
 from alibabacloud_dysmsapi20170525.client import Client as Dysmsapi20170525Client
 from alibabacloud_tea_openapi import models as open_api_models
 from alibabacloud_tea_util import models as util_models
-from alibabacloud_tea_util.client import Client as UtilClient
+from flask import Flask
+
 from configs import dify_config
 from dify_app import DifyApp
-from flask import Flask
 
 
 class PhoneSms:
@@ -47,7 +47,7 @@ class PhoneSms:
             access_key_secret=secret,
         )
         # Endpoint 请参考 https://api.aliyun.com/product/Dysmsapi
-        config.endpoint = f'dysmsapi.aliyuncs.com'
+        config.endpoint = 'dysmsapi.aliyuncs.com'
         return Dysmsapi20170525Client(config)
 
     def send_sms(self, phone_numbers: str, code: str) -> None:

@@ -2,7 +2,6 @@ from datetime import UTC, datetime
 
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
 from constants.languages import supported_language
@@ -51,37 +50,35 @@ class AppSite(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        with Session(db.engine) as session:
-            site = session.query(Site).filter(Site.app_id == app_model.id).first()
+        site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
+        if not site:
+            raise NotFound
 
-            if not site:
-                raise NotFound
+        for attr_name in [
+            "title",
+            "icon_type",
+            "icon",
+            "icon_background",
+            "description",
+            "default_language",
+            "chat_color_theme",
+            "chat_color_theme_inverted",
+            "customize_domain",
+            "copyright",
+            "privacy_policy",
+            "custom_disclaimer",
+            "customize_token_strategy",
+            "prompt_public",
+            "show_workflow_steps",
+            "use_icon_as_answer_icon",
+        ]:
+            value = args.get(attr_name)
+            if value is not None:
+                setattr(site, attr_name, value)
 
-            for attr_name in [
-                "title",
-                "icon_type",
-                "icon",
-                "icon_background",
-                "description",
-                "default_language",
-                "chat_color_theme",
-                "chat_color_theme_inverted",
-                "customize_domain",
-                "copyright",
-                "privacy_policy",
-                "custom_disclaimer",
-                "customize_token_strategy",
-                "prompt_public",
-                "show_workflow_steps",
-                "use_icon_as_answer_icon",
-            ]:
-                value = args.get(attr_name)
-                if value is not None:
-                    setattr(site, attr_name, value)
-
-            site.updated_by = current_user.id
-            site.updated_at = datetime.now(UTC).replace(tzinfo=None)
-            session.commit()
+        site.updated_by = current_user.id
+        site.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        db.session.commit()
 
         return site
 

@@ -12,4 +12,4 @@ identity:
   icon: icon.svg
   tags:
     - productivity
-credentials_for_provider: []
+credentials_for_provider: {}

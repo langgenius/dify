@@ -2,14 +2,15 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Optional
 
+from flask import request
+from werkzeug.exceptions import Forbidden, Unauthorized
+
 from configs import dify_config
 from extensions.ext_database import db
-from flask import request
 from libs.passport import PassportService
 from models.account import AccountStatus, Tenant, TenantAccountJoinRole, TenantStatus
 from models.model import App
 from services.account_service import AccountService
-from werkzeug.exceptions import Forbidden, Unauthorized
 
 
 def validate_admin_token_and_extract_info(view: Optional[Callable] = None):

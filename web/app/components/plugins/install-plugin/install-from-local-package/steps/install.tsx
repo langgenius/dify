@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { type PluginDeclaration, TaskStatus } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestToCardPluginProps } from '../../utils'
@@ -12,6 +12,8 @@ import { useInstallPackageFromLocal, usePluginTaskList } from '@/service/use-plu
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { uninstallPlugin } from '@/service/plugins'
 import Version from '../../base/version'
+import { useAppContext } from '@/context/app-context'
+import { gte } from 'semver'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -103,10 +105,17 @@ const Installed: FC<Props> = ({
     }
   }
 
+  const { langeniusVersionInfo } = useAppContext()
+  const isDifyVersionCompatible = useMemo(() => {
+    if (!langeniusVersionInfo.current_version)
+      return true
+    return gte(langeniusVersionInfo.current_version, payload.meta.minimum_dify_version ?? '0.0.0')
+  }, [langeniusVersionInfo.current_version, payload.meta.minimum_dify_version])
+
   return (
     <>
-      <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
-        <div className='text-text-secondary system-md-regular'>
+      <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
+        <div className='system-md-regular text-text-secondary'>
           <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
           <p>
             <Trans
@@ -114,8 +123,13 @@ const Installed: FC<Props> = ({
               components={{ trustSource: <span className='system-md-semibold' /> }}
             />
           </p>
+          {!isDifyVersionCompatible && (
+            <p className='system-md-regular flex items-center gap-1 text-text-secondary text-text-warning'>
+              {t('plugin.difyVersionNotCompatible', { minimalDifyVersion: payload.meta.minimum_dify_version })}
+            </p>
+          )}
         </div>
-        <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
+        <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
           <Card
             className='w-full'
             payload={pluginManifestToCardPluginProps(payload)}
@@ -128,7 +142,7 @@ const Installed: FC<Props> = ({
         </div>
       </div>
       {/* Action Buttons */}
-      <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
+      <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>
         {!isInstalling && (
           <Button variant='secondary' className='min-w-[72px]' onClick={handleCancel}>
             {t('common.operation.cancel')}
@@ -136,11 +150,11 @@ const Installed: FC<Props> = ({
         )}
         <Button
           variant='primary'
-          className='min-w-[72px] flex space-x-0.5'
+          className='flex min-w-[72px] space-x-0.5'
           disabled={isInstalling || isLoading}
           onClick={handleInstall}
         >
-          {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
+          {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
         </Button>
       </div>

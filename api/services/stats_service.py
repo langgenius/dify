@@ -1,15 +1,16 @@
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
+
+from sqlalchemy import distinct
 
 from extensions.ext_database import db
-from models import Conversation, EndUser, Message
+from models import EndUser, Message
 from models.model import HealthStatus
-from sqlalchemy import and_, distinct, func
 
 
 class StatsService:
     @staticmethod
-    def get_risk_stats(app_id: Optional[str] = None, organization_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_risk_stats(app_id: Optional[str] = None, organization_id: Optional[str] = None) -> dict[str, Any]:
         """
         Get statistics about high risk users
 
@@ -84,7 +85,7 @@ class StatsService:
     @staticmethod
     def get_user_stats(
         start_date: datetime, end_date: datetime, app_id: Optional[str] = None, organization_id: Optional[str] = None
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """
         Get user statistics for a date range
 
@@ -166,7 +167,7 @@ class StatsService:
     @staticmethod
     def get_conversation_stats(
         start_date: datetime, end_date: datetime, app_id: Optional[str] = None, organization_id: Optional[str] = None
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """
         Get conversation statistics for a date range
 

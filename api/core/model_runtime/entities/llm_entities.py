@@ -1,8 +1,9 @@
+from collections.abc import Sequence
 from decimal import Decimal
 from enum import StrEnum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from core.model_runtime.entities.model_entities import ModelUsage, PriceInfo
@@ -107,7 +108,7 @@ class LLMResult(BaseModel):
 
     id: Optional[str] = None
     model: str
-    prompt_messages: list[PromptMessage]
+    prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
     message: AssistantPromptMessage
     usage: LLMUsage
     system_fingerprint: Optional[str] = None
@@ -130,7 +131,7 @@ class LLMResultChunk(BaseModel):
     """
 
     model: str
-    prompt_messages: list[PromptMessage]
+    prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
     system_fingerprint: Optional[str] = None
     delta: LLMResultChunkDelta
 

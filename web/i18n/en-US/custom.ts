@@ -1,6 +1,8 @@
 const translation = {
   custom: 'Customization',
   upgradeTip: {
+    title: 'Upgrade your plan',
+    des: 'Upgrade your plan to customize your brand',
     prefix: 'Upgrade your plan to',
     suffix: 'customize your brand.',
   },

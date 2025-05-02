@@ -71,15 +71,8 @@ class OpenDALStorage(BaseStorage):
         logger.debug(f"file {filename} downloaded to {target_filepath}")
 
     def exists(self, filename: str) -> bool:
-        # FIXME this is a workaround for opendal python-binding do not have a exists method and no better
-        # error handler here when opendal python-binding has a exists method, we should use it
-        # more https://github.com/apache/opendal/blob/main/bindings/python/src/operator.rs
-        try:
-            res: bool = self.op.stat(path=filename).mode.is_file()
-            logger.debug(f"file {filename} checked")
-            return res
-        except Exception:
-            return False
+        res: bool = self.op.exists(path=filename)
+        return res
 
     def delete(self, filename: str):
         if self.exists(filename):
@@ -87,3 +80,20 @@ class OpenDALStorage(BaseStorage):
             logger.debug(f"file {filename} deleted")
             return
         logger.debug(f"file {filename} not found, skip delete")
+
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        if not self.exists(path):
+            raise FileNotFoundError("Path not found")
+
+        all_files = self.op.scan(path=path)
+        if files and directories:
+            logger.debug(f"files and directories on {path} scanned")
+            return [f.path for f in all_files]
+        if files:
+            logger.debug(f"files on {path} scanned")
+            return [f.path for f in all_files if not f.path.endswith("/")]
+        elif directories:
+            logger.debug(f"directories on {path} scanned")
+            return [f.path for f in all_files if f.path.endswith("/")]
+        else:
+            raise ValueError("At least one of files or directories must be True")

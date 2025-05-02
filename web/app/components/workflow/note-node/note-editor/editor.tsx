@@ -44,7 +44,7 @@ const Editor = ({
               onFocus={() => setShortcutsEnabled(false)}
               onBlur={() => setShortcutsEnabled(true)}
               spellCheck={false}
-              className='w-full h-full outline-none text-text-secondary caret-primary-600'
+              className='h-full w-full text-text-secondary caret-primary-600 outline-none'
             />
           </div>
         }

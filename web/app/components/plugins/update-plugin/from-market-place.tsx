@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { RiInformation2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Card from '@/app/components/plugins/card'
 import Modal from '@/app/components/base/modal'
@@ -103,15 +102,7 @@ const UpdatePluginModal: FC<Props> = ({
     if (uploadStep === UploadStep.installed)
       onSave()
   }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, targetPackageInfo.id])
-  const usedInAppInfo = useMemo(() => {
-    return (
-      <div className='flex px-0.5 justify-center items-center gap-0.5'>
-        <div className='text-text-warning system-xs-medium'>{t(`${i18nPrefix}.usedInApps`, { num: 3 })}</div>
-        {/* show the used apps */}
-        <RiInformation2Line className='w-4 h-4 text-text-tertiary' />
-      </div>
-    )
-  }, [t])
+
   return (
     <Modal
       isShow={true}
@@ -120,10 +111,10 @@ const UpdatePluginModal: FC<Props> = ({
       closable
       title={t(`${i18nPrefix}.${uploadStep === UploadStep.installed ? 'successfulTitle' : 'title'}`)}
     >
-      <div className='mt-3 mb-2 text-text-secondary system-md-regular'>
+      <div className='system-md-regular mb-2 mt-3 text-text-secondary'>
         {t(`${i18nPrefix}.description`)}
       </div>
-      <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
+      <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
         <Card
           installed={uploadStep === UploadStep.installed}
           payload={pluginManifestToCardPluginProps({
@@ -136,12 +127,11 @@ const UpdatePluginModal: FC<Props> = ({
               <Badge className='mx-1' size="s" state={BadgeState.Warning}>
                 {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
               </Badge>
-              {false && usedInAppInfo}
             </>
           }
         />
       </div>
-      <div className='flex pt-5 justify-end items-center gap-2 self-stretch'>
+      <div className='flex items-center justify-end gap-2 self-stretch pt-5'>
         {uploadStep === UploadStep.notStarted && (
           <Button
             onClick={handleCancel}

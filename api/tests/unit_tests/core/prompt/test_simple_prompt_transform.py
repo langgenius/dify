@@ -84,7 +84,6 @@ def test_get_baichuan_completion_app_prompt_template_with_pcq():
         query_in_prompt=True,
         with_memory_prompt=False,
     )
-    print(prompt_template["prompt_template"].template)
     prompt_rules = prompt_template["prompt_rules"]
     assert prompt_template["prompt_template"].template == (
         prompt_rules["context_prompt"] + pre_prompt + "\n" + prompt_rules["query_prompt"]

@@ -62,7 +62,7 @@ const PremiumBadge: React.FC<PremiumBadgeProps> = ({
       <Highlight
         className={classNames(
           'absolute top-0 opacity-50 hover:opacity-80',
-          size === 's' ? 'h-4.5 w-12' : 'h-6 w-12',
+          size === 's' ? 'h-[18px] w-12' : 'h-6 w-12',
         )}
         style={{
           right: '50%',

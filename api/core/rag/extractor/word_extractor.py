@@ -85,7 +85,7 @@ class WordExtractor(BaseExtractor):
             if "image" in rel.target_ref:
                 image_count += 1
                 if rel.is_external:
-                    url = rel.reltype
+                    url = rel.target_ref
                     response = ssrf_proxy.get(url)
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
@@ -126,9 +126,7 @@ class WordExtractor(BaseExtractor):
 
                 db.session.add(upload_file)
                 db.session.commit()
-                image_map[rel.target_part] = (
-                    f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/file-preview)"
-                )
+                image_map[rel.target_part] = f"![image]({dify_config.FILES_URL}/files/{upload_file.id}/file-preview)"
 
         return image_map
 

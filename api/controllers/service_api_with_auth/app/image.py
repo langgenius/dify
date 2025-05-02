@@ -1,14 +1,13 @@
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from werkzeug.exceptions import InternalServerError
+
 from configs import dify_config
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import NotChatAppError, NotEnoughMessageCountError
 from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
-from extensions.ext_database import db
 from fields.end_user_fields import end_user_image_fields, end_user_image_list_pagination_fields
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from libs.helper import uuid_value
-from models.model import App, AppMode, EndUser, UserGeneratedImage
+from models.model import App, AppMode, EndUser
 from services.image_generation_service import ImageGenerationService
-from werkzeug.exceptions import InternalServerError, NotFound
 
 
 class ImageGenerateApi(Resource):

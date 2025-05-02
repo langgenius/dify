@@ -16,7 +16,6 @@ class ModelConfigConverter:
         """
         Convert app model config dict to entity.
         :param app_config: app config
-        :param skip_check: skip check
         :raises ProviderTokenNotInitError: provider token not init error
         :return: app orchestration config entity
         """

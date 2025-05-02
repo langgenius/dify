@@ -17,6 +17,10 @@ class ApiKeyAuthFactory:
                 from services.auth.firecrawl.firecrawl import FirecrawlAuth
 
                 return FirecrawlAuth
+            case AuthType.WATERCRAWL:
+                from services.auth.watercrawl.watercrawl import WatercrawlAuth
+
+                return WatercrawlAuth
             case AuthType.JINA:
                 from services.auth.jina.jina import JinaAuth
 

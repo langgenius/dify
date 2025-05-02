@@ -1,6 +1,6 @@
 import { Fragment, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import { Dialog, Transition } from '@headlessui/react'
+import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import cn from '@/utils/classnames'
 
 type DialogProps = {
@@ -22,33 +22,29 @@ const DialogWrapper = ({
   return (
     <Transition appear show={show} as={Fragment}>
       <Dialog as="div" className="relative z-40" onClose={close}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
-        </Transition.Child>
+        <TransitionChild>
+          <div className={cn(
+            'fixed inset-0 bg-black bg-opacity-25',
+            'data-[closed]:opacity-0',
+            'data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
+            'data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
+          )} />
+        </TransitionChild>
 
         <div className="fixed inset-0">
-          <div className={cn('flex flex-col items-end justify-center min-h-full pb-2', inWorkflow ? 'pt-[112px]' : 'pt-[64px] pr-2')}>
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <Dialog.Panel className={cn('grow flex flex-col relative w-[420px] h-0 p-0 overflow-hidden text-left align-middle transition-all transform bg-components-panel-bg-alt border-components-panel-border shadow-xl', inWorkflow ? 'border-t-[0.5px] border-l-[0.5px] border-b-[0.5px] rounded-l-2xl' : 'border-[0.5px] rounded-2xl', className)}>
+          <div className={cn('flex min-h-full flex-col items-end justify-center pb-2', inWorkflow ? 'pt-[112px]' : 'pr-2 pt-[64px]')}>
+            <TransitionChild>
+              <DialogPanel className={cn(
+                'relative flex h-0 w-[420px] grow flex-col overflow-hidden border-components-panel-border bg-components-panel-bg-alt p-0 text-left align-middle shadow-xl transition-all',
+                inWorkflow ? 'rounded-l-2xl border-b-[0.5px] border-l-[0.5px] border-t-[0.5px]' : 'rounded-2xl border-[0.5px]',
+                'data-[closed]:scale-95  data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
+                'data-[leave]:scale-95 data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
+                className,
+              )}>
                 {children}
-              </Dialog.Panel>
-            </Transition.Child>
+              </DialogPanel>
+            </TransitionChild>
           </div>
         </div>
       </Dialog>

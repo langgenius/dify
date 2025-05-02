@@ -4,23 +4,23 @@ from enum import Enum
 from functools import wraps
 from typing import Optional
 
-from configs import dify_config
-from extensions.ext_database import db
 from flask import current_app, request
 from flask_login import user_logged_in  # type: ignore
 from flask_restful import Resource  # type: ignore
+from pydantic import BaseModel  # type: ignore
+from sqlalchemy import select, update  # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
+from werkzeug.exceptions import Forbidden, Unauthorized
+
+from configs import dify_config
+from extensions.ext_database import db
 from libs.login import _get_user
 from libs.passport import PassportService
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountJoinRole, TenantStatus
 from models.model import ApiToken, App, EndUser
-from models.organization import Organization
-from pydantic import BaseModel  # type: ignore
 from services.account_service import AccountService
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
-from sqlalchemy import select, update  # type: ignore
-from sqlalchemy.orm import Session  # type: ignore
-from werkzeug.exceptions import Forbidden, Unauthorized
 
 
 class WhereisUserArg(Enum):

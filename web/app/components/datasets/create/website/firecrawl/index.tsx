@@ -9,7 +9,6 @@ import Crawling from '../base/crawling'
 import ErrorMessage from '../base/error-message'
 import Header from './header'
 import Options from './options'
-import cn from '@/utils/classnames'
 import { useModalContext } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Toast from '@/app/components/base/toast'
@@ -99,7 +98,7 @@ const FireCrawl: FC<Props> = ({
           isError: false,
           data: {
             ...res,
-            total: Math.min(res.total, parseFloat(crawlOptions.limit as string)),
+            total: Math.min(res.total, Number.parseFloat(crawlOptions.limit as string)),
           },
         }
       }
@@ -116,7 +115,7 @@ const FireCrawl: FC<Props> = ({
       // update the progress
       setCrawlResult({
         ...res,
-        total: Math.min(res.total, parseFloat(crawlOptions.limit as string)),
+        total: Math.min(res.total, Number.parseFloat(crawlOptions.limit as string)),
       })
       onCheckedCrawlResultChange(res.data || []) // default select the crawl result
       await sleep(2500)
@@ -179,22 +178,22 @@ const FireCrawl: FC<Props> = ({
   return (
     <div>
       <Header onSetting={handleSetting} />
-      <div className={cn('mt-2 p-4 pb-0 rounded-xl border border-gray-200')}>
+      <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0'>
         <UrlInput onRun={handleRun} isRunning={isRunning} />
         <OptionsWrap
-          className={cn('mt-4')}
+          className='mt-4'
           controlFoldOptions={controlFoldOptions}
         >
           <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />
         </OptionsWrap>
 
         {!isInit && (
-          <div className='mt-3 relative left-[-16px] w-[calc(100%_+_32px)] rounded-b-xl'>
+          <div className='relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl'>
             {isRunning
               && <Crawling
                 className='mt-2'
                 crawledNum={crawlResult?.current || 0}
-                totalNum={crawlResult?.total || parseFloat(crawlOptions.limit as string) || 0}
+                totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0}
               />}
             {showError && (
               <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={crawlErrorMessage} />
@@ -206,7 +205,7 @@ const FireCrawl: FC<Props> = ({
                 checkedList={checkedCrawlResult}
                 onSelectedChange={onCheckedCrawlResultChange}
                 onPreview={onPreview}
-                usedTime={parseFloat(crawlResult?.time_consuming as string) || 0}
+                usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
               />
             }
           </div>

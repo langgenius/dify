@@ -13,3 +13,14 @@ export const useInvalid = (key: QueryKey) => {
     )
   }
 }
+
+export const useReset = (key: QueryKey) => {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.resetQueries(
+      {
+        queryKey: key,
+      },
+    )
+  }
+}

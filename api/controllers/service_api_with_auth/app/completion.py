@@ -1,5 +1,8 @@
 import logging
 
+from flask_restful import Resource, reqparse  # type: ignore
+from werkzeug.exceptions import InternalServerError, NotFound
+
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import (
@@ -11,18 +14,15 @@ from controllers.service_api_with_auth.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_user_token_and_extract_info
+from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from flask_restful import Resource, reqparse  # type: ignore
 from libs import helper
 from libs.helper import uuid_value
-from libs.login import login_required
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
-from werkzeug.exceptions import InternalServerError, NotFound
 
 
 class CompletionApi(Resource):

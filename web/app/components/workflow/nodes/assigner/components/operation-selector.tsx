@@ -72,9 +72,9 @@ const OperationSelector: FC<OperationSelectorProps> = ({
             className,
           )}
         >
-          <div className='flex p-1 items-center'>
+          <div className='flex items-center p-1'>
             <span
-              className={`truncate overflow-hidden text-ellipsis system-sm-regular
+              className={`system-sm-regular overflow-hidden truncate text-ellipsis
                 ${selectedItem ? 'text-components-input-text-filled' : 'text-components-input-text-disabled'}`}
             >
               {selectedItem?.name ? t(`${i18nPrefix}.operations.${selectedItem?.name}`) : t(`${i18nPrefix}.operations.title`)}
@@ -86,9 +86,9 @@ const OperationSelector: FC<OperationSelectorProps> = ({
 
       <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
         <div className='flex w-[140px] flex-col items-start rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
-          <div className='flex p-1 flex-col items-start self-stretch'>
-            <div className='flex px-3 pt-1 pb-0.5 items-start self-stretch'>
-              <div className='flex grow text-text-tertiary system-xs-medium-uppercase'>{t(`${i18nPrefix}.operations.title`)}</div>
+          <div className='flex flex-col items-start self-stretch p-1'>
+            <div className='flex items-start self-stretch px-3 pb-0.5 pt-1'>
+              <div className='system-xs-medium-uppercase flex grow text-text-tertiary'>{t(`${i18nPrefix}.operations.title`)}</div>
             </div>
             {items.map(item => (
               item.value === 'divider'
@@ -107,11 +107,11 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                       setOpen(false)
                     }}
                   >
-                    <div className='flex min-h-5 px-1 items-center gap-1 grow'>
-                      <span className={'flex grow text-text-secondary system-sm-medium'}>{t(`${i18nPrefix}.operations.${item.name}`)}</span>
+                    <div className='flex min-h-5 grow items-center gap-1 px-1'>
+                      <span className={'system-sm-medium flex grow text-text-secondary'}>{t(`${i18nPrefix}.operations.${item.name}`)}</span>
                     </div>
                     {item.value === value && (
-                      <div className='flex justify-center items-center'>
+                      <div className='flex items-center justify-center'>
                         <RiCheckLine className='h-4 w-4 text-text-accent' />
                       </div>
                     )}

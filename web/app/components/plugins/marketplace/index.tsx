@@ -17,6 +17,7 @@ type MarketplaceProps = {
   pluginTypeSwitchClassName?: string
   intersectionContainerId?: string
   scrollContainerId?: string
+  showSearchParams?: boolean
 }
 const Marketplace = async ({
   locale,
@@ -27,6 +28,7 @@ const Marketplace = async ({
   pluginTypeSwitchClassName,
   intersectionContainerId,
   scrollContainerId,
+  showSearchParams = true,
 }: MarketplaceProps) => {
   let marketplaceCollections: any = []
   let marketplaceCollectionPluginsMap = {}
@@ -42,6 +44,7 @@ const Marketplace = async ({
         searchParams={searchParams}
         shouldExclude={shouldExclude}
         scrollContainerId={scrollContainerId}
+        showSearchParams={showSearchParams}
       >
         <Description locale={locale} />
         <IntersectionLine intersectionContainerId={intersectionContainerId} />
@@ -53,6 +56,7 @@ const Marketplace = async ({
           locale={locale}
           className={pluginTypeSwitchClassName}
           searchBoxAutoAnimate={searchBoxAutoAnimate}
+          showSearchParams={showSearchParams}
         />
         <ListWrapper
           locale={locale}

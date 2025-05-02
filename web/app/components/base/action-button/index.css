@@ -5,6 +5,10 @@
         @apply inline-flex justify-center items-center cursor-pointer text-text-tertiary hover:text-text-secondary hover:bg-state-base-hover
     }
 
+    .action-btn-hover {
+        @apply bg-state-base-hover
+    }
+
     .action-btn-disabled {
         @apply cursor-not-allowed
     }

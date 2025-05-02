@@ -5,7 +5,6 @@ from .account import (
     InvitationCode,
     Tenant,
     TenantAccountJoin,
-    TenantAccountJoinRole,
     TenantAccountRole,
     TenantStatus,
 )
@@ -109,6 +108,7 @@ __all__ = [
     "AppDatasetJoin",
     "AppMode",
     "AppModelConfig",
+    "AppOrganizationAccess",
     "BuiltinToolProvider",  # Added
     "CeleryTask",
     "CeleryTaskSet",
@@ -143,6 +143,8 @@ __all__ = [
     "MessageFeedback",
     "MessageFile",
     "OperationLog",
+    "Organization",
+    "OrganizationMember",
     "PinnedConversation",
     "Provider",
     "ProviderModel",
@@ -157,7 +159,6 @@ __all__ = [
     "TagBinding",
     "Tenant",
     "TenantAccountJoin",
-    "TenantAccountJoinRole",
     "TenantAccountRole",
     "TenantDefaultModel",
     "TenantPreferredModelProvider",
@@ -182,8 +183,5 @@ __all__ = [
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",
-    "Organization",
-    "OrganizationMember",
-    "AppOrganizationAccess",
     "db",
 ]

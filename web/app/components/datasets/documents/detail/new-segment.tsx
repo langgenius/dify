@@ -51,10 +51,10 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const refreshTimer = useRef<any>(null)
 
   const CustomButton = <>
-    <Divider type='vertical' className='h-3 mx-1 bg-divider-regular' />
+    <Divider type='vertical' className='mx-1 h-3 bg-divider-regular' />
     <button
       type='button'
-      className='text-text-accent system-xs-semibold'
+      className='system-xs-semibold text-text-accent'
       onClick={() => {
         clearTimeout(refreshTimer.current)
         viewNewlyAddedChunk()
@@ -135,16 +135,16 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   }, [question.length, answer.length, isQAModel])
 
   return (
-    <div className={'flex flex-col h-full'}>
+    <div className={'flex h-full flex-col'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
         <div className='flex flex-col'>
-          <div className='text-text-primary system-xl-semibold'>{
+          <div className='system-xl-semibold text-text-primary'>{
             t('datasetDocuments.segment.addChunk')
           }</div>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag label={t('datasetDocuments.segment.newChunk')!} />
             <Dot />
-            <span className='text-text-tertiary system-xs-medium'>{wordCountText}</span>
+            <span className='system-xs-medium text-text-tertiary'>{wordCountText}</span>
           </div>
         </div>
         <div className='flex items-center'>
@@ -157,14 +157,14 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
                 loading={loading}
                 actionType='add'
               />
-              <Divider type='vertical' className='h-3.5 bg-divider-regular ml-4 mr-2' />
+              <Divider type='vertical' className='ml-4 mr-2 h-3.5 bg-divider-regular' />
             </>
           )}
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer mr-1' onClick={toggleFullScreen}>
-            <RiExpandDiagonalLine className='w-4 h-4 text-text-tertiary' />
+          <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
+            <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />
           </div>
-          <div className='w-8 h-8 flex justify-center items-center p-1.5 cursor-pointer' onClick={handleCancel.bind(null, 'esc')}>
-            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
+          <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={handleCancel.bind(null, 'esc')}>
+            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>
         </div>
       </div>
@@ -188,7 +188,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         />}
       </div>
       {!fullScreen && (
-        <div className='flex items-center justify-between p-4 pt-3 border-t-[1px] border-t-divider-subtle'>
+        <div className='flex items-center justify-between border-t-[1px] border-t-divider-subtle p-4 pt-3'>
           <AddAnother isChecked={addAnother} onCheck={() => setAddAnother(!addAnother)} />
           <ActionButtons
             handleCancel={handleCancel.bind(null, 'esc')}

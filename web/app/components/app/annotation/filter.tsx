@@ -6,15 +6,15 @@ import useSWR from 'swr'
 import Input from '@/app/components/base/input'
 import { fetchAnnotationsCount } from '@/service/log'
 
-export interface QueryParam {
+export type QueryParam = {
   keyword?: string
 }
 
-interface IFilterProps {
+type IFilterProps = {
   appId: string
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
-  children: JSX.Element
+  children: React.JSX.Element
 }
 
 const Filter: FC<IFilterProps> = ({
@@ -29,7 +29,7 @@ const Filter: FC<IFilterProps> = ({
   if (!data)
     return null
   return (
-    <div className='flex justify-between flex-row flex-wrap gap-2 items-center mb-2'>
+    <div className='mb-2 flex flex-row flex-wrap items-center justify-between gap-2'>
       <Input
         wrapperClassName='w-[200px]'
         showLeftIcon

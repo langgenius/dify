@@ -27,12 +27,12 @@ const SubVariablePicker: FC<Props> = ({
 
   const renderOption = ({ item }: { item: Record<string, any> }) => {
     return (
-      <div className='flex items-center h-6 justify-between'>
-        <div className='flex items-center h-full'>
-          <Variable02 className='mr-[5px] w-3.5 h-3.5 text-text-accent' />
-          <span className='text-text-secondary system-sm-medium'>{item.name}</span>
+      <div className='flex h-6 items-center justify-between'>
+        <div className='flex h-full items-center'>
+          <Variable02 className='mr-[5px] h-3.5 w-3.5 text-text-accent' />
+          <span className='system-sm-medium text-text-secondary'>{item.name}</span>
         </div>
-        <span className='text-text-tertiary system-xs-regular'>{item.type}</span>
+        <span className='system-xs-regular text-text-tertiary'>{item.type}</span>
       </div>
     )
   }
@@ -52,16 +52,16 @@ const SubVariablePicker: FC<Props> = ({
         optionClassName='pl-1 pr-5 py-0'
         renderOption={renderOption}
         renderTrigger={item => (
-          <div className='group/sub-variable-picker flex items-center h-8 pl-1 rounded-lg bg-components-input-bg-normal hover:bg-state-base-hover-alt'>
+          <div className='group/sub-variable-picker flex h-8 items-center rounded-lg bg-components-input-bg-normal pl-1 hover:bg-state-base-hover-alt'>
             {item
-              ? <div className='flex justify-start cursor-pointer'>
-                <div className='inline-flex max-w-full px-1.5 items-center h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark shadow-xs text-text-accent'>
-                  <Variable02 className='shrink-0 w-3.5 h-3.5 text-text-accent' />
-                  <div className='ml-0.5 truncate system-xs-medium'>{item?.name}</div>
+              ? <div className='flex cursor-pointer justify-start'>
+                <div className='inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs'>
+                  <Variable02 className='h-3.5 w-3.5 shrink-0 text-text-accent' />
+                  <div className='system-xs-medium ml-0.5 truncate'>{item?.name}</div>
                 </div>
               </div>
-              : <div className='pl-1 flex text-components-input-text-placeholder system-sm-regular  group-hover/sub-variable-picker:text-text-tertiary'>
-                <Variable02 className='mr-1 shrink-0 w-4 h-4' />
+              : <div className='system-sm-regular flex pl-1 text-components-input-text-placeholder  group-hover/sub-variable-picker:text-text-tertiary'>
+                <Variable02 className='mr-1 h-4 w-4 shrink-0' />
                 <span>{t('common.placeholder.select')}</span>
               </div>}
           </div>

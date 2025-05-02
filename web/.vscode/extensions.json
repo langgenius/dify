@@ -1,6 +1,7 @@
 {
   "recommendations": [
     "bradlc.vscode-tailwindcss",
-    "firsttris.vscode-jest-runner"
+    "firsttris.vscode-jest-runner",
+    "kisstkondoros.vscode-codemetrics"
   ]
 }

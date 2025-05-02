@@ -1,10 +1,4 @@
-import {
-  forwardRef,
-  memo,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import {
   useConfigFromDebugContext,
   useFormattingChangedSubscription,
@@ -27,6 +21,7 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import { canFindTool } from '@/utils'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -34,9 +29,14 @@ type DebugWithSingleModelProps = {
 export type DebugWithSingleModelRefType = {
   handleRestart: () => void
 }
-const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSingleModelProps>(({
-  checkCanSend,
-}, ref) => {
+const DebugWithSingleModel = (
+  {
+    ref,
+    checkCanSend,
+  }: DebugWithSingleModelProps & {
+    ref: React.RefObject<DebugWithSingleModelRefType>;
+  },
+) => {
   const { userProfile } = useAppContext()
   const {
     modelConfig,
@@ -126,10 +126,14 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     )
   }, [appId, chatList, checkCanSend, completionParams, config, handleSend, inputs, modelConfig.mode, modelConfig.model_id, modelConfig.provider, textGenerationModelList])
 
-  const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
-    const question = chatList.find(item => item.id === chatItem.parentMessageId)!
+  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+    const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(question.content, question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
+    doSend(editedQuestion ? editedQuestion.message : question.content,
+      editedQuestion ? editedQuestion.files : question.message_files,
+      true,
+      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
+    )
   }, [chatList, doSend])
 
   const allToolIcons = useMemo(() => {
@@ -174,7 +178,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       noSpacing
     />
   )
-})
+}
 
 DebugWithSingleModel.displayName = 'DebugWithSingleModel'
 

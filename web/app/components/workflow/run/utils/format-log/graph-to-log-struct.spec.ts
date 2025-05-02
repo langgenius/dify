@@ -31,6 +31,16 @@ describe('parseDSL', () => {
     ])
   })
 
+  it('should parse loop nodes correctly', () => {
+    const dsl = '(loop, loopNode, plainNode1 -> plainNode2)'
+    const result = parseDSL(dsl)
+    expect(result).toEqual([
+      { id: 'loopNode', node_id: 'loopNode', title: 'loopNode', node_type: 'loop', execution_metadata: {}, status: 'succeeded' },
+      { id: 'plainNode1', node_id: 'plainNode1', title: 'plainNode1', execution_metadata: { loop_id: 'loopNode', loop_index: 0 }, status: 'succeeded' },
+      { id: 'plainNode2', node_id: 'plainNode2', title: 'plainNode2', execution_metadata: { loop_id: 'loopNode', loop_index: 0 }, status: 'succeeded' },
+    ])
+  })
+
   it('should parse parallel nodes correctly', () => {
     const dsl = '(parallel, parallelNode, nodeA, nodeB -> nodeC)'
     const result = parseDSL(dsl)

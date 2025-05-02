@@ -10,9 +10,9 @@ type CornerLabelProps = {
 const CornerLabel: React.FC<CornerLabelProps> = ({ label, className, labelClassName }) => {
   return (
     <div className={cn('group/corner-label inline-flex items-start', className)}>
-      <Corner className='w-[13px] h-5 text-background-section group-hover/corner-label:text-background-section-burn' />
-      <div className={cn('flex py-1 pr-2 items-center gap-0.5 bg-background-section group-hover/corner-label:bg-background-section-burn', labelClassName)}>
-        <div className='text-text-tertiary system-2xs-medium-uppercase'>{label}</div>
+      <Corner className='h-5 w-[13px] text-background-section group-hover/corner-label:text-background-section-burn' />
+      <div className={cn('flex items-center gap-0.5 bg-background-section py-1 pr-2 group-hover/corner-label:bg-background-section-burn', labelClassName)}>
+        <div className='system-2xs-medium-uppercase text-text-tertiary'>{label}</div>
       </div>
     </div>
   )

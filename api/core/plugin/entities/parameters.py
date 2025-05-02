@@ -131,7 +131,7 @@ def cast_parameter_value(typ: enum.StrEnum, value: Any, /):
                     raise ValueError("The selector must be a dictionary.")
                 return value
             case PluginParameterType.TOOLS_SELECTOR:
-                if not isinstance(value, list):
+                if value and not isinstance(value, list):
                     raise ValueError("The tools selector must be a list.")
                 return value
             case _:

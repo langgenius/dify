@@ -31,6 +31,7 @@ import { useOptions } from './hooks'
 import type { PickerBlockMenuOption } from './menu'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { KEY_ESCAPE_COMMAND } from 'lexical'
 
 type ComponentPickerProps = {
   triggerString: string
@@ -118,6 +119,13 @@ const ComponentPicker = ({
       editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
   }, [editor, checkForTriggerMatch, triggerString])
 
+  const handleClose = useCallback(() => {
+    ReactDOM.flushSync(() => {
+      const escapeEvent = new KeyboardEvent('keydown', { key: 'Escape' })
+      editor.dispatchCommand(KEY_ESCAPE_COMMAND, escapeEvent)
+    })
+  }, [editor])
+
   const renderMenu = useCallback<MenuRenderFn<PickerBlockMenuOption>>((
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
@@ -133,59 +141,62 @@ const ComponentPicker = ({
             // The `LexicalMenu` will try to calculate the position of the floating menu based on the first child.
             // Since we use floating ui, we need to wrap it with a div to prevent the position calculation being affected.
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
-            <div className='w-0 h-0'>
+            <div className='h-0 w-0'>
               <div
-                className='p-1 w-[260px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'
+                className='w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
                 }}
                 ref={refs.setFloating}
+                data-testid="component-picker-container"
               >
                 {
-                  options.map((option, index) => (
-                    <Fragment key={option.key}>
-                      {
-                        // Divider
-                        index !== 0 && options.at(index - 1)?.group !== option.group && (
-                          <div className='h-px bg-divider-subtle my-1 w-full -translate-x-1'></div>
-                        )
-                      }
-                      {option.renderMenuOption({
-                        queryString,
-                        isSelected: selectedIndex === index,
-                        onSelect: () => {
-                          selectOptionAndCleanUp(option)
-                        },
-                        onSetHighlight: () => {
-                          setHighlightedIndex(index)
-                        },
-                      })}
-                    </Fragment>
-                  ))
-                }
-                {
                   workflowVariableBlock?.show && (
-                    <>
-                      {
-                        (!!options.length) && (
-                          <div className='h-px bg-divider-subtle my-1 w-full -translate-x-1'></div>
-                        )
-                      }
-                      <div className='p-1'>
-                        <VarReferenceVars
-                          hideSearch
-                          vars={workflowVariableOptions}
-                          onChange={(variables: string[]) => {
-                            handleSelectWorkflowVariable(variables)
-                          }}
-                          maxHeightClass='max-h-[34vh]'
-                          isSupportFileVar={isSupportFileVar}
-                        />
-                      </div>
-                    </>
+                    <div className='p-1'>
+                      <VarReferenceVars
+                        searchBoxClassName='mt-1'
+                        vars={workflowVariableOptions}
+                        onChange={(variables: string[]) => {
+                          handleSelectWorkflowVariable(variables)
+                        }}
+                        maxHeightClass='max-h-[34vh]'
+                        isSupportFileVar={isSupportFileVar}
+                        onClose={handleClose}
+                        onBlur={handleClose}
+                      />
+                    </div>
                   )
                 }
+                {
+                  workflowVariableBlock?.show && !!options.length && (
+                    <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                  )
+                }
+                <div data-testid="options-list">
+                  {
+                    options.map((option, index) => (
+                      <Fragment key={option.key}>
+                        {
+                          // Divider
+                          index !== 0 && options.at(index - 1)?.group !== option.group && (
+                            <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                          )
+                        }
+                        {option.renderMenuOption({
+                          queryString,
+                          isSelected: selectedIndex === index,
+                          onSelect: () => {
+                            selectOptionAndCleanUp(option)
+                          },
+                          onSetHighlight: () => {
+                            setHighlightedIndex(index)
+                          },
+                        })}
+                      </Fragment>
+                    ))
+                  }
+                </div>
               </div>
             </div>,
             anchorElementRef.current,
@@ -193,7 +204,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable])
+  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable, handleClose, isSupportFileVar])
 
   return (
     <LexicalTypeaheadMenuPlugin

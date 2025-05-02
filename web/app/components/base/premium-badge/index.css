@@ -2,7 +2,7 @@
 
 @layer components {
   .premium-badge {
-    @apply inline-flex justify-center items-center rounded-full border box-border border-[rgba(255,255,255,0.8)] text-white
+    @apply inline-flex justify-center items-center rounded-md border box-border border-white/95 text-white
   }
 
   /* m is for the regular button */

@@ -243,6 +243,8 @@ const translation = {
     'list-operator': '清單運算子',
     'document-extractor': '文件提取器',
     'agent': '代理',
+    'loop-start': '循環開始',
+    'loop': '循環',
   },
   blocksAbout: {
     'start': '定義一個 workflow 流程啟動的參數',
@@ -562,6 +564,8 @@ const translation = {
         '-=': '-=',
         'append': '附加',
         'clear': '清除',
+        'remove-first': '移除首項',
+        'remove-last': '移除末項',
       },
       'noAssignedVars': '沒有可用的已分配變數',
       'variables': '變數',

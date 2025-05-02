@@ -9,13 +9,12 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
-    PromptMessageContent,
     PromptMessageRole,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -46,6 +45,7 @@ class AdvancedPromptTransform(PromptTransform):
         memory_config: Optional[MemoryConfig],
         memory: Optional[TokenBufferMemory],
         model_config: ModelConfigWithCredentialsEntity,
+        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
     ) -> list[PromptMessage]:
         prompt_messages = []
 
@@ -59,6 +59,7 @@ class AdvancedPromptTransform(PromptTransform):
                 memory_config=memory_config,
                 memory=memory,
                 model_config=model_config,
+                image_detail_config=image_detail_config,
             )
         elif isinstance(prompt_template, list) and all(isinstance(item, ChatModelMessage) for item in prompt_template):
             prompt_messages = self._get_chat_model_prompt_messages(
@@ -70,6 +71,7 @@ class AdvancedPromptTransform(PromptTransform):
                 memory_config=memory_config,
                 memory=memory,
                 model_config=model_config,
+                image_detail_config=image_detail_config,
             )
 
         return prompt_messages
@@ -84,6 +86,7 @@ class AdvancedPromptTransform(PromptTransform):
         memory_config: Optional[MemoryConfig],
         memory: Optional[TokenBufferMemory],
         model_config: ModelConfigWithCredentialsEntity,
+        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
     ) -> list[PromptMessage]:
         """
         Get completion model prompt messages.
@@ -121,10 +124,12 @@ class AdvancedPromptTransform(PromptTransform):
             prompt = Jinja2Formatter.format(prompt, prompt_inputs)
 
         if files:
-            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             prompt_message_contents.append(TextPromptMessageContent(data=prompt))
             for file in files:
-                prompt_message_contents.append(file_manager.to_prompt_message_content(file))
+                prompt_message_contents.append(
+                    file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                )
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:
@@ -142,6 +147,7 @@ class AdvancedPromptTransform(PromptTransform):
         memory_config: Optional[MemoryConfig],
         memory: Optional[TokenBufferMemory],
         model_config: ModelConfigWithCredentialsEntity,
+        image_detail_config: Optional[ImagePromptMessageContent.DETAIL] = None,
     ) -> list[PromptMessage]:
         """
         Get chat model prompt messages.
@@ -194,10 +200,12 @@ class AdvancedPromptTransform(PromptTransform):
             prompt_messages = self._append_chat_histories(memory, memory_config, prompt_messages, model_config)
 
             if files and query is not None:
-                prompt_message_contents: list[PromptMessageContent] = []
+                prompt_message_contents: list[PromptMessageContentUnionTypes] = []
                 prompt_message_contents.append(TextPromptMessageContent(data=query))
                 for file in files:
-                    prompt_message_contents.append(file_manager.to_prompt_message_content(file))
+                    prompt_message_contents.append(
+                        file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                    )
                 prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
             else:
                 prompt_messages.append(UserPromptMessage(content=query))
@@ -209,19 +217,25 @@ class AdvancedPromptTransform(PromptTransform):
                     # get last user message content and add files
                     prompt_message_contents = [TextPromptMessageContent(data=cast(str, last_message.content))]
                     for file in files:
-                        prompt_message_contents.append(file_manager.to_prompt_message_content(file))
+                        prompt_message_contents.append(
+                            file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                        )
 
                     last_message.content = prompt_message_contents
                 else:
                     prompt_message_contents = [TextPromptMessageContent(data="")]  # not for query
                     for file in files:
-                        prompt_message_contents.append(file_manager.to_prompt_message_content(file))
+                        prompt_message_contents.append(
+                            file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                        )
 
                     prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
             else:
                 prompt_message_contents = [TextPromptMessageContent(data=query)]
                 for file in files:
-                    prompt_message_contents.append(file_manager.to_prompt_message_content(file))
+                    prompt_message_contents.append(
+                        file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                    )
 
                 prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         elif query:

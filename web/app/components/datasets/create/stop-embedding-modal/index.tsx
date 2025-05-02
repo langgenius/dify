@@ -35,7 +35,7 @@ const StopEmbeddingModal = ({
       <div className={s.title}>{t('datasetCreation.stepThree.modelTitle')}</div>
       <div className={s.content}>{t('datasetCreation.stepThree.modelContent')}</div>
       <div className='flex flex-row-reverse'>
-        <Button className='w-24 ml-2' variant='primary' onClick={submit}>{t('datasetCreation.stepThree.modelButtonConfirm')}</Button>
+        <Button className='ml-2 w-24' variant='primary' onClick={submit}>{t('datasetCreation.stepThree.modelButtonConfirm')}</Button>
         <Button className='w-24' onClick={onHide}>{t('datasetCreation.stepThree.modelButtonCancel')}</Button>
       </div>
     </Modal>

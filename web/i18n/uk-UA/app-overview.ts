@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'Встановіть тему кольору чат-бота',
         chatColorThemeInverted: 'Інвертовано',
         invalidHexMessage: 'Недійсне шістнадцяткове значення',
+        invalidPrivacyPolicy: 'Недійсне посилання на політику конфіденційності. Будь ласка, використовуйте дійсне посилання, яке починається з http або https',
         more: {
           entry: 'Показати додаткові налаштування',
           copyright: 'Авторське право',

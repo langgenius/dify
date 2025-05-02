@@ -1,5 +1,9 @@
 import logging
 
+from flask import request
+from flask_restful import Resource, reqparse  # type: ignore
+from werkzeug.exceptions import InternalServerError
+
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import (
@@ -16,8 +20,6 @@ from controllers.service_api_with_auth.app.error import (
 from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
 from models.model import App, AppMode, EndUser
 from services.audio_service import AudioService
 from services.errors.audio import (
@@ -26,7 +28,6 @@ from services.errors.audio import (
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
-from werkzeug.exceptions import InternalServerError
 
 
 class AudioApi(Resource):

@@ -1,4 +1,5 @@
-import { formatFileSize, formatNumber, formatTime } from './format'
+import { downloadFile, formatFileSize, formatNumber, formatTime } from './format'
+
 describe('formatNumber', () => {
   test('should correctly format integers', () => {
     expect(formatNumber(1234567)).toBe('1,234,567')
@@ -57,5 +58,47 @@ describe('formatTime', () => {
   })
   test('should handle large numbers', () => {
     expect(formatTime(7200)).toBe('2.00 h')
+  })
+})
+describe('downloadFile', () => {
+  test('should create a link and trigger a download correctly', () => {
+    // Mock data
+    const blob = new Blob(['test content'], { type: 'text/plain' })
+    const fileName = 'test-file.txt'
+    const mockUrl = 'blob:mockUrl'
+
+    // Mock URL.createObjectURL
+    const createObjectURLMock = jest.fn().mockReturnValue(mockUrl)
+    const revokeObjectURLMock = jest.fn()
+    Object.defineProperty(window.URL, 'createObjectURL', { value: createObjectURLMock })
+    Object.defineProperty(window.URL, 'revokeObjectURL', { value: revokeObjectURLMock })
+
+    // Mock createElement and appendChild
+    const mockLink = {
+      href: '',
+      download: '',
+      click: jest.fn(),
+      remove: jest.fn(),
+    }
+    const createElementMock = jest.spyOn(document, 'createElement').mockReturnValue(mockLink as any)
+    const appendChildMock = jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
+      return node
+    })
+
+    // Call the function
+    downloadFile({ data: blob, fileName })
+
+    // Assertions
+    expect(createObjectURLMock).toHaveBeenCalledWith(blob)
+    expect(createElementMock).toHaveBeenCalledWith('a')
+    expect(mockLink.href).toBe(mockUrl)
+    expect(mockLink.download).toBe(fileName)
+    expect(appendChildMock).toHaveBeenCalledWith(mockLink)
+    expect(mockLink.click).toHaveBeenCalled()
+    expect(mockLink.remove).toHaveBeenCalled()
+    expect(revokeObjectURLMock).toHaveBeenCalledWith(mockUrl)
+
+    // Clean up mocks
+    jest.restoreAllMocks()
   })
 })

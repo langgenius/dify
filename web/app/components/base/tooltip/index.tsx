@@ -10,6 +10,7 @@ export type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
   triggerClassName?: string
+  triggerTestId?: string
   disabled?: boolean
   popupContent?: React.ReactNode
   children?: React.ReactNode
@@ -24,6 +25,7 @@ const Tooltip: FC<TooltipProps> = ({
   position = 'top',
   triggerMethod = 'hover',
   triggerClassName,
+  triggerTestId,
   disabled = false,
   popupContent,
   children,
@@ -91,14 +93,14 @@ const Tooltip: FC<TooltipProps> = ({
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
         asChild={asChild}
       >
-        {children || <div className={triggerClassName || 'p-[1px] w-3.5 h-3.5 shrink-0'}><RiQuestionLine className='text-text-quaternary hover:text-text-tertiary w-full h-full' /></div>}
+        {children || <div data-testid={triggerTestId} className={triggerClassName || 'h-3.5 w-3.5 shrink-0 p-[1px]'}><RiQuestionLine className='h-full w-full text-text-quaternary hover:text-text-tertiary' /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className="z-[9999]"
       >
         {popupContent && (<div
           className={cn(
-            !noDecoration && 'relative px-3 py-2 system-xs-regular text-text-tertiary bg-components-panel-bg rounded-md shadow-lg break-words',
+            !noDecoration && 'system-xs-regular relative break-words rounded-md bg-components-panel-bg px-3 py-2 text-text-tertiary shadow-lg',
             popupClassName,
           )}
           onMouseEnter={() => triggerMethod === 'hover' && setHoverPopup()}

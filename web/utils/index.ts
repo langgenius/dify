@@ -69,9 +69,12 @@ export const correctModelProvider = (provider: string) => {
   return `langgenius/${provider}/${provider}`
 }
 
-export const correctToolProvider = (provider: string) => {
+export const correctToolProvider = (provider: string, toolInCollectionList?: boolean) => {
   if (!provider)
     return ''
+
+  if (toolInCollectionList)
+    return provider
 
   if (provider.includes('/'))
     return provider
@@ -86,4 +89,13 @@ export const canFindTool = (providerId: string, oldToolId?: string) => {
   return providerId === oldToolId
     || providerId === `langgenius/${oldToolId}/${oldToolId}`
     || providerId === `langgenius/${oldToolId}_tool/${oldToolId}`
+}
+
+export const removeSpecificQueryParam = (key: string | string[]) => {
+  const url = new URL(window.location.href)
+  if (Array.isArray(key))
+    key.forEach(k => url.searchParams.delete(k))
+  else
+    url.searchParams.delete(key)
+  window.history.replaceState(null, '', url.toString())
 }

@@ -39,6 +39,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         all_documents = []  # type: ignore
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
+            if not rules.segmentation:
+                raise ValueError("No segmentation found in rules.")
             splitter = self._get_splitter(
                 processing_rule_mode=process_rule.get("mode"),
                 max_tokens=rules.segmentation.max_tokens,

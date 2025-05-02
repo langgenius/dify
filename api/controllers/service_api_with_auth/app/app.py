@@ -1,9 +1,10 @@
+from flask_restful import Resource, marshal_with  # type: ignore
+
 from controllers.common import fields
 from controllers.common import helpers as controller_helpers
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import AppUnavailableError
 from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
-from flask_restful import Resource, marshal_with  # type: ignore
 from models.model import App, AppMode, EndUser
 from services.app_service import AppService
 

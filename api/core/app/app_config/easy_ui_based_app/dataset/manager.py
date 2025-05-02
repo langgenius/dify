@@ -1,7 +1,12 @@
 import uuid
 from typing import Optional
 
-from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity
+from core.app.app_config.entities import (
+    DatasetEntity,
+    DatasetRetrieveConfigEntity,
+    MetadataFilteringCondition,
+    ModelConfig,
+)
 from core.entities.agent_entities import PlanningStrategy
 from models.model import AppMode
 from services.dataset_service import DatasetService
@@ -78,6 +83,15 @@ class DatasetConfigManager:
                     retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
                         dataset_configs["retrieval_model"]
                     ),
+                    metadata_filtering_mode=dataset_configs.get("metadata_filtering_mode", "disabled"),
+                    metadata_model_config=ModelConfig(**dataset_configs.get("metadata_model_config"))
+                    if dataset_configs.get("metadata_model_config")
+                    else None,
+                    metadata_filtering_conditions=MetadataFilteringCondition(
+                        **dataset_configs.get("metadata_filtering_conditions", {})
+                    )
+                    if dataset_configs.get("metadata_filtering_conditions")
+                    else None,
                 ),
             )
         else:
@@ -89,11 +103,22 @@ class DatasetConfigManager:
                         dataset_configs["retrieval_model"]
                     ),
                     top_k=dataset_configs.get("top_k", 4),
-                    score_threshold=dataset_configs.get("score_threshold"),
+                    score_threshold=dataset_configs.get("score_threshold")
+                    if dataset_configs.get("score_threshold_enabled", False)
+                    else None,
                     reranking_model=dataset_configs.get("reranking_model"),
                     weights=dataset_configs.get("weights"),
                     reranking_enabled=dataset_configs.get("reranking_enabled", True),
                     rerank_mode=dataset_configs.get("reranking_mode", "reranking_model"),
+                    metadata_filtering_mode=dataset_configs.get("metadata_filtering_mode", "disabled"),
+                    metadata_model_config=ModelConfig(**dataset_configs.get("metadata_model_config"))
+                    if dataset_configs.get("metadata_model_config")
+                    else None,
+                    metadata_filtering_conditions=MetadataFilteringCondition(
+                        **dataset_configs.get("metadata_filtering_conditions", {})
+                    )
+                    if dataset_configs.get("metadata_filtering_conditions")
+                    else None,
                 ),
             )
 

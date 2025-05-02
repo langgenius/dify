@@ -61,7 +61,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   }
   const { t } = useTranslation()
   return <Tooltip popupContent={!isShow && !isShowUpdateModal && tooltip} triggerMethod='hover'>
-    <div className={cn('w-fit flex items-center justify-center', className)} onClick={e => e.stopPropagation()}>
+    <div className={cn('flex w-fit items-center justify-center', className)} onClick={e => e.stopPropagation()}>
       {isShowUpdateModal && pluginDetail && <PluginMutationModel
         onCancel={hideUpdateModal}
         plugin={pluginManifestToCardPluginProps({
@@ -81,14 +81,14 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         </>}
         modalBottomLeft={
           <Link
-            className='flex justify-center items-center gap-1'
+            className='flex items-center justify-center gap-1'
             href={`${marketplaceUrlPrefix}/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`}
             target='_blank'
           >
-            <span className='text-text-accent system-xs-regular text-xs'>
+            <span className='system-xs-regular text-xs text-text-accent'>
               {t('workflow.nodes.agent.installPlugin.changelog')}
             </span>
-            <RiExternalLinkLine className='text-text-accent size-3' />
+            <RiExternalLinkLine className='size-3 text-text-accent' />
           </Link>
         }
       />}
@@ -107,14 +107,14 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         trigger={
           <Badge
             className={cn(
-              'mx-1 hover:bg-state-base-hover flex',
+              'mx-1 flex hover:bg-state-base-hover',
               isShow && 'bg-state-base-hover',
             )}
             uppercase={true}
             text={
               <>
                 <div>{pluginDetail.version}</div>
-                <RiArrowLeftRightLine className='ml-1 w-3 h-3 text-text-tertiary' />
+                <RiArrowLeftRightLine className='ml-1 h-3 w-3 text-text-tertiary' />
               </>
             }
             hasRedCornerMark={true}

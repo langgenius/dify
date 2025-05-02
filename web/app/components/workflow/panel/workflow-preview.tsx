@@ -1,5 +1,6 @@
 import {
   memo,
+  useCallback,
   useEffect,
   useState,
 } from 'react'
@@ -19,11 +20,11 @@ import { useStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
-import { SimpleBtn } from '../../app/text-generate/item'
 import Toast from '../../base/toast'
 import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
+import Button from '@/app/components/base/button'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
@@ -47,32 +48,67 @@ const WorkflowPreview = () => {
       switchTab('DETAIL')
   }, [workflowRunningData])
 
+  const [panelWidth, setPanelWidth] = useState(420)
+  const [isResizing, setIsResizing] = useState(false)
+
+  const startResizing = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsResizing(true)
+  }, [])
+
+  const stopResizing = useCallback(() => {
+    setIsResizing(false)
+  }, [])
+
+  const resize = useCallback((e: MouseEvent) => {
+    if (isResizing) {
+      const newWidth = window.innerWidth - e.clientX
+      if (newWidth > 420 && newWidth < 1024)
+        setPanelWidth(newWidth)
+    }
+  }, [isResizing])
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resize)
+    window.addEventListener('mouseup', stopResizing)
+    return () => {
+      window.removeEventListener('mousemove', resize)
+      window.removeEventListener('mouseup', stopResizing)
+    }
+  }, [resize, stopResizing])
+
   return (
     <div className={`
-      flex flex-col w-[420px] h-full rounded-l-2xl border-[0.5px] border-gray-200 shadow-xl bg-white
-    `}>
-      <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
+      relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl
+    `}
+      style={{ width: `${panelWidth}px` }}
+    >
+      <div
+        className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
+        onMouseDown={startResizing}
+      />
+      <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
         {`Test Run${!workflowRunningData?.result.sequence_number ? '' : `#${workflowRunningData?.result.sequence_number}`}`}
-        <div className='p-1 cursor-pointer' onClick={() => handleCancelDebugAndPreviewPanel()}>
-          <RiCloseLine className='w-4 h-4 text-gray-500' />
+        <div className='cursor-pointer p-1' onClick={() => handleCancelDebugAndPreviewPanel()}>
+          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
       </div>
-      <div className='grow relative flex flex-col'>
-        <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
+      <div className='relative flex grow flex-col'>
+        <div className='flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4'>
           {showInputsPanel && (
             <div
               className={cn(
-                'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-                currentTab === 'INPUT' && '!border-[rgb(21,94,239)] text-gray-700',
+                'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+                currentTab === 'INPUT' && '!border-[rgb(21,94,239)] text-text-secondary',
               )}
               onClick={() => switchTab('INPUT')}
             >{t('runLog.input')}</div>
           )}
           <div
             className={cn(
-              'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-              currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-gray-700',
-              !workflowRunningData && 'opacity-30 !cursor-not-allowed',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+              currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-text-secondary',
+              !workflowRunningData && '!cursor-not-allowed opacity-30',
             )}
             onClick={() => {
               if (!workflowRunningData)
@@ -82,9 +118,9 @@ const WorkflowPreview = () => {
           >{t('runLog.result')}</div>
           <div
             className={cn(
-              'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-              currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-gray-700',
-              !workflowRunningData && 'opacity-30 !cursor-not-allowed',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+              currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary',
+              !workflowRunningData && '!cursor-not-allowed opacity-30',
             )}
             onClick={() => {
               if (!workflowRunningData)
@@ -94,9 +130,9 @@ const WorkflowPreview = () => {
           >{t('runLog.detail')}</div>
           <div
             className={cn(
-              'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-              currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-gray-700',
-              !workflowRunningData && 'opacity-30 !cursor-not-allowed',
+              'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
+              currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary',
+              !workflowRunningData && '!cursor-not-allowed opacity-30',
             )}
             onClick={() => {
               if (!workflowRunningData)
@@ -106,7 +142,7 @@ const WorkflowPreview = () => {
           >{t('runLog.tracing')}</div>
         </div>
         <div className={cn(
-          'grow bg-components-panel-bg h-0 overflow-y-auto rounded-b-2xl',
+          'h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg',
           (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-background-section-burn',
         )}>
           {currentTab === 'INPUT' && showInputsPanel && (
@@ -117,13 +153,13 @@ const WorkflowPreview = () => {
               <ResultText
                 isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
                 outputs={workflowRunningData?.resultText}
-                allFiles={workflowRunningData?.result?.files as any}
+                allFiles={workflowRunningData?.result?.files}
                 error={workflowRunningData?.result?.error}
                 onClick={() => switchTab('DETAIL')}
               />
               {(workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded && workflowRunningData?.resultText && typeof workflowRunningData?.resultText === 'string') && (
-                <SimpleBtn
-                  className={cn('ml-4 mb-4 inline-flex space-x-1')}
+                <Button
+                  className={cn('mb-4 ml-4 space-x-1')}
                   onClick={() => {
                     const content = workflowRunningData?.resultText
                     if (typeof content === 'string')
@@ -132,9 +168,9 @@ const WorkflowPreview = () => {
                       copy(JSON.stringify(content))
                     Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                   }}>
-                  <RiClipboardLine className='w-3.5 h-3.5' />
+                  <RiClipboardLine className='h-3.5 w-3.5' />
                   <div>{t('common.operation.copy')}</div>
-                </SimpleBtn>
+                </Button>
               )}
             </>
           )}

@@ -7,12 +7,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { LangfuseIcon, LangsmithIcon, OpikIcon } from '@/app/components/base/icons/src/public/tracing'
+import { LangfuseIcon, LangsmithIcon, OpikIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -31,7 +31,7 @@ const Title = ({
   const { t } = useTranslation()
 
   return (
-    <div className={cn('flex items-center system-xl-semibold text-text-primary', className)}>
+    <div className={cn('system-xl-semibold flex items-center text-text-primary', className)}>
       {t('common.appMenus.overview')}
     </div>
   )
@@ -82,12 +82,15 @@ const Panel: FC = () => {
         ? LangfuseIcon
         : inUseTracingProvider === TracingProvider.opik
           ? OpikIcon
-          : null
+          : inUseTracingProvider === TracingProvider.weave
+            ? WeaveIcon
+            : LangsmithIcon
 
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig)
+  const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig)
 
   const fetchTracingConfig = async () => {
     const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
@@ -99,6 +102,9 @@ const Panel: FC = () => {
     const { tracing_config: opikConfig, has_not_configured: OpikHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.opik })
     if (!OpikHasNotConfig)
       setOpikConfig(opikConfig as OpikConfig)
+    const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
+    if (!weaveHasNotConfig)
+      setWeaveConfig(weaveConfig as WeaveConfig)
   }
 
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
@@ -110,6 +116,8 @@ const Panel: FC = () => {
       setLangFuseConfig(tracing_config as LangFuseConfig)
     else if (provider === TracingProvider.opik)
       setOpikConfig(tracing_config as OpikConfig)
+    else if (provider === TracingProvider.weave)
+      setWeaveConfig(tracing_config as WeaveConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
@@ -119,6 +127,8 @@ const Panel: FC = () => {
       setLangFuseConfig(null)
     else if (provider === TracingProvider.opik)
       setOpikConfig(null)
+    else if (provider === TracingProvider.weave)
+      setWeaveConfig(null)
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({
         enabled: false,
@@ -143,7 +153,7 @@ const Panel: FC = () => {
   }, [setControlShowPopup])
   if (!isLoaded) {
     return (
-      <div className='flex items-center justify-between mb-3'>
+      <div className='mb-3 flex items-center justify-between'>
         <Title className='h-[41px]' />
         <div className='w-[200px]'>
           <Loading />
@@ -153,19 +163,19 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className={cn('mb-3 flex justify-between items-center')}>
+    <div className={cn('mb-3 flex items-center justify-between')}>
       <Title className='h-[41px]' />
       <div
         className={cn(
-          'flex items-center p-2 rounded-xl bg-background-default-dodge border-t border-l-[0.5px] border-effects-highlight shadow-xs cursor-pointer hover:bg-background-default-lighter hover:border-effects-highlight-lightmode-off',
-          controlShowPopup && 'bg-background-default-lighter border-effects-highlight-lightmode-off',
+          'flex cursor-pointer items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
+          controlShowPopup && 'border-effects-highlight-lightmode-off bg-background-default-lighter',
         )}
         onClick={showPopup}
       >
         {!inUseTracingProvider && (
           <>
             <TracingIcon size='md' />
-            <div className='mx-2 system-sm-semibold text-text-secondary'>{t(`${I18N_PREFIX}.title`)}</div>
+            <div className='system-sm-semibold mx-2 text-text-secondary'>{t(`${I18N_PREFIX}.title`)}</div>
             <div className='flex items-center' onClick={e => e.stopPropagation()}>
               <ConfigButton
                 appId={appId}
@@ -178,14 +188,15 @@ const Panel: FC = () => {
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}
+                weaveConfig={weaveConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}
               />
             </div>
             <Divider type='vertical' className='h-3.5' />
-            <div className='p-1 rounded-md'>
-              <RiArrowDownDoubleLine className='w-4 h-4 text-text-tertiary' />
+            <div className='rounded-md p-1'>
+              <RiArrowDownDoubleLine className='h-4 w-4 text-text-tertiary' />
             </div>
           </>
         )}
@@ -193,11 +204,11 @@ const Panel: FC = () => {
           <>
             <div className='ml-4 mr-1 flex items-center'>
               <Indicator color={enabled ? 'green' : 'gray'} />
-              <div className='ml-1.5 system-xs-semibold-uppercase text-text-tertiary'>
+              <div className='system-xs-semibold-uppercase ml-1.5 text-text-tertiary'>
                 {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
               </div>
             </div>
-            <InUseProviderIcon className='ml-1 h-4' />
+            {InUseProviderIcon && <InUseProviderIcon className='ml-1 h-4' />}
             <Divider type='vertical' className='h-3.5' />
             <div className='flex items-center' onClick={e => e.stopPropagation()}>
               <ConfigButton
@@ -212,6 +223,7 @@ const Panel: FC = () => {
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}
+                weaveConfig={weaveConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}

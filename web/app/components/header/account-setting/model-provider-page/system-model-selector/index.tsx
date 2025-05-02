@@ -135,14 +135,14 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           variant={notConfigured ? 'primary' : 'secondary'}
           size='small'
         >
-          <RiEqualizer2Line className='mr-1 w-3.5 h-3.5' />
+          <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
           {t('common.modelProvider.systemModelSettings')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[60]'>
-        <div className='pt-4 w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
+        <div className='w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pt-4 shadow-xl'>
           <div className='px-6 py-1'>
-            <div className='flex items-center h-8 text-[13px] font-medium text-text-primary'>
+            <div className='flex h-8 items-center text-[13px] font-medium text-text-primary'>
               {t('common.modelProvider.systemReasoningModel.key')}
               <Tooltip
                 popupContent={
@@ -162,7 +162,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             </div>
           </div>
           <div className='px-6 py-1'>
-            <div className='flex items-center h-8 text-[13px] font-medium text-text-primary'>
+            <div className='flex h-8 items-center text-[13px] font-medium text-text-primary'>
               {t('common.modelProvider.embeddingModel.key')}
               <Tooltip
                 popupContent={
@@ -182,7 +182,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             </div>
           </div>
           <div className='px-6 py-1'>
-            <div className='flex items-center h-8 text-[13px] font-medium text-text-primary'>
+            <div className='flex h-8 items-center text-[13px] font-medium text-text-primary'>
               {t('common.modelProvider.rerankModel.key')}
               <Tooltip
                 popupContent={
@@ -202,7 +202,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             </div>
           </div>
           <div className='px-6 py-1'>
-            <div className='flex items-center h-8 text-[13px] font-medium text-text-primary'>
+            <div className='flex h-8 items-center text-[13px] font-medium text-text-primary'>
               {t('common.modelProvider.speechToTextModel.key')}
               <Tooltip
                 popupContent={
@@ -222,7 +222,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             </div>
           </div>
           <div className='px-6 py-1'>
-            <div className='flex items-center h-8 text-[13px] font-medium text-text-primary'>
+            <div className='flex h-8 items-center text-[13px] font-medium text-text-primary'>
               {t('common.modelProvider.ttsModel.key')}
               <Tooltip
                 popupContent={

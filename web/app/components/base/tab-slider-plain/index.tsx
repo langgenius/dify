@@ -5,7 +5,7 @@ import cn from '@/utils/classnames'
 
 type Option = {
   value: string
-  text: string | JSX.Element
+  text: string | React.JSX.Element
 }
 
 type ItemProps = {

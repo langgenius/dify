@@ -13,7 +13,7 @@ type ListProps = {
   showInstallButton?: boolean
   locale: string
   cardContainerClassName?: string
-  cardRender?: (plugin: Plugin) => JSX.Element | null
+  cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onMoreClick?: () => void
   emptyClassName?: string
 }

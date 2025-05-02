@@ -7,7 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { TracingProvider } from './type'
 import cn from '@/utils/classnames'
-import { LangfuseIconBig, LangsmithIconBig, OpikIconBig } from '@/app/components/base/icons/src/public/tracing'
+import { LangfuseIconBig, LangsmithIconBig, OpikIconBig, WeaveIconBig } from '@/app/components/base/icons/src/public/tracing'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
 
 const I18N_PREFIX = 'app.tracing'
@@ -27,6 +27,7 @@ const getIcon = (type: TracingProvider) => {
     [TracingProvider.langSmith]: LangsmithIconBig,
     [TracingProvider.langfuse]: LangfuseIconBig,
     [TracingProvider.opik]: OpikIconBig,
+    [TracingProvider.weave]: WeaveIconBig,
   })[type]
 }
 
@@ -65,36 +66,36 @@ const ProviderPanel: FC<Props> = ({
   return (
     <div
       className={cn(
-        'px-4 py-3 rounded-xl border-[1.5px] bg-background-section-burn',
-        isChosen ? 'bg-background-section border-components-option-card-option-selected-border' : 'border-transparent',
+        'rounded-xl border-[1.5px] bg-background-section-burn px-4 py-3',
+        isChosen ? 'border-components-option-card-option-selected-border bg-background-section' : 'border-transparent',
         !isChosen && hasConfigured && !readOnly && 'cursor-pointer',
       )}
       onClick={handleChosen}
     >
-      <div className={'flex justify-between items-center space-x-1'}>
+      <div className={'flex items-center justify-between space-x-1'}>
         <div className='flex items-center'>
           <Icon className='h-6' />
-          {isChosen && <div className='ml-1 flex items-center h-4 px-1 rounded-[4px] border border-text-accent-secondary system-2xs-medium-uppercase text-text-accent-secondary'>{t(`${I18N_PREFIX}.inUse`)}</div>}
+          {isChosen && <div className='system-2xs-medium-uppercase ml-1 flex h-4 items-center rounded-[4px] border border-text-accent-secondary px-1 text-text-accent-secondary'>{t(`${I18N_PREFIX}.inUse`)}</div>}
         </div>
         {!readOnly && (
-          <div className={'flex justify-between items-center space-x-1'}>
+          <div className={'flex items-center justify-between space-x-1'}>
             {hasConfigured && (
-              <div className='flex px-2 items-center h-6 bg-components-button-secondary-bg rounded-md border-[0.5px] border-components-button-secondary-border shadow-xs cursor-pointer text-text-secondary space-x-1' onClick={viewBtnClick} >
-                <View className='w-3 h-3' />
+              <div className='flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs' onClick={viewBtnClick} >
+                <View className='h-3 w-3' />
                 <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.view`)}</div>
               </div>
             )}
             <div
-              className='flex px-2 items-center h-6 bg-components-button-secondary-bg rounded-md border-[0.5px] border-components-button-secondary-border shadow-xs cursor-pointer text-text-secondary space-x-1'
+              className='flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs'
               onClick={handleConfigBtnClick}
             >
-              <RiEqualizer2Line className='w-3 h-3' />
+              <RiEqualizer2Line className='h-3 w-3' />
               <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.config`)}</div>
             </div>
           </div>
         )}
       </div>
-      <div className='mt-2 system-xs-regular text-text-tertiary'>
+      <div className='system-xs-regular mt-2 text-text-tertiary'>
         {t(`${I18N_PREFIX}.${type}.description`)}
       </div>
     </div>

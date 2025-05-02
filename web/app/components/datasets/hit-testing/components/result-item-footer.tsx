@@ -21,15 +21,15 @@ const ResultItemFooter: FC<Props> = ({
   const { t } = useTranslation()
 
   return (
-    <div className="mt-3 flex justify-between items-center h-10 pl-3 pr-2 border-t border-divider-subtle">
-      <div className="grow flex items-center space-x-1">
+    <div className="mt-3 flex h-10 items-center justify-between border-t border-divider-subtle pl-3 pr-2">
+      <div className="flex grow items-center space-x-1">
         <FileIcon type={docType} size="sm" />
-        <span className="grow w-0 truncate text-text-secondary text-[13px] font-normal">
+        <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">
           {docTitle}
         </span>
       </div>
       <div
-        className="flex items-center space-x-1 cursor-pointer text-text-tertiary"
+        className="flex cursor-pointer items-center space-x-1 text-text-tertiary"
         onClick={showDetailModal}
       >
         <div className="text-xs uppercase">{t(`${i18nPrefix}.open`)}</div>

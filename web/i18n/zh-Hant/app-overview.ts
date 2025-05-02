@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: '設定聊天機器人的顏色主題',
         chatColorThemeInverted: '反轉',
         invalidHexMessage: '無效的十六進制值',
+        invalidPrivacyPolicy: '無效的隱私政策連結，請使用以 http 或 https 開頭的有效連結',
         more: {
           entry: '展示更多設定',
           copyright: '版權',
@@ -105,7 +106,7 @@ const translation = {
           step2Tip: '點選此處將倉庫匯入到 Vercel 中部署',
           step2Operation: '匯入倉庫',
           step3: '配置環境變數',
-          step3Tip: '在 Vecel 環境變數中新增以下環境變數',
+          step3Tip: '在 Vercel 環境變數中新增以下環境變數',
         },
         way2: {
           name: '編寫客戶端呼叫 API 並部署到伺服器中',

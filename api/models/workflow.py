@@ -1,20 +1,19 @@
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union
+from enum import Enum, StrEnum
+from typing import TYPE_CHECKING, Any, Optional, Self, Union
+from uuid import uuid4
 
 if TYPE_CHECKING:
     from models.model import AppMode
-from enum import StrEnum
-from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import Index, PrimaryKeyConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 import contexts
-from constants import HIDDEN_VALUE
+from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Variable
 from factories import variable_factory
@@ -109,6 +108,8 @@ class Workflow(Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(db.String(255), nullable=False)
     version: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    marked_name: Mapped[str] = mapped_column(default="", server_default="")
+    marked_comment: Mapped[str] = mapped_column(default="", server_default="")
     graph: Mapped[str] = mapped_column(sa.Text)
     _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -127,8 +128,9 @@ class Workflow(Base):
         "conversation_variables", db.Text, nullable=False, server_default="{}"
     )
 
-    def __init__(
-        self,
+    @classmethod
+    def new(
+        cls,
         *,
         tenant_id: str,
         app_id: str,
@@ -139,16 +141,25 @@ class Workflow(Base):
         created_by: str,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
-    ):
-        self.tenant_id = tenant_id
-        self.app_id = app_id
-        self.type = type
-        self.version = version
-        self.graph = graph
-        self.features = features
-        self.created_by = created_by
-        self.environment_variables = environment_variables or []
-        self.conversation_variables = conversation_variables or []
+        marked_name: str = "",
+        marked_comment: str = "",
+    ) -> Self:
+        workflow = Workflow()
+        workflow.id = str(uuid4())
+        workflow.tenant_id = tenant_id
+        workflow.app_id = app_id
+        workflow.type = type
+        workflow.version = version
+        workflow.graph = graph
+        workflow.features = features
+        workflow.created_by = created_by
+        workflow.environment_variables = environment_variables or []
+        workflow.conversation_variables = conversation_variables or []
+        workflow.marked_name = marked_name
+        workflow.marked_comment = marked_comment
+        workflow.created_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow.updated_at = workflow.created_at
+        return workflow
 
     @property
     def created_by_account(self):
@@ -173,14 +184,14 @@ class Workflow(Base):
         features = json.loads(self._features)
         if features.get("file_upload", {}).get("image", {}).get("enabled", False):
             image_enabled = True
-            image_number_limits = int(features["file_upload"]["image"].get("number_limits", 1))
+            image_number_limits = int(features["file_upload"]["image"].get("number_limits", DEFAULT_FILE_NUMBER_LIMITS))
             image_transfer_methods = features["file_upload"]["image"].get(
                 "transfer_methods", ["remote_url", "local_file"]
             )
             features["file_upload"]["enabled"] = image_enabled
             features["file_upload"]["number_limits"] = image_number_limits
             features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
-            features["file_upload"]["allowed_file_types"] = ["image"]
+            features["file_upload"]["allowed_file_types"] = features["file_upload"].get("allowed_file_types", ["image"])
             features["file_upload"]["allowed_file_extensions"] = []
             del features["file_upload"]["image"]
             self._features = json.dumps(features)
@@ -232,6 +243,13 @@ class Workflow(Base):
 
     @property
     def tool_published(self) -> bool:
+        """
+        DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
+        It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
+        is the one being used by the tool.
+
+        For accurate checking, use a direct query with tenant_id, app_id, and version.
+        """
         from models.tools import WorkflowToolProvider
 
         return (
@@ -256,11 +274,10 @@ class Workflow(Base):
 
         # decrypt secret variables value
         def decrypt_func(var):
-            return (
-                var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
-                if isinstance(var, SecretVariable)
-                else var
-            )
+            if isinstance(var, SecretVariable):
+                return var.model_copy(update={"value": encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)})
+            else:
+                return var
 
         results = list(map(decrypt_func, results))
         return results
@@ -286,11 +303,10 @@ class Workflow(Base):
 
         # encrypt secret variables value
         def encrypt_func(var):
-            return (
-                var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
-                if isinstance(var, SecretVariable)
-                else var
-            )
+            if isinstance(var, SecretVariable):
+                return var.model_copy(update={"value": encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)})
+            else:
+                return var
 
         encrypted_vars = list(map(encrypt_func, value))
         environment_variables_json = json.dumps(
@@ -341,20 +357,7 @@ class WorkflowRunStatus(StrEnum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     STOPPED = "stopped"
-    PARTIAL_SUCCESSED = "partial-succeeded"
-
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowRunStatus":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow run status value {value}")
+    PARTIAL_SUCCEEDED = "partial-succeeded"
 
 
 class WorkflowRun(Base):
@@ -512,7 +515,7 @@ class WorkflowRun(Base):
         )
 
 
-class WorkflowNodeExecutionTriggeredFrom(Enum):
+class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     """
     Workflow Node Execution Triggered From Enum
     """
@@ -520,21 +523,8 @@ class WorkflowNodeExecutionTriggeredFrom(Enum):
     SINGLE_STEP = "single-step"
     WORKFLOW_RUN = "workflow-run"
 
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowNodeExecutionTriggeredFrom":
-        """
-        Get value of given mode.
 
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow node execution triggered from value {value}")
-
-
-class WorkflowNodeExecutionStatus(Enum):
+class WorkflowNodeExecutionStatus(StrEnum):
     """
     Workflow Node Execution Status Enum
     """
@@ -544,19 +534,6 @@ class WorkflowNodeExecutionStatus(Enum):
     FAILED = "failed"
     EXCEPTION = "exception"
     RETRY = "retry"
-
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow node execution status value {value}")
 
 
 class WorkflowNodeExecution(Base):
@@ -658,6 +635,7 @@ class WorkflowNodeExecution(Base):
     @property
     def created_by_account(self):
         created_by_role = CreatedByRole(self.created_by_role)
+        # TODO(-LAN-): Avoid using db.session.get() here.
         return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
@@ -665,6 +643,7 @@ class WorkflowNodeExecution(Base):
         from models.model import EndUser
 
         created_by_role = CreatedByRole(self.created_by_role)
+        # TODO(-LAN-): Avoid using db.session.get() here.
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
     @property
@@ -757,7 +736,8 @@ class WorkflowAppLog(Base):
     __tablename__ = "workflow_app_logs"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="workflow_app_log_pkey"),
-        db.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
+        db.Index("workflow_app_log_app_idx", "tenant_id", "app_id", "created_at"),
+        db.Index("workflow_app_log_workflow_run_idx", "workflow_run_id"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))

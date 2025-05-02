@@ -5,12 +5,15 @@ import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 
 from extensions.ext_database import db
-from models.account import TenantAccountJoin, TenantAccountRole
+from libs.helper import RateLimiter
+from models.account import Account, TenantAccountJoin, TenantAccountRole
 
 
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
+
+    compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 4, 60)
 
     @classmethod
     def get_info(cls, tenant_id: str):
@@ -18,6 +21,17 @@ class BillingService:
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
         return billing_info
+
+    @classmethod
+    def get_knowledge_rate_limit(cls, tenant_id: str):
+        params = {"tenant_id": tenant_id}
+
+        knowledge_rate_limit = cls._send_request("GET", "/subscription/knowledge-rate-limit", params=params)
+
+        return {
+            "limit": knowledge_rate_limit.get("limit", 10),
+            "subscription_plan": knowledge_rate_limit.get("subscription_plan", "sandbox"),
+        }
 
     @classmethod
     def get_subscription(cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""):
@@ -91,3 +105,71 @@ class BillingService:
         """Update account deletion feedback."""
         json = {"email": email, "feedback": feedback}
         return cls._send_request("POST", "/account/delete-feedback", json=json)
+
+    class EducationIdentity:
+        verification_rate_limit = RateLimiter(prefix="edu_verification_rate_limit", max_attempts=10, time_window=60)
+        activation_rate_limit = RateLimiter(prefix="edu_activation_rate_limit", max_attempts=10, time_window=60)
+
+        @classmethod
+        def verify(cls, account_id: str, account_email: str):
+            if cls.verification_rate_limit.is_rate_limited(account_email):
+                from controllers.console.error import EducationVerifyLimitError
+
+                raise EducationVerifyLimitError()
+
+            cls.verification_rate_limit.increment_rate_limit(account_email)
+
+            params = {"account_id": account_id}
+            return BillingService._send_request("GET", "/education/verify", params=params)
+
+        @classmethod
+        def is_active(cls, account_id: str):
+            params = {"account_id": account_id}
+            return BillingService._send_request("GET", "/education/status", params=params)
+
+        @classmethod
+        def activate(cls, account: Account, token: str, institution: str, role: str):
+            if cls.activation_rate_limit.is_rate_limited(account.email):
+                from controllers.console.error import EducationActivateLimitError
+
+                raise EducationActivateLimitError()
+
+            cls.activation_rate_limit.increment_rate_limit(account.email)
+            params = {"account_id": account.id, "curr_tenant_id": account.current_tenant_id}
+            json = {
+                "institution": institution,
+                "token": token,
+                "role": role,
+            }
+            return BillingService._send_request("POST", "/education/", json=json, params=params)
+
+        @classmethod
+        def autocomplete(cls, keywords: str, page: int = 0, limit: int = 20):
+            params = {"keywords": keywords, "page": page, "limit": limit}
+            return BillingService._send_request("GET", "/education/autocomplete", params=params)
+
+    @classmethod
+    def get_compliance_download_link(
+        cls,
+        doc_name: str,
+        account_id: str,
+        tenant_id: str,
+        ip: str,
+        device_info: str,
+    ):
+        limiter_key = f"{account_id}:{tenant_id}"
+        if cls.compliance_download_rate_limiter.is_rate_limited(limiter_key):
+            from controllers.console.error import CompilanceRateLimitError
+
+            raise CompilanceRateLimitError()
+
+        json = {
+            "doc_name": doc_name,
+            "account_id": account_id,
+            "tenant_id": tenant_id,
+            "ip_address": ip,
+            "device_info": device_info,
+        }
+        res = cls._send_request("POST", "/compliance/download", json=json)
+        cls.compliance_download_rate_limiter.increment_rate_limit(limiter_key)
+        return res

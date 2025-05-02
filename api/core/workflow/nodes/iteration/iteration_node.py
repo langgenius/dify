@@ -590,7 +590,6 @@ class IterationNode(BaseNode[IterationNodeData]):
         with flask_app.app_context():
             parallel_mode_run_id = uuid.uuid4().hex
             graph_engine_copy = graph_engine.create_copy()
-            graph_engine_copy.graph_runtime_state.total_tokens = 0
             variable_pool_copy = graph_engine_copy.graph_runtime_state.variable_pool
             variable_pool_copy.add([self.node_id, "index"], index)
             variable_pool_copy.add([self.node_id, "item"], item)

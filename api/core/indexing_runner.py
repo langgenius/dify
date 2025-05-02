@@ -187,7 +187,7 @@ class IndexingRunner:
                             },
                         )
                         if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                            child_chunks = document_segment.child_chunks
+                            child_chunks = document_segment.get_child_chunks()
                             if child_chunks:
                                 child_documents = []
                                 for child_chunk in child_chunks:

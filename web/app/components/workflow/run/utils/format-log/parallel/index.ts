@@ -74,10 +74,10 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
     console.log(list)
 
   const result: NodeTracing[] = [...list]
-  const parallelFirstNodeMap: Record<string, string> = {}
   // list to tree by parent_parallel_start_node_id and branch by parallel_start_node_id. Each parallel may has more than one branch.
   result.forEach((node) => {
     const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
+    const parallel_start_node_id = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
     const parent_parallel_id = node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
     const branchStartNodeId = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
     const parentParallelBranchStartNodeId = node.parent_parallel_start_node_id ?? node.execution_metadata?.parent_parallel_start_node_id ?? null
@@ -85,14 +85,13 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
     if (isNotInParallel)
       return
 
-    const isParallelStartNode = !parallelFirstNodeMap[parallel_id]
+    const isParallelStartNode = parallel_start_node_id === node.node_id // in the same parallel has more than one start node
     if (isParallelStartNode) {
       const selfNode = { ...node, parallelDetail: undefined }
       node.parallelDetail = {
         isParallelStartNode: true,
         children: [selfNode],
       }
-      parallelFirstNodeMap[parallel_id] = node.node_id
       const isRootLevel = !parent_parallel_id
       if (isRootLevel)
         return
@@ -120,7 +119,7 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
     }
 
     // append to parallel start node and after the same branch
-    const parallelStartNode = result.find(item => item.node_id === parallelFirstNodeMap[parallel_id])
+    const parallelStartNode = result.find(item => parallel_start_node_id === item.node_id)
 
     if (parallelStartNode && parallelStartNode.parallelDetail && parallelStartNode!.parallelDetail!.children) {
       const sameBranchNodesLastIndex = parallelStartNode.parallelDetail.children.findLastIndex((node) => {
@@ -149,6 +148,7 @@ const format = (list: NodeTracing[], t: any, isPrint?: boolean): NodeTracing[] =
       return false
 
     const isParallelStartNode = node.parallelDetail?.isParallelStartNode
+    // eslint-disable-next-line sonarjs/prefer-single-boolean-return
     if (!isParallelStartNode)
       return false
 

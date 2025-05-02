@@ -4,7 +4,7 @@ import React from 'react'
 import { RiAddLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 
-interface Props {
+type Props = {
   className?: string
   onClick: () => void
 }
@@ -14,8 +14,8 @@ const AddButton: FC<Props> = ({
   onClick,
 }) => {
   return (
-    <div className={cn(className, 'p-1 rounded-md cursor-pointer hover:bg-state-base-hover select-none')} onClick={onClick}>
-      <RiAddLine className='w-4 h-4 text-text-tertiary' />
+    <div className={cn(className, 'cursor-pointer select-none rounded-md p-1 hover:bg-state-base-hover')} onClick={onClick}>
+      <RiAddLine className='h-4 w-4 text-text-tertiary' />
     </div>
   )
 }

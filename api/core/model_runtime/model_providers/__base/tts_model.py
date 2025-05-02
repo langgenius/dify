@@ -6,7 +6,7 @@ from pydantic import ConfigDict
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.manager.model import PluginModelManager
+from core.plugin.impl.model import PluginModelClient
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +38,11 @@ class TTSModel(AIModel):
         :param credentials: model credentials
         :param voice: model timbre
         :param content_text: text content to be translated
-        :param streaming: output is streaming
         :param user: unique user id
         :return: translated audio file
         """
         try:
-            plugin_model_manager = PluginModelManager()
+            plugin_model_manager = PluginModelClient()
             return plugin_model_manager.invoke_tts(
                 tenant_id=self.tenant_id,
                 user_id=user or "unknown",
@@ -66,7 +65,7 @@ class TTSModel(AIModel):
         :param credentials: The credentials required to access the TTS model.
         :return: A list of voices supported by the TTS model.
         """
-        plugin_model_manager = PluginModelManager()
+        plugin_model_manager = PluginModelClient()
         return plugin_model_manager.get_tts_model_voices(
             tenant_id=self.tenant_id,
             user_id="unknown",

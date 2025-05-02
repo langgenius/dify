@@ -1,9 +1,10 @@
 import re
 
+from flask import request
+from flask_restful import Resource  # type: ignore
+
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
-from flask import Blueprint, request
-from flask_restful import Api, Resource  # type: ignore
 from models.model import App, EndUser
 from services.end_user_service import EndUserService
 

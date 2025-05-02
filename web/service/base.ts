@@ -1,6 +1,7 @@
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
+import { basePath } from '@/utils/var'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -8,6 +9,9 @@ import type {
   IterationFinishedResponse,
   IterationNextResponse,
   IterationStartedResponse,
+  LoopFinishedResponse,
+  LoopNextResponse,
+  LoopStartedResponse,
   NodeFinishedResponse,
   NodeStartedResponse,
   ParallelBranchFinishedResponse,
@@ -54,6 +58,9 @@ export type IOnTextChunk = (textChunk: TextChunkResponse) => void
 export type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
 export type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
 export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
+export type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
+export type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
+export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
 export type IOtherOptions = {
@@ -86,6 +93,9 @@ export type IOtherOptions = {
   onTTSChunk?: IOnTTSChunk
   onTTSEnd?: IOnTTSEnd
   onTextReplace?: IOnTextReplace
+  onLoopStart?: IOnLoopStarted
+  onLoopNext?: IOnLoopNext
+  onLoopFinish?: IOnLoopFinished
   onAgentLog?: IOnAgentLog
 }
 
@@ -125,6 +135,9 @@ const handleStream = (
   onIterationStart?: IOnIterationStarted,
   onIterationNext?: IOnIterationNext,
   onIterationFinish?: IOnIterationFinished,
+  onLoopStart?: IOnLoopStarted,
+  onLoopNext?: IOnLoopNext,
+  onLoopFinish?: IOnLoopFinished,
   onNodeRetry?: IOnNodeRetry,
   onParallelBranchStarted?: IOnParallelBranchStarted,
   onParallelBranchFinished?: IOnParallelBranchFinished,
@@ -157,7 +170,7 @@ const handleStream = (
             try {
               bufferObj = JSON.parse(message.substring(6)) as Record<string, any>// remove data: and parse as json
             }
-            catch (e) {
+            catch {
               // mute handle message cut off
               onData('', isFirstMessage, {
                 conversationId: bufferObj?.conversation_id,
@@ -218,6 +231,15 @@ const handleStream = (
             else if (bufferObj.event === 'iteration_completed') {
               onIterationFinish?.(bufferObj as IterationFinishedResponse)
             }
+            else if (bufferObj.event === 'loop_started') {
+              onLoopStart?.(bufferObj as LoopStartedResponse)
+            }
+            else if (bufferObj.event === 'loop_next') {
+              onLoopNext?.(bufferObj as LoopNextResponse)
+            }
+            else if (bufferObj.event === 'loop_completed') {
+              onLoopFinish?.(bufferObj as LoopFinishedResponse)
+            }
             else if (bufferObj.event === 'node_retry') {
               onNodeRetry?.(bufferObj as NodeFinishedResponse)
             }
@@ -265,9 +287,9 @@ const handleStream = (
 
 const baseFetch = base
 
-export const upload = (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
+export const upload = async (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const token = getAccessToken(isPublicAPI)
+  const token = await getAccessToken(isPublicAPI)
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
@@ -302,7 +324,7 @@ export const upload = (options: any, isPublicAPI?: boolean, url?: string, search
   })
 }
 
-export const ssePost = (
+export const ssePost = async (
   url: string,
   fetchOptions: FetchOptionType,
   otherOptions: IOtherOptions,
@@ -332,6 +354,9 @@ export const ssePost = (
     onAgentLog,
     onError,
     getAbortController,
+    onLoopStart,
+    onLoopNext,
+    onLoopFinish,
   } = otherOptions
   const abortController = new AbortController()
 
@@ -360,12 +385,12 @@ export const ssePost = (
   if (body)
     options.body = JSON.stringify(body)
 
-  const accessToken = getAccessToken(isPublicAPI)
-  options.headers!.set('Authorization', `Bearer ${accessToken}`)
+  const accessToken = await getAccessToken(isPublicAPI)
+    ; (options.headers as Headers).set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
-      if (!/^(2|3)\d{2}$/.test(String(res.status))) {
+      if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
             ssePost(url, fetchOptions, otherOptions)
@@ -400,7 +425,31 @@ export const ssePost = (
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onNodeRetry, onParallelBranchStarted, onParallelBranchFinished, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace, onAgentLog)
+      },
+      onCompleted,
+      onThought,
+      onMessageEnd,
+      onMessageReplace,
+      onFile,
+      onWorkflowStarted,
+      onWorkflowFinished,
+      onNodeStarted,
+      onNodeFinished,
+      onIterationStart,
+      onIterationNext,
+      onIterationFinish,
+      onLoopStart,
+      onLoopNext,
+      onLoopFinish,
+      onNodeRetry,
+      onParallelBranchStarted,
+      onParallelBranchFinished,
+      onTextChunk,
+      onTTSChunk,
+      onTTSEnd,
+      onTextReplace,
+      onAgentLog,
+      )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })
@@ -418,7 +467,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
     const errResp: Response = err as any
     if (errResp.status === 401) {
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${globalThis.location.origin}/signin`
+      const loginUrl = `${globalThis.location.origin}${basePath}/signin`
       if (parseErr) {
         globalThis.location.href = loginUrl
         return Promise.reject(err)
@@ -450,11 +499,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'not_init_validated' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}/init`
+        globalThis.location.href = `${globalThis.location.origin}${basePath}/init`
         return Promise.reject(err)
       }
       if (code === 'not_setup' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}/install`
+        globalThis.location.href = `${globalThis.location.origin}${basePath}/install`
         return Promise.reject(err)
       }
 
@@ -462,7 +511,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrRelogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
-      if (location.pathname !== '/signin' || !IS_CE_EDITION) {
+      if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
         globalThis.location.href = loginUrl
         return Promise.reject(err)
       }

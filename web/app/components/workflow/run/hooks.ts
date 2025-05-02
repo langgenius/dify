@@ -7,6 +7,8 @@ import { useBoolean } from 'ahooks'
 import type {
   AgentLogItemWithChildren,
   IterationDurationMap,
+  LoopDurationMap,
+  LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
 
@@ -32,6 +34,20 @@ export const useLogs = () => {
     setIterationResultList(detail)
     setIterationResultDurationMap(iterDurationMap)
   }, [setShowIteratingDetailTrue, setIterationResultList, setIterationResultDurationMap])
+
+  const [showLoopingDetail, {
+    setTrue: setShowLoopingDetailTrue,
+    setFalse: setShowLoopingDetailFalse,
+  }] = useBoolean(false)
+  const [loopResultList, setLoopResultList] = useState<NodeTracing[][]>([])
+  const [loopResultDurationMap, setLoopResultDurationMap] = useState<LoopDurationMap>({})
+  const [loopResultVariableMap, setLoopResultVariableMap] = useState<Record<string, any>>({})
+  const handleShowLoopResultList = useCallback((detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => {
+    setShowLoopingDetailTrue()
+    setLoopResultList(detail)
+    setLoopResultDurationMap(loopDurationMap)
+    setLoopResultVariableMap(loopVariableMap)
+  }, [setShowLoopingDetailTrue, setLoopResultList, setLoopResultDurationMap])
 
   const [agentOrToolLogItemStack, setAgentOrToolLogItemStack] = useState<AgentLogItemWithChildren[]>([])
   const agentOrToolLogItemStackRef = useRef(agentOrToolLogItemStack)
@@ -64,7 +80,7 @@ export const useLogs = () => {
   }, [setAgentOrToolLogItemStack, setAgentOrToolLogListMap])
 
   return {
-    showSpecialResultPanel: showRetryDetail || showIteratingDetail || !!agentOrToolLogItemStack.length,
+    showSpecialResultPanel: showRetryDetail || showIteratingDetail || showLoopingDetail || !!agentOrToolLogItemStack.length,
     showRetryDetail,
     setShowRetryDetailTrue,
     setShowRetryDetailFalse,
@@ -80,6 +96,17 @@ export const useLogs = () => {
     iterationResultDurationMap,
     setIterationResultDurationMap,
     handleShowIterationResultList,
+
+    showLoopingDetail,
+    setShowLoopingDetailTrue,
+    setShowLoopingDetailFalse,
+    loopResultList,
+    setLoopResultList,
+    loopResultDurationMap,
+    setLoopResultDurationMap,
+    loopResultVariableMap,
+    setLoopResultVariableMap,
+    handleShowLoopResultList,
 
     agentOrToolLogItemStack,
     agentOrToolLogListMap,

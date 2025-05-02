@@ -12,8 +12,9 @@ import {
 } from 'use-context-selector'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import type { FilterState } from './filter-management'
-import { useTranslation } from 'react-i18next'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
+import { noop } from 'lodash-es'
+import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 
 export type PluginPageContextValue = {
   containerRef: React.RefObject<HTMLDivElement>
@@ -29,15 +30,15 @@ export type PluginPageContextValue = {
 export const PluginPageContext = createContext<PluginPageContextValue>({
   containerRef: { current: null },
   currentPluginID: undefined,
-  setCurrentPluginID: () => { },
+  setCurrentPluginID: noop,
   filters: {
     categories: [],
     tags: [],
     searchQuery: '',
   },
-  setFilters: () => { },
+  setFilters: noop,
   activeTab: '',
-  setActiveTab: () => { },
+  setActiveTab: noop,
   options: [],
 })
 
@@ -52,7 +53,6 @@ export function usePluginPageContext(selector: (value: PluginPageContextValue) =
 export const PluginPageContextProvider = ({
   children,
 }: PluginPageContextProviderProps) => {
-  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
@@ -62,16 +62,10 @@ export const PluginPageContextProvider = ({
   const [currentPluginID, setCurrentPluginID] = useState<string | undefined>()
 
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const tabs = usePluginPageTabs()
   const options = useMemo(() => {
-    return [
-      { value: 'plugins', text: t('common.menus.plugins') },
-      ...(
-        enable_marketplace
-          ? [{ value: 'discover', text: t('common.menus.exploreMarketplace') }]
-          : []
-      ),
-    ]
-  }, [t, enable_marketplace])
+    return enable_marketplace ? tabs : tabs.filter(tab => tab.value !== PLUGIN_PAGE_TABS_MAP.marketplace)
+  }, [tabs, enable_marketplace])
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: options[0].value,
   })

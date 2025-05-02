@@ -1,16 +1,17 @@
+from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
+from werkzeug.exceptions import NotFound
+
 import services
 from controllers.admin import api
 from controllers.admin.students.error import NotChatAppError
 from controllers.admin.wraps import validate_admin_token_and_extract_info
 from fields.conversation_fields import message_file_fields
 from fields.raws import FilesContainedField
-from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
 from libs.helper import TimestampField, uuid_value
 from models.model import Account, App, AppMode
 from services.end_user_service import EndUserService
 from services.message_service import MessageService
-from werkzeug.exceptions import NotFound
 
 
 class MessageListApi(Resource):

@@ -100,15 +100,15 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const [showConfirmOverwrite, setShowConfirmOverwrite] = React.useState(false)
 
   const renderLoading = (
-    <div className='w-0 grow flex flex-col items-center justify-center h-full space-y-3'>
+    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3'>
       <Loading />
       <div className='text-[13px] text-gray-400'>{t('appDebug.codegen.loading')}</div>
     </div>
   )
   const renderNoData = (
-    <div className='w-0 grow flex flex-col items-center px-8 justify-center h-full space-y-3'>
-      <Generator className='w-14 h-14 text-gray-300' />
-      <div className='leading-5 text-center text-[13px] font-normal text-gray-400'>
+    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8'>
+      <Generator className='h-14 w-14 text-gray-300' />
+      <div className='text-center text-[13px] font-normal leading-5 text-gray-400'>
         <div>{t('appDebug.codegen.noDataLine1')}</div>
         <div>{t('appDebug.codegen.noDataLine2')}</div>
       </div>
@@ -119,18 +119,18 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='!p-0 min-w-[1140px]'
+      className='min-w-[1140px] !p-0'
       closable
     >
       <div className='relative flex h-[680px] flex-wrap'>
-        <div className='w-[570px] shrink-0 p-8 h-full overflow-y-auto border-r border-gray-100'>
+        <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-gray-100 p-8'>
           <div className='mb-8'>
-            <div className={'leading-[28px] text-lg font-bold'}>{t('appDebug.codegen.title')}</div>
+            <div className={'text-lg font-bold leading-[28px]'}>{t('appDebug.codegen.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-gray-500'>{t('appDebug.codegen.description')}</div>
           </div>
           <div className='flex items-center'>
             <ModelIcon
-              className='shrink-0 mr-1.5'
+              className='mr-1.5 shrink-0'
               provider={currentProvider}
               modelName={currentModel?.model}
             />
@@ -143,9 +143,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
           <div className='mt-6'>
             <div className='text-[0px]'>
-              <div className='mb-2 leading-5 text-sm font-medium text-gray-900'>{t('appDebug.codegen.instruction')}</div>
+              <div className='mb-2 text-sm font-medium leading-5 text-gray-900'>{t('appDebug.codegen.instruction')}</div>
               <textarea
-                className="w-full h-[200px] overflow-y-auto px-3 py-2 text-sm bg-gray-50 rounded-lg"
+                className="h-[200px] w-full overflow-y-auto rounded-lg bg-gray-50 px-3 py-2 text-sm"
                 placeholder={t('appDebug.codegen.instructionPlaceholder') || ''}
                 value={instruction}
                 onChange={e => setInstruction(e.target.value)}
@@ -159,7 +159,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                 onClick={onGenerate}
                 disabled={isLoading}
               >
-                <Generator className='w-4 h-4 text-white' />
+                <Generator className='h-4 w-4 text-white' />
                 <span className='text-xs font-semibold text-white'>{t('appDebug.codegen.generate')}</span>
               </Button>
             </div>
@@ -168,8 +168,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         {isLoading && renderLoading}
         {!isLoading && !res && renderNoData}
         {(!isLoading && res) && (
-          <div className='w-0 grow p-6 pb-0 h-full'>
-            <div className='shrink-0 mb-3 leading-[160%] text-base font-semibold text-gray-800'>{t('appDebug.codegen.resTitle')}</div>
+          <div className='h-full w-0 grow p-6 pb-0'>
+            <div className='mb-3 shrink-0 text-base font-semibold leading-[160%] text-gray-800'>{t('appDebug.codegen.resTitle')}</div>
             <div className={cn('max-h-[555px] overflow-y-auto', !isInLLMNode && 'pb-2')}>
               <ConfigPrompt
                 mode={mode}
@@ -186,7 +186,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                   {res?.code && (
                     <div className='mt-4'>
                       <h3 className='mb-2 text-sm font-medium text-gray-900'>{t('appDebug.codegen.generatedCode')}</h3>
-                      <pre className='p-4 bg-gray-50 rounded-lg overflow-x-auto'>
+                      <pre className='overflow-x-auto rounded-lg bg-gray-50 p-4'>
                         <code className={`language-${res.language}`}>
                           {res.code}
                         </code>
@@ -194,7 +194,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                     </div>
                   )}
                   {res?.error && (
-                    <div className='mt-4 p-4 bg-red-50 rounded-lg'>
+                    <div className='mt-4 rounded-lg bg-red-50 p-4'>
                       <p className='text-sm text-red-600'>{res.error}</p>
                     </div>
                   )}
@@ -202,7 +202,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
               )}
             </div>
 
-            <div className='flex justify-end py-4 bg-white'>
+            <div className='flex justify-end bg-white py-4'>
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
               <Button variant='primary' className='ml-2' onClick={() => {
                 setShowConfirmOverwrite(true)

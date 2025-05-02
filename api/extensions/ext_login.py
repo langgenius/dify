@@ -1,13 +1,14 @@
 import json
 
-import contexts
 import flask_login  # type: ignore
-from dify_app import DifyApp
 from flask import Response, request
 from flask_login import user_loaded_from_request, user_logged_in
+from werkzeug.exceptions import Unauthorized
+
+import contexts
+from dify_app import DifyApp
 from libs.passport import PassportService
 from services.account_service import AccountService
-from werkzeug.exceptions import Unauthorized
 
 login_manager = flask_login.LoginManager()
 

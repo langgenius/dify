@@ -1,3 +1,8 @@
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
+from werkzeug.exceptions import NotFound
+
 import services
 from controllers.admin import api
 from controllers.admin.students.error import NotChatAppError
@@ -5,14 +10,10 @@ from controllers.admin.wraps import validate_admin_token_and_extract_info
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
 from libs.helper import uuid_value
 from models.model import Account, App, AppMode
 from services.conversation_service import ConversationService
 from services.end_user_service import EndUserService
-from sqlalchemy.orm import Session  # type: ignore
-from werkzeug.exceptions import NotFound
 
 
 class StudentConversation(Resource):

@@ -17,6 +17,9 @@ jobs:
   test:
     name: API Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         python-version:
@@ -27,35 +30,44 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Poetry and Python ${{ matrix.python-version }}
-        uses: ./.github/actions/setup-poetry
+      - name: Setup UV and Python
+        uses: ./.github/actions/setup-uv
         with:
           python-version: ${{ matrix.python-version }}
-          poetry-lockfile: api/poetry.lock
+          uv-lockfile: api/uv.lock
 
-      - name: Check Poetry lockfile
-        run: |
-          poetry check -C api --lock
-          poetry show -C api
+      - name: Check UV lockfile
+        run: uv lock --project api --check
 
       - name: Install dependencies
-        run: poetry install -C api --with dev
-
-      - name: Check dependencies in pyproject.toml
-        run: poetry run -P api bash dev/pytest/pytest_artifacts.sh
+        run: uv sync --project api --dev
 
       - name: Run Unit tests
-        run: poetry run -P api bash dev/pytest/pytest_unit_tests.sh
+        run: |
+          uv run --project api bash dev/pytest/pytest_unit_tests.sh
+          # Extract coverage percentage and create a summary
+          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
+
+          # Create a detailed coverage summary
+          echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
+          echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          uv run --project api coverage report >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Run dify config tests
-        run: poetry run -P api python dev/pytest/pytest_config_tests.py
+        run: uv run --project api dev/pytest/pytest_config_tests.py
 
-      - name: Run mypy
-        run: |
-          poetry run -C api python -m mypy --install-types --non-interactive .
+      - name: MyPy Cache
+        uses: actions/cache@v4
+        with:
+          path: api/.mypy_cache
+          key: mypy-${{ matrix.python-version }}-${{ runner.os }}-${{ hashFiles('api/uv.lock') }}
+
+      - name: Run MyPy Checks
+        run: dev/mypy-check
 
       - name: Set up dotenvs
         run: |
@@ -75,4 +87,7 @@ jobs:
             ssrf_proxy
 
       - name: Run Workflow
-        run: poetry run -P api bash dev/pytest/pytest_workflow.sh
+        run: uv run --project api bash dev/pytest/pytest_workflow.sh
+
+      - name: Run Tool
+        run: uv run --project api bash dev/pytest/pytest_tools.sh

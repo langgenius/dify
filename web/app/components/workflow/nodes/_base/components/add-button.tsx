@@ -7,7 +7,7 @@ import {
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
-interface Props {
+type Props = {
   className?: string
   text: string
   onClick: () => void
@@ -25,7 +25,7 @@ const AddButton: FC<Props> = ({
       size='medium'
       onClick={onClick}
     >
-      <RiAddLine className='mr-1 w-3.5 h-3.5' />
+      <RiAddLine className='mr-1 h-3.5 w-3.5' />
       <div>{text}</div>
     </Button>
   )

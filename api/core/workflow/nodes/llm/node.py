@@ -1,8 +1,12 @@
+import base64
+import io
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
+
+import json_repair
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -19,15 +23,21 @@ from core.model_runtime.entities import (
     PromptMessageContentType,
     TextPromptMessageContent,
 )
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
-    PromptMessageContent,
+    PromptMessageContentUnionTypes,
     PromptMessageRole,
     SystemPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
+from core.model_runtime.entities.model_entities import (
+    AIModelEntity,
+    ModelFeature,
+    ModelPropertyKey,
+    ModelType,
+    ParameterRule,
+)
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ModelProviderID
@@ -57,6 +67,12 @@ from core.workflow.nodes.event import (
     RunRetrieverResourceEvent,
     RunStreamChunkEvent,
 )
+from core.workflow.utils.structured_output.entities import (
+    ResponseFormat,
+    SpecialModelType,
+    SupportStructuredOutputStatus,
+)
+from core.workflow.utils.structured_output.prompt import STRUCTURED_OUTPUT_PROMPT
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from models.model import Conversation
@@ -80,9 +96,13 @@ from .exc import (
     TemplateTypeNotSupportError,
     VariableNotFoundError,
 )
+from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
+    from core.workflow.graph_engine.entities.graph import Graph
+    from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
+    from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +111,55 @@ class LLMNode(BaseNode[LLMNodeData]):
     _node_data_cls = LLMNodeData
     _node_type = NodeType.LLM
 
+    # Instance attributes specific to LLMNode.
+    # Output variable for file
+    _file_outputs: list["File"]
+
+    _llm_file_saver: LLMFileSaver
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph: "Graph",
+        graph_runtime_state: "GraphRuntimeState",
+        previous_node_id: Optional[str] = None,
+        thread_pool_id: Optional[str] = None,
+        *,
+        llm_file_saver: LLMFileSaver | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph=graph,
+            graph_runtime_state=graph_runtime_state,
+            previous_node_id=previous_node_id,
+            thread_pool_id=thread_pool_id,
+        )
+        # LLM file outputs, used for MultiModal outputs.
+        self._file_outputs: list[File] = []
+
+        if llm_file_saver is None:
+            llm_file_saver = FileSaverImpl(
+                user_id=graph_init_params.user_id,
+                tenant_id=graph_init_params.tenant_id,
+            )
+        self._llm_file_saver = llm_file_saver
+
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
+        def process_structured_output(text: str) -> Optional[dict[str, Any] | list[Any]]:
+            """Process structured output if enabled"""
+            if not self.node_data.structured_output_enabled or not self.node_data.structured_output:
+                return None
+            return self._parse_structured_output(text)
+
         node_inputs: Optional[dict[str, Any]] = None
         process_data = None
+        result_text = ""
+        usage = LLMUsage.empty_usage()
+        finish_reason = None
 
         try:
             # init messages template
@@ -127,7 +193,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                 if isinstance(event, RunRetrieverResourceEvent):
                     context = event.context
                     yield event
-
             if context:
                 node_inputs["#context#"] = context
 
@@ -178,9 +243,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                 stop=stop,
             )
 
-            result_text = ""
-            usage = LLMUsage.empty_usage()
-            finish_reason = None
             for event in generator:
                 if isinstance(event, RunStreamChunkEvent):
                     yield event
@@ -191,6 +253,27 @@ class LLMNode(BaseNode[LLMNodeData]):
                     # deduct quota
                     self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
+            outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
+            structured_output = process_structured_output(result_text)
+            if structured_output:
+                outputs["structured_output"] = structured_output
+            if self._file_outputs is not None:
+                outputs["files"] = self._file_outputs
+
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    inputs=node_inputs,
+                    process_data=process_data,
+                    outputs=outputs,
+                    metadata={
+                        NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                        NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
+                        NodeRunMetadataKey.CURRENCY: usage.currency,
+                    },
+                    llm_usage=usage,
+                )
+            )
         except LLMNodeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -202,6 +285,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 )
             )
         except Exception as e:
+            logger.exception("error while executing llm node")
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -210,23 +294,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                     process_data=process_data,
                 )
             )
-
-        outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
-
-        yield RunCompletedEvent(
-            run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs=node_inputs,
-                process_data=process_data,
-                outputs=outputs,
-                metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                    NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                    NodeRunMetadataKey.CURRENCY: usage.currency,
-                },
-                llm_usage=usage,
-            )
-        )
 
     def _invoke_llm(
         self,
@@ -247,55 +314,45 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         return self._handle_invoke_result(invoke_result=invoke_result)
 
-    def _handle_invoke_result(self, invoke_result: LLMResult | Generator) -> Generator[NodeEvent, None, None]:
+    def _handle_invoke_result(
+        self, invoke_result: LLMResult | Generator[LLMResultChunk, None, None]
+    ) -> Generator[NodeEvent, None, None]:
+        # For blocking mode
         if isinstance(invoke_result, LLMResult):
-            content = invoke_result.message.content
-            if content is None:
-                message_text = ""
-            elif isinstance(content, str):
-                message_text = content
-            elif isinstance(content, list):
-                # Assuming the list contains PromptMessageContent objects with a "data" attribute
-                message_text = "".join(
-                    item.data if hasattr(item, "data") and isinstance(item.data, str) else str(item) for item in content
-                )
-            else:
-                message_text = str(content)
-
-            yield ModelInvokeCompletedEvent(
-                text=message_text,
-                usage=invoke_result.usage,
-                finish_reason=None,
-            )
+            event = self._handle_blocking_result(invoke_result=invoke_result)
+            yield event
             return
 
-        model = None
+        # For streaming mode
+        model = ""
         prompt_messages: list[PromptMessage] = []
-        full_text = ""
-        usage = None
+
+        usage = LLMUsage.empty_usage()
         finish_reason = None
+        full_text_buffer = io.StringIO()
         for result in invoke_result:
-            text = result.delta.message.content
-            full_text += text
+            contents = result.delta.message.content
+            for text_part in self._save_multimodal_output_and_convert_result_to_markdown(contents):
+                full_text_buffer.write(text_part)
+                yield RunStreamChunkEvent(chunk_content=text_part, from_variable_selector=[self.node_id, "text"])
 
-            yield RunStreamChunkEvent(chunk_content=text, from_variable_selector=[self.node_id, "text"])
-
-            if not model:
+            # Update the whole metadata
+            if not model and result.model:
                 model = result.model
-
-            if not prompt_messages:
-                prompt_messages = result.prompt_messages
-
-            if not usage and result.delta.usage:
+            if len(prompt_messages) == 0:
+                # TODO(QuantumGhost): it seems that this update has no visable effect.
+                # What's the purpose of the line below?
+                prompt_messages = list(result.prompt_messages)
+            if usage.prompt_tokens == 0 and result.delta.usage:
                 usage = result.delta.usage
-
-            if not finish_reason and result.delta.finish_reason:
+            if finish_reason is None and result.delta.finish_reason:
                 finish_reason = result.delta.finish_reason
 
-        if not usage:
-            usage = LLMUsage.empty_usage()
+        yield ModelInvokeCompletedEvent(text=full_text_buffer.getvalue(), usage=usage, finish_reason=finish_reason)
 
-        yield ModelInvokeCompletedEvent(text=full_text, usage=usage, finish_reason=finish_reason)
+    def _image_file_to_markdown(self, file: "File", /):
+        text_chunk = f"![]({file.generate_url()})"
+        return text_chunk
 
     def _transform_chat_messages(
         self, messages: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate, /
@@ -514,7 +571,12 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         if not model_schema:
             raise ModelNotExistError(f"Model {model_name} not exist.")
-
+        support_structured_output = self._check_model_structured_output_support()
+        if support_structured_output == SupportStructuredOutputStatus.SUPPORTED:
+            completion_params = self._handle_native_json_schema(completion_params, model_schema.parameter_rules)
+        elif support_structured_output == SupportStructuredOutputStatus.UNSUPPORTED:
+            # Set appropriate response format based on model capabilities
+            self._set_response_format(completion_params, model_schema.parameter_rules)
         return model_instance, ModelConfigWithCredentialsEntity(
             provider=provider_name,
             model=model_name,
@@ -569,8 +631,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
     ) -> tuple[Sequence[PromptMessage], Optional[Sequence[str]]]:
-        # FIXME: fix the type error cause prompt_messages is type quick a few times
-        prompt_messages: list[Any] = []
+        prompt_messages: list[PromptMessage] = []
 
         if isinstance(prompt_template, list):
             # For chat model
@@ -632,12 +693,14 @@ class LLMNode(BaseNode[LLMNodeData]):
             # For issue #11247 - Check if prompt content is a string or a list
             prompt_content_type = type(prompt_content)
             if prompt_content_type == str:
+                prompt_content = str(prompt_content)
                 if "#histories#" in prompt_content:
                     prompt_content = prompt_content.replace("#histories#", memory_text)
                 else:
                     prompt_content = memory_text + "\n" + prompt_content
                 prompt_messages[0].content = prompt_content
             elif prompt_content_type == list:
+                prompt_content = prompt_content if isinstance(prompt_content, list) else []
                 for content_item in prompt_content:
                     if content_item.type == PromptMessageContentType.TEXT:
                         if "#histories#" in content_item.data:
@@ -650,9 +713,10 @@ class LLMNode(BaseNode[LLMNodeData]):
             # Add current query to the prompt message
             if sys_query:
                 if prompt_content_type == str:
-                    prompt_content = prompt_messages[0].content.replace("#sys.query#", sys_query)
+                    prompt_content = str(prompt_messages[0].content).replace("#sys.query#", sys_query)
                     prompt_messages[0].content = prompt_content
                 elif prompt_content_type == list:
+                    prompt_content = prompt_content if isinstance(prompt_content, list) else []
                     for content_item in prompt_content:
                         if content_item.type == PromptMessageContentType.TEXT:
                             content_item.data = sys_query + "\n" + content_item.data
@@ -682,7 +746,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         filtered_prompt_messages = []
         for prompt_message in prompt_messages:
             if isinstance(prompt_message.content, list):
-                prompt_message_content = []
+                prompt_message_content: list[PromptMessageContentUnionTypes] = []
                 for content_item in prompt_message.content:
                     # Skip content if features are not defined
                     if not model_config.model_schema.features:
@@ -725,9 +789,28 @@ class LLMNode(BaseNode[LLMNodeData]):
                 "No prompt found in the LLM configuration. "
                 "Please ensure a prompt is properly configured before proceeding."
             )
-
+        support_structured_output = self._check_model_structured_output_support()
+        if support_structured_output == SupportStructuredOutputStatus.UNSUPPORTED:
+            filtered_prompt_messages = self._handle_prompt_based_schema(
+                prompt_messages=filtered_prompt_messages,
+            )
         stop = model_config.stop
         return filtered_prompt_messages, stop
+
+    def _parse_structured_output(self, result_text: str) -> dict[str, Any] | list[Any]:
+        structured_output: dict[str, Any] | list[Any] = {}
+        try:
+            parsed = json.loads(result_text)
+            if not isinstance(parsed, (dict | list)):
+                raise LLMNodeError(f"Failed to parse structured output: {result_text}")
+            structured_output = parsed
+        except json.JSONDecodeError as e:
+            # if the result_text is not a valid json, try to repair it
+            parsed = json_repair.loads(result_text)
+            if not isinstance(parsed, (dict | list)):
+                raise LLMNodeError(f"Failed to parse structured output: {result_text}")
+            structured_output = parsed
+        return structured_output
 
     @classmethod
     def deduct_llm_quota(cls, tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:
@@ -927,8 +1010,241 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         return prompt_messages
 
+    def _handle_blocking_result(self, *, invoke_result: LLMResult) -> ModelInvokeCompletedEvent:
+        buffer = io.StringIO()
+        for text_part in self._save_multimodal_output_and_convert_result_to_markdown(invoke_result.message.content):
+            buffer.write(text_part)
 
-def _combine_message_content_with_role(*, contents: Sequence[PromptMessageContent], role: PromptMessageRole):
+        return ModelInvokeCompletedEvent(
+            text=buffer.getvalue(),
+            usage=invoke_result.usage,
+            finish_reason=None,
+        )
+
+    def _save_multimodal_image_output(self, content: ImagePromptMessageContent) -> "File":
+        """_save_multimodal_output saves multi-modal contents generated by LLM plugins.
+
+        There are two kinds of multimodal outputs:
+
+          - Inlined data encoded in base64, which would be saved to storage directly.
+          - Remote files referenced by an url, which would be downloaded and then saved to storage.
+
+        Currently, only image files are supported.
+        """
+        # Inject the saver somehow...
+        _saver = self._llm_file_saver
+
+        # If this
+        if content.url != "":
+            saved_file = _saver.save_remote_url(content.url, FileType.IMAGE)
+        else:
+            saved_file = _saver.save_binary_string(
+                data=base64.b64decode(content.base64_data),
+                mime_type=content.mime_type,
+                file_type=FileType.IMAGE,
+            )
+        self._file_outputs.append(saved_file)
+        return saved_file
+
+    def _handle_native_json_schema(self, model_parameters: dict, rules: list[ParameterRule]) -> dict:
+        """
+        Handle structured output for models with native JSON schema support.
+
+        :param model_parameters: Model parameters to update
+        :param rules: Model parameter rules
+        :return: Updated model parameters with JSON schema configuration
+        """
+        # Process schema according to model requirements
+        schema = self._fetch_structured_output_schema()
+        schema_json = self._prepare_schema_for_model(schema)
+
+        # Set JSON schema in parameters
+        model_parameters["json_schema"] = json.dumps(schema_json, ensure_ascii=False)
+
+        # Set appropriate response format if required by the model
+        for rule in rules:
+            if rule.name == "response_format" and ResponseFormat.JSON_SCHEMA.value in rule.options:
+                model_parameters["response_format"] = ResponseFormat.JSON_SCHEMA.value
+
+        return model_parameters
+
+    def _handle_prompt_based_schema(self, prompt_messages: Sequence[PromptMessage]) -> list[PromptMessage]:
+        """
+        Handle structured output for models without native JSON schema support.
+        This function modifies the prompt messages to include schema-based output requirements.
+
+        Args:
+            prompt_messages: Original sequence of prompt messages
+
+        Returns:
+            list[PromptMessage]: Updated prompt messages with structured output requirements
+        """
+        # Convert schema to string format
+        schema_str = json.dumps(self._fetch_structured_output_schema(), ensure_ascii=False)
+
+        # Find existing system prompt with schema placeholder
+        system_prompt = next(
+            (prompt for prompt in prompt_messages if isinstance(prompt, SystemPromptMessage)),
+            None,
+        )
+        structured_output_prompt = STRUCTURED_OUTPUT_PROMPT.replace("{{schema}}", schema_str)
+        # Prepare system prompt content
+        system_prompt_content = (
+            structured_output_prompt + "\n\n" + system_prompt.content
+            if system_prompt and isinstance(system_prompt.content, str)
+            else structured_output_prompt
+        )
+        system_prompt = SystemPromptMessage(content=system_prompt_content)
+
+        # Extract content from the last user message
+
+        filtered_prompts = [prompt for prompt in prompt_messages if not isinstance(prompt, SystemPromptMessage)]
+        updated_prompt = [system_prompt] + filtered_prompts
+
+        return updated_prompt
+
+    def _set_response_format(self, model_parameters: dict, rules: list) -> None:
+        """
+        Set the appropriate response format parameter based on model rules.
+
+        :param model_parameters: Model parameters to update
+        :param rules: Model parameter rules
+        """
+        for rule in rules:
+            if rule.name == "response_format":
+                if ResponseFormat.JSON.value in rule.options:
+                    model_parameters["response_format"] = ResponseFormat.JSON.value
+                elif ResponseFormat.JSON_OBJECT.value in rule.options:
+                    model_parameters["response_format"] = ResponseFormat.JSON_OBJECT.value
+
+    def _prepare_schema_for_model(self, schema: dict) -> dict:
+        """
+        Prepare JSON schema based on model requirements.
+
+        Different models have different requirements for JSON schema formatting.
+        This function handles these differences.
+
+        :param schema: The original JSON schema
+        :return: Processed schema compatible with the current model
+        """
+
+        # Deep copy to avoid modifying the original schema
+        processed_schema = schema.copy()
+
+        # Convert boolean types to string types (common requirement)
+        convert_boolean_to_string(processed_schema)
+
+        # Apply model-specific transformations
+        if SpecialModelType.GEMINI in self.node_data.model.name:
+            remove_additional_properties(processed_schema)
+            return processed_schema
+        elif SpecialModelType.OLLAMA in self.node_data.model.provider:
+            return processed_schema
+        else:
+            # Default format with name field
+            return {"schema": processed_schema, "name": "llm_response"}
+
+    def _fetch_model_schema(self, provider: str) -> AIModelEntity | None:
+        """
+        Fetch model schema
+        """
+        model_name = self.node_data.model.name
+        model_manager = ModelManager()
+        model_instance = model_manager.get_model_instance(
+            tenant_id=self.tenant_id, model_type=ModelType.LLM, provider=provider, model=model_name
+        )
+        model_type_instance = model_instance.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+        model_credentials = model_instance.credentials
+        model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
+        return model_schema
+
+    def _fetch_structured_output_schema(self) -> dict[str, Any]:
+        """
+        Fetch the structured output schema from the node data.
+
+        Returns:
+            dict[str, Any]: The structured output schema
+        """
+        if not self.node_data.structured_output:
+            raise LLMNodeError("Please provide a valid structured output schema")
+        structured_output_schema = json.dumps(self.node_data.structured_output.get("schema", {}), ensure_ascii=False)
+        if not structured_output_schema:
+            raise LLMNodeError("Please provide a valid structured output schema")
+
+        try:
+            schema = json.loads(structured_output_schema)
+            if not isinstance(schema, dict):
+                raise LLMNodeError("structured_output_schema must be a JSON object")
+            return schema
+        except json.JSONDecodeError:
+            raise LLMNodeError("structured_output_schema is not valid JSON format")
+
+    def _check_model_structured_output_support(self) -> SupportStructuredOutputStatus:
+        """
+        Check if the current model supports structured output.
+
+        Returns:
+            SupportStructuredOutput: The support status of structured output
+        """
+        # Early return if structured output is disabled
+        if (
+            not isinstance(self.node_data, LLMNodeData)
+            or not self.node_data.structured_output_enabled
+            or not self.node_data.structured_output
+        ):
+            return SupportStructuredOutputStatus.DISABLED
+        # Get model schema and check if it exists
+        model_schema = self._fetch_model_schema(self.node_data.model.provider)
+        if not model_schema:
+            return SupportStructuredOutputStatus.DISABLED
+
+        # Check if model supports structured output feature
+        return (
+            SupportStructuredOutputStatus.SUPPORTED
+            if bool(model_schema.features and ModelFeature.STRUCTURED_OUTPUT in model_schema.features)
+            else SupportStructuredOutputStatus.UNSUPPORTED
+        )
+
+    def _save_multimodal_output_and_convert_result_to_markdown(
+        self,
+        contents: str | list[PromptMessageContentUnionTypes] | None,
+    ) -> Generator[str, None, None]:
+        """Convert intermediate prompt messages into strings and yield them to the caller.
+
+        If the messages contain non-textual content (e.g., multimedia like images or videos),
+        it will be saved separately, and the corresponding Markdown representation will
+        be yielded to the caller.
+        """
+
+        # NOTE(QuantumGhost): This function should yield results to the caller immediately
+        # whenever new content or partial content is available. Avoid any intermediate buffering
+        # of results. Additionally, do not yield empty strings; instead, yield from an empty list
+        # if necessary.
+        if contents is None:
+            yield from []
+            return
+        if isinstance(contents, str):
+            yield contents
+        elif isinstance(contents, list):
+            for item in contents:
+                if isinstance(item, TextPromptMessageContent):
+                    yield item.data
+                elif isinstance(item, ImagePromptMessageContent):
+                    file = self._save_multimodal_image_output(item)
+                    self._file_outputs.append(file)
+                    yield self._image_file_to_markdown(file)
+                else:
+                    logger.warning("unknown item type encountered, type=%s", type(item))
+                    yield str(item)
+        else:
+            logger.warning("unknown contents type encountered, type=%s", type(contents))
+            yield str(contents)
+
+
+def _combine_message_content_with_role(
+    *, contents: Optional[str | list[PromptMessageContentUnionTypes]] = None, role: PromptMessageRole
+):
     match role:
         case PromptMessageRole.USER:
             return UserPromptMessage(content=contents)
@@ -1065,3 +1381,49 @@ def _handle_completion_template(
     )
     prompt_messages.append(prompt_message)
     return prompt_messages
+
+
+def remove_additional_properties(schema: dict) -> None:
+    """
+    Remove additionalProperties fields from JSON schema.
+    Used for models like Gemini that don't support this property.
+
+    :param schema: JSON schema to modify in-place
+    """
+    if not isinstance(schema, dict):
+        return
+
+    # Remove additionalProperties at current level
+    schema.pop("additionalProperties", None)
+
+    # Process nested structures recursively
+    for value in schema.values():
+        if isinstance(value, dict):
+            remove_additional_properties(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    remove_additional_properties(item)
+
+
+def convert_boolean_to_string(schema: dict) -> None:
+    """
+    Convert boolean type specifications to string in JSON schema.
+
+    :param schema: JSON schema to modify in-place
+    """
+    if not isinstance(schema, dict):
+        return
+
+    # Check for boolean type at current level
+    if schema.get("type") == "boolean":
+        schema["type"] = "string"
+
+    # Process nested dictionaries and lists recursively
+    for value in schema.values():
+        if isinstance(value, dict):
+            convert_boolean_to_string(value)
+        elif isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    convert_boolean_to_string(item)

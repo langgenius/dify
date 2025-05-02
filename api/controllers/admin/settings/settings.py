@@ -1,6 +1,6 @@
+from flask_restful import Resource  # type: ignore
+
 from controllers.admin import api
-from flask import Blueprint
-from flask_restful import Api, Resource  # type: ignore
 
 
 class WatermarkSettings(Resource):

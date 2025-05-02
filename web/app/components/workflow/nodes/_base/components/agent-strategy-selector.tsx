@@ -18,9 +18,12 @@ import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useStrategyInfo } from '../../agent/use-config'
 import { SwitchPluginVersion } from './switch-plugin-version'
-import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
+
+const DEFAULT_TAGS: ListProps['tags'] = []
 
 const NotFoundWarn = (props: {
   title: ReactNode,
@@ -32,14 +35,14 @@ const NotFoundWarn = (props: {
   return <Tooltip
     popupContent={
       <div className='space-y-1 text-xs'>
-        <h3 className='text-text-primary font-semibold'>
+        <h3 className='font-semibold text-text-primary'>
           {title}
         </h3>
-        <p className='text-text-secondary tracking-tight'>
+        <p className='tracking-tight text-text-secondary'>
           {description}
         </p>
         <p>
-          <Link href={'/plugins'} className='text-text-accent tracking-tight'>
+          <Link href={'/plugins'} className='tracking-tight text-text-accent'>
             {t('workflow.nodes.agent.linkToPlugin')}
           </Link>
         </p>
@@ -48,7 +51,7 @@ const NotFoundWarn = (props: {
     needsDelay
   >
     <div>
-      <RiErrorWarningFill className='text-text-destructive size-4' />
+      <RiErrorWarningFill className='size-4 text-text-destructive' />
     </div>
   </Tooltip>
 }
@@ -138,16 +141,16 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query])
 
-  const pluginRef = useRef(null)
+  const pluginRef = useRef<ListRef>(null)
 
   return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
     <PortalToFollowElemTrigger className='w-full'>
       <div
-        className='h-8 p-1 gap-0.5 flex items-center rounded-lg bg-components-input-bg-normal w-full hover:bg-state-base-hover-alt select-none'
+        className='flex h-8 w-full select-none items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 hover:bg-state-base-hover-alt'
         onClick={() => setOpen(o => !o)}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {icon && <div className='flex items-center justify-center w-6 h-6'><img
+        { }
+        {icon && <div className='flex h-6 w-6 items-center justify-center'><img
           src={icon}
           width={20}
           height={20}
@@ -191,12 +194,12 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
       </div>
     </PortalToFollowElemTrigger>
     <PortalToFollowElemContent className='z-10'>
-      <div className='bg-components-panel-bg-blur border-components-panel-border border-[0.5px] rounded-md shadow overflow-hidden w-[388px]'>
-        <header className='p-2 gap-1 flex'>
+      <div className='w-[388px] overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow'>
+        <header className='flex gap-1 p-2'>
           <SearchInput placeholder={t('workflow.nodes.agent.strategy.searchPlaceholder')} value={query} onChange={setQuery} className={'w-full'} />
           <ViewTypeSelect viewType={viewType} onChange={setViewType} />
         </header>
-        <main className="md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px] relative overflow-hidden flex flex-col w-full" ref={wrapElemRef}>
+        <main className="relative flex w-full flex-col overflow-hidden md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px]" ref={wrapElemRef}>
           <Tools
             tools={filteredTools}
             viewType={viewType}
@@ -209,14 +212,15 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 plugin_unique_identifier: tool!.provider_id,
               })
               setOpen(false)
-            } }
-            className='max-w-none max-h-full h-full overflow-y-auto'
+            }}
+            className='h-full max-h-full max-w-none overflow-y-auto'
             indexBarClassName='top-0 xl:top-36' showWorkflowEmpty={false} hasSearchText={false} />
           <PluginList
+            ref={pluginRef}
             wrapElemRef={wrapElemRef}
-            list={notInstalledPlugins as any} ref={pluginRef}
+            list={notInstalledPlugins}
             searchText={query}
-            tags={[]}
+            tags={DEFAULT_TAGS}
             disableMaxWidth
           />
         </main>

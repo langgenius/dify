@@ -92,8 +92,8 @@ const WebSSOForm: FC = () => {
   }, [message, tokenFromUrl]) // Added dependencies to useEffect
 
   return (
-    <div className="flex items-center justify-center h-full">
-      <div className={cn('flex flex-col items-center w-full grow justify-center', 'px-6', 'md:px-[108px]')}>
+    <div className="flex h-full items-center justify-center">
+      <div className={cn('flex w-full grow flex-col items-center justify-center', 'px-6', 'md:px-[108px]')}>
         <Loading type='area' />
       </div>
     </div>

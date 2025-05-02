@@ -73,10 +73,10 @@ export const ThinkBlock = ({ children, ...props }: any) => {
 
   return (
     <details {...(!isComplete && { open: true })} className="group">
-      <summary className="text-gray-500 font-bold list-none pl-2 flex items-center cursor-pointer select-none whitespace-nowrap">
-        <div className="shrink-0 flex items-center">
+      <summary className="flex cursor-pointer select-none list-none items-center whitespace-nowrap pl-2 font-bold text-gray-500">
+        <div className="flex shrink-0 items-center">
           <svg
-            className="w-3 h-3 mr-2 transition-transform duration-500 group-open:rotate-90"
+            className="mr-2 h-3 w-3 transition-transform duration-500 group-open:rotate-90"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -91,7 +91,7 @@ export const ThinkBlock = ({ children, ...props }: any) => {
           {isComplete ? `${t('common.chat.thought')}(${elapsedTime.toFixed(1)}s)` : `${t('common.chat.thinking')}(${elapsedTime.toFixed(1)}s)`}
         </div>
       </summary>
-      <div className="text-gray-500 p-3 ml-2 bg-gray-50 border-l border-gray-300">
+      <div className="ml-2 border-l border-gray-300 bg-gray-50 p-3 text-gray-500">
         {displayContent}
       </div>
     </details>

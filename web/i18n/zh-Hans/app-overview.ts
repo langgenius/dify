@@ -57,6 +57,7 @@ const translation = {
         chatColorThemeDesc: '设置聊天机器人的颜色主题',
         chatColorThemeInverted: '反转',
         invalidHexMessage: '无效的十六进制值',
+        invalidPrivacyPolicy: '无效的隐私政策链接，请使用以 http 或 https 开头的有效链接',
         sso: {
           label: '单点登录认证',
           title: 'WebApp SSO 认证',
@@ -106,7 +107,7 @@ const translation = {
           step2Tip: '点击此处将仓库导入到 Vercel 中部署',
           step2Operation: '导入仓库',
           step3: '配置环境变量',
-          step3Tip: '在 Vecel 环境变量中添加以下环境变量',
+          step3Tip: '在 Vercel 环境变量中添加以下环境变量',
         },
         way2: {
           name: '编写客户端调用 API 并部署到服务器中',

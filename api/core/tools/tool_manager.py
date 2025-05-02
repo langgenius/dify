@@ -10,7 +10,7 @@ from yarl import URL
 
 import contexts
 from core.plugin.entities.plugin import ToolProviderID
-from core.plugin.manager.tool import PluginToolManager
+from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -161,8 +161,11 @@ class ToolManager:
         get the tool runtime
 
         :param provider_type: the type of the provider
-        :param provider_name: the name of the provider
+        :param provider_id: the id of the provider
         :param tool_name: the name of the tool
+        :param tenant_id: the tenant id
+        :param invoke_from: invoke from
+        :param tool_invoke_from: the tool invoke from
 
         :return: the tool
         """
@@ -427,8 +430,6 @@ class ToolManager:
         get the absolute path of the icon of the hardcoded provider
 
         :param provider: the name of the provider
-        :param tenant_id: the id of the tenant
-
         :return: the absolute path of the icon, the mime type of the icon
         """
         # get provider
@@ -672,7 +673,8 @@ class ToolManager:
         """
         get the api provider
 
-        :param provider_name: the name of the provider
+        :param tenant_id: the id of the tenant
+        :param provider_id: the id of the provider
 
         :return: the provider controller, the credentials
         """
@@ -765,17 +767,22 @@ class ToolManager:
 
     @classmethod
     def generate_builtin_tool_icon_url(cls, provider_id: str) -> str:
-        return (
-            dify_config.CONSOLE_API_URL
-            + "/console/api/workspaces/current/tool-provider/builtin/"
-            + provider_id
-            + "/icon"
+        return str(
+            URL(dify_config.CONSOLE_API_URL or "/")
+            / "console"
+            / "api"
+            / "workspaces"
+            / "current"
+            / "tool-provider"
+            / "builtin"
+            / provider_id
+            / "icon"
         )
 
     @classmethod
     def generate_plugin_tool_icon_url(cls, tenant_id: str, filename: str) -> str:
         return str(
-            URL(dify_config.CONSOLE_API_URL)
+            URL(dify_config.CONSOLE_API_URL or "/")
             / "console"
             / "api"
             / "workspaces"

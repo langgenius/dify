@@ -17,8 +17,8 @@ const AppUnavailable: FC<IAppUnavailableProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center justify-center w-screen h-screen'>
-      <h1 className='mr-5 h-[50px] leading-[50px] pr-5 text-[24px] font-medium'
+    <div className='flex h-screen w-screen items-center justify-center'>
+      <h1 className='mr-5 h-[50px] pr-5 text-[24px] font-medium leading-[50px]'
         style={{
           borderRight: '1px solid rgba(0,0,0,.3)',
         }}>{code}</h1>

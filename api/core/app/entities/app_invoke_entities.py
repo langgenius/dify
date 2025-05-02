@@ -2,13 +2,14 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional
 
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.ops.ops_trace_manager import TraceQueueManager
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
 class InvokeFrom(Enum):
@@ -189,6 +190,16 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
 
     single_iteration_run: Optional[SingleIterationRunEntity] = None
 
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: Mapping
+
+    single_loop_run: Optional[SingleLoopRunEntity] = None
+
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
@@ -208,3 +219,13 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         inputs: dict
 
     single_iteration_run: Optional[SingleIterationRunEntity] = None
+
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: dict
+
+    single_loop_run: Optional[SingleLoopRunEntity] = None

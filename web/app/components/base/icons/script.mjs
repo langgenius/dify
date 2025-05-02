@@ -1,9 +1,10 @@
 import path from 'node:path'
 import { access, appendFile, mkdir, open, readdir, rm, writeFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import { parseXml } from '@rgrove/parse-xml'
 import { camelCase, template } from 'lodash-es'
 
-const __dirname = path.dirname(new URL(import.meta.url).pathname)
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const generateDir = async (currentPath) => {
   try {
@@ -58,12 +59,16 @@ const generateSvgComponent = async (fileHandle, entry, pathList, replaceFillOrSt
 import * as React from 'react'
 import data from './<%= svgName %>.json'
 import IconBase from '@/app/components/base/icons/IconBase'
-import type { IconBaseProps, IconData } from '@/app/components/base/icons/IconBase'
+import type { IconData } from '@/app/components/base/icons/IconBase'
 
-const Icon = React.forwardRef<React.MutableRefObject<SVGElement>, Omit<IconBaseProps, 'data'>>((
-  props,
-  ref,
-) => <IconBase {...props} ref={ref} data={data as IconData} />)
+const Icon = (
+  {
+    ref,
+    ...props
+  }: React.SVGProps<SVGSVGElement> & {
+    ref?: React.RefObject<React.MutableRefObject<HTMLOrSVGElement>>;
+  },
+) => <IconBase {...props} ref={ref} data={data as IconData} />
 
 Icon.displayName = '<%= svgName %>'
 
@@ -101,7 +106,7 @@ const generateImageComponent = async (entry, pathList) => {
 }
 `.trim())
 
-  await writeFile(path.resolve(currentPath, `${fileName}.module.css`), `${componentCSSRender({ assetPath: path.join('~@/app/components/base/icons/assets', ...pathList.slice(2), entry) })}\n`)
+  await writeFile(path.resolve(currentPath, `${fileName}.module.css`), `${componentCSSRender({ assetPath: path.posix.join('~@/app/components/base/icons/assets', ...pathList.slice(2), entry) })}\n`)
 
   const componentRender = template(`
 // GENERATE BY script
@@ -111,10 +116,15 @@ import * as React from 'react'
 import cn from '@/utils/classnames'
 import s from './<%= fileName %>.module.css'
 
-const Icon = React.forwardRef<HTMLSpanElement, React.DetailedHTMLProps<React.HTMLAttributes<HTMLSpanElement>, HTMLSpanElement>>((
-  { className, ...restProps },
-  ref,
-) => <span className={cn(s.wrapper, className)} {...restProps} ref={ref} />)
+const Icon = (
+  {
+    ref,
+    className,
+    ...restProps
+  }: React.DetailedHTMLProps<React.HTMLAttributes<HTMLSpanElement>, HTMLSpanElement> & {
+    ref?: React.RefObject<HTMLSpanElement>;
+  },
+) => <span className={cn(s.wrapper, className)} {...restProps} ref={ref} />
 
 Icon.displayName = '<%= fileName %>'
 

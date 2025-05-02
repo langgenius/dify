@@ -2,7 +2,7 @@ from flask_login import current_user  # type: ignore
 
 from configs import dify_config
 from extensions.ext_database import db
-from models.account import Tenant, TenantAccountJoin, TenantAccountJoinRole
+from models.account import Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.feature_service import FeatureService
 
@@ -18,7 +18,6 @@ class WorkspaceService:
             "plan": tenant.plan,
             "status": tenant.status,
             "created_at": tenant.created_at,
-            "in_trail": True,
             "trial_end_reason": None,
             "role": "normal",
         }
@@ -34,9 +33,7 @@ class WorkspaceService:
 
         can_replace_logo = FeatureService.get_features(tenant_info["id"]).can_replace_logo
 
-        if can_replace_logo and TenantService.has_roles(
-            tenant, [TenantAccountJoinRole.OWNER, TenantAccountJoinRole.ADMIN]
-        ):
+        if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN]):
             base_url = dify_config.FILES_URL
             replace_webapp_logo = (
                 f"{base_url}/files/workspaces/{tenant.id}/webapp-logo"

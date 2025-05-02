@@ -52,10 +52,10 @@ const Chip: FC<Props> = ({
           className='block'
         >
           <div className={cn(
-            'flex items-center min-h-8 px-2 py-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal cursor-pointer hover:bg-state-base-hover-alt',
+            'flex min-h-8 cursor-pointer items-center rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
             open && !value && '!bg-state-base-hover-alt hover:bg-state-base-hover-alt',
-            !open && !!value && '!bg-components-button-secondary-bg shadow-xs !border-components-button-secondary-border hover:!bg-components-button-secondary-bg-hover hover:border-components-button-secondary-border-hover',
-            open && !!value && '!bg-components-button-secondary-bg-hover !border-components-button-secondary-border-hover shadow-xs hover:!bg-components-button-secondary-bg-hover hover:border-components-button-secondary-border-hover',
+            !open && !!value && '!border-components-button-secondary-border !bg-components-button-secondary-bg shadow-xs hover:border-components-button-secondary-border-hover hover:!bg-components-button-secondary-bg-hover',
+            open && !!value && '!border-components-button-secondary-border-hover !bg-components-button-secondary-bg-hover shadow-xs hover:border-components-button-secondary-border-hover hover:!bg-components-button-secondary-bg-hover',
             className,
           )}>
             {showLeftIcon && (
@@ -65,14 +65,14 @@ const Chip: FC<Props> = ({
                 )}
               </div>
             )}
-            <div className='grow first-line:p-1 flex items-center gap-0.5'>
+            <div className='flex grow items-center gap-0.5 first-line:p-1'>
               <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
                 {triggerContent}
               </div>
             </div>
             {!value && <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />}
             {!!value && (
-              <div className='p-[1px] cursor-pointer group/clear' onClick={(e) => {
+              <div className='group/clear cursor-pointer p-[1px]' onClick={(e) => {
                 e.stopPropagation()
                 onClear()
               }}>
@@ -82,19 +82,19 @@ const Chip: FC<Props> = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <div className={cn('relative w-[240px] bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg', panelClassName)}>
-            <div className='p-1 max-h-72 overflow-auto'>
+          <div className={cn('relative w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg', panelClassName)}>
+            <div className='max-h-72 overflow-auto p-1'>
               {items.map(item => (
                 <div
                   key={item.value}
-                  className='flex items-center gap-2 pl-3 py-[6px] px-2 rounded-lg cursor-pointer hover:bg-state-base-hover'
+                  className='flex cursor-pointer items-center gap-2 rounded-lg px-2 py-[6px] pl-3 hover:bg-state-base-hover'
                   onClick={() => {
                     onSelect(item)
                     setOpen(false)
                   }}
                 >
-                  <div title={item.name} className='grow text-text-secondary system-sm-medium truncate'>{item.name}</div>
-                  {value === item.value && <RiCheckLine className='shrink-0 w-4 h-4 text-util-colors-blue-light-blue-light-600' />}
+                  <div title={item.name} className='system-sm-medium grow truncate text-text-secondary'>{item.name}</div>
+                  {value === item.value && <RiCheckLine className='h-4 w-4 shrink-0 text-util-colors-blue-light-blue-light-600' />}
                 </div>
               ))}
             </div>

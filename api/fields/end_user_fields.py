@@ -1,4 +1,5 @@
 from flask_restful import fields  # type: ignore
+
 from libs.helper import TimestampField
 
 simple_end_user_fields = {

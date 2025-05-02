@@ -19,7 +19,7 @@ export class PickerBlockMenuOption extends MenuOption {
       key: string
       group?: string
       onSelect?: () => void
-      render: (menuRenderProps: MenuOptionRenderProps) => JSX.Element
+      render: (menuRenderProps: MenuOptionRenderProps) => React.JSX.Element
     },
   ) {
     super(data.key)

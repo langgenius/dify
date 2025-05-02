@@ -53,13 +53,13 @@ const PanelOperator = ({
       <PortalToFollowElemTrigger onClick={() => handleOpenChange(!open)}>
         <div
           className={`
-            flex items-center justify-center w-6 h-6 rounded-md cursor-pointer
+            flex h-6 w-6 cursor-pointer items-center justify-center rounded-md
             hover:bg-state-base-hover
             ${open && 'bg-state-base-hover'}
             ${triggerClassName}
           `}
         >
-          <RiMoreFill className={'w-4 h-4 text-text-tertiary'} />
+          <RiMoreFill className={'h-4 w-4 text-text-tertiary'} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>

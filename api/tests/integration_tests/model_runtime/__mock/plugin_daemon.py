@@ -6,7 +6,7 @@ import pytest
 # import monkeypatch
 from _pytest.monkeypatch import MonkeyPatch
 
-from core.plugin.manager.model import PluginModelManager
+from core.plugin.impl.model import PluginModelClient
 from tests.integration_tests.model_runtime.__mock.plugin_model import MockModelClass
 
 
@@ -23,9 +23,9 @@ def mock_plugin_daemon(
     def unpatch() -> None:
         monkeypatch.undo()
 
-    monkeypatch.setattr(PluginModelManager, "invoke_llm", MockModelClass.invoke_llm)
-    monkeypatch.setattr(PluginModelManager, "fetch_model_providers", MockModelClass.fetch_model_providers)
-    monkeypatch.setattr(PluginModelManager, "get_model_schema", MockModelClass.get_model_schema)
+    monkeypatch.setattr(PluginModelClient, "invoke_llm", MockModelClass.invoke_llm)
+    monkeypatch.setattr(PluginModelClient, "fetch_model_providers", MockModelClass.fetch_model_providers)
+    monkeypatch.setattr(PluginModelClient, "get_model_schema", MockModelClass.get_model_schema)
 
     return unpatch
 

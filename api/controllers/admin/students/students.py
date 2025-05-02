@@ -1,8 +1,8 @@
+from flask_restful import Resource, marshal_with  # type: ignore
+
 from controllers.admin import api
 from controllers.admin.wraps import validate_admin_token_and_extract_info
 from fields.end_user_fields import end_users_infinite_scroll_pagination_fields
-from flask import Blueprint
-from flask_restful import Api, Resource, marshal_with  # type: ignore
 from models.model import Account, App
 from services.end_user_service import EndUserService
 

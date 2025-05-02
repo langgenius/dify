@@ -1,12 +1,13 @@
 from datetime import datetime
 
+from flask import request
+from flask_restful import Resource  # type: ignore
+from werkzeug.exceptions import BadRequest
+
 from controllers.admin import api
 from controllers.admin.wraps import validate_admin_token_and_extract_info
-from flask import Blueprint, request
-from flask_restful import Api, Resource  # type: ignore
 from models.model import Account, App
 from services.stats_service import StatsService
-from werkzeug.exceptions import BadRequest
 
 
 class RiskStats(Resource):

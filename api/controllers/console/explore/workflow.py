@@ -11,6 +11,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.error import NotWorkflowAppError
 from controllers.console.explore.wraps import InstalledAppResource
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -23,6 +24,7 @@ from libs import helper
 from libs.login import current_user
 from models.model import AppMode, InstalledApp
 from services.app_generate_service import AppGenerateService
+from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +58,11 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except ValueError as e:
             raise e
-        except Exception as e:
+        except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
 

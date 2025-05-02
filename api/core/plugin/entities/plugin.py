@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
+from werkzeug.exceptions import NotFound
 
 from core.agent.plugin_entities import AgentStrategyProviderEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
@@ -69,6 +70,9 @@ class PluginDeclaration(BaseModel):
         models: Optional[list[str]] = Field(default_factory=list)
         endpoints: Optional[list[str]] = Field(default_factory=list)
 
+    class Meta(BaseModel):
+        minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
+
     version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
     author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
@@ -85,6 +89,7 @@ class PluginDeclaration(BaseModel):
     model: Optional[ProviderEntity] = None
     endpoint: Optional[EndpointProviderDeclaration] = None
     agent_strategy: Optional[AgentStrategyProviderEntity] = None
+    meta: Meta
 
     @model_validator(mode="before")
     @classmethod
@@ -119,8 +124,6 @@ class PluginEntity(PluginInstallation):
     name: str
     installation_id: str
     version: str
-    latest_version: Optional[str] = None
-    latest_unique_identifier: Optional[str] = None
 
     @model_validator(mode="after")
     def set_plugin_id(self):
@@ -153,6 +156,8 @@ class GenericProviderID:
         return f"{self.organization}/{self.plugin_name}/{self.provider_name}"
 
     def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+        if not value:
+            raise NotFound("plugin not found, please add plugin")
         # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
         if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+$", value):
             # check if matches [a-z0-9_-]+, if yes, append with langgenius/$value/$value
@@ -163,6 +168,9 @@ class GenericProviderID:
 
         self.organization, self.plugin_name, self.provider_name = value.split("/")
         self.is_hardcoded = is_hardcoded
+
+    def is_langgenius(self) -> bool:
+        return self.organization == "langgenius"
 
     @property
     def plugin_id(self) -> str:

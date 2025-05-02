@@ -88,7 +88,20 @@ class UpstashVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 4)
-        result = self.index.query(vector=query_vector, top_k=top_k, include_metadata=True, include_data=True)
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            filter = f"document_id in ({document_ids})"
+        else:
+            filter = ""
+        result = self.index.query(
+            vector=query_vector,
+            top_k=top_k,
+            include_metadata=True,
+            include_data=True,
+            include_vectors=False,
+            filter=filter,
+        )
         docs = []
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         for record in result:

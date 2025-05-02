@@ -67,7 +67,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
           className='block'
         >
           <div className={cn(
-            'flex items-center gap-1 px-2 h-8 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal cursor-pointer hover:bg-components-input-bg-hover',
+            'flex h-8 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 hover:bg-components-input-bg-hover',
             !open && !!value.length && 'shadow-xs',
             open && !!value.length && 'shadow-xs',
           )}>
@@ -87,7 +87,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
               </div>
             )}
             {!!value.length && (
-              <div className='p-[1px] cursor-pointer group/clear' onClick={(e) => {
+              <div className='group/clear cursor-pointer p-[1px]' onClick={(e) => {
                 e.stopPropagation()
                 onChange([])
               }}>
@@ -97,7 +97,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <div className='relative w-[240px] bg-components-panel-bg-blur rounded-lg border-[0.5px] backdrop-blur-[5px] border-components-panel-border  shadow-lg'>
+          <div className='relative w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg  backdrop-blur-[5px]'>
             <div className='p-2'>
               <Input
                 showLeftIcon
@@ -111,17 +111,17 @@ const LabelFilter: FC<LabelFilterProps> = ({
               {filteredLabelList.map(label => (
                 <div
                   key={label.name}
-                  className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-state-base-hover'
+                  className='flex cursor-pointer items-center gap-2 rounded-lg py-[6px] pl-3 pr-2 hover:bg-state-base-hover'
                   onClick={() => selectLabel(label)}
                 >
-                  <div title={label.label} className='grow text-sm text-text-secondary leading-5 truncate'>{label.label}</div>
-                  {value.includes(label.name) && <Check className='shrink-0 w-4 h-4 text-text-accent' />}
+                  <div title={label.label} className='grow truncate text-sm leading-5 text-text-secondary'>{label.label}</div>
+                  {value.includes(label.name) && <Check className='h-4 w-4 shrink-0 text-text-accent' />}
                 </div>
               ))}
               {!filteredLabelList.length && (
-                <div className='p-3 flex flex-col items-center gap-1'>
+                <div className='flex flex-col items-center gap-1 p-3'>
                   <Tag03 className='h-6 w-6 text-text-quaternary' />
-                  <div className='text-text-tertiary text-xs leading-[14px]'>{t('common.tag.noTag')}</div>
+                  <div className='text-xs leading-[14px] text-text-tertiary'>{t('common.tag.noTag')}</div>
                 </div>
               )}
             </div>

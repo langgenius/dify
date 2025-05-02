@@ -123,11 +123,21 @@ class BaiduVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         query_vector = [float(val) if isinstance(val, np.float64) else val for val in query_vector]
-        anns = AnnSearch(
-            vector_field=self.field_vector,
-            vector_floats=query_vector,
-            params=HNSWSearchParams(ef=kwargs.get("ef", 10), limit=kwargs.get("top_k", 4)),
-        )
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            anns = AnnSearch(
+                vector_field=self.field_vector,
+                vector_floats=query_vector,
+                params=HNSWSearchParams(ef=kwargs.get("ef", 10), limit=kwargs.get("top_k", 4)),
+                filter=f"document_id IN ({document_ids})",
+            )
+        else:
+            anns = AnnSearch(
+                vector_field=self.field_vector,
+                vector_floats=query_vector,
+                params=HNSWSearchParams(ef=kwargs.get("ef", 10), limit=kwargs.get("top_k", 4)),
+            )
         res = self._db.table(self._collection_name).search(
             anns=anns,
             projections=[self.field_id, self.field_text, self.field_metadata],

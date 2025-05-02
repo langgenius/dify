@@ -1,7 +1,12 @@
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
+from werkzeug.exceptions import NotFound
+
 import services
 from controllers.service_api_with_auth import api
 from controllers.service_api_with_auth.app.error import NotChatAppError
-from controllers.service_api_with_auth.wraps import FetchUserArg, WhereisUserArg, validate_user_token_and_extract_info
+from controllers.service_api_with_auth.wraps import validate_user_token_and_extract_info
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -9,13 +14,9 @@ from fields.conversation_fields import (
     conversation_infinite_scroll_pagination_fields,
     simple_conversation_fields,
 )
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
-from sqlalchemy.orm import Session  # type: ignore
-from werkzeug.exceptions import NotFound
 
 
 class ConversationApi(Resource):

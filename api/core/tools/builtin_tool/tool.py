@@ -6,8 +6,8 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
 
 _SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
-and you can quickly aimed at the main point of an webpage and reproduce it in your own words but 
-retain the original meaning and keep the key points. 
+and you can quickly aimed at the main point of an webpage and reproduce it in your own words but
+retain the original meaning and keep the key points.
 however, the text you got is too long, what you got is possible a part of the text.
 Please summarize the text you got.
 """
@@ -28,9 +28,7 @@ class BuiltinTool(Tool):
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "BuiltinTool":
         """
-        fork a new tool with meta data
-
-        :param meta: the meta data of a tool call processing, tenant_id is required
+        fork a new tool with metadata
         :return: the new tool
         """
         return self.__class__(
@@ -43,7 +41,7 @@ class BuiltinTool(Tool):
         """
         invoke model
 
-        :param model_config: the model config
+        :param user_id: the user id
         :param prompt_messages: the prompt messages
         :param stop: the stop words
         :return: the model result
@@ -64,7 +62,6 @@ class BuiltinTool(Tool):
         """
         get max tokens
 
-        :param model_config: the model config
         :return: the max tokens
         """
         if self.runtime is None:

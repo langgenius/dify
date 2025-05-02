@@ -2,12 +2,13 @@ import json
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
+from urllib.parse import urlparse
 
 import httpx
-import validators
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
+from core.rag.entities.metadata_entities import MetadataCondition
 from extensions.ext_database import db
 from models.dataset import (
     Dataset,
@@ -71,7 +72,9 @@ class ExternalDatasetService:
 
         endpoint = f"{settings['endpoint']}/retrieval"
         api_key = settings["api_key"]
-        if not validators.url(endpoint, simple_host=True):
+
+        parsed_url = urlparse(endpoint)
+        if not all([parsed_url.scheme, parsed_url.netloc]):
             if not endpoint.startswith("http://") and not endpoint.startswith("https://"):
                 raise ValueError(f"invalid endpoint: {endpoint} must start with http:// or https://")
             else:
@@ -245,7 +248,11 @@ class ExternalDatasetService:
 
     @staticmethod
     def fetch_external_knowledge_retrieval(
-        tenant_id: str, dataset_id: str, query: str, external_retrieval_parameters: dict
+        tenant_id: str,
+        dataset_id: str,
+        query: str,
+        external_retrieval_parameters: dict,
+        metadata_condition: Optional[MetadataCondition] = None,
     ) -> list:
         external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(
             dataset_id=dataset_id, tenant_id=tenant_id
@@ -272,6 +279,7 @@ class ExternalDatasetService:
             },
             "query": query,
             "knowledge_id": external_knowledge_binding.external_knowledge_id,
+            "metadata_condition": metadata_condition.model_dump() if metadata_condition else None,
         }
 
         response = ExternalDatasetService.process_external_api(

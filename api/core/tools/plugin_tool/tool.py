@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from typing import Any, Optional
 
-from core.plugin.manager.tool import PluginToolManager
+from core.plugin.impl.tool import PluginToolManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime

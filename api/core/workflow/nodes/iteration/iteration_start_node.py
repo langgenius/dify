@@ -5,7 +5,7 @@ from core.workflow.nodes.iteration.entities import IterationStartNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
 
-class IterationStartNode(BaseNode):
+class IterationStartNode(BaseNode[IterationStartNodeData]):
     """
     Iteration Start Node.
     """

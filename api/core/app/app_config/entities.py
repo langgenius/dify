@@ -1,10 +1,11 @@
 from collections.abc import Sequence
 from enum import Enum, StrEnum
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
 from core.file import FileTransferMethod, FileType, FileUploadConfig
+from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode
 
@@ -135,6 +136,55 @@ class ExternalDataVariableEntity(BaseModel):
     config: dict[str, Any] = Field(default_factory=dict)
 
 
+SupportedComparisonOperator = Literal[
+    # for string or array
+    "contains",
+    "not contains",
+    "start with",
+    "end with",
+    "is",
+    "is not",
+    "empty",
+    "not empty",
+    # for number
+    "=",
+    "≠",
+    ">",
+    "<",
+    "≥",
+    "≤",
+    # for time
+    "before",
+    "after",
+]
+
+
+class ModelConfig(BaseModel):
+    provider: str
+    name: str
+    mode: LLMMode
+    completion_params: dict[str, Any] = {}
+
+
+class Condition(BaseModel):
+    """
+    Conditon detail
+    """
+
+    name: str
+    comparison_operator: SupportedComparisonOperator
+    value: str | Sequence[str] | None | int | float = None
+
+
+class MetadataFilteringCondition(BaseModel):
+    """
+    Metadata Filtering Condition.
+    """
+
+    logical_operator: Optional[Literal["and", "or"]] = "and"
+    conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
+
+
 class DatasetRetrieveConfigEntity(BaseModel):
     """
     Dataset Retrieve Config Entity.
@@ -171,6 +221,9 @@ class DatasetRetrieveConfigEntity(BaseModel):
     reranking_model: Optional[dict] = None
     weights: Optional[dict] = None
     reranking_enabled: Optional[bool] = True
+    metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
+    metadata_model_config: Optional[ModelConfig] = None
+    metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
 
 
 class DatasetEntity(BaseModel):

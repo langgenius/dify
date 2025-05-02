@@ -39,12 +39,13 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
 
   const tools = useMemo(() => {
     const tools: Array<ToolIconProps> = []
-    currentStrategy?.parameters.forEach((param) => {
+    currentStrategy?.parameters.forEach((param, i) => {
       if (param.type === FormTypeEnum.toolSelector) {
         const field = param.name
         const value = inputs.agent_parameters?.[field]?.value
         if (value) {
           tools.push({
+            id: `${param.name}-${i}`,
             providerName: value.provider_name as any,
           })
         }
@@ -55,6 +56,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         if (value) {
           (value as unknown as any[]).forEach((item) => {
             tools.push({
+              id: `${param.name}-${i}`,
               providerName: item.provider_name,
             })
           })
@@ -63,7 +65,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     })
     return tools
   }, [currentStrategy?.parameters, inputs.agent_parameters])
-  return <div className='mb-1 px-3 py-1 space-y-1'>
+  return <div className='mb-1 space-y-1 px-3 py-1'>
     {inputs.agent_strategy_name
       ? <SettingItem
         label={t('workflow.nodes.agent.strategy.shortLabel')}
@@ -102,7 +104,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       {t('workflow.nodes.agent.toolbox')}
     </GroupLabel>}>
       <div className='grid grid-cols-10 gap-0.5'>
-        {tools.map(tool => <ToolIcon {...tool} key={Math.random()} />)}
+        {tools.map(tool => <ToolIcon {...tool} key={tool.id} />)}
       </div>
     </Group>}
   </div>

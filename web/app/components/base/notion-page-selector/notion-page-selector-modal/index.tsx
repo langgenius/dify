@@ -6,6 +6,7 @@ import s from './index.module.css'
 import type { NotionPage } from '@/models/common'
 import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
+import { noop } from 'lodash-es'
 
 type NotionPageSelectorModalProps = {
   isShow: boolean
@@ -36,14 +37,14 @@ const NotionPageSelectorModal = ({
     <Modal
       className={s.modal}
       isShow={isShow}
-      onClose={() => { }}
+      onClose={noop}
     >
-      <div className='flex items-center justify-between mb-6 h-8'>
+      <div className='mb-6 flex h-8 items-center justify-between'>
         <div className='text-xl font-semibold text-gray-900'>{t('common.dataSource.notion.selector.addPages')}</div>
         <div
-          className='flex items-center justify-center -mr-2 w-8 h-8 cursor-pointer'
+          className='-mr-2 flex h-8 w-8 cursor-pointer items-center justify-center'
           onClick={handleClose}>
-          <XMarkIcon className='w-4 h-4' />
+          <XMarkIcon className='h-4 w-4' />
         </div>
       </div>
       <NotionPageSelector

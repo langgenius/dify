@@ -1,7 +1,7 @@
-from typing import List, Optional, Union
+from typing import Optional
 
 from extensions.ext_database import db
-from models.account import Account, Tenant
+from models.account import Account
 from models.model import EndUser
 from models.organization import Organization, OrganizationMember, OrganizationRole
 
@@ -174,7 +174,7 @@ class OrganizationService:
         return None
 
     @classmethod
-    def get_available_organizations_for_tenant(cls, tenant_id: str) -> List[Organization]:
+    def get_available_organizations_for_tenant(cls, tenant_id: str) -> list[Organization]:
         """
         Get all active organizations for a tenant
 

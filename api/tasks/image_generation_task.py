@@ -18,7 +18,8 @@ def generate_image_task(
     image_id: str,
 ) -> str:
     """
-    Asynchronously generate an image based on the end user's conversation data and update the existing UserGeneratedImage record
+    Asynchronously generate an image based on the end user's conversation data
+    and update the existing UserGeneratedImage record
 
     Args:
         end_user_id: End user ID
@@ -133,14 +134,14 @@ def generate_image_task(
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                f"Image generation completed for user {end_user_id}. Image ID: {image_id}. Latency: {end_at - start_at}",
+                f"Image generation completed for user {end_user_id}.Image ID: {image_id}. Latency: {end_at - start_at}",
                 fg="green",
             )
         )
 
         return image_id
     except Exception as e:
-        logging.exception(f"Failed to generate image: {str(e)}")
+        logging.exception("Failed to generate image")
         # Update status to failed if we have the entity
         try:
             user_generated_image = (

@@ -4,13 +4,14 @@ from typing import Any, Optional
 from venv import logger
 
 import dashscope  # type: ignore
+from dashscope import SpeechSynthesizer  # type: ignore
+from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse  # type: ignore
+from dashscope.audio.tts import ResultCallback, SpeechSynthesisResult  # type: ignore
+
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.model_providers.tongyi._common import _CommonTongyi
-from dashscope import SpeechSynthesizer  # type: ignore
-from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse  # type: ignore
-from dashscope.audio.tts import ResultCallback, SpeechSynthesisResult  # type: ignore
 
 
 class TongyiText2SpeechModel(_CommonTongyi, TTSModel):

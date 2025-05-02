@@ -1,17 +1,18 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
+
+from sqlalchemy import and_, desc, func
 
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import MultiPagePagination
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from services.organization_service import OrganizationService
-from sqlalchemy import and_, desc, func
 
 
 class EndUserService:
     @staticmethod
     def pagination_by_filters(
-        app_model: App, filters: Dict[str, Any], offset: int, limit: int, organization_id: Optional[str] = None
+        app_model: App, filters: dict[str, Any], offset: int, limit: int, organization_id: Optional[str] = None
     ) -> MultiPagePagination:
         """
         Get a list of end users with filtering and pagination
@@ -131,7 +132,7 @@ class EndUserService:
         return db.session.query(EndUser).filter(EndUser.external_user_id == end_user_id).first()
 
     @staticmethod
-    def get_user_profile(end_user_id: str) -> Dict[str, Any]:
+    def get_user_profile(end_user_id: str) -> dict[str, Any]:
         """
         Get user profile information
 
@@ -158,7 +159,7 @@ class EndUserService:
         }
 
     @staticmethod
-    def update_user_profile(end_user: EndUser, profile_data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
+    def update_user_profile(end_user: EndUser, profile_data: dict[str, Any]) -> tuple[bool, Optional[str]]:
         """
         Update user profile information
 

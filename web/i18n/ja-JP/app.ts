@@ -26,10 +26,9 @@ const translation = {
   appDeleteFailed: 'アプリの削除に失敗しました',
   join: 'コミュニティに参加する',
   communityIntro:
-    'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
+  'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
   roadmap: 'ロードマップを見る',
   newApp: {
-    // this comment is to recreate PR
     startFromBlank: '最初から作成',
     startFromTemplate: 'テンプレートから作成',
     captionAppType: 'どのタイプのアプリを作成しますか？',
@@ -194,6 +193,17 @@ const translation = {
     params: 'アプリパラメータ',
     noParams: 'パラメータは必要ありません',
     placeholder: 'アプリを選択...',
+  },
+  structOutput: {
+    moreFillTip: '最大10レベルのネストを表示します',
+    required: '必須',
+    LLMResponse: 'LLMのレスポンス',
+    configure: '設定',
+    notConfiguredTip: '構造化出力が未設定です',
+    structured: '構造化出力',
+    structuredTip: '構造化出力は、モデルが常に指定されたJSONスキーマに準拠した応答を生成することを保証する機能です。',
+    modelNotSupported: 'モデルが対応していません',
+    modelNotSupportedTip: '現在のモデルはこの機能に対応しておらず、自動的にプロンプトインジェクションに切り替わります。',
   },
 }
 

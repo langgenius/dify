@@ -59,33 +59,41 @@ const ModifyRetrievalModal: FC<Props> = ({
 
   return (
     <div
-      className='w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
+      className='flex w-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl shadow-shadow-shadow-9'
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
     >
-      <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
-        <div className='text-base font-semibold text-gray-900'>
+      <div className='h-15 flex shrink-0 justify-between px-3 pb-1 pt-3.5'>
+        <div className='text-base font-semibold text-text-primary'>
           <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
-          <div className='leading-[18px] text-xs font-normal text-gray-500'>
-            <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+          <div className='text-xs font-normal leading-[18px] text-text-tertiary'>
+            <a
+              target='_blank'
+              rel='noopener noreferrer'
+              href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings'
+              className='text-text-accent'
+            >
+              {t('datasetSettings.form.retrievalSetting.learnMore')}
+            </a>
             {t('datasetSettings.form.retrievalSetting.description')}
           </div>
         </div>
-        <div className='flex items-center'>
+        <div className='flex'>
           <div
             onClick={onHide}
-            className='flex justify-center items-center w-6 h-6 cursor-pointer'
+            className='flex h-8 w-8 cursor-pointer items-center justify-center'
           >
-            <RiCloseLine className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
           </div>
         </div>
       </div>
 
-      <div className='p-6 border-b' style={{
-        borderBottom: 'rgba(0, 0, 0, 0.05)',
-      }}>
+      <div className='px-4 py-2'>
+        <div className='mb-1 text-[13px] font-semibold leading-6 text-text-secondary'>
+          {t('datasetSettings.form.retrievalSetting.method')}
+        </div>
         {indexMethod === 'high_quality'
           ? (
             <RetrievalMethodConfig
@@ -100,14 +108,9 @@ const ModifyRetrievalModal: FC<Props> = ({
             />
           )}
       </div>
-      <div
-        className='flex justify-end pt-6 px-6 border-t'
-        style={{
-          borderColor: 'rgba(0, 0, 0, 0.05)',
-        }}
-      >
-        <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
-        <Button variant='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+      <div className='flex justify-end p-4 pt-2'>
+        <Button className='mr-2 shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
+        <Button variant='primary' className='shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
       </div>
     </div>
   )

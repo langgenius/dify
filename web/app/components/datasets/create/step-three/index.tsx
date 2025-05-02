@@ -23,28 +23,28 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
   const isMobile = media === MediaType.mobile
 
   return (
-    <div className="flex justify-center w-full max-h-full h-full overflow-y-auto">
-      <div className="grow shrink-0 h-full max-w-[960px] overflow-y-auto px-14 sm:px-16">
+    <div className="flex h-full max-h-full w-full justify-center overflow-y-auto">
+      <div className="h-full max-w-[960px] shrink-0 grow overflow-y-auto px-14 sm:px-16">
         <div className="mx-auto max-w-[640px]">
           {!datasetId && (
             <>
               <div className="pt-10">
-                <div className="mb-1 text-xl leading-[22px] font-semibold text-text-primary">{t('datasetCreation.stepThree.creationTitle')}</div>
+                <div className="mb-1 text-xl font-semibold leading-[22px] text-text-primary">{t('datasetCreation.stepThree.creationTitle')}</div>
                 <div className="mb-7 text-[13px] leading-4 text-text-tertiary">{t('datasetCreation.stepThree.creationContent')}</div>
                 <div className="flex gap-4">
-                  <AppIcon {...creationCache?.dataset} className="size-14 text-2xl self-center" />
-                  <div className="grow flex flex-col gap-1">
-                    <div className="text-[13px] leading-6 font-semibold">{t('datasetCreation.stepThree.label')}</div>
-                    <div className="w-full px-3 py-2 text-[13px] leading-4 bg-components-input-bg-normal rounded-lg truncate">{datasetName || creationCache?.dataset?.name}</div>
+                  <AppIcon {...creationCache?.dataset} className="size-14 self-center text-2xl" />
+                  <div className="flex grow flex-col gap-1">
+                    <div className="text-[13px] font-semibold leading-6 text-text-secondary">{t('datasetCreation.stepThree.label')}</div>
+                    <div className="w-full truncate rounded-lg bg-components-input-bg-normal px-3 py-2 text-[13px] leading-4 text-components-input-text-filled">{datasetName || creationCache?.dataset?.name}</div>
                   </div>
                 </div>
               </div>
-              <hr className="my-6 h-[1px] bg-divider-subtle border-0" />
+              <hr className="my-6 h-[1px] border-0 bg-divider-subtle" />
             </>
           )}
           {datasetId && (
             <div className="pt-10">
-              <div className="mb-1 text-xl leading-[22px] font-semibold text-text-primary">{t('datasetCreation.stepThree.additionTitle')}</div>
+              <div className="mb-1 text-xl font-semibold leading-[22px] text-text-primary">{t('datasetCreation.stepThree.additionTitle')}</div>
               <div className="mb-7 text-[13px] leading-4 text-text-tertiary">{`${t('datasetCreation.stepThree.additionP1')} ${datasetName || creationCache?.dataset?.name} ${t('datasetCreation.stepThree.additionP2')}`}</div>
             </div>
           )}
@@ -58,9 +58,9 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
         </div>
       </div>
       {!isMobile && (
-        <div className="shrink-0 pt-[88px] pr-8 text-xs">
-          <div className="flex flex-col gap-3 w-[328px] p-6 text-text-tertiary bg-background-section rounded-xl">
-            <div className="flex justify-center items-center size-10 bg-components-card-bg rounded-[10px] shadow-lg">
+        <div className="shrink-0 pr-8 pt-[88px] text-xs">
+          <div className="flex w-[328px] flex-col gap-3 rounded-xl bg-background-section p-6 text-text-tertiary">
+            <div className="flex size-10 items-center justify-center rounded-[10px] bg-components-card-bg shadow-lg">
               <RiBookOpenLine className="size-5 text-text-accent" />
             </div>
             <div className="text-base font-semibold text-text-secondary">{t('datasetCreation.stepThree.sideTipTitle')}</div>

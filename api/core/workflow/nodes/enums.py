@@ -16,6 +16,8 @@ class NodeType(StrEnum):
     VARIABLE_AGGREGATOR = "variable-aggregator"
     LEGACY_VARIABLE_AGGREGATOR = "variable-assigner"  # TODO: Merge this into VARIABLE_AGGREGATOR in the database.
     LOOP = "loop"
+    LOOP_START = "loop-start"
+    LOOP_END = "loop-end"
     ITERATION = "iteration"
     ITERATION_START = "iteration-start"  # Fake start node for iteration.
     PARAMETER_EXTRACTOR = "parameter-extractor"

@@ -41,14 +41,14 @@ const PluginsNav = ({
           (isFailed || isInstallingWithError) && !activated && (
             <Indicator
               color='red'
-              className='absolute top-[-1px] left-[-1px]'
+              className='absolute left-[-1px] top-[-1px]'
             />
           )
         }
-        <div className='flex mr-0.5 w-5 h-5 justify-center items-center'>
+        <div className='mr-0.5 flex h-5 w-5 items-center justify-center'>
           {
             (!(isInstalling || isInstallingWithError) || activated) && (
-              <Group className='w-4 h-4' />
+              <Group className='h-4 w-4' />
             )
           }
           {

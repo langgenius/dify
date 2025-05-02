@@ -4,7 +4,6 @@ import time
 import click
 from celery import shared_task  # type: ignore
 from extensions.ext_phone_sms import phone_sms
-from flask import render_template
 
 
 @shared_task(queue="phone_sms")
@@ -33,4 +32,4 @@ def send_phone_sms_code_login_task(phone: str, code: str):
             )
         )
     except Exception as e:
-        logging.exception(f"Send phone sms code login mail to {phone} failed: {e}")
+        logging.exception(f"Send phone sms code login mail to {phone} failed")

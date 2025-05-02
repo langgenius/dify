@@ -26,7 +26,7 @@ const Panel: FC<NodePanelProps<EndNodeType>> = ({
   const outputs = inputs.outputs
   return (
     <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='space-y-4 px-4 pb-4'>
 
         <Field
           title={t(`${i18nPrefix}.output.variable`)}

@@ -49,7 +49,7 @@ const HeaderBillingBtn: FC<Props> = ({
       onClick={handleClick}
       className={cn(
         classNames,
-        'flex items-center h-[22px] px-2 rounded-md border text-xs font-semibold uppercase',
+        'flex h-[22px] items-center rounded-md border px-2 text-xs font-semibold uppercase',
         isDisplayOnly ? 'cursor-default' : 'cursor-pointer',
       )}
     >

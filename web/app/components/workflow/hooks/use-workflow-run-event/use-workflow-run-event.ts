@@ -6,6 +6,9 @@ import {
   useWorkflowNodeIterationFinished,
   useWorkflowNodeIterationNext,
   useWorkflowNodeIterationStarted,
+  useWorkflowNodeLoopFinished,
+  useWorkflowNodeLoopNext,
+  useWorkflowNodeLoopStarted,
   useWorkflowNodeRetry,
   useWorkflowNodeStarted,
   useWorkflowStarted,
@@ -22,6 +25,9 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowNodeIterationStarted } = useWorkflowNodeIterationStarted()
   const { handleWorkflowNodeIterationNext } = useWorkflowNodeIterationNext()
   const { handleWorkflowNodeIterationFinished } = useWorkflowNodeIterationFinished()
+  const { handleWorkflowNodeLoopStarted } = useWorkflowNodeLoopStarted()
+  const { handleWorkflowNodeLoopNext } = useWorkflowNodeLoopNext()
+  const { handleWorkflowNodeLoopFinished } = useWorkflowNodeLoopFinished()
   const { handleWorkflowNodeRetry } = useWorkflowNodeRetry()
   const { handleWorkflowTextChunk } = useWorkflowTextChunk()
   const { handleWorkflowTextReplace } = useWorkflowTextReplace()
@@ -36,6 +42,9 @@ export const useWorkflowRunEvent = () => {
     handleWorkflowNodeIterationStarted,
     handleWorkflowNodeIterationNext,
     handleWorkflowNodeIterationFinished,
+    handleWorkflowNodeLoopStarted,
+    handleWorkflowNodeLoopNext,
+    handleWorkflowNodeLoopFinished,
     handleWorkflowNodeRetry,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,

@@ -17,7 +17,7 @@ const StatusContainer: FC<Props> = ({
   return (
     <div
       className={cn(
-        'relative px-3 py-2.5 rounded-lg border system-xs-regular break-all',
+        'system-xs-regular relative break-all rounded-lg border px-3 py-2.5',
         status === 'succeeded' && 'border-[rgba(23,178,106,0.8)] bg-workflow-display-success-bg bg-[url(~@/app/components/workflow/run/assets/bg-line-success.svg)] text-text-success',
         status === 'succeeded' && theme === Theme.light && 'shadow-[inset_2px_2px_0_0_rgba(255,255,255,0.5),inset_0_1px_3px_0_rgba(0,0,0,0.12),inset_0_2px_24px_0_rgba(23,178,106,0.2),0_1px_2px_0_rgba(9,9,11,0.05),0_0_0_1px_rgba(0,0,0,0.05)]',
         status === 'succeeded' && theme === Theme.dark && 'shadow-[inset_2px_2px_0_0_rgba(255,255,255,0.12),inset_0_1px_3px_0_rgba(0,0,0,0.4),inset_0_2px_24px_0_rgba(23,178,106,0.25),0_1px_2px_0_rgba(0,0,0,0.1),0_0_0_1px_rgba(24, 24, 27, 0.95)]',
@@ -39,7 +39,7 @@ const StatusContainer: FC<Props> = ({
       )}
     >
       <div className={cn(
-        'absolute top-0 left-0 w-[65%] h-[50px] bg-no-repeat',
+        'absolute left-0 top-0 h-[50px] w-[65%] bg-no-repeat',
         theme === Theme.light && 'bg-[url(~@/app/components/workflow/run/assets/highlight.svg)]',
         theme === Theme.dark && 'bg-[url(~@/app/components/workflow/run/assets/highlight-dark.svg)]',
       )}></div>

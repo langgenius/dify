@@ -4,6 +4,7 @@ import React, { useMemo } from 'react'
 import {
   RiArrowRightUpLine,
   RiBugLine,
+  RiErrorWarningLine,
   RiHardDrive3Line,
   RiLoginCircleLine,
   RiVerifiedBadgeLine,
@@ -23,6 +24,9 @@ import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import { useSingleCategories } from '../hooks'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
+import { useAppContext } from '@/context/app-context'
+import { gte } from 'semver'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string
@@ -48,11 +52,19 @@ const PluginItem: FC<Props> = ({
     meta,
     plugin_id,
   } = plugin
-  const { category, author, name, label, description, icon, verified } = plugin.declaration
+  const { category, author, name, label, description, icon, verified, meta: declarationMeta } = plugin.declaration
 
   const orgName = useMemo(() => {
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
+
+  const { langeniusVersionInfo } = useAppContext()
+
+  const isDifyVersionCompatible = useMemo(() => {
+    if (!langeniusVersionInfo.current_version)
+      return true
+    return gte(langeniusVersionInfo.current_version, declarationMeta.minimum_dify_version ?? '0.0.0')
+  }, [declarationMeta.minimum_dify_version, langeniusVersionInfo.current_version])
 
   const handleDelete = () => {
     refreshPluginList({ category } as any)
@@ -64,7 +76,7 @@ const PluginItem: FC<Props> = ({
   return (
     <div
       className={cn(
-        'p-1 rounded-xl border-[1.5px] border-background-section-burn',
+        'rounded-xl border-[1.5px] border-background-section-burn p-1',
         currentPluginID === plugin_id && 'border-components-option-card-option-selected-border',
         source === PluginSource.debugging
           ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
@@ -74,22 +86,28 @@ const PluginItem: FC<Props> = ({
         setCurrentPluginID(plugin.plugin_id)
       }}
     >
-      <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
+      <div className={cn('hover-bg-components-panel-on-panel-item-bg relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs', className)}>
         <CornerMark text={categoriesMap[category].label} />
         {/* Header */}
         <div className="flex">
-          <div className='flex items-center justify-center w-10 h-10 overflow-hidden border-components-panel-border-subtle border-[1px] rounded-xl'>
+          <div className='flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border-[1px] border-components-panel-border-subtle'>
             <img
-              className='w-full h-full'
+              className='h-full w-full'
               src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`}
               alt={`plugin-${plugin_unique_identifier}-logo`}
             />
           </div>
           <div className="ml-3 w-0 grow">
-            <div className="flex items-center h-5">
+            <div className="flex h-5 items-center">
               <Title title={title} />
-              {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
-              <Badge className='shrink-0 ml-1' text={source === PluginSource.github ? plugin.meta!.version : plugin.version} />
+              {verified && <RiVerifiedBadgeLine className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" />}
+              {!isDifyVersionCompatible && <Tooltip popupContent={
+                t('plugin.difyVersionNotCompatible', { minimalDifyVersion: declarationMeta.minimum_dify_version })
+              }><RiErrorWarningLine color='red' className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" /></Tooltip>}
+              <Badge className='ml-1 shrink-0'
+                text={source === PluginSource.github ? plugin.meta!.version : plugin.version}
+                hasRedCornerMark={(source === PluginSource.marketplace) && !!plugin.latest_unique_identifier && plugin.latest_unique_identifier !== plugin_unique_identifier}
+              />
             </div>
             <div className='flex items-center justify-between'>
               <Description text={descriptionText} descriptionLineRows={1}></Description>
@@ -112,7 +130,7 @@ const PluginItem: FC<Props> = ({
           </div>
         </div>
       </div>
-      <div className='mt-1.5 mb-1 flex justify-between items-center h-4 px-4'>
+      <div className='mb-1 mt-1.5 flex h-4 items-center justify-between px-4'>
         <div className='flex items-center'>
           <OrgInfo
             className="mt-0.5"
@@ -122,9 +140,9 @@ const PluginItem: FC<Props> = ({
           />
           {category === PluginType.extension && (
             <>
-              <div className='mx-2 text-text-quaternary system-xs-regular'>·</div>
-              <div className='flex text-text-tertiary system-xs-regular space-x-1'>
-                <RiLoginCircleLine className='w-4 h-4' />
+              <div className='system-xs-regular mx-2 text-text-quaternary'>·</div>
+              <div className='system-xs-regular flex space-x-1 text-text-tertiary'>
+                <RiLoginCircleLine className='h-4 w-4' />
                 <span>{t('plugin.endpointsEnabled', { num: endpoints_active })}</span>
               </div>
             </>
@@ -135,11 +153,11 @@ const PluginItem: FC<Props> = ({
           {source === PluginSource.github
             && <>
               <a href={`https://github.com/${meta!.repo}`} target='_blank' className='flex items-center gap-1'>
-                <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')}</div>
+                <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('plugin.from')}</div>
                 <div className='flex items-center space-x-0.5 text-text-secondary'>
-                  <Github className='w-3 h-3' />
+                  <Github className='h-3 w-3' />
                   <div className='system-2xs-semibold-uppercase'>GitHub</div>
-                  <RiArrowRightUpLine className='w-3 h-3' />
+                  <RiArrowRightUpLine className='h-3 w-3' />
                 </div>
               </a>
             </>
@@ -147,24 +165,24 @@ const PluginItem: FC<Props> = ({
           {source === PluginSource.marketplace
             && <>
               <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`} target='_blank' className='flex items-center gap-0.5'>
-                <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')} <span className='text-text-secondary'>marketplace</span></div>
-                <RiArrowRightUpLine className='w-3 h-3 text-text-tertiary' />
+                <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('plugin.from')} <span className='text-text-secondary'>marketplace</span></div>
+                <RiArrowRightUpLine className='h-3 w-3 text-text-tertiary' />
               </a>
             </>
           }
           {source === PluginSource.local
             && <>
               <div className='flex items-center gap-1'>
-                <RiHardDrive3Line className='text-text-tertiary w-3 h-3' />
-                <div className='text-text-tertiary system-2xs-medium-uppercase'>Local Plugin</div>
+                <RiHardDrive3Line className='h-3 w-3 text-text-tertiary' />
+                <div className='system-2xs-medium-uppercase text-text-tertiary'>Local Plugin</div>
               </div>
             </>
           }
           {source === PluginSource.debugging
             && <>
               <div className='flex items-center gap-1'>
-                <RiBugLine className='w-3 h-3 text-text-warning' />
-                <div className='text-text-warning system-2xs-medium-uppercase'>Debugging Plugin</div>
+                <RiBugLine className='h-3 w-3 text-text-warning' />
+                <div className='system-2xs-medium-uppercase text-text-warning'>Debugging Plugin</div>
               </div>
             </>
           }

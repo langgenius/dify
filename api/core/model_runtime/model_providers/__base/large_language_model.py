@@ -1,5 +1,6 @@
 import logging
 import time
+import uuid
 from collections.abc import Generator, Sequence
 from typing import Optional, Union
 
@@ -12,16 +13,70 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContentUnionTypes,
     PromptMessageTool,
+    TextPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import (
     ModelType,
     PriceType,
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.plugin.manager.model import PluginModelManager
+from core.plugin.impl.model import PluginModelClient
 
 logger = logging.getLogger(__name__)
+
+
+def _gen_tool_call_id() -> str:
+    return f"chatcmpl-tool-{str(uuid.uuid4().hex)}"
+
+
+def _increase_tool_call(
+    new_tool_calls: list[AssistantPromptMessage.ToolCall], existing_tools_calls: list[AssistantPromptMessage.ToolCall]
+):
+    """
+    Merge incremental tool call updates into existing tool calls.
+
+    :param new_tool_calls: List of new tool call deltas to be merged.
+    :param existing_tools_calls: List of existing tool calls to be modified IN-PLACE.
+    """
+
+    def get_tool_call(tool_call_id: str):
+        """
+        Get or create a tool call by ID
+
+        :param tool_call_id: tool call ID
+        :return: existing or new tool call
+        """
+        if not tool_call_id:
+            return existing_tools_calls[-1]
+
+        _tool_call = next((_tool_call for _tool_call in existing_tools_calls if _tool_call.id == tool_call_id), None)
+        if _tool_call is None:
+            _tool_call = AssistantPromptMessage.ToolCall(
+                id=tool_call_id,
+                type="function",
+                function=AssistantPromptMessage.ToolCall.ToolCallFunction(name="", arguments=""),
+            )
+            existing_tools_calls.append(_tool_call)
+
+        return _tool_call
+
+    for new_tool_call in new_tool_calls:
+        # generate ID for tool calls with function name but no ID to track them
+        if new_tool_call.function.name and not new_tool_call.id:
+            new_tool_call.id = _gen_tool_call_id()
+        # get tool call
+        tool_call = get_tool_call(new_tool_call.id)
+        # update tool call
+        if new_tool_call.id:
+            tool_call.id = new_tool_call.id
+        if new_tool_call.type:
+            tool_call.type = new_tool_call.type
+        if new_tool_call.function.name:
+            tool_call.function.name = new_tool_call.function.name
+        if new_tool_call.function.arguments:
+            tool_call.function.arguments += new_tool_call.function.arguments
 
 
 class LargeLanguageModel(AIModel):
@@ -45,7 +100,7 @@ class LargeLanguageModel(AIModel):
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> Union[LLMResult, Generator]:
+    ) -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
         """
         Invoke large language model
 
@@ -87,7 +142,7 @@ class LargeLanguageModel(AIModel):
         result: Union[LLMResult, Generator[LLMResultChunk, None, None]]
 
         try:
-            plugin_model_manager = PluginModelManager()
+            plugin_model_manager = PluginModelClient()
             result = plugin_model_manager.invoke_llm(
                 tenant_id=self.tenant_id,
                 user_id=user or "unknown",
@@ -109,44 +164,13 @@ class LargeLanguageModel(AIModel):
                 system_fingerprint = None
                 tools_calls: list[AssistantPromptMessage.ToolCall] = []
 
-                def increase_tool_call(new_tool_calls: list[AssistantPromptMessage.ToolCall]):
-                    def get_tool_call(tool_name: str):
-                        if not tool_name:
-                            return tools_calls[-1]
-
-                        tool_call = next(
-                            (tool_call for tool_call in tools_calls if tool_call.function.name == tool_name), None
-                        )
-                        if tool_call is None:
-                            tool_call = AssistantPromptMessage.ToolCall(
-                                id="",
-                                type="",
-                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(name=tool_name, arguments=""),
-                            )
-                            tools_calls.append(tool_call)
-
-                        return tool_call
-
-                    for new_tool_call in new_tool_calls:
-                        # get tool call
-                        tool_call = get_tool_call(new_tool_call.function.name)
-                        # update tool call
-                        if new_tool_call.id:
-                            tool_call.id = new_tool_call.id
-                        if new_tool_call.type:
-                            tool_call.type = new_tool_call.type
-                        if new_tool_call.function.name:
-                            tool_call.function.name = new_tool_call.function.name
-                        if new_tool_call.function.arguments:
-                            tool_call.function.arguments += new_tool_call.function.arguments
-
                 for chunk in result:
                     if isinstance(chunk.delta.message.content, str):
                         content += chunk.delta.message.content
                     elif isinstance(chunk.delta.message.content, list):
                         content_list.extend(chunk.delta.message.content)
                     if chunk.delta.message.tool_calls:
-                        increase_tool_call(chunk.delta.message.tool_calls)
+                        _increase_tool_call(chunk.delta.message.tool_calls, tools_calls)
 
                     usage = chunk.delta.usage or LLMUsage.empty_usage()
                     system_fingerprint = chunk.system_fingerprint
@@ -205,22 +229,26 @@ class LargeLanguageModel(AIModel):
                 user=user,
                 callbacks=callbacks,
             )
-
-        return result
+            # Following https://github.com/langgenius/dify/issues/17799,
+            # we removed the prompt_messages from the chunk on the plugin daemon side.
+            # To ensure compatibility, we add the prompt_messages back here.
+            result.prompt_messages = prompt_messages
+            return result
+        raise NotImplementedError("unsupported invoke result type", type(result))
 
     def _invoke_result_generator(
         self,
         model: str,
-        result: Generator,
+        result: Generator[LLMResultChunk, None, None],
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
         stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
-    ) -> Generator:
+    ) -> Generator[LLMResultChunk, None, None]:
         """
         Invoke result generator
 
@@ -228,13 +256,27 @@ class LargeLanguageModel(AIModel):
         :return: result generator
         """
         callbacks = callbacks or []
-        assistant_message = AssistantPromptMessage(content="")
+        message_content: list[PromptMessageContentUnionTypes] = []
         usage = None
         system_fingerprint = None
         real_model = model
 
+        def _update_message_content(content: str | list[PromptMessageContentUnionTypes] | None):
+            if not content:
+                return
+            if isinstance(content, list):
+                message_content.extend(content)
+                return
+            if isinstance(content, str):
+                message_content.append(TextPromptMessageContent(data=content))
+                return
+
         try:
             for chunk in result:
+                # Following https://github.com/langgenius/dify/issues/17799,
+                # we removed the prompt_messages from the chunk on the plugin daemon side.
+                # To ensure compatibility, we add the prompt_messages back here.
+                chunk.prompt_messages = prompt_messages
                 yield chunk
 
                 self._trigger_new_chunk_callbacks(
@@ -250,7 +292,8 @@ class LargeLanguageModel(AIModel):
                     callbacks=callbacks,
                 )
 
-                assistant_message.content += chunk.delta.message.content
+                _update_message_content(chunk.delta.message.content)
+
                 real_model = chunk.model
                 if chunk.delta.usage:
                     usage = chunk.delta.usage
@@ -260,6 +303,7 @@ class LargeLanguageModel(AIModel):
         except Exception as e:
             raise self._transform_invoke_error(e)
 
+        assistant_message = AssistantPromptMessage(content=message_content)
         self._trigger_after_invoke_callbacks(
             model=model,
             result=LLMResult(
@@ -295,18 +339,20 @@ class LargeLanguageModel(AIModel):
         :param tools: tools for tool calling
         :return:
         """
-        plugin_model_manager = PluginModelManager()
-        return plugin_model_manager.get_llm_num_tokens(
-            tenant_id=self.tenant_id,
-            user_id="unknown",
-            plugin_id=self.plugin_id,
-            provider=self.provider_name,
-            model_type=self.model_type.value,
-            model=model,
-            credentials=credentials,
-            prompt_messages=prompt_messages,
-            tools=tools,
-        )
+        if dify_config.PLUGIN_BASED_TOKEN_COUNTING_ENABLED:
+            plugin_model_manager = PluginModelClient()
+            return plugin_model_manager.get_llm_num_tokens(
+                tenant_id=self.tenant_id,
+                user_id="unknown",
+                plugin_id=self.plugin_id,
+                provider=self.provider_name,
+                model_type=self.model_type.value,
+                model=model,
+                credentials=credentials,
+                prompt_messages=prompt_messages,
+                tools=tools,
+            )
+        return 0
 
     def _calc_response_usage(
         self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int
@@ -401,7 +447,7 @@ class LargeLanguageModel(AIModel):
         chunk: LLMResultChunk,
         model: str,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
         stop: Optional[Sequence[str]] = None,
@@ -448,7 +494,7 @@ class LargeLanguageModel(AIModel):
         model: str,
         result: LLMResult,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
         stop: Optional[Sequence[str]] = None,

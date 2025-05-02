@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -22,10 +22,10 @@ import Divider from '@/app/components/base/divider'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: LangSmithConfig | LangFuseConfig | OpikConfig | null
+  payload?: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: LangSmithConfig | LangFuseConfig | OpikConfig) => void
+  onSaved: (payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -50,6 +50,13 @@ const opikConfigTemplate = {
   workspace: '',
 }
 
+const weaveConfigTemplate = {
+  api_key: '',
+  entity: '',
+  project: '',
+  endpoint: '',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -63,7 +70,7 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig | OpikConfig>((() => {
+  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig>((() => {
     if (isEdit)
       return payload
 
@@ -73,7 +80,10 @@ const ProviderConfigModal: FC<Props> = ({
     else if (type === TracingProvider.langfuse)
       return langFuseConfigTemplate
 
-    return opikConfigTemplate
+    else if (type === TracingProvider.opik)
+      return opikConfigTemplate
+
+    return weaveConfigTemplate
   })())
   const [isShowRemoveConfirm, {
     setTrue: showRemoveConfirm,
@@ -127,6 +137,14 @@ const ProviderConfigModal: FC<Props> = ({
       // const postData = config as OpikConfig
     }
 
+    if (type === TracingProvider.weave) {
+      const postData = config as WeaveConfig
+      if (!errorMessage && !postData.api_key)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'API Key' })
+      if (!errorMessage && !postData.project)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.project`) })
+    }
+
     return errorMessage
   }, [config, t, type])
   const handleSave = useCallback(async () => {
@@ -167,15 +185,49 @@ const ProviderConfigModal: FC<Props> = ({
       {!isShowRemoveConfirm
         ? (
           <PortalToFollowElem open>
-            <PortalToFollowElemContent className='w-full h-full z-[60]'>
+            <PortalToFollowElemContent className='z-[60] h-full w-full'>
               <div className='fixed inset-0 flex items-center justify-center bg-background-overlay'>
-                <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-components-panel-bg shadow-xl rounded-2xl overflow-y-auto'>
+                <div className='mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl'>
                   <div className='px-8 pt-8'>
-                    <div className='flex justify-between items-center mb-4'>
-                      <div className='title-2xl-semibold text-text-primary'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
+                    <div className='mb-4 flex items-center justify-between'>
+                      <div className='title-2xl-semi-bold text-text-primary'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
                     </div>
 
                     <div className='space-y-4'>
+                      {type === TracingProvider.weave && (
+                        <>
+                          <Field
+                            label='API Key'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as WeaveConfig).api_key}
+                            onChange={handleConfigChange('api_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.project`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as WeaveConfig).project}
+                            onChange={handleConfigChange('project')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
+                          />
+                          <Field
+                            label='Entity'
+                            labelClassName='!text-sm'
+                            value={(config as WeaveConfig).entity}
+                            onChange={handleConfigChange('entity')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'Entity' })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            value={(config as WeaveConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder={'https://trace.wandb.ai/'}
+                          />
+                        </>
+                      )}
                       {type === TracingProvider.langSmith && (
                         <>
                           <Field
@@ -263,16 +315,15 @@ const ProviderConfigModal: FC<Props> = ({
                           />
                         </>
                       )}
-
                     </div>
-                    <div className='my-8 flex justify-between items-center h-8'>
+                    <div className='my-8 flex h-8 items-center justify-between'>
                       <a
-                        className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]'
+                        className='flex items-center space-x-1 text-xs font-normal leading-[18px] text-[#155EEF]'
                         target='_blank'
                         href={docURL[type]}
                       >
                         <span>{t(`${I18N_PREFIX}.viewDocsLink`, { key: t(`app.tracing.${type}.title`) })}</span>
-                        <LinkExternal02 className='w-3 h-3' />
+                        <LinkExternal02 className='h-3 w-3' />
                       </a>
                       <div className='flex items-center'>
                         {isEdit && (
@@ -305,11 +356,11 @@ const ProviderConfigModal: FC<Props> = ({
                     </div>
                   </div>
                   <div className='border-t-[0.5px] border-divider-regular'>
-                    <div className='flex justify-center items-center py-3 bg-background-section-burn text-xs text-text-tertiary'>
-                      <Lock01 className='mr-1 w-3 h-3 text-text-tertiary' />
+                    <div className='flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary'>
+                      <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
                       {t('common.modelProvider.encrypted.front')}
                       <a
-                        className='text-primary-600 mx-1'
+                        className='mx-1 text-primary-600'
                         target='_blank' rel='noopener noreferrer'
                         href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
                       >

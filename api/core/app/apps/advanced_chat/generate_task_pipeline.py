@@ -5,51 +5,70 @@ from collections.abc import Generator, Mapping
 from threading import Thread
 from typing import Any, Optional, Union
 
-from constants.tts_auto_play_timeout import (TTS_AUTO_PLAY_TIMEOUT,
-                                             TTS_AUTO_PLAY_YIELD_CPU_TIME)
-from core.app.apps.advanced_chat.app_generator_tts_publisher import (
-    AppGeneratorTTSPublisher, AudioTrunk)
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
+from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.entities.app_invoke_entities import (
-    AdvancedChatAppGenerateEntity, InvokeFrom)
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
-    QueueAdvancedChatMessageEndEvent, QueueAgentLogEvent,
-    QueueAnnotationReplyEvent, QueueErrorEvent, QueueIterationCompletedEvent,
-    QueueIterationNextEvent, QueueIterationStartEvent,
-    QueueMessageReplaceEvent, QueueNodeExceptionEvent, QueueNodeFailedEvent,
-    QueueNodeInIterationFailedEvent, QueueNodeRetryEvent,
-    QueueNodeStartedEvent, QueueNodeSucceededEvent,
-    QueueParallelBranchRunFailedEvent, QueueParallelBranchRunStartedEvent,
-    QueueParallelBranchRunSucceededEvent, QueuePingEvent,
-    QueueRetrieverResourcesEvent, QueueStopEvent, QueueTextChunkEvent,
-    QueueWorkflowFailedEvent, QueueWorkflowPartialSuccessEvent,
-    QueueWorkflowStartedEvent, QueueWorkflowSucceededEvent)
-from core.app.entities.task_entities import (ChatbotAppBlockingResponse,
-                                             ChatbotAppStreamResponse,
-                                             ErrorStreamResponse,
-                                             MessageAudioEndStreamResponse,
-                                             MessageAudioStreamResponse,
-                                             MessageEndStreamResponse,
-                                             StreamResponse, WorkflowTaskState)
-from core.app.task_pipeline.based_generate_task_pipeline import \
-    BasedGenerateTaskPipeline
+    QueueAdvancedChatMessageEndEvent,
+    QueueAgentLogEvent,
+    QueueAnnotationReplyEvent,
+    QueueErrorEvent,
+    QueueIterationCompletedEvent,
+    QueueIterationNextEvent,
+    QueueIterationStartEvent,
+    QueueLoopCompletedEvent,
+    QueueLoopNextEvent,
+    QueueLoopStartEvent,
+    QueueMessageReplaceEvent,
+    QueueNodeExceptionEvent,
+    QueueNodeFailedEvent,
+    QueueNodeInIterationFailedEvent,
+    QueueNodeInLoopFailedEvent,
+    QueueNodeRetryEvent,
+    QueueNodeStartedEvent,
+    QueueNodeSucceededEvent,
+    QueueParallelBranchRunFailedEvent,
+    QueueParallelBranchRunStartedEvent,
+    QueueParallelBranchRunSucceededEvent,
+    QueuePingEvent,
+    QueueRetrieverResourcesEvent,
+    QueueStopEvent,
+    QueueTextChunkEvent,
+    QueueWorkflowFailedEvent,
+    QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowStartedEvent,
+    QueueWorkflowSucceededEvent,
+)
+from core.app.entities.task_entities import (
+    ChatbotAppBlockingResponse,
+    ChatbotAppStreamResponse,
+    ErrorStreamResponse,
+    MessageAudioEndStreamResponse,
+    MessageAudioStreamResponse,
+    MessageEndStreamResponse,
+    StreamResponse,
+    WorkflowTaskState,
+)
+from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.graph_runtime_state import \
-    GraphRuntimeState
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
+from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatedByRole
 from models.workflow import Workflow, WorkflowRunStatus
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +88,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         user: Union[Account, EndUser],
         stream: bool,
         dialogue_count: int,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
@@ -99,6 +119,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
                 SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
             },
+            workflow_node_execution_repository=workflow_node_execution_repository,
         )
 
         self._task_state = WorkflowTaskState()
@@ -220,7 +241,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
             try:
                 if not tts_publisher:
-                    logger.info(f"TTS: tts_publisher is None")
+                    logger.info("TTS: tts_publisher is None")
                     break
                 audio_trunk = tts_publisher.check_and_get_audio()
                 if audio_trunk is None:
@@ -307,10 +328,9 @@ class AdvancedChatAppGenerateTaskPipeline:
                         session=session, workflow_run_id=self._workflow_run_id
                     )
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_retried(
-                        session=session, workflow_run=workflow_run, event=event
+                        workflow_run=workflow_run, event=event
                     )
                     node_retry_resp = self._workflow_cycle_manager._workflow_node_retry_to_stream_response(
-                        session=session,
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -328,11 +348,10 @@ class AdvancedChatAppGenerateTaskPipeline:
                         session=session, workflow_run_id=self._workflow_run_id
                     )
                     workflow_node_execution = self._workflow_cycle_manager._handle_node_execution_start(
-                        session=session, workflow_run=workflow_run, event=event
+                        workflow_run=workflow_run, event=event
                     )
 
                     node_start_resp = self._workflow_cycle_manager._workflow_node_start_to_stream_response(
-                        session=session,
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -350,11 +369,10 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_success(
-                        session=session, event=event
+                        event=event
                     )
 
                     node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
-                        session=session,
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -363,19 +381,22 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 if node_finish_resp:
                     yield node_finish_resp
-            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent):
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
-                        session=session, event=event
-                    )
+            elif isinstance(
+                event,
+                QueueNodeFailedEvent
+                | QueueNodeInIterationFailedEvent
+                | QueueNodeInLoopFailedEvent
+                | QueueNodeExceptionEvent,
+            ):
+                workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
+                    event=event
+                )
 
-                    node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
-                        session=session,
-                        event=event,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_node_execution=workflow_node_execution,
-                    )
-                    session.commit()
+                node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                    event=event,
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_node_execution=workflow_node_execution,
+                )
 
                 if node_finish_resp:
                     yield node_finish_resp
@@ -463,6 +484,54 @@ class AdvancedChatAppGenerateTaskPipeline:
                     )
 
                 yield iter_finish_resp
+            elif isinstance(event, QueueLoopStartEvent):
+                if not self._workflow_run_id:
+                    raise ValueError("workflow run not initialized.")
+
+                with Session(db.engine, expire_on_commit=False) as session:
+                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
+                        session=session, workflow_run_id=self._workflow_run_id
+                    )
+                    loop_start_resp = self._workflow_cycle_manager._workflow_loop_start_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run=workflow_run,
+                        event=event,
+                    )
+
+                yield loop_start_resp
+            elif isinstance(event, QueueLoopNextEvent):
+                if not self._workflow_run_id:
+                    raise ValueError("workflow run not initialized.")
+
+                with Session(db.engine, expire_on_commit=False) as session:
+                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
+                        session=session, workflow_run_id=self._workflow_run_id
+                    )
+                    loop_next_resp = self._workflow_cycle_manager._workflow_loop_next_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run=workflow_run,
+                        event=event,
+                    )
+
+                yield loop_next_resp
+            elif isinstance(event, QueueLoopCompletedEvent):
+                if not self._workflow_run_id:
+                    raise ValueError("workflow run not initialized.")
+
+                with Session(db.engine, expire_on_commit=False) as session:
+                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
+                        session=session, workflow_run_id=self._workflow_run_id
+                    )
+                    loop_finish_resp = self._workflow_cycle_manager._workflow_loop_completed_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run=workflow_run,
+                        event=event,
+                    )
+
+                yield loop_finish_resp
             elif isinstance(event, QueueWorkflowSucceededEvent):
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
@@ -573,6 +642,15 @@ class AdvancedChatAppGenerateTaskPipeline:
                         session.commit()
 
                     yield workflow_finish_resp
+                elif event.stopped_by in (
+                    QueueStopEvent.StopBy.INPUT_MODERATION,
+                    QueueStopEvent.StopBy.ANNOTATION_REPLY,
+                ):
+                    # When hitting input-moderation or annotation-reply, the workflow will not start
+                    with Session(db.engine, expire_on_commit=False) as session:
+                        # Save message
+                        self._save_message(session=session)
+                        session.commit()
 
                 yield self._message_end_to_stream_response()
                 break
@@ -614,7 +692,9 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
             elif isinstance(event, QueueMessageReplaceEvent):
                 # published by moderation
-                yield self._message_cycle_manager._message_replace_to_stream_response(answer=event.text)
+                yield self._message_cycle_manager._message_replace_to_stream_response(
+                    answer=event.text, reason=event.reason
+                )
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
                 if not graph_runtime_state:
                     raise ValueError("graph runtime state not initialized.")
@@ -625,7 +705,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if output_moderation_answer:
                     self._task_state.answer = output_moderation_answer
                     yield self._message_cycle_manager._message_replace_to_stream_response(
-                        answer=output_moderation_answer
+                        answer=output_moderation_answer,
+                        reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
 
                 # Save message

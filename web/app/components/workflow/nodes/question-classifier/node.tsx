@@ -9,13 +9,14 @@ import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
 const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const { t } = useTranslation()
 
-  const { data } = props
+  const { data, id } = props
   const { provider, name: modelId } = data.model
   // const tempTopics = data.topics
   const topics = data.classes
@@ -47,7 +48,12 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
               >
                 <InfoPanel
                   title={`${t(`${i18nPrefix}.class`)} ${index + 1}`}
-                  content={topic.name}
+                  content={
+                    <ReadonlyInputWithSelectVar
+                      value={topic.name}
+                      nodeId={id}
+                    />
+                  }
                 />
                 <NodeSourceHandle
                   {...props}

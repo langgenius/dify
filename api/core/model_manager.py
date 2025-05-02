@@ -101,7 +101,7 @@ class ModelInstance:
     @overload
     def invoke_llm(
         self,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: Optional[dict] = None,
         tools: Sequence[PromptMessageTool] | None = None,
         stop: Optional[list[str]] = None,
@@ -177,7 +177,7 @@ class ModelInstance:
         )
 
     def get_llm_num_tokens(
-        self, prompt_messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]] = None
+        self, prompt_messages: Sequence[PromptMessage], tools: Optional[Sequence[PromptMessageTool]] = None
     ) -> int:
         """
         Get number of tokens for llm

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import TracingIcon from './tracing-icon'
 import ProviderPanel from './provider-panel'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
@@ -26,7 +26,8 @@ export type PopupProps = {
   langSmithConfig: LangSmithConfig | null
   langFuseConfig: LangFuseConfig | null
   opikConfig: OpikConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig | OpikConfig) => void
+  weaveConfig: WeaveConfig | null
+  onConfigUpdated: (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -40,6 +41,7 @@ const ConfigPopup: FC<PopupProps> = ({
   langSmithConfig,
   langFuseConfig,
   opikConfig,
+  weaveConfig,
   onConfigUpdated,
   onConfigRemoved,
 }) => {
@@ -63,7 +65,7 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: LangSmithConfig | LangFuseConfig | OpikConfig) => {
+  const handleConfigUpdated = useCallback((payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => {
     onConfigUpdated(currentProvider!, payload)
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigUpdated])
@@ -73,8 +75,8 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
-  const providerAllConfigured = langSmithConfig && langFuseConfig && opikConfig
-  const providerAllNotConfigured = !langSmithConfig && !langFuseConfig && !opikConfig
+  const providerAllConfigured = langSmithConfig && langFuseConfig && opikConfig && weaveConfig
+  const providerAllNotConfigured = !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig
 
   const switchContent = (
     <Switch
@@ -123,32 +125,50 @@ const ConfigPopup: FC<PopupProps> = ({
     />
   )
 
+  const weavePanel = (
+    <ProviderPanel
+      type={TracingProvider.weave}
+      readOnly={readOnly}
+      config={weaveConfig}
+      hasConfigured={!!weaveConfig}
+      onConfig={handleOnConfig(TracingProvider.weave)}
+      isChosen={chosenProvider === TracingProvider.weave}
+      onChoose={handleOnChoose(TracingProvider.weave)}
+      key="weave-provider-panel"
+    />
+  )
   const configuredProviderPanel = () => {
-    const configuredPanels: any[] = []
-
-    if (langSmithConfig)
-      configuredPanels.push(langSmithPanel)
+    const configuredPanels: JSX.Element[] = []
 
     if (langFuseConfig)
       configuredPanels.push(langfusePanel)
 
+    if (langSmithConfig)
+      configuredPanels.push(langSmithPanel)
+
     if (opikConfig)
       configuredPanels.push(opikPanel)
+
+    if (weaveConfig)
+      configuredPanels.push(weavePanel)
 
     return configuredPanels
   }
 
   const moreProviderPanel = () => {
-    const notConfiguredPanels: any[] = []
-
-    if (!langSmithConfig)
-      notConfiguredPanels.push(langSmithPanel)
+    const notConfiguredPanels: JSX.Element[] = []
 
     if (!langFuseConfig)
       notConfiguredPanels.push(langfusePanel)
 
+    if (!langSmithConfig)
+      notConfiguredPanels.push(langSmithPanel)
+
     if (!opikConfig)
       notConfiguredPanels.push(opikPanel)
+
+    if (!weaveConfig)
+      notConfiguredPanels.push(weavePanel)
 
     return notConfiguredPanels
   }
@@ -158,19 +178,21 @@ const ConfigPopup: FC<PopupProps> = ({
       return langSmithConfig
     if (currentProvider === TracingProvider.langfuse)
       return langFuseConfig
-    return opikConfig
+    if (currentProvider === TracingProvider.opik)
+      return opikConfig
+    return weaveConfig
   }
 
   return (
-    <div className='w-[420px] p-4 rounded-2xl bg-components-panel-bg border-[0.5px] border-components-panel-border shadow-xl'>
-      <div className='flex justify-between items-center'>
+    <div className='w-[420px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-xl'>
+      <div className='flex items-center justify-between'>
         <div className='flex items-center'>
           <TracingIcon size='md' className='mr-2' />
-          <div className='text-text-primary title-2xl-semibold'>{t(`${I18N_PREFIX}.tracing`)}</div>
+          <div className='title-2xl-semi-bold text-text-primary'>{t(`${I18N_PREFIX}.tracing`)}</div>
         </div>
         <div className='flex items-center'>
           <Indicator color={enabled ? 'green' : 'gray'} />
-          <div className={cn('ml-1 system-xs-semibold-uppercase text-text-tertiary', enabled && 'text-util-colors-green-green-600')}>
+          <div className={cn('system-xs-semibold-uppercase ml-1 text-text-tertiary', enabled && 'text-util-colors-green-green-600')}>
             {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
           </div>
           {!readOnly && (
@@ -189,7 +211,7 @@ const ConfigPopup: FC<PopupProps> = ({
         </div>
       </div>
 
-      <div className='mt-2 system-xs-regular text-text-tertiary'>
+      <div className='system-xs-regular mt-2 text-text-tertiary'>
         {t(`${I18N_PREFIX}.tracingDescription`)}
       </div>
       <Divider className='my-3' />
@@ -199,9 +221,10 @@ const ConfigPopup: FC<PopupProps> = ({
             <>
               <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`)}</div>
               <div className='mt-2 space-y-2'>
-                {langSmithPanel}
                 {langfusePanel}
+                {langSmithPanel}
                 {opikPanel}
+                {weavePanel}
               </div>
             </>
           )
@@ -211,7 +234,7 @@ const ConfigPopup: FC<PopupProps> = ({
               <div className='mt-2 space-y-2'>
                 {configuredProviderPanel()}
               </div>
-              <div className='mt-3 system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
+              <div className='system-xs-medium-uppercase mt-3 text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
               <div className='mt-2 space-y-2'>
                 {moreProviderPanel()}
               </div>

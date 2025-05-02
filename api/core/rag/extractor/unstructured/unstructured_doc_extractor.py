@@ -10,14 +10,11 @@ logger = logging.getLogger(__name__)
 class UnstructuredWordExtractor(BaseExtractor):
     """Loader that uses unstructured to load word documents."""
 
-    def __init__(
-        self,
-        file_path: str,
-        api_url: str,
-    ):
+    def __init__(self, file_path: str, api_url: str, api_key: str = ""):
         """Initialize with file path."""
         self._file_path = file_path
         self._api_url = api_url
+        self._api_key = api_key
 
     def extract(self) -> list[Document]:
         from unstructured.__version__ import __version__ as __unstructured_version__
@@ -41,9 +38,10 @@ class UnstructuredWordExtractor(BaseExtractor):
             )
 
         if is_doc:
-            from unstructured.partition.doc import partition_doc
+            from unstructured.partition.api import partition_via_api
 
-            elements = partition_doc(filename=self._file_path)
+            elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
+
         else:
             from unstructured.partition.docx import partition_docx
 

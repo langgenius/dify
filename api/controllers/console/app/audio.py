@@ -80,8 +80,6 @@ class ChatMessageTextApi(Resource):
     @account_initialization_required
     @get_app_model
     def post(self, app_model: App):
-        from werkzeug.exceptions import InternalServerError
-
         try:
             parser = reqparse.RequestParser()
             parser.add_argument("message_id", type=str, location="json")

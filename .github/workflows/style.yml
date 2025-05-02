@@ -9,6 +9,12 @@ concurrency:
   group: style-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  checks: write
+  statuses: write
+  contents: read
+
+
 jobs:
   python-style:
     name: Python Style
@@ -18,7 +24,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
@@ -29,24 +34,27 @@ jobs:
             api/**
             .github/workflows/style.yml
 
-      - name: Setup Poetry and Python
+      - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: ./.github/actions/setup-poetry
+        uses: ./.github/actions/setup-uv
+        with:
+          uv-lockfile: api/uv.lock
+          enable-cache: false
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry install -C api --only lint
+        run: uv sync --project api --dev
 
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          poetry run -C api ruff --version
-          poetry run -C api ruff check ./
-          poetry run -C api ruff format --check ./
+          uv run --directory api ruff --version
+          uv run --directory api ruff check --diff ./
+          uv run --directory api ruff format --check --diff ./
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
+        run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
       - name: Lint hints
         if: failure()
@@ -63,7 +71,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
@@ -82,7 +89,7 @@ jobs:
         uses: actions/setup-node@v4
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           cache-dependency-path: ./web/package.json
 
@@ -102,7 +109,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
@@ -133,7 +139,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Check changed files
@@ -153,6 +158,7 @@ jobs:
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: main
+          FILTER_REGEX_INCLUDE: pnpm-lock.yaml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
@@ -163,3 +169,14 @@ jobs:
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_XML: true
           VALIDATE_YAML: true
+
+      - name: EditorConfig checks
+        uses: super-linter/super-linter/slim@v7
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IGNORE_GENERATED_FILES: true
+          IGNORE_GITIGNORED_FILES: true
+          # EditorConfig validation
+          VALIDATE_EDITORCONFIG: true
+          EDITORCONFIG_FILE_NAME: editorconfig-checker.json

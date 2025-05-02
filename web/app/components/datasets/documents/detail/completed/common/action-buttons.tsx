@@ -36,8 +36,8 @@ const ActionButtons: FC<IActionButtonsProps> = ({
     if (loading)
       return
     handleSave()
-  }
-  , { exactMatch: true, useCapture: true })
+  },
+  { exactMatch: true, useCapture: true })
 
   const isParentChildParagraphMode = useMemo(() => {
     return mode === 'hierarchical' && parentMode === 'paragraph'
@@ -49,8 +49,8 @@ const ActionButtons: FC<IActionButtonsProps> = ({
         onClick={handleCancel}
       >
         <div className='flex items-center gap-x-1'>
-          <span className='text-components-button-secondary-text system-sm-medium'>{t('common.operation.cancel')}</span>
-          <span className='px-[1px] bg-components-kbd-bg-gray rounded-[4px] text-text-tertiary system-kbd'>ESC</span>
+          <span className='system-sm-medium text-components-button-secondary-text'>{t('common.operation.cancel')}</span>
+          <span className='system-kbd rounded-[4px] bg-components-kbd-bg-gray px-[1px] text-text-tertiary'>ESC</span>
         </div>
       </Button>
       {(isParentChildParagraphMode && actionType === 'edit' && !isChildChunk)
@@ -58,7 +58,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
           onClick={handleRegeneration}
           disabled={loading}
         >
-          <span className='text-components-button-secondary-text system-sm-medium'>
+          <span className='system-sm-medium text-components-button-secondary-text'>
             {t('common.operation.saveAndRegenerate')}
           </span>
         </Button>
@@ -72,8 +72,8 @@ const ActionButtons: FC<IActionButtonsProps> = ({
         <div className='flex items-center gap-x-1'>
           <span className='text-components-button-primary-text'>{t('common.operation.save')}</span>
           <div className='flex items-center gap-x-0.5'>
-            <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd capitalize'>{getKeyboardKeyNameBySystem('ctrl')}</span>
-            <span className='w-4 h-4 bg-components-kbd-bg-white rounded-[4px] text-text-primary-on-surface system-kbd'>S</span>
+            <span className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white capitalize text-text-primary-on-surface'>{getKeyboardKeyNameBySystem('ctrl')}</span>
+            <span className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface'>S</span>
           </div>
         </div>
       </Button>

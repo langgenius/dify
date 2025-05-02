@@ -4,7 +4,7 @@ const translation = {
   customToolTip: 'Difyカスタムツールの詳細',
   type: {
     all: 'すべて',
-    builtIn: '組み込み',
+    builtIn: 'ツール',
     custom: 'カスタム',
     workflow: 'ワークフロー',
   },
@@ -13,7 +13,7 @@ const translation = {
     line2: 'Difyへのツールの貢献に興味があります。',
     viewGuide: 'ガイドを見る',
   },
-  author: '著者',
+  author: '著者：',
   auth: {
     unauthorized: '認証する',
     authorized: '認証済み',

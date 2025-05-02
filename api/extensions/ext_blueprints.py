@@ -7,13 +7,13 @@ def init_app(app: DifyApp):
 
     from flask_cors import CORS  # type: ignore
 
+    from controllers.admin import bp as admin_bp
     from controllers.console import bp as console_app_bp
     from controllers.files import bp as files_bp
     from controllers.inner_api import bp as inner_api_bp
     from controllers.service_api import bp as service_api_bp
-    from controllers.web import bp as web_bp
-    from controllers.admin import bp as admin_bp
     from controllers.service_api_with_auth import bp as service_api_with_auth_bp
+    from controllers.web import bp as web_bp
 
     CORS(
         service_api_with_auth_bp,
