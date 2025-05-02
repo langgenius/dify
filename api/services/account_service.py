@@ -8,6 +8,11 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Optional, cast
 
+from pydantic import BaseModel  # type: ignore
+from sqlalchemy import func  # type: ignore
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import Unauthorized
+
 from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
@@ -28,7 +33,6 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
-from pydantic import BaseModel  # type: ignore
 from services.billing_service import BillingService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -48,15 +52,12 @@ from services.errors.account import (
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
-from sqlalchemy import func  # type: ignore
-from sqlalchemy.orm import Session
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 from tasks.phone_sms_code_login import send_phone_sms_code_login_task
-from werkzeug.exceptions import Unauthorized
 
 
 class TokenPair(BaseModel):
