@@ -15,18 +15,19 @@ if TYPE_CHECKING:
     from models.workflow import Workflow
 
 import sqlalchemy as sa
+from flask import request
+from flask_login import UserMixin  # type: ignore
+from sqlalchemy import Float, func, text
+from sqlalchemy.orm import Mapped, Session, mapped_column
+
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
-from flask import request
-from flask_login import UserMixin  # type: ignore
 from libs.helper import generate_string
 from models.base import Base
 from models.enums import CreatedByRole
 from models.workflow import WorkflowRunStatus
-from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
-from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from .account import Account, Tenant
 from .engine import db
