@@ -209,6 +209,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("query", type=str, location="json")
         parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
+        parser.add_argument("metadata_filtering_conditions", type=dict, required=False, location="json")
         args = parser.parse_args()
 
         HitTestingService.hit_testing_args_check(args)
@@ -219,6 +220,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
                 query=args["query"],
                 account=current_user,
                 external_retrieval_model=args["external_retrieval_model"],
+                metadata_filtering_conditions=args["metadata_filtering_conditions"],
             )
 
             return response
