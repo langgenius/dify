@@ -5,6 +5,9 @@ from collections.abc import Generator, Mapping
 from threading import Thread
 from typing import Any, Optional, Union
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -66,8 +69,6 @@ from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatedByRole
 from models.workflow import Workflow, WorkflowRunStatus
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
