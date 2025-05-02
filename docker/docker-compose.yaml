@@ -592,6 +592,8 @@ services:
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.0.3-local
     restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
