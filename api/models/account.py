@@ -297,6 +297,34 @@ class TenantPluginPermission(Base):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = mapped_column(StringUUID)
-    install_permission: Mapped[InstallPermission] = mapped_column(db.String(16), server_default="everyone")
-    debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), server_default="noone")
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    install_permission: Mapped[InstallPermission] = mapped_column(
+        db.String(16), nullable=False, server_default="everyone"
+    )
+    debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), nullable=False, server_default="noone")
+
+class TenantPluginAutoUpgradeStrategy(Base):
+    class StrategyOption(enum.StrEnum):
+        DISABLED = "disabled"
+        FIX_ONLY = "fix_only"
+        LATEST = "latest"
+
+    class UpgradeMode(enum.StrEnum):
+        PARTIAL = "partial"
+        EXCLUDE = "exclude"
+
+    __tablename__ = "tenant_plugin_auto_upgrade_strategies"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tenant_plugin_auto_upgrade_strategy_pkey"),
+        db.UniqueConstraint("tenant_id", name="unique_tenant_plugin_auto_upgrade_strategy"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    strategy_option: Mapped[StrategyOption] = mapped_column(db.String(16), nullable=False)
+    upgrade_time_of_day: Mapped[int] = mapped_column(db.Integer, nullable=False)
+    upgrade_mode: Mapped[UpgradeMode] = mapped_column(db.String(16), nullable=False)
+    exclude_plugins: Mapped[list[str]] = mapped_column(db.ARRAY(db.String(255)), nullable=False)
+    include_plugins: Mapped[list[str]] = mapped_column(db.ARRAY(db.String(255)), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
