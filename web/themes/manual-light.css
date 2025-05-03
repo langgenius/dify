@@ -66,4 +66,5 @@ html[data-theme="light"] {
         --color-node-data-source-bg: linear-gradient(100deg, var(--workflow-block-wrapper-bg-1, #E9EBF0) 0%, var(--workflow-block-wrapper-bg-2, rgba(233, 235, 240, 0.20)) 100%);
         --color-tag-selector-mask-bg: linear-gradient(90deg, rgba(252, 252, 253, 0) 0%, rgba(252, 252, 253, 1) 100%);
         --color-tag-selector-mask-hover-bg: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 100%);
+        --color-pipeline-template-card-hover-bg: linear-gradient(0deg, rgba(249, 250, 251, 1) 60.27%, rgba(249, 250, 251, 0) 100%);
 }

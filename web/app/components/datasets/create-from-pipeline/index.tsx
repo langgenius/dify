@@ -2,6 +2,7 @@
 import HeaderEffect from './header-effect'
 import Header from './header'
 import CreateOptions from './create-options'
+import List from './list'
 
 const CreateFromPipeline = () => {
   return (
@@ -12,6 +13,7 @@ const CreateFromPipeline = () => {
       <HeaderEffect />
       <Header />
       <CreateOptions />
+      <List />
     </div>
   )
 }

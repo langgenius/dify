@@ -6,38 +6,36 @@ import Textarea from '@/app/components/base/textarea'
 import type { AppIconType } from '@/types/app'
 import { RiCloseLine } from '@remixicon/react'
 import React, { useCallback, useRef, useState } from 'react'
-import PermissionSelector from '../../settings/permission-selector'
-import { DatasetPermission } from '@/models/datasets'
-import { useMembers } from '@/service/use-common'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
+import type { Pipeline } from '../built-in-pipeline-list'
 
-type CreateFromScratchProps = {
+type EditPipelineInfoProps = {
   onClose: () => void
-  onCreate: () => void
+  onSave: () => void
+  pipeline: Pipeline
 }
 
-const DEFAULT_APP_ICON: AppIconSelection = {
-  type: 'emoji',
-  icon: '📙',
-  background: '#FFF4ED',
-}
-
-const CreateFromScratch = ({
+const EditPipelineInfo = ({
   onClose,
-  onCreate,
-}: CreateFromScratchProps) => {
+  onSave,
+  pipeline,
+}: EditPipelineInfoProps) => {
   const { t } = useTranslation()
-  const [name, setName] = useState('')
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(DEFAULT_APP_ICON)
-  const [description, setDescription] = useState('')
-  const [permission, setPermission] = useState(DatasetPermission.onlyMe)
+  const [name, setName] = useState(pipeline.name)
+  const [appIcon, setAppIcon] = useState<AppIconSelection>(
+    pipeline.icon_type === 'image'
+      ? { type: 'image' as const, url: pipeline.url || '', fileId: pipeline.file_id || '' }
+      : { type: 'emoji' as const, icon: pipeline.icon || '', background: pipeline.icon_background || '' },
+  )
+  const [description, setDescription] = useState(pipeline.description)
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>([])
-  const previousAppIcon = useRef<AppIconSelection>(DEFAULT_APP_ICON)
-
-  const { data: memberList } = useMembers()
+  const previousAppIcon = useRef<AppIconSelection>(
+    pipeline.icon_type === 'image'
+      ? { type: 'image' as const, url: pipeline.url || '', fileId: pipeline.file_id || '' }
+      : { type: 'emoji' as const, icon: pipeline.icon || '', background: pipeline.icon_background || '' },
+  )
 
   const handleAppNameChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
@@ -64,11 +62,7 @@ const CreateFromScratch = ({
     setDescription(value)
   }, [])
 
-  const handlePermissionChange = useCallback((value?: DatasetPermission) => {
-    setPermission(value!)
-  }, [])
-
-  const handleCreate = useCallback(() => {
+  const handleSave = useCallback(() => {
     if (!name) {
       Toast.notify({
         type: 'error',
@@ -76,16 +70,16 @@ const CreateFromScratch = ({
       })
       return
     }
-    onCreate()
+    onSave()
     onClose()
-  }, [name, onCreate, onClose])
+  }, [name, onSave, onClose])
 
   return (
     <div className='relative flex flex-col'>
       {/* Header */}
       <div className='pb-3 pl-6 pr-14 pt-6'>
         <span className='title-2xl-semi-bold text-text-primary'>
-          Create Knowledge
+          Edit Pipeline Info
         </span>
       </div>
       <button
@@ -98,7 +92,7 @@ const CreateFromScratch = ({
       <div className='flex flex-col gap-y-5 px-6 py-3'>
         <div className='flex items-end gap-x-3 self-stretch'>
           <div className='flex grow flex-col gap-y-1 pb-1'>
-            <label className='system-sm-medium flex h-6 items-center text-text-secondary'>Knowledge name & icon</label>
+            <label className='system-sm-medium flex h-6 items-center text-text-secondary'>Pipeline name & icon</label>
             <Input
               onChange={handleAppNameChange}
               value={name}
@@ -124,16 +118,6 @@ const CreateFromScratch = ({
             placeholder='Describe what is in this Knowledge Base. A detailed description allows AI to access the content of the dataset more accurately. If empty, Dify will use the default hit strategy. (Optional)'
           />
         </div>
-        <div className='flex flex-col gap-y-1'>
-          <label className='system-sm-medium flex h-6 items-center text-text-secondary'>Permissions</label>
-            <PermissionSelector
-              permission={permission}
-              value={selectedMemberIDs}
-              onChange={handlePermissionChange}
-              onMemberSelect={setSelectedMemberIDs}
-              memberList={memberList?.accounts || []}
-            />
-        </div>
       </div>
       {/* Actions */}
       <div className='flex items-center justify-end gap-x-2 p-6 pt-5'>
@@ -145,9 +129,9 @@ const CreateFromScratch = ({
         </Button>
         <Button
           variant='primary'
-          onClick={handleCreate}
+          onClick={handleSave}
         >
-          {t('common.operation.create')}
+          {t('common.operation.save')}
         </Button>
       </div>
       {showAppIconPicker && (
@@ -160,4 +144,4 @@ const CreateFromScratch = ({
   )
 }
 
-export default React.memo(CreateFromScratch)
+export default React.memo(EditPipelineInfo)

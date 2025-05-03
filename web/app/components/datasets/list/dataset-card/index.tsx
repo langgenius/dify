@@ -24,14 +24,14 @@ import Operations from './operations'
 
 const EXTERNAL_PROVIDER = 'external'
 
-const DOC_FORM_ICON: Record<ChunkingMode, React.ComponentType<{ className: string }>> = {
+export const DOC_FORM_ICON: Record<ChunkingMode, React.ComponentType<{ className: string }>> = {
   [ChunkingMode.text]: General,
   [ChunkingMode.qa]: Qa,
   [ChunkingMode.parentChild]: ParentChild,
   [ChunkingMode.graph]: Graph,
 }
 
-const DOC_FORM_TEXT: Record<ChunkingMode, string> = {
+export const DOC_FORM_TEXT: Record<ChunkingMode, string> = {
   [ChunkingMode.text]: 'general',
   [ChunkingMode.qa]: 'qa',
   [ChunkingMode.parentChild]: 'parentChild',
@@ -216,7 +216,7 @@ const DatasetCard = ({
               }
               btnClassName={open =>
                 cn(
-                  'size-9 cursor-pointer justify-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 p-0.5 shadow-lg shadow-shadow-shadow-5 ring-[2px] ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border hover:bg-state-base-hover',
+                  'size-9 cursor-pointer justify-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-[2px] ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border hover:bg-state-base-hover',
                   open ? 'border-components-actionbar-border bg-state-base-hover' : '',
                 )
               }
