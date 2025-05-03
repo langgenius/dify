@@ -2,6 +2,7 @@ import { get, post } from './base'
 import type {
   DataSourceNotion,
   FileUploadConfigResponse,
+  Member,
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
@@ -44,5 +45,18 @@ export const useDataSources = () => {
   return useQuery<DataSourcesResponse>({
     queryKey: [NAME_SPACE, 'data-sources'],
     queryFn: () => get<DataSourcesResponse>('/data-source/integrates'),
+  })
+}
+
+type MemberResponse = {
+  accounts: Member[] | null
+}
+
+export const useMembers = () => {
+  return useQuery<MemberResponse>({
+    queryKey: [NAME_SPACE, 'members'],
+    queryFn: (params: Record<string, any>) => get<MemberResponse>('/workspaces/current/members', {
+      params,
+    }),
   })
 }

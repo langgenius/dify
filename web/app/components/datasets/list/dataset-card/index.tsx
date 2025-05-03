@@ -155,7 +155,10 @@ const DatasetCard = ({
         >
           <div
             ref={tagSelectorRef}
-            className={'invisible w-full group-hover:visible'}
+            className={cn(
+              'invisible w-full group-hover:visible',
+              tags.length > 0 && 'visible',
+            )}
           >
             <TagSelector
               position='bl'

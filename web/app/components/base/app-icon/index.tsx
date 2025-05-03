@@ -1,11 +1,12 @@
 'use client'
-
-import type { FC } from 'react'
+import React, { type FC, useRef } from 'react'
 import { init } from 'emoji-mart'
 import data from '@emoji-mart/data'
 import { cva } from 'class-variance-authority'
 import type { AppIconType } from '@/types/app'
 import classNames from '@/utils/classnames'
+import { useHover } from 'ahooks'
+import { RiEditLine } from '@remixicon/react'
 
 init({ data })
 
@@ -21,7 +22,7 @@ export type AppIconProps = {
   onClick?: () => void
 }
 const appIconVariants = cva(
-  'flex items-center justify-center relative text-lg rounded-lg grow-0 shrink-0 overflow-hidden leading-none',
+  'flex items-center justify-center relative text-lg rounded-2xl grow-0 shrink-0 overflow-hidden leading-none border-[0.5px] border-divider-regular',
   {
     variants: {
       size: {
@@ -54,18 +55,31 @@ const AppIcon: FC<AppIconProps> = ({
   onClick,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
+  const Icon = (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />
+  const wrapperRef = useRef<HTMLSpanElement>(null)
+  const isHovering = useHover(wrapperRef)
 
-  return <span
-    className={classNames(appIconVariants({ size, rounded }), className)}
-    style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
-    onClick={onClick}
-  >
-    {isValidImageIcon
-
-      ? <img src={imageUrl} className="h-full w-full" alt="app icon" />
-      : (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
-    }
-  </span>
+  return (
+    <span
+      ref={wrapperRef}
+      className={classNames(appIconVariants({ size, rounded }), className)}
+      style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
+      onClick={onClick}
+    >
+      {
+        isValidImageIcon
+          ? <img src={imageUrl} className='h-full w-full' alt='app icon' />
+          : (innerIcon || Icon)
+      }
+      {
+        isHovering && (
+          <div className='absolute left-0 top-0 z-10 flex size-14 items-center justify-center rounded-2xl bg-background-overlay-alt'>
+            <RiEditLine className='size-6 text-text-primary-on-surface' />
+          </div>
+        )
+      }
+    </span>
+  )
 }
 
-export default AppIcon
+export default React.memo(AppIcon)
