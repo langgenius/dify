@@ -1,6 +1,6 @@
 from typing import Any
 
-import flask_restful  # type: ignore
+import flask_restful
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, fields, marshal_with
 from sqlalchemy import select
