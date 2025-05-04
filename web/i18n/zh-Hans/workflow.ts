@@ -638,6 +638,8 @@ const translation = {
         'clear': '清空',
         'extend': '扩展',
         'append': '追加',
+        'remove-first': '移除首项',
+        'remove-last': '移除末项',
         '+=': '+=',
         '-=': '-=',
         '*=': '*=',

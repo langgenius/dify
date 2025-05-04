@@ -7,7 +7,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Optional, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import Integer, and_, or_, text
+from sqlalchemy import Float, and_, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
 
 from core.app.app_config.entities import (
@@ -1005,28 +1005,24 @@ class DatasetRetrieval:
                 if isinstance(value, str):
                     filters.append(DatasetDocument.doc_metadata[metadata_name] == f'"{value}"')
                 else:
-                    filters.append(
-                        sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) == value
-                    )
+                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) == value)
             case "is not" | "≠":
                 if isinstance(value, str):
                     filters.append(DatasetDocument.doc_metadata[metadata_name] != f'"{value}"')
                 else:
-                    filters.append(
-                        sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) != value
-                    )
+                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != value)
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
             case "not empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].isnot(None))
             case "before" | "<":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) < value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) < value)
             case "after" | ">":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) > value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) > value)
             case "≤" | "<=":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) <= value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) <= value)
             case "≥" | ">=":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) >= value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) >= value)
             case _:
                 pass
         return filters

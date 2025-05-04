@@ -10,4 +10,16 @@ POSTGRES_INDEXES_NAMING_CONVENTION = {
 }
 
 metadata = MetaData(naming_convention=POSTGRES_INDEXES_NAMING_CONVENTION)
+
+# ****** IMPORTANT NOTICE ******
+#
+# NOTE(QuantumGhost): Avoid directly importing and using `db` in modules outside of the
+# `controllers` package.
+#
+# Instead, import `db` within the `controllers` package and pass it as an argument to
+# functions or class constructors.
+#
+# Directly importing `db` in other modules can make the code more difficult to read, test, and maintain.
+#
+# Whenever possible, avoid this pattern in new code.
 db = SQLAlchemy(metadata=metadata)

@@ -4,7 +4,9 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.files import api
 from controllers.files.error import UnsupportedFileTypeError
+from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
+from models import db as global_db
 
 
 class ToolFilePreviewApi(Resource):
@@ -19,17 +21,14 @@ class ToolFilePreviewApi(Resource):
         parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
 
         args = parser.parse_args()
-
-        if not ToolFileManager.verify_file(
-            file_id=file_id,
-            timestamp=args["timestamp"],
-            nonce=args["nonce"],
-            sign=args["sign"],
+        if not verify_tool_file_signature(
+            file_id=file_id, timestamp=args["timestamp"], nonce=args["nonce"], sign=args["sign"]
         ):
             raise Forbidden("Invalid request.")
 
         try:
-            stream, tool_file = ToolFileManager.get_file_generator_by_tool_file_id(
+            tool_file_manager = ToolFileManager(engine=global_db.engine)
+            stream, tool_file = tool_file_manager.get_file_generator_by_tool_file_id(
                 file_id,
             )
 
