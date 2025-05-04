@@ -184,6 +184,13 @@ def init_app(app: DifyApp):
     )
     set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
 
+    # Define the counter metric for HTTP client requests
+    _http_client_response_counter = meter.create_counter(
+        name="http.client.request.count",
+        description="Counts outgoing HTTP client requests.",
+        unit="1",
+    )
+
     # Helper function to initialize requests instrumentor
     def init_requests_instrumentor():
         def outgoing_requests_response_hook(span: Span, request: requests.PreparedRequest, response: requests.Response):
@@ -255,4 +262,4 @@ def init_celery_worker(*args, **kwargs):
         metric_provider = get_meter_provider()
         if dify_config.DEBUG:
             logging.info("Initializing OpenTelemetry for Celery worker")
-        CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()
+        CeleryInstrumentor(tracer_provider=tracer_provider, metric_provider=metric_provider).instrument()
