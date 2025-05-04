@@ -201,8 +201,8 @@ def init_app(app: DifyApp):
                 _http_client_response_counter.add(1, {"status_code": status_code, "status_class": status_class})
 
                 # Only record the URL path attribute
-                if hasattr(request, 'path_url'): # For requests.PreparedRequest
-                    path = request.path_url.split('?', 1)[0] # Get path before query string
+                if hasattr(request, "path_url"):  # For requests.PreparedRequest
+                    path = request.path_url.split("?", 1)[0]  # Get path before query string
                     span.set_attribute(SpanAttributes.URL_PATH, path)
 
         RequestsInstrumentor().instrument(response_hook=outgoing_requests_response_hook)
@@ -224,11 +224,10 @@ def init_app(app: DifyApp):
                 _http_client_response_counter.add(1, {"status_code": status_code, "status_class": status_class})
 
                 # Only record the URL path attribute
-                if hasattr(request, 'url') and hasattr(request.url, 'path'): # For httpx.Request
+                if hasattr(request, "url") and hasattr(request.url, "path"):  # For httpx.Request
                     span.set_attribute(SpanAttributes.URL_PATH, request.url.path)
 
         HTTPXClientInstrumentor().instrument(response_hook=outgoing_httpx_response_hook)
-
 
     # Initialize instrumentors
     if not is_celery_worker():
@@ -237,7 +236,7 @@ def init_app(app: DifyApp):
     instrument_exception_logging()
     init_sqlalchemy_instrumentor(app)
     init_requests_instrumentor()
-    init_httpx_instrumentor() 
+    init_httpx_instrumentor()
     atexit.register(shutdown_tracer)
 
 
