@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
 import pytz  # pip install pytz
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
