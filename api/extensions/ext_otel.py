@@ -184,6 +184,9 @@ def init_app(app: DifyApp):
     )
     set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
 
+    # Get a meter instance
+    meter = get_meter(__name__) 
+
     # Define the counter metric for HTTP client requests
     _http_client_response_counter = meter.create_counter(
         name="http.client.request.count",
