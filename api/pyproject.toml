@@ -120,6 +120,7 @@ dev = [
     "types-defusedxml~=0.7.0",
     "types-deprecated~=1.2.15",
     "types-docutils~=0.21.0",
+    "types-jsonschema~=4.23.0",
     "types-flask-cors~=5.0.0",
     "types-flask-migrate~=4.1.0",
     "types-gevent~=24.11.0",
