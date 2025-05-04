@@ -7,6 +7,7 @@ from controllers.files.error import UnsupportedFileTypeError
 from core.tools.signature import verify_tool_file_signature
 from core.tools.tool_file_manager import ToolFileManager
 from models import db as global_db
+from urllib.parse import quote
 
 
 class ToolFilePreviewApi(Resource):
@@ -46,7 +47,8 @@ class ToolFilePreviewApi(Resource):
         if tool_file.size > 0:
             response.headers["Content-Length"] = str(tool_file.size)
         if args["as_attachment"]:
-            response.headers["Content-Disposition"] = f"attachment; filename={tool_file.name}"
+            encoded_filename = quote(tool_file.name)
+            response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         return response
 
