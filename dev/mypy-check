@@ -4,4 +4,4 @@ set -x
 
 # run mypy checks
 uv run --directory api --dev --with pip \
-  python -m mypy --install-types --non-interactive --cache-fine-grained .
+  python -m mypy --install-types --non-interactive --cache-fine-grained --sqlite-cache .
