@@ -1,4 +1,4 @@
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse
 from flask_restful.inputs import int_range  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound

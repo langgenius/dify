@@ -1,8 +1,8 @@
 import logging
 
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Unauthorized
 
 import services

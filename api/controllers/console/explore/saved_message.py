@@ -1,5 +1,5 @@
-from flask_login import current_user  # type: ignore
-from flask_restful import fields, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import fields, marshal_with, reqparse
 from flask_restful.inputs import int_range  # type: ignore
 from werkzeug.exceptions import NotFound
 

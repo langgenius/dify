@@ -1,4 +1,4 @@
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
 
 from constants import HIDDEN_VALUE

@@ -1,7 +1,7 @@
 import urllib.parse
 
 import httpx
-from flask_restful import marshal_with, reqparse  # type: ignore
+from flask_restful import marshal_with, reqparse
 
 import services
 from controllers.common import helpers

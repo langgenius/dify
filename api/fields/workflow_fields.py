@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restful import fields
 
 from core.helper import encrypter
 from core.variables import SecretVariable, SegmentType, Variable
