@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Optional
 
 import click
+from flask import current_app
+from werkzeug.exceptions import NotFound
+
 from configs import dify_config
 from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -18,25 +21,19 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-from flask import current_app
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountJoinRole
-from models.dataset import (Dataset, DatasetCollectionBinding, DatasetMetadata,
-                            DatasetMetadataBinding)
+from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.dataset import DocumentSegment
-from models.model import (App, AppAnnotationSetting, AppMode, Conversation,
-                          MessageAnnotation, UploadFile)
+from models.model import App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
-from services.clear_free_plan_tenant_expired_logs import \
-    ClearFreePlanTenantExpiredLogs
+from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
-from werkzeug.exceptions import NotFound
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -560,9 +557,10 @@ def add_qdrant_index(field: str):
             click.echo(click.style("No dataset collection bindings found.", fg="red"))
             return
         import qdrant_client
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
         from qdrant_client.http.exceptions import UnexpectedResponse
         from qdrant_client.http.models import PayloadSchemaType
+
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
@@ -828,8 +826,7 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
     """
     try:
         # Check if organization exists
-        from models.organization import (Organization, OrganizationMember,
-                                         OrganizationRole)
+        from models.organization import Organization, OrganizationMember, OrganizationRole
 
         organization = db.session.query(Organization).filter(Organization.id == organization_id).first()
         if not organization:
@@ -1034,8 +1031,7 @@ def update_organization_cmd(org_id, name, description, email_domains, status):
 def list_organizations_cmd(tenant_id):
     """List all organizations with optional tenant filtering"""
     try:
-        from models.organization import (Organization, OrganizationMember,
-                                         OrganizationRole)
+        from models.organization import Organization, OrganizationMember, OrganizationRole
 
         query = db.session.query(Organization)
 
