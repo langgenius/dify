@@ -6,7 +6,6 @@ from flask import Flask, current_app
 from sqlalchemy.orm import load_only
 
 from configs import dify_config
-from core.app.app_config.entities import MetadataFilteringCondition
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -126,7 +125,7 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         external_retrieval_model: Optional[dict] = None,
-        metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None,
+        metadata_filtering_conditions: Optional[dict] = None,
     ):
         dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
         if not dataset:

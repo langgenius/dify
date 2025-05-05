@@ -1,4 +1,4 @@
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from typing import Any, Optional
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -35,7 +35,7 @@ class DatasetRetrieverTool(Tool):
         invoke_from: InvokeFrom,
         hit_callback: DatasetIndexToolCallbackHandler,
         user_id: str,
-        inputs: Mapping[str, Any],
+        inputs: dict,
     ) -> list["DatasetRetrieverTool"]:
         """
         get dataset tool
