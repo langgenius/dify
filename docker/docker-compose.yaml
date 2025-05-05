@@ -461,7 +461,6 @@ x-shared-env: &shared-api-worker-env
   ALLOW_REGISTER: ${ALLOW_REGISTER:-true}
   DEFAULT_APP_ID: ${DEFAULT_APP_ID:-}
   DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID:-}
-  DEBUG_CODE_FOR_LOGIN: ${DEBUG_CODE_FOR_LOGIN:-}
   PHONE_CODE_LOGIN_TOKEN_EXPIRY_MINUTES: ${PHONE_CODE_LOGIN_TOKEN_EXPIRY_MINUTES:-5}
   NEED_USER_PROFILE_GENERATION_APP_IDS: ${NEED_USER_PROFILE_GENERATION_APP_IDS:-}
   USER_PROFILE_GENERATE_TASK_INTERVAL: ${USER_PROFILE_GENERATE_TASK_INTERVAL:-5}
@@ -474,6 +473,8 @@ x-shared-env: &shared-api-worker-env
   IMAGE_GENERATION_DAILY_LIMIT: ${IMAGE_GENERATION_DAILY_LIMIT:-5}
   IMAGE_GENERATION_MIN_CONVERSATION_ROUNDS: ${IMAGE_GENERATION_MIN_CONVERSATION_ROUNDS:-10}
   IMAGE_GENERATION_APP_ID: ${IMAGE_GENERATION_APP_ID:-}
+  DEBUG_ORG_DOMAIN: ${DEBUG_ORG_DOMAIN:-test.edu}
+  DEBUG_CODE_FOR_LOGIN: ${DEBUG_CODE_FOR_LOGIN:-}
   DEBUG_ADMIN_PHONE: ${DEBUG_ADMIN_PHONE:-}
   PLUGIN_PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
   PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
@@ -537,7 +538,7 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
       # Mount the log directory from the container to the host
-      - ./volumes/app/logs:/app/logs
+      - ./volumes/app/logs:/app/logs 
     networks:
       - ssrf_proxy_network
       - default
@@ -568,7 +569,7 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
       # Mount the log directory from the container to the host
-      - ./volumes/app/logs:/app/logs
+      - ./volumes/app/logs:/app/logs 
     networks:
       - ssrf_proxy_network
       - default
@@ -593,7 +594,7 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
       # Mount the log directory from the container to the host
-      - ./volumes/app/logs:/app/logs
+      - ./volumes/app/logs:/app/logs 
     networks:
       - ssrf_proxy_network
       - default

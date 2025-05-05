@@ -492,7 +492,7 @@ class AccountService:
         if email is None:
             raise ValueError("Email must be provided.")
 
-        if dify_config.DEBUG_CODE_FOR_LOGIN:
+        if dify_config.DEBUG_ORG_EMAIL_DOMAIN and email.endswith(dify_config.DEBUG_ORG_EMAIL_DOMAIN):
             code = dify_config.DEBUG_CODE_FOR_LOGIN
         elif cls.email_code_login_rate_limiter.is_rate_limited(email):
             from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
@@ -507,6 +507,7 @@ class AccountService:
             token_type="email_code_login",
             additional_data={"code": code},
         )
+
         send_email_code_login_mail_task.delay(
             language=language,
             to=account.email if account else email,
@@ -734,7 +735,7 @@ class AccountService:
         Returns a token that can be used to verify the code.
         """
 
-        if dify_config.DEBUG_CODE_FOR_LOGIN:
+        if phone == dify_config.DEBUG_ADMIN_PHONE and dify_config.DEBUG_CODE_FOR_LOGIN:
             code = dify_config.DEBUG_CODE_FOR_LOGIN
         elif cls.phone_code_login_rate_limiter.is_rate_limited(phone):
             raise Exception("Phone verification code rate limit exceeded")
@@ -749,13 +750,13 @@ class AccountService:
             additional_data={"code": code, "phone": phone},
         )
 
-        if dify_config.DEBUG_CODE_FOR_LOGIN:
+        if phone == dify_config.DEBUG_ADMIN_PHONE and dify_config.DEBUG_CODE_FOR_LOGIN:
             logging.info(f"Mock Code, Skip sending phone verification code to {phone}")
         else:
             send_phone_sms_code_login_task.delay(phone=phone, code=code)
+            cls.phone_code_login_rate_limiter.increment_rate_limit(phone)
             logging.info(f"Phone verification code sent to {phone}")
 
-        cls.phone_code_login_rate_limiter.increment_rate_limit(phone)
         return token
 
     @classmethod

@@ -49,7 +49,17 @@ class SchoolConfig(BaseSettings):
         default=None,
     )
 
+    DEBUG_ORG_EMAIL_DOMAIN: Optional[str] = Field(
+        description="Debug org email domain for DEMO school-level features.",
+        default=None,
+    )
+
     DEBUG_ADMIN_PHONE: Optional[str] = Field(
         description="Debug admin phone for DEMO school-level features.",
+        default=None,
+    )
+
+    DEBUG_CODE_FOR_LOGIN: Optional[str] = Field(
+        description="Default code for login",
         default=None,
     )

@@ -19,11 +19,6 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
-    DEBUG_CODE_FOR_LOGIN: Optional[str] = Field(
-        description="Default code for login",
-        default=None,
-    )
-
     EDITION: str = Field(
         description="Deployment edition of the application (e.g., 'SELF_HOSTED', 'CLOUD')",
         default="SELF_HOSTED",
