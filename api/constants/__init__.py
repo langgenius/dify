@@ -11,7 +11,7 @@ IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 VIDEO_EXTENSIONS = ["mp4", "mov", "mpeg", "mpga"]
 VIDEO_EXTENSIONS.extend([ext.upper() for ext in VIDEO_EXTENSIONS])
 
-AUDIO_EXTENSIONS = ["mp3", "m4a", "wav", "webm", "amr"]
+AUDIO_EXTENSIONS = ["mp3", "m4a", "wav", "webm", "amr", "mpeg"]
 AUDIO_EXTENSIONS.extend([ext.upper() for ext in AUDIO_EXTENSIONS])
 
 
