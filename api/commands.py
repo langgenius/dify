@@ -8,9 +8,6 @@ from pathlib import Path
 from typing import Optional
 
 import click
-from flask import current_app
-from werkzeug.exceptions import NotFound
-
 from configs import dify_config
 from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -21,19 +18,25 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from flask import current_app
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountJoinRole
-from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
+from models.dataset import (Dataset, DatasetCollectionBinding, DatasetMetadata,
+                            DatasetMetadataBinding)
 from models.dataset import Document as DatasetDocument
-from models.model import App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
+from models.dataset import DocumentSegment
+from models.model import (App, AppAnnotationSetting, AppMode, Conversation,
+                          MessageAnnotation, UploadFile)
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
-from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
+from services.clear_free_plan_tenant_expired_logs import \
+    ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
+from werkzeug.exceptions import NotFound
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -113,7 +116,8 @@ def reset_email(email, new_email, email_confirm):
 )
 @click.confirmation_option(
     prompt=click.style(
-        "Are you sure you want to reset encrypt key pair? This operation cannot be rolled back!", fg="red"
+        "Are you sure you want to reset encrypt key pair? This operation cannot be rolled back!",
+        fg="red",
     )
 )
 def reset_encrypt_key_pair():
@@ -147,7 +151,12 @@ def reset_encrypt_key_pair():
 
 
 @click.command("vdb-migrate", help="Migrate vector db.")
-@click.option("--scope", default="all", prompt=False, help="The scope of vector database to migrate, Default is All.")
+@click.option(
+    "--scope",
+    default="all",
+    prompt=False,
+    help="The scope of vector database to migrate, Default is All.",
+)
 def vdb_migrate(scope: str):
     if scope in {"knowledge", "all"}:
         migrate_knowledge_vector_database()
@@ -220,7 +229,11 @@ def migrate_annotation_vector_database():
                     for annotation in annotations:
                         document = Document(
                             page_content=annotation.question,
-                            metadata={"annotation_id": annotation.id, "app_id": app.id, "doc_id": annotation.id},
+                            metadata={
+                                "annotation_id": annotation.id,
+                                "app_id": app.id,
+                                "doc_id": annotation.id,
+                            },
                         )
                         documents.append(document)
 
@@ -244,14 +257,20 @@ def migrate_annotation_vector_database():
                         vector.create(documents)
                         click.echo(click.style(f"Created vector index for app {app.id}.", fg="green"))
                     except Exception as e:
-                        click.echo(click.style(f"Failed to created vector index for app {app.id}.", fg="red"))
+                        click.echo(
+                            click.style(
+                                f"Failed to created vector index for app {app.id}.",
+                                fg="red",
+                            )
+                        )
                         raise e
                 click.echo(f"Successfully migrated app annotation {app.id}.")
                 create_count += 1
             except Exception as e:
                 click.echo(
                     click.style(
-                        "Error creating app annotation index: {} {}".format(e.__class__.__name__, str(e)), fg="red"
+                        "Error creating app annotation index: {} {}".format(e.__class__.__name__, str(e)),
+                        fg="red",
                     )
                 )
                 continue
@@ -344,7 +363,10 @@ def migrate_knowledge_vector_database():
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
 
-                index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
+                index_struct_dict = {
+                    "type": vector_type,
+                    "vector_store": {"class_prefix": collection_name},
+                }
                 dataset.index_struct = json.dumps(index_struct_dict)
                 vector = Vector(dataset)
                 click.echo(f"Migrating dataset {dataset.id}.")
@@ -352,12 +374,16 @@ def migrate_knowledge_vector_database():
                 try:
                     vector.delete()
                     click.echo(
-                        click.style(f"Deleted vector index {collection_name} for dataset {dataset.id}.", fg="green")
+                        click.style(
+                            f"Deleted vector index {collection_name} for dataset {dataset.id}.",
+                            fg="green",
+                        )
                     )
                 except Exception as e:
                     click.echo(
                         click.style(
-                            f"Failed to delete vector index {collection_name} for dataset {dataset.id}.", fg="red"
+                            f"Failed to delete vector index {collection_name} for dataset {dataset.id}.",
+                            fg="red",
                         )
                     )
                     raise e
@@ -410,9 +436,19 @@ def migrate_knowledge_vector_database():
                             )
                         )
                         vector.create(documents)
-                        click.echo(click.style(f"Created vector index for dataset {dataset.id}.", fg="green"))
+                        click.echo(
+                            click.style(
+                                f"Created vector index for dataset {dataset.id}.",
+                                fg="green",
+                            )
+                        )
                     except Exception as e:
-                        click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
+                        click.echo(
+                            click.style(
+                                f"Failed to created vector index for dataset {dataset.id}.",
+                                fg="red",
+                            )
+                        )
                         raise e
                 db.session.add(dataset)
                 db.session.commit()
@@ -421,13 +457,17 @@ def migrate_knowledge_vector_database():
             except Exception as e:
                 db.session.rollback()
                 click.echo(
-                    click.style("Error creating dataset index: {} {}".format(e.__class__.__name__, str(e)), fg="red")
+                    click.style(
+                        "Error creating dataset index: {} {}".format(e.__class__.__name__, str(e)),
+                        fg="red",
+                    )
                 )
                 continue
 
     click.echo(
         click.style(
-            f"Migration complete. Created {create_count} dataset indexes. Skipped {skipped_count} datasets.", fg="green"
+            f"Migration complete. Created {create_count} dataset indexes. Skipped {skipped_count} datasets.",
+            fg="green",
         )
     )
 
@@ -487,13 +527,28 @@ def convert_to_agent_apps():
                 db.session.commit()
                 click.echo(click.style("Converted app: {}".format(app.id), fg="green"))
             except Exception as e:
-                click.echo(click.style("Convert app error: {} {}".format(e.__class__.__name__, str(e)), fg="red"))
+                click.echo(
+                    click.style(
+                        "Convert app error: {} {}".format(e.__class__.__name__, str(e)),
+                        fg="red",
+                    )
+                )
 
-    click.echo(click.style("Conversion complete. Converted {} agent apps.".format(len(proceeded_app_ids)), fg="green"))
+    click.echo(
+        click.style(
+            "Conversion complete. Converted {} agent apps.".format(len(proceeded_app_ids)),
+            fg="green",
+        )
+    )
 
 
 @click.command("add-qdrant-index", help="Add Qdrant index.")
-@click.option("--field", default="metadata.doc_id", prompt=False, help="Index field , default is metadata.doc_id.")
+@click.option(
+    "--field",
+    default="metadata.doc_id",
+    prompt=False,
+    help="Index field , default is metadata.doc_id.",
+)
 def add_qdrant_index(field: str):
     click.echo(click.style("Starting Qdrant index creation.", fg="green"))
 
@@ -505,10 +560,9 @@ def add_qdrant_index(field: str):
             click.echo(click.style("No dataset collection bindings found.", fg="red"))
             return
         import qdrant_client
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
         from qdrant_client.http.exceptions import UnexpectedResponse
         from qdrant_client.http.models import PayloadSchemaType
-
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
@@ -524,25 +578,40 @@ def add_qdrant_index(field: str):
             try:
                 client = qdrant_client.QdrantClient(**qdrant_config.to_qdrant_params())  # type: ignore
                 # create payload index
-                client.create_payload_index(binding.collection_name, field, field_schema=PayloadSchemaType.KEYWORD)
+                client.create_payload_index(
+                    binding.collection_name,
+                    field,
+                    field_schema=PayloadSchemaType.KEYWORD,
+                )
                 create_count += 1
             except UnexpectedResponse as e:
                 # Collection does not exist, so return
                 if e.status_code == 404:
-                    click.echo(click.style(f"Collection not found: {binding.collection_name}.", fg="red"))
+                    click.echo(
+                        click.style(
+                            f"Collection not found: {binding.collection_name}.",
+                            fg="red",
+                        )
+                    )
                     continue
                 # Some other error occurred, so re-raise the exception
                 else:
                     click.echo(
                         click.style(
-                            f"Failed to create Qdrant index for collection: {binding.collection_name}.", fg="red"
+                            f"Failed to create Qdrant index for collection: {binding.collection_name}.",
+                            fg="red",
                         )
                     )
 
     except Exception:
         click.echo(click.style("Failed to create Qdrant client.", fg="red"))
 
-    click.echo(click.style(f"Index creation complete. Created {create_count} collection indexes.", fg="green"))
+    click.echo(
+        click.style(
+            f"Index creation complete. Created {create_count} collection indexes.",
+            fg="green",
+        )
+    )
 
 
 @click.command("old-metadata-migration", help="Old metadata migration.")
@@ -574,7 +643,10 @@ def old_metadata_migration():
                     else:
                         dataset_metadata = (
                             db.session.query(DatasetMetadata)
-                            .filter(DatasetMetadata.dataset_id == document.dataset_id, DatasetMetadata.name == key)
+                            .filter(
+                                DatasetMetadata.dataset_id == document.dataset_id,
+                                DatasetMetadata.name == key,
+                            )
                             .first()
                         )
                         if not dataset_metadata:
@@ -726,7 +798,12 @@ where sites.id is null limit 1000"""
                         app_was_created.send(app, account=account)
                 except Exception:
                     failed_app_ids.append(app_id)
-                    click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
+                    click.echo(
+                        click.style(
+                            "Failed to fix missing site for app {}".format(app_id),
+                            fg="red",
+                        )
+                    )
                     logging.exception(f"Failed to fix app related site missing issue, app_id: {app_id}")
                     continue
 
@@ -737,7 +814,8 @@ where sites.id is null limit 1000"""
 
 
 @click.command(
-    "create-admin-with-phone", help="Create or update an admin account for an organization with a phone number."
+    "create-admin-with-phone",
+    help="Create or update an admin account for an organization with a phone number.",
 )
 @click.option("--name", prompt=True, help="Admin account name")
 @click.option("--phone", prompt=True, help="Admin account phone number")
@@ -750,7 +828,8 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
     """
     try:
         # Check if organization exists
-        from models.organization import Organization, OrganizationMember, OrganizationRole
+        from models.organization import (Organization, OrganizationMember,
+                                         OrganizationRole)
 
         organization = db.session.query(Organization).filter(Organization.id == organization_id).first()
         if not organization:
@@ -792,14 +871,19 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
         # Check if account is already a member of the tenant
         ta_join = (
             db.session.query(TenantAccountJoin)
-            .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
+            .filter(
+                TenantAccountJoin.tenant_id == tenant.id,
+                TenantAccountJoin.account_id == account.id,
+            )
             .first()
         )
 
         if not ta_join:
             # Add account to tenant with end_user role (organization role will control admin access)
             ta_join = TenantAccountJoin(
-                tenant_id=tenant.id, account_id=account.id, role=TenantAccountJoinRole.END_USER.value
+                tenant_id=tenant.id,
+                account_id=account.id,
+                role=TenantAccountJoinRole.END_USER.value,
             )
             db.session.add(ta_join)
             click.echo(f"Added account to tenant {tenant.name}")
@@ -807,7 +891,10 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
         # Check if account is already a member of the organization
         org_member = (
             db.session.query(OrganizationMember)
-            .filter(OrganizationMember.organization_id == organization_id, OrganizationMember.account_id == account.id)
+            .filter(
+                OrganizationMember.organization_id == organization_id,
+                OrganizationMember.account_id == account.id,
+            )
             .first()
         )
 
@@ -831,7 +918,8 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
 
         click.echo(
             click.style(
-                f"Successfully {'updated' if account else 'created'} admin account with phone number.", fg="green"
+                f"Successfully {'updated' if account else 'created'} admin account with phone number.",
+                fg="green",
             )
         )
         click.echo(f"Name: {name}")
@@ -849,7 +937,7 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
 @click.option("--code", required=True, help="Unique code for the organization")
 @click.option(
     "--type",
-    'org_type',
+    "org_type",
     default="school",
     type=click.Choice(["school", "university", "company", "organization"]),
     help="Type of organization",
@@ -875,10 +963,10 @@ def create_organization_cmd(tenant_id, name, code, org_type, description, email_
             return
 
         # Parse email domains
-        allowed_domains = [d.strip() for d in email_domains.split(',') if d.strip()]
+        allowed_domains = [d.strip() for d in email_domains.split(",") if d.strip()]
 
         # Create settings
-        settings = {'allowed_email_domains': allowed_domains}
+        settings = {"allowed_email_domains": allowed_domains}
 
         # Create organization
         organization = Organization(
@@ -903,7 +991,7 @@ def create_organization_cmd(tenant_id, name, code, org_type, description, email_
 
 
 @click.command("update-organization", help="Update an existing organization.")
-@click.option("--id", 'org_id', required=True, help="ID of the organization to update")
+@click.option("--id", "org_id", required=True, help="ID of the organization to update")
 @click.option("--name", help="New name for the organization")
 @click.option("--description", help="New description")
 @click.option("--email-domains", help="Comma-separated list of allowed email domains")
@@ -929,8 +1017,8 @@ def update_organization_cmd(org_id, name, description, email_domains, status):
 
         if email_domains is not None:
             settings = organization.settings_dict
-            allowed_domains = [d.strip() for d in email_domains.split(',') if d.strip()]
-            settings['allowed_email_domains'] = allowed_domains
+            allowed_domains = [d.strip() for d in email_domains.split(",") if d.strip()]
+            settings["allowed_email_domains"] = allowed_domains
             organization.settings_dict = settings
 
         db.session.commit()
@@ -946,7 +1034,8 @@ def update_organization_cmd(org_id, name, description, email_domains, status):
 def list_organizations_cmd(tenant_id):
     """List all organizations with optional tenant filtering"""
     try:
-        from models.organization import Organization
+        from models.organization import (Organization, OrganizationMember,
+                                         OrganizationRole)
 
         query = db.session.query(Organization)
 
@@ -959,13 +1048,42 @@ def list_organizations_cmd(tenant_id):
             click.echo("No organizations found")
             return
 
-        click.echo(f"{'ID':<36} | {'Code':<10} | {'Name':<30} | {'Type':<12} | {'Status':<8} | {'Email Domains'}")
-        click.echo("-" * 120)
+        # Prepare a dictionary to store admin phones for each organization
+        admin_phones_by_org = {}
+        for org in organizations:
+            # Query for admin accounts in this organization
+            admin_members = (
+                db.session.query(OrganizationMember, Account)
+                .join(Account, OrganizationMember.account_id == Account.id)
+                .filter(
+                    OrganizationMember.organization_id == org.id,
+                    OrganizationMember.role == OrganizationRole.ADMIN,
+                )
+                .all()
+            )
+
+            # Collect phone numbers
+            phones = []
+            for member, account in admin_members:
+                if account.phone:
+                    phones.append(account.phone)
+
+            admin_phones_by_org[org.id] = ", ".join(phones) if phones else "None"
+
+        # Create a header with fixed width that doesn't exceed line length limit
+        click.echo(
+            f"{'ID':<36} | {'Code':<10} | {'Name':<30} | {'Type':<12} | {'Status':<8} | {'Admin Phones':<15} | "
+            f"{'Email Domains'}"
+        )
+        click.echo("-" * 140)
 
         for org in organizations:
-            email_domains = ', '.join(org.allowed_email_domains)
+            email_domains = ", ".join(org.allowed_email_domains)
+            admin_phones = admin_phones_by_org[org.id]
+            # Split the long line to avoid exceeding line length limit
             click.echo(
-                f"{org.id:<36} | {org.code:<10} | {org.name:<30} | {org.type:<12} | {org.status:<8} | {email_domains}"
+                f"{org.id:<36} | {org.code:<10} | {org.name:<30} | {org.type:<12} | {org.status:<8} | "
+                f"{admin_phones:<15} | {email_domains}"
             )
 
     except Exception as e:
@@ -973,7 +1091,7 @@ def list_organizations_cmd(tenant_id):
 
 
 @click.command("show-organization", help="Show details of a specific organization.")
-@click.option("--id", 'org_id', required=True, help="ID of the organization to show")
+@click.option("--id", "org_id", required=True, help="ID of the organization to show")
 def show_organization_cmd(org_id):
     """Show detailed information about a specific organization"""
     try:
@@ -1000,7 +1118,10 @@ def show_organization_cmd(org_id):
         click.echo(f"Error showing organization: {str(e)}")
 
 
-@click.command("add-account-to-organization", help="Add an account to an organization with a specific role.")
+@click.command(
+    "add-account-to-organization",
+    help="Add an account to an organization with a specific role.",
+)
 @click.option("--org-id", required=True, help="ID of the organization")
 @click.option("--account-id", required=True, help="ID of the account to add")
 @click.option(
@@ -1032,7 +1153,10 @@ def add_account_to_organization_cmd(org_id, account_id, role, department, title,
         # Check if membership already exists
         existing = (
             db.session.query(OrganizationMember)
-            .filter(OrganizationMember.organization_id == org_id, OrganizationMember.account_id == account_id)
+            .filter(
+                OrganizationMember.organization_id == org_id,
+                OrganizationMember.account_id == account_id,
+            )
             .first()
         )
 
@@ -1071,7 +1195,10 @@ def add_account_to_organization_cmd(org_id, account_id, role, department, title,
         click.echo(f"Error adding account to organization: {str(e)}")
 
 
-@click.command("upload-private-key-file-to-cloud-storage", help="upload private key file to cloud storage")
+@click.command(
+    "upload-private-key-file-to-cloud-storage",
+    help="upload private key file to cloud storage",
+)
 @click.option("--tenant_id", prompt=False, help="tenant_id")
 def upload_private_key_file_cloud_storage(tenant_id: Optional[str] = None):
     """
@@ -1150,7 +1277,12 @@ def upload_local_files_to_cloud_storage():
                 )
                 processed_count += 1
                 if processed_count % 10 == 0 or processed_count == total_count:
-                    click.echo(click.style(f"Processed {processed_count}/{total_count} files\n", fg="blue"))
+                    click.echo(
+                        click.style(
+                            f"Processed {processed_count}/{total_count} files\n",
+                            fg="blue",
+                        )
+                    )
                 continue
 
             # Upload to cloud storage
@@ -1203,8 +1335,18 @@ def migrate_data_for_plugin():
 
 
 @click.command("extract-plugins", help="Extract plugins.")
-@click.option("--output_file", prompt=True, help="The file to store the extracted plugins.", default="plugins.jsonl")
-@click.option("--workers", prompt=True, help="The number of workers to extract plugins.", default=10)
+@click.option(
+    "--output_file",
+    prompt=True,
+    help="The file to store the extracted plugins.",
+    default="plugins.jsonl",
+)
+@click.option(
+    "--workers",
+    prompt=True,
+    help="The number of workers to extract plugins.",
+    default=10,
+)
 def extract_plugins(output_file: str, workers: int):
     """
     Extract plugins.
@@ -1224,7 +1366,10 @@ def extract_plugins(output_file: str, workers: int):
     default="unique_identifiers.json",
 )
 @click.option(
-    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+    "--input_file",
+    prompt=True,
+    help="The file to store the extracted unique identifiers.",
+    default="plugins.jsonl",
 )
 def extract_unique_plugins(output_file: str, input_file: str):
     """
@@ -1239,12 +1384,23 @@ def extract_unique_plugins(output_file: str, input_file: str):
 
 @click.command("install-plugins", help="Install plugins.")
 @click.option(
-    "--input_file", prompt=True, help="The file to store the extracted unique identifiers.", default="plugins.jsonl"
+    "--input_file",
+    prompt=True,
+    help="The file to store the extracted unique identifiers.",
+    default="plugins.jsonl",
 )
 @click.option(
-    "--output_file", prompt=True, help="The file to store the installed plugins.", default="installed_plugins.jsonl"
+    "--output_file",
+    prompt=True,
+    help="The file to store the installed plugins.",
+    default="installed_plugins.jsonl",
 )
-@click.option("--workers", prompt=True, help="The number of workers to install plugins.", default=100)
+@click.option(
+    "--workers",
+    prompt=True,
+    help="The number of workers to install plugins.",
+    default=100,
+)
 def install_plugins(input_file: str, output_file: str, workers: int):
     """
     Install plugins.
@@ -1257,8 +1413,18 @@ def install_plugins(input_file: str, output_file: str, workers: int):
 
 
 @click.command("clear-free-plan-tenant-expired-logs", help="Clear free plan tenant expired logs.")
-@click.option("--days", prompt=True, help="The days to clear free plan tenant expired logs.", default=30)
-@click.option("--batch", prompt=True, help="The batch size to clear free plan tenant expired logs.", default=100)
+@click.option(
+    "--days",
+    prompt=True,
+    help="The days to clear free plan tenant expired logs.",
+    default=30,
+)
+@click.option(
+    "--batch",
+    prompt=True,
+    help="The batch size to clear free plan tenant expired logs.",
+    default=100,
+)
 @click.option(
     "--tenant_ids",
     prompt=True,
@@ -1276,7 +1442,12 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
 
 
-@click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
+@click.option(
+    "-f",
+    "--force",
+    is_flag=True,
+    help="Skip user confirmation and force the command to execute.",
+)
 @click.command("clear-orphaned-file-records", help="Clear orphaned file records.")
 def clear_orphaned_file_records(force: bool):
     """
@@ -1305,7 +1476,8 @@ def clear_orphaned_file_records(force: bool):
     # notify user and ask for confirmation
     click.echo(
         click.style(
-            "This command will first find and delete orphaned file records from the message_files table,", fg="yellow"
+            "This command will first find and delete orphaned file records from the message_files table,",
+            fg="yellow",
         )
     )
     click.echo(
@@ -1317,7 +1489,10 @@ def clear_orphaned_file_records(force: bool):
     for files_table in files_tables:
         click.echo(click.style(f"- {files_table['table']}", fg="yellow"))
     click.echo(
-        click.style("The following tables and columns will be scanned to find orphaned file records:", fg="yellow")
+        click.style(
+            "The following tables and columns will be scanned to find orphaned file records:",
+            fg="yellow",
+        )
     )
     for ids_table in ids_tables:
         click.echo(click.style(f"- {ids_table['table']} ({ids_table['column']})", fg="yellow"))
@@ -1334,7 +1509,10 @@ def clear_orphaned_file_records(force: bool):
         )
     )
     click.echo(
-        click.style("This cannot be undone. Please make sure to back up your database before proceeding.", fg="yellow")
+        click.style(
+            "This cannot be undone. Please make sure to back up your database before proceeding.",
+            fg="yellow",
+        )
     )
     click.echo(
         click.style(
@@ -1354,7 +1532,10 @@ def clear_orphaned_file_records(force: bool):
     # clean up the orphaned records in the message_files table where message_id doesn't exist in messages table
     try:
         click.echo(
-            click.style("- Listing message_files records where message_id doesn't exist in messages table", fg="white")
+            click.style(
+                "- Listing message_files records where message_id doesn't exist in messages table",
+                fg="white",
+            )
         )
         query = (
             "SELECT mf.id, mf.message_id "
@@ -1368,9 +1549,19 @@ def clear_orphaned_file_records(force: bool):
                 orphaned_message_files.append({"id": str(i[0]), "message_id": str(i[1])})
 
         if orphaned_message_files:
-            click.echo(click.style(f"Found {len(orphaned_message_files)} orphaned message_files records:", fg="white"))
+            click.echo(
+                click.style(
+                    f"Found {len(orphaned_message_files)} orphaned message_files records:",
+                    fg="white",
+                )
+            )
             for record in orphaned_message_files:
-                click.echo(click.style(f"  - id: {record['id']}, message_id: {record['message_id']}", fg="black"))
+                click.echo(
+                    click.style(
+                        f"  - id: {record['id']}, message_id: {record['message_id']}",
+                        fg="black",
+                    )
+                )
 
             if not force:
                 click.confirm(
@@ -1384,12 +1575,23 @@ def clear_orphaned_file_records(force: bool):
             click.echo(click.style("- Deleting orphaned message_files records", fg="white"))
             query = "DELETE FROM message_files WHERE id IN :ids"
             with db.engine.begin() as conn:
-                conn.execute(db.text(query), {"ids": tuple([record["id"] for record in orphaned_message_files])})
+                conn.execute(
+                    db.text(query),
+                    {"ids": tuple([record["id"] for record in orphaned_message_files])},
+                )
             click.echo(
-                click.style(f"Removed {len(orphaned_message_files)} orphaned message_files records.", fg="green")
+                click.style(
+                    f"Removed {len(orphaned_message_files)} orphaned message_files records.",
+                    fg="green",
+                )
             )
         else:
-            click.echo(click.style("No orphaned message_files records found. There is nothing to delete.", fg="green"))
+            click.echo(
+                click.style(
+                    "No orphaned message_files records found. There is nothing to delete.",
+                    fg="green",
+                )
+            )
     except Exception as e:
         click.echo(click.style(f"Error deleting orphaned message_files records: {str(e)}", fg="red"))
 
@@ -1398,7 +1600,12 @@ def clear_orphaned_file_records(force: bool):
         # fetch file id and keys from each table
         all_files_in_tables = []
         for files_table in files_tables:
-            click.echo(click.style(f"- Listing file records in table {files_table['table']}", fg="white"))
+            click.echo(
+                click.style(
+                    f"- Listing file records in table {files_table['table']}",
+                    fg="white",
+                )
+            )
             query = f"SELECT {files_table['id_column']}, {files_table['key_column']} FROM {files_table['table']}"
             with db.engine.begin() as conn:
                 rs = conn.execute(db.text(query))
@@ -1414,7 +1621,8 @@ def clear_orphaned_file_records(force: bool):
             if ids_table["type"] == "uuid":
                 click.echo(
                     click.style(
-                        f"- Listing file ids in column {ids_table['column']} in table {ids_table['table']}", fg="white"
+                        f"- Listing file ids in column {ids_table['column']} in table {ids_table['table']}",
+                        fg="white",
                     )
                 )
                 query = (
@@ -1470,18 +1678,31 @@ def clear_orphaned_file_records(force: bool):
     all_ids = [file["id"] for file in all_ids_in_tables]
     orphaned_files = list(set(all_files) - set(all_ids))
     if not orphaned_files:
-        click.echo(click.style("No orphaned file records found. There is nothing to delete.", fg="green"))
+        click.echo(
+            click.style(
+                "No orphaned file records found. There is nothing to delete.",
+                fg="green",
+            )
+        )
         return
     click.echo(click.style(f"Found {len(orphaned_files)} orphaned file records.", fg="white"))
     for file in orphaned_files:
         click.echo(click.style(f"- orphaned file id: {file}", fg="black"))
     if not force:
-        click.confirm(f"Do you want to proceed to delete all {len(orphaned_files)} orphaned file records?", abort=True)
+        click.confirm(
+            f"Do you want to proceed to delete all {len(orphaned_files)} orphaned file records?",
+            abort=True,
+        )
 
     # delete orphaned records for each file
     try:
         for files_table in files_tables:
-            click.echo(click.style(f"- Deleting orphaned file records in table {files_table['table']}", fg="white"))
+            click.echo(
+                click.style(
+                    f"- Deleting orphaned file records in table {files_table['table']}",
+                    fg="white",
+                )
+            )
             query = f"DELETE FROM {files_table['table']} WHERE {files_table['id_column']} IN :ids"
             with db.engine.begin() as conn:
                 conn.execute(db.text(query), {"ids": tuple(orphaned_files)})
@@ -1491,7 +1712,12 @@ def clear_orphaned_file_records(force: bool):
     click.echo(click.style(f"Removed {len(orphaned_files)} orphaned file records.", fg="green"))
 
 
-@click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
+@click.option(
+    "-f",
+    "--force",
+    is_flag=True,
+    help="Skip user confirmation and force the command to execute.",
+)
 @click.command("remove-orphaned-files-on-storage", help="Remove orphaned files on the storage.")
 def remove_orphaned_files_on_storage(force: bool):
     """
@@ -1506,13 +1732,26 @@ def remove_orphaned_files_on_storage(force: bool):
     storage_paths = ["image_files", "tools", "upload_files"]
 
     # notify user and ask for confirmation
-    click.echo(click.style("This command will find and remove orphaned files on the storage,", fg="yellow"))
     click.echo(
-        click.style("by comparing the files on the storage with the records in the following tables:", fg="yellow")
+        click.style(
+            "This command will find and remove orphaned files on the storage,",
+            fg="yellow",
+        )
+    )
+    click.echo(
+        click.style(
+            "by comparing the files on the storage with the records in the following tables:",
+            fg="yellow",
+        )
     )
     for files_table in files_tables:
         click.echo(click.style(f"- {files_table['table']}", fg="yellow"))
-    click.echo(click.style("The following paths on the storage will be scanned to find orphaned files:", fg="yellow"))
+    click.echo(
+        click.style(
+            "The following paths on the storage will be scanned to find orphaned files:",
+            fg="yellow",
+        )
+    )
     for storage_path in storage_paths:
         click.echo(click.style(f"- {storage_path}", fg="yellow"))
     click.echo("")
@@ -1520,7 +1759,8 @@ def remove_orphaned_files_on_storage(force: bool):
     click.echo(click.style("!!! USE WITH CAUTION !!!", fg="red"))
     click.echo(
         click.style(
-            "Currently, this command will work only for opendal based storage (STORAGE_TYPE=opendal).", fg="yellow"
+            "Currently, this command will work only for opendal based storage (STORAGE_TYPE=opendal).",
+            fg="yellow",
         )
     )
     click.echo(
@@ -1530,7 +1770,10 @@ def remove_orphaned_files_on_storage(force: bool):
         )
     )
     click.echo(
-        click.style("This cannot be undone. Please make sure to back up your storage before proceeding.", fg="yellow")
+        click.style(
+            "This cannot be undone. Please make sure to back up your storage before proceeding.",
+            fg="yellow",
+        )
     )
     click.echo(
         click.style(
@@ -1568,10 +1811,20 @@ def remove_orphaned_files_on_storage(force: bool):
             files = storage.scan(path=storage_path, files=True, directories=False)
             all_files_on_storage.extend(files)
         except FileNotFoundError as e:
-            click.echo(click.style(f"  -> Skipping path {storage_path} as it does not exist.", fg="yellow"))
+            click.echo(
+                click.style(
+                    f"  -> Skipping path {storage_path} as it does not exist.",
+                    fg="yellow",
+                )
+            )
             continue
         except Exception as e:
-            click.echo(click.style(f"  -> Error scanning files on storage path {storage_path}: {str(e)}", fg="red"))
+            click.echo(
+                click.style(
+                    f"  -> Error scanning files on storage path {storage_path}: {str(e)}",
+                    fg="red",
+                )
+            )
             continue
     click.echo(click.style(f"Found {len(all_files_on_storage)} files on storage.", fg="white"))
 
@@ -1584,7 +1837,10 @@ def remove_orphaned_files_on_storage(force: bool):
     for file in orphaned_files:
         click.echo(click.style(f"- orphaned file: {file}", fg="black"))
     if not force:
-        click.confirm(f"Do you want to proceed to remove all {len(orphaned_files)} orphaned files?", abort=True)
+        click.confirm(
+            f"Do you want to proceed to remove all {len(orphaned_files)} orphaned files?",
+            abort=True,
+        )
 
     # delete orphaned files
     removed_files = 0
@@ -1601,4 +1857,9 @@ def remove_orphaned_files_on_storage(force: bool):
     if error_files == 0:
         click.echo(click.style(f"Removed {removed_files} orphaned files without errors.", fg="green"))
     else:
-        click.echo(click.style(f"Removed {removed_files} orphaned files, with {error_files} errors.", fg="yellow"))
+        click.echo(
+            click.style(
+                f"Removed {removed_files} orphaned files, with {error_files} errors.",
+                fg="yellow",
+            )
+        )
