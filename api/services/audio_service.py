@@ -3,19 +3,16 @@ import logging
 import uuid
 from typing import Optional
 
-from werkzeug.datastructures import FileStorage
-
 from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from models.model import App, AppMode, AppModelConfig, Message
-from services.errors.audio import (
-    AudioTooLargeServiceError,
-    NoAudioUploadedServiceError,
-    ProviderNotSupportSpeechToTextServiceError,
-    ProviderNotSupportTextToSpeechServiceError,
-    UnsupportedAudioTypeServiceError,
-)
+from services.errors.audio import (AudioTooLargeServiceError,
+                                   NoAudioUploadedServiceError,
+                                   ProviderNotSupportSpeechToTextServiceError,
+                                   ProviderNotSupportTextToSpeechServiceError,
+                                   UnsupportedAudioTypeServiceError)
+from werkzeug.datastructures import FileStorage
 
 FILE_SIZE = 30
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
@@ -42,6 +39,8 @@ class AudioService:
 
         if file is None:
             raise NoAudioUploadedServiceError()
+
+        logger.info(f"asr info: {file.filename}, {file.content_type}, {file.content_length}, {file.headers}")
 
         extension = file.mimetype
         if extension not in [f"audio/{ext}" for ext in AUDIO_EXTENSIONS]:
@@ -77,10 +76,9 @@ class AudioService:
     ):
         from collections.abc import Generator
 
-        from flask import Response, stream_with_context
-
         from app import app
         from extensions.ext_database import db
+        from flask import Response, stream_with_context
 
         def invoke_tts(text_content: str, app_model: App, voice: Optional[str] = None):
             with app.app_context():
