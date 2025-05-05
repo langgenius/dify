@@ -8,11 +8,6 @@ from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import Any, Optional, cast
 
-from pydantic import BaseModel  # type: ignore
-from sqlalchemy import func  # type: ignore
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Unauthorized
-
 from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
@@ -22,42 +17,36 @@ from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
-from models.account import (
-    Account,
-    AccountIntegrate,
-    AccountStatus,
-    Tenant,
-    TenantAccountJoin,
-    TenantAccountJoinRole,
-    TenantAccountRole,
-    TenantStatus,
-)
+from models.account import (Account, AccountIntegrate, AccountStatus, Tenant,
+                            TenantAccountJoin, TenantAccountJoinRole,
+                            TenantAccountRole, TenantStatus)
 from models.model import DifySetup
+from pydantic import BaseModel  # type: ignore
 from services.billing_service import BillingService
-from services.errors.account import (
-    AccountAlreadyInTenantError,
-    AccountLoginError,
-    AccountNotFoundError,
-    AccountNotLinkTenantError,
-    AccountPasswordError,
-    AccountRegisterError,
-    CannotOperateSelfError,
-    CurrentPasswordIncorrectError,
-    InvalidActionError,
-    LinkAccountIntegrateError,
-    MemberNotInTenantError,
-    NoPermissionError,
-    RoleAlreadyAssignedError,
-    TenantNotFoundError,
-)
+from services.errors.account import (AccountAlreadyInTenantError,
+                                     AccountLoginError, AccountNotFoundError,
+                                     AccountNotLinkTenantError,
+                                     AccountPasswordError,
+                                     AccountRegisterError,
+                                     CannotOperateSelfError,
+                                     CurrentPasswordIncorrectError,
+                                     InvalidActionError,
+                                     LinkAccountIntegrateError,
+                                     MemberNotInTenantError, NoPermissionError,
+                                     RoleAlreadyAssignedError,
+                                     TenantNotFoundError)
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
+from sqlalchemy import func  # type: ignore
+from sqlalchemy.orm import Session
 from tasks.delete_account_task import delete_account_task
-from tasks.mail_account_deletion_task import send_account_deletion_verification_code
+from tasks.mail_account_deletion_task import \
+    send_account_deletion_verification_code
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 from tasks.phone_sms_code_login import send_phone_sms_code_login_task
+from werkzeug.exceptions import Unauthorized
 
 
 class TokenPair(BaseModel):
@@ -306,7 +295,8 @@ class AccountService:
     def send_account_deletion_verification_email(cls, account: Account, code: str):
         email = account.email
         if cls.email_code_account_deletion_rate_limiter.is_rate_limited(email):
-            from controllers.console.auth.error import EmailCodeAccountDeletionRateLimitExceededError
+            from controllers.console.auth.error import \
+                EmailCodeAccountDeletionRateLimitExceededError
 
             raise EmailCodeAccountDeletionRateLimitExceededError()
 
@@ -444,7 +434,8 @@ class AccountService:
             raise ValueError("Email must be provided.")
 
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
-            from controllers.console.auth.error import PasswordResetRateLimitExceededError
+            from controllers.console.auth.error import \
+                PasswordResetRateLimitExceededError
 
             raise PasswordResetRateLimitExceededError()
 
@@ -496,7 +487,8 @@ class AccountService:
         if dify_config.DEBUG_CODE_FOR_LOGIN:
             code = dify_config.DEBUG_CODE_FOR_LOGIN
         elif cls.email_code_login_rate_limiter.is_rate_limited(email):
-            from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
+            from controllers.console.auth.error import \
+                EmailCodeLoginRateLimitExceededError
 
             raise EmailCodeLoginRateLimitExceededError()
         else:
@@ -640,18 +632,16 @@ class AccountService:
         """
         Get admin account through phone number.
 
-        Returns None if no admin account with this phone number exists.
-        Raises AccountRegisterError if account is in freeze status.
-        """
-        # We'll check if account is banned or frozen using the phone number
-        # This implementation assumes phone numbers are unique like emails
+        Args:
+            phone: The phone number to search for
 
-        # Find account with end_admin role by phone number
+        Returns None if no admin account with this phone number exists.
+        Raises Unauthorized if account is banned.
+        """
+        # Query directly with phone number first
         admin_account = (
             db.session.query(Account)
-            .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
             .filter(Account.phone == phone)
-            .filter(TenantAccountJoin.role == TenantAccountJoinRole.END_ADMIN.value)
             .first()
         )
 
@@ -660,6 +650,29 @@ class AccountService:
 
         if admin_account.status == AccountStatus.BANNED.value:
             raise Unauthorized("Account is banned.")
+        
+        organization_id = admin_account.current_organization_id
+
+        if not organization_id:
+            logging.warning(f"Account {admin_account.id} is not a member of any organization.")
+            return None
+
+        # If organization_id is provided, check if account is an admin member of that organization
+        from models.organization import OrganizationMember, OrganizationRole
+        
+        org_member = (
+            db.session.query(OrganizationMember)
+            .filter(
+                OrganizationMember.organization_id == organization_id,
+                OrganizationMember.account_id == admin_account.id,
+                OrganizationMember.role == OrganizationRole.ADMIN
+            )
+            .first()
+        )
+        
+        if not org_member:
+            logging.warning(f"Account {admin_account.id} is not a member of any organization.")
+            return None
 
         return admin_account
 
