@@ -57,6 +57,7 @@ const translation = {
     copied: 'コピーしました',
     in: '中',
     format: 'フォーマット',
+    more: 'もっと',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
