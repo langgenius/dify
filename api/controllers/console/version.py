@@ -2,7 +2,7 @@ import json
 import logging
 
 import requests
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 from packaging import version
 
 from configs import dify_config

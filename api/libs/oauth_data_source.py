@@ -3,7 +3,7 @@ import urllib.parse
 from typing import Any
 
 import requests
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 
 from extensions.ext_database import db
 from models.source import DataSourceOauthBinding

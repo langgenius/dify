@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
-from flask_restful import fields  # type: ignore
+from flask_restful import fields
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator

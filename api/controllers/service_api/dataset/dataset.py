@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import marshal, reqparse  # type: ignore
+from flask_restful import marshal, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service
