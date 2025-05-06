@@ -42,7 +42,7 @@ export enum BlockEnum {
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
   DataSource = 'data-source',
-  KnowledgeBase = 'knowledge-base',
+  KnowledgeBase = 'knowledge-index',
 }
 
 export enum ControlMode {

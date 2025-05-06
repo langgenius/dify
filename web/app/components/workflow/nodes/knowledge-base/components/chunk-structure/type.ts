@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
+import type { ChunkStructureEnum } from '../../types'
 
 export type Option = {
-  key: string
+  id: ChunkStructureEnum
   icon: ReactNode
   title: string
   description: string

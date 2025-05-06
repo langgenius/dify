@@ -5,13 +5,14 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
+import type { ChunkStructureEnum } from '../../types'
 import OptionCard from '../option-card'
 import type { Option } from './type'
 
 type SelectorProps = {
   options: Option[]
-  value: string
-  onChange: (key: string) => void
+  value: ChunkStructureEnum
+  onChange: (key: ChunkStructureEnum) => void
 }
 const Selector = ({
   options,
@@ -47,15 +48,16 @@ const Selector = ({
             {
               options.map(option => (
                 <OptionCard
-                  key={option.key}
+                  key={option.id}
+                  id={option.id}
                   icon={option.icon}
                   title={option.title}
                   description={option.description}
                   onClick={() => {
-                    onChange(option.key)
+                    onChange(option.id)
                     setOpen(false)
                   }}
-                  showHighlightBorder={value === option.key}
+                  showHighlightBorder={value === option.id}
                 ></OptionCard>
               ))
             }

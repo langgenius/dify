@@ -16,7 +16,9 @@ const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
   'orange': <OptionCardEffectOrange />,
   'purple': <OptionCardEffectPurple />,
 }
-type OptionCardProps = {
+type OptionCardProps<T> = {
+  id: T
+  className?: string
   showHighlightBorder?: boolean
   showRadio?: boolean
   radioIsActive?: boolean
@@ -28,9 +30,11 @@ type OptionCardProps = {
   showChildren?: boolean
   effectColor?: string
   showEffectColor?: boolean
-  onClick?: () => void
+  onClick?: (id: T) => void
 }
-const OptionCard = ({
+const OptionCard = memo(({
+  id,
+  className,
   showHighlightBorder,
   showRadio,
   radioIsActive,
@@ -43,17 +47,18 @@ const OptionCard = ({
   effectColor,
   showEffectColor,
   onClick,
-}: OptionCardProps) => {
+}) => {
   return (
     <div
       className={cn(
         'cursor-pointer rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
         showHighlightBorder && 'border-[2px] border-components-option-card-option-selected-border',
       )}
-      onClick={onClick}
+      onClick={() => onClick?.(id)}
     >
       <div className={cn(
         'relative flex rounded-t-xl p-2',
+        className,
       )}>
         {
           effectColor && showEffectColor && (
@@ -110,6 +115,6 @@ const OptionCard = ({
       }
     </div>
   )
-}
+}) as <T>(props: OptionCardProps<T>) => JSX.Element
 
-export default memo(OptionCard)
+export default OptionCard

@@ -4,7 +4,7 @@ import {
 } from '@/app/components/workflow/context'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { generateNewNode } from '@/app/components/workflow/utils'
-import dataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
+import knowledgeBaseNodeDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
@@ -13,11 +13,11 @@ import { createRagPipelineSliceSlice } from './store'
 import RagPipelineMain from './components/rag-pipeline-main'
 
 const RagPipeline = () => {
-  const { newNode: DataSourceNode } = generateNewNode({
+  const { newNode: knowledgeBaseNode } = generateNewNode({
     data: {
-      type: dataSourceNodeDefault.metaData.type,
-      title: 'data-source',
-      ...dataSourceNodeDefault.defaultValue,
+      type: knowledgeBaseNodeDefault.metaData.type,
+      title: 'knowledge-base',
+      ...knowledgeBaseNodeDefault.defaultValue,
     },
     position: {
       x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET,
@@ -30,11 +30,11 @@ const RagPipeline = () => {
     >
       <WorkflowWithDefaultContext
         edges={[]}
-        nodes={[DataSourceNode]}
+        nodes={[knowledgeBaseNode]}
       >
         <RagPipelineMain
           edges={[]}
-          nodes={[DataSourceNode]}
+          nodes={[knowledgeBaseNode]}
         />
       </WorkflowWithDefaultContext>
     </WorkflowContextProvider>

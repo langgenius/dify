@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import {
+  memo,
+  useCallback,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiQuestionLine } from '@remixicon/react'
 import {
@@ -11,10 +14,33 @@ import Input from '@/app/components/base/input'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import OptionCard from './option-card'
 import cn from '@/utils/classnames'
+import { IndexMethodEnum } from '../types'
 
-const IndexMethod = () => {
+type IndexMethodProps = {
+  indexMethod: IndexMethodEnum
+  onIndexMethodChange: (value: IndexMethodEnum) => void
+  keywordNumber: number
+  onKeywordNumberChange: (value: number) => void
+}
+const IndexMethod = ({
+  indexMethod,
+  onIndexMethodChange,
+  keywordNumber,
+  onKeywordNumberChange,
+}: IndexMethodProps) => {
   const { t } = useTranslation()
-  const [method, setMethod] = useState('high_quality')
+  const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
+  const isEconomy = indexMethod === IndexMethodEnum.ECONOMICAL
+
+  const handleIndexMethodChange = useCallback((newIndexMethod: IndexMethodEnum) => {
+    onIndexMethodChange(newIndexMethod)
+  }, [onIndexMethodChange])
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(e.target.value)
+    if (!Number.isNaN(value))
+      onKeywordNumberChange(value)
+  }, [onKeywordNumberChange])
 
   return (
     <Field
@@ -23,37 +49,39 @@ const IndexMethod = () => {
       }}
     >
       <div className='space-y-1'>
-        <OptionCard
+        <OptionCard<IndexMethodEnum>
+          id={IndexMethodEnum.QUALIFIED}
           icon={
             <HighQuality
               className={cn(
                 'h-[15px] w-[15px] text-text-tertiary',
-                method === 'high_quality' && 'text-util-colors-orange-orange-500',
+                isHighQuality && 'text-util-colors-orange-orange-500',
               )}
             />
           }
           title={t('datasetCreation.stepTwo.qualified')}
           description={t('datasetSettings.form.indexMethodHighQualityTip')}
-          showHighlightBorder={method === 'high_quality'}
-          onClick={() => setMethod('high_quality')}
+          showHighlightBorder={isHighQuality}
+          onClick={handleIndexMethodChange}
           isRecommended
         ></OptionCard>
         <OptionCard
+          id={IndexMethodEnum.ECONOMICAL}
           icon={
             <Economic
               className={cn(
                 'h-[15px] w-[15px] text-text-tertiary',
-                method === 'economy' && 'text-util-colors-indigo-indigo-500',
+                isEconomy && 'text-util-colors-indigo-indigo-500',
               )}
             />
           }
           title={t('datasetSettings.form.indexMethodEconomy')}
           description={t('datasetSettings.form.indexMethodEconomyTip')}
-          showChildren={method === 'economy'}
-          showHighlightBorder={method === 'economy'}
-          onClick={() => setMethod('economy')}
+          showChildren={isEconomy}
+          showHighlightBorder={isEconomy}
+          onClick={handleIndexMethodChange}
           effectColor='blue'
-          showEffectColor={method === 'economy'}
+          showEffectColor={isEconomy}
         >
           <div className='flex items-center'>
             <div className='flex grow items-center'>
@@ -68,15 +96,15 @@ const IndexMethod = () => {
             </div>
             <Slider
               className='mr-3 w-24 shrink-0'
-              value={0}
-              onChange={() => {
-                console.log('change')
-              }}
+              value={keywordNumber}
+              onChange={onKeywordNumberChange}
             />
             <Input
               className='shrink-0'
               wrapperClassName='shrink-0 w-[72px]'
               type='number'
+              value={keywordNumber}
+              onChange={handleInputChange}
             />
           </div>
         </OptionCard>
@@ -85,4 +113,4 @@ const IndexMethod = () => {
   )
 }
 
-export default IndexMethod
+export default memo(IndexMethod)
