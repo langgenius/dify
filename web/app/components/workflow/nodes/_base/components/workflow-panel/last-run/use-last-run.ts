@@ -15,6 +15,7 @@ import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/h
 import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
 import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use-single-run-form-params'
+import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -34,7 +35,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.DocExtractor]: useDocExtractorSingleRunFormParams,
   [BlockEnum.Loop]: useLoopSingleRunFormParams,
   [BlockEnum.Start]: useStartSingleRunFormParams,
-  [BlockEnum.IfElse]: undefined,
+  [BlockEnum.IfElse]: useIfElseSingleRunFormParams,
   [BlockEnum.VariableAggregator]: undefined,
   [BlockEnum.End]: undefined,
   [BlockEnum.Answer]: undefined,
@@ -68,6 +69,7 @@ const useLastRun = <T>({
     handleRun: doCallRunApi,
     getInputVars,
     toVarInputs,
+    varSelectorsToVarInputs,
     runInputData,
     runInputDataRef,
     setRunInputData,
@@ -82,6 +84,7 @@ const useLastRun = <T>({
     getInputVars,
     setRunInputData,
     toVarInputs,
+    varSelectorsToVarInputs,
   })
 
   const callRunApi = async (data: Record<string, any>) => {
