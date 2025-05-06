@@ -1,31 +1,23 @@
 import json
 import time
-import uuid
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
-    QueueNodeSucceededEvent,
-    QueueNodeFailedEvent,
-    QueueNodeRetryEvent,
 )
-from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_cycle_manager import WorkflowCycleManager
-from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
+from models.enums import CreatedByRole
 from models.workflow import (
     Workflow,
-    WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
-    WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowRunStatus,
 )
