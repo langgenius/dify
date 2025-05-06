@@ -89,7 +89,7 @@ const AppPublisher = ({
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
   const appURL = `${appBaseURL}${basePath}/${appMode}/${accessToken}`
   const isChatApp = ['chat', 'agent-chat', 'completion'].includes(appDetail?.mode || '')
-  const { data: useCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
+  const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
 
   useEffect(() => {
@@ -287,9 +287,10 @@ const AppPublisher = ({
                   {!isAppAccessSet && <p className='system-xs-regular mt-1 text-text-warning'>{t('app.publishApp.notSetDesc')}</p>}
                 </div>
                 <div className='flex flex-col gap-y-1 border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
-                  <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <Tooltip triggerClassName='flex' disabled={userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                     <SuggestedAction
-                      disabled={!publishedAt}
+                      className='flex-1'
+                      disabled={!publishedAt || !userCanAccessApp?.result}
                       link={appURL}
                       icon={<RiPlayCircleLine className='h-4 w-4' />}
                     >
@@ -298,9 +299,10 @@ const AppPublisher = ({
                   </Tooltip>
                   {appDetail?.mode === 'workflow' || appDetail?.mode === 'completion'
                     ? (
-                      <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                      <Tooltip triggerClassName='flex' disabled={userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                         <SuggestedAction
-                          disabled={!publishedAt}
+                          className='flex-1'
+                          disabled={!publishedAt || !userCanAccessApp?.result}
                           link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                           icon={<RiPlayList2Line className='h-4 w-4' />}
                         >
@@ -320,44 +322,41 @@ const AppPublisher = ({
                         {t('workflow.common.embedIntoSite')}
                       </SuggestedAction>
                     )}
-                  <Tooltip triggerClassName='flex' disabled={useCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
+                  <Tooltip triggerClassName='flex' disabled={userCanAccessApp?.result} popupContent={t('app.noAccessPermission')} asChild={false}>
                     <SuggestedAction
+                      className='flex-1'
                       onClick={() => {
                         publishedAt && handleOpenInExplore()
                       }}
-                      disabled={!publishedAt}
+                      disabled={!publishedAt || !userCanAccessApp?.result}
                       icon={<RiPlanetLine className='h-4 w-4' />}
                     >
                       {t('workflow.common.openInExplore')}
                     </SuggestedAction>
                   </Tooltip>
-                  <div className='flex'>
-                    <SuggestedAction
-                      disabled={!publishedAt}
-                      link='./develop'
-                      icon={<RiTerminalBoxLine className='h-4 w-4' />}
-                    >
-                      {t('workflow.common.accessAPIReference')}
-                    </SuggestedAction>
-                  </div>
+                  <SuggestedAction
+                    disabled={!publishedAt}
+                    link='./develop'
+                    icon={<RiTerminalBoxLine className='h-4 w-4' />}
+                  >
+                    {t('workflow.common.accessAPIReference')}
+                  </SuggestedAction>
                   {appDetail?.mode === 'workflow' && (
-                    <div className='flex' >
-                      <WorkflowToolConfigureButton
-                        disabled={!publishedAt}
-                        published={!!toolPublished}
-                        detailNeedUpdate={!!toolPublished && published}
-                        workflowAppId={appDetail?.id}
-                        icon={{
-                          content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
-                          background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
-                        }}
-                        name={appDetail?.name}
-                        description={appDetail?.description}
-                        inputs={inputs}
-                        handlePublish={handlePublish}
-                        onRefreshData={onRefreshData}
-                      />
-                    </div>
+                    <WorkflowToolConfigureButton
+                      disabled={!publishedAt}
+                      published={!!toolPublished}
+                      detailNeedUpdate={!!toolPublished && published}
+                      workflowAppId={appDetail?.id}
+                      icon={{
+                        content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
+                        background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
+                      }}
+                      name={appDetail?.name}
+                      description={appDetail?.description}
+                      inputs={inputs}
+                      handlePublish={handlePublish}
+                      onRefreshData={onRefreshData}
+                    />
                   )}
                 </div>
               </>}
