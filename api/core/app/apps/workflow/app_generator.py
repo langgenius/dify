@@ -130,6 +130,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             call_depth=call_depth,
             trace_manager=trace_manager,
             workflow_run_id=workflow_run_id,
+            extras={"is_async": args.get("is_async", False)},
         )
 
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)

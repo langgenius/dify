@@ -103,7 +103,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         query = query.replace("\x00", "")
         inputs = args["inputs"]
 
-        extras = {"auto_generate_conversation_name": args.get("auto_generate_name", False)}
+        extras = {
+            "auto_generate_conversation_name": args.get("auto_generate_name", False),
+            "is_async": args.get("is_async", False),
+        }
 
         # get conversation
         conversation = None

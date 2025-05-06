@@ -1,16 +1,20 @@
+import contextvars
 import json
 import logging
+import threading
 import time
 from collections.abc import Generator, Mapping
 from threading import Thread
 from typing import Any, Optional, Union
 
+from flask import Flask, current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     InvokeFrom,
@@ -46,6 +50,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.app.entities.queue_task_bridge import ForwardQueueMessage, advance_chat_queue_task_map
 from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
@@ -53,6 +58,7 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
+    MessageStreamResponse,
     StreamResponse,
     WorkflowTaskState,
 )
@@ -166,7 +172,21 @@ class AdvancedChatAppGenerateTaskPipeline:
         Process blocking response.
         :return:
         """
+        is_async = self._application_generate_entity.extras.get("is_async", False)
+
         for stream_response in generator:
+            if is_async:
+                return ChatbotAppBlockingResponse(
+                    task_id=stream_response.task_id,
+                    data=ChatbotAppBlockingResponse.Data(
+                        id=self._message_id,
+                        mode=self._conversation_mode,
+                        conversation_id=self._conversation_id,
+                        message_id=self._message_id,
+                        answer=str(self._application_generate_entity.workflow_run_id),
+                        created_at=int(self._message_created_at),
+                    ),
+                )
             if isinstance(stream_response, ErrorStreamResponse):
                 raise stream_response.err
             elif isinstance(stream_response, MessageEndStreamResponse):
@@ -198,7 +218,20 @@ class AdvancedChatAppGenerateTaskPipeline:
         To stream response.
         :return:
         """
+        is_async = self._application_generate_entity.extras.get("is_async", False)
         for stream_response in generator:
+            if is_async:
+                yield ChatbotAppStreamResponse(
+                    conversation_id=self._conversation_id,
+                    message_id=self._message_id,
+                    created_at=int(self._message_created_at),
+                    stream_response=MessageStreamResponse(
+                        task_id=self._application_generate_entity.task_id,
+                        id="0",
+                        answer=str(self._application_generate_entity.workflow_run_id),
+                    ),
+                )
+                return
             yield ChatbotAppStreamResponse(
                 conversation_id=self._conversation_id,
                 message_id=self._message_id,
@@ -231,14 +264,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 tenant_id, features_dict["text_to_speech"].get("voice"), features_dict["text_to_speech"].get("language")
             )
 
-        for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
-            while True:
-                audio_response = self._listen_audio_msg(publisher=tts_publisher, task_id=task_id)
-                if audio_response:
-                    yield audio_response
-                else:
-                    break
-            yield response
+        yield from self._async_process_stream_response(tts_publisher)
 
         start_listener_time = time.time()
         # timeout
@@ -262,6 +288,69 @@ class AdvancedChatAppGenerateTaskPipeline:
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+
+    def _async_process_stream_response(self, publisher):
+        # init queue manager
+        queue_manager = MessageBasedAppQueueManager(
+            task_id=self._application_generate_entity.task_id,
+            user_id=self._application_generate_entity.user_id,
+            invoke_from=self._application_generate_entity.invoke_from,
+            conversation_id=self._conversation_id,
+            app_mode=self._conversation_mode,
+            message_id=self._message_id,
+        )
+        worker_thread = threading.Thread(
+            target=self._generate_worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),  # type: ignore
+                "queue_manager": queue_manager,
+                "context": contextvars.copy_context(),
+                "publisher": publisher,
+            },
+        )
+
+        worker_thread.start()
+
+        yield from self._consumer_worker(queue_manager)
+
+    def _consumer_worker(self, queue_manager: AppQueueManager) -> Generator[StreamResponse, None, None]:
+        for message in queue_manager.listen():
+            event = message.event
+            if isinstance(event, ForwardQueueMessage):
+                yield event.response
+
+    def _generate_worker(
+        self, flask_app: Flask, queue_manager: AppQueueManager, context: contextvars.Context, publisher
+    ) -> None:
+        """
+        Generate worker in a new thread.
+        :param flask_app: Flask app
+        :param queue_manager: queue manager
+        :return:
+        """
+        for var, val in context.items():
+            var.set(val)
+        with flask_app.app_context():
+            response_generator = self._sync_process_stream_response(
+                publisher,
+            )
+            for generator in response_generator:
+                if generator is None:
+                    continue
+                message = ForwardQueueMessage(event=advance_chat_queue_task_map[generator.event], response=generator)
+                queue_manager.publish(message, PublishFrom.TASK_PIPELINE)
+
+    def _sync_process_stream_response(self, publisher):
+        for response in self._process_stream_response(
+            publisher, trace_manager=self._application_generate_entity.trace_manager
+        ):
+            while True:
+                audio_response = self._listen_audio_msg(publisher, task_id=self._application_generate_entity.task_id)
+                if audio_response:
+                    yield audio_response
+                else:
+                    break
+            yield response
 
     def _process_stream_response(
         self,
