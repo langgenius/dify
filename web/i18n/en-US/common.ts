@@ -533,6 +533,7 @@ const translation = {
     viewDoc: 'View documentation',
     relatedApp: 'linked apps',
     noRelatedApp: 'No linked apps',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Speak now...',

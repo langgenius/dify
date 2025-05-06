@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
+import type { RemixiconComponentType } from '@remixicon/react'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -31,6 +32,7 @@ import { getLocaleOnClient } from '@/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/public/pipeline'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -148,12 +150,17 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
-      baseNavigation.unshift({
+      baseNavigation.unshift(...[{
         name: t('common.datasetMenus.documents'),
         href: `/datasets/${datasetId}/documents`,
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
-      })
+      }, {
+        name: t('common.datasetMenus.pipeline'),
+        href: `/datasets/${datasetId}/pipeline`,
+        icon: PipelineLine as RemixiconComponentType,
+        selectedIcon: PipelineFill as RemixiconComponentType,
+      }])
     }
     return baseNavigation
   }, [datasetRes?.provider, datasetId, t])
@@ -163,13 +170,13 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       document.title = `${datasetRes.name || 'Dataset'} - Dify`
   }, [datasetRes])
 
-  const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
+  const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
 
   useEffect(() => {
     const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
     const mode = isMobile ? 'collapse' : 'expand'
-    setAppSiderbarExpand(isMobile ? mode : localeMode)
-  }, [isMobile, setAppSiderbarExpand])
+    setAppSidebarExpand(isMobile ? mode : localeMode)
+  }, [isMobile, setAppSidebarExpand])
 
   if (!datasetRes && !error)
     return <Loading type='app' />

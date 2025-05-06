@@ -27,24 +27,24 @@ export type IAppDetailNavProps = {
 }
 
 const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
-  const { appSidebarExpand, setAppSiderbarExpand } = useAppStore(useShallow(state => ({
+  const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
-    setAppSiderbarExpand: state.setAppSiderbarExpand,
+    setAppSidebarExpand: state.setAppSidebarExpand,
   })))
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const expand = appSidebarExpand === 'expand'
 
   const handleToggle = (state: string) => {
-    setAppSiderbarExpand(state === 'expand' ? 'collapse' : 'expand')
+    setAppSidebarExpand(state === 'expand' ? 'collapse' : 'expand')
   }
 
   useEffect(() => {
     if (appSidebarExpand) {
       localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
-      setAppSiderbarExpand(appSidebarExpand)
+      setAppSidebarExpand(appSidebarExpand)
     }
-  }, [appSidebarExpand, setAppSiderbarExpand])
+  }, [appSidebarExpand, setAppSidebarExpand])
 
   return (
     <div

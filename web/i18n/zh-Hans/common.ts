@@ -533,6 +533,7 @@ const translation = {
     viewDoc: '查看文档',
     relatedApp: '个关联应用',
     noRelatedApp: '无关联应用',
+    pipeline: '流水线',
   },
   voiceInput: {
     speaking: '现在讲...',

@@ -22,6 +22,7 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: '了解如何编写良好的知识库描述',
   externalAPIPanelDescription: '外部知识库 API 用于连接到 Dify 之外的知识库并从中检索知识。',
   externalAPIPanelDocumentation: '了解如何创建外部知识库 API',
+  externalKnowledgeBase: '外部知识库',
   localDocs: '本地文档',
   documentCount: ' 文档',
   docAllEnabled_one: '所有 {{count}} 个文档均可用',

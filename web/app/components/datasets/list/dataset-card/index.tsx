@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { DataSet } from '@/models/datasets'
 import { ChunkingMode } from '@/models/datasets'
 import { useAppContext } from '@/context/app-context'
-import { General, Graph, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge'
+import { ExternalKnowledgeBase, General, Graph, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
@@ -21,14 +21,17 @@ import Confirm from '@/app/components/base/confirm'
 import Toast from '@/app/components/base/toast'
 import CustomPopover from '@/app/components/base/popover'
 import Operations from './operations'
+import AppIcon from '@/app/components/base/app-icon'
+import CornerLabel from '@/app/components/base/corner-label'
 
 const EXTERNAL_PROVIDER = 'external'
 
-export const DOC_FORM_ICON: Record<ChunkingMode, React.ComponentType<{ className: string }>> = {
+export const DOC_FORM_ICON: Record<ChunkingMode | 'external', React.ComponentType<{ className: string }>> = {
   [ChunkingMode.text]: General,
   [ChunkingMode.qa]: Qa,
   [ChunkingMode.parentChild]: ParentChild,
   [ChunkingMode.graph]: Graph,
+  external: ExternalKnowledgeBase,
 }
 
 export const DOC_FORM_TEXT: Record<ChunkingMode, string> = {
@@ -62,7 +65,7 @@ const DatasetCard = ({
   const isExternalProvider = useMemo(() => {
     return dataset.provider === EXTERNAL_PROVIDER
   }, [dataset.provider])
-  const Icon = DOC_FORM_ICON[dataset.doc_form] || General
+  const Icon = isExternalProvider ? DOC_FORM_ICON.external : (DOC_FORM_ICON[dataset.doc_form] || General)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const documentCount = useMemo(() => {
     const availableDocCount = dataset.available_document_count || dataset.document_count
@@ -116,10 +119,7 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className={cn(
-          'group relative col-span-1 flex h-[166px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-all duration-200 ease-in-out hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5',
-          !dataset.embedding_available && 'opacity-30',
-        )}
+        className='group relative col-span-1 flex h-[166px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-all duration-200 ease-in-out hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
@@ -128,9 +128,19 @@ const DatasetCard = ({
             : push(`/datasets/${dataset.id}/documents`)
         }}
       >
-        <div className='flex items-center gap-x-3 px-4 pb-2 pt-4'>
-          <div className='relative flex size-10 shrink-0 items-center justify-center rounded-[10px] border-[0.5px] border-divider-regular bg-components-icon-bg-violet-soft'>
-            <span className='title-4xl-semi-bold'>📙</span>
+        {!dataset.embedding_available && (
+          <CornerLabel
+            label='Unavailable'
+            className='absolute right-0 top-0 z-10'
+            labelClassName='rounded-tr-xl' />
+        )}
+        <div className={cn('flex items-center gap-x-3 px-4 pb-2 pt-4', !dataset.embedding_available && 'opacity-30')}>
+          <div className='relative shrink-0'>
+            <AppIcon
+              iconType='emoji'
+              icon='📙'
+              size='large'
+            />
             <div className='absolute -bottom-1 -right-1 z-10'>
               <Icon className='size-4' />
             </div>
@@ -138,16 +148,25 @@ const DatasetCard = ({
           <div className='flex grow flex-col gap-y-1 py-px'>
             <div className='system-md-semibold truncate text-text-secondary' title={dataset.name}>{dataset.name}</div>
             <div className='system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary'>
-              <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>
-              <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
+              {!isExternalProvider ? (
+                <>
+                  <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>
+                  <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
+                </>
+              ) : (
+                <span>{t('dataset.externalKnowledgeBase')}</span>
+              )}
             </div>
           </div>
         </div>
-        <div className='system-xs-regular line-clamp-2 h-10 px-4 py-1 text-text-tertiary' title={dataset.description}>
+        <div
+          className={cn('system-xs-regular line-clamp-2 h-10 px-4 py-1 text-text-tertiary', !dataset.embedding_available && 'opacity-30')}
+          title={dataset.description}
+        >
           {dataset.description}
         </div>
         <div
-          className='relative w-full px-3'
+          className={cn('relative w-full px-3', !dataset.embedding_available && 'opacity-30')}
           onClick={(e) => {
             e.stopPropagation()
             e.preventDefault()
@@ -178,7 +197,12 @@ const DatasetCard = ({
             )}
           />
         </div>
-        <div className='flex items-center gap-x-3 px-4 pb-3 pt-2 text-text-tertiary'>
+        <div
+          className={cn(
+            'flex items-center gap-x-3 px-4 pb-3 pt-2 text-text-tertiary',
+            !dataset.embedding_available && 'opacity-30',
+          )}
+        >
           <Tooltip popupContent={documentCountTooltip} >
             <div className='flex items-center gap-x-1'>
               <RiFileTextFill className='size-3 text-text-quaternary'/>
@@ -196,7 +220,7 @@ const DatasetCard = ({
           <span className='system-xs-regular text-divider-deep'>/</span>
           <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at)}`}</span>
         </div>
-        <div className='absolute right-2 top-2 hidden group-hover:block'>
+        <div className='absolute right-2 top-2 z-20 hidden group-hover:block'>
             <CustomPopover
               htmlContent={
                 <Operations
@@ -212,11 +236,13 @@ const DatasetCard = ({
               position='br'
               trigger='click'
               btnElement={
-                <RiMoreFill className='h-5 w-5 text-text-tertiary' />
+                <div className='flex size-8 items-center justify-center rounded-[10px] hover:bg-state-base-hover'>
+                  <RiMoreFill className='h-5 w-5 text-text-tertiary' />
+                </div>
               }
               btnClassName={open =>
                 cn(
-                  'size-9 cursor-pointer justify-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-[2px] ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border hover:bg-state-base-hover',
+                  'size-9 cursor-pointer justify-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-[2px] ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border',
                   open ? 'border-components-actionbar-border bg-state-base-hover' : '',
                 )
               }

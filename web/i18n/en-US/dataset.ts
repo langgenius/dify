@@ -22,6 +22,7 @@ const translation = {
   learnHowToWriteGoodKnowledgeDescription: 'Learn how to write a good knowledge description',
   externalAPIPanelDescription: 'The external knowledge API is used to connect to a knowledge base outside of Dify and retrieve knowledge from that knowledge base.',
   externalAPIPanelDocumentation: 'Learn how to create an External Knowledge API',
+  externalKnowledgeBase: 'External Knowledge Base',
   localDocs: 'Local Docs',
   documentCount: ' docs',
   docAllEnabled_one: 'All {{count}} document enabled',

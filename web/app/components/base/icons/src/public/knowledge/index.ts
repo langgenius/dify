@@ -1,5 +1,6 @@
 export { default as Chunk } from './Chunk'
 export { default as Collapse } from './Collapse'
+export { default as ExternalKnowledgeBase } from './ExternalKnowledgeBase'
 export { default as File } from './File'
 export { default as GeneralType } from './GeneralType'
 export { default as General } from './General'
