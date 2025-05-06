@@ -65,7 +65,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_cycle_manage import WorkflowCycleManage
+from core.workflow.workflow_cycle_manager import WorkflowCycleManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models import Conversation, EndUser, Message, MessageFile
@@ -113,7 +113,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         else:
             raise NotImplementedError(f"User type not supported: {type(user)}")
 
-        self._workflow_cycle_manager = WorkflowCycleManage(
+        self._workflow_cycle_manager = WorkflowCycleManager(
             application_generate_entity=application_generate_entity,
             workflow_system_variables={
                 SystemVariableKey.QUERY: message.query,

@@ -55,7 +55,7 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_cycle_manage import WorkflowCycleManage
+from core.workflow.workflow_cycle_manager import WorkflowCycleManager
 from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole
@@ -102,7 +102,7 @@ class WorkflowAppGenerateTaskPipeline:
         else:
             raise ValueError(f"Invalid user type: {type(user)}")
 
-        self._workflow_cycle_manager = WorkflowCycleManage(
+        self._workflow_cycle_manager = WorkflowCycleManager(
             application_generate_entity=application_generate_entity,
             workflow_system_variables={
                 SystemVariableKey.FILES: application_generate_entity.files,
