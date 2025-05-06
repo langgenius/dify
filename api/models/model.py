@@ -1425,10 +1425,10 @@ class EndUser(Base, UserMixin):
     tenant_id = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(255), nullable=False)
-    external_user_id = db.Column(db.String(255), nullable=True)
+    external_user_id = db.Column(db.String(1024), nullable=True)
     name = db.Column(db.String(255))
     is_anonymous = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
-    session_id: Mapped[str] = mapped_column()
+    session_id: Mapped[str] = mapped_column(db.String(1024))
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
