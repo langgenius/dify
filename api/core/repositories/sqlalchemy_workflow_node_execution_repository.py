@@ -10,13 +10,13 @@ from sqlalchemy import UnaryExpression, asc, delete, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.workflow.repository.workflow_node_execution_repository import OrderConfig
+from core.workflow.repository.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionStatus, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
 
-class SQLAlchemyWorkflowNodeExecutionRepository:
+class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
     """
     SQLAlchemy implementation of the WorkflowNodeExecutionRepository interface.
 
