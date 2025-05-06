@@ -41,8 +41,7 @@ def init_app(app: DifyApp):
         meter = get_meter("http_metrics", version=dify_config.CURRENT_VERSION)
         _http_response_counter = meter.create_counter(
             "http.server.response.count",
-            description="Total number of HTTP responses by status code, \
-            method and target",
+            description="Total number of HTTP responses by status code, method and target",
             unit="{response}",
         )
 
