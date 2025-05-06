@@ -11,6 +11,7 @@ import useTemplateTransformSingleRunFormParams from '../../../../template-transf
 import useQuestionClassifierSingleRunFormParams from '../../../../question-classifier/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '../../../../http/use-single-run-form-params'
 import useIterationSingleRunFormParams from '../../../../iteration/use-single-run-form-params'
+import useDocExtractorSingleRunFormParams from '../../../../document-extractor/use-single-run-form-params'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -27,7 +28,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.ParameterExtractor]: undefined,
   [BlockEnum.Iteration]: useIterationSingleRunFormParams,
   [BlockEnum.Agent]: undefined,
-  [BlockEnum.DocExtractor]: undefined,
+  [BlockEnum.DocExtractor]: useDocExtractorSingleRunFormParams,
   [BlockEnum.Loop]: undefined,
   [BlockEnum.Start]: undefined,
   [BlockEnum.End]: undefined,
