@@ -13,6 +13,7 @@ import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/
 import useParameterExtractorSingleRunFormParams from '@/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
 import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
+import useAgentSingleRunFormParams from '@/app/components/workflow/nodes/agent/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
 import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use-single-run-form-params'
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
@@ -33,7 +34,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.Tool]: undefined,
   [BlockEnum.ParameterExtractor]: useParameterExtractorSingleRunFormParams,
   [BlockEnum.Iteration]: useIterationSingleRunFormParams,
-  [BlockEnum.Agent]: undefined,
+  [BlockEnum.Agent]: useAgentSingleRunFormParams,
   [BlockEnum.DocExtractor]: useDocExtractorSingleRunFormParams,
   [BlockEnum.Loop]: useLoopSingleRunFormParams,
   [BlockEnum.Start]: useStartSingleRunFormParams,
