@@ -16,6 +16,8 @@ import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/ite
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
 import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use-single-run-form-params'
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
+import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
+
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -36,7 +38,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.Loop]: useLoopSingleRunFormParams,
   [BlockEnum.Start]: useStartSingleRunFormParams,
   [BlockEnum.IfElse]: useIfElseSingleRunFormParams,
-  [BlockEnum.VariableAggregator]: undefined,
+  [BlockEnum.VariableAggregator]: useVariableAggregatorSingleRunFormParams,
   [BlockEnum.End]: undefined,
   [BlockEnum.Answer]: undefined,
   [BlockEnum.VariableAssigner]: undefined,
