@@ -62,7 +62,7 @@ const Panel: FC<PanelProps> = ({
     <div
       ref={rightPanelRef}
       tabIndex={-1}
-      className={cn('absolute bottom-1 right-0 top-14 z-[11] flex outline-none')}
+      className={cn('absolute bottom-1 right-0 top-14 z-10 flex outline-none')}
       key={`${isRestoring}`}
     >
       {
