@@ -241,7 +241,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           <div className='system-xs-regular mt-0.5 text-text-tertiary'>
             <span>{t(`${prefixSettings}.modalTip`)}</span>
-            <Link href={`${locale === LanguagesSupported[1] ? 'https://docs.dify.ai/zh-hans/guides/application-publishing/launch-your-webapp-quickly#she-zhi-ni-de-ai-zhan-dian' : 'https://docs.dify.ai/guides/application-publishing/launch-your-webapp-quickly#setting-up-your-ai-site'}`} target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
+            <Link href={`${locale === LanguagesSupported[1] ? 'https://docs.dify.ai/zh-hans/guides/application-publishing/launch-your-webapp-quickly#she-zhi-ni-de-ai-zhan-dian' : 'https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README'}`} target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
           </div>
         </div>
         {/* form body */}

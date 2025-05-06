@@ -223,7 +223,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             <Link href={
               locale === LanguagesSupported[1]
                 ? 'https://docs.dify.ai/zh-hans/guides/workflow/node/agent#xuan-ze-agent-ce-le'
-                : 'https://docs.dify.ai/guides/workflow/node/agent#select-an-agent-strategy'
+                : 'https://docs.dify.ai/en/guides/workflow/node/agent#select-an-agent-strategy'
             } className='text-text-accent-secondary' target='_blank'>
               {t('workflow.nodes.agent.learnMore')}
             </Link>
