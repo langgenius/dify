@@ -58,8 +58,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }>>([])
   const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
 
-  const getNavigations = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
-    const navs = [
+  const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
+    const navConfig = [
       ...(isCurrentWorkspaceEditor
         ? [{
           name: t('common.appMenus.promptEng'),
@@ -93,8 +93,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         selectedIcon: RiDashboard2Fill,
       },
     ]
-    return navs
-  }, [])
+    return navConfig
+  }, [t])
 
   useEffect(() => {
     if (appDetail) {
@@ -141,7 +141,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
     else {
       setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
+      setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
       if (systemFeatures.enable_web_sso_switch_component && canIEditApp) {
         fetchAppSSO({ appId }).then((ssoRes) => {
           setAppDetail({ ...res, enable_sso: ssoRes.enabled })

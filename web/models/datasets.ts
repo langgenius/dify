@@ -34,8 +34,13 @@ export type MetadataInDoc = {
 export type DataSet = {
   id: string
   name: string
-  icon: string
-  icon_background: string
+  indexing_status: DocumentIndexingStatus
+  icon_info: {
+    icon: string
+    icon_background: string
+    icon_type: AppIconType
+    icon_url: string
+  }
   description: string
   permission: DatasetPermission
   data_source_type: DataSourceType
@@ -46,6 +51,7 @@ export type DataSet = {
   app_count: number
   doc_form: ChunkingMode
   document_count: number
+  total_document_count: number
   available_document_count?: number
   word_count: number
   provider: string

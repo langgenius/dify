@@ -26,7 +26,16 @@ export type IAppDetailNavProps = {
   extraInfo?: (modeState: string) => React.ReactNode
 }
 
-const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
+const AppDetailNav = ({
+  title,
+  desc,
+  isExternal,
+  icon,
+  icon_background,
+  navigation,
+  extraInfo,
+  iconType = 'app',
+}: IAppDetailNavProps) => {
   const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
     setAppSidebarExpand: state.setAppSidebarExpand,
