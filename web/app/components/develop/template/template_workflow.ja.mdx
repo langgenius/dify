@@ -119,6 +119,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
         - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
+    - `event: text_chunk` テキストフラグメント
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `workflow_run_id` (string) ワークフロー実行の一意のID
+      - `event` (string) `text_chunk`に固定
+      - `data` (object) 詳細
+        - `text` (string) テキスト内容
+        - `from_variable_selector` (array) テキスト生成元パス（開発者がどのノードのどの変数から生成されたかを理解するための情報）
     - `event: node_finished` ノード実行終了、同じイベントで異なる状態で成功または失敗
       - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
       - `workflow_run_id` (string) ワークフロー実行の一意のID
