@@ -459,7 +459,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API uzantıları merkezi API yönetimi sağlar, Dify\'nin uygulamaları arasında kolay kullanım için yapılandırmayı basitleştirir.',
     link: 'Kendi API Uzantınızı nasıl geliştireceğinizi öğrenin.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API Uzantısı Ekle',
     selector: {
       title: 'API Uzantısı',

@@ -454,7 +454,7 @@ const translation = {
   apiBasedExtension: {
     title: 'ส่วนขยาย API ให้การจัดการ API แบบรวมศูนย์ ทําให้การกําหนดค่าง่ายขึ้นเพื่อให้ใช้งานได้ง่ายในแอปพลิเคชันของ Dify',
     link: 'เรียนรู้วิธีพัฒนาส่วนขยาย API ของคุณเอง',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
     add: 'เพิ่มส่วนขยาย API',
     selector: {
       title: 'ส่วนขยาย API',
