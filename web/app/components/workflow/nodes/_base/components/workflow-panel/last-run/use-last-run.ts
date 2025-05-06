@@ -9,6 +9,7 @@ import useKnowledgeRetrievalSingleRunFormParams from '../../../../knowledge-retr
 import useCodeSingleRunFormParams from '../../../../code/use-single-run-form-params'
 import useTemplateTransformSingleRunFormParams from '../../../../template-transform/use-single-run-form-params'
 import useQuestionClassifierSingleRunFormParams from '../../../../question-classifier/use-single-run-form-params'
+import useParameterExtractorSingleRunFormParams from '../../../../parameter-extractor/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '../../../../http/use-single-run-form-params'
 import useIterationSingleRunFormParams from '../../../../iteration/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '../../../../document-extractor/use-single-run-form-params'
@@ -26,7 +27,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.QuestionClassifier]: useQuestionClassifierSingleRunFormParams,
   [BlockEnum.HttpRequest]: useHttpRequestSingleRunFormParams,
   [BlockEnum.Tool]: undefined,
-  [BlockEnum.ParameterExtractor]: undefined,
+  [BlockEnum.ParameterExtractor]: useParameterExtractorSingleRunFormParams,
   [BlockEnum.Iteration]: useIterationSingleRunFormParams,
   [BlockEnum.Agent]: undefined,
   [BlockEnum.DocExtractor]: useDocExtractorSingleRunFormParams,

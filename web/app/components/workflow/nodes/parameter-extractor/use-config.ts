@@ -8,7 +8,6 @@ import {
   useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
-import useOneStepRun from '../_base/hooks/use-one-step-run'
 import useConfigVision from '../../hooks/use-config-vision'
 import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -174,23 +173,12 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     return [VarType.number, VarType.string].includes(varPayload.type)
   }, [])
 
-  const filterVisionInputVar = useCallback((varPayload: Var) => {
-    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
-  }, [])
-
   const {
     availableVars,
     availableNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: filterInputVar,
-  })
-
-  const {
-    availableVars: availableVisionVars,
-  } = useAvailableVarList(id, {
-    onlyLeafNodeVar: false,
-    filterVar: filterVisionInputVar,
   })
 
   const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
@@ -234,49 +222,6 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    getInputVars,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    runInputDataRef,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<ParameterExtractorNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      'query': '',
-      '#files#': [],
-    },
-  })
-
-  const varInputs = getInputVars([inputs.instruction])
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
-
-  const visionFiles = runInputData['#files#']
-  const setVisionFiles = useCallback((newFiles: any[]) => {
-    setRunInputData({
-      ...runInputDataRef.current,
-      '#files#': newFiles,
-    })
-  }, [runInputDataRef, setRunInputData])
-
   return {
     readOnly,
     handleInputVarChange,
@@ -294,24 +239,12 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     hasSetBlockStatus,
     availableVars,
     availableNodesWithParent,
-    availableVisionVars,
     isSupportFunctionCall,
     handleReasoningModeChange,
     handleMemoryChange,
-    varInputs,
-    inputVarValues,
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
   }
 }
 
