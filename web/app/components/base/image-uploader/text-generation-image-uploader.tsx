@@ -98,7 +98,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
       {
         hovering => (
           <div className={`
-            flex h-8 cursor-pointer items-center justify-center rounded-lg  
+            flex h-8 cursor-pointer items-center justify-center rounded-lg
             bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary
             ${hovering && 'hover:bg-components-button-tertiary-bg-hover'}
           `}>

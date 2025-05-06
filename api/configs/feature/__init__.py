@@ -398,6 +398,11 @@ class InnerAPIConfig(BaseSettings):
         default=False,
     )
 
+    INNER_API_KEY: Optional[str] = Field(
+        description="API key for accessing the internal API",
+        default=None,
+    )
+
 
 class LoggingConfig(BaseSettings):
     """

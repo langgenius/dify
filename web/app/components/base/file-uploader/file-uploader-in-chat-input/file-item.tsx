@@ -45,6 +45,7 @@ const FileItem = ({
   let tmp_preview_url = url || base64Url
   if (!tmp_preview_url && file?.originalFile)
     tmp_preview_url = URL.createObjectURL(file.originalFile.slice()).toString()
+  const download_url = url ? `${url}&as_attachment=true` : base64Url
 
   return (
     <>
@@ -93,13 +94,13 @@ const FileItem = ({
             }
           </div>
           {
-            showDownloadAction && tmp_preview_url && (
+            showDownloadAction && download_url && (
               <ActionButton
                 size='m'
                 className='absolute -right-1 -top-1 hidden group-hover/file-item:flex'
                 onClick={(e) => {
                   e.stopPropagation()
-                  downloadFile(tmp_preview_url || '', name)
+                  downloadFile(download_url || '', name)
                 }}
               >
                 <RiDownloadLine className='h-3.5 w-3.5 text-text-tertiary' />

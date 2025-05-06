@@ -63,7 +63,7 @@ const translation = {
       unknownError: 'Lỗi không xác định',
       extractOnlyMainContent: 'Chỉ trích xuất nội dung chính (không có đầu trang, điều hướng, chân trang, v.v.)',
       exceptionErrorTitle: 'Một ngoại lệ xảy ra trong khi chạy tác vụ Firecrawl:',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       selectAll: 'Chọn tất cả',
       firecrawlTitle: 'Trích xuất nội dung web bằng 🔥Firecrawl',
       totalPageScraped: 'Tổng số trang được cạo:',

@@ -10,12 +10,12 @@ from core.model_runtime.entities import (
     VideoPromptMessageContent,
 )
 from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from core.tools.signature import sign_tool_file
 from extensions.ext_storage import storage
 
 from . import helpers
 from .enums import FileAttribute
 from .models import File, FileTransferMethod, FileType
-from .tool_file_parser import ToolFileParser
 
 
 def get_attr(*, file: File, attr: FileAttribute):
@@ -130,6 +130,6 @@ def _to_url(f: File, /):
         # add sign url
         if f.related_id is None or f.extension is None:
             raise ValueError("Missing file related_id or extension")
-        return ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=f.related_id, extension=f.extension)
+        return sign_tool_file(tool_file_id=f.related_id, extension=f.extension)
     else:
         raise ValueError(f"Unsupported transfer method: {f.transfer_method}")

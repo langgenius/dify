@@ -469,7 +469,7 @@ const translation = {
     title:
       'Rozszerzenia oparte na interfejsie API zapewniają scentralizowane zarządzanie interfejsami API, upraszczając konfigurację dla łatwego użytkowania w aplikacjach Dify.',
     link: 'Dowiedz się, jak opracować własne rozszerzenie interfejsu API.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Dodaj rozszerzenie interfejsu API',
     selector: {
       title: 'Rozszerzenie interfejsu API',
