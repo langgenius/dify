@@ -1,11 +1,13 @@
 'use client'
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import {
+  RiArrowRightSLine,
   RiBookOpenLine,
   RiEqualizer2Line,
   RiExternalLinkLine,
+  RiLockLine,
   RiPaintBrushLine,
   RiWindowLine,
 } from '@remixicon/react'
@@ -17,6 +19,7 @@ import type { ConfigParams } from './settings'
 import Tooltip from '@/app/components/base/tooltip'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { asyncRunSafe, randomString } from '@/utils'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { basePath } from '@/utils/var'
 import Button from '@/app/components/base/button'
 import Switch from '@/app/components/base/switch'
@@ -29,6 +32,11 @@ import type { AppDetailResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import type { AppSSO } from '@/types/app'
 import Indicator from '@/app/components/header/indicator'
+import { fetchAppDetail } from '@/service/apps'
+import { AccessMode } from '@/models/access-control'
+import AccessControl from '../app-access-control'
+import { useAppWhiteListSubjects } from '@/service/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type IAppCardProps = {
   className?: string
@@ -54,13 +62,17 @@ function AppCard({
   const router = useRouter()
   const pathname = usePathname()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const appDetail = useAppStore(state => state.appDetail)
+  const setAppDetail = useAppStore(state => state.setAppDetail)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const [genLoading, setGenLoading] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-
+  const [showAccessControl, setShowAccessControl] = useState<boolean>(false)
   const { t } = useTranslation()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const { data: appAccessSubjects } = useAppWhiteListSubjects(appDetail?.id, systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
 
   const OPERATIONS_MAP = useMemo(() => {
     const operationsMap = {
@@ -127,6 +139,31 @@ function AppCard({
       setGenLoading(false)
     }
   }
+
+  const [isAppAccessSet, setIsAppAccessSet] = useState(true)
+  useEffect(() => {
+    if (appDetail && appAccessSubjects) {
+      if (appDetail.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && appAccessSubjects.groups?.length === 0 && appAccessSubjects.members?.length === 0)
+        setIsAppAccessSet(false)
+      else
+        setIsAppAccessSet(true)
+    }
+    else {
+      setIsAppAccessSet(true)
+    }
+  }, [appAccessSubjects, appDetail])
+
+  const handleClickAccessControl = useCallback(() => {
+    if (!appDetail)
+      return
+    setShowAccessControl(true)
+  }, [appDetail])
+  const handleAccessControlUpdate = useCallback(() => {
+    fetchAppDetail({ url: '/apps', id: appDetail!.id }).then((res) => {
+      setAppDetail(res)
+      setShowAccessControl(false)
+    })
+  }, [appDetail, setAppDetail])
 
   return (
     <div
@@ -206,6 +243,22 @@ function AppCard({
               )}
             </div>
           </div>
+          {isApp && systemFeatures.webapp_auth.enabled && appDetail && <div className='flex flex-col items-start justify-center self-stretch'>
+            <div className="system-xs-medium pb-1 text-text-tertiary">{t('app.publishApp.title')}</div>
+            <div className='flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2'
+              onClick={handleClickAccessControl}>
+              <div className='flex grow items-center gap-x-1.5 pr-1'>
+                <RiLockLine className='h-4 w-4 shrink-0 text-text-secondary' />
+                {appDetail?.access_mode === AccessMode.ORGANIZATION && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>}
+                {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>}
+                {appDetail?.access_mode === AccessMode.PUBLIC && <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>}
+              </div>
+              {!isAppAccessSet && <p className='system-xs-regular shrink-0 text-text-tertiary'>{t('app.publishApp.notSet')}</p>}
+              <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
+                <RiArrowRightSLine className='h-4 w-4 text-text-quaternary' />
+              </div>
+            </div>
+          </div>}
         </div>
         <div className={'flex items-center gap-1 self-stretch p-3'}>
           {!isApp && <SecretKeyButton appId={appInfo.id} />}
@@ -264,6 +317,11 @@ function AppCard({
               api_base_url={appInfo.api_base_url}
               mode={appInfo.mode}
             />
+            {
+              showAccessControl && <AccessControl app={appDetail!}
+                onConfirm={handleAccessControlUpdate}
+                onClose={() => { setShowAccessControl(false) }} />
+            }
           </>
         )
         : null}

@@ -6,19 +6,21 @@ import {
   RiDeleteBinLine,
   RiEditLine,
   RiEqualizer2Line,
+  RiExchange2Line,
+  RiFileCopy2Line,
   RiFileDownloadLine,
   RiFileUploadLine,
+  RiMoreLine,
 } from '@remixicon/react'
 import AppIcon from '../base/app-icon'
 import SwitchAppModal from '../app/switch-app-modal'
-import AccessControl from '../app/app-access-control'
 import cn from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import AppsContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
@@ -33,6 +35,7 @@ import ContentDialog from '@/app/components/base/content-dialog'
 import Button from '@/app/components/base/button'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/cardView'
 import Divider from '../base/divider'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../base/portal-to-follow-elem'
 
 export type IAppInfoProps = {
   expand: boolean
@@ -51,7 +54,6 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
-  const [showAccessControl, setShowAccessControl] = useState<boolean>(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const mutateApps = useContextSelector(
@@ -179,20 +181,12 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     setShowConfirmDelete(false)
   }, [appDetail, mutateApps, notify, onPlanInfoChanged, replace, setAppDetail, t])
 
-  const handleClickAccessControl = useCallback(() => {
-    if (!appDetail)
-      return
-    setShowAccessControl(true)
-    setOpen(false)
-  }, [appDetail])
-  const handleAccessControlUpdate = useCallback(() => {
-    fetchAppDetail({ url: '/apps', id: appDetail!.id }).then((res) => {
-      setAppDetail(res)
-      setShowAccessControl(false)
-    })
-  }, [appDetail, setAppDetail])
-
   const { isCurrentWorkspaceEditor } = useAppContext()
+
+  const [showMore, setShowMore] = useState(false)
+  const handleTriggerMore = useCallback(() => {
+    setShowMore(true)
+  }, [setShowMore])
 
   if (!appDetail)
     return null
@@ -278,7 +272,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                 setOpen(false)
                 setShowDuplicateModal(true)
               }}>
-              <span className='text-sm leading-5 text-gray-700'>{t('app.duplicate')}</span>
+              <RiFileCopy2Line className='h-3.5 w-3.5 text-components-button-secondary-text' />
+              <span className='system-xs-medium text-components-button-secondary-text'>{t('app.duplicate')}</span>
             </Button>
             <Button
               size={'small'}
@@ -289,22 +284,50 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               <RiFileDownloadLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
               <span className='system-xs-medium text-components-button-secondary-text'>{t('app.export')}</span>
             </Button>
-            {
-              (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (
+            <PortalToFollowElem
+              open={showMore}
+              onOpenChange={setShowMore}
+              placement='bottom-end'
+              offset={{
+                mainAxis: 4,
+              }}>
+              <PortalToFollowElemTrigger onClick={handleTriggerMore}>
                 <Button
                   size={'small'}
                   variant={'secondary'}
                   className='gap-[1px]'
-                  onClick={() => {
-                    setOpen(false)
-                    setShowImportDSLModal(true)
-                  }}
                 >
-                  <RiFileUploadLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
-                  <span className='system-xs-medium text-components-button-secondary-text'>{t('workflow.common.importDSL')}</span>
+                  <RiMoreLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
+                  <span className='system-xs-medium text-components-button-secondary-text'>{t('common.operation.more')}</span>
                 </Button>
-              )
-            }
+              </PortalToFollowElemTrigger>
+              <PortalToFollowElemContent className='z-[21]'>
+                <div className='flex w-[264px] flex-col rounded-[12px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'>
+                  {
+                    (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')
+                    && <div className='flex h-8 cursor-pointer items-center gap-x-1 rounded-lg p-1.5 hover:bg-state-base-hover'
+                      onClick={() => {
+                        setOpen(false)
+                        setShowImportDSLModal(true)
+                      }}>
+                      <RiFileUploadLine className='h-4 w-4 text-text-tertiary' />
+                      <span className='system-md-regular text-text-secondary'>{t('workflow.common.importDSL')}</span>
+                    </div>
+                  }
+                  {
+                    (appDetail.mode === 'completion' || appDetail.mode === 'chat')
+                    && <div className='flex h-8 cursor-pointer items-center gap-x-1 rounded-lg p-1.5 hover:bg-state-base-hover'
+                      onClick={() => {
+                        setOpen(false)
+                        setShowSwitchModal(true)
+                      }}>
+                      <RiExchange2Line className='h-4 w-4 text-text-tertiary' />
+                      <span className='system-md-regular text-text-secondary'>{t('app.switch')}</span>
+                    </div>
+                  }
+                </div>
+              </PortalToFollowElemContent>
+            </PortalToFollowElem>
           </div>
         </div>
         <div className='flex flex-1'>
@@ -315,10 +338,6 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           />
         </div>
         <Divider />
-        {/* TODO update style figma */}
-        <div className='mx-1 flex h-9 cursor-pointer items-center rounded-lg px-3 py-2 hover:bg-gray-50' onClick={handleClickAccessControl}>
-          <span className='text-sm leading-5 text-gray-700'>{t('app.accessControl')}</span>
-        </div>
         <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch border-t-[0.5px] border-divider-subtle p-2'>
           <Button
             size={'medium'}
@@ -393,11 +412,6 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           onClose={() => setSecretEnvList([])}
         />
       )}
-      {
-        showAccessControl && <AccessControl app={appDetail}
-          onConfirm={handleAccessControlUpdate}
-          onClose={() => { setShowAccessControl(false) }} />
-      }
     </div>
   )
 }
