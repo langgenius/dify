@@ -18,6 +18,8 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
+from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+from core.app.apps.workflow.generate_task_pipeline_fast import WorkflowAppGenerateTaskPipelineFast
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -408,14 +410,24 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :return:
         """
         # init generate task pipeline
-        generate_task_pipeline = WorkflowAppGenerateTaskPipeline(
-            application_generate_entity=application_generate_entity,
-            workflow=workflow,
-            queue_manager=queue_manager,
-            user=user,
-            stream=stream,
-            workflow_node_execution_repository=workflow_node_execution_repository,
-        )
+        if dify_config.WORKFLOW_FAST_MODE:
+            # Use the fast mode task pipeline with reduced database operations
+            generate_task_pipeline = WorkflowAppGenerateTaskPipelineFast(
+                application_generate_entity=application_generate_entity,
+                workflow=workflow,
+                queue_manager=queue_manager,
+                user=user,
+                stream=stream,
+            )
+        else:
+            # Use the standard task pipeline
+            generate_task_pipeline = WorkflowAppGenerateTaskPipeline(
+                application_generate_entity=application_generate_entity,
+                workflow=workflow,
+                queue_manager=queue_manager,
+                user=user,
+                stream=stream,
+            )
 
         try:
             return generate_task_pipeline.process()

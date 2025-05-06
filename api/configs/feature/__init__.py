@@ -513,6 +513,11 @@ class WorkflowConfig(BaseSettings):
         default=200 * 1024,
     )
 
+    WORKFLOW_FAST_MODE: bool = Field(
+        description="Enable fast mode for workflow execution with reduced database operations",
+        default=False,
+    )
+
 
 class WorkflowNodeExecutionConfig(BaseSettings):
     """
