@@ -7,9 +7,10 @@ import sys
 from typing import Union
 
 from celery.signals import worker_init  # type: ignore
+from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
+
 from configs import dify_config
 from dify_app import DifyApp
-from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 
 
 @user_logged_in.connect
