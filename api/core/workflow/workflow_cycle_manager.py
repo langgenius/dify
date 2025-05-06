@@ -142,6 +142,42 @@ class WorkflowCycleManager:
 
         return workflow_run
 
+    def _handle_workflow_run_start_fast(
+        self,
+        *,
+        session: Session,
+        workflow_id: str,
+        user_id: str,
+        created_by_role: CreatedByRole,
+    ) -> WorkflowRun:
+        triggered_from = (
+            WorkflowRunTriggeredFrom.DEBUGGING
+            if self._application_generate_entity.invoke_from == InvokeFrom.DEBUGGER
+            else WorkflowRunTriggeredFrom.APP_RUN
+        )
+
+        # init workflow run
+        # TODO: This workflow_run_id should always not be None, maybe we can use a more elegant way to handle this
+        workflow_run_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
+
+        workflow_run = WorkflowRun()
+        workflow_run.id = workflow_run_id
+        workflow_run.tenant_id = None
+        workflow_run.app_id = None
+        workflow_run.sequence_number = 0
+        workflow_run.workflow_id = workflow_id
+        workflow_run.type = None
+        workflow_run.triggered_from = triggered_from.value
+        workflow_run.version = None
+        workflow_run.graph = workflow.graph
+        workflow_run.inputs = json.dumps(inputs)  # consider avoid this
+        workflow_run.status = WorkflowRunStatus.RUNNING
+        workflow_run.created_by_role = created_by_role
+        workflow_run.created_by = user_id
+        workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
+
+        return workflow_run
+
     def _handle_workflow_run_success(
         self,
         *,
@@ -506,6 +542,35 @@ class WorkflowCycleManager:
                 created_at=int(workflow_run.created_at.timestamp()),
                 finished_at=int(workflow_run.finished_at.timestamp()),
                 files=self._fetch_files_from_node_outputs(dict(workflow_run.outputs_dict)),
+                exceptions_count=workflow_run.exceptions_count,
+            ),
+        )
+    
+    def _workflow_finish_to_stream_response_fast(
+        self,
+        *,
+        session: Session,
+        task_id: str,
+        workflow_run: WorkflowRun,
+    ) -> WorkflowFinishStreamResponse:
+        created_by = None
+        return WorkflowFinishStreamResponse(
+            task_id=task_id,
+            workflow_run_id=workflow_run.id,
+            data=WorkflowFinishStreamResponse.Data(
+                id=workflow_run.id,
+                workflow_id=workflow_run.workflow_id,
+                sequence_number=workflow_run.sequence_number,
+                status=workflow_run.status,
+                outputs=workflow_run.outputs,
+                error=workflow_run.error,
+                elapsed_time=workflow_run.elapsed_time,
+                total_tokens=0,
+                total_steps=0,
+                created_by=created_by,
+                created_at=int(workflow_run.created_at.timestamp()),
+                finished_at=int(workflow_run.finished_at.timestamp()),
+                files=self._fetch_files_from_node_outputs(workflow_run.outputs),
                 exceptions_count=workflow_run.exceptions_count,
             ),
         )
