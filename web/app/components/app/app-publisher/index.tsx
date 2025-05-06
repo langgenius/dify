@@ -87,7 +87,7 @@ const AppPublisher = ({
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
-  const appURL = `${appBaseURL}/${basePath}/${appMode}/${accessToken}`
+  const appURL = `${appBaseURL}${basePath}/${appMode}/${accessToken}`
   const isChatApp = ['chat', 'agent-chat', 'completion'].includes(appDetail?.mode || '')
   const { data: useCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)

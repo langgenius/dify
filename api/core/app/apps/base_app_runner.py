@@ -21,7 +21,6 @@ from core.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform

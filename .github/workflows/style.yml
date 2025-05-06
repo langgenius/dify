@@ -9,6 +9,12 @@ concurrency:
   group: style-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  checks: write
+  statuses: write
+  contents: read
+
+
 jobs:
   python-style:
     name: Python Style
@@ -43,8 +49,8 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
           uv run --directory api ruff --version
-          uv run --directory api ruff check ./
-          uv run --directory api ruff format --check ./
+          uv run --directory api ruff check --diff ./
+          uv run --directory api ruff format --check --diff ./
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -163,3 +169,14 @@ jobs:
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_XML: true
           VALIDATE_YAML: true
+
+      - name: EditorConfig checks
+        uses: super-linter/super-linter/slim@v7
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IGNORE_GENERATED_FILES: true
+          IGNORE_GITIGNORED_FILES: true
+          # EditorConfig validation
+          VALIDATE_EDITORCONFIG: true
+          EDITORCONFIG_FILE_NAME: editorconfig-checker.json

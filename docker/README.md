@@ -14,7 +14,6 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 
 - **Unified Vector Database Services**: All vector database services are now managed from a single Docker Compose file `docker-compose.yaml`. You can switch between different vector databases by setting the `VECTOR_STORE` environment variable in your `.env` file.
 - **Mandatory .env File**: A `.env` file is now required to run `docker compose up`. This file is crucial for configuring your deployment and for any custom settings to persist through upgrades.
-- **Legacy Support**: Previous deployment files are now located in the `docker-legacy` directory and will no longer be maintained.
 
 ### How to Deploy Dify with `docker-compose.yaml`
 
