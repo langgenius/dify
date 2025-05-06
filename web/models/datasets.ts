@@ -37,9 +37,9 @@ export type DataSet = {
   indexing_status: DocumentIndexingStatus
   icon_info: {
     icon: string
-    icon_background: string
+    icon_background?: string
     icon_type: AppIconType
-    icon_url: string
+    icon_url?: string
   }
   description: string
   permission: DatasetPermission

@@ -3,7 +3,6 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import type { AppIconType } from '@/types/app'
 import { RiCloseLine } from '@remixicon/react'
 import React, { useCallback, useRef, useState } from 'react'
 import Button from '@/app/components/base/button'
@@ -103,7 +102,7 @@ const EditPipelineInfo = ({
             size='xxl'
             onClick={handleOpenAppIconPicker}
             className='cursor-pointer'
-            iconType={appIcon.type as AppIconType}
+            iconType={appIcon.type}
             icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
             background={appIcon.type === 'image' ? undefined : appIcon.background}
             imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
