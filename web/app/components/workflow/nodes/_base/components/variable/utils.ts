@@ -134,18 +134,33 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   const { children } = obj
   const isStructuredOutput = !!(children as StructuredOutput)?.schema?.properties
 
+  let childrenResult: Var[] | StructuredOutput | undefined
+
+  if (isStructuredOutput) {
+    childrenResult = findExceptVarInStructuredOutput(children, filterVar)
+  }
+ else if (Array.isArray(children)) {
+    childrenResult = children.filter((item: Var) => {
+      const { children: itemChildren } = item
+      const currSelector = [...value_selector, item.variable]
+
+      if (!itemChildren)
+        return filterVar(item, currSelector)
+
+      const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contain file children
+      return filteredObj.children && (filteredObj.children as Var[])?.length > 0
+    })
+  }
+ else {
+    childrenResult = []
+  }
+
   const res: Var = {
     variable: obj.variable,
     type: isFile ? VarType.file : VarType.object,
-    children: isStructuredOutput ? findExceptVarInStructuredOutput(children, filterVar) : children.filter((item: Var) => {
-      const { children } = item
-      const currSelector = [...value_selector, item.variable]
-      if (!children)
-        return filterVar(item, currSelector)
-      const obj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contains file children
-      return obj.children && (obj.children as Var[])?.length > 0
-    }),
+    children: childrenResult,
   }
+
   return res
 }
 
