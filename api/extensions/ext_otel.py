@@ -56,10 +56,11 @@ def init_app(app: DifyApp):
                 status_code = int(status)
                 status_class = f"{status_code // 100}xx"
                 attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
-                if flask.request and flask.request.url_rule:
-                    attributes[SpanAttributes.HTTP_TARGET] = str(flask.request.url_rule.rule)
-                if flask.request and flask.request.method:
-                    attributes[SpanAttributes.HTTP_METHOD] = str(flask.request.method)
+                request = flask.request
+                if request and request.url_rule:
+                    attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
+                if request and request.method:
+                    attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
                 _http_response_counter.add(1, attributes)
 
         instrumentor = FlaskInstrumentor()
