@@ -96,7 +96,7 @@ const InviteModal = ({
 
         <div>
           <div className='mb-2 text-sm font-medium text-text-primary'>{t('common.members.email')}</div>
-          <div className='mb-8 flex h-36 items-stretch'>
+          <div className='mb-8 flex h-36 flex-col items-stretch'>
             <ReactMultiEmail
               className={cn('w-full border-components-input-border-active !bg-components-input-bg-normal px-3 pt-2 outline-none',
                 'appearance-none overflow-y-auto rounded-lg text-sm !text-text-primary',
