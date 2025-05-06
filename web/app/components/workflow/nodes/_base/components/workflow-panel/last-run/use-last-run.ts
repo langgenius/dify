@@ -12,6 +12,7 @@ import useQuestionClassifierSingleRunFormParams from '../../../../question-class
 import useHttpRequestSingleRunFormParams from '../../../../http/use-single-run-form-params'
 import useIterationSingleRunFormParams from '../../../../iteration/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '../../../../document-extractor/use-single-run-form-params'
+import useLoopSingleRunFormParams from '../../../../loop/use-single-run-form-params'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -29,7 +30,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.Iteration]: useIterationSingleRunFormParams,
   [BlockEnum.Agent]: undefined,
   [BlockEnum.DocExtractor]: useDocExtractorSingleRunFormParams,
-  [BlockEnum.Loop]: undefined,
+  [BlockEnum.Loop]: useLoopSingleRunFormParams,
   [BlockEnum.Start]: undefined,
   [BlockEnum.End]: undefined,
   [BlockEnum.Answer]: undefined,
