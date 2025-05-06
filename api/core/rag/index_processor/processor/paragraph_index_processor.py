@@ -1,7 +1,7 @@
 """Paragraph index processor."""
 
 import uuid
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -125,3 +125,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)
         return docs
+
+    def index(self, dataset: Dataset, document: Document, chunks: list[Mapping[str, Any]]):
+        for chunk in chunks:
+            GeneralDocument.create(
+        pass

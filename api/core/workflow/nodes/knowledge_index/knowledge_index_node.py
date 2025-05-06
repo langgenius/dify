@@ -43,7 +43,7 @@ from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
 from models.workflow import WorkflowNodeExecutionStatus
-from services.dataset_service import DatasetService
+from services.dataset_service import DatasetService, DocumentService
 from services.feature_service import FeatureService
 
 from .entities import KnowledgeIndexNodeData, KnowledgeRetrievalNodeData, ModelConfig
@@ -139,14 +139,20 @@ class KnowledgeIndexNode(LLMNode):
             )
 
 
-    def _invoke_knowledge_index(self, node_data: KnowledgeIndexNodeData, chunks: list[any]) -> Any:
+    def _invoke_knowledge_index(self, node_data: KnowledgeIndexNodeData, document_id: str, chunks: list[any]) -> Any:
         dataset = Dataset.query.filter_by(id=node_data.dataset_id).first()
         if not dataset:
             raise KnowledgeIndexNodeError(f"Dataset {node_data.dataset_id} not found.")
         
-        DatasetService.invoke_knowledge_index(
+        document = Document.query.filter_by(id=document_id).first()
+        if not document:
+            raise KnowledgeIndexNodeError(f"Document {document_id} not found.")
+        
+        DocumentService.invoke_knowledge_index(
             dataset=dataset,
+            document=document,
             chunks=chunks,
+            chunk_structure=node_data.chunk_structure,
             index_method=node_data.index_method,
             retrieval_setting=node_data.retrieval_setting,
         )
