@@ -4,16 +4,17 @@ import { useCallback, useState } from 'react'
 import { TabType } from '../tab'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import useStartSingleRunFormParams from '@/app/components/workflow/nodes/start/use-single-run-form-params'
 import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-single-run-form-params'
-import useKnowledgeRetrievalSingleRunFormParams from '../../../../knowledge-retrieval/use-single-run-form-params'
-import useCodeSingleRunFormParams from '../../../../code/use-single-run-form-params'
-import useTemplateTransformSingleRunFormParams from '../../../../template-transform/use-single-run-form-params'
-import useQuestionClassifierSingleRunFormParams from '../../../../question-classifier/use-single-run-form-params'
-import useParameterExtractorSingleRunFormParams from '../../../../parameter-extractor/use-single-run-form-params'
-import useHttpRequestSingleRunFormParams from '../../../../http/use-single-run-form-params'
-import useIterationSingleRunFormParams from '../../../../iteration/use-single-run-form-params'
-import useDocExtractorSingleRunFormParams from '../../../../document-extractor/use-single-run-form-params'
-import useLoopSingleRunFormParams from '../../../../loop/use-single-run-form-params'
+import useKnowledgeRetrievalSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-retrieval/use-single-run-form-params'
+import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
+import useTemplateTransformSingleRunFormParams from '@/app/components/workflow/nodes/template-transform/use-single-run-form-params'
+import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/nodes/question-classifier/use-single-run-form-params'
+import useParameterExtractorSingleRunFormParams from '@/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params'
+import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
+import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
+import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
+import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use-single-run-form-params'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -32,12 +33,12 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.Agent]: undefined,
   [BlockEnum.DocExtractor]: useDocExtractorSingleRunFormParams,
   [BlockEnum.Loop]: useLoopSingleRunFormParams,
-  [BlockEnum.Start]: undefined,
+  [BlockEnum.Start]: useStartSingleRunFormParams,
+  [BlockEnum.IfElse]: undefined,
+  [BlockEnum.VariableAggregator]: undefined,
   [BlockEnum.End]: undefined,
   [BlockEnum.Answer]: undefined,
-  [BlockEnum.IfElse]: undefined,
   [BlockEnum.VariableAssigner]: undefined,
-  [BlockEnum.VariableAggregator]: undefined,
   [BlockEnum.ListFilter]: undefined,
   [BlockEnum.IterationStart]: undefined,
   [BlockEnum.Assigner]: undefined,

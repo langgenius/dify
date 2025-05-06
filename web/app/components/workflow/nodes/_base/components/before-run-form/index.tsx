@@ -55,6 +55,8 @@ function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.singleFile) {
     if (Array.isArray(value))
       return getProcessedFiles(value)
+    if (!value)
+      return undefined
     return getProcessedFiles([value])[0]
   }
 
