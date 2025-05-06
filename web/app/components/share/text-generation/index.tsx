@@ -41,6 +41,7 @@ import LogoSite from '@/app/components/base/logo/logo-site'
 import cn from '@/utils/classnames'
 import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
 import { AccessMode } from '@/models/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -101,6 +102,7 @@ const TextGeneration: FC<IMainProps> = ({
     doSetInputs(newInputs)
     inputsRef.current = newInputs
   }, [])
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
@@ -109,8 +111,16 @@ const TextGeneration: FC<IMainProps> = ({
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
 
-  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({ appId, isInstalledApp })
-  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({ appId, isInstalledApp })
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({
+    appId,
+    isInstalledApp,
+    enabled: systemFeatures.webapp_auth.enabled,
+  })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({
+    appId,
+    isInstalledApp,
+    enabled: systemFeatures.webapp_auth.enabled,
+  })
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])

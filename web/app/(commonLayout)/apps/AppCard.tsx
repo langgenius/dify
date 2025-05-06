@@ -34,6 +34,7 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import Tooltip from '@/app/components/base/tooltip'
 import AccessControl from '@/app/components/app/app-access-control'
 import { AccessMode } from '@/models/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type AppCardProps = {
   app: App
@@ -43,6 +44,7 @@ export type AppCardProps = {
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
@@ -208,13 +210,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       exportCheck()
     }
-    const onClickSwitch = async (e: React.MouseEvent<HTMLDivElement>) => {
+    const onClickSwitch = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
       setShowSwitchModal(true)
     }
-    const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
+    const onClickDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
@@ -242,49 +244,49 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       }
     }
     return (
-      <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
-        <button className='mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover' onClick={onClickSettings}>
+      <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickSettings}>
           <span className='system-sm-regular text-text-secondary'>{t('app.editApp')}</span>
         </button>
-        <Divider className="!my-1" />
-        <button className='mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover' onClick={onClickDuplicate}>
+        <Divider className="my-1" />
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickDuplicate}>
           <span className='system-sm-regular text-text-secondary'>{t('app.duplicate')}</span>
         </button>
-        <button className='mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover' onClick={onClickExport}>
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickExport}>
           <span className='system-sm-regular text-text-secondary'>{t('app.export')}</span>
         </button>
         {(app.mode === 'completion' || app.mode === 'chat') && (
           <>
-            <Divider className="!my-1" />
-            <div
-              className='mx-1 flex h-9 cursor-pointer items-center rounded-lg px-3 py-2 hover:bg-state-base-hover'
+            <Divider className="my-1" />
+            <button
+              className='mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
               onClick={onClickSwitch}
             >
               <span className='text-sm leading-5 text-text-secondary'>{t('app.switch')}</span>
-            </div>
+            </button>
           </>
         )}
-        <Divider className="!my-1" />
-        <button className='mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+        <Divider className="my-1" />
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
           <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
         </button>
-        <Divider className="!my-1" />
+        <Divider className="my-1" />
         {
-          isCurrentWorkspaceEditor && <>
-            <button className='mx-1 flex h-9 cursor-pointer items-center rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={onClickAccessControl}>
+          systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor && <>
+            <button className='mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickAccessControl}>
               <span className='text-sm leading-5 text-text-secondary'>{t('app.accessControl')}</span>
             </button>
-            <Divider />
+            <Divider className='my-1' />
           </>
         }
-        <div
-          className='group mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
+        <button
+          className='group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
           onClick={onClickDelete}
         >
           <span className='system-sm-regular text-text-secondary group-hover:text-text-destructive'>
             {t('common.operation.delete')}
           </span>
-        </div>
+        </button>
       </div>
     )
   }

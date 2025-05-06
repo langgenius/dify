@@ -44,6 +44,7 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { AccessMode } from '@/models/access-control'
 import { fetchAppDetail } from '@/service/apps'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -85,17 +86,18 @@ const AppPublisher = ({
   const [open, setOpen] = useState(false)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(s => s.setAppDetail)
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
   const appURL = `${appBaseURL}${basePath}/${appMode}/${accessToken}`
   const isChatApp = ['chat', 'agent-chat', 'completion'].includes(appDetail?.mode || '')
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
-  const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
 
   useEffect(() => {
-    if (open && appDetail)
+    if (systemFeatures.webapp_auth.enabled && open && appDetail)
       refetch()
-  }, [open, appDetail, refetch])
+  }, [open, appDetail, refetch, systemFeatures])
 
   const [showAppAccessControl, setShowAppAccessControl] = useState(false)
   const [isAppAccessSet, setIsAppAccessSet] = useState(true)
