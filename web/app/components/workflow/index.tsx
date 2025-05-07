@@ -44,7 +44,7 @@ import {
   useShortcuts,
   useWorkflow,
   useWorkflowReadOnly,
-  useWorkflowUpdate,
+  useWorkflowRefreshDraft,
 } from './hooks'
 import CustomNode from './nodes'
 import CustomNoteNode from './note-node'
@@ -160,7 +160,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
     if (document.visibilityState === 'hidden')
       syncWorkflowDraftWhenPageClose()
@@ -259,7 +259,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     <div
       id='workflow-container'
       className={`
-        relative h-full w-full min-w-[960px] 
+        relative h-full w-full min-w-[960px]
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
@@ -316,7 +316,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         nodesConnectable={!nodesReadOnly}
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
-        panOnScroll
+        panOnScroll={false}
         panOnDrag={controlMode === ControlMode.Hand && !workflowReadOnly}
         zoomOnPinch={!workflowReadOnly}
         zoomOnScroll={!workflowReadOnly}

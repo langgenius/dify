@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: '上傳文字檔案',
-      button: '拖拽檔案至此，或者',
+      button: '拖拽檔案或檔案夾至此，或者',
       browse: '選擇檔案',
       tip: '已支援 {{supportTypes}}，每個檔案不超過 {{size}}MB。',
       validation: {
@@ -61,7 +61,7 @@ const translation = {
       fireCrawlNotConfiguredDescription: '使用 API 金鑰配置 Firecrawl 以使用它。',
       limit: '限制',
       crawlSubPage: '抓取子頁面',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       preview: '預覽',
       configure: '配置',
       excludePaths: '排除路徑',

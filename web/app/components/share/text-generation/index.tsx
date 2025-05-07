@@ -302,10 +302,17 @@ const TextGeneration: FC<IMainProps> = ({
     const varLen = promptConfig?.prompt_variables.length || 0
     setIsCallBatchAPI(true)
     const allTaskList: Task[] = payloadData.map((item, i) => {
-      const inputs: Record<string, string> = {}
+      const inputs: Record<string, any> = {}
       if (varLen > 0) {
         item.slice(0, varLen).forEach((input, index) => {
-          inputs[promptConfig?.prompt_variables[index].key as string] = input
+          const varSchema = promptConfig?.prompt_variables[index]
+          inputs[varSchema?.key as string] = input
+          if (!input) {
+            if (varSchema?.type === 'string' || varSchema?.type === 'paragraph')
+              inputs[varSchema?.key as string] = ''
+            else
+              inputs[varSchema?.key as string] = undefined
+          }
         })
       }
       return {

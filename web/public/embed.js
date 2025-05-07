@@ -12,6 +12,7 @@
   const buttonId = "dify-chatbot-bubble-button";
   const iframeId = "dify-chatbot-bubble-window";
   const config = window[configKey];
+  let isExpanded = false;
 
   // SVG icons for open and close states
   const svgIcons = `<svg id="openIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -21,6 +22,53 @@
       <path d="M18 18L6 6M6 18L18 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     `;
+
+
+  const originalIframeStyleText = `
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    top: unset;
+    right: var(--${buttonId}-right, 1rem); /* Align with dify-chatbot-bubble-button. */
+    bottom: var(--${buttonId}-bottom, 1rem); /* Align with dify-chatbot-bubble-button. */
+    left: unset;
+    width: 24rem;
+    max-width: calc(100vw - 2rem);
+    height: 43.75rem;
+    max-height: calc(100vh - 6rem);
+    border: none;
+    z-index: 2147483640;
+    overflow: hidden;
+    user-select: none;
+    transition-property: width, height;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  `
+
+  const expandedIframeStyleText = `
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    top: unset;
+    right: var(--${buttonId}-right, 1rem); /* Align with dify-chatbot-bubble-button. */
+    bottom: var(--${buttonId}-bottom, 1rem); /* Align with dify-chatbot-bubble-button. */
+    left: unset;
+    min-width: 24rem;
+    width: 48%;
+    max-width: 40rem; /* Match mobile breakpoint*/
+    min-height: 43.75rem;
+    height: 88%;
+    max-height: calc(100vh - 6rem);
+    border: none;
+    z-index: 2147483640;
+    overflow: hidden;
+    user-select: none;
+    transition-property: width, height;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  `
 
   // Main function to embed the chatbot
   async function embedChatbot() {
@@ -71,6 +119,7 @@
 
     const baseUrl =
       config.baseUrl || `https://${config.isDev ? "dev." : ""}udify.app`;
+    const targetOrigin = new URL(baseUrl).origin;
 
     // pre-check the length of the URL
     const iframeUrl = `${baseUrl}/chatbot/${config.token}?${params}`;
@@ -92,23 +141,7 @@
       iframe.title = "dify chatbot bubble window";
       iframe.id = iframeId;
       iframe.src = iframeUrl;
-      iframe.style.cssText = `
-        position: absolute;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        left: unset;
-        right: 0;
-        bottom: 0;
-        width: 24rem;
-        max-width: calc(100vw - 2rem);
-        height: 43.75rem;
-        max-height: calc(100vh - 6rem);
-        border: none;
-        z-index: 2147483640;
-        overflow: hidden;
-        user-select: none;
-      `;
+      iframe.style.cssText = originalIframeStyleText;
 
       return iframe;
     }
@@ -121,28 +154,69 @@
       const targetButton = document.getElementById(buttonId);
       if (targetIframe && targetButton) {
         const buttonRect = targetButton.getBoundingClientRect();
+        // We don't necessarily need iframeRect anymore with the center logic
 
-        const buttonInBottom = buttonRect.top - 5 > targetIframe.clientHeight;
+        const viewportCenterY = window.innerHeight / 2;
+        const buttonCenterY = buttonRect.top + buttonRect.height / 2;
 
-        if (buttonInBottom) {
-          targetIframe.style.bottom = "0px";
-          targetIframe.style.top = "unset";
+        if (buttonCenterY < viewportCenterY) {
+          targetIframe.style.top = `var(--${buttonId}-bottom, 1rem)`;
+          targetIframe.style.bottom = 'unset';
         } else {
-          targetIframe.style.bottom = "unset";
-          targetIframe.style.top = "0px";
+          targetIframe.style.bottom = `var(--${buttonId}-bottom, 1rem)`;
+          targetIframe.style.top = 'unset';
         }
 
-        const buttonInRight = buttonRect.right > targetIframe.clientWidth;
+        const viewportCenterX = window.innerWidth / 2;
+        const buttonCenterX = buttonRect.left + buttonRect.width / 2;
 
-        if (buttonInRight) {
-          targetIframe.style.right = "0";
-          targetIframe.style.left = "unset";
+        if (buttonCenterX < viewportCenterX) {
+          targetIframe.style.left = `var(--${buttonId}-right, 1rem)`;
+          targetIframe.style.right = 'unset';
         } else {
-          targetIframe.style.right = "unset";
-          targetIframe.style.left = 0;
+          targetIframe.style.right = `var(--${buttonId}-right, 1rem)`;
+          targetIframe.style.left = 'unset';
         }
       }
     }
+
+    function toggleExpand() {
+      isExpanded = !isExpanded;
+
+      const targetIframe = document.getElementById(iframeId);
+      if (!targetIframe) return;
+
+      if (isExpanded) {
+        targetIframe.style.cssText = expandedIframeStyleText;
+      } else {
+        targetIframe.style.cssText = originalIframeStyleText;
+      }
+      resetIframePosition();
+    }
+
+    window.addEventListener('message', (event) => {
+      if (event.origin !== targetOrigin) return;
+
+      const targetIframe = document.getElementById(iframeId);
+      if (!targetIframe || event.source !== targetIframe.contentWindow) return;
+
+      if (event.data.type === 'dify-chatbot-iframe-ready') {
+        targetIframe.contentWindow?.postMessage(
+          {
+            type: 'dify-chatbot-config',
+            payload: {
+              isToggledByButton: true,
+              isDraggable: !!config.draggable,
+            },
+          },
+          targetOrigin
+        );
+      }
+
+      if (event.data.type === 'dify-chatbot-expand-change') {
+        toggleExpand();
+      }
+    });
 
     // Function to create the chat button
     function createButton() {

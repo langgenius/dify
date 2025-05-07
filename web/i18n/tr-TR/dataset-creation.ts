@@ -27,7 +27,7 @@ const translation = {
     },
     uploader: {
       title: 'Dosya yükle',
-      button: 'Dosyayı sürükleyip bırakın veya',
+      button: 'Dosyaları veya klasörleri sürükleyip bırakın veya',
       browse: 'Göz atın',
       tip: 'Destekler {{supportTypes}}. Her biri en fazla {{size}}MB.',
       validation: {
@@ -63,7 +63,7 @@ const translation = {
       run: 'Çalıştır',
       firecrawlTitle: '🔥Firecrawl ile web içeriğini çıkarın',
       firecrawlDoc: 'Firecrawl dokümanları',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       options: 'Seçenekler',
       crawlSubPage: 'Alt sayfaları tarayın',
       limit: 'Sınır',

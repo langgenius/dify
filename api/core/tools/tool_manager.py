@@ -10,7 +10,7 @@ from yarl import URL
 
 import contexts
 from core.plugin.entities.plugin import ToolProviderID
-from core.plugin.manager.tool import PluginToolManager
+from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.plugin_tool.provider import PluginToolProviderController

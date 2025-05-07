@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
-from sqlalchemy import Integer, and_, func, or_, text
+from sqlalchemy import Float, and_, func, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -32,11 +32,11 @@ from core.workflow.nodes.knowledge_retrieval.template_prompts import (
     METADATA_FILTER_COMPLETION_PROMPT,
     METADATA_FILTER_SYSTEM_PROMPT,
     METADATA_FILTER_USER_PROMPT_1,
+    METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
 from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate
 from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.nodes.question_classifier.template_prompts import QUESTION_CLASSIFIER_USER_PROMPT_2
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
@@ -493,24 +493,24 @@ class KnowledgeRetrievalNode(LLMNode):
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')
                 else:
-                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) == value)
+                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) == value)
             case "is not" | "≠":
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
                 else:
-                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) != value)
+                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) != value)
             case "empty":
                 filters.append(Document.doc_metadata[metadata_name].is_(None))
             case "not empty":
                 filters.append(Document.doc_metadata[metadata_name].isnot(None))
             case "before" | "<":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) < value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) < value)
             case "after" | ">":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) > value)
-            case "≤" | ">=":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) <= value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) > value)
+            case "≤" | "<=":
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) <= value)
             case "≥" | ">=":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) >= value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) >= value)
             case _:
                 pass
         return filters
@@ -618,7 +618,7 @@ class KnowledgeRetrievalNode(LLMNode):
             )
             prompt_messages.append(assistant_prompt_message_1)
             user_prompt_message_2 = LLMNodeChatModelMessage(
-                role=PromptMessageRole.USER, text=QUESTION_CLASSIFIER_USER_PROMPT_2
+                role=PromptMessageRole.USER, text=METADATA_FILTER_USER_PROMPT_2
             )
             prompt_messages.append(user_prompt_message_2)
             assistant_prompt_message_2 = LLMNodeChatModelMessage(

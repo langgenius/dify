@@ -34,10 +34,10 @@ import {
 import type { Dependency } from '../types'
 import type { PluginDeclaration, PluginManifestInMarket } from '../types'
 import { sleep } from '@/utils'
+import { getDocsUrl } from '@/app/components/plugins/utils'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { marketplaceApiPrefix } from '@/config'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { LanguagesSupported } from '@/i18n/language'
 import I18n from '@/context/i18n'
 import { noop } from 'lodash-es'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
@@ -144,10 +144,18 @@ const PluginPage = ({
     return activeTab === PLUGIN_PAGE_TABS_MAP.marketplace || values.includes(activeTab)
   }, [activeTab])
 
+  const handleFileChange = (file: File | null) => {
+    if (!file || !file.name.endsWith('.difypkg')) {
+      setCurrentFile(null)
+      return
+    }
+
+    setCurrentFile(file)
+  }
   const uploaderProps = useUploader({
-    onFileChange: setCurrentFile,
+    onFileChange: handleFileChange,
     containerRef,
-    enabled: isPluginsTab,
+    enabled: isPluginsTab && canManagement,
   })
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
@@ -179,7 +187,7 @@ const PluginPage = ({
               isExploringMarketplace && (
                 <>
                   <Link
-                    href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? 'v/zh-hans/' : ''}plugins/publish-plugins/publish-to-dify-marketplace`}
+                    href={getDocsUrl(locale, '/plugins/publish-plugins/publish-to-dify-marketplace/README')}
                     target='_blank'
                   >
                     <Button

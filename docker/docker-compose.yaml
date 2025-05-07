@@ -225,9 +225,12 @@ x-shared-env: &shared-api-worker-env
   RELYT_DATABASE: ${RELYT_DATABASE:-postgres}
   OPENSEARCH_HOST: ${OPENSEARCH_HOST:-opensearch}
   OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
+  OPENSEARCH_SECURE: ${OPENSEARCH_SECURE:-true}
+  OPENSEARCH_AUTH_METHOD: ${OPENSEARCH_AUTH_METHOD:-basic}
   OPENSEARCH_USER: ${OPENSEARCH_USER:-admin}
   OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-admin}
-  OPENSEARCH_SECURE: ${OPENSEARCH_SECURE:-true}
+  OPENSEARCH_AWS_REGION: ${OPENSEARCH_AWS_REGION:-ap-southeast-1}
+  OPENSEARCH_AWS_SERVICE: ${OPENSEARCH_AWS_SERVICE:-aoss}
   TENCENT_VECTOR_DB_URL: ${TENCENT_VECTOR_DB_URL:-http://127.0.0.1}
   TENCENT_VECTOR_DB_API_KEY: ${TENCENT_VECTOR_DB_API_KEY:-dify}
   TENCENT_VECTOR_DB_TIMEOUT: ${TENCENT_VECTOR_DB_TIMEOUT:-30}
@@ -488,7 +491,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.3.0
+    image: langgenius/dify-api:1.3.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -517,7 +520,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.3.0
+    image: langgenius/dify-api:1.3.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -543,7 +546,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.3.0
+    image: langgenius/dify-web:1.3.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -674,7 +677,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
+  # https://docs.dify.ai/learn-more/faq/install-faq#18-why-is-ssrf-proxy-needed%3F
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always

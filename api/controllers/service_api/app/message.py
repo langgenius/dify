@@ -1,8 +1,8 @@
 import json
 import logging
 
-from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services

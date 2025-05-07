@@ -1,5 +1,5 @@
-from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restful import marshal, reqparse  # type: ignore
+from flask_login import current_user  # type: ignore
+from flask_restful import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api import api
@@ -63,7 +63,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         DatasetService.check_dataset_permission(dataset, current_user)
 
         MetadataService.delete_metadata(dataset_id_str, metadata_id_str)
-        return 200
+        return 204
 
 
 class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):

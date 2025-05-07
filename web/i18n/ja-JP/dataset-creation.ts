@@ -30,7 +30,7 @@ const translation = {
     },
     uploader: {
       title: 'テキストファイルをアップロード',
-      button: 'ファイルをドラッグ＆ドロップするか',
+      button: 'ファイルまたはフォルダをドラッグアンドドロップする',
       browse: '参照',
       tip: '{{supportTypes}}をサポートしています。1つあたりの最大サイズは{{size}}MBです。',
       validation: {
@@ -72,7 +72,7 @@ const translation = {
       run: '実行',
       firecrawlTitle: '🔥Firecrawlを使っでウエブコンテンツを抽出',
       firecrawlDoc: 'Firecrawlドキュメント',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       jinaReaderTitle: 'サイト全体をMarkdownに変換する',
       jinaReaderDoc: 'Jina Readerの詳細',
       jinaReaderDocLink: 'https://jina.ai/reader',

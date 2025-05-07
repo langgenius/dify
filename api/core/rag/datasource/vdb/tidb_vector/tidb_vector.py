@@ -205,9 +205,9 @@ class TiDBVector(BaseVector):
 
         with Session(self._engine) as session:
             select_statement = sql_text(f"""
-                SELECT meta, text, distance 
+                SELECT meta, text, distance
                 FROM (
-                  SELECT 
+                  SELECT
                     meta,
                     text,
                     {tidb_dist_func}(vector, :query_vector_str) AS distance

@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.repository import RepositoryFactory
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -285,12 +285,8 @@ class WorkflowService:
         workflow_node_execution.workflow_id = draft_workflow.id
 
         # Use the repository to save the workflow node execution
-        repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={
-                "tenant_id": app_model.tenant_id,
-                "app_id": app_model.id,
-                "session_factory": db.session.get_bind(),
-            }
+        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=db.engine, tenant_id=app_model.tenant_id, app_id=app_model.id
         )
         repository.save(workflow_node_execution)
 

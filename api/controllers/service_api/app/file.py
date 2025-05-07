@@ -1,6 +1,6 @@
 import httpx
 from flask import request
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse
 
 import services
 from controllers.common import helpers

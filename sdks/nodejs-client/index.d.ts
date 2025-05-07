@@ -26,7 +26,7 @@ export declare class DifyClient {
     params?: Params,
     stream?: boolean,
     headerParams?: HeaderParams
-  ): Promise<any>;  
+  ): Promise<any>;
 
   messageFeedback(message_id: string, rating: number, user: User): Promise<any>;
 
@@ -64,9 +64,9 @@ export declare class ChatClient extends DifyClient {
 
 
   getConversations(
-    user: User, 
-    first_id?: string | null, 
-    limit?: number | null, 
+    user: User,
+    first_id?: string | null,
+    limit?: number | null,
     pinned?: boolean | null
   ): Promise<any>;
 
@@ -80,7 +80,7 @@ export declare class ChatClient extends DifyClient {
   renameConversation(conversation_id: string, name: string,  user: User,auto_generate:boolean): Promise<any>;
 
   deleteConversation(conversation_id: string, user: User): Promise<any>;
-  
+
   audioToText(data: FormData): Promise<any>;
 }
 

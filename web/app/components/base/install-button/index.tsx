@@ -10,8 +10,8 @@ type InstallButtonProps = {
 const InstallButton = ({ loading, onInstall, t }: InstallButtonProps) => {
   return (
     <Button size='small' className='z-[100]' onClick={onInstall}>
-      <div className={`flex items-center justify-center gap-1 px-[3px] 
-        ${loading ? 'text-components-button-secondary-text-disabled' : 'text-components-button-secondary-text'} 
+      <div className={`flex items-center justify-center gap-1 px-[3px]
+        ${loading ? 'text-components-button-secondary-text-disabled' : 'text-components-button-secondary-text'}
         system-xs-medium`}
       >
         {loading ? t('workflow.nodes.agent.pluginInstaller.installing') : t('workflow.nodes.agent.pluginInstaller.install')}

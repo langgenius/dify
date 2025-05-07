@@ -100,3 +100,9 @@ def test_flask_configs(example_env_file):
 
     assert str(config["CODE_EXECUTION_ENDPOINT"]) == "http://sandbox:8194/"
     assert str(URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1") == "http://sandbox:8194/v1"
+
+
+def test_inner_api_config_exist():
+    config = DifyConfig()
+    assert config.INNER_API is False
+    assert config.INNER_API_KEY is None

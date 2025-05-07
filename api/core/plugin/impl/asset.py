@@ -1,7 +1,7 @@
-from core.plugin.manager.base import BasePluginManager
+from core.plugin.impl.base import BasePluginClient
 
 
-class PluginAssetManager(BasePluginManager):
+class PluginAssetManager(BasePluginClient):
     def fetch_asset(self, tenant_id: str, id: str) -> bytes:
         """
         Fetch an asset by id.

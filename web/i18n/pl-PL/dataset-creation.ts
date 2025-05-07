@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Prześlij plik tekstowy',
-      button: 'Przeciągnij i upuść plik lub',
+      button: 'Przeciągnij i upuść pliki lub foldery lub',
       browse: 'Przeglądaj',
       tip: 'Obsługuje {{supportTypes}}. Maksymalnie {{size}}MB każdy.',
       validation: {
@@ -54,7 +54,7 @@ const translation = {
     },
     website: {
       limit: 'Ograniczać',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       firecrawlDoc: 'Dokumentacja Firecrawl',
       unknownError: 'Nieznany błąd',
       fireCrawlNotConfiguredDescription: 'Skonfiguruj Firecrawl z kluczem API, aby z niego korzystać.',
