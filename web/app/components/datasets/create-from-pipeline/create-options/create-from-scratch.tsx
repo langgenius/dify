@@ -17,8 +17,7 @@ import { useCreateDataset } from '@/service/knowledge/use-create-dataset'
 import type { Member } from '@/models/common'
 
 type CreateFromScratchProps = {
-  onClose?: () => void
-  onCreate?: () => void
+  onClose: () => void
 }
 
 const DEFAULT_APP_ICON: AppIconSelection = {
@@ -29,7 +28,6 @@ const DEFAULT_APP_ICON: AppIconSelection = {
 
 const CreateFromScratch = ({
   onClose,
-  onCreate,
 }: CreateFromScratchProps) => {
   const { t } = useTranslation()
   const [name, setName] = useState('')
@@ -79,7 +77,7 @@ const CreateFromScratch = ({
 
   const { mutateAsync: createEmptyDataset } = useCreateDataset()
 
-  const handleCreate = useCallback(() => {
+  const handleCreate = useCallback(async () => {
     if (!name) {
       Toast.notify({
         type: 'error',
@@ -108,10 +106,12 @@ const CreateFromScratch = ({
       })
       request.partial_member_list = selectedMemberList
     }
-    createEmptyDataset(request)
-    onCreate?.()
-    onClose?.()
-  }, [name, permission, appIcon, description, createEmptyDataset, memberList, selectedMemberIDs, onCreate, onClose])
+    await createEmptyDataset(request, {
+      onSettled: () => {
+        onClose?.()
+      },
+    })
+  }, [name, permission, appIcon, description, createEmptyDataset, memberList, selectedMemberIDs, onClose])
 
   return (
     <div className='relative flex flex-col'>
@@ -132,12 +132,12 @@ const CreateFromScratch = ({
         <div className='flex items-end gap-x-3 self-stretch'>
           <div className='flex grow flex-col gap-y-1 pb-1'>
             <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
-              {t('datasetPipeline.creation.knowledgeNameAndIcon')}
+              {t('datasetPipeline.knowledgeNameAndIcon')}
             </label>
             <Input
               onChange={handleAppNameChange}
               value={name}
-              placeholder={t('datasetPipeline.creation.knowledgeNameAndIconPlaceholder')}
+              placeholder={t('datasetPipeline.knowledgeNameAndIconPlaceholder')}
             />
           </div>
           <AppIcon
@@ -153,17 +153,17 @@ const CreateFromScratch = ({
         </div>
         <div className='flex flex-col gap-y-1'>
           <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
-            {t('datasetPipeline.creation.knowledgeDescription')}
+            {t('datasetPipeline.knowledgeDescription')}
           </label>
           <Textarea
             onChange={handleDescriptionChange}
             value={description}
-            placeholder={t('datasetPipeline.creation.knowledgeDescriptionPlaceholder')}
+            placeholder={t('datasetPipeline.knowledgeDescriptionPlaceholder')}
           />
         </div>
         <div className='flex flex-col gap-y-1'>
           <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
-            {t('datasetPipeline.creation.knowledgePermissions')}
+            {t('datasetPipeline.knowledgePermissions')}
           </label>
           <PermissionSelector
             permission={permission}

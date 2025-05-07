@@ -1,11 +1,14 @@
+import type { MutationOptions } from '@tanstack/react-query'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { del, get, patch } from './base'
 import type {
+  DeletePipelineResponse,
   ExportPipelineDSLResponse,
   PipelineTemplateByIdResponse,
   PipelineTemplateListParams,
   PipelineTemplateListResponse,
-  UpdatePipelineInfoPayload,
+  UpdatePipelineInfoRequest,
+  UpdatePipelineInfoResponse,
 } from '@/models/pipeline'
 
 const NAME_SPACE = 'pipeline'
@@ -28,48 +31,41 @@ export const usePipelineTemplateById = (templateId: string) => {
   })
 }
 
-export const useUpdatePipelineInfo = ({
-  onSuccess,
-  onError,
-}: {
-  onSuccess?: () => void
-  onError?: (error: any) => void
-}) => {
+export const useUpdatePipelineInfo = (
+  mutationOptions: MutationOptions<UpdatePipelineInfoResponse, Error, UpdatePipelineInfoRequest> = {},
+) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'template', 'update'],
-    mutationFn: (payload: UpdatePipelineInfoPayload) => {
-      const { pipelineId, ...rest } = payload
-      return patch(`/rag/pipeline/${pipelineId}`, {
+    mutationFn: (request: UpdatePipelineInfoRequest) => {
+      const { pipeline_id, ...rest } = request
+      return patch<UpdatePipelineInfoResponse>(`/rag/pipeline/${pipeline_id}`, {
         body: rest,
       })
     },
-    onSuccess,
-    onError,
+    ...mutationOptions,
   })
 }
 
-export const useDeletePipeline = ({
-  onSuccess,
-  onError,
-}: {
-  onSuccess?: () => void
-  onError?: (error: any) => void
-}) => {
+export const useDeletePipeline = (
+  mutationOptions: MutationOptions<DeletePipelineResponse, Error, string> = {},
+) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'template', 'delete'],
     mutationFn: (pipelineId: string) => {
-      return del(`/rag/pipeline/${pipelineId}`)
+      return del<DeletePipelineResponse>(`/rag/pipeline/${pipelineId}`)
     },
-    onSuccess,
-    onError,
+    ...mutationOptions,
   })
 }
 
-export const useExportPipelineDSL = (pipelineId: string) => {
-  return useQuery<ExportPipelineDSLResponse>({
-    queryKey: [NAME_SPACE, 'template', 'export', pipelineId],
-    queryFn: () => {
+export const useExportPipelineDSL = (
+  mutationOptions: MutationOptions<ExportPipelineDSLResponse, Error, string> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'template', 'export'],
+    mutationFn: (pipelineId: string) => {
       return get<ExportPipelineDSLResponse>(`/rag/pipeline/${pipelineId}`)
     },
+    ...mutationOptions,
   })
 }

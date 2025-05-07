@@ -5,21 +5,29 @@ import { useTranslation } from 'react-i18next'
 type OperationsProps = {
   openEditModal: () => void
   onDelete: () => void
+  onExport: () => void
 }
 
 const Operations = ({
   openEditModal,
   onDelete,
+  onExport,
 }: OperationsProps) => {
   const { t } = useTranslation()
 
-  const onClickEdit = async (e: React.MouseEvent<HTMLDivElement>) => {
+  const onClickEdit = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     e.preventDefault()
     openEditModal()
   }
 
-  const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
+  const onClickExport = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    e.preventDefault()
+    onExport()
+  }
+
+  const onClickDelete = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     e.preventDefault()
     onDelete()
@@ -33,15 +41,15 @@ const Operations = ({
           onClick={onClickEdit}
         >
           <span className='system-md-regular px-1 text-text-secondary'>
-            Edit Info
+            {t('datasetPipeline.operations.editInfo')}
           </span>
         </div>
         <div
           className='flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
-          onClick={() => { console.log('Export DSL') }}
+          onClick={onClickExport}
         >
           <span className='system-md-regular px-1 text-text-secondary'>
-            Export DSL
+            {t('datasetPipeline.operations.exportDSL')}
           </span>
         </div>
       </div>

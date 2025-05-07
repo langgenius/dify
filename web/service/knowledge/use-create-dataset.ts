@@ -22,6 +22,8 @@ import type {
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import { post } from '../base'
 
+const NAME_SPACE = 'knowledge/create-dataset'
+
 export const getNotionInfo = (
   notionPages: NotionPage[],
 ) => {
@@ -242,6 +244,7 @@ export const useCreateDataset = (
   mutationOptions: MutationOptions<CreateDatasetResponse, Error, CreateDatasetReq> = {},
 ) => {
   return useMutation({
+    mutationKey: [NAME_SPACE, 'create-dataset'],
     mutationFn: (req: CreateDatasetReq) => {
       return post<CreateDatasetResponse>('/datasets', { body: req })
     },

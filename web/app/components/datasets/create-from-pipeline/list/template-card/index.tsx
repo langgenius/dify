@@ -10,6 +10,10 @@ import Modal from '@/app/components/base/modal'
 import EditPipelineInfo from './edit-pipeline-info'
 import type { PipelineTemple } from '@/models/pipeline'
 import { DOC_FORM_ICON, DOC_FORM_TEXT } from '@/models/datasets'
+import Confirm from '@/app/components/base/confirm'
+import { useDeletePipeline, useExportPipelineDSL } from '@/service/use-pipeline'
+import { downloadFile } from '@/utils/format'
+import Toast from '@/app/components/base/toast'
 
 type TemplateCardProps = {
   pipeline: PipelineTemple
@@ -22,6 +26,7 @@ const TemplateCard = ({
 }: TemplateCardProps) => {
   const { t } = useTranslation()
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
 
   const openEditModal = useCallback(() => {
     setShowEditModal(true)
@@ -30,6 +35,48 @@ const TemplateCard = ({
   const closeEditModal = useCallback(() => {
     setShowEditModal(false)
   }, [])
+
+  const { mutateAsync: getDSLFileContent } = useExportPipelineDSL()
+
+  const handleExportDSL = useCallback(async () => {
+    await getDSLFileContent(pipeline.id, {
+      onSuccess: (res) => {
+        const blob = new Blob([res.data], { type: 'application/yaml' })
+        downloadFile({
+          data: blob,
+          fileName: `${pipeline.name}.dsl`,
+        })
+        Toast.notify({
+          type: 'success',
+          message: t('datasetPipeline.exportDSL.successTip'),
+        })
+      },
+      onError: () => {
+        Toast.notify({
+          type: 'error',
+          message: t('datasetPipeline.exportDSL.errorTip'),
+        })
+      },
+    })
+  }, [t, pipeline.id, pipeline.name, getDSLFileContent])
+
+  const handleDelete = useCallback(() => {
+    setShowConfirmDelete(true)
+  }, [])
+
+  const onCancelDelete = useCallback(() => {
+    setShowConfirmDelete(false)
+  }, [])
+
+  const { mutateAsync: deletePipeline } = useDeletePipeline()
+
+  const onConfirmDelete = useCallback(async () => {
+    await deletePipeline(pipeline.id, {
+      onSettled: () => {
+        setShowConfirmDelete(false)
+      },
+    })
+  }, [pipeline.id, deletePipeline])
 
   const Icon = DOC_FORM_ICON[pipeline.doc_form] || General
   const iconInfo = pipeline.icon_info
@@ -50,13 +97,21 @@ const TemplateCard = ({
           </div>
         </div>
         <div className='flex grow flex-col gap-y-1 py-px'>
-          <div className='system-md-semibold truncate text-text-secondary' title={pipeline.name}>{pipeline.name}</div>
+          <div
+            className='system-md-semibold truncate text-text-secondary'
+            title={pipeline.name}
+          >
+            {pipeline.name}
+          </div>
           <div className='system-2xs-medium-uppercase text-text-tertiary'>
             {t(`dataset.chunkingMode.${DOC_FORM_TEXT[pipeline.doc_form]}`)}
           </div>
         </div>
       </div>
-      <p className='system-xs-regular line-clamp-3 grow px-4 py-1 text-text-tertiary' title={pipeline.description}>
+      <p
+        className='system-xs-regular line-clamp-3 grow px-4 py-1 text-text-tertiary'
+        title={pipeline.description}
+      >
         {pipeline.description}
       </p>
       <div className='absolute bottom-0 left-0 z-10 hidden w-full items-center gap-x-1 bg-pipeline-template-card-hover-bg p-4 pt-8 group-hover:flex'>
@@ -68,7 +123,7 @@ const TemplateCard = ({
           className='grow gap-x-0.5'
         >
           <RiAddLine className='size-4' />
-          <span className='px-0.5'>Choose</span>
+          <span className='px-0.5'>{t('datasetPipeline.operations.choose')}</span>
         </Button>
         <Button
           variant='secondary'
@@ -78,7 +133,7 @@ const TemplateCard = ({
           className='grow gap-x-0.5'
         >
           <RiArrowRightUpLine className='size-4' />
-          <span className='px-0.5'>Details</span>
+          <span className='px-0.5'>{t('datasetPipeline.operations.details')}</span>
         </Button>
         {
           showMoreOperations && (
@@ -86,9 +141,8 @@ const TemplateCard = ({
               htmlContent={
                 <Operations
                   openEditModal={openEditModal}
-                  onDelete={() => {
-                    console.log('Delete', pipeline)
-                  }}
+                  onExport={handleExportDSL}
+                  onDelete={handleDelete}
                 />
               }
               className={'z-20 min-w-[160px]'}
@@ -103,19 +157,27 @@ const TemplateCard = ({
           )
         }
       </div>
-      <Modal
-        isShow={showEditModal}
-        onClose={closeEditModal}
-        className='max-w-[520px] p-0'
-      >
-        <EditPipelineInfo
-          pipeline={pipeline}
+      {showEditModal && (
+        <Modal
+          isShow={showEditModal}
           onClose={closeEditModal}
-          onSave={() => {
-            console.log('Save', pipeline)
-          }}
+          className='max-w-[520px] p-0'
+        >
+          <EditPipelineInfo
+            pipeline={pipeline}
+            onClose={closeEditModal}
+          />
+        </Modal>
+      )}
+      {showDeleteConfirm && (
+        <Confirm
+          title={t('datasetPipeline.deletePipeline.title')}
+          content={t('datasetPipeline.deletePipeline.content')}
+          isShow={showDeleteConfirm}
+          onConfirm={onConfirmDelete}
+          onCancel={onCancelDelete}
         />
-      </Modal>
+      )}
     </div>
   )
 }

@@ -16,7 +16,7 @@ const Item = ({
 }: ItemProps) => {
   return (
     <div
-      className='group flex w-[337px] items-center gap-x-3 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs shadow-shadow-shadow-3 hover:shadow-md hover:shadow-shadow-shadow-5'
+      className='group flex w-[337px] cursor-pointer items-center gap-x-3 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 shadow-xs shadow-shadow-shadow-3 hover:shadow-md hover:shadow-shadow-shadow-5'
       onClick={onClick}
     >
       <div className='flex size-10 shrink-0 items-center justify-center rounded-[10px] border border-dashed border-divider-regular bg-background-section group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover'>

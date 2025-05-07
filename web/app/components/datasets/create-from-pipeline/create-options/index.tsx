@@ -34,10 +34,6 @@ const CreateOptions = () => {
     setShowCreateModal(false)
   }, [])
 
-  const handleCreateFromScratch = useCallback(() => {
-    setShowCreateModal(false)
-  }, [])
-
   const openImportFromDSL = useCallback(() => {
     setShowImportModal(true)
   }, [])
@@ -73,7 +69,6 @@ const CreateOptions = () => {
       >
         <CreateFromScratch
           onClose={closeCreateFromScratch}
-          onCreate={handleCreateFromScratch}
         />
       </Modal>
       <CreateFromDSLModal

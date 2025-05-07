@@ -24,11 +24,23 @@ export type PipelineTemplateByIdResponse = {
   export_data: string
 }
 
-export type UpdatePipelineInfoPayload = {
-  pipelineId: string
+export type UpdatePipelineInfoRequest = {
+  pipeline_id: string
   name: string
   icon_info: IconInfo
   description: string
+}
+
+export type UpdatePipelineInfoResponse = {
+  pipeline_id: string
+  name: string
+  icon_info: IconInfo
+  description: string
+  position: number
+}
+
+export type DeletePipelineResponse = {
+  code: number
 }
 
 export type ExportPipelineDSLResponse = {

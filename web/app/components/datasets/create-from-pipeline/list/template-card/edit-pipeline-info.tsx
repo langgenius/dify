@@ -9,16 +9,15 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import type { PipelineTemple } from '@/models/pipeline'
+import { useUpdatePipelineInfo } from '@/service/use-pipeline'
 
 type EditPipelineInfoProps = {
   onClose: () => void
-  onSave: () => void
   pipeline: PipelineTemple
 }
 
 const EditPipelineInfo = ({
   onClose,
-  onSave,
   pipeline,
 }: EditPipelineInfoProps) => {
   const { t } = useTranslation()
@@ -62,7 +61,9 @@ const EditPipelineInfo = ({
     setDescription(value)
   }, [])
 
-  const handleSave = useCallback(() => {
+  const { mutateAsync: updatePipeline } = useUpdatePipelineInfo()
+
+  const handleSave = useCallback(async () => {
     if (!name) {
       Toast.notify({
         type: 'error',
@@ -70,16 +71,30 @@ const EditPipelineInfo = ({
       })
       return
     }
-    onSave()
-    onClose()
-  }, [name, onSave, onClose])
+    const request = {
+      pipeline_id: pipeline.id,
+      name,
+      icon_info: {
+        icon_type: appIcon.type,
+        icon: appIcon.type === 'image' ? appIcon.fileId : appIcon.icon,
+        icon_background: appIcon.type === 'image' ? undefined : appIcon.background,
+        icon_url: appIcon.type === 'image' ? appIcon.url : undefined,
+      },
+      description,
+    }
+    await updatePipeline(request, {
+      onSettled: () => {
+        onClose()
+      },
+    })
+  }, [name, appIcon, description, pipeline.id, updatePipeline, onClose])
 
   return (
     <div className='relative flex flex-col'>
       {/* Header */}
       <div className='pb-3 pl-6 pr-14 pt-6'>
         <span className='title-2xl-semi-bold text-text-primary'>
-          Edit Pipeline Info
+          {t('datasetPipeline.editPipelineInfo')}
         </span>
       </div>
       <button
@@ -92,11 +107,13 @@ const EditPipelineInfo = ({
       <div className='flex flex-col gap-y-5 px-6 py-3'>
         <div className='flex items-end gap-x-3 self-stretch'>
           <div className='flex grow flex-col gap-y-1 pb-1'>
-            <label className='system-sm-medium flex h-6 items-center text-text-secondary'>Pipeline name & icon</label>
+            <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
+              {t('datasetPipeline.pipelineNameAndIcon')}
+            </label>
             <Input
               onChange={handleAppNameChange}
               value={name}
-              placeholder='Please enter the name of the Knowledge Base'
+              placeholder={t('datasetPipeline.knowledgeNameAndIconPlaceholder')}
             />
           </div>
           <AppIcon
@@ -111,11 +128,13 @@ const EditPipelineInfo = ({
           />
         </div>
         <div className='flex flex-col gap-y-1'>
-          <label className='system-sm-medium flex h-6 items-center text-text-secondary'>Knowledge description</label>
+          <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
+            {t('datasetPipeline.knowledgeDescription')}
+          </label>
           <Textarea
             onChange={handleDescriptionChange}
             value={description}
-            placeholder='Describe what is in this Knowledge Base. A detailed description allows AI to access the content of the dataset more accurately. If empty, Dify will use the default hit strategy. (Optional)'
+            placeholder={t('datasetPipeline.knowledgeDescriptionPlaceholder')}
           />
         </div>
       </div>
