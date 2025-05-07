@@ -29,6 +29,7 @@ export enum CollectionType {
   custom = 'api',
   model = 'model',
   workflow = 'workflow',
+  mcp = 'mcp',
 }
 
 export type Emoji = {
@@ -167,4 +168,16 @@ export type WorkflowToolProviderResponse = {
     parameters: ParamItem[]
   }
   privacy_policy: string
+}
+
+export type MCPProvider = {
+  id: string
+  author: string
+  name: string
+  icon: string | Emoji
+  server_url: string
+  type: CollectionType
+  is_team_authorization: boolean
+  tools: string[]
+  update_elapsed_time: number
 }

@@ -4,12 +4,15 @@ import type {
   Tool,
 } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { MCPProvider } from '@/app/components/tools/types'
 import { useInvalid } from './use-base'
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+
+import { listData } from '@/app/components/tools/mcp/mock'
 
 const NAME_SPACE = 'tools'
 
@@ -59,6 +62,21 @@ export const useAllWorkflowTools = () => {
 
 export const useInvalidateAllWorkflowTools = () => {
   return useInvalid(useAllWorkflowToolsKey)
+}
+
+const useAllMCPToolsKey = [NAME_SPACE, 'MCPTools']
+export const useAllMCPTools = () => {
+  return useQuery<MCPProvider[]>({
+    queryKey: useAllMCPToolsKey,
+    // queryFn: () => get<MCPProvider[]>('/workspaces/current/tools/mcp'),
+    queryFn: () => {
+      return listData as unknown as MCPProvider[]
+    },
+  })
+}
+
+export const useInvalidateAllMCPTools = () => {
+  return useInvalid(useAllMCPToolsKey)
 }
 
 export const useBuiltinProviderInfo = (providerName: string) => {

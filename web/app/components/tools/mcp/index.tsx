@@ -1,6 +1,7 @@
 'use client'
-import React from 'react'
+import { useMemo } from 'react'
 import NewMCPCard from './create-card'
+import { useAllMCPTools, useInvalidateAllMCPTools } from '@/service/use-tools'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -10,9 +11,16 @@ type Props = {
 const MCPList = ({
   searchText,
 }: Props) => {
-  const handleCreate = () => {
-    console.log('handleCreate')
-  }
+  const { data: list = [] } = useAllMCPTools()
+  const invalidateMCPList = useInvalidateAllMCPTools()
+
+  const filteredList = useMemo(() => {
+    return list.filter((collection) => {
+      if (searchText)
+        return Object.values(collection.name).some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
+      return true
+    })
+  }, [list, searchText])
 
   function renderDefaultCard() {
     const defaultCards = Array.from({ length: 36 }, (_, index) => (
@@ -37,11 +45,14 @@ const MCPList = ({
       <div
         className={cn(
           'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-          'h-[calc(100vh_-_136px)] overflow-hidden',
+          !list.length && 'h-[calc(100vh_-_136px)] overflow-hidden',
         )}
       >
-        <NewMCPCard handleCreate={handleCreate} />
-        {renderDefaultCard()}
+        <NewMCPCard handleCreate={invalidateMCPList} />
+        {filteredList.map((item, index) => (
+          <div key={index}></div>
+        ))}
+        {!list.length && renderDefaultCard()}
       </div>
     </>
   )
