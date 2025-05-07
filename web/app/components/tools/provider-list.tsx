@@ -15,6 +15,7 @@ import WorkflowToolEmpty from '@/app/components/tools/add-tool-modal/empty'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
+import MCPList from './mcp'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useAllToolProviders } from '@/service/use-tools'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -31,6 +32,7 @@ const ProviderList = () => {
     { value: 'builtin', text: t('tools.type.builtIn') },
     { value: 'api', text: t('tools.type.custom') },
     { value: 'workflow', text: t('tools.type.workflow') },
+    { value: 'mcp', text: 'MCP' },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const handleTagsChange = (value: string[]) => {
@@ -82,7 +84,9 @@ const ProviderList = () => {
               options={options}
             />
             <div className='flex items-center gap-2'>
-              <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
+              {activeTab !== 'mcp' && (
+                <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
+              )}
               <Input
                 showLeftIcon
                 showClearIcon
@@ -130,17 +134,18 @@ const ProviderList = () => {
           {!filteredCollectionList.length && activeTab === 'builtin' && (
             <Empty lightCard text={t('tools.noTools')} className='h-[224px] px-12' />
           )}
-          {
-            enable_marketplace && activeTab === 'builtin' && (
-              <Marketplace
-                onMarketplaceScroll={() => {
-                  containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
-                }}
-                searchPluginText={keywords}
-                filterPluginTags={tagFilterValue}
-              />
-            )
-          }
+          {enable_marketplace && activeTab === 'builtin' && (
+            <Marketplace
+              onMarketplaceScroll={() => {
+                containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
+              }}
+              searchPluginText={keywords}
+              filterPluginTags={tagFilterValue}
+            />
+          )}
+          {activeTab === 'mcp' && (
+            <MCPList searchText={keywords} />
+          )}
         </div>
       </div>
       {currentProvider && !currentProvider.plugin_id && (
