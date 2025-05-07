@@ -57,6 +57,7 @@ const translation = {
     submit: '提交',
     skip: '跳过',
     format: '格式化',
+    more: '更多',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
