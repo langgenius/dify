@@ -1,4 +1,4 @@
-from flask_restful import Resource  # type: ignore
+from flask_restful import Resource
 
 from controllers.web import api
 from services.feature_service import FeatureService

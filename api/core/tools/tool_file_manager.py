@@ -4,6 +4,7 @@ import hmac
 import logging
 import os
 import time
+from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
 from typing import Optional, Union
 from uuid import uuid4
@@ -215,7 +216,7 @@ class ToolFileManager:
 
         return blob, tool_file.mimetype
 
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str):
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Optional[Generator], Optional[ToolFile]]:
         """
         get file binary
 

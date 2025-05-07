@@ -185,3 +185,38 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_model_mock):
             assert item.run_result.process_data is not None
             assert "sunny" in json.dumps(item.run_result.process_data)
             assert "what's the weather today?" in json.dumps(item.run_result.process_data)
+
+
+def test_extract_json():
+    node = init_llm_node(
+        config={
+            "id": "llm",
+            "data": {
+                "title": "123",
+                "type": "llm",
+                "model": {"provider": "openai", "name": "gpt-3.5-turbo", "mode": "chat", "completion_params": {}},
+                "prompt_config": {
+                    "structured_output": {
+                        "enabled": True,
+                        "schema": {
+                            "type": "object",
+                            "properties": {"name": {"type": "string"}, "age": {"type": "number"}},
+                        },
+                    }
+                },
+                "prompt_template": [{"role": "user", "text": "{{#sys.query#}}"}],
+                "memory": None,
+                "context": {"enabled": False},
+                "vision": {"enabled": False},
+            },
+        },
+    )
+    llm_texts = [
+        '<think>\n\n</think>{"name": "test", "age": 123',  # resoning model (deepseek-r1)
+        '{"name":"test","age":123}',  # json schema model (gpt-4o)
+        '{\n    "name": "test",\n    "age": 123\n}',  # small model (llama-3.2-1b)
+        '```json\n{"name": "test", "age": 123}\n```',  # json markdown (deepseek-chat)
+        '{"name":"test",age:123}',  # without quotes (qwen-2.5-0.5b)
+    ]
+    result = {"name": "test", "age": 123}
+    assert all(node._parse_structured_output(item) == result for item in llm_texts)

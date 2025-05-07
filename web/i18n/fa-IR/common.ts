@@ -459,7 +459,7 @@ const translation = {
   apiBasedExtension: {
     title: 'افزونه‌های مبتنی بر API مدیریت متمرکز API را فراهم می‌کنند و پیکربندی را برای استفاده آسان در برنامه‌های Dify ساده می‌کنند.',
     link: 'نحوه توسعه افزونه API خود را بیاموزید.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'افزودن افزونه API',
     selector: {
       title: 'افزونه API',

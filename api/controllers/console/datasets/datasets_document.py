@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 from typing import cast
 
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, fields, marshal, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, fields, marshal, marshal_with, reqparse
 from sqlalchemy import asc, desc
 from werkzeug.exceptions import Forbidden, NotFound
 
