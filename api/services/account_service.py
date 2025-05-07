@@ -792,7 +792,7 @@ class TenantService:
         if not ta_operator or ta_operator.role not in perms[action]:
             raise NoPermissionError(f"No permission to {action} member.")
         
-        # Admin cannot remove or update other admin and the owner
+        # Restriction: Admins cannot remove or update other admins or the owner
         if action in {"remove", "update"}:
             if ta_operator.role == TenantAccountRole.ADMIN:
                 if member:
