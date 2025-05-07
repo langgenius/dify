@@ -255,7 +255,7 @@ const translation = {
     'loop-start': '循环开始',
     'loop': '循环',
     'loop-end': '退出循环',
-    'knowledge-base': '知识库',
+    'knowledge-index': '知识库',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
@@ -278,7 +278,7 @@ const translation = {
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
     'list-operator': '用于过滤或排序数组内容。',
     'agent': '调用大型语言模型回答问题或处理自然语言',
-    'knowledge-base': '知识库节点',
+    'knowledge-index': '知识库节点',
   },
   operator: {
     zoomIn: '放大',

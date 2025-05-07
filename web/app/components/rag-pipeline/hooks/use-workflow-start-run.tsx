@@ -1,0 +1,68 @@
+import { useCallback } from 'react'
+import { useStoreApi } from 'reactflow'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import {
+  BlockEnum,
+  WorkflowRunningStatus,
+} from '@/app/components/workflow/types'
+import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
+import {
+  useNodesSyncDraft,
+  useWorkflowRun,
+} from '.'
+
+export const useWorkflowStartRun = () => {
+  const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
+  const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
+  const { handleRun } = useWorkflowRun()
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+
+  const handleWorkflowStartRunInWorkflow = useCallback(async () => {
+    const {
+      workflowRunningData,
+    } = workflowStore.getState()
+
+    if (workflowRunningData?.result.status === WorkflowRunningStatus.Running)
+      return
+
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    const startVariables = startNode?.data.variables || []
+    const {
+      showTestRunPanel,
+      setShowInputsPanel,
+      setShowEnvPanel,
+      setShowTestRunPanel,
+    } = workflowStore.getState()
+
+    setShowEnvPanel(false)
+
+    if (showTestRunPanel) {
+      setShowTestRunPanel?.(false)
+      handleCancelDebugAndPreviewPanel()
+      return
+    }
+
+    if (!startVariables.length) {
+      await doSyncWorkflowDraft()
+      handleRun({ inputs: {}, files: [] })
+      setShowTestRunPanel?.(true)
+      setShowInputsPanel(false)
+    }
+    else {
+      setShowTestRunPanel?.(true)
+      setShowInputsPanel(true)
+    }
+  }, [store, workflowStore, handleCancelDebugAndPreviewPanel, handleRun, doSyncWorkflowDraft])
+
+  const handleStartWorkflowRun = useCallback(() => {
+    handleWorkflowStartRunInWorkflow()
+  }, [handleWorkflowStartRunInWorkflow])
+
+  return {
+    handleStartWorkflowRun,
+    handleWorkflowStartRunInWorkflow,
+  }
+}
