@@ -1,7 +1,9 @@
 'use client'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import NewMCPCard from './create-card'
+import MCPCard from './provider-card'
 import { useAllMCPTools, useInvalidateAllMCPTools } from '@/service/use-tools'
+import type { MCPProvider } from '@/app/components/tools/types'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -22,12 +24,14 @@ const MCPList = ({
     })
   }, [list, searchText])
 
+  const [currentProvider, setCurrentProvider] = useState<MCPProvider>()
+
   function renderDefaultCard() {
     const defaultCards = Array.from({ length: 36 }, (_, index) => (
       <div
         key={index}
         className={cn(
-          'inline-flex h-[108px] rounded-xl bg-background-default-lighter opacity-10',
+          'inline-flex h-[111px] rounded-xl bg-background-default-lighter opacity-10',
           index < 4 && 'opacity-60',
           index >= 4 && index < 8 && 'opacity-50',
           index >= 8 && index < 12 && 'opacity-40',
@@ -44,13 +48,18 @@ const MCPList = ({
     <>
       <div
         className={cn(
-          'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+          'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
           !list.length && 'h-[calc(100vh_-_136px)] overflow-hidden',
         )}
       >
         <NewMCPCard handleCreate={invalidateMCPList} />
-        {filteredList.map((item, index) => (
-          <div key={index}></div>
+        {filteredList.map(provider => (
+          <MCPCard
+            key={provider.id}
+            data={provider}
+            currentProvider={currentProvider}
+            handleSelect={setCurrentProvider}
+          />
         ))}
         {!list.length && renderDefaultCard()}
       </div>

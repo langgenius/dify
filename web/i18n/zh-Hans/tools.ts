@@ -158,6 +158,10 @@ const translation = {
       cardTitle: '添加 MCP 服务 (HTTP)',
       cardLink: '了解更多关于 MCP 服务集成的信息',
     },
+    noConfigured: '未配置',
+    updateTime: '更新于',
+    toolsCount: '{{count}} 个工具',
+    noTools: '没有可用的工具',
   },
 }
 
