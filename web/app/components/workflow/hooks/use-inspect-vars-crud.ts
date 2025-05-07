@@ -95,7 +95,7 @@ const useInspectVarsCrud = () => {
       })
       setInspectVarValue(nodeId, varId, value)
     }
-  }, [doEditInspectorVar, setInspectVarValue])
+  }, [doEditInspectorVar, invalidateConversationVarValues, invalidateSysVarValues, setInspectVarValue])
 
   const [currNodeId, setCurrNodeId] = useState<string | null>(null)
   const [currEditVarId, setCurrEditVarId] = useState<string | null>(null)
@@ -128,8 +128,6 @@ const useInspectVarsCrud = () => {
     setCurrNodeId(nodeId)
     setCurrEditVarId(varId)
   }
-
-  // console.log(conversationVars, systemVars)
 
   return {
     conversationVars: conversationVars || [],

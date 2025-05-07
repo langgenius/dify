@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
 import produce from 'immer'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { BlockEnum, type ValueSelector } from '../../../types'
+import type { ValueSelector } from '../../../types'
 import type { Node } from '@/app/components/workflow/types'
 import { isConversationVar, isENV, isSystemVar } from '../../../nodes/_base/components/variable/utils'
 
@@ -26,7 +26,7 @@ type InspectVarsActions = {
   renameInspectVarName: (nodeId: string, varId: string, selector: ValueSelector) => void
   deleteInspectVar: (nodeId: string, varId: string) => void
   getInspectVar: (nodeId: string, name: string) => any
-  hasSetInspectVar: (nodeId: string, name: string, conversationVars: VarInInspect[]) => boolean
+  hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
   isInspectVarEdited: (nodeId: string, name: string) => boolean
 }
 
@@ -174,17 +174,13 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
       })?.value
       return variable
     },
-    hasSetInspectVar: (nodeId, name, conversationVars: VarInInspect[]) => {
+    hasSetInspectVar: (nodeId, name, sysVars, conversationVars) => {
       const isEnv = isENV([nodeId])
       if (isEnv) // always have value
         return true
       const isSys = isSystemVar([nodeId])
-      if (isSys) {
-        const isStartNodeRun = get().nodesWithInspectVars.some((node) => {
-          return node.nodeType === BlockEnum.Start
-        })
-        return isStartNodeRun
-      }
+      if (isSys)
+        return sysVars.some(varItem => varItem.selector?.[1] === name)
       const isChatVar = isConversationVar([nodeId])
       if (isChatVar)
         return conversationVars.some(varItem => varItem.selector?.[1] === name)

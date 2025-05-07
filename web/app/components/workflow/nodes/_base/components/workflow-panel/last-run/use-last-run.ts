@@ -102,7 +102,7 @@ type Params<T> = OneStepRunParams<T>
 const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
-  const { conversationVars } = useInspectVarsCrud()
+  const { conversationVars, systemVars } = useInspectVarsCrud()
   const blockType = oneStepRunParams.data.type
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
@@ -180,7 +180,7 @@ const useLastRun = <T>({
       form.inputs.forEach(({ variable }) => {
         const selector = variable.slice(1, -1).split('.')
         const [nodeId, varName] = selector.slice(0, 2)
-        const inspectVarValue = hasSetInspectVar(nodeId, varName, conversationVars) // also detect system var , env and  conversation var
+        const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
         if (inspectVarValue)
           values[variable] = true
       })
