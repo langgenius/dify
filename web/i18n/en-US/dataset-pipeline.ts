@@ -10,6 +10,8 @@ const translation = {
       description: 'Import from a DSL file',
     },
     createKnowledge: 'Create Knowledge',
+    errorTip: 'Failed to create a Knowledge Pipeline',
+    successTip: 'Successfully created a Knowledge Pipeline',
   },
   tabs: {
     builtInPipeline: 'Built-in pipeline',
@@ -20,6 +22,7 @@ const translation = {
     details: 'Details',
     editInfo: 'Edit info',
     exportDSL: 'Export DSL',
+    useTemplate: 'Use this Knowledge Pipeline',
   },
   knowledgeNameAndIcon: 'Knowledge name & icon',
   knowledgeNameAndIconPlaceholder: 'Please enter the name of the Knowledge Base',
@@ -35,6 +38,9 @@ const translation = {
   exportDSL: {
     successTip: 'Export pipeline DSL successfully',
     errorTip: 'Failed to export pipeline DSL',
+  },
+  details: {
+    structure: 'Structure',
   },
 }
 

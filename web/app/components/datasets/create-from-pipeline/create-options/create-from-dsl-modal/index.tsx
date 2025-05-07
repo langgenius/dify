@@ -83,6 +83,7 @@ const CreateFromDSLModal = ({
 
   const isCreatingRef = useRef(false)
 
+  // todo: replace with pipeline import DSL and check plugin dependencies
   const onCreate = async () => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
       return

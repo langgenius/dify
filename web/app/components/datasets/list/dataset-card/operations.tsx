@@ -1,7 +1,7 @@
 import Divider from '@/app/components/base/divider'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine, RiEditLine, RiFileCopyLine } from '@remixicon/react'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 
 type OperationsProps = {
   showDelete: boolean
@@ -40,7 +40,7 @@ const Operations = ({
             {t('common.operation.edit')}
           </span>
         </div>
-        <div
+        {/* <div
           className='flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
           onClick={() => { console.log('duplicate') }}
         >
@@ -48,9 +48,9 @@ const Operations = ({
           <span className='system-md-regular px-1 text-text-secondary'>
             {t('common.operation.duplicate')}
           </span>
-        </div>
+        </div> */}
       </div>
-      <Divider type='horizontal' className='my-0 bg-divider-subtle' />
+      {/* <Divider type='horizontal' className='my-0 bg-divider-subtle' />
       <div className='flex flex-col p-1'>
         <div
           className='flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
@@ -70,7 +70,7 @@ const Operations = ({
             Import Solution
           </span>
         </div>
-      </div>
+      </div> */}
       {showDelete && (
         <>
           <Divider type='horizontal' className='my-0 bg-divider-subtle' />

@@ -1,9 +1,11 @@
 import type { MutationOptions } from '@tanstack/react-query'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { del, get, patch } from './base'
+import { del, get, patch, post } from './base'
 import type {
   DeletePipelineResponse,
   ExportPipelineDSLResponse,
+  ImportPipelineDSLRequest,
+  ImportPipelineDSLResponse,
   PipelineTemplateByIdResponse,
   PipelineTemplateListParams,
   PipelineTemplateListResponse,
@@ -22,12 +24,13 @@ export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
   })
 }
 
-export const usePipelineTemplateById = (templateId: string) => {
+export const usePipelineTemplateById = (templateId: string, enabled: boolean) => {
   return useQuery<PipelineTemplateByIdResponse>({
     queryKey: [NAME_SPACE, 'template', templateId],
     queryFn: () => {
       return get<PipelineTemplateByIdResponse>(`/rag/pipeline/template/${templateId}`)
     },
+    enabled,
   })
 }
 
@@ -65,6 +68,19 @@ export const useExportPipelineDSL = (
     mutationKey: [NAME_SPACE, 'template', 'export'],
     mutationFn: (pipelineId: string) => {
       return get<ExportPipelineDSLResponse>(`/rag/pipeline/${pipelineId}`)
+    },
+    ...mutationOptions,
+  })
+}
+
+// TODO: replace with real API
+export const useImportPipelineDSL = (
+  mutationOptions: MutationOptions<ImportPipelineDSLResponse, Error, ImportPipelineDSLRequest> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'template', 'import'],
+    mutationFn: (request: ImportPipelineDSLRequest) => {
+      return post<ImportPipelineDSLResponse>('/rag/pipeline/import', { body: request })
     },
     ...mutationOptions,
   })

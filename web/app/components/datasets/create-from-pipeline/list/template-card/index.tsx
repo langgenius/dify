@@ -11,9 +11,13 @@ import EditPipelineInfo from './edit-pipeline-info'
 import type { PipelineTemple } from '@/models/pipeline'
 import { DOC_FORM_ICON, DOC_FORM_TEXT } from '@/models/datasets'
 import Confirm from '@/app/components/base/confirm'
-import { useDeletePipeline, useExportPipelineDSL } from '@/service/use-pipeline'
+import { useDeletePipeline, useExportPipelineDSL, useImportPipelineDSL, usePipelineTemplateById } from '@/service/use-pipeline'
 import { downloadFile } from '@/utils/format'
 import Toast from '@/app/components/base/toast'
+import { DSLImportMode } from '@/models/app'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useRouter } from 'next/navigation'
+import Details from './details'
 
 type TemplateCardProps = {
   pipeline: PipelineTemple
@@ -25,8 +29,52 @@ const TemplateCard = ({
   showMoreOperations = true,
 }: TemplateCardProps) => {
   const { t } = useTranslation()
+  const { push } = useRouter()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+
+  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(pipeline.id, false)
+  const { mutateAsync: importPipelineDSL } = useImportPipelineDSL()
+  const { handleCheckPluginDependencies } = usePluginDependencies()
+
+  const handleUseTemplate = useCallback(async () => {
+    try {
+      const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
+      if (!pipelineTemplateInfo) {
+        Toast.notify({
+          type: 'error',
+          message: t('datasetPipeline.creation.errorTip'),
+        })
+        return
+      }
+      const request = {
+        mode: DSLImportMode.YAML_CONTENT,
+        name: pipeline.name,
+        yaml_content: pipelineTemplateInfo.export_data,
+        icon_info: pipeline.icon_info,
+        description: pipeline.description,
+      }
+      const newPipeline = await importPipelineDSL(request)
+      Toast.notify({
+        type: 'success',
+        message: t('app.newApp.appCreated'),
+      })
+      if (newPipeline.dataset_id)
+        await handleCheckPluginDependencies(newPipeline.dataset_id) // todo: replace with pipeline dependency check
+      push(`dataset/${newPipeline.dataset_id}/pipeline`)
+    }
+    catch {
+      Toast.notify({
+        type: 'error',
+        message: t('datasetPipeline.creation.errorTip'),
+      })
+    }
+  }, [getPipelineTemplateInfo, importPipelineDSL, pipeline, t, push, handleCheckPluginDependencies])
+
+  const handleShowTemplateDetails = useCallback(() => {
+    setShowDetailModal(true)
+  }, [])
 
   const openEditModal = useCallback(() => {
     setShowEditModal(true)
@@ -36,10 +84,15 @@ const TemplateCard = ({
     setShowEditModal(false)
   }, [])
 
-  const { mutateAsync: getDSLFileContent } = useExportPipelineDSL()
+  const closeDetailsModal = useCallback(() => {
+    setShowDetailModal(false)
+  }, [])
+
+  const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportPipelineDSL()
 
   const handleExportDSL = useCallback(async () => {
-    await getDSLFileContent(pipeline.id, {
+    if (isExporting) return
+    await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
         downloadFile({
@@ -58,7 +111,7 @@ const TemplateCard = ({
         })
       },
     })
-  }, [t, pipeline.id, pipeline.name, getDSLFileContent])
+  }, [t, isExporting, pipeline.id, pipeline.name, exportPipelineDSL])
 
   const handleDelete = useCallback(() => {
     setShowConfirmDelete(true)
@@ -117,9 +170,7 @@ const TemplateCard = ({
       <div className='absolute bottom-0 left-0 z-10 hidden w-full items-center gap-x-1 bg-pipeline-template-card-hover-bg p-4 pt-8 group-hover:flex'>
         <Button
           variant='primary'
-          onClick={() => {
-            console.log('Choose', pipeline)
-          }}
+          onClick={handleUseTemplate}
           className='grow gap-x-0.5'
         >
           <RiAddLine className='size-4' />
@@ -127,9 +178,7 @@ const TemplateCard = ({
         </Button>
         <Button
           variant='secondary'
-          onClick={() => {
-            console.log('details', pipeline)
-          }}
+          onClick={handleShowTemplateDetails}
           className='grow gap-x-0.5'
         >
           <RiArrowRightUpLine className='size-4' />
@@ -177,6 +226,19 @@ const TemplateCard = ({
           onConfirm={onConfirmDelete}
           onCancel={onCancelDelete}
         />
+      )}
+      {showDetailModal && (
+        <Modal
+          isShow={showDetailModal}
+          onClose={closeDetailsModal}
+          className='h-[calc(100vh-64px)] max-w-[1680px] p-0'
+        >
+          <Details
+            id={pipeline.id}
+            onClose={closeDetailsModal}
+            handleUseTemplate={handleUseTemplate}
+          />
+        </Modal>
       )}
     </div>
   )

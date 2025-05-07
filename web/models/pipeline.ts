@@ -1,4 +1,6 @@
+import type { DSLImportMode, DSLImportStatus } from './app'
 import type { ChunkingMode, IconInfo } from './datasets'
+import type { Dependency } from '@/app/components/plugins/types'
 
 export type PipelineTemplateListParams = {
   type: 'built-in' | 'customized'
@@ -21,6 +23,8 @@ export type PipelineTemplateByIdResponse = {
   name: string
   icon_info: IconInfo
   description: string
+  author: string // todo: TBD
+  structure: string // todo: TBD
   export_data: string
 }
 
@@ -45,4 +49,23 @@ export type DeletePipelineResponse = {
 
 export type ExportPipelineDSLResponse = {
   data: string
+}
+
+export type ImportPipelineDSLRequest = {
+  mode: DSLImportMode
+  name: string
+  yaml_content: string
+  icon_info: IconInfo
+  description: string
+}
+
+export type ImportPipelineDSLResponse = {
+  id: string
+  status: DSLImportStatus
+  app_mode: 'pipeline'
+  dataset_id?: string
+  current_dsl_version?: string
+  imported_dsl_version?: string
+  error: string
+  leaked_dependencies: Dependency[]
 }

@@ -10,6 +10,8 @@ const translation = {
       description: '从 DSL 文件导入',
     },
     createKnowledge: '创建知识库',
+    errorTip: '创建知识库流水线失败',
+    successTip: '成功创建知识库流水线',
   },
   tabs: {
     builtInPipeline: '内置流水线',
@@ -20,6 +22,7 @@ const translation = {
     details: '详情',
     editInfo: '编辑信息',
     exportDSL: '导出 DSL',
+    useTemplate: '使用此知识库流水线',
   },
   knowledgeNameAndIcon: '知识库名称和图标',
   knowledgeNameAndIconPlaceholder: '请输入知识库名称',
@@ -35,6 +38,9 @@ const translation = {
   exportDSL: {
     successTip: '成功导出流水线 DSL',
     errorTip: '导出流水线 DSL 失败',
+  },
+  details: {
+    structure: '文档结构',
   },
 }
 
