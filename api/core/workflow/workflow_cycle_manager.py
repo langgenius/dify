@@ -169,8 +169,6 @@ class WorkflowCycleManager:
         workflow_run.type = None
         workflow_run.triggered_from = triggered_from.value
         workflow_run.version = None
-        workflow_run.graph = workflow.graph
-        workflow_run.inputs = json.dumps(inputs)  # consider avoid this
         workflow_run.status = WorkflowRunStatus.RUNNING
         workflow_run.created_by_role = created_by_role
         workflow_run.created_by = user_id
