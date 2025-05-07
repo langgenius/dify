@@ -12,20 +12,18 @@ export enum TabType {
 type Props = {
   value: TabType,
   onChange: (value: TabType) => void
-  canSwitchToLastRun: boolean
 }
 
 const Tab: FC<Props> = ({
   value,
   onChange,
-  canSwitchToLastRun,
 }) => {
   const { t } = useTranslation()
   return (
     <TabHeader
       items={[
         { id: TabType.settings, name: t('workflow.debug.settingsTab').toLocaleUpperCase() },
-        { id: TabType.lastRun, name: t('workflow.debug.lastRunTab').toLocaleUpperCase(), disabled: !canSwitchToLastRun },
+        { id: TabType.lastRun, name: t('workflow.debug.lastRunTab').toLocaleUpperCase() },
       ]}
       itemClassName='ml-0'
       value={value}

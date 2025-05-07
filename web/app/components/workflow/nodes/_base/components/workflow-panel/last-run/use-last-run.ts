@@ -165,7 +165,6 @@ const useLastRun = <T>({
   const handleTabClicked = useCallback((type: TabType) => {
     setTabType(type)
   }, [])
-  const hasLastRunData = true // TODO: add disabled logic
 
   const workflowStore = useWorkflowStore()
   const {
@@ -221,7 +220,6 @@ const useLastRun = <T>({
     singleRunParams,
     nodeInfo,
     setRunInputData,
-    hasLastRunData,
     handleSingleRun,
     handleRunWithParams,
     getExistVarValuesInForms,

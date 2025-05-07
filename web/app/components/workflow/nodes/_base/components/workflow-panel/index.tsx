@@ -153,7 +153,6 @@ const BasePanel: FC<BasePanelProps> = ({
     singleRunParams,
     nodeInfo,
     setRunInputData,
-    hasLastRunData,
     handleSingleRun,
     handleRunWithParams,
     getExistVarValuesInForms,
@@ -268,7 +267,6 @@ const BasePanel: FC<BasePanelProps> = ({
             <Tab
               value={tabType}
               onChange={setTabType}
-              canSwitchToLastRun={hasLastRunData}
             />
           </div>
           <Split />
