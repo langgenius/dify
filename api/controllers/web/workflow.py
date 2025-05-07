@@ -1,6 +1,6 @@
 import logging
 
-from flask_restful import reqparse  # type: ignore
+from flask_restful import reqparse
 from werkzeug.exceptions import InternalServerError
 
 from controllers.web import api

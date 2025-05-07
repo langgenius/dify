@@ -149,7 +149,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         self._llm_file_saver = llm_file_saver
 
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
-        def process_structured_output(text: str) -> Optional[dict[str, Any] | list[Any]]:
+        def process_structured_output(text: str) -> Optional[dict[str, Any]]:
             """Process structured output if enabled"""
             if not self.node_data.structured_output_enabled or not self.node_data.structured_output:
                 return None
@@ -797,18 +797,22 @@ class LLMNode(BaseNode[LLMNodeData]):
         stop = model_config.stop
         return filtered_prompt_messages, stop
 
-    def _parse_structured_output(self, result_text: str) -> dict[str, Any] | list[Any]:
-        structured_output: dict[str, Any] | list[Any] = {}
+    def _parse_structured_output(self, result_text: str) -> dict[str, Any]:
+        structured_output: dict[str, Any] = {}
         try:
             parsed = json.loads(result_text)
-            if not isinstance(parsed, (dict | list)):
+            if not isinstance(parsed, dict):
                 raise LLMNodeError(f"Failed to parse structured output: {result_text}")
             structured_output = parsed
         except json.JSONDecodeError as e:
             # if the result_text is not a valid json, try to repair it
             parsed = json_repair.loads(result_text)
-            if not isinstance(parsed, (dict | list)):
-                raise LLMNodeError(f"Failed to parse structured output: {result_text}")
+            if not isinstance(parsed, dict):
+                # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
+                if isinstance(parsed, list):
+                    parsed = next((item for item in parsed if isinstance(item, dict)), {})
+                else:
+                    raise LLMNodeError(f"Failed to parse structured output: {result_text}")
             structured_output = parsed
         return structured_output
 

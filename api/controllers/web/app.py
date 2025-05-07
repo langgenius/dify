@@ -1,6 +1,4 @@
-
-from flask import request
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_restful import marshal_with
 
 from controllers.common import fields
 from controllers.web import api

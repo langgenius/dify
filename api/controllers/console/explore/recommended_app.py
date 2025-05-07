@@ -1,5 +1,5 @@
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, fields, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, fields, marshal_with, reqparse
 
 from constants.languages import languages
 from controllers.console import api
