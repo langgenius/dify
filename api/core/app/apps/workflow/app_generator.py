@@ -18,8 +18,6 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
-from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.apps.workflow.generate_task_pipeline_fast import WorkflowAppGenerateTaskPipelineFast
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -27,6 +25,7 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_app_generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+from core.workflow.workflow_app_generate_task_pipeline_fast import WorkflowAppGenerateTaskPipelineFast
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser, Workflow
@@ -418,6 +417,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 queue_manager=queue_manager,
                 user=user,
                 stream=stream,
+                workflow_node_execution_repository=workflow_node_execution_repository,
             )
         else:
             # Use the standard task pipeline
@@ -427,6 +427,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 queue_manager=queue_manager,
                 user=user,
                 stream=stream,
+                workflow_node_execution_repository=workflow_node_execution_repository,
             )
 
         try:
