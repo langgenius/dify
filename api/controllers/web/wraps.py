@@ -1,7 +1,7 @@
 from functools import wraps
 
 from flask import request
-from flask_restful import Resource  # type: ignore
+from flask_restful import Resource
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from controllers.web.error import WebSSOAuthRequiredError

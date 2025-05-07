@@ -1,6 +1,6 @@
 from dateutil.parser import isoparse
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from sqlalchemy.orm import Session
 
 from controllers.console import api

@@ -1,5 +1,7 @@
+from urllib.parse import quote
+
 from flask import Response
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.files import api
@@ -46,7 +48,8 @@ class ToolFilePreviewApi(Resource):
         if tool_file.size > 0:
             response.headers["Content-Length"] = str(tool_file.size)
         if args["as_attachment"]:
-            response.headers["Content-Disposition"] = f"attachment; filename={tool_file.name}"
+            encoded_filename = quote(tool_file.name)
+            response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
         return response
 
