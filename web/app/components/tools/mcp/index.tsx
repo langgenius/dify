@@ -2,12 +2,31 @@
 import { useMemo, useState } from 'react'
 import NewMCPCard from './create-card'
 import MCPCard from './provider-card'
+import MCPDetailPanel from './provider-detail'
 import { useAllMCPTools, useInvalidateAllMCPTools } from '@/service/use-tools'
 import type { MCPProvider } from '@/app/components/tools/types'
 import cn from '@/utils/classnames'
 
 type Props = {
   searchText: string
+}
+
+function renderDefaultCard() {
+  const defaultCards = Array.from({ length: 36 }, (_, index) => (
+    <div
+      key={index}
+      className={cn(
+        'inline-flex h-[111px] rounded-xl bg-background-default-lighter opacity-10',
+        index < 4 && 'opacity-60',
+        index >= 4 && index < 8 && 'opacity-50',
+        index >= 8 && index < 12 && 'opacity-40',
+        index >= 12 && index < 16 && 'opacity-30',
+        index >= 16 && index < 20 && 'opacity-25',
+        index >= 20 && index < 24 && 'opacity-20',
+      )}
+    ></div>
+  ))
+  return defaultCards
 }
 
 const MCPList = ({
@@ -25,24 +44,6 @@ const MCPList = ({
   }, [list, searchText])
 
   const [currentProvider, setCurrentProvider] = useState<MCPProvider>()
-
-  function renderDefaultCard() {
-    const defaultCards = Array.from({ length: 36 }, (_, index) => (
-      <div
-        key={index}
-        className={cn(
-          'inline-flex h-[111px] rounded-xl bg-background-default-lighter opacity-10',
-          index < 4 && 'opacity-60',
-          index >= 4 && index < 8 && 'opacity-50',
-          index >= 8 && index < 12 && 'opacity-40',
-          index >= 12 && index < 16 && 'opacity-30',
-          index >= 16 && index < 20 && 'opacity-25',
-          index >= 20 && index < 24 && 'opacity-20',
-        )}
-      ></div>
-    ))
-    return defaultCards
-  }
 
   return (
     <>
@@ -63,6 +64,13 @@ const MCPList = ({
         ))}
         {!list.length && renderDefaultCard()}
       </div>
+      {currentProvider && (
+        <MCPDetailPanel
+          detail={currentProvider}
+          onHide={() => setCurrentProvider(undefined)}
+          onUpdate={() => invalidateMCPList()}
+        />
+      )}
     </>
   )
 }

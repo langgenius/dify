@@ -1,0 +1,50 @@
+'use client'
+import React from 'react'
+import type { FC } from 'react'
+import Drawer from '@/app/components/base/drawer'
+import type { MCPProvider } from '@/app/components/tools/types'
+import cn from '@/utils/classnames'
+
+type Props = {
+  detail?: MCPProvider
+  onUpdate: () => void
+  onHide: () => void
+}
+
+const MCPDetailPanel: FC<Props> = ({
+  detail,
+  onUpdate,
+  onHide,
+}) => {
+  const handleUpdate = (isDelete = false) => {
+    if (isDelete)
+      onHide()
+    onUpdate()
+  }
+
+  if (!detail)
+    return null
+
+  return (
+    <Drawer
+      isOpen={!!detail}
+      clickOutsideNotOpen={false}
+      onClose={onHide}
+      footer={null}
+      mask={false}
+      positionCenter={false}
+      panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
+    >
+      {detail && (
+        <>
+          <div>HEADER</div>
+          <div className='grow overflow-y-auto'>
+            TOOL list
+          </div>
+        </>
+      )}
+    </Drawer>
+  )
+}
+
+export default MCPDetailPanel
