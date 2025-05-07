@@ -244,7 +244,7 @@ class WorkflowAppGenerateTaskPipelineFast:
                     user_id=self._user_id,
                     created_by_role=self._created_by_role,
                 )
-                self._workflow_run_id = workflow_run.id
+                self._workflow_run_id = self._workflow_run.id
 
             elif isinstance(event, QueueWorkflowSucceededEvent):
                 if not self._workflow_run_id:
