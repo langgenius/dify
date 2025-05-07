@@ -4,7 +4,6 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
-
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
@@ -33,7 +32,12 @@ def generate_image_task(
 
     Usage: generate_image_task.delay(end_user_id, content_type, app_id, image_id)
     """
-    logging.info(click.style(f"Starting image generation for user {end_user_id}, image_id: {image_id}", fg="green"))
+    logging.info(
+        click.style(
+            f"Starting image generation for user {end_user_id}, image_id: {image_id}",
+            fg="green",
+        )
+    )
     start_at = time.perf_counter()
 
     try:
@@ -43,7 +47,11 @@ def generate_image_task(
             raise Exception(f"End user {end_user_id} not found")
 
         # Get the existing UserGeneratedImage entity
-        user_generated_image = db.session.query(UserGeneratedImage).filter(UserGeneratedImage.id == image_id).first()
+        user_generated_image = (
+            db.session.query(UserGeneratedImage)
+            .filter(UserGeneratedImage.id == image_id)
+            .first()
+        )
         if not user_generated_image:
             raise Exception(f"UserGeneratedImage {image_id} not found")
 
@@ -58,10 +66,16 @@ def generate_image_task(
             db.session.commit()
             raise Exception("Image generation app id is not set")
 
-        image_generation_app_model = App.query.filter(App.id == dify_config.IMAGE_GENERATION_APP_ID).first()
+        image_generation_app_model = (
+            db.session.query(App)
+            .filter(App.id == dify_config.IMAGE_GENERATION_APP_ID)
+            .first()
+        )
         if image_generation_app_model is None:
             user_generated_image.status = "failed"
-            user_generated_image.error_message = "Image generation app model is not found"
+            user_generated_image.error_message = (
+                "Image generation app model is not found"
+            )
             db.session.commit()
             raise Exception("Image generation app model is not found")
 
@@ -69,13 +83,19 @@ def generate_image_task(
         user_profile = end_user.extra_profile
         recent_messages = (
             db.session.query(Message)
-            .filter(Message.app_id == end_user.app_id, Message.from_end_user_id == end_user.id)
+            .filter(
+                Message.app_id == end_user.app_id,
+                Message.from_end_user_id == end_user.id,
+            )
             .order_by(Message.created_at.desc())
             .limit(10)
             .all()
         )
 
-        recent_messages = [f"user: {message.query}\n\nassistant: {message.answer}" for message in recent_messages]
+        recent_messages = [
+            f"user: {message.query}\n\nassistant: {message.answer}"
+            for message in recent_messages
+        ]
 
         # Prepare arguments for generation
         args = {
@@ -146,7 +166,9 @@ def generate_image_task(
         # Update status to failed if we have the entity
         try:
             user_generated_image = (
-                db.session.query(UserGeneratedImage).filter(UserGeneratedImage.id == image_id).first()
+                db.session.query(UserGeneratedImage)
+                .filter(UserGeneratedImage.id == image_id)
+                .first()
             )
             if user_generated_image:
                 user_generated_image.status = "failed"
