@@ -84,6 +84,7 @@ class PluginDeclaration(BaseModel):
     resource: PluginResourceRequirements
     plugins: Plugins
     tags: list[str] = Field(default_factory=list)
+    repo: Optional[str] = Field(default=None)
     verified: bool = Field(default=False)
     tool: Optional[ToolProviderEntity] = None
     model: Optional[ProviderEntity] = None
