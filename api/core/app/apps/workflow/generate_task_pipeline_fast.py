@@ -238,7 +238,7 @@ class WorkflowAppGenerateTaskPipelineFast:
                 graph_runtime_state = event.graph_runtime_state
 
                 # init workflow run
-                workflow_run = self._workflow_cycle_manager._handle_workflow_run_start_fast(
+                self._workflow_run = self._workflow_cycle_manager._handle_workflow_run_start_fast(
                     session=None,
                     workflow_id=self._workflow_id,
                     user_id=self._user_id,
