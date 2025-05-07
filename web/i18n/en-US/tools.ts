@@ -153,6 +153,12 @@ const translation = {
   toolNameUsageTip: 'Tool call name for agent reasoning and prompting',
   copyToolName: 'Copy Name',
   noTools: 'No tools found',
+  mcp: {
+    create: {
+      cardTitle: 'Add MCP Server (HTTP)',
+      cardLink: 'Learn more about MCP server integration',
+    },
+  },
 }
 
 export default translation

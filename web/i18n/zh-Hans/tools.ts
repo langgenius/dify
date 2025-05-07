@@ -153,6 +153,12 @@ const translation = {
   toolNameUsageTip: '工具调用名称，用于 Agent 推理和提示词',
   copyToolName: '复制名称',
   noTools: '没有工具',
+  mcp: {
+    create: {
+      cardTitle: '添加 MCP 服务 (HTTP)',
+      cardLink: '了解更多关于 MCP 服务集成的信息',
+    },
+  },
 }
 
 export default translation
