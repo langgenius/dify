@@ -4,6 +4,7 @@ import time
 
 import click
 from celery import shared_task  # type: ignore
+
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
