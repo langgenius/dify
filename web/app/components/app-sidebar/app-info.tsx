@@ -284,7 +284,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               <RiFileDownloadLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
               <span className='system-xs-medium text-components-button-secondary-text'>{t('app.export')}</span>
             </Button>
-            <PortalToFollowElem
+            {appDetail.mode !== 'agent-chat' && <PortalToFollowElem
               open={showMore}
               onOpenChange={setShowMore}
               placement='bottom-end'
@@ -327,7 +327,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   }
                 </div>
               </PortalToFollowElemContent>
-            </PortalToFollowElem>
+            </PortalToFollowElem>}
           </div>
         </div>
         <div className='flex flex-1'>
