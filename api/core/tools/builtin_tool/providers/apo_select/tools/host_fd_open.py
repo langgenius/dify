@@ -21,17 +21,24 @@ class HostCPUIoWaitRespTool(BuiltinTool):
         node = tool_parameters.get("node", '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
+        job = tool_parameters.get('job')
+        if not job:
+            job = '.*'
         params = {
-          'metricName': '宿主机监控指标 - System Misc - File Descriptors - Open file descriptors',
+          'metricName': '宿主机监控指标 - Storage Filesystem - File Descriptor - Open files',
           'params': {
-            "node": node
+            "node": node,
+            "job": job,
           },
           'startTime': start_time,
           'endTime': end_time,
           'step': APOUtils.get_step(start_time, end_time),
           }
-        resp = requests.post(dify_config.APO_BACKEND_URL + '/api/metric/query', json=params)
-        list = resp.json()['result']
+        resp = requests.post(
+            f'{dify_config.APO_BACKEND_URL}/api/metric/query', json=params
+        )
+        resp_data = resp.json()
+        list = resp_data["result"]
         list = json.dumps({
             'type': 'metric',
             'display': True,

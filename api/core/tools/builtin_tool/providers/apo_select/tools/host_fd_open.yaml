@@ -13,9 +13,22 @@ description:
   llm: 宿主机当前打开文件描述符数
 display:
   type: metric
-  title: 宿主机监控指标 - System Misc - File Descriptors - Open file descriptors
-  unit: percent(0-100)百分比
+  title: 宿主机监控指标 - Storage Filesystem - File Descriptor - Open files
+  unit: short
 parameters:
+  - name: job
+    type: string
+    required: false
+    label:
+      en_US: job
+      zh_Hans: job
+      pt_BR: job
+    human_description:
+      en_US: Specified scrape job name
+      zh_Hans: 采集任务名
+      pt_BR: Specified scrape job name
+    llm_description: Specified scrape job name
+    form: llm
   - name: node
     type: string
     required: false
