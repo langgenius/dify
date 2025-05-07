@@ -1,8 +1,8 @@
 import io
 
 from flask import request, send_file
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -10,7 +10,7 @@ from controllers.console import api
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.manager.exc import PluginDaemonClientSideError
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import login_required
 from models.account import TenantPluginPermission
 from services.plugin.plugin_permission_service import PluginPermissionService

@@ -26,6 +26,8 @@ const translation = {
     },
     tryToSolve: 'Thử giải quyết',
     temporarySystemIssue: 'Xin lỗi, hệ thống đang gặp sự cố tạm thời.',
+    expand: 'Mở rộng',
+    collapse: 'Thu gọn',
   },
   generation: {
     tabs: {

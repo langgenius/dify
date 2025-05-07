@@ -1,7 +1,7 @@
 from configs import dify_config
 from core.helper import marketplace
 from core.plugin.entities.plugin import ModelProviderID, PluginDependency, PluginInstallationSource, ToolProviderID
-from core.plugin.manager.plugin import PluginInstallationManager
+from core.plugin.impl.plugin import PluginInstaller
 
 
 class DependenciesAnalysisService:
@@ -38,7 +38,7 @@ class DependenciesAnalysisService:
         for dependency in dependencies:
             required_plugin_unique_identifiers.append(dependency.value.plugin_unique_identifier)
 
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
 
         # get leaked dependencies
         missing_plugins = manager.fetch_missing_dependencies(tenant_id, required_plugin_unique_identifiers)
@@ -64,7 +64,7 @@ class DependenciesAnalysisService:
         Generate dependencies through the list of plugin ids
         """
         dependencies = list(set(dependencies))
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
         plugins = manager.fetch_plugin_installation_by_ids(tenant_id, dependencies)
         result = []
         for plugin in plugins:

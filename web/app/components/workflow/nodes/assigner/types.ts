@@ -10,6 +10,8 @@ export enum WriteMode {
   decrement = '-=',
   multiply = '*=',
   divide = '/=',
+  removeFirst = 'remove-first',
+  removeLast = 'remove-last',
 }
 
 export enum AssignerNodeInputType {

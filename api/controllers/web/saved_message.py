@@ -1,5 +1,5 @@
-from flask_restful import fields, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_restful import fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from werkzeug.exceptions import NotFound
 
 from controllers.web import api
@@ -67,7 +67,7 @@ class SavedMessageApi(WebApiResource):
 
         SavedMessageService.delete(app_model, end_user, message_id)
 
-        return {"result": "success"}
+        return {"result": "success"}, 204
 
 
 api.add_resource(SavedMessageListApi, "/saved-messages")

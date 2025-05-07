@@ -8,7 +8,7 @@ import uuid
 from collections import Counter
 from typing import Any, Optional
 
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound

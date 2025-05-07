@@ -1,5 +1,5 @@
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
@@ -65,7 +65,7 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
 
         ApiKeyAuthService.delete_provider_auth(current_user.current_tenant_id, binding_id)
 
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 api.add_resource(ApiKeyAuthDataSource, "/api-key-auth/data-source")

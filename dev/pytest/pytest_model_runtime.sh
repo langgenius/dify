@@ -1,6 +1,9 @@
 #!/bin/bash
 set -x
 
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+cd "$SCRIPT_DIR/../.."
+
 pytest api/tests/integration_tests/model_runtime/anthropic \
   api/tests/integration_tests/model_runtime/azure_openai \
   api/tests/integration_tests/model_runtime/openai api/tests/integration_tests/model_runtime/chatglm \

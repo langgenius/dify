@@ -30,6 +30,8 @@ const translation = {
     },
     tryToSolve: '問題を解決する',
     temporarySystemIssue: 'システムに一時的な問題が発生しています',
+    expand: '拡大',
+    collapse: '縮小',
   },
   generation: {
     tabs: {

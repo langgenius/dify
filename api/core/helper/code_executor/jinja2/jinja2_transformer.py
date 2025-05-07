@@ -21,20 +21,20 @@ class Jinja2TemplateTransformer(TemplateTransformer):
                 import jinja2
                 template = jinja2.Template('''{cls._code_placeholder}''')
                 return template.render(**inputs)
-                
+
             import json
             from base64 import b64decode
-            
+
             # decode and prepare input dict
             inputs_obj = json.loads(b64decode('{cls._inputs_placeholder}').decode('utf-8'))
-            
+
             # execute main function
             output = main(**inputs_obj)
-            
+
             # convert output and print
             result = f'''<<RESULT>>{{output}}<<RESULT>>'''
             print(result)
-            
+
             """)
         return runner_script
 
@@ -43,15 +43,15 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         preload_script = dedent("""
             import jinja2
             from base64 import b64decode
-            
+
             def _jinja2_preload_():
                 # prepare jinja2 environment, load template and render before to avoid sandbox issue
                 template = jinja2.Template('{{s}}')
                 template.render(s='a')
-            
+
             if __name__ == '__main__':
                 _jinja2_preload_()
-            
+
             """)
 
         return preload_script

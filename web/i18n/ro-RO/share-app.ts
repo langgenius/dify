@@ -30,6 +30,8 @@ const translation = {
     },
     tryToSolve: 'Încercați să rezolvați',
     temporarySystemIssue: 'Ne pare rău, problemă temporară a sistemului.',
+    expand: 'Extinde',
+    collapse: 'Restrânge',
   },
   generation: {
     tabs: {

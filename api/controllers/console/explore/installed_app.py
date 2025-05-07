@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, inputs, marshal_with, reqparse
 from sqlalchemy import and_
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -113,7 +113,7 @@ class InstalledAppApi(InstalledAppResource):
         db.session.delete(installed_app)
         db.session.commit()
 
-        return {"result": "success", "message": "App uninstalled successfully"}
+        return {"result": "success", "message": "App uninstalled successfully"}, 204
 
     def patch(self, installed_app):
         parser = reqparse.RequestParser()

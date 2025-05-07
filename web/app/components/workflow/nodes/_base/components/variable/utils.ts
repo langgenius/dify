@@ -134,18 +134,33 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   const { children } = obj
   const isStructuredOutput = !!(children as StructuredOutput)?.schema?.properties
 
+  let childrenResult: Var[] | StructuredOutput | undefined
+
+  if (isStructuredOutput) {
+    childrenResult = findExceptVarInStructuredOutput(children, filterVar)
+  }
+ else if (Array.isArray(children)) {
+    childrenResult = children.filter((item: Var) => {
+      const { children: itemChildren } = item
+      const currSelector = [...value_selector, item.variable]
+
+      if (!itemChildren)
+        return filterVar(item, currSelector)
+
+      const filteredObj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contain file children
+      return filteredObj.children && (filteredObj.children as Var[])?.length > 0
+    })
+  }
+ else {
+    childrenResult = []
+  }
+
   const res: Var = {
     variable: obj.variable,
     type: isFile ? VarType.file : VarType.object,
-    children: isStructuredOutput ? findExceptVarInStructuredOutput(children, filterVar) : children.filter((item: Var) => {
-      const { children } = item
-      const currSelector = [...value_selector, item.variable]
-      if (!children)
-        return filterVar(item, currSelector)
-      const obj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contains file children
-      return obj.children && (obj.children as Var[])?.length > 0
-    }),
+    children: childrenResult,
   }
+
   return res
 }
 
@@ -562,8 +577,20 @@ export const toNodeOutputVars = (
       chatVarList: conversationVariables,
     },
   }
+  // Sort nodes in reverse chronological order (most recent first)
+  const sortedNodes = [...nodes].sort((a, b) => {
+    if (a.data.type === BlockEnum.Start) return 1
+    if (b.data.type === BlockEnum.Start) return -1
+    if (a.data.type === 'env') return 1
+    if (b.data.type === 'env') return -1
+    if (a.data.type === 'conversation') return 1
+    if (b.data.type === 'conversation') return -1
+    // sort nodes by x position
+    return (b.position?.x || 0) - (a.position?.x || 0)
+  })
+
   const res = [
-    ...nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
+    ...sortedNodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
     ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
     ...((isChatMode && conversationVariables.length > 0) ? [CHAT_VAR_NODE] : []),
   ].map((node) => {
@@ -596,17 +623,16 @@ const getIterationItemType = ({
     arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
   }
   else {
-    (valueSelector).slice(1).forEach((key, i) => {
+    for (let i = 1; i < valueSelector.length - 1; i++) {
+      const key = valueSelector[i]
       const isLast = i === valueSelector.length - 2
-      curr = curr?.find((v: any) => v.variable === key)
-      if (isLast) {
-        arrayType = curr?.type
-      }
-      else {
-        if (curr?.type === VarType.object || curr?.type === VarType.file)
-          curr = curr.children
-      }
-    })
+      curr = Array.isArray(curr) ? curr.find(v => v.variable === key) : []
+
+      if (isLast)
+      arrayType = curr?.type
+      else if (curr?.type === VarType.object || curr?.type === VarType.file)
+      curr = curr.children || []
+    }
   }
 
   switch (arrayType as VarType) {
@@ -631,7 +657,7 @@ const getLoopItemType = ({
 }: {
   valueSelector: ValueSelector
   beforeNodesOutputVars: NodeOutPutVar[]
-  // eslint-disable-next-line sonarjs/no-identical-functions
+
 }): VarType => {
   const outputVarNodeId = valueSelector[0]
   const isSystem = isSystemVar(valueSelector)

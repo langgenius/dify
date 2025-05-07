@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Textdatei hochladen',
-      button: 'Datei hierher ziehen oder',
+      button: 'Dateien und Ordner hierher ziehen oder klicken',
       browse: 'Durchsuchen',
       tip: 'Unterstützt {{supportTypes}}. Maximal {{size}}MB pro Datei.',
       validation: {
@@ -69,7 +69,7 @@ const translation = {
       unknownError: 'Unbekannter Fehler',
       resetAll: 'Alles zurücksetzen',
       extractOnlyMainContent: 'Extrahieren Sie nur den Hauptinhalt (keine Kopf-, Navigations- und Fußzeilen usw.)',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       firecrawlTitle: 'Extrahieren von Webinhalten mit 🔥Firecrawl',
       maxDepthTooltip: 'Maximale Tiefe für das Crawlen relativ zur eingegebenen URL. Tiefe 0 kratzt nur die Seite der eingegebenen URL, Tiefe 1 kratzt die URL und alles nach der eingegebenen URL + ein / und so weiter.',
       crawlSubPage: 'Unterseiten crawlen',

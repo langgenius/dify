@@ -76,7 +76,7 @@ const AppPublisher = ({
   const appDetail = useAppStore(state => state.appDetail)
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
-  const appURL = `${appBaseURL}/${basePath}/${appMode}/${accessToken}`
+  const appURL = `${appBaseURL}${basePath}/${appMode}/${accessToken}`
   const isChatApp = ['chat', 'agent-chat', 'completion'].includes(appDetail?.mode || '')
 
   const language = useGetLanguage()
@@ -231,7 +231,7 @@ const AppPublisher = ({
               >
                 {t('workflow.common.runApp')}
               </SuggestedAction>
-              {appDetail?.mode === 'workflow'
+              {appDetail?.mode === 'workflow' || appDetail?.mode === 'completion'
                 ? (
                   <SuggestedAction
                     disabled={!publishedAt}

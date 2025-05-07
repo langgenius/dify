@@ -26,6 +26,8 @@ const translation = {
     },
     tryToSolve: '해결하려고 합니다',
     temporarySystemIssue: '죄송합니다. 일시적인 시스템 문제가 발생했습니다.',
+    expand: '확장',
+    collapse: '축소',
   },
   generation: {
     tabs: {

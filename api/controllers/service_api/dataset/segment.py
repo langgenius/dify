@@ -1,6 +1,6 @@
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import marshal, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api import api
@@ -159,7 +159,7 @@ class DatasetSegmentApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
         SegmentService.delete_segment(segment, document, dataset)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     def post(self, tenant_id, dataset_id, document_id, segment_id):
@@ -344,7 +344,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
 
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")

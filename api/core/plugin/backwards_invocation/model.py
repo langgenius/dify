@@ -239,8 +239,8 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         content = payload.text
 
         SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
-and you can quickly aimed at the main point of an webpage and reproduce it in your own words but 
-retain the original meaning and keep the key points. 
+and you can quickly aimed at the main point of an webpage and reproduce it in your own words but
+retain the original meaning and keep the key points.
 however, the text you got is too long, what you got is possible a part of the text.
 Please summarize the text you got.
 

@@ -35,7 +35,7 @@ const translation = {
     },
     uploader: {
       title: '上传文本文件',
-      button: '拖拽文件至此，或者',
+      button: '拖拽文件或文件夹至此，或者',
       browse: '选择文件',
       tip: '已支持 {{supportTypes}}，每个文件不超过 {{size}}MB。',
       validation: {
@@ -79,7 +79,7 @@ const translation = {
       run: '运行',
       firecrawlTitle: '使用 🔥Firecrawl 提取网页内容',
       firecrawlDoc: 'Firecrawl 文档',
-      firecrawlDocLink: 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/zh-hans/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       jinaReaderTitle: '将整个站点内容转换为 Markdown 格式',
       jinaReaderDoc: '了解更多关于 Jina Reader',
       jinaReaderDocLink: 'https://jina.ai/reader',

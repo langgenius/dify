@@ -18,13 +18,13 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
-from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.repository import RepositoryFactory
-from core.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.workflow_app_generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser, Workflow
@@ -138,12 +138,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={
-                "tenant_id": application_generate_entity.app_config.tenant_id,
-                "app_id": application_generate_entity.app_config.app_id,
-                "session_factory": session_factory,
-            }
+        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory,
+            tenant_id=application_generate_entity.app_config.tenant_id,
+            app_id=application_generate_entity.app_config.app_id,
         )
 
         return self._generate(
@@ -264,12 +262,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={
-                "tenant_id": application_generate_entity.app_config.tenant_id,
-                "app_id": application_generate_entity.app_config.app_id,
-                "session_factory": session_factory,
-            }
+        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory,
+            tenant_id=application_generate_entity.app_config.tenant_id,
+            app_id=application_generate_entity.app_config.app_id,
         )
 
         return self._generate(
@@ -329,12 +325,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={
-                "tenant_id": application_generate_entity.app_config.tenant_id,
-                "app_id": application_generate_entity.app_config.app_id,
-                "session_factory": session_factory,
-            }
+        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory,
+            tenant_id=application_generate_entity.app_config.tenant_id,
+            app_id=application_generate_entity.app_config.app_id,
         )
 
         return self._generate(

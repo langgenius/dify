@@ -4,7 +4,7 @@ import os
 import uuid
 from typing import Any, Literal, Union
 
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
