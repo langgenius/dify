@@ -6,9 +6,9 @@ import socket
 import sys
 from typing import Union
 
+import flask
 import httpx  # To get httpx.Response type hint
 import requests  # To get requests.Response type hint
-import flask
 from celery.signals import worker_init  # type: ignore
 from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 from opentelemetry.semconv.trace import SpanAttributes
@@ -31,7 +31,6 @@ def on_user_loaded(_sender, user):
 
 
 def init_app(app: DifyApp):
-    from opentelemetry.semconv.trace import SpanAttributes
 
     def is_celery_worker():
         return "celery" in sys.argv[0].lower()
