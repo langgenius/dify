@@ -5,10 +5,10 @@ import { useStore } from '@/app/components/workflow/store'
 import TestRunPanel from './test-run'
 
 const RagPipelinePanelOnRight = () => {
-  const showTestRunPanel = useStore(s => s.showTestRunPanel)
+  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   return (
     <>
-      {showTestRunPanel && <TestRunPanel />}
+      {showDebugAndPreviewPanel && <TestRunPanel />}
     </>
   )
 }

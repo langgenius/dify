@@ -1,4 +1,4 @@
-import { useStore } from '@/app/components/workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
 import StepIndicator from './step-indicator'
@@ -20,6 +20,7 @@ import Actions from './data-source/actions'
 import DocumentProcessing from './document-processing'
 
 const TestRunPanel = () => {
+  const workflowStore = useWorkflowStore()
   const [currentStep, setCurrentStep] = useState(2)
   const [dataSource, setDataSource] = useState<string>(DataSourceProvider.waterCrawl)
   const [fileList, setFiles] = useState<FileItem[]>([])
@@ -28,7 +29,6 @@ const TestRunPanel = () => {
   const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
   const [crawlOptions, setCrawlOptions] = useState<CrawlOptions>(DEFAULT_CRAWL_OPTIONS)
 
-  const setShowTestRunPanel = useStore(s => s.setShowTestRunPanel)
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
 
@@ -60,7 +60,8 @@ const TestRunPanel = () => {
   }, [dataSource, nextDisabled, isShowVectorSpaceFull, notionPages.length, websitePages.length])
 
   const handleClose = () => {
-    setShowTestRunPanel?.(false)
+    const { setShowDebugAndPreviewPanel } = workflowStore.getState()
+    setShowDebugAndPreviewPanel(false)
   }
 
   const handleDataSourceSelect = useCallback((option: string) => {

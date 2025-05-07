@@ -31,16 +31,15 @@ export const useWorkflowStartRun = () => {
     const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
     const startVariables = startNode?.data.variables || []
     const {
-      showTestRunPanel,
+      showDebugAndPreviewPanel,
       setShowInputsPanel,
       setShowEnvPanel,
-      setShowTestRunPanel,
+      setShowDebugAndPreviewPanel,
     } = workflowStore.getState()
 
     setShowEnvPanel(false)
 
-    if (showTestRunPanel) {
-      setShowTestRunPanel?.(false)
+    if (showDebugAndPreviewPanel) {
       handleCancelDebugAndPreviewPanel()
       return
     }
@@ -48,11 +47,11 @@ export const useWorkflowStartRun = () => {
     if (!startVariables.length) {
       await doSyncWorkflowDraft()
       handleRun({ inputs: {}, files: [] })
-      setShowTestRunPanel?.(true)
+      setShowDebugAndPreviewPanel(true)
       setShowInputsPanel(false)
     }
     else {
-      setShowTestRunPanel?.(true)
+      setShowDebugAndPreviewPanel(true)
       setShowInputsPanel(true)
     }
   }, [store, workflowStore, handleCancelDebugAndPreviewPanel, handleRun, doSyncWorkflowDraft])
