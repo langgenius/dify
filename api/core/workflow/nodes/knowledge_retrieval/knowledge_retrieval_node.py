@@ -289,7 +289,7 @@ class KnowledgeRetrievalNode(LLMNode):
                                 "dataset_name": dataset.name,
                                 "document_id": document.id,
                                 "document_name": document.name,
-                                "document_data_source_type": document.data_source_type,
+                                "data_source_type": document.data_source_type,
                                 "segment_id": segment.id,
                                 "retriever_from": "workflow",
                                 "score": record.score or 0.0,
