@@ -12,6 +12,7 @@ import useTemplateTransformSingleRunFormParams from '@/app/components/workflow/n
 import useQuestionClassifierSingleRunFormParams from '@/app/components/workflow/nodes/question-classifier/use-single-run-form-params'
 import useParameterExtractorSingleRunFormParams from '@/app/components/workflow/nodes/parameter-extractor/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
+import useToolSingleRunFormParams from '@/app/components/workflow/nodes/tool/use-single-run-form-params'
 import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
 import useAgentSingleRunFormParams from '@/app/components/workflow/nodes/agent/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
@@ -19,6 +20,10 @@ import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 
+import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
+
+// import
+import type { CommonNodeType } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -31,7 +36,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.TemplateTransform]: useTemplateTransformSingleRunFormParams,
   [BlockEnum.QuestionClassifier]: useQuestionClassifierSingleRunFormParams,
   [BlockEnum.HttpRequest]: useHttpRequestSingleRunFormParams,
-  [BlockEnum.Tool]: undefined,
+  [BlockEnum.Tool]: useToolSingleRunFormParams,
   [BlockEnum.ParameterExtractor]: useParameterExtractorSingleRunFormParams,
   [BlockEnum.Iteration]: useIterationSingleRunFormParams,
   [BlockEnum.Agent]: useAgentSingleRunFormParams,
@@ -56,17 +61,59 @@ const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
   }
 }
 
+const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
+  [BlockEnum.Tool]: useToolGetDataForCheckMore,
+  [BlockEnum.LLM]: undefined,
+  [BlockEnum.KnowledgeRetrieval]: undefined,
+  [BlockEnum.Code]: undefined,
+  [BlockEnum.TemplateTransform]: undefined,
+  [BlockEnum.QuestionClassifier]: undefined,
+  [BlockEnum.HttpRequest]: undefined,
+  [BlockEnum.ParameterExtractor]: undefined,
+  [BlockEnum.Iteration]: undefined,
+  [BlockEnum.Agent]: undefined,
+  [BlockEnum.DocExtractor]: undefined,
+  [BlockEnum.Loop]: undefined,
+  [BlockEnum.Start]: undefined,
+  [BlockEnum.IfElse]: undefined,
+  [BlockEnum.VariableAggregator]: undefined,
+  [BlockEnum.End]: undefined,
+  [BlockEnum.Answer]: undefined,
+  [BlockEnum.VariableAssigner]: undefined,
+  [BlockEnum.ListFilter]: undefined,
+  [BlockEnum.IterationStart]: undefined,
+  [BlockEnum.Assigner]: undefined,
+  [BlockEnum.LoopStart]: undefined,
+  [BlockEnum.LoopEnd]: undefined,
+}
+
+const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
+  return (id: string, payload: CommonNodeType<T>) => {
+    return getDataForCheckMoreHooks[nodeType]?.({ id, payload }) || {
+      getData: () => {
+        return {}
+      },
+    }
+  }
+}
+
 type Params<T> = OneStepRunParams<T>
 const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-
+  const {
+    getData: getDataForCheckMore,
+  } = useGetDataForCheckMoreHooks<T>(oneStepRunParams.data.type)(oneStepRunParams.id, oneStepRunParams.data)
   const {
     id,
     data,
   } = oneStepRunParams
-  const oneStepRunRes = useOneStepRun(oneStepRunParams)
+  const oneStepRunRes = useOneStepRun({
+    ...oneStepRunParams,
+    moreDataForCheckValid: getDataForCheckMore(),
+  })
+
   const {
     hideSingleRun,
     handleRun: doCallRunApi,
@@ -77,9 +124,13 @@ const useLastRun = <T>({
     runInputDataRef,
     setRunInputData,
     showSingleRun,
+    runResult,
   } = oneStepRunRes
 
-  const singleRunParams = useSingleRunFormParamsHooks(data.type)({
+  const {
+    nodeInfo,
+    ...singleRunParams
+  } = useSingleRunFormParamsHooks(data.type)({
     id,
     payload: data,
     runInputData,
@@ -88,6 +139,7 @@ const useLastRun = <T>({
     setRunInputData,
     toVarInputs,
     varSelectorsToVarInputs,
+    runResult,
   })
 
   const callRunApi = async (data: Record<string, any>) => {
@@ -115,7 +167,6 @@ const useLastRun = <T>({
     if (!forms || forms.length === 0)
       return []
 
-    // if (!singleRunParams)
     const valuesArr = forms.map((form) => {
       const values: Record<string, any> = {}
       form.inputs.forEach(({ variable }) => {
@@ -181,6 +232,7 @@ const useLastRun = <T>({
     tabType,
     setTabType: handleTabClicked,
     singleRunParams,
+    nodeInfo,
     setRunInputData,
     hasLastRunData,
     handleSingleRun,

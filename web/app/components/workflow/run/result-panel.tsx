@@ -17,7 +17,7 @@ import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
 import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
 
-type ResultPanelProps = {
+export type ResultPanelProps = {
   nodeInfo?: NodeTracing
   inputs?: string
   process_data?: string

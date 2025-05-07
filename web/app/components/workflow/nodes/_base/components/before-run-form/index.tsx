@@ -79,8 +79,6 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  // useWhyDidYouUpdate('BeforeRunForm', { nodeName, nodeType, toolIcon, onHide, onRun, onStop, runningStatus, result, forms, showSpecialResultPanel, filteredExistVarForms, existVarValuesInForms, ...restResultPanelParams })
-
   const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed || runningStatus === NodeRunningStatus.Exception
   const isRunning = runningStatus === NodeRunningStatus.Running
   const isFileLoaded = (() => {

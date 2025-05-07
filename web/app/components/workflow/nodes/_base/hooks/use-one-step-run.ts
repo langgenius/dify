@@ -521,24 +521,6 @@ const useOneStepRun = <T>({
     return varInputs
   }
 
-  const varSelectorsToVarInputs = (valueSelectors: ValueSelector[]): InputVar[] => {
-    return valueSelectors.map((item) => {
-      const varInfo = getNodeInfoById(availableNodesIncludeParent, item[0])?.data
-      return {
-        type: InputVarType.textInput,
-        required: true,
-        label: {
-          nodeType: varInfo?.type,
-          nodeName: varInfo?.title || availableNodesIncludeParent[0]?.data.title, // default start node title
-          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
-          isChatVar: isConversationVar(item),
-        },
-        variable: isSystemVar(item) ? `#${item.join('.')}#` : `${item.join('.')}`,
-        value_selector: item,
-      }
-    })
-  }
-
   const getInputVars = (textList: string[]) => {
     const valueSelectors: ValueSelector[] = []
     textList.forEach((text) => {
@@ -562,6 +544,12 @@ const useOneStepRun = <T>({
 
     const varInputs = toVarInputs(variables)
     return varInputs
+  }
+
+  const varSelectorsToVarInputs = (valueSelectors: ValueSelector[] | string[]): InputVar[] => {
+    return valueSelectors.map((item) => {
+      return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]
+    })
   }
 
   return {

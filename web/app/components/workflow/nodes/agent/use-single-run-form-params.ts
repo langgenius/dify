@@ -3,7 +3,6 @@ import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { useMemo } from 'react'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import type { AgentNodeType } from './types'
-import { useLogs } from '../../run/hooks'
 import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { useStrategyInfo } from './use-config'
@@ -28,7 +27,6 @@ const useSingleRunFormParams = ({
 }: Params) => {
   const { t } = useTranslation()
   const { inputs } = useNodeCrud<AgentNodeType>(id, payload)
-  const logsParams = useLogs()
 
   const formData = useMemo(() => {
     return Object.fromEntries(
@@ -72,7 +70,6 @@ const useSingleRunFormParams = ({
 
   return {
     forms,
-    logsParams,
   }
 }
 

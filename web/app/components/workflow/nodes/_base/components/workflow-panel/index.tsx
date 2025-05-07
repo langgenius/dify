@@ -44,7 +44,7 @@ import {
   hasRetryNode,
 } from '@/app/components/workflow/utils'
 import Tooltip from '@/app/components/base/tooltip'
-import type { Node } from '@/app/components/workflow/types'
+import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
@@ -53,6 +53,7 @@ import useLastRun from './last-run/use-last-run'
 import BeforeRunForm from '../before-run-form'
 import { debounce } from 'lodash-es'
 import { NODES_EXTRA_DATA } from '@/app/components/workflow/constants'
+import { useLogs } from '@/app/components/workflow/run/hooks'
 
 type BasePanelProps = {
   children: ReactNode
@@ -150,6 +151,7 @@ const BasePanel: FC<BasePanelProps> = ({
     tabType,
     setTabType,
     singleRunParams,
+    nodeInfo,
     setRunInputData,
     hasLastRunData,
     handleSingleRun,
@@ -161,6 +163,14 @@ const BasePanel: FC<BasePanelProps> = ({
     data,
     defaultRunInputData: NODES_EXTRA_DATA[data.type]?.defaultRunInputData || {},
   })
+
+  const logParams = useLogs()
+  const passedLogParams = (() => {
+    if ([BlockEnum.Tool, BlockEnum.Agent, BlockEnum.Iteration, BlockEnum.Loop].includes(data.type))
+      return logParams
+
+    return {}
+  })()
 
   if (isShowSingleRun) {
     return (
@@ -182,6 +192,7 @@ const BasePanel: FC<BasePanelProps> = ({
             onRun={handleRunWithParams}
             onStop={handleStop}
             {...singleRunParams!}
+            {...passedLogParams}
             existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
             filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
             result={<></>}
@@ -319,6 +330,8 @@ const BasePanel: FC<BasePanelProps> = ({
             canSingleRun={isSupportSingleRun}
             runningStatus={runningStatus}
             onSingleRunClicked={handleSingleRun}
+            nodeInfo={nodeInfo}
+            {...passedLogParams}
           />
         )}
       </div>
