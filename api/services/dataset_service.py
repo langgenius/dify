@@ -1441,11 +1441,7 @@ class DocumentService:
         index_method: IndexMethod,
         retrieval_setting: RetrievalSetting,
         chunk_structure: Literal["text_model", "hierarchical_model"],
-        original_document_id: str | None = None,
-        account: Account | Any,
-        created_from: str = "rag-pipline",
     ):
-
         if not dataset.indexing_technique:
             if index_method.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
                 raise ValueError("Indexing technique is invalid")
@@ -1453,7 +1449,10 @@ class DocumentService:
             dataset.indexing_technique = index_method.indexing_technique
             if index_method.indexing_technique == "high_quality":
                 model_manager = ModelManager()
-                if index_method.embedding_setting.embedding_model and index_method.embedding_setting.embedding_model_provider:
+                if (
+                    index_method.embedding_setting.embedding_model
+                    and index_method.embedding_setting.embedding_model_provider
+                ):
                     dataset_embedding_model = index_method.embedding_setting.embedding_model
                     dataset_embedding_model_provider = index_method.embedding_setting.embedding_model_provider
                 else:
@@ -1478,15 +1477,16 @@ class DocumentService:
                     }
 
                     dataset.retrieval_model = (
-                        retrieval_setting.model_dump()
-                        if retrieval_setting
-                        else default_retrieval_model
+                        retrieval_setting.model_dump() if retrieval_setting else default_retrieval_model
                     )  # type: ignore
         index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
         index_processor.index(dataset, document, chunks)
 
-        return documents, batch
-    
+        # update document status
+        document.indexing_status = "completed"
+        document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        db.session.commit()
+
     @staticmethod
     def check_documents_upload_quota(count: int, features: FeatureModel):
         can_upload_size = features.documents_upload_quota.limit - features.documents_upload_quota.size

@@ -1,17 +1,20 @@
 """Paragraph index processor."""
 
 import uuid
-from typing import Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from configs import dify_config
 from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import ChildDocument, Document
+from core.workflow.nodes.knowledge_index.entities import ParentChildStructureChunk
 from extensions.ext_database import db
 from libs import helper
 from models.dataset import ChildChunk, Dataset, DocumentSegment
@@ -202,3 +205,33 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_document.page_content = child_page_content
                     child_nodes.append(child_document)
         return child_nodes
+
+    def index(self, dataset: Dataset, document: Document, chunks: Mapping[str, Any]):
+        parent_childs = ParentChildStructureChunk(**chunks)
+        documents = []
+        for parent_child in parent_childs.parent_child_chunks:
+            metadata = {
+                "dataset_id": dataset.id,
+                "document_id": document.id,
+                "doc_id": str(uuid.uuid4()),
+                "doc_hash": helper.generate_text_hash(parent_child.parent_content),
+            }
+            child_documents = []
+            for child in parent_child.child_contents:
+                child_metadata = {
+                    "dataset_id": dataset.id,
+                    "document_id": document.id,
+                    "doc_id": str(uuid.uuid4()),
+                    "doc_hash": helper.generate_text_hash(child),
+                }
+                child_documents.append(ChildDocument(page_content=child, metadata=child_metadata))
+            doc = Document(page_content=parent_child.parent_content, metadata=metadata, children=child_documents)
+            documents.append(doc)
+        if documents:
+            # save node to document segment
+            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+            # add document segments
+            doc_store.add_documents(docs=documents, save_child=True)
+            if dataset.indexing_technique == "high_quality":
+                vector = Vector(dataset)
+                vector.create(documents)

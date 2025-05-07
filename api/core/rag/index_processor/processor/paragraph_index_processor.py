@@ -1,12 +1,14 @@
 """Paragraph index processor."""
 
 import uuid
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any, Optional
 
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
@@ -129,4 +131,24 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
     def index(self, dataset: Dataset, document: Document, chunks: Mapping[str, Any]):
         paragraph = GeneralStructureChunk(**chunks)
-        pass
+        documents = []
+        for content in paragraph.general_chunk:
+            metadata = {
+                "dataset_id": dataset.id,
+                "document_id": document.id,
+                "doc_id": str(uuid.uuid4()),
+                "doc_hash": helper.generate_text_hash(content),
+            }
+            doc = Document(page_content=content, metadata=metadata)
+            documents.append(doc)
+        if documents:
+            # save node to document segment
+            doc_store = DatasetDocumentStore(dataset=dataset, user_id=document.created_by, document_id=document.id)
+            # add document segments
+            doc_store.add_documents(docs=documents, save_child=False)
+            if dataset.indexing_technique == "high_quality":
+                vector = Vector(dataset)
+                vector.create(documents)
+            elif dataset.indexing_technique == "economy":
+                keyword = Keyword(dataset)
+                keyword.add_texts(documents)
