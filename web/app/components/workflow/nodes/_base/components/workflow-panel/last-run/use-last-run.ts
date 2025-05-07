@@ -28,6 +28,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
@@ -101,6 +102,7 @@ type Params<T> = OneStepRunParams<T>
 const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
+  const { conversationVars } = useInspectVarsCrud()
   const blockType = oneStepRunParams.data.type
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
@@ -167,41 +169,20 @@ const useLastRun = <T>({
 
   const workflowStore = useWorkflowStore()
   const {
-    getInspectVar,
+    hasSetInspectVar,
   } = workflowStore.getState()
   const getExistVarValuesInForms = (forms: FormProps[]) => {
     if (!forms || forms.length === 0)
       return []
 
     const valuesArr = forms.map((form) => {
-      const values: Record<string, any> = {}
+      const values: Record<string, boolean> = {}
       form.inputs.forEach(({ variable }) => {
-        // #nodeId.path1?.path2?...# => [nodeId, path1]
-        // TODO: conversation vars and envs
         const selector = variable.slice(1, -1).split('.')
         const [nodeId, varName] = selector.slice(0, 2)
-        const inspectVarValue = getInspectVar(nodeId, varName)
-        if (inspectVarValue !== undefined) {
-          const subPathArr = selector.slice(2)
-          if (subPathArr.length > 0) {
-            let current = inspectVarValue.value
-            let invalid = false
-            subPathArr.forEach((subPath) => {
-              if (invalid)
-                return
-
-              if (current && typeof current === 'object' && subPath in current) {
-                current = current[subPath]
-                return
-              }
-              invalid = true
-            })
-            values[variable] = current
-          }
-          else {
-            values[variable] = inspectVarValue
-          }
-        }
+        const inspectVarValue = hasSetInspectVar(nodeId, varName, conversationVars) // also detect system var , env and  conversation var
+        if (inspectVarValue)
+          values[variable] = true
       })
       return values
     })
