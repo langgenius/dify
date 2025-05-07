@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { memo } from 'react'
 import cn from '@/utils/classnames'
 
 export type BoxProps = {
@@ -6,7 +7,7 @@ export type BoxProps = {
   children?: ReactNode
   withBorderBottom?: boolean
 }
-export const Box = ({
+export const Box = memo(({
   className,
   children,
   withBorderBottom,
@@ -21,4 +22,4 @@ export const Box = ({
       {children}
     </div>
   )
-}
+})

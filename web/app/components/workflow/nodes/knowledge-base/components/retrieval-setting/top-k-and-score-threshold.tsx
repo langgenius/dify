@@ -3,7 +3,36 @@ import Tooltip from '@/app/components/base/tooltip'
 import Input from '@/app/components/base/input'
 import Switch from '@/app/components/base/switch'
 
-const TopKAndScoreThreshold = () => {
+export type TopKAndScoreThresholdProps = {
+  topK: number
+  onTopKChange: (value: number) => void
+  scoreThreshold?: number
+  onScoreThresholdChange?: (value: number) => void
+  isScoreThresholdEnabled?: boolean
+  onScoreThresholdEnabledChange?: (value: boolean) => void
+}
+const TopKAndScoreThreshold = ({
+  topK,
+  onTopKChange,
+  scoreThreshold,
+  onScoreThresholdChange,
+  isScoreThresholdEnabled,
+  onScoreThresholdEnabledChange,
+}: TopKAndScoreThresholdProps) => {
+  const handleTopKChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(e.target.value)
+    if (Number.isNaN(value))
+      return
+    onTopKChange?.(value)
+  }
+
+  const handleScoreThresholdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = Number(e.target.value)
+    if (Number.isNaN(value))
+      return
+    onScoreThresholdChange?.(value)
+  }
+
   return (
     <div className='grid grid-cols-2 gap-4'>
       <div>
@@ -16,12 +45,16 @@ const TopKAndScoreThreshold = () => {
         </div>
         <Input
           type='number'
+          value={topK}
+          onChange={handleTopKChange}
         />
       </div>
       <div>
         <div className='mb-0.5 flex h-6 items-center'>
           <Switch
             className='mr-2'
+            defaultValue={isScoreThresholdEnabled}
+            onChange={onScoreThresholdEnabledChange}
           />
           <div className='system-sm-medium grow truncate text-text-secondary'>
             Score Threshold
@@ -33,6 +66,8 @@ const TopKAndScoreThreshold = () => {
         </div>
         <Input
           type='number'
+          value={scoreThreshold}
+          onChange={handleScoreThresholdChange}
         />
       </div>
     </div>

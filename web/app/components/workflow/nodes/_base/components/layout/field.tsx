@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { memo } from 'react'
 import type { FieldTitleProps } from '.'
 import { FieldTitle } from '.'
 
@@ -6,7 +7,7 @@ export type FieldProps = {
   fieldTitleProps: FieldTitleProps
   children: ReactNode
 }
-export const Field = ({
+export const Field = memo(({
   fieldTitleProps,
   children,
 }: FieldProps) => {
@@ -16,4 +17,4 @@ export const Field = ({
       {children}
     </div>
   )
-}
+})

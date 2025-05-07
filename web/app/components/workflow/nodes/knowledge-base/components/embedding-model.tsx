@@ -1,13 +1,45 @@
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
-const EmbeddingModel = () => {
-  const handleModelChange = () => {
-    console.log('Model changed')
+type EmbeddingModelProps = {
+  embeddingModel?: string
+  embeddingModelProvider?: string
+  onEmbeddingModelChange?: (model: {
+    embeddingModel: string
+    embeddingModelProvider: string
+  }) => void
+}
+const EmbeddingModel = ({
+  embeddingModel,
+  embeddingModelProvider,
+  onEmbeddingModelChange,
+}: EmbeddingModelProps) => {
+  const {
+    modelList: embeddingModelList,
+  } = useModelListAndDefaultModel(ModelTypeEnum.textEmbedding)
+const embeddingModelConfig = useMemo(() => {
+  if (!embeddingModel || !embeddingModelProvider)
+    return undefined
+
+  return {
+    providerName: embeddingModelProvider,
+    modelName: embeddingModel,
   }
-  const handleCompletionParamsChange = () => {
-    console.log('Completion parameters changed')
-  }
+}, [embeddingModel, embeddingModelProvider])
+
+const handleRerankingModelChange = (model: DefaultModel) => {
+  onEmbeddingModelChange?.({
+    embeddingModelProvider: model.provider,
+    embeddingModel: model.model,
+  })
+}
 
   return (
     <Field
@@ -15,20 +47,12 @@ const EmbeddingModel = () => {
         title: 'Embedding Model',
       }}
     >
-      <ModelParameterModal
-        popupClassName='!w-[387px]'
-        isInWorkflow
-        isAdvancedMode={true}
-        mode={'embedding'}
-        provider={'openai'}
-        completionParams={{}}
-        modelId={'text-embedding-ada-002'}
-        setModel={handleModelChange}
-        onCompletionParamsChange={handleCompletionParamsChange}
-        hideDebugWithMultipleModel
-        debugWithMultipleModel={false}
+      <ModelSelector
+        defaultModel={embeddingModelConfig && { provider: embeddingModelConfig.providerName, model: embeddingModelConfig.modelName }}
+        modelList={embeddingModelList}
+        onSelect={handleRerankingModelChange}
       />
     </Field>
   )
 }
-export default EmbeddingModel
+export default memo(EmbeddingModel)

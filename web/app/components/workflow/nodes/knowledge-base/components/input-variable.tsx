@@ -1,7 +1,8 @@
+import { memo } from 'react'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 
-const EmbeddingModel = () => {
+const InputVariable = () => {
   const handleChange = () => {
     console.log('')
   }
@@ -23,4 +24,4 @@ const EmbeddingModel = () => {
     </Field>
   )
 }
-export default EmbeddingModel
+export default memo(InputVariable)

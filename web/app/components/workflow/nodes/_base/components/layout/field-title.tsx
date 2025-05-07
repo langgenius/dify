@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { memo } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 
@@ -8,7 +9,7 @@ export type FieldTitleProps = {
   subTitle?: string | ReactNode
   tooltip?: string
 }
-export const FieldTitle = ({
+export const FieldTitle = memo(({
   title,
   operation,
   subTitle,
@@ -35,4 +36,4 @@ export const FieldTitle = ({
       }
     </div>
   )
-}
+})

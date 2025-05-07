@@ -27,10 +27,14 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleChunkStructureChange,
     handleIndexMethodChange,
     handleKeywordNumberChange,
+    handleEmbeddingModelChange,
     handleRetrievalSearchMethodChange,
     handleHybridSearchModeChange,
     handleWeighedScoreChange,
     handleRerankingModelChange,
+    handleTopKChange,
+    handleScoreThresholdChange,
+    handleScoreThresholdEnabledChange,
   } = useConfig(id)
 
   return (
@@ -57,7 +61,11 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
           />
           {
             data.indexing_technique === IndexMethodEnum.QUALIFIED && (
-              <EmbeddingModel />
+              <EmbeddingModel
+                embeddingModel={data.embedding_model}
+                embeddingModelProvider={data.embedding_model_provider}
+                onEmbeddingModelChange={handleEmbeddingModelChange}
+              />
             )
           }
           <div className='pt-1'>
@@ -72,6 +80,12 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
             onWeightedScoreChange={handleWeighedScoreChange}
             rerankingModel={data.retrieval_model.reranking_model}
             onRerankingModelChange={handleRerankingModelChange}
+            topK={data.retrieval_model.top_k}
+            onTopKChange={handleTopKChange}
+            scoreThreshold={data.retrieval_model.score_threshold}
+            onScoreThresholdChange={handleScoreThresholdChange}
+            isScoreThresholdEnabled={data.retrieval_model.score_threshold_enabled}
+            onScoreThresholdEnabledChange={handleScoreThresholdEnabledChange}
           />
         </div>
       </GroupWithBox>

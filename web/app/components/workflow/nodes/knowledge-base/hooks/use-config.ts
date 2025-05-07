@@ -42,6 +42,28 @@ export const useConfig = (id: string) => {
     handleNodeDataUpdate({ keyword_number: keywordNumber })
   }, [handleNodeDataUpdate])
 
+  const handleEmbeddingModelChange = useCallback(({
+    embeddingModel,
+    embeddingModelProvider,
+  }: {
+    embeddingModel: string
+    embeddingModelProvider: string
+  }) => {
+    const nodeData = getNodeData()
+    handleNodeDataUpdate({
+      embedding_model: embeddingModel,
+      embedding_model_provider: embeddingModelProvider,
+      retrieval_model: {
+        ...nodeData?.data.retrieval_model,
+        vector_setting: {
+          ...nodeData?.data.retrieval_model.vector_setting,
+          embedding_provider_name: embeddingModelProvider,
+          embedding_model_name: embeddingModel,
+        },
+      },
+    })
+  }, [getNodeData, handleNodeDataUpdate])
+
   const handleRetrievalSearchMethodChange = useCallback((searchMethod: RetrievalSearchMethodEnum) => {
     const nodeData = getNodeData()
     handleNodeDataUpdate({
@@ -95,13 +117,47 @@ export const useConfig = (id: string) => {
     })
   }, [getNodeData, handleNodeDataUpdate])
 
+  const handleTopKChange = useCallback((topK: number) => {
+    const nodeData = getNodeData()
+    handleNodeDataUpdate({
+      retrieval_model: {
+        ...nodeData?.data.retrieval_model,
+        top_k: topK,
+      },
+    })
+  }, [getNodeData, handleNodeDataUpdate])
+
+  const handleScoreThresholdChange = useCallback((scoreThreshold: number) => {
+    const nodeData = getNodeData()
+    handleNodeDataUpdate({
+      retrieval_model: {
+        ...nodeData?.data.retrieval_model,
+        score_threshold: scoreThreshold,
+      },
+    })
+  }, [getNodeData, handleNodeDataUpdate])
+
+  const handleScoreThresholdEnabledChange = useCallback((isEnabled: boolean) => {
+    const nodeData = getNodeData()
+    handleNodeDataUpdate({
+      retrieval_model: {
+        ...nodeData?.data.retrieval_model,
+        score_threshold_enabled: isEnabled,
+      },
+    })
+  }, [getNodeData, handleNodeDataUpdate])
+
   return {
     handleChunkStructureChange,
     handleIndexMethodChange,
     handleKeywordNumberChange,
+    handleEmbeddingModelChange,
     handleRetrievalSearchMethodChange,
     handleHybridSearchModeChange,
     handleWeighedScoreChange,
     handleRerankingModelChange,
+    handleTopKChange,
+    handleScoreThresholdChange,
+    handleScoreThresholdEnabledChange,
   }
 }

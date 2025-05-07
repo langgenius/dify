@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { memo } from 'react'
 import {
   Box,
   Group,
@@ -13,7 +14,7 @@ type GroupWithBoxProps = {
   boxProps?: Omit<BoxProps, 'children'>
   groupProps?: Omit<GroupProps, 'children'>
 }
-export const GroupWithBox = ({
+export const GroupWithBox = memo(({
   children,
   boxProps,
   groupProps,
@@ -25,4 +26,4 @@ export const GroupWithBox = ({
       </Group>
     </Box>
   )
-}
+})

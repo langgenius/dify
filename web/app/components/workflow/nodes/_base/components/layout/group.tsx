@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { memo } from 'react'
 import cn from '@/utils/classnames'
 
 export type GroupProps = {
@@ -6,7 +7,7 @@ export type GroupProps = {
   children?: ReactNode
   withBorderBottom?: boolean
 }
-export const Group = ({
+export const Group = memo(({
   className,
   children,
   withBorderBottom,
@@ -21,4 +22,4 @@ export const Group = ({
       {children}
     </div>
   )
-}
+})

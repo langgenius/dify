@@ -8,7 +8,7 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RerankingModel } from '../../types'
 
-type RerankingModelSelectorProps = {
+export type RerankingModelSelectorProps = {
   rerankingModel?: RerankingModel
   onRerankingModelChange?: (model: RerankingModel) => void
 }
@@ -24,8 +24,8 @@ const RerankingModelSelector = ({
       return undefined
 
     return {
-      provider_name: rerankingModel.reranking_provider_name,
-      model_name: rerankingModel.reranking_model_name,
+      providerName: rerankingModel.reranking_provider_name,
+      modelName: rerankingModel.reranking_model_name,
     }
   }, [rerankingModel])
 
@@ -38,7 +38,7 @@ const RerankingModelSelector = ({
 
   return (
     <ModelSelector
-      defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
+      defaultModel={rerankModel && { provider: rerankModel.providerName, model: rerankModel.modelName }}
       modelList={rerankModelList}
       onSelect={handleRerankingModelChange}
     />
