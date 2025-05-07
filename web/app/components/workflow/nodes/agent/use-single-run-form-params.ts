@@ -6,6 +6,8 @@ import type { AgentNodeType } from './types'
 import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { useStrategyInfo } from './use-config'
+import type { NodeTracing } from '@/types/workflow'
+import formatTracing from '@/app/components/workflow/run/utils/format-log'
 
 const i18nPrefix = 'workflow.nodes.agent'
 
@@ -17,6 +19,7 @@ type Params = {
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
+  runResult: NodeTracing
 }
 const useSingleRunFormParams = ({
   id,
@@ -24,6 +27,7 @@ const useSingleRunFormParams = ({
   runInputData,
   getInputVars,
   setRunInputData,
+  runResult,
 }: Params) => {
   const { t } = useTranslation()
   const { inputs } = useNodeCrud<AgentNodeType>(id, payload)
@@ -68,8 +72,15 @@ const useSingleRunFormParams = ({
     return forms
   }, [runInputData, setRunInputData, t, varInputs])
 
+  const nodeInfo = useMemo(() => {
+    if (!runResult)
+      return
+    return formatTracing([runResult], t)[0]
+  }, [runResult, t])
+
   return {
     forms,
+    nodeInfo,
   }
 }
 

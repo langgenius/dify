@@ -101,16 +101,18 @@ type Params<T> = OneStepRunParams<T>
 const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
+  const blockType = oneStepRunParams.data.type
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getData: getDataForCheckMore,
-  } = useGetDataForCheckMoreHooks<T>(oneStepRunParams.data.type)(oneStepRunParams.id, oneStepRunParams.data)
+  } = useGetDataForCheckMoreHooks<T>(blockType)(oneStepRunParams.id, oneStepRunParams.data)
   const {
     id,
     data,
   } = oneStepRunParams
   const oneStepRunRes = useOneStepRun({
     ...oneStepRunParams,
+    iteratorInputKey: blockType === BlockEnum.Iteration ? `${id}.input_selector` : '',
     moreDataForCheckValid: getDataForCheckMore(),
   })
 
@@ -125,12 +127,13 @@ const useLastRun = <T>({
     setRunInputData,
     showSingleRun,
     runResult,
+    iterationRunResult,
   } = oneStepRunRes
 
   const {
     nodeInfo,
     ...singleRunParams
-  } = useSingleRunFormParamsHooks(data.type)({
+  } = useSingleRunFormParamsHooks(blockType)({
     id,
     payload: data,
     runInputData,
@@ -140,6 +143,7 @@ const useLastRun = <T>({
     toVarInputs,
     varSelectorsToVarInputs,
     runResult,
+    iterationRunResult,
   })
 
   const callRunApi = async (data: Record<string, any>) => {

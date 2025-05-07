@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next'
 import { useIsNodeInIteration, useWorkflow } from '../../hooks'
 import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../_base/components/variable/utils'
 import { InputVarType } from '@/app/components/workflow/types'
+import formatTracing from '@/app/components/workflow/run/utils/format-log'
+import type { NodeTracing } from '@/types/workflow'
 
 const i18nPrefix = 'workflow.nodes.iteration'
 const DELIMITER = '@@@@@'
@@ -18,12 +20,14 @@ type Params = {
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
   toVarInputs: (variables: Variable[]) => InputVar[]
+  iterationRunResult: NodeTracing[]
 }
 const useSingleRunFormParams = ({
   id,
   runInputData,
   toVarInputs,
   setRunInputData,
+  iterationRunResult,
 }: Params) => {
   const { t } = useTranslation()
   const { isNodeInIteration } = useIsNodeInIteration(id)
@@ -124,8 +128,10 @@ const useSingleRunFormParams = ({
     ]
   }, [inputVarValues, iterator, iteratorInputKey, setInputVarValues, setIterator, t, usedOutVars])
 
+  const nodeInfo = formatTracing(iterationRunResult, t)[0]
   return {
     forms,
+    nodeInfo,
   }
 }
 
