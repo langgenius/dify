@@ -110,7 +110,7 @@ const MembersPage = () => {
                   <div className='shrink-0 flex items-center w-[104px] py-2 system-xs-regular text-text-secondary'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
                   <div className='shrink-0 w-[96px] flex items-center'>
                     {
-                      ((isCurrentWorkspaceOwner && account.role !== 'owner') || (isCurrentWorkspaceManager && !['owner', 'admin'].includes(account.role)))
+                      (isCurrentWorkspaceOwner && account.role !== 'owner')
                         ? <Operation member={account} operatorRole={currentWorkspace.role} onOperate={mutate} />
                         : <div className='px-3 system-xs-regular text-text-secondary'>{RoleMap[account.role] || RoleMap.normal}</div>
                     }
