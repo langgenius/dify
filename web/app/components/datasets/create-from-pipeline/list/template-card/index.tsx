@@ -1,7 +1,5 @@
 import React, { useCallback, useState } from 'react'
-import type { Pipeline } from '../built-in-pipeline-list'
 import AppIcon from '@/app/components/base/app-icon'
-import { DOC_FORM_ICON, DOC_FORM_TEXT } from '../../../list/dataset-card'
 import { General } from '@/app/components/base/icons/src/public/knowledge'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -10,9 +8,11 @@ import CustomPopover from '@/app/components/base/popover'
 import Operations from './operations'
 import Modal from '@/app/components/base/modal'
 import EditPipelineInfo from './edit-pipeline-info'
+import type { PipelineTemple } from '@/models/pipeline'
+import { DOC_FORM_ICON, DOC_FORM_TEXT } from '@/models/datasets'
 
 type TemplateCardProps = {
-  pipeline: Pipeline
+  pipeline: PipelineTemple
   showMoreOperations?: boolean
 }
 
@@ -32,6 +32,7 @@ const TemplateCard = ({
   }, [])
 
   const Icon = DOC_FORM_ICON[pipeline.doc_form] || General
+  const iconInfo = pipeline.icon_info
 
   return (
     <div className='group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3'>
@@ -39,10 +40,10 @@ const TemplateCard = ({
         <div className='relative shrink-0'>
           <AppIcon
             size='large'
-            iconType={pipeline.icon_type}
-            icon={pipeline.icon_type === 'image' ? pipeline.file_id : pipeline.icon}
-            background={pipeline.icon_type === 'image' ? undefined : pipeline.icon_background}
-            imageUrl={pipeline.icon_type === 'image' ? pipeline.url : undefined}
+            iconType={iconInfo.icon_type}
+            icon={iconInfo.icon}
+            background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
+            imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
           />
           <div className='absolute -bottom-1 -right-1 z-10'>
             <Icon className='size-4' />

@@ -8,12 +8,12 @@ import React, { useCallback, useRef, useState } from 'react'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import type { Pipeline } from '../built-in-pipeline-list'
+import type { PipelineTemple } from '@/models/pipeline'
 
 type EditPipelineInfoProps = {
   onClose: () => void
   onSave: () => void
-  pipeline: Pipeline
+  pipeline: PipelineTemple
 }
 
 const EditPipelineInfo = ({
@@ -23,17 +23,18 @@ const EditPipelineInfo = ({
 }: EditPipelineInfoProps) => {
   const { t } = useTranslation()
   const [name, setName] = useState(pipeline.name)
+  const iconInfo = pipeline.icon_info
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
-    pipeline.icon_type === 'image'
-      ? { type: 'image' as const, url: pipeline.url || '', fileId: pipeline.file_id || '' }
-      : { type: 'emoji' as const, icon: pipeline.icon || '', background: pipeline.icon_background || '' },
+    iconInfo.icon_type === 'image'
+      ? { type: 'image' as const, url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
+      : { type: 'emoji' as const, icon: iconInfo.icon || '', background: iconInfo.icon_background || '' },
   )
   const [description, setDescription] = useState(pipeline.description)
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const previousAppIcon = useRef<AppIconSelection>(
-    pipeline.icon_type === 'image'
-      ? { type: 'image' as const, url: pipeline.url || '', fileId: pipeline.file_id || '' }
-      : { type: 'emoji' as const, icon: pipeline.icon || '', background: pipeline.icon_background || '' },
+    iconInfo.icon_type === 'image'
+      ? { type: 'image' as const, url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
+      : { type: 'emoji' as const, icon: iconInfo.icon || '', background: iconInfo.icon_background || '' },
   )
 
   const handleAppNameChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {

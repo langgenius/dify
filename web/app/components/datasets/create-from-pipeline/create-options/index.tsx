@@ -6,8 +6,11 @@ import CreateFromScratch from './create-from-scratch'
 import { useRouter, useSearchParams } from 'next/navigation'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from './create-from-dsl-modal'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { useTranslation } from 'react-i18next'
 
 const CreateOptions = () => {
+  const { t } = useTranslation()
+
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
 
@@ -53,14 +56,14 @@ const CreateOptions = () => {
     <div className='flex items-center gap-x-3 px-16 py-2'>
       <Item
         Icon={RiAddCircleFill}
-        title='Create from scratch'
-        description='Blank knowledge pipeline'
+        title={t('datasetPipeline.creation.createFromScratch.title')}
+        description={t('datasetPipeline.creation.createFromScratch.description')}
         onClick={openCreateFromScratch}
       />
       <Item
         Icon={RiFileUploadLine}
-        title='Import'
-        description='Import from a DSL file'
+        title={t('datasetPipeline.creation.ImportDSL.title')}
+        description={t('datasetPipeline.creation.ImportDSL.description')}
         onClick={openImportFromDSL}
       />
       <Modal

@@ -1,15 +1,19 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Tab from './tab'
 import BuiltInPipelineList from './built-in-pipeline-list'
 import CustomizedList from './customized-list'
-
-const OPTIONS = [
-  { value: 'built-in', label: 'Built-in Pipeline' },
-  { value: 'customized', label: 'Customized' },
-]
+import { useTranslation } from 'react-i18next'
 
 const List = () => {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState('built-in')
+
+  const options = useMemo(() => {
+    return [
+      { value: 'built-in', label: t('datasetPipeline.tabs.builtInPipeline') },
+      { value: 'customized', label: t('datasetPipeline.tabs.customized') },
+    ]
+  }, [t])
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab)
@@ -20,7 +24,7 @@ const List = () => {
       <Tab
         activeTab={activeTab}
         handleTabChange={handleTabChange}
-        options={OPTIONS}
+        options={options}
       />
       {
         activeTab === 'built-in' && <BuiltInPipelineList />

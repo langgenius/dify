@@ -2,9 +2,8 @@
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import type { DataSet } from '@/models/datasets'
-import { ChunkingMode } from '@/models/datasets'
-import { useAppContext } from '@/context/app-context'
-import { ExternalKnowledgeBase, General, Graph, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { General } from '@/app/components/base/icons/src/public/knowledge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
@@ -23,25 +22,11 @@ import CustomPopover from '@/app/components/base/popover'
 import Operations from './operations'
 import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
+import { DOC_FORM_ICON, DOC_FORM_TEXT } from '@/models/datasets'
 
 const EXTERNAL_PROVIDER = 'external'
 
-export const DOC_FORM_ICON: Record<ChunkingMode | 'external', React.ComponentType<{ className: string }>> = {
-  [ChunkingMode.text]: General,
-  [ChunkingMode.qa]: Qa,
-  [ChunkingMode.parentChild]: ParentChild,
-  [ChunkingMode.graph]: Graph,
-  external: ExternalKnowledgeBase,
-}
-
-export const DOC_FORM_TEXT: Record<ChunkingMode, string> = {
-  [ChunkingMode.text]: 'general',
-  [ChunkingMode.qa]: 'qa',
-  [ChunkingMode.parentChild]: 'parentChild',
-  [ChunkingMode.graph]: 'graph',
-}
-
-export type DatasetCardProps = {
+type DatasetCardProps = {
   dataset: DataSet
   onSuccess?: () => void
 }
@@ -53,7 +38,7 @@ const DatasetCard = ({
   const { t } = useTranslation()
   const { push } = useRouter()
 
-  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const [tags, setTags] = useState<Tag[]>(dataset.tags)
   const tagSelectorRef = useRef<HTMLDivElement>(null)
   const isHoveringTagSelector = useHover(tagSelectorRef)

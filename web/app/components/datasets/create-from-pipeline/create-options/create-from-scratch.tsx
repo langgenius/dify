@@ -1,3 +1,4 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
@@ -5,17 +6,19 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import type { AppIconType } from '@/types/app'
 import { RiCloseLine } from '@remixicon/react'
-import React, { useCallback, useRef, useState } from 'react'
 import PermissionSelector from '../../settings/permission-selector'
+import type { CreateDatasetReq } from '@/models/datasets'
 import { DatasetPermission } from '@/models/datasets'
 import { useMembers } from '@/service/use-common'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
+import { useCreateDataset } from '@/service/knowledge/use-create-dataset'
+import type { Member } from '@/models/common'
 
 type CreateFromScratchProps = {
-  onClose: () => void
-  onCreate: () => void
+  onClose?: () => void
+  onCreate?: () => void
 }
 
 const DEFAULT_APP_ICON: AppIconSelection = {
@@ -36,8 +39,14 @@ const CreateFromScratch = ({
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>([])
   const previousAppIcon = useRef<AppIconSelection>(DEFAULT_APP_ICON)
+  const [memberList, setMemberList] = useState<Member[]>([])
 
-  const { data: memberList } = useMembers()
+  const { data: members } = useMembers()
+
+  useEffect(() => {
+    if (members?.accounts)
+      setMemberList(members.accounts)
+  }, [members])
 
   const handleAppNameChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value
@@ -68,6 +77,8 @@ const CreateFromScratch = ({
     setPermission(value!)
   }, [])
 
+  const { mutateAsync: createEmptyDataset } = useCreateDataset()
+
   const handleCreate = useCallback(() => {
     if (!name) {
       Toast.notify({
@@ -76,16 +87,38 @@ const CreateFromScratch = ({
       })
       return
     }
-    onCreate()
-    onClose()
-  }, [name, onCreate, onClose])
+    const request: CreateDatasetReq = {
+      name,
+      description,
+      icon_info: {
+        icon_type: appIcon.type,
+        icon: appIcon.type === 'image' ? appIcon.fileId : appIcon.icon,
+        icon_background: appIcon.type === 'image' ? undefined : appIcon.background,
+        icon_url: appIcon.type === 'image' ? appIcon.url : undefined,
+      },
+      permission,
+    }
+    // Handle permission
+    if (request.permission === DatasetPermission.partialMembers) {
+      const selectedMemberList = selectedMemberIDs.map((id) => {
+        return {
+          user_id: id,
+          role: memberList.find(member => member.id === id)?.role,
+        }
+      })
+      request.partial_member_list = selectedMemberList
+    }
+    createEmptyDataset(request)
+    onCreate?.()
+    onClose?.()
+  }, [name, permission, appIcon, description, createEmptyDataset, memberList, selectedMemberIDs, onCreate, onClose])
 
   return (
     <div className='relative flex flex-col'>
       {/* Header */}
       <div className='pb-3 pl-6 pr-14 pt-6'>
         <span className='title-2xl-semi-bold text-text-primary'>
-          Create Knowledge
+          {t('datasetPipeline.creation.createKnowledge')}
         </span>
       </div>
       <button
@@ -98,11 +131,13 @@ const CreateFromScratch = ({
       <div className='flex flex-col gap-y-5 px-6 py-3'>
         <div className='flex items-end gap-x-3 self-stretch'>
           <div className='flex grow flex-col gap-y-1 pb-1'>
-            <label className='system-sm-medium flex h-6 items-center text-text-secondary'>Knowledge name & icon</label>
+            <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
+              {t('datasetPipeline.creation.knowledgeNameAndIcon')}
+            </label>
             <Input
               onChange={handleAppNameChange}
               value={name}
-              placeholder='Please enter the name of the Knowledge Base'
+              placeholder={t('datasetPipeline.creation.knowledgeNameAndIconPlaceholder')}
             />
           </div>
           <AppIcon
@@ -117,22 +152,26 @@ const CreateFromScratch = ({
           />
         </div>
         <div className='flex flex-col gap-y-1'>
-          <label className='system-sm-medium flex h-6 items-center text-text-secondary'>Knowledge description</label>
+          <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
+            {t('datasetPipeline.creation.knowledgeDescription')}
+          </label>
           <Textarea
             onChange={handleDescriptionChange}
             value={description}
-            placeholder='Describe what is in this Knowledge Base. A detailed description allows AI to access the content of the dataset more accurately. If empty, Dify will use the default hit strategy. (Optional)'
+            placeholder={t('datasetPipeline.creation.knowledgeDescriptionPlaceholder')}
           />
         </div>
         <div className='flex flex-col gap-y-1'>
-          <label className='system-sm-medium flex h-6 items-center text-text-secondary'>Permissions</label>
-            <PermissionSelector
-              permission={permission}
-              value={selectedMemberIDs}
-              onChange={handlePermissionChange}
-              onMemberSelect={setSelectedMemberIDs}
-              memberList={memberList?.accounts || []}
-            />
+          <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
+            {t('datasetPipeline.creation.knowledgePermissions')}
+          </label>
+          <PermissionSelector
+            permission={permission}
+            value={selectedMemberIDs}
+            onChange={handlePermissionChange}
+            onMemberSelect={setSelectedMemberIDs}
+            memberList={memberList}
+          />
         </div>
       </div>
       {/* Actions */}

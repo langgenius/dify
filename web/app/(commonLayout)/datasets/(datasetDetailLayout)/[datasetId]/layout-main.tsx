@@ -28,13 +28,12 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore } from '@/app/components/app/store'
-import { getLocaleOnClient } from '@/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/public/pipeline'
 import { Divider } from '@/app/components/base/icons/src/public/knowledge'
-import { LanguagesSupported } from '@/i18n/language'
+import { useGetDocLanguage } from '@/context/i18n'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -54,8 +53,8 @@ const ExtraInfo = React.memo(({
   documentCount,
   expand,
 }: IExtraInfoProps) => {
-  const locale = getLocaleOnClient()
   const { t } = useTranslation()
+  const docLanguage = useGetDocLanguage()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
   const relatedAppsTotal = relatedApps?.data?.length || 0
@@ -122,11 +121,7 @@ const ExtraInfo = React.memo(({
               <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
               <a
                 className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
-                href={
-                  locale === LanguagesSupported[1]
-                    ? 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
-                    : 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application'
-                }
+                href={`https://docs.dify.ai/${docLanguage}/guides/knowledge-base/integrate-knowledge-within-application`}
                 target='_blank' rel='noopener noreferrer'
               >
                 <RiBookOpenLine className='mr-1 text-text-accent' />

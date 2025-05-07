@@ -121,7 +121,6 @@ const CreateFromDSLModal = ({
           message: t(status === DSLImportStatus.COMPLETED ? 'app.newApp.appCreated' : 'app.newApp.caution'),
           children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
         })
-        localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         if (app_id)
           await handleCheckPluginDependencies(app_id)
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)

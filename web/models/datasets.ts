@@ -4,6 +4,7 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
+import { ExternalKnowledgeBase, General, Graph, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -31,16 +32,18 @@ export type MetadataInDoc = {
   name: string
 }
 
+export type IconInfo = {
+  icon: string
+  icon_background?: string
+  icon_type: AppIconType
+  icon_url?: string
+}
+
 export type DataSet = {
   id: string
   name: string
   indexing_status: DocumentIndexingStatus
-  icon_info: {
-    icon: string
-    icon_background?: string
-    icon_type: AppIconType
-    icon_url?: string
-  }
+  icon_info: IconInfo
   description: string
   permission: DatasetPermission
   data_source_type: DataSourceType
@@ -346,7 +349,7 @@ export type DocumentListResponse = {
 
 export type DocumentReq = {
   original_document_id?: string
-  indexing_technique?: string
+  indexing_technique?: IndexingType
   doc_form: ChunkingMode
   doc_language: string
   process_rule: ProcessRule
@@ -699,4 +702,48 @@ export type UpdateDocumentBatchParams = {
 export type BatchImportResponse = {
   job_id: string
   job_status: string
+}
+
+export const DOC_FORM_ICON: Record<ChunkingMode | 'external', React.ComponentType<{ className: string }>> = {
+  [ChunkingMode.text]: General,
+  [ChunkingMode.qa]: Qa,
+  [ChunkingMode.parentChild]: ParentChild,
+  [ChunkingMode.graph]: Graph,
+  external: ExternalKnowledgeBase,
+}
+
+export const DOC_FORM_TEXT: Record<ChunkingMode, string> = {
+  [ChunkingMode.text]: 'general',
+  [ChunkingMode.qa]: 'qa',
+  [ChunkingMode.parentChild]: 'parentChild',
+  [ChunkingMode.graph]: 'graph',
+}
+
+export type CreateDatasetReq = {
+  name: string
+  description: string
+  icon_info: IconInfo
+  doc_form?: ChunkingMode
+  permission: DatasetPermission
+  partial_member_list?: {
+    user_id: string
+    role?: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+  }[]
+  indexing_technique?: IndexingType
+  retrieval_mode?: RetrievalConfig
+  embedding_model?: string
+  embedding_model_provider?: string
+}
+
+export type CreateDatasetResponse = {
+  id: string
+  name: string
+  description: string
+  permission: DatasetPermission
+  data_source_type: DataSourceType
+  indexing_technique: IndexingType
+  created_by: string
+  created_at: number
+  updated_by: string
+  updated_at: number
 }
