@@ -9,6 +9,9 @@ export enum Priority {
   priority = 'priority',
   topPriority = 'top-priority',
 }
+
+export type BasicPlan = Plan.sandbox | Plan.professional | Plan.team
+
 export type PlanInfo = {
   level: number
   price: number
@@ -20,6 +23,7 @@ export type PlanInfo = {
   vectorSpace: string
   documentsUploadQuota: number
   documentsRequestQuota: number
+  apiRateLimit: number
   documentProcessingPriority: Priority
   logHistory: number
   messageRequest: number
@@ -60,7 +64,7 @@ export type CurrentPlanInfoBackend = {
   billing: {
     enabled: boolean
     subscription: {
-      plan: Plan
+      plan: BasicPlan
     }
   }
   members: {

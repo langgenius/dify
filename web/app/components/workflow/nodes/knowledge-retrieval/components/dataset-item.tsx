@@ -55,8 +55,8 @@ const DatasetItem: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-xl 
-      border-[0.5px] border-components-panel-border-subtle px-2 
+    <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-xl
+      border-[0.5px] border-components-panel-border-subtle px-2
       ${isDeleteHovered
       ? 'border-state-destructive-border bg-state-destructive-hover'
       : 'bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover'
@@ -111,7 +111,7 @@ const DatasetItem: FC<Props> = ({
       }
 
       {isShowSettingsModal && (
-        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+        <Drawer isOpen={isShowSettingsModal} onClose={hideSettingsModal} footer={null} mask={isMobile} panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
           <SettingsModal
             currentDataset={payload}
             onCancel={hideSettingsModal}

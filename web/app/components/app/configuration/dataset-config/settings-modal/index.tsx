@@ -4,7 +4,6 @@ import { useMount } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
 import { RiCloseLine } from '@remixicon/react'
-import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import cn from '@/utils/classnames'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
@@ -62,13 +61,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { notify } = useToastContext()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
-  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
-  const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
-  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
+  const [topK, setTopK] = useState(localeCurrentDataset?.external_retrieval_model.top_k ?? 2)
+  const [scoreThreshold, setScoreThreshold] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold ?? 0.5)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
 
@@ -88,6 +87,14 @@ const SettingsModal: FC<SettingsModalProps> = ({
       setScoreThreshold(data.score_threshold)
     if (data.score_threshold_enabled !== undefined)
       setScoreThresholdEnabled(data.score_threshold_enabled)
+
+    setLocaleCurrentDataset({
+      ...localeCurrentDataset,
+      external_retrieval_model: {
+        ...localeCurrentDataset?.external_retrieval_model,
+        ...data,
+      },
+    })
   }
 
   const handleSave = async () => {
@@ -215,10 +222,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
               className='resize-none'
               placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
-            <a className='mt-2 flex h-[18px] items-center px-3 text-xs text-text-tertiary' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
-              <BookOpenIcon className='mr-1 h-[18px] w-3' />
-              {t('datasetSettings.form.descWrite')}
-            </a>
           </div>
         </div>
         <div className={rowClass}>

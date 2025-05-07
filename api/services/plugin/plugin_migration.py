@@ -17,7 +17,7 @@ from core.agent.entities import AgentToolEntity
 from core.helper import marketplace
 from core.plugin.entities.plugin import ModelProviderID, PluginInstallationSource, ToolProviderID
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
-from core.plugin.manager.plugin import PluginInstallationManager
+from core.plugin.impl.plugin import PluginInstaller
 from core.tools.entities.tool_entities import ToolProviderType
 from models.account import Tenant
 from models.engine import db
@@ -331,7 +331,7 @@ class PluginMigration:
         """
         Install plugins.
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
 
         plugins = cls.extract_unique_plugins(extracted_plugins)
         not_installed = []
@@ -426,7 +426,7 @@ class PluginMigration:
         """
         Install plugins for a tenant.
         """
-        manager = PluginInstallationManager()
+        manager = PluginInstaller()
 
         # download all the plugins and upload
         thread_pool = ThreadPoolExecutor(max_workers=10)

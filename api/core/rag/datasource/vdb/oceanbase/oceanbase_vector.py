@@ -203,7 +203,7 @@ class OceanBaseVector(BaseVector):
 
             full_sql = f"""SELECT metadata, text, MATCH (text) AGAINST (:query) AS score
             FROM {self._collection_name}
-            WHERE MATCH (text) AGAINST (:query) > 0 
+            WHERE MATCH (text) AGAINST (:query) > 0
             {where_clause}
             ORDER BY score DESC
             LIMIT {top_k}"""

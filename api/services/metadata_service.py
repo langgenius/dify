@@ -3,7 +3,7 @@ import datetime
 import logging
 from typing import Optional
 
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db

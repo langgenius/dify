@@ -1,5 +1,8 @@
+import base64
+import uuid
 from collections.abc import Sequence
 from typing import Optional
+from unittest import mock
 
 import pytest
 
@@ -30,6 +33,7 @@ from core.workflow.nodes.llm.entities import (
     VisionConfig,
     VisionConfigOptions,
 )
+from core.workflow.nodes.llm.file_saver import LLMFileSaver
 from core.workflow.nodes.llm.node import LLMNode
 from models.enums import UserFrom
 from models.provider import ProviderType
@@ -49,8 +53,8 @@ class MockTokenBufferMemory:
 
 
 @pytest.fixture
-def llm_node():
-    data = LLMNodeData(
+def llm_node_data() -> LLMNodeData:
+    return LLMNodeData(
         title="Test LLM",
         model=ModelConfig(provider="openai", name="gpt-3.5-turbo", mode="chat", completion_params={}),
         prompt_template=[],
@@ -64,42 +68,65 @@ def llm_node():
             ),
         ),
     )
+
+
+@pytest.fixture
+def graph_init_params() -> GraphInitParams:
+    return GraphInitParams(
+        tenant_id="1",
+        app_id="1",
+        workflow_type=WorkflowType.WORKFLOW,
+        workflow_id="1",
+        graph_config={},
+        user_id="1",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.SERVICE_API,
+        call_depth=0,
+    )
+
+
+@pytest.fixture
+def graph() -> Graph:
+    return Graph(
+        root_node_id="1",
+        answer_stream_generate_routes=AnswerStreamGenerateRoute(
+            answer_dependencies={},
+            answer_generate_route={},
+        ),
+        end_stream_param=EndStreamParam(
+            end_dependencies={},
+            end_stream_variable_selector_mapping={},
+        ),
+    )
+
+
+@pytest.fixture
+def graph_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
         system_variables={},
         user_inputs={},
     )
+    return GraphRuntimeState(
+        variable_pool=variable_pool,
+        start_at=0,
+    )
+
+
+@pytest.fixture
+def llm_node(
+    llm_node_data: LLMNodeData, graph_init_params: GraphInitParams, graph: Graph, graph_runtime_state: GraphRuntimeState
+) -> LLMNode:
+    mock_file_saver = mock.MagicMock(spec=LLMFileSaver)
     node = LLMNode(
         id="1",
         config={
             "id": "1",
-            "data": data.model_dump(),
+            "data": llm_node_data.model_dump(),
         },
-        graph_init_params=GraphInitParams(
-            tenant_id="1",
-            app_id="1",
-            workflow_type=WorkflowType.WORKFLOW,
-            workflow_id="1",
-            graph_config={},
-            user_id="1",
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.SERVICE_API,
-            call_depth=0,
-        ),
-        graph=Graph(
-            root_node_id="1",
-            answer_stream_generate_routes=AnswerStreamGenerateRoute(
-                answer_dependencies={},
-                answer_generate_route={},
-            ),
-            end_stream_param=EndStreamParam(
-                end_dependencies={},
-                end_stream_variable_selector_mapping={},
-            ),
-        ),
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=0,
-        ),
+        graph_init_params=graph_init_params,
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
+        llm_file_saver=mock_file_saver,
     )
     return node
 
@@ -465,3 +492,167 @@ def test_handle_list_messages_basic(llm_node):
     assert len(result) == 1
     assert isinstance(result[0], UserPromptMessage)
     assert result[0].content == [TextPromptMessageContent(data="Hello, world")]
+
+
+@pytest.fixture
+def llm_node_for_multimodal(
+    llm_node_data, graph_init_params, graph, graph_runtime_state
+) -> tuple[LLMNode, LLMFileSaver]:
+    mock_file_saver: LLMFileSaver = mock.MagicMock(spec=LLMFileSaver)
+    node = LLMNode(
+        id="1",
+        config={
+            "id": "1",
+            "data": llm_node_data.model_dump(),
+        },
+        graph_init_params=graph_init_params,
+        graph=graph,
+        graph_runtime_state=graph_runtime_state,
+        llm_file_saver=mock_file_saver,
+    )
+    return node, mock_file_saver
+
+
+class TestLLMNodeSaveMultiModalImageOutput:
+    def test_llm_node_save_inline_output(self, llm_node_for_multimodal: tuple[LLMNode, LLMFileSaver]):
+        llm_node, mock_file_saver = llm_node_for_multimodal
+        content = ImagePromptMessageContent(
+            format="png",
+            base64_data=base64.b64encode(b"test-data").decode(),
+            mime_type="image/png",
+        )
+        mock_file = File(
+            id=str(uuid.uuid4()),
+            tenant_id="1",
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            related_id=str(uuid.uuid4()),
+            filename="test-file.png",
+            extension=".png",
+            mime_type="image/png",
+            size=9,
+        )
+        mock_file_saver.save_binary_string.return_value = mock_file
+        file = llm_node._save_multimodal_image_output(content=content)
+        assert llm_node._file_outputs == [mock_file]
+        assert file == mock_file
+        mock_file_saver.save_binary_string.assert_called_once_with(
+            data=b"test-data", mime_type="image/png", file_type=FileType.IMAGE
+        )
+
+    def test_llm_node_save_url_output(self, llm_node_for_multimodal: tuple[LLMNode, LLMFileSaver]):
+        llm_node, mock_file_saver = llm_node_for_multimodal
+        content = ImagePromptMessageContent(
+            format="png",
+            url="https://example.com/image.png",
+            mime_type="image/jpg",
+        )
+        mock_file = File(
+            id=str(uuid.uuid4()),
+            tenant_id="1",
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            related_id=str(uuid.uuid4()),
+            filename="test-file.png",
+            extension=".png",
+            mime_type="image/png",
+            size=9,
+        )
+        mock_file_saver.save_remote_url.return_value = mock_file
+        file = llm_node._save_multimodal_image_output(content=content)
+        assert llm_node._file_outputs == [mock_file]
+        assert file == mock_file
+        mock_file_saver.save_remote_url.assert_called_once_with(content.url, FileType.IMAGE)
+
+
+def test_llm_node_image_file_to_markdown(llm_node: LLMNode):
+    mock_file = mock.MagicMock(spec=File)
+    mock_file.generate_url.return_value = "https://example.com/image.png"
+    markdown = llm_node._image_file_to_markdown(mock_file)
+    assert markdown == "![](https://example.com/image.png)"
+
+
+class TestSaveMultimodalOutputAndConvertResultToMarkdown:
+    def test_str_content(self, llm_node_for_multimodal):
+        llm_node, mock_file_saver = llm_node_for_multimodal
+        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown("hello world")
+        assert list(gen) == ["hello world"]
+        mock_file_saver.save_binary_string.assert_not_called()
+        mock_file_saver.save_remote_url.assert_not_called()
+
+    def test_text_prompt_message_content(self, llm_node_for_multimodal):
+        llm_node, mock_file_saver = llm_node_for_multimodal
+        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
+            [TextPromptMessageContent(data="hello world")]
+        )
+        assert list(gen) == ["hello world"]
+        mock_file_saver.save_binary_string.assert_not_called()
+        mock_file_saver.save_remote_url.assert_not_called()
+
+    def test_image_content_with_inline_data(self, llm_node_for_multimodal, monkeypatch):
+        llm_node, mock_file_saver = llm_node_for_multimodal
+
+        image_raw_data = b"PNG_DATA"
+        image_b64_data = base64.b64encode(image_raw_data).decode()
+
+        mock_saved_file = File(
+            id=str(uuid.uuid4()),
+            tenant_id="1",
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            filename="test.png",
+            extension=".png",
+            size=len(image_raw_data),
+            related_id=str(uuid.uuid4()),
+            url="https://example.com/test.png",
+            storage_key="test_storage_key",
+        )
+        mock_file_saver.save_binary_string.return_value = mock_saved_file
+        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(
+            [
+                ImagePromptMessageContent(
+                    format="png",
+                    base64_data=image_b64_data,
+                    mime_type="image/png",
+                )
+            ]
+        )
+        yielded_strs = list(gen)
+        assert len(yielded_strs) == 1
+
+        # This assertion requires careful handling.
+        # `FILES_URL` settings can vary across environments, which might lead to fragile tests.
+        #
+        # Rather than asserting the complete URL returned by _save_multimodal_output_and_convert_result_to_markdown,
+        # we verify that the result includes the markdown image syntax and the expected file URL path.
+        expected_file_url_path = f"/files/tools/{mock_saved_file.related_id}.png"
+        assert yielded_strs[0].startswith("![](")
+        assert expected_file_url_path in yielded_strs[0]
+        assert yielded_strs[0].endswith(")")
+        mock_file_saver.save_binary_string.assert_called_once_with(
+            data=image_raw_data,
+            mime_type="image/png",
+            file_type=FileType.IMAGE,
+        )
+        assert mock_saved_file in llm_node._file_outputs
+
+    def test_unknown_content_type(self, llm_node_for_multimodal):
+        llm_node, mock_file_saver = llm_node_for_multimodal
+        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(frozenset(["hello world"]))
+        assert list(gen) == ["frozenset({'hello world'})"]
+        mock_file_saver.save_binary_string.assert_not_called()
+        mock_file_saver.save_remote_url.assert_not_called()
+
+    def test_unknown_item_type(self, llm_node_for_multimodal):
+        llm_node, mock_file_saver = llm_node_for_multimodal
+        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown([frozenset(["hello world"])])
+        assert list(gen) == ["frozenset({'hello world'})"]
+        mock_file_saver.save_binary_string.assert_not_called()
+        mock_file_saver.save_remote_url.assert_not_called()
+
+    def test_none_content(self, llm_node_for_multimodal):
+        llm_node, mock_file_saver = llm_node_for_multimodal
+        gen = llm_node._save_multimodal_output_and_convert_result_to_markdown(None)
+        assert list(gen) == []
+        mock_file_saver.save_binary_string.assert_not_called()
+        mock_file_saver.save_remote_url.assert_not_called()

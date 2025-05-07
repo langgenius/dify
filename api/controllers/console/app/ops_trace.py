@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import BadRequest
 
 from controllers.console import api
@@ -84,7 +84,7 @@ class TraceAppConfigApi(Resource):
             result = OpsService.delete_tracing_app_config(app_id=app_id, tracing_provider=args["tracing_provider"])
             if not result:
                 raise TracingConfigNotExist()
-            return {"result": "success"}
+            return {"result": "success"}, 204
         except Exception as e:
             raise BadRequest(str(e))
 

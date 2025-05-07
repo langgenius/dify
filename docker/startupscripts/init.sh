@@ -8,6 +8,6 @@ if [ -f ${DB_INITIALIZED} ]; then
   exit
 else
   echo 'File does not exist. Standards for first time Start up this DB'
-  "$ORACLE_HOME"/bin/sqlplus -s "/ as sysdba" @"/opt/oracle/scripts/startup/init_user.script"; 
+  "$ORACLE_HOME"/bin/sqlplus -s "/ as sysdba" @"/opt/oracle/scripts/startup/init_user.script";
   touch ${DB_INITIALIZED}
 fi

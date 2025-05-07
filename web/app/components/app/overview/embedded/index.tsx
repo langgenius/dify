@@ -42,12 +42,13 @@ const OPTION_MAP = {
   token: '${token}'${isTestEnv
         ? `,
   isDev: true`
-    : ''}${IS_CE_EDITION
-    ? `,
+        : ''}${IS_CE_EDITION
+          ? `,
   baseUrl: '${url}${basePath}'`
-    : ''},
+          : ''},
   systemVariables: {
     // user_id: 'YOU CAN DEFINE USER ID HERE',
+    // conversation_id: 'YOU CAN DEFINE CONVERSATION ID HERE, IT MUST BE A VALID UUID',
   },
  }
 </script>

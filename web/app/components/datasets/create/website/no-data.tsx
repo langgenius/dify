@@ -17,6 +17,7 @@ type Props = {
 
 const NoData: FC<Props> = ({
   onConfig,
+  provider,
 }) => {
   const { t } = useTranslation()
 
@@ -38,7 +39,7 @@ const NoData: FC<Props> = ({
     } : null,
   }
 
-  const currentProvider = Object.values(providerConfig).find(provider => provider !== null) || providerConfig[DataSourceProvider.jinaReader]
+  const currentProvider = providerConfig[provider] || providerConfig[DataSourceProvider.jinaReader]
 
   if (!currentProvider) return null
 

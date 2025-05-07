@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.repository import RepositoryFactory
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -28,6 +28,7 @@ from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole
 from models.model import App, AppMode
+from models.tools import WorkflowToolProvider
 from models.workflow import (
     Workflow,
     WorkflowNodeExecution,
@@ -284,12 +285,8 @@ class WorkflowService:
         workflow_node_execution.workflow_id = draft_workflow.id
 
         # Use the repository to save the workflow node execution
-        repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={
-                "tenant_id": app_model.tenant_id,
-                "app_id": app_model.id,
-                "session_factory": db.session.get_bind,
-            }
+        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=db.engine, tenant_id=app_model.tenant_id, app_id=app_model.id
         )
         repository.save(workflow_node_execution)
 
@@ -523,8 +520,19 @@ class WorkflowService:
             # Cannot delete a workflow that's currently in use by an app
             raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.name}'")
 
-        # Check if this workflow is published as a tool
-        if workflow.tool_published:
+        # Don't use workflow.tool_published as it's not accurate for specific workflow versions
+        # Check if there's a tool provider using this specific workflow version
+        tool_provider = (
+            session.query(WorkflowToolProvider)
+            .filter(
+                WorkflowToolProvider.tenant_id == workflow.tenant_id,
+                WorkflowToolProvider.app_id == workflow.app_id,
+                WorkflowToolProvider.version == workflow.version,
+            )
+            .first()
+        )
+
+        if tool_provider:
             # Cannot delete a workflow that's published as a tool
             raise WorkflowInUseError("Cannot delete workflow that is published as a tool")
 

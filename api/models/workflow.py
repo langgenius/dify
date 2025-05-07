@@ -1,14 +1,12 @@
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Self, Union
 from uuid import uuid4
 
 if TYPE_CHECKING:
     from models.model import AppMode
-from enum import StrEnum
-from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import Index, PrimaryKeyConstraint, func
@@ -245,6 +243,13 @@ class Workflow(Base):
 
     @property
     def tool_published(self) -> bool:
+        """
+        DEPRECATED: This property is not accurate for determining if a workflow is published as a tool.
+        It only checks if there's a WorkflowToolProvider for the app, not if this specific workflow version
+        is the one being used by the tool.
+
+        For accurate checking, use a direct query with tenant_id, app_id, and version.
+        """
         from models.tools import WorkflowToolProvider
 
         return (

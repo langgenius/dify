@@ -7,7 +7,9 @@ class VectorType(StrEnum):
     MILVUS = "milvus"
     MYSCALE = "myscale"
     PGVECTOR = "pgvector"
+    VASTBASE = "vastbase"
     PGVECTO_RS = "pgvecto-rs"
+
     QDRANT = "qdrant"
     RELYT = "relyt"
     TIDB_VECTOR = "tidb_vector"
@@ -26,3 +28,4 @@ class VectorType(StrEnum):
     OCEANBASE = "oceanbase"
     OPENGAUSS = "opengauss"
     TABLESTORE = "tablestore"
+    HUAWEI_CLOUD = "huawei_cloud"

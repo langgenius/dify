@@ -121,7 +121,7 @@ export function PreCode(props: { children: any }) {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
-const CodeBlock: any = memo(({ inline, className, children, ...props }: any) => {
+const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
   const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
   const match = /language-(\w+)/.exec(className || '')
@@ -252,16 +252,16 @@ const Img = ({ src }: any) => {
   return <div className="markdown-img-wrapper"><ImageGallery srcs={[src]} /></div>
 }
 
-const Link = ({ node, ...props }: any) => {
+const Link = ({ node, children, ...props }: any) => {
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { onSend } = useChatContext()
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
-    return <abbr className="cursor-pointer underline !decoration-primary-700 decoration-dashed" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
+    return <abbr className="cursor-pointer underline !decoration-primary-700 decoration-dashed" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value || ''}>{node.children[0]?.value || ''}</abbr>
   }
   else {
-    return <a {...props} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
+    return <a {...props} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{children || 'Download'}</a>
   }
 }
 

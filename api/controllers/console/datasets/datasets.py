@@ -1,7 +1,7 @@
-import flask_restful  # type: ignore
+import flask_restful
 from flask import request
-from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restful import Resource, marshal, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -657,6 +657,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.ELASTICSEARCH
                 | VectorType.ELASTICSEARCH_JA
                 | VectorType.PGVECTOR
+                | VectorType.VASTBASE
                 | VectorType.TIDB_ON_QDRANT
                 | VectorType.LINDORM
                 | VectorType.COUCHBASE
@@ -664,6 +665,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.OPENGAUSS
                 | VectorType.OCEANBASE
                 | VectorType.TABLESTORE
+                | VectorType.HUAWEI_CLOUD
                 | VectorType.TENCENT
             ):
                 return {
@@ -705,11 +707,13 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.ELASTICSEARCH_JA
                 | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
+                | VectorType.VASTBASE
                 | VectorType.LINDORM
                 | VectorType.OPENGAUSS
                 | VectorType.OCEANBASE
                 | VectorType.TABLESTORE
                 | VectorType.TENCENT
+                | VectorType.HUAWEI_CLOUD
             ):
                 return {
                     "retrieval_method": [

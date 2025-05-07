@@ -1,7 +1,7 @@
 import json
 
 from flask import request
-from flask_restful import marshal, reqparse  # type: ignore
+from flask_restful import marshal, reqparse
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
 
@@ -323,7 +323,7 @@ class DocumentDeleteApi(DatasetApiResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class DocumentListApi(DatasetApiResource):

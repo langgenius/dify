@@ -9,16 +9,27 @@ This is the PHP SDK for the Dify API, which allows you to easily integrate Dify 
 
 ## Usage
 
+If you want to try the example, you can run `composer install` in this directory.
+
+In exist project, copy the `dify-client.php` to you project, and merge the following to your `composer.json` file, then run `composer install && composer dump-autoload` to install. Guzzle does not require 7.9, other versions have not been tested, but you can try. 
+
+```json
+{
+    "require": {
+        "guzzlehttp/guzzle": "^7.9"
+    },
+    "autoload": {
+        "files": ["path/to/dify-client.php"]
+    }
+}
+```
+
 After installing the SDK, you can use it in your project like this:
 
 ```php
 <?php
 
 require 'vendor/autoload.php';
-
-use YourVendorName\DifyPHP\DifyClient;
-use YourVendorName\DifyPHP\CompletionClient;
-use YourVendorName\DifyPHP\ChatClient;
 
 $apiKey = 'your-api-key-here';
 

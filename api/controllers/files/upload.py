@@ -1,5 +1,7 @@
+from mimetypes import guess_extension
+
 from flask import request
-from flask_restful import Resource, marshal_with  # type: ignore
+from flask_restful import Resource, marshal_with
 from werkzeug.exceptions import Forbidden
 
 import services
@@ -9,8 +11,8 @@ from controllers.files.error import UnsupportedFileTypeError
 from controllers.inner_api.plugin.wraps import get_user
 from controllers.service_api.app.error import FileTooLargeError
 from core.file.helpers import verify_plugin_file_signature
+from core.tools.tool_file_manager import ToolFileManager
 from fields.file_fields import file_fields
-from services.file_service import FileService
 
 
 class PluginUploadFileApi(Resource):
@@ -51,19 +53,26 @@ class PluginUploadFileApi(Resource):
             raise Forbidden("Invalid request.")
 
         try:
-            upload_file = FileService.upload_file(
-                filename=filename,
-                content=file.read(),
+            tool_file = ToolFileManager().create_file_by_raw(
+                user_id=user.id,
+                tenant_id=tenant_id,
+                file_binary=file.read(),
                 mimetype=mimetype,
-                user=user,
-                source=None,
+                filename=filename,
+                conversation_id=None,
             )
+
+            extension = guess_extension(tool_file.mimetype) or ".bin"
+            preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
+            tool_file.mime_type = mimetype
+            tool_file.extension = extension
+            tool_file.preview_url = preview_url
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return upload_file, 201
+        return tool_file, 201
 
 
 api.add_resource(PluginUploadFileApi, "/files/upload/for-plugin")

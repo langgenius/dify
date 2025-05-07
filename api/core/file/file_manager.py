@@ -7,15 +7,15 @@ from core.model_runtime.entities import (
     AudioPromptMessageContent,
     DocumentPromptMessageContent,
     ImagePromptMessageContent,
-    MultiModalPromptMessageContent,
     VideoPromptMessageContent,
 )
+from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from core.tools.signature import sign_tool_file
 from extensions.ext_storage import storage
 
 from . import helpers
 from .enums import FileAttribute
 from .models import File, FileTransferMethod, FileType
-from .tool_file_parser import ToolFileParser
 
 
 def get_attr(*, file: File, attr: FileAttribute):
@@ -43,7 +43,7 @@ def to_prompt_message_content(
     /,
     *,
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-) -> MultiModalPromptMessageContent:
+) -> PromptMessageContentUnionTypes:
     if f.extension is None:
         raise ValueError("Missing file extension")
     if f.mime_type is None:
@@ -58,7 +58,7 @@ def to_prompt_message_content(
     if f.type == FileType.IMAGE:
         params["detail"] = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
 
-    prompt_class_map: Mapping[FileType, type[MultiModalPromptMessageContent]] = {
+    prompt_class_map: Mapping[FileType, type[PromptMessageContentUnionTypes]] = {
         FileType.IMAGE: ImagePromptMessageContent,
         FileType.AUDIO: AudioPromptMessageContent,
         FileType.VIDEO: VideoPromptMessageContent,
@@ -130,6 +130,6 @@ def _to_url(f: File, /):
         # add sign url
         if f.related_id is None or f.extension is None:
             raise ValueError("Missing file related_id or extension")
-        return ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=f.related_id, extension=f.extension)
+        return sign_tool_file(tool_file_id=f.related_id, extension=f.extension)
     else:
         raise ValueError(f"Unsupported transfer method: {f.transfer_method}")

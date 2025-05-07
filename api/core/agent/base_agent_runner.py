@@ -21,14 +21,13 @@ from core.model_runtime.entities import (
     AssistantPromptMessage,
     LLMUsage,
     PromptMessage,
-    PromptMessageContent,
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
@@ -92,6 +91,8 @@ class BaseAgentRunner(AppRunner):
             return_resource=app_config.additional_features.show_retrieve_source,
             invoke_from=application_generate_entity.invoke_from,
             hit_callback=hit_callback,
+            user_id=user_id,
+            inputs=cast(dict, application_generate_entity.inputs),
         )
         # get how many agent thoughts have been created
         self.agent_thought_count = (
@@ -501,7 +502,7 @@ class BaseAgentRunner(AppRunner):
         )
         if not file_objs:
             return UserPromptMessage(content=message.query)
-        prompt_message_contents: list[PromptMessageContent] = []
+        prompt_message_contents: list[PromptMessageContentUnionTypes] = []
         prompt_message_contents.append(TextPromptMessageContent(data=message.query))
         for file in file_objs:
             prompt_message_contents.append(

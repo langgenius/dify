@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: '텍스트 파일 업로드',
-      button: '파일을 끌어다 놓거나',
+      button: '파일이나 폴더를 끌어서 놓기',
       browse: '찾아보기',
       tip: '{{supportTypes}}을(를) 지원합니다. 파일당 최대 크기는 {{size}}MB입니다.',
       validation: {
@@ -52,7 +52,7 @@ const translation = {
       failed: '생성에 실패했습니다',
     },
     website: {
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       limit: '한계',
       options: '옵션',
       firecrawlDoc: 'Firecrawl 문서',

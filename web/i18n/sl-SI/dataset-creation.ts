@@ -32,7 +32,7 @@ const translation = {
     },
     uploader: {
       title: 'Naloži datoteko',
-      button: 'Povleci in spusti datoteko ali',
+      button: 'Povleci in spusti datoteke ali mape oz',
       browse: 'Prebrskaj',
       tip: 'Podprti tipi datotek: {{supportTypes}}. Največ {{size}}MB na datoteko.',
       validation: {
@@ -71,7 +71,7 @@ const translation = {
       run: 'Zaženi',
       firecrawlTitle: 'Izvleci spletno vsebino z 🔥Firecrawl',
       firecrawlDoc: 'Firecrawl dokumentacija',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       jinaReaderTitle: 'Pretvori celotno stran v Markdown',
       jinaReaderDoc: 'Več o Jina Reader',
       jinaReaderDocLink: 'https://jina.ai/reader',

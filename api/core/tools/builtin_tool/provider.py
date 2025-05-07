@@ -35,8 +35,9 @@ class BuiltinToolProviderController(ToolProviderController):
                 provider_yaml["credentials_for_provider"][credential_name]["name"] = credential_name
 
         credentials_schema = []
-        for credential in provider_yaml.get("credentials_for_provider", {}).values():
-            credentials_schema.append(credential)
+        for credential in provider_yaml.get("credentials_for_provider", {}):
+            credential_dict = provider_yaml.get("credentials_for_provider", {}).get(credential, {})
+            credentials_schema.append(credential_dict)
 
         super().__init__(
             entity=ToolProviderEntity(

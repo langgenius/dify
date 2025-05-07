@@ -73,21 +73,47 @@ export const useEmbeddedChatbot = () => {
   const appId = useMemo(() => appData?.app_id, [appData])
 
   const [userId, setUserId] = useState<string>()
+  const [conversationId, setConversationId] = useState<string>()
   useEffect(() => {
-    getProcessedSystemVariablesFromUrlParams().then(({ user_id }) => {
+    getProcessedSystemVariablesFromUrlParams().then(({ user_id, conversation_id }) => {
       setUserId(user_id)
+      setConversationId(conversation_id)
     })
   }, [])
 
   useEffect(() => {
-    if (appInfo?.site.default_language)
-      changeLanguage(appInfo.site.default_language)
+    const setLanguageFromParams = async () => {
+      // Check URL parameters for language override
+      const urlParams = new URLSearchParams(window.location.search)
+      const localeParam = urlParams.get('locale')
+
+      // Check for encoded system variables
+      const systemVariables = await getProcessedSystemVariablesFromUrlParams()
+      const localeFromSysVar = systemVariables.locale
+
+      if (localeParam) {
+        // If locale parameter exists in URL, use it instead of default
+        changeLanguage(localeParam)
+      }
+      else if (localeFromSysVar) {
+        // If locale is set as a system variable, use that
+        changeLanguage(localeFromSysVar)
+      }
+      else if (appInfo?.site.default_language) {
+        // Otherwise use the default from app config
+        changeLanguage(appInfo.site.default_language)
+      }
+    }
+
+    setLanguageFromParams()
   }, [appInfo])
 
   const [conversationIdInfo, setConversationIdInfo] = useLocalStorageState<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {
     defaultValue: {},
   })
-  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || '', [appId, conversationIdInfo, userId])
+  const allowResetChat = !conversationId
+  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '',
+    [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
       let prevValue = conversationIdInfo?.[appId || '']
@@ -340,6 +366,7 @@ export const useEmbeddedChatbot = () => {
     appInfoError,
     appInfoLoading,
     isInstalledApp,
+    allowResetChat,
     appId,
     currentConversationId,
     currentConversationItem,

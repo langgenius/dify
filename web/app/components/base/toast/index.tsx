@@ -68,7 +68,7 @@ const Toast = ({
       </div>
       <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} grow flex-col items-start gap-1`}>
         <div className='flex items-center gap-1'>
-          <div className='system-sm-semibold text-text-primary'>{message}</div>
+          <div className='system-sm-semibold text-text-primary [word-break:break-word]'>{message}</div>
           {customComponent}
         </div>
         {children && <div className='system-xs-regular text-text-secondary'>

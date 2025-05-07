@@ -258,6 +258,8 @@ type Props = {
   onChange: (value: ValueSelector, item: Var) => void
   itemWidth?: number
   maxHeightClass?: string
+  onClose?: () => void
+  onBlur?: () => void
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
@@ -267,9 +269,18 @@ const VarReferenceVars: FC<Props> = ({
   onChange,
   itemWidth,
   maxHeightClass,
+  onClose,
+  onBlur,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      onClose?.()
+    }
+  }
 
   const filteredVars = vars.filter((v) => {
     const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))
@@ -301,14 +312,17 @@ const VarReferenceVars: FC<Props> = ({
       {
         !hideSearch && (
           <>
-            <div className={cn('mx-2 mb-1 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+            <div className={cn('var-search-input-wrapper mx-2 mb-1 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
               <Input
+                className='var-search-input'
                 showLeftIcon
                 showClearIcon
                 value={searchText}
                 placeholder={t('workflow.common.searchVar') || ''}
                 onChange={e => setSearchText(e.target.value)}
+                onKeyDown={handleKeyDown}
                 onClear={() => setSearchText('')}
+                onBlur={onBlur}
                 autoFocus
               />
             </div>

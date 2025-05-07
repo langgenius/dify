@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.2.0
+    image: langgenius/dify-api:1.3.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -31,7 +31,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.2.0
+    image: langgenius/dify-api:1.3.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -57,7 +57,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.2.0
+    image: langgenius/dify-web:1.3.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -66,6 +66,7 @@ services:
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
+      ALLOW_EMBED: ${ALLOW_EMBED:-false}
       MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
       MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
       TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
@@ -141,7 +142,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.7-local
+    image: langgenius/dify-plugin-daemon:0.0.9-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -187,7 +188,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
+  # https://docs.dify.ai/learn-more/faq/install-faq#18-why-is-ssrf-proxy-needed%3F
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
@@ -356,6 +357,30 @@ services:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
       - ./pgvector/docker-entrypoint.sh:/docker-entrypoint.sh
     entrypoint: [ '/docker-entrypoint.sh' ]
+    healthcheck:
+      test: [ 'CMD', 'pg_isready' ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # get image from https://www.vastdata.com.cn/
+  vastbase:
+    image: vastdata/vastbase-vector
+    profiles:
+      - vastbase
+    restart: always
+    environment:
+      - VB_DBCOMPATIBILITY=PG
+      - VB_DB=dify
+      - VB_USERNAME=dify
+      - VB_PASSWORD=Difyai123456
+    ports:
+      - '5434:5432'
+    volumes:
+      - ./vastbase/lic:/home/vastbase/vastbase/lic
+      - ./vastbase/data:/home/vastbase/data
+      - ./vastbase/backup:/home/vastbase/backup
+      - ./vastbase/backup_log:/home/vastbase/backup_log
     healthcheck:
       test: [ 'CMD', 'pg_isready' ]
       interval: 1s
@@ -552,7 +577,7 @@ services:
     volumes:
       - ./volumes/opengauss/data:/var/lib/opengauss/data
     healthcheck:
-      test: ["CMD-SHELL", "netstat -lntp | grep tcp6 > /dev/null 2>&1"]
+      test: [ "CMD-SHELL", "netstat -lntp | grep tcp6 > /dev/null 2>&1" ]
       interval: 10s
       timeout: 10s
       retries: 10

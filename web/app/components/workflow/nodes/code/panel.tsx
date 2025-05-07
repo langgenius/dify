@@ -105,8 +105,8 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           operations={
             <AddButton onClick={handleAddOutputVariable} />
           }
+          required
         >
-
           <OutputVarList
             readonly={readOnly}
             outputs={inputs.outputs}

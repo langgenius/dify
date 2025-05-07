@@ -27,8 +27,8 @@ class MilvusConfig(BaseModel):
 
     uri: str  # Milvus server URI
     token: Optional[str] = None  # Optional token for authentication
-    user: str  # Username for authentication
-    password: str  # Password for authentication
+    user: Optional[str] = None  # Username for authentication
+    password: Optional[str] = None  # Password for authentication
     batch_size: int = 100  # Batch size for operations
     database: str = "default"  # Database name
     enable_hybrid_search: bool = False  # Flag to enable hybrid search
@@ -43,10 +43,11 @@ class MilvusConfig(BaseModel):
         """
         if not values.get("uri"):
             raise ValueError("config MILVUS_URI is required")
-        if not values.get("user"):
-            raise ValueError("config MILVUS_USER is required")
-        if not values.get("password"):
-            raise ValueError("config MILVUS_PASSWORD is required")
+        if not values.get("token"):
+            if not values.get("user"):
+                raise ValueError("config MILVUS_USER is required")
+            if not values.get("password"):
+                raise ValueError("config MILVUS_PASSWORD is required")
         return values
 
     def to_milvus_params(self):
@@ -356,11 +357,14 @@ class MilvusVector(BaseVector):
                 )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def _init_client(self, config) -> MilvusClient:
+    def _init_client(self, config: MilvusConfig) -> MilvusClient:
         """
         Initialize and return a Milvus client.
         """
-        client = MilvusClient(uri=config.uri, user=config.user, password=config.password, db_name=config.database)
+        if config.token:
+            client = MilvusClient(uri=config.uri, token=config.token, db_name=config.database)
+        else:
+            client = MilvusClient(uri=config.uri, user=config.user, password=config.password, db_name=config.database)
         return client
 
 

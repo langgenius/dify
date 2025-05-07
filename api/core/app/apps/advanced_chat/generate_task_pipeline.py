@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
-from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -58,13 +57,15 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
-from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
+from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
+from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.workflow_cycle_manager import WorkflowCycleManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models import Conversation, EndUser, Message, MessageFile
@@ -93,6 +94,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         user: Union[Account, EndUser],
         stream: bool,
         dialogue_count: int,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
@@ -111,7 +113,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         else:
             raise NotImplementedError(f"User type not supported: {type(user)}")
 
-        self._workflow_cycle_manager = WorkflowCycleManage(
+        self._workflow_cycle_manager = WorkflowCycleManager(
             application_generate_entity=application_generate_entity,
             workflow_system_variables={
                 SystemVariableKey.QUERY: message.query,
@@ -123,6 +125,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
                 SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
             },
+            workflow_node_execution_repository=workflow_node_execution_repository,
         )
 
         self._task_state = WorkflowTaskState()
@@ -684,7 +687,9 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
             elif isinstance(event, QueueMessageReplaceEvent):
                 # published by moderation
-                yield self._message_cycle_manager._message_replace_to_stream_response(answer=event.text)
+                yield self._message_cycle_manager._message_replace_to_stream_response(
+                    answer=event.text, reason=event.reason
+                )
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
                 if not graph_runtime_state:
                     raise ValueError("graph runtime state not initialized.")
@@ -695,7 +700,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if output_moderation_answer:
                     self._task_state.answer = output_moderation_answer
                     yield self._message_cycle_manager._message_replace_to_stream_response(
-                        answer=output_moderation_answer
+                        answer=output_moderation_answer,
+                        reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
 
                 # Save message

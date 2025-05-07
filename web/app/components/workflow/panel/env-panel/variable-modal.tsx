@@ -47,8 +47,14 @@ const VariableModal = ({
       return
     if (!value)
       return notify({ type: 'error', message: 'value can not be empty' })
-    if (!env && envList.some(env => env.name === name))
+
+    // Add check for duplicate name when editing
+    if (env && env.name !== name && envList.some(e => e.name === name))
       return notify({ type: 'error', message: 'name is existed' })
+    // Original check for create new variable
+    if (!env && envList.some(e => e.name === name))
+      return notify({ type: 'error', message: 'name is existed' })
+
     onSave({
       id: env ? env.id : uuid4(),
       value_type: type,

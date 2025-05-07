@@ -61,6 +61,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
       <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nCommonPrefix}.model`)}
+          required
         >
           <ModelParameterModal
             popupClassName='!w-[387px]'
@@ -79,6 +80,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         </Field>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
+          required
         >
           <>
             <VarReferencePicker
@@ -103,6 +105,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         />
         <Field
           title={t(`${i18nPrefix}.extractParameters`)}
+          required
           operations={
             !readOnly
               ? (

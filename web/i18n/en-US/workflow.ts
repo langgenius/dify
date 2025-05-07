@@ -638,6 +638,8 @@ const translation = {
         'clear': 'Clear',
         'extend': 'Extend',
         'append': 'Append',
+        'remove-first': 'Remove First',
+        'remove-last': 'Remove Last',
         '+=': '+=',
         '-=': '-=',
         '*=': '*=',
