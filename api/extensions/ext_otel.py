@@ -31,7 +31,6 @@ def on_user_loaded(_sender, user):
 
 
 def init_app(app: DifyApp):
-
     def is_celery_worker():
         return "celery" in sys.argv[0].lower()
 
