@@ -642,10 +642,9 @@ const TextGeneration: FC<IMainProps> = ({
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}>
             <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-            {customConfig?.replace_webapp_logo && (
-              <img src={customConfig?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
-            )}
-            {!customConfig?.replace_webapp_logo && (
+            {systemFeatures.branding.enabled ? (
+              <img src={systemFeatures.branding.login_page_logo} alt='logo' className='block h-5 w-auto' />
+            ) : (
               <LogoSite className='!h-5' />
             )}
           </div>
