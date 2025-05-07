@@ -20,7 +20,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import AgentLogEvent
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
+from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from factories import file_factory
@@ -359,6 +359,12 @@ class ToolNode(BaseNode[ToolNodeData]):
                     agent_logs.append(agent_log)
 
                 yield agent_log
+            elif message.type == ToolInvokeMessage.MessageType.RETRIEVER_RESOURCES:
+                assert isinstance(message.message, ToolInvokeMessage.RetrieverResourceMessage)
+                yield RunRetrieverResourceEvent(
+                    retriever_resources=message.message.retriever_resources,
+                    context=message.message.context,
+                )
 
         yield RunCompletedEvent(
             run_result=NodeRunResult(
