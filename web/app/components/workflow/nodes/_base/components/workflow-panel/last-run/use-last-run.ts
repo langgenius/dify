@@ -128,6 +128,7 @@ const useLastRun = <T>({
     showSingleRun,
     runResult,
     iterationRunResult,
+    loopRunResult,
   } = oneStepRunRes
 
   const {
@@ -144,6 +145,7 @@ const useLastRun = <T>({
     varSelectorsToVarInputs,
     runResult,
     iterationRunResult,
+    loopRunResult,
   })
 
   const callRunApi = async (data: Record<string, any>) => {
