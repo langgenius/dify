@@ -239,7 +239,7 @@ class WordExtractor(BaseExtractor):
             paragraph_content = []
             for run in paragraph.runs:
                 if hasattr(run.element, "tag") and isinstance(run.element.tag, str) and run.element.tag.endswith("r"):
-                    # 处理drawing类型的图片
+                    # Process drawing type images
                     drawing_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing"
                     )
@@ -258,12 +258,12 @@ class WordExtractor(BaseExtractor):
                                     has_drawing = True
                                     paragraph_content.append(image_map[image_part])
                     
-                    # 处理pict类型的图片
+                    # Process pict type images
                     shape_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pict"
                     )
                     for shape in shape_elements:
-                        # 查找VML中的图片数据
+                        # Find image data in VML
                         shape_image = shape.find(
                             ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}binData"
                         )
@@ -276,7 +276,7 @@ class WordExtractor(BaseExtractor):
                                 if image_part in image_map and not has_drawing:
                                     paragraph_content.append(image_map[image_part])
                         
-                        # 查找VML中的imagedata元素
+                        # Find imagedata element in VML
                         image_data = shape.find(".//{urn:schemas-microsoft-com:vml}imagedata")
                         if image_data is not None:
                             image_id = image_data.get("id") or image_data.get(
