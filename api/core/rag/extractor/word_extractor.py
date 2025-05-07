@@ -257,7 +257,6 @@ class WordExtractor(BaseExtractor):
                                 if image_part in image_map:
                                     has_drawing = True
                                     paragraph_content.append(image_map[image_part])
-                    
                     # Process pict type images
                     shape_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pict"
@@ -275,7 +274,6 @@ class WordExtractor(BaseExtractor):
                                 image_part = doc.part.rels[image_id].target_part
                                 if image_part in image_map and not has_drawing:
                                     paragraph_content.append(image_map[image_part])
-                        
                         # Find imagedata element in VML
                         image_data = shape.find(".//{urn:schemas-microsoft-com:vml}imagedata")
                         if image_data is not None:
