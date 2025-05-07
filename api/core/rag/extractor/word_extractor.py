@@ -239,9 +239,11 @@ class WordExtractor(BaseExtractor):
             paragraph_content = []
             for run in paragraph.runs:
                 if hasattr(run.element, "tag") and isinstance(run.element.tag, str) and run.element.tag.endswith("r"):
+                    # 处理drawing类型的图片
                     drawing_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing"
                     )
+                    has_drawing = False
                     for drawing in drawing_elements:
                         blip_elements = drawing.findall(
                             ".//{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
@@ -253,6 +255,36 @@ class WordExtractor(BaseExtractor):
                             if embed_id:
                                 image_part = doc.part.related_parts.get(embed_id)
                                 if image_part in image_map:
+                                    has_drawing = True
+                                    paragraph_content.append(image_map[image_part])
+                    
+                    # 处理pict类型的图片
+                    shape_elements = run.element.findall(
+                        ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}pict"
+                    )
+                    for shape in shape_elements:
+                        # 查找VML中的图片数据
+                        shape_image = shape.find(
+                            ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}binData"
+                        )
+                        if shape_image is not None and shape_image.text:
+                            image_id = shape_image.get(
+                                "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+                            )
+                            if image_id and image_id in doc.part.rels:
+                                image_part = doc.part.rels[image_id].target_part
+                                if image_part in image_map and not has_drawing:
+                                    paragraph_content.append(image_map[image_part])
+                        
+                        # 查找VML中的imagedata元素
+                        image_data = shape.find(".//{urn:schemas-microsoft-com:vml}imagedata")
+                        if image_data is not None:
+                            image_id = image_data.get("id") or image_data.get(
+                                "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
+                            )
+                            if image_id and image_id in doc.part.rels:
+                                image_part = doc.part.rels[image_id].target_part
+                                if image_part in image_map and not has_drawing:
                                     paragraph_content.append(image_map[image_part])
                 if run.text.strip():
                     paragraph_content.append(run.text.strip())
