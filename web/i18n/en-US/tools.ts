@@ -169,7 +169,14 @@ const translation = {
       serverUrl: 'Server URL',
       serverUrlPlaceholder: 'URL to server endpiont',
       cancel: 'Cancel',
+      save: 'Save',
       confirm: 'Add & Authorize',
+    },
+    delete: 'Remove MCP Server',
+    deleteConfirmTitle: 'Would you like to remove {{mcp}}?',
+    operation: {
+      edit: 'Edit',
+      remove: 'Remove',
     },
   },
 }

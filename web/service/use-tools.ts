@@ -1,4 +1,4 @@
-import { get, post } from './base'
+import { del, get, post, put } from './base'
 import type {
   Collection,
   Tool,
@@ -93,13 +93,54 @@ export const useCreateMCP = ({
       icon: string
       icon_background?: string | null
     }) => {
-      console.log('payload', payload)
-      return Promise.resolve(payload)
-      // return post('/console/api/workspaces/current/tool-provider/mcp', {
-      //   body: {
-      //     ...payload,
-      //   },
-      // })
+      return post('workspaces/current/tool-provider/mcp', {
+        body: {
+          ...payload,
+        },
+      })
+    },
+    onSuccess,
+  })
+}
+
+export const useUpdateMCP = ({
+  onSuccess,
+}: {
+  onSuccess?: () => void
+}) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-mcp'],
+    mutationFn: (payload: {
+      name: string
+      server_url: string
+      icon_type: AppIconType
+      icon: string
+      icon_background?: string | null
+      provider_id: string
+    }) => {
+      return put('workspaces/current/tool-provider/mcp', {
+        body: {
+          ...payload,
+        },
+      })
+    },
+    onSuccess,
+  })
+}
+
+export const useDeleteMCP = ({
+  onSuccess,
+}: {
+  onSuccess?: () => void
+}) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'delete-mcp'],
+    mutationFn: (id: string) => {
+      return del('/console/api/workspaces/current/tool-provider/mcp', {
+        body: {
+          provider_id: id,
+        },
+      })
     },
     onSuccess,
   })

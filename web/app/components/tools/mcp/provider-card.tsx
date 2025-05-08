@@ -1,43 +1,90 @@
 'use client'
-// import { useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-// import { useContext } from 'use-context-selector'
-// import I18n from '@/context/i18n'
-// import { getLanguage } from '@/i18n/language'
-// import { useAppContext } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 import { RiHammerFill } from '@remixicon/react'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useFormatTimeFromNow } from './hooks'
 import type { ToolWithProvider } from '../../workflow/types'
+import Confirm from '@/app/components/base/confirm'
+import MCPModal from './modal'
+import OperationDropdown from './detail/operation-dropdown'
+import { useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
 import cn from '@/utils/classnames'
 
 type Props = {
   currentProvider?: ToolWithProvider
   data: ToolWithProvider
   handleSelect: (provider: ToolWithProvider) => void
+  onUpdate: () => void
 }
 
 const MCPCard = ({
   currentProvider,
   data,
+  onUpdate,
   handleSelect,
 }: Props) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
-  // const { locale } = useContext(I18n)
-  // const language = getLanguage(locale)
-  //   const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
+
+  const { mutate: updateMCP } = useUpdateMCP({
+    onSuccess: onUpdate,
+  })
+  const { mutate: deleteMCP } = useDeleteMCP({
+    onSuccess: onUpdate,
+  })
+
+  const [isOperationShow, setIsOperationShow] = useState(false)
+
+  const [isShowUpdateModal, {
+    setTrue: showUpdateModal,
+    setFalse: hideUpdateModal,
+  }] = useBoolean(false)
+
+  const [isShowDeleteConfirm, {
+    setTrue: showDeleteConfirm,
+    setFalse: hideDeleteConfirm,
+  }] = useBoolean(false)
+
+  const [deleting, {
+    setTrue: showDeleting,
+    setFalse: hideDeleting,
+  }] = useBoolean(false)
+
+  const handleUpdate = useCallback(async (form: any) => {
+    const res = await updateMCP({
+      ...form,
+      provider_id: data.id,
+    })
+    if ((res as any)?.result === 'success') {
+      hideUpdateModal()
+      onUpdate()
+    }
+  }, [data, updateMCP, hideUpdateModal, onUpdate])
+
+  const handleDelete = useCallback(async () => {
+    showDeleting()
+    const res = await deleteMCP(data.id)
+    hideDeleting()
+    if ((res as any)?.result === 'success') {
+      hideDeleteConfirm()
+      onUpdate()
+    }
+  }, [data, showDeleting, hideDeleting, hideDeleteConfirm, onUpdate])
 
   return (
     <div
       onClick={() => handleSelect(data)}
       className={cn(
-        'relative flex cursor-pointer flex-col rounded-xl border-[1.5px] border-transparent bg-components-card-bg shadow-xs hover:bg-components-card-bg-alt hover:shadow-md',
+        'group relative flex cursor-pointer flex-col rounded-xl border-[1.5px] border-transparent bg-components-card-bg shadow-xs hover:bg-components-card-bg-alt hover:shadow-md',
         currentProvider?.id === data.id && 'border-components-option-card-option-selected-border bg-components-card-bg-alt',
       )}
     >
-      <div className='group flex grow items-center gap-3 rounded-t-xl p-4'>
+      <div className='flex grow items-center gap-3 rounded-t-xl p-4'>
         <div className='shrink-0 overflow-hidden rounded-xl border border-components-panel-border-subtle'>
           <Icon src={data.icon} />
         </div>
@@ -68,6 +115,39 @@ const MCPCard = ({
           </div>
         )}
       </div>
+      {isCurrentWorkspaceManager && (
+        <div className={cn('absolute right-2.5 top-2.5 hidden group-hover:block', isOperationShow && 'block')} onClick={e => e.stopPropagation()}>
+          <OperationDropdown
+            inCard
+            onOpenChange={setIsOperationShow}
+            onEdit={showUpdateModal}
+            onRemove={showDeleteConfirm}
+          />
+        </div>
+      )}
+      {isShowUpdateModal && (
+        <MCPModal
+          data={data}
+          show={isShowUpdateModal}
+          onConfirm={handleUpdate}
+          onHide={hideUpdateModal}
+        />
+      )}
+      {isShowDeleteConfirm && (
+        <Confirm
+          isShow
+          title={t('tools.mcp.delete')}
+          content={
+            <div>
+              {t('tools.mcp.deleteConfirmTitle', { mcp: data.name })}
+            </div>
+          }
+          onCancel={hideDeleteConfirm}
+          onConfirm={handleDelete}
+          isLoading={deleting}
+          isDisabled={deleting}
+        />
+      )}
     </div>
   )
 }

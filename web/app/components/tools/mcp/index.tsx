@@ -60,6 +60,7 @@ const MCPList = ({
             data={provider}
             currentProvider={currentProvider}
             handleSelect={setCurrentProvider}
+            onUpdate={() => invalidateMCPList()}
           />
         ))}
         {!list.length && renderDefaultCard()}

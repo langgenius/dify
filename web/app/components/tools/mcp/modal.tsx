@@ -109,7 +109,7 @@ const MCPModal = ({
           </div>
         </div>
         <div className='flex flex-row-reverse pt-5'>
-          <Button disabled={!name || !url} className='ml-2' variant='primary' onClick={submit}>{t('tools.mcp.modal.confirm')}</Button>
+          <Button disabled={!name || !url} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
           <Button onClick={onHide}>{t('tools.mcp.modal.cancel')}</Button>
         </div>
       </Modal>

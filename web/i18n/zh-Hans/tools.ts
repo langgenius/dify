@@ -169,7 +169,14 @@ const translation = {
       serverUrl: '服务端点 URL',
       serverUrlPlaceholder: '服务端点的 URL',
       cancel: '取消',
+      save: '保存',
       confirm: '添加并授权',
+    },
+    delete: '删除 MCP 服务',
+    deleteConfirmTitle: '你想要删除 {{mcp}} 吗？',
+    operation: {
+      edit: '修改',
+      remove: '删除',
     },
   },
 }
