@@ -1,11 +1,12 @@
 from typing import cast
 
 import flask_login  # type: ignore
+from flask import request
+from flask_restful import Resource, reqparse  # type: ignore
+
 from configs import dify_config
 from controllers.admin import api
 from controllers.service_api_with_auth.error import AccountInFreezeError
-from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
 from libs.helper import extract_remote_ip
 from models.account import Account
 from services.account_service import AccountService
