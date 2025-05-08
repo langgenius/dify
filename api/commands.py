@@ -26,9 +26,22 @@ from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountJoinRole
-from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
+from models.dataset import (
+    Dataset,
+    DatasetCollectionBinding,
+    DatasetMetadata,
+    DatasetMetadataBinding,
+    DocumentSegment,
+)
 from models.dataset import Document as DatasetDocument
-from models.model import App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
+from models.model import (
+    App,
+    AppAnnotationSetting,
+    AppMode,
+    Conversation,
+    MessageAnnotation,
+    UploadFile,
+)
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
@@ -52,13 +65,19 @@ def reset_password(email, new_password, password_confirm):
     account = db.session.query(Account).filter(Account.email == email).one_or_none()
 
     if not account:
-        click.echo(click.style("Account not found for email: {}".format(email), fg="red"))
+        click.echo(
+            click.style("Account not found for email: {}".format(email), fg="red")
+        )
         return
 
     try:
         valid_password(new_password)
     except:
-        click.echo(click.style("Invalid password. Must match {}".format(password_pattern), fg="red"))
+        click.echo(
+            click.style(
+                "Invalid password. Must match {}".format(password_pattern), fg="red"
+            )
+        )
         return
 
     # generate password salt
@@ -90,7 +109,9 @@ def reset_email(email, new_email, email_confirm):
     account = db.session.query(Account).filter(Account.email == email).one_or_none()
 
     if not account:
-        click.echo(click.style("Account not found for email: {}".format(email), fg="red"))
+        click.echo(
+            click.style("Account not found for email: {}".format(email), fg="red")
+        )
         return
 
     try:
@@ -124,24 +145,34 @@ def reset_encrypt_key_pair():
     Only support SELF_HOSTED mode.
     """
     if dify_config.EDITION != "SELF_HOSTED":
-        click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
+        click.echo(
+            click.style("This command is only for SELF_HOSTED installations.", fg="red")
+        )
         return
 
     tenants = db.session.query(Tenant).all()
     for tenant in tenants:
         if not tenant:
-            click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
+            click.echo(
+                click.style("No workspaces found. Run /install first.", fg="red")
+            )
             return
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
 
-        db.session.query(Provider).filter(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
-        db.session.query(ProviderModel).filter(ProviderModel.tenant_id == tenant.id).delete()
+        db.session.query(Provider).filter(
+            Provider.provider_type == "custom", Provider.tenant_id == tenant.id
+        ).delete()
+        db.session.query(ProviderModel).filter(
+            ProviderModel.tenant_id == tenant.id
+        ).delete()
         db.session.commit()
 
         click.echo(
             click.style(
-                "Congratulations! The asymmetric key pair of workspace {} has been reset.".format(tenant.id),
+                "Congratulations! The asymmetric key pair of workspace {} has been reset.".format(
+                    tenant.id
+                ),
                 fg="green",
             )
         )
@@ -191,12 +222,15 @@ def migrate_annotation_vector_database():
         for app in apps:
             total_count = total_count + 1
             click.echo(
-                f"Processing the {total_count} app {app.id}. " + f"{create_count} created, {skipped_count} skipped."
+                f"Processing the {total_count} app {app.id}. "
+                + f"{create_count} created, {skipped_count} skipped."
             )
             try:
                 click.echo("Creating app annotation index: {}".format(app.id))
                 app_annotation_setting = (
-                    db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app.id).first()
+                    db.session.query(AppAnnotationSetting)
+                    .filter(AppAnnotationSetting.app_id == app.id)
+                    .first()
                 )
 
                 if not app_annotation_setting:
@@ -206,13 +240,22 @@ def migrate_annotation_vector_database():
                 # get dataset_collection_binding info
                 dataset_collection_binding = (
                     db.session.query(DatasetCollectionBinding)
-                    .filter(DatasetCollectionBinding.id == app_annotation_setting.collection_binding_id)
+                    .filter(
+                        DatasetCollectionBinding.id
+                        == app_annotation_setting.collection_binding_id
+                    )
                     .first()
                 )
                 if not dataset_collection_binding:
-                    click.echo("App annotation collection binding not found: {}".format(app.id))
+                    click.echo(
+                        "App annotation collection binding not found: {}".format(app.id)
+                    )
                     continue
-                annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app.id).all()
+                annotations = (
+                    db.session.query(MessageAnnotation)
+                    .filter(MessageAnnotation.app_id == app.id)
+                    .all()
+                )
                 dataset = Dataset(
                     id=app.id,
                     tenant_id=app.tenant_id,
@@ -234,14 +277,24 @@ def migrate_annotation_vector_database():
                         )
                         documents.append(document)
 
-                vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                vector = Vector(
+                    dataset, attributes=["doc_id", "annotation_id", "app_id"]
+                )
                 click.echo(f"Migrating annotations for app: {app.id}.")
 
                 try:
                     vector.delete()
-                    click.echo(click.style(f"Deleted vector index for app {app.id}.", fg="green"))
+                    click.echo(
+                        click.style(
+                            f"Deleted vector index for app {app.id}.", fg="green"
+                        )
+                    )
                 except Exception as e:
-                    click.echo(click.style(f"Failed to delete vector index for app {app.id}.", fg="red"))
+                    click.echo(
+                        click.style(
+                            f"Failed to delete vector index for app {app.id}.", fg="red"
+                        )
+                    )
                     raise e
                 if documents:
                     try:
@@ -252,7 +305,11 @@ def migrate_annotation_vector_database():
                             )
                         )
                         vector.create(documents)
-                        click.echo(click.style(f"Created vector index for app {app.id}.", fg="green"))
+                        click.echo(
+                            click.style(
+                                f"Created vector index for app {app.id}.", fg="green"
+                            )
+                        )
                     except Exception as e:
                         click.echo(
                             click.style(
@@ -266,7 +323,9 @@ def migrate_annotation_vector_database():
             except Exception as e:
                 click.echo(
                     click.style(
-                        "Error creating app annotation index: {} {}".format(e.__class__.__name__, str(e)),
+                        "Error creating app annotation index: {} {}".format(
+                            e.__class__.__name__, str(e)
+                        ),
                         fg="red",
                     )
                 )
@@ -332,7 +391,9 @@ def migrate_knowledge_vector_database():
                 f"Processing the {total_count} dataset {dataset.id}. {create_count} created, {skipped_count} skipped."
             )
             try:
-                click.echo("Creating dataset vector database index: {}".format(dataset.id))
+                click.echo(
+                    "Creating dataset vector database index: {}".format(dataset.id)
+                )
                 if dataset.index_struct_dict:
                     if dataset.index_struct_dict["type"] == vector_type:
                         skipped_count = skipped_count + 1
@@ -345,7 +406,10 @@ def migrate_knowledge_vector_database():
                     if dataset.collection_binding_id:
                         dataset_collection_binding = (
                             db.session.query(DatasetCollectionBinding)
-                            .filter(DatasetCollectionBinding.id == dataset.collection_binding_id)
+                            .filter(
+                                DatasetCollectionBinding.id
+                                == dataset.collection_binding_id
+                            )
                             .one_or_none()
                         )
                         if dataset_collection_binding:
@@ -356,7 +420,9 @@ def migrate_knowledge_vector_database():
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
 
                 elif vector_type in lower_collection_vector_types:
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
+                    collection_name = Dataset.gen_collection_name_by_id(
+                        dataset_id
+                    ).lower()
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
 
@@ -455,7 +521,9 @@ def migrate_knowledge_vector_database():
                 db.session.rollback()
                 click.echo(
                     click.style(
-                        "Error creating dataset index: {} {}".format(e.__class__.__name__, str(e)),
+                        "Error creating dataset index: {} {}".format(
+                            e.__class__.__name__, str(e)
+                        ),
                         fg="red",
                     )
                 )
@@ -517,9 +585,9 @@ def convert_to_agent_apps():
                 db.session.commit()
 
                 # update conversation mode to agent
-                db.session.query(Conversation).filter(Conversation.app_id == app.id).update(
-                    {Conversation.mode: AppMode.AGENT_CHAT.value}
-                )
+                db.session.query(Conversation).filter(
+                    Conversation.app_id == app.id
+                ).update({Conversation.mode: AppMode.AGENT_CHAT.value})
 
                 db.session.commit()
                 click.echo(click.style("Converted app: {}".format(app.id), fg="green"))
@@ -533,7 +601,9 @@ def convert_to_agent_apps():
 
     click.echo(
         click.style(
-            "Conversion complete. Converted {} agent apps.".format(len(proceeded_app_ids)),
+            "Conversion complete. Converted {} agent apps.".format(
+                len(proceeded_app_ids)
+            ),
             fg="green",
         )
     )
@@ -666,11 +736,15 @@ def old_metadata_migration():
                             )
                             db.session.add(dataset_metadata_binding)
                         else:
-                            dataset_metadata_binding = DatasetMetadataBinding.query.filter(
-                                DatasetMetadataBinding.dataset_id == document.dataset_id,
-                                DatasetMetadataBinding.document_id == document.id,
-                                DatasetMetadataBinding.metadata_id == dataset_metadata.id,
-                            ).first()
+                            dataset_metadata_binding = (
+                                DatasetMetadataBinding.query.filter(
+                                    DatasetMetadataBinding.dataset_id
+                                    == document.dataset_id,
+                                    DatasetMetadataBinding.document_id == document.id,
+                                    DatasetMetadataBinding.metadata_id
+                                    == dataset_metadata.id,
+                                ).first()
+                            )
                             if not dataset_metadata_binding:
                                 dataset_metadata_binding = DatasetMetadataBinding(
                                     tenant_id=document.tenant_id,
@@ -689,7 +763,9 @@ def old_metadata_migration():
 @click.option("--email", prompt=True, help="Tenant account email.")
 @click.option("--name", prompt=True, help="Workspace name.")
 @click.option("--language", prompt=True, help="Account language, default: en-US.")
-def create_tenant(email: str, language: Optional[str] = None, name: Optional[str] = None):
+def create_tenant(
+    email: str, language: Optional[str] = None, name: Optional[str] = None
+):
     """
     Create tenant account
     """
@@ -727,7 +803,9 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
 
     click.echo(
         click.style(
-            "Account and tenant created.\nAccount: {}\nPassword: {}".format(email, new_password),
+            "Account and tenant created.\nAccount: {}\nPassword: {}".format(
+                email, new_password
+            ),
             fg="green",
         )
     )
@@ -802,65 +880,116 @@ where sites.id is null limit 1000"""
                             fg="red",
                         )
                     )
-                    logging.exception(f"Failed to fix app related site missing issue, app_id: {app_id}")
+                    logging.exception(
+                        f"Failed to fix app related site missing issue, app_id: {app_id}"
+                    )
                     continue
 
             if not processed_count:
                 break
 
-    click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
+    click.echo(
+        click.style(
+            "Fix for missing app-related sites completed successfully!", fg="green"
+        )
+    )
 
 
 @click.command(
-    "create-admin-with-phone",
-    help="Create or update an admin account for an organization with a phone number.",
+    "create-admin-account",
+    help="Create or update an admin account for an organization with a phone number or email.",
 )
 @click.option("--name", prompt=True, help="Admin account name")
-@click.option("--phone", prompt=True, help="Admin account phone number")
+@click.option("--login-id", prompt=True, help="Admin account phone number or email")
+@click.option(
+    "--login-id-type",
+    prompt=True,
+    type=click.Choice(["phone", "email"]),
+    help="Type of login ID (phone or email)",
+)
 @click.option("--organization-id", required=True, help="Organization ID")
-def create_admin_with_phone(name: str, phone: str, organization_id: str):
+def create_admin_account(
+    name: str, login_id: str, login_id_type: str, organization_id: str
+):
     """
-    Create or update an admin account with a phone number for a specific organization.
-    This command will create a new account if the phone doesn't exist,
+    Create or update an admin account with a phone number or email for a specific organization.
+    This command will create a new account if the login ID doesn't exist,
     or update an existing account with the specified admin role.
     """
     try:
         # Check if organization exists
-        from models.organization import Organization, OrganizationMember, OrganizationRole
+        from models.organization import (
+            Organization,
+            OrganizationMember,
+            OrganizationRole,
+        )
 
-        organization = db.session.query(Organization).filter(Organization.id == organization_id).first()
+        organization = (
+            db.session.query(Organization)
+            .filter(Organization.id == organization_id)
+            .first()
+        )
         if not organization:
-            click.echo(click.style(f"Organization with ID {organization_id} not found.", fg="red"))
+            click.echo(
+                click.style(
+                    f"Organization with ID {organization_id} not found.", fg="red"
+                )
+            )
             return
 
         # Get tenant from organization
-        tenant = db.session.query(Tenant).filter(Tenant.id == organization.tenant_id).first()
+        tenant = (
+            db.session.query(Tenant).filter(Tenant.id == organization.tenant_id).first()
+        )
         if not tenant:
-            click.echo(click.style(f"Tenant for organization {organization_id} not found.", fg="red"))
+            click.echo(
+                click.style(
+                    f"Tenant for organization {organization_id} not found.", fg="red"
+                )
+            )
             return
 
-        # Check if account exists with this phone number
-        account = db.session.query(Account).filter(Account.phone == phone).first()
+        # Check if account exists with this login ID
+        account = None
+        if login_id_type == "phone":
+            account = (
+                db.session.query(Account).filter(Account.phone == login_id).first()
+            )
+        else:  # email
+            account = (
+                db.session.query(Account).filter(Account.email == login_id).first()
+            )
 
         if account:
-            click.echo(f"Account with phone {phone} already exists. Updating account...")
+            click.echo(
+                f"Account with {login_id_type} {login_id} already exists. Updating account..."
+            )
 
             # Update account
             account.name = name
             account.current_organization_id = organization_id
             db.session.commit()
         else:
-            click.echo(f"Creating new account with phone {phone}...")
+            click.echo(f"Creating new account with {login_id_type} {login_id}...")
 
-            # Create new account with phone
-            account = Account(
-                name=name,
-                email=f"{phone}@qingsu.chat",  # Use organization code in email
-                phone=phone,
-                interface_language=languages[0],
-                status="active",
-                current_organization_id=organization_id,  # Set current organization
-            )
+            # Create new account
+            if login_id_type == "phone":
+                account = Account(
+                    name=name,
+                    email=f"{login_id}@qingsu.chat",  # Use phone as part of email
+                    phone=login_id,
+                    interface_language=languages[0],
+                    status="active",
+                    current_organization_id=organization_id,
+                )
+            else:  # email
+                account = Account(
+                    name=name,
+                    email=login_id,
+                    interface_language=languages[0],
+                    status="active",
+                    current_organization_id=organization_id,
+                )
 
             db.session.add(account)
             db.session.commit()
@@ -898,7 +1027,9 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
         if org_member:
             # Update role to admin
             org_member.role = OrganizationRole.ADMIN
-            click.echo(f"Updated account role to {OrganizationRole.ADMIN} in organization {organization.name}")
+            click.echo(
+                f"Updated account role to {OrganizationRole.ADMIN} in organization {organization.name}"
+            )
         else:
             # Add account to organization with admin role
             org_member = OrganizationMember(
@@ -909,18 +1040,20 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
                 created_by=account.id,
             )
             db.session.add(org_member)
-            click.echo(f"Added account to organization {organization.name} with role {OrganizationRole.ADMIN}")
+            click.echo(
+                f"Added account to organization {organization.name} with role {OrganizationRole.ADMIN}"
+            )
 
         db.session.commit()
 
         click.echo(
             click.style(
-                f"Successfully {'updated' if account else 'created'} admin account with phone number.",
+                f"Successfully {'updated' if account else 'created'} admin account with {login_id_type}.",
                 fg="green",
             )
         )
         click.echo(f"Name: {name}")
-        click.echo(f"Phone: {phone}")
+        click.echo(f"{login_id_type.capitalize()}: {login_id}")
         click.echo(f"Organization: {organization.name} (ID: {organization.id})")
 
     except Exception as e:
@@ -928,8 +1061,12 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
         click.echo(click.style(f"Error: {str(e)}", fg="red"))
 
 
-@click.command("create-organization", help="Create a new organization for multi-school support.")
-@click.option("--tenant-id", required=True, help="ID of the tenant that owns this organization")
+@click.command(
+    "create-organization", help="Create a new organization for multi-school support."
+)
+@click.option(
+    "--tenant-id", required=True, help="ID of the tenant that owns this organization"
+)
 @click.option("--name", required=True, help="Name of the organization")
 @click.option("--code", required=True, help="Unique code for the organization")
 @click.option(
@@ -940,15 +1077,21 @@ def create_admin_with_phone(name: str, phone: str, organization_id: str):
     help="Type of organization",
 )
 @click.option("--description", default="", help="Description of the organization")
-@click.option("--email-domains", default="", help="Comma-separated list of allowed email domains")
+@click.option(
+    "--email-domains", default="", help="Comma-separated list of allowed email domains"
+)
 @click.option("--created-by", required=True, help="Account ID of the creator")
-def create_organization_cmd(tenant_id, name, code, org_type, description, email_domains, created_by):
+def create_organization_cmd(
+    tenant_id, name, code, org_type, description, email_domains, created_by
+):
     """Create a new organization under a tenant for multi-school support"""
     try:
         # Check if code already exists
         from models.organization import Organization
 
-        existing = db.session.query(Organization).filter(Organization.code == code).first()
+        existing = (
+            db.session.query(Organization).filter(Organization.code == code).first()
+        )
         if existing:
             click.echo(f"Error: Organization with code '{code}' already exists")
             return
@@ -980,7 +1123,9 @@ def create_organization_cmd(tenant_id, name, code, org_type, description, email_
         db.session.add(organization)
         db.session.commit()
 
-        click.echo(f"Organization '{name}' (ID: {organization.id}) created successfully")
+        click.echo(
+            f"Organization '{name}' (ID: {organization.id}) created successfully"
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -992,13 +1137,17 @@ def create_organization_cmd(tenant_id, name, code, org_type, description, email_
 @click.option("--name", help="New name for the organization")
 @click.option("--description", help="New description")
 @click.option("--email-domains", help="Comma-separated list of allowed email domains")
-@click.option("--status", type=click.Choice(["active", "inactive"]), help="Organization status")
+@click.option(
+    "--status", type=click.Choice(["active", "inactive"]), help="Organization status"
+)
 def update_organization_cmd(org_id, name, description, email_domains, status):
     """Update an existing organization's configuration"""
     try:
         from models.organization import Organization
 
-        organization = db.session.query(Organization).filter(Organization.id == org_id).first()
+        organization = (
+            db.session.query(Organization).filter(Organization.id == org_id).first()
+        )
         if not organization:
             click.echo(f"Error: Organization with ID '{org_id}' not found")
             return
@@ -1031,7 +1180,11 @@ def update_organization_cmd(org_id, name, description, email_domains, status):
 def list_organizations_cmd(tenant_id):
     """List all organizations with optional tenant filtering"""
     try:
-        from models.organization import Organization, OrganizationMember, OrganizationRole
+        from models.organization import (
+            Organization,
+            OrganizationMember,
+            OrganizationRole,
+        )
 
         query = db.session.query(Organization)
 
@@ -1093,7 +1246,9 @@ def show_organization_cmd(org_id):
     try:
         from models.organization import Organization
 
-        organization = db.session.query(Organization).filter(Organization.id == org_id).first()
+        organization = (
+            db.session.query(Organization).filter(Organization.id == org_id).first()
+        )
 
         if not organization:
             click.echo(f"Error: Organization with ID '{org_id}' not found")
@@ -1123,19 +1278,27 @@ def show_organization_cmd(org_id):
 @click.option(
     "--role",
     required=True,
-    type=click.Choice(["admin", "teacher", "student", "staff", "manager", "employee", "guest"]),
+    type=click.Choice(
+        ["admin", "teacher", "student", "staff", "manager", "employee", "guest"]
+    ),
     help="Role in the organization",
 )
 @click.option("--department", help="Department within the organization")
 @click.option("--title", help="Job title or position")
-@click.option("--is-default", is_flag=True, help="Set as the account's default organization")
-def add_account_to_organization_cmd(org_id, account_id, role, department, title, is_default):
+@click.option(
+    "--is-default", is_flag=True, help="Set as the account's default organization"
+)
+def add_account_to_organization_cmd(
+    org_id, account_id, role, department, title, is_default
+):
     """Add an account to an organization with appropriate role and metadata"""
     try:
         from models.organization import Organization, OrganizationMember
 
         # Check if organization exists
-        organization = db.session.query(Organization).filter(Organization.id == org_id).first()
+        organization = (
+            db.session.query(Organization).filter(Organization.id == org_id).first()
+        )
         if not organization:
             click.echo(f"Error: Organization with ID '{org_id}' not found")
             return
@@ -1157,7 +1320,9 @@ def add_account_to_organization_cmd(org_id, account_id, role, department, title,
         )
 
         if existing:
-            click.echo("Account is already a member of this organization. Updating role and metadata.")
+            click.echo(
+                "Account is already a member of this organization. Updating role and metadata."
+            )
             existing.role = role
             existing.department = department
             existing.title = title
@@ -1230,7 +1395,9 @@ def upload_private_key_file_cloud_storage(tenant_id: Optional[str] = None):
         )
 
         file_key = f"privkeys/{tenant_id}/private.pem"
-        file_content = Path(f"{os.environ.get('STORAGE_LOCAL_PATH', 'storage')}/{file_key}").read_bytes()
+        file_content = Path(
+            f"{os.environ.get('STORAGE_LOCAL_PATH', 'storage')}/{file_key}"
+        ).read_bytes()
         storage.save(filename=file_key, data=file_content)
         click.echo(
             click.style(
@@ -1240,7 +1407,9 @@ def upload_private_key_file_cloud_storage(tenant_id: Optional[str] = None):
         )
 
 
-@click.command("upload-local-files-to-cloud-storage", help="upload local files to cloud storage")
+@click.command(
+    "upload-local-files-to-cloud-storage", help="upload local files to cloud storage"
+)
 def upload_local_files_to_cloud_storage():
     """
     upload local files to cloud storage
@@ -1258,10 +1427,14 @@ def upload_local_files_to_cloud_storage():
     batch_size = 100
     processed_count = 0
     while processed_count < total_count:
-        files: list[UploadFile] = UploadFile.query.filter_by(storage_type="local").limit(batch_size).all()
+        files: list[UploadFile] = (
+            UploadFile.query.filter_by(storage_type="local").limit(batch_size).all()
+        )
 
         for file in files:
-            target_filepath = f"{os.environ.get('STORAGE_LOCAL_PATH', 'storage')}/{file.key}"
+            target_filepath = (
+                f"{os.environ.get('STORAGE_LOCAL_PATH', 'storage')}/{file.key}"
+            )
 
             # if the file exists
             if not os.path.exists(target_filepath):
@@ -1307,7 +1480,11 @@ def upload_local_files_to_cloud_storage():
 
             processed_count += 1
             if processed_count % 10 == 0 or processed_count == total_count:
-                click.echo(click.style(f"Processed {processed_count}/{total_count} files\n", fg="blue"))
+                click.echo(
+                    click.style(
+                        f"Processed {processed_count}/{total_count} files\n", fg="blue"
+                    )
+                )
 
     time.sleep(3)
     click.echo(
@@ -1408,7 +1585,9 @@ def install_plugins(input_file: str, output_file: str, workers: int):
     click.echo(click.style("Install plugins completed.", fg="green"))
 
 
-@click.command("clear-free-plan-tenant-expired-logs", help="Clear free plan tenant expired logs.")
+@click.command(
+    "clear-free-plan-tenant-expired-logs", help="Clear free plan tenant expired logs."
+)
 @click.option(
     "--days",
     prompt=True,
@@ -1435,7 +1614,9 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 
     ClearFreePlanTenantExpiredLogs.process(days, batch, tenant_ids)
 
-    click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
+    click.echo(
+        click.style("Clear free plan tenant expired logs completed.", fg="green")
+    )
 
 
 @click.option(
@@ -1491,7 +1672,9 @@ def clear_orphaned_file_records(force: bool):
         )
     )
     for ids_table in ids_tables:
-        click.echo(click.style(f"- {ids_table['table']} ({ids_table['column']})", fg="yellow"))
+        click.echo(
+            click.style(f"- {ids_table['table']} ({ids_table['column']})", fg="yellow")
+        )
     click.echo("")
 
     click.echo(click.style("!!! USE WITH CAUTION !!!", fg="red"))
@@ -1542,7 +1725,9 @@ def clear_orphaned_file_records(force: bool):
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(query))
             for i in rs:
-                orphaned_message_files.append({"id": str(i[0]), "message_id": str(i[1])})
+                orphaned_message_files.append(
+                    {"id": str(i[0]), "message_id": str(i[1])}
+                )
 
         if orphaned_message_files:
             click.echo(
@@ -1568,7 +1753,9 @@ def clear_orphaned_file_records(force: bool):
                     abort=True,
                 )
 
-            click.echo(click.style("- Deleting orphaned message_files records", fg="white"))
+            click.echo(
+                click.style("- Deleting orphaned message_files records", fg="white")
+            )
             query = "DELETE FROM message_files WHERE id IN :ids"
             with db.engine.begin() as conn:
                 conn.execute(
@@ -1589,7 +1776,11 @@ def clear_orphaned_file_records(force: bool):
                 )
             )
     except Exception as e:
-        click.echo(click.style(f"Error deleting orphaned message_files records: {str(e)}", fg="red"))
+        click.echo(
+            click.style(
+                f"Error deleting orphaned message_files records: {str(e)}", fg="red"
+            )
+        )
 
     # clean up the orphaned records in the rest of the *_files tables
     try:
@@ -1606,8 +1797,14 @@ def clear_orphaned_file_records(force: bool):
             with db.engine.begin() as conn:
                 rs = conn.execute(db.text(query))
             for i in rs:
-                all_files_in_tables.append({"table": files_table["table"], "id": str(i[0]), "key": i[1]})
-        click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
+                all_files_in_tables.append(
+                    {"table": files_table["table"], "id": str(i[0]), "key": i[1]}
+                )
+        click.echo(
+            click.style(
+                f"Found {len(all_files_in_tables)} files in tables.", fg="white"
+            )
+        )
 
         # fetch referred table and columns
         guid_regexp = "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
@@ -1622,12 +1819,15 @@ def clear_orphaned_file_records(force: bool):
                     )
                 )
                 query = (
-                    f"SELECT {ids_table['column']} FROM {ids_table['table']} WHERE {ids_table['column']} IS NOT NULL"
+                    f"SELECT {ids_table['column']} FROM {ids_table['table']} "
+                    f"WHERE {ids_table['column']} IS NOT NULL"
                 )
                 with db.engine.begin() as conn:
                     rs = conn.execute(db.text(query))
                 for i in rs:
-                    all_ids_in_tables.append({"table": ids_table["table"], "id": str(i[0])})
+                    all_ids_in_tables.append(
+                        {"table": ids_table["table"], "id": str(i[0])}
+                    )
             elif ids_table["type"] == "text":
                 click.echo(
                     click.style(
@@ -1663,7 +1863,11 @@ def clear_orphaned_file_records(force: bool):
                 for i in rs:
                     for j in i[0]:
                         all_ids_in_tables.append({"table": ids_table["table"], "id": j})
-        click.echo(click.style(f"Found {len(all_ids_in_tables)} file ids in tables.", fg="white"))
+        click.echo(
+            click.style(
+                f"Found {len(all_ids_in_tables)} file ids in tables.", fg="white"
+            )
+        )
 
     except Exception as e:
         click.echo(click.style(f"Error fetching keys: {str(e)}", fg="red"))
@@ -1681,7 +1885,9 @@ def clear_orphaned_file_records(force: bool):
             )
         )
         return
-    click.echo(click.style(f"Found {len(orphaned_files)} orphaned file records.", fg="white"))
+    click.echo(
+        click.style(f"Found {len(orphaned_files)} orphaned file records.", fg="white")
+    )
     for file in orphaned_files:
         click.echo(click.style(f"- orphaned file id: {file}", fg="black"))
     if not force:
@@ -1703,9 +1909,13 @@ def clear_orphaned_file_records(force: bool):
             with db.engine.begin() as conn:
                 conn.execute(db.text(query), {"ids": tuple(orphaned_files)})
     except Exception as e:
-        click.echo(click.style(f"Error deleting orphaned file records: {str(e)}", fg="red"))
+        click.echo(
+            click.style(f"Error deleting orphaned file records: {str(e)}", fg="red")
+        )
         return
-    click.echo(click.style(f"Removed {len(orphaned_files)} orphaned file records.", fg="green"))
+    click.echo(
+        click.style(f"Removed {len(orphaned_files)} orphaned file records.", fg="green")
+    )
 
 
 @click.option(
@@ -1714,7 +1924,9 @@ def clear_orphaned_file_records(force: bool):
     is_flag=True,
     help="Skip user confirmation and force the command to execute.",
 )
-@click.command("remove-orphaned-files-on-storage", help="Remove orphaned files on the storage.")
+@click.command(
+    "remove-orphaned-files-on-storage", help="Remove orphaned files on the storage."
+)
 def remove_orphaned_files_on_storage(force: bool):
     """
     Remove orphaned files on the storage.
@@ -1790,20 +2002,32 @@ def remove_orphaned_files_on_storage(force: bool):
     all_files_in_tables = []
     try:
         for files_table in files_tables:
-            click.echo(click.style(f"- Listing files from table {files_table['table']}", fg="white"))
+            click.echo(
+                click.style(
+                    f"- Listing files from table {files_table['table']}", fg="white"
+                )
+            )
             query = f"SELECT {files_table['key_column']} FROM {files_table['table']}"
             with db.engine.begin() as conn:
                 rs = conn.execute(db.text(query))
             for i in rs:
                 all_files_in_tables.append(str(i[0]))
-        click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
+        click.echo(
+            click.style(
+                f"Found {len(all_files_in_tables)} files in tables.", fg="white"
+            )
+        )
     except Exception as e:
         click.echo(click.style(f"Error fetching keys: {str(e)}", fg="red"))
 
     all_files_on_storage = []
     for storage_path in storage_paths:
         try:
-            click.echo(click.style(f"- Scanning files on storage path {storage_path}", fg="white"))
+            click.echo(
+                click.style(
+                    f"- Scanning files on storage path {storage_path}", fg="white"
+                )
+            )
             files = storage.scan(path=storage_path, files=True, directories=False)
             all_files_on_storage.extend(files)
         except FileNotFoundError as e:
@@ -1822,12 +2046,18 @@ def remove_orphaned_files_on_storage(force: bool):
                 )
             )
             continue
-    click.echo(click.style(f"Found {len(all_files_on_storage)} files on storage.", fg="white"))
+    click.echo(
+        click.style(f"Found {len(all_files_on_storage)} files on storage.", fg="white")
+    )
 
     # find orphaned files
     orphaned_files = list(set(all_files_on_storage) - set(all_files_in_tables))
     if not orphaned_files:
-        click.echo(click.style("No orphaned files found. There is nothing to remove.", fg="green"))
+        click.echo(
+            click.style(
+                "No orphaned files found. There is nothing to remove.", fg="green"
+            )
+        )
         return
     click.echo(click.style(f"Found {len(orphaned_files)} orphaned files.", fg="white"))
     for file in orphaned_files:
@@ -1848,10 +2078,18 @@ def remove_orphaned_files_on_storage(force: bool):
             click.echo(click.style(f"- Removing orphaned file: {file}", fg="white"))
         except Exception as e:
             error_files += 1
-            click.echo(click.style(f"- Error deleting orphaned file {file}: {str(e)}", fg="red"))
+            click.echo(
+                click.style(
+                    f"- Error deleting orphaned file {file}: {str(e)}", fg="red"
+                )
+            )
             continue
     if error_files == 0:
-        click.echo(click.style(f"Removed {removed_files} orphaned files without errors.", fg="green"))
+        click.echo(
+            click.style(
+                f"Removed {removed_files} orphaned files without errors.", fg="green"
+            )
+        )
     else:
         click.echo(
             click.style(
@@ -1859,3 +2097,20 @@ def remove_orphaned_files_on_storage(force: bool):
                 fg="yellow",
             )
         )
+
+
+# Keep the original function for backward compatibility
+@click.command(
+    "create-admin-with-phone",
+    help="Create or update an admin account for an organization with a phone number.",
+)
+@click.option("--name", prompt=True, help="Admin account name")
+@click.option("--phone", prompt=True, help="Admin account phone number")
+@click.option("--organization-id", required=True, help="Organization ID")
+def create_admin_with_phone(name: str, phone: str, organization_id: str):
+    """
+    Create or update an admin account with a phone number for a specific organization.
+    This command will create a new account if the phone doesn't exist,
+    or update an existing account with the specified admin role.
+    """
+    return create_admin_account(name, phone, "phone", organization_id)
