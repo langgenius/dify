@@ -51,6 +51,9 @@ export type Collection = {
   labels: string[]
   plugin_id?: string
   letter?: string
+  // MCP Server
+  server_url?: string
+  update_elapsed_time?: number
 }
 
 export type ToolParameter = {
@@ -168,16 +171,4 @@ export type WorkflowToolProviderResponse = {
     parameters: ParamItem[]
   }
   privacy_policy: string
-}
-
-export type MCPProvider = {
-  id: string
-  author: string
-  name: string
-  icon: string | Emoji
-  server_url: string
-  type: CollectionType
-  is_team_authorization: boolean
-  tools: string[]
-  update_elapsed_time: number
 }

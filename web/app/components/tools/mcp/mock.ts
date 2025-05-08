@@ -9,6 +9,10 @@ export const listData = [
     is_team_authorization: true,
     tools: ['aaa', 'bbb'],
     update_elapsed_time: 1744793369,
+    label: {
+      en_US: 'GOGOGO',
+      zh_Hans: 'GOGOGO',
+    },
   },
   {
     id: 'fdjklajfkljadslf222',
@@ -20,6 +24,10 @@ export const listData = [
     is_team_authorization: false,
     tools: [],
     update_elapsed_time: 1744793369,
+    label: {
+      en_US: 'GOGOGO2',
+      zh_Hans: 'GOGOGO2',
+    },
   },
   {
     id: 'fdjklajfkljadslf333',
@@ -31,5 +39,9 @@ export const listData = [
     is_team_authorization: true,
     tools: ['aaa', 'bbb'],
     update_elapsed_time: 1744793369,
+    label: {
+      en_US: 'GOGOGO3',
+      zh_Hans: 'GOGOGO3',
+    },
   },
 ]

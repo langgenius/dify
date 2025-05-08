@@ -9,13 +9,13 @@ import { RiHammerFill } from '@remixicon/react'
 import Indicator from '@/app/components/header/indicator'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { useFormatTimeFromNow } from './hooks'
-import type { MCPProvider } from '@/app/components/tools/types'
+import type { ToolWithProvider } from '../../workflow/types'
 import cn from '@/utils/classnames'
 
 type Props = {
-  currentProvider?: MCPProvider
-  data: MCPProvider
-  handleSelect: (provider: MCPProvider) => void
+  currentProvider?: ToolWithProvider
+  data: ToolWithProvider
+  handleSelect: (provider: ToolWithProvider) => void
 }
 
 const MCPCard = ({
@@ -27,7 +27,7 @@ const MCPCard = ({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   // const { locale } = useContext(I18n)
   // const language = getLanguage(locale)
-//   const { isCurrentWorkspaceManager } = useAppContext()
+  //   const { isCurrentWorkspaceManager } = useAppContext()
 
   return (
     <div
@@ -52,7 +52,7 @@ const MCPCard = ({
               )}
             </div>
             <div className='system-xs-regular text-divider-deep'>/</div>
-            <div className='system-xs-regular truncate text-text-tertiary'>{`${t('tools.mcp.updateTime')} ${formatTimeFromNow(data.update_elapsed_time * 1000)}`}</div>
+            <div className='system-xs-regular truncate text-text-tertiary'>{`${t('tools.mcp.updateTime')} ${formatTimeFromNow(data.update_elapsed_time! * 1000)}`}</div>
           </div>
         </div>
       </div>

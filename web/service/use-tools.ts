@@ -4,7 +4,6 @@ import type {
   Tool,
 } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { MCPProvider } from '@/app/components/tools/types'
 import { useInvalid } from './use-base'
 import {
   useMutation,
@@ -66,11 +65,11 @@ export const useInvalidateAllWorkflowTools = () => {
 
 const useAllMCPToolsKey = [NAME_SPACE, 'MCPTools']
 export const useAllMCPTools = () => {
-  return useQuery<MCPProvider[]>({
+  return useQuery<ToolWithProvider[]>({
     queryKey: useAllMCPToolsKey,
-    // queryFn: () => get<MCPProvider[]>('/workspaces/current/tools/mcp'),
+    // queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/mcp'),
     queryFn: () => {
-      return listData as unknown as MCPProvider[]
+      return listData as unknown as ToolWithProvider[]
     },
   })
 }

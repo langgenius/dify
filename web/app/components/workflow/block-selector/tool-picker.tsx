@@ -23,7 +23,7 @@ import {
 } from '@/service/tools'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import Toast from '@/app/components/base/toast'
-import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools, useInvalidateAllCustomTools } from '@/service/use-tools'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllCustomTools } from '@/service/use-tools'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -61,6 +61,7 @@ const ToolPicker: FC<Props> = ({
   const { data: customTools } = useAllCustomTools()
   const invalidateCustomTools = useInvalidateAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
 
   const { builtinToolList, customToolList, workflowToolList } = useMemo(() => {
     if (scope === 'plugins') {
@@ -162,6 +163,7 @@ const ToolPicker: FC<Props> = ({
             buildInTools={builtinToolList || []}
             customTools={customToolList || []}
             workflowTools={workflowToolList || []}
+            mcpTools={mcpTools || []}
             supportAddCustomTool={supportAddCustomTool}
             onAddedCustomTool={handleAddedCustomTool}
             onShowAddCustomCollectionModal={showEditCustomCollectionModal}

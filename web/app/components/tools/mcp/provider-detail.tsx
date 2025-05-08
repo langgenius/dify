@@ -2,11 +2,11 @@
 import React from 'react'
 import type { FC } from 'react'
 import Drawer from '@/app/components/base/drawer'
-import type { MCPProvider } from '@/app/components/tools/types'
 import cn from '@/utils/classnames'
+import type { ToolWithProvider } from '../../workflow/types'
 
 type Props = {
-  detail?: MCPProvider
+  detail?: ToolWithProvider
   onUpdate: () => void
   onHide: () => void
 }

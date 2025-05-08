@@ -31,6 +31,7 @@ type AllToolsProps = {
   buildInTools: ToolWithProvider[]
   customTools: ToolWithProvider[]
   workflowTools: ToolWithProvider[]
+  mcpTools: ToolWithProvider[]
   onSelect: OnSelectBlock
   supportAddCustomTool?: boolean
   onAddedCustomTool?: () => void
@@ -49,6 +50,7 @@ const AllTools = ({
   buildInTools,
   workflowTools,
   customTools,
+  mcpTools = [],
   supportAddCustomTool,
   onShowAddCustomCollectionModal,
   selectedTools,
@@ -64,13 +66,15 @@ const AllTools = ({
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
     if (activeTab === ToolTypeEnum.All)
-      mergedTools = [...buildInTools, ...customTools, ...workflowTools]
+      mergedTools = [...buildInTools, ...customTools, ...workflowTools, ...mcpTools]
     if (activeTab === ToolTypeEnum.BuiltIn)
       mergedTools = buildInTools
     if (activeTab === ToolTypeEnum.Custom)
       mergedTools = customTools
     if (activeTab === ToolTypeEnum.Workflow)
       mergedTools = workflowTools
+    if (activeTab === ToolTypeEnum.MCP)
+      mergedTools = mcpTools
 
     if (!hasFilter)
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
@@ -80,7 +84,7 @@ const AllTools = ({
         return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
       })
     })
-  }, [activeTab, buildInTools, customTools, workflowTools, searchText, language, hasFilter])
+  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, searchText, language, hasFilter])
 
   const {
     queryPluginsWithDebounced: fetchPlugins,
