@@ -5,6 +5,7 @@ import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
 import { ExternalKnowledgeBase, General, Graph, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
+import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -704,12 +705,18 @@ export type BatchImportResponse = {
   job_status: string
 }
 
-export const DOC_FORM_ICON: Record<ChunkingMode | 'external', React.ComponentType<{ className: string }>> = {
+export const DOC_FORM_ICON_WITH_BG: Record<ChunkingMode | 'external', React.ComponentType<{ className: string }>> = {
   [ChunkingMode.text]: General,
   [ChunkingMode.qa]: Qa,
   [ChunkingMode.parentChild]: ParentChild,
   [ChunkingMode.graph]: Graph,
   external: ExternalKnowledgeBase,
+}
+
+export const DOC_FORM_ICON: Record<ChunkingMode.text | ChunkingMode.qa | ChunkingMode.parentChild, React.ComponentType<{ className: string }>> = {
+  [ChunkingMode.text]: GeneralChunk,
+  [ChunkingMode.qa]: QuestionAndAnswer,
+  [ChunkingMode.parentChild]: ParentChildChunk,
 }
 
 export const DOC_FORM_TEXT: Record<ChunkingMode, string> = {

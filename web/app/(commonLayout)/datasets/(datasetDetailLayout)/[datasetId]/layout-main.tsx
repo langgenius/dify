@@ -6,8 +6,7 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type { RemixiconComponentType } from '@remixicon/react'
 import {
-  RiApps2AddLine,
-  RiBookOpenLine,
+  RiAttachmentLine,
   RiEqualizer2Fill,
   RiEqualizer2Line,
   RiFileTextFill,
@@ -15,9 +14,6 @@ import {
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
-import {
-  PaperClipIcon,
-} from '@heroicons/react/24/outline'
 import { RiInformation2Line } from '@remixicon/react'
 import classNames from '@/utils/classnames'
 import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
@@ -33,7 +29,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import { Divider } from '@/app/components/base/icons/src/vender/knowledge'
-import { useGetDocLanguage } from '@/context/i18n'
+import NoLinkedAppsPanel from '@/app/components/datasets/no-linked-apps-panel'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -41,102 +37,69 @@ export type IAppDetailLayoutProps = {
 }
 
 type IExtraInfoProps = {
-  isMobile: boolean
   relatedApps?: RelatedAppResponse
   documentCount?: number
   expand: boolean
 }
 
 const ExtraInfo = React.memo(({
-  isMobile,
   relatedApps,
   documentCount,
   expand,
 }: IExtraInfoProps) => {
   const { t } = useTranslation()
-  const docLanguage = useGetDocLanguage()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
   const relatedAppsTotal = relatedApps?.data?.length || 0
 
   return (
-    <div>
-      {hasRelatedApps && (
-        <>
-          {!isMobile && (
-            <div className='flex items-center gap-x-0.5'>
-              <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
-                <div className='system-md-semibold-uppercase text-text-secondary'>
-                  {documentCount || '--'}
-                </div>
-                <div className='system-2xs-medium-uppercase text-text-tertiary'>
-                  {t('common.datasetMenus.documents')}
-                </div>
-              </div>
-              <div className='py-2 pl-0.5 pr-1.5'>
-                <Divider className='text-test-divider-regular h-full w-fit' />
-              </div>
-              <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
-                <div className='system-md-semibold-uppercase text-text-secondary'>
-                  {relatedAppsTotal || '--'}
-                </div>
-                <Tooltip
-                  position='bottom-start'
-                  noDecoration
-                  needsDelay
-                  popupContent={
-                    <LinkedAppsPanel
-                      relatedApps={relatedApps.data}
-                      isMobile={isMobile}
-                    />
-                  }
-                >
-                  <div className='system-2xs-medium-uppercase flex cursor-pointer items-center gap-x-0.5 text-text-tertiary'>
-                    <span>{t('common.datasetMenus.relatedApp')}</span>
-                    <RiInformation2Line className='size-3' />
-                  </div>
-                </Tooltip>
-              </div>
+    <>
+      {!expand && (
+        <div className='flex items-center gap-x-0.5'>
+          <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
+            <div className='system-md-semibold-uppercase text-text-secondary'>
+              {documentCount ?? '--'}
             </div>
-          )}
-
-          {isMobile && (
-            <div className={classNames('uppercase text-xs text-text-tertiary font-medium pb-2 pt-4', 'flex items-center justify-center !px-0 gap-1')}>
-              {relatedAppsTotal || '--'}
-              <PaperClipIcon className='h-4 w-4 text-text-secondary' />
+            <div className='system-2xs-medium-uppercase text-text-tertiary'>
+              {t('common.datasetMenus.documents')}
             </div>
-          )}
-        </>
-      )}
-      {!hasRelatedApps && !expand && (
-        <Tooltip
-          position='right'
-          noDecoration
-          needsDelay
-          popupContent={
-            <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4'>
-              <div className='inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2'>
-                <RiApps2AddLine className='h-4 w-4 text-text-tertiary' />
-              </div>
-              <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
-              <a
-                className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
-                href={`https://docs.dify.ai/${docLanguage}/guides/knowledge-base/integrate-knowledge-within-application`}
-                target='_blank' rel='noopener noreferrer'
-              >
-                <RiBookOpenLine className='mr-1 text-text-accent' />
-                {t('common.datasetMenus.viewDoc')}
-              </a>
-            </div>
-          }
-        >
-          <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
-            <span>{t('common.datasetMenus.noRelatedApp')}</span>
-            <RiInformation2Line className='h-4 w-4' />
           </div>
-        </Tooltip>
+          <div className='py-2 pl-0.5 pr-1.5'>
+            <Divider className='text-test-divider-regular h-full w-fit' />
+          </div>
+          <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
+            <div className='system-md-semibold-uppercase text-text-secondary'>
+              {relatedAppsTotal ?? '--'}
+            </div>
+            <Tooltip
+              position='bottom-start'
+              noDecoration
+              needsDelay
+              popupContent={
+                hasRelatedApps ? (
+                  <LinkedAppsPanel
+                    relatedApps={relatedApps.data}
+                    isMobile={expand}
+                  />
+                ) : <NoLinkedAppsPanel />
+              }
+            >
+              <div className='system-2xs-medium-uppercase flex cursor-pointer items-center gap-x-0.5 text-text-tertiary'>
+                <span>{t('common.datasetMenus.relatedApp')}</span>
+                <RiInformation2Line className='size-3' />
+              </div>
+            </Tooltip>
+          </div>
+        </div>
       )}
-    </div>
+
+      {expand && (
+        <div className={classNames('uppercase text-xs text-text-tertiary font-medium pb-2 pt-4', 'flex items-center justify-center !px-0 gap-1')}>
+          {relatedAppsTotal ?? '--'}
+          <RiAttachmentLine className='size-4 text-text-secondary' />
+        </div>
+      )}
+    </>
   )
 })
 
@@ -203,25 +166,27 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   return (
     <div className='flex grow overflow-hidden'>
-      {!hideSideBar && <AppSideBar
-        title={datasetRes?.name || '--'}
-        icon={datasetRes?.icon_info?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
-        icon_background={datasetRes?.icon_info?.icon_background || '#F5F5F5'}
-        desc={datasetRes?.description || '--'}
-        isExternal={datasetRes?.provider === 'external'}
-        navigation={navigation}
-        extraInfo={
-          !isCurrentWorkspaceDatasetOperator
-            ? mode => <ExtraInfo isMobile={mode === 'collapse'} relatedApps={relatedApps} expand={mode === 'collapse'} documentCount={datasetRes?.document_count} />
-            : undefined
-        }
-        iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
-      />}
       <DatasetDetailContext.Provider value={{
         indexingTechnique: datasetRes?.indexing_technique,
         dataset: datasetRes,
         mutateDatasetRes: () => mutateDatasetRes(),
       }}>
+        {!hideSideBar && (
+          <AppSideBar
+            title={datasetRes?.name || '--'}
+            icon={datasetRes?.icon_info?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
+            icon_background={datasetRes?.icon_info?.icon_background || '#F5F5F5'}
+            desc={datasetRes?.description || '--'}
+            isExternal={datasetRes?.provider === 'external'}
+            navigation={navigation}
+            extraInfo={
+              !isCurrentWorkspaceDatasetOperator
+                ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'collapse'} documentCount={datasetRes?.document_count} />
+                : undefined
+            }
+            iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
+          />
+        )}
         <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
       </DatasetDetailContext.Provider>
     </div>

@@ -1,8 +1,8 @@
 'use client'
-import HeaderEffect from './header-effect'
 import Header from './header'
 import CreateOptions from './create-options'
 import List from './list'
+import Effect from '../../base/effect'
 
 const CreateFromPipeline = () => {
   return (
@@ -10,7 +10,7 @@ const CreateFromPipeline = () => {
       className='relative flex flex-col rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
       style={{ height: 'calc(100vh - 56px)' }}
     >
-      <HeaderEffect />
+      <Effect className='left-8 top-[-34px] opacity-20' />
       <Header />
       <CreateOptions />
       <List />

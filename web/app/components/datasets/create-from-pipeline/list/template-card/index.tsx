@@ -9,7 +9,7 @@ import Operations from './operations'
 import Modal from '@/app/components/base/modal'
 import EditPipelineInfo from './edit-pipeline-info'
 import type { PipelineTemple } from '@/models/pipeline'
-import { DOC_FORM_ICON, DOC_FORM_TEXT } from '@/models/datasets'
+import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 import Confirm from '@/app/components/base/confirm'
 import { useDeletePipeline, useExportPipelineDSL, useImportPipelineDSL, usePipelineTemplateById } from '@/service/use-pipeline'
 import { downloadFile } from '@/utils/format'
@@ -131,7 +131,7 @@ const TemplateCard = ({
     })
   }, [pipeline.id, deletePipeline])
 
-  const Icon = DOC_FORM_ICON[pipeline.doc_form] || General
+  const Icon = DOC_FORM_ICON_WITH_BG[pipeline.doc_form] || General
   const iconInfo = pipeline.icon_info
 
   return (

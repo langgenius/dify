@@ -11,7 +11,7 @@ const DatasetDetailContext = createContext<DatasetDetailContextValue>({})
 
 export const useDatasetDetailContext = () => useContext(DatasetDetailContext)
 
-export const useDatasetDetailContextWithSelector = (selector: (value: DatasetDetailContextValue) => any) => {
+export const useDatasetDetailContextWithSelector = <T>(selector: (value: DatasetDetailContextValue) => T): T => {
   return useContextSelector(DatasetDetailContext, selector)
 }
 export default DatasetDetailContext

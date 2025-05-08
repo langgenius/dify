@@ -73,9 +73,6 @@ const AppDetailNav = ({
         )}
         {iconType === 'dataset' && (
           <DatasetInfo
-            name={title}
-            description={desc}
-            isExternal={isExternal}
             expand={expand}
             extraInfo={extraInfo && extraInfo(appSidebarExpand)}
           />

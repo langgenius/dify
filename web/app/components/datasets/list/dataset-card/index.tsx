@@ -3,7 +3,6 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import type { DataSet } from '@/models/datasets'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { General } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
@@ -22,7 +21,7 @@ import CustomPopover from '@/app/components/base/popover'
 import Operations from './operations'
 import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
-import { DOC_FORM_ICON, DOC_FORM_TEXT } from '@/models/datasets'
+import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -50,7 +49,7 @@ const DatasetCard = ({
   const isExternalProvider = useMemo(() => {
     return dataset.provider === EXTERNAL_PROVIDER
   }, [dataset.provider])
-  const Icon = isExternalProvider ? DOC_FORM_ICON.external : (DOC_FORM_ICON[dataset.doc_form] || General)
+  const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : DOC_FORM_ICON_WITH_BG[dataset.doc_form]
   const iconInfo = dataset.icon_info || {
     icon: '📙',
     icon_type: 'emoji',
