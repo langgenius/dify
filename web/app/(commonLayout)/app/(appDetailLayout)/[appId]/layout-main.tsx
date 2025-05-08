@@ -25,6 +25,7 @@ import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { App } from '@/types/app'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -94,9 +95,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return navs
   }, [])
 
+  useDocumentTitle(appDetail?.name || t('common.menus.appDetail'))
+
   useEffect(() => {
     if (appDetail) {
-      document.title = `${(appDetail.name || 'App')} - Dify`
       const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
       setAppSiderbarExpand(isMobile ? mode : localeMode)

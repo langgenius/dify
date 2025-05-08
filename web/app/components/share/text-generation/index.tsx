@@ -42,6 +42,7 @@ import cn from '@/utils/classnames'
 import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
 import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -105,7 +106,6 @@ const TextGeneration: FC<IMainProps> = ({
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
-  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
@@ -411,10 +411,9 @@ const TextGeneration: FC<IMainProps> = ({
   useEffect(() => {
     (async () => {
       const [appData, appParams]: any = await fetchInitData()
-      const { app_id: appId, site: siteInfo, can_replace_logo, custom_config } = appData
+      const { app_id: appId, site: siteInfo, custom_config } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
-      setCanReplaceLogo(can_replace_logo)
       setCustomConfig(custom_config)
       changeLanguage(siteInfo.default_language)
 
@@ -435,17 +434,10 @@ const TextGeneration: FC<IMainProps> = ({
       setMoreLikeThisConfig(more_like_this)
       setTextToSpeechConfig(text_to_speech)
     })()
-  }, [])
+  }, [fetchInitData])
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
-  useEffect(() => {
-    if (siteInfo?.title) {
-      if (canReplaceLogo)
-        document.title = `${siteInfo.title}`
-      else
-        document.title = `${siteInfo.title} - Powered by Dify`
-    }
-  }, [siteInfo?.title, canReplaceLogo])
+  useDocumentTitle(siteInfo?.title || t('share.generation.title'))
 
   useAppFavicon({
     enable: !isInstalledApp,
