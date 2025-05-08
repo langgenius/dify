@@ -35,10 +35,11 @@ export const useWorkflowConfig = (appId: string, onSuccess: (v: WorkflowConfigRe
 const WorkflowVersionHistoryKey = [NAME_SPACE, 'versionHistory']
 
 export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) => {
-  const { appId, initialPage, limit, userId, namedOnly } = params
+  const { url, initialPage, limit, userId, namedOnly } = params
   return useInfiniteQuery({
-    queryKey: [...WorkflowVersionHistoryKey, appId, initialPage, limit, userId, namedOnly],
-    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(`/apps/${appId}/workflows`, {
+    enabled: !!url,
+    queryKey: [...WorkflowVersionHistoryKey, url, initialPage, limit, userId, namedOnly],
+    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(url, {
       params: {
         page: pageParam,
         limit,
@@ -51,14 +52,14 @@ export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) 
   })
 }
 
-export const useResetWorkflowVersionHistory = (appId: string) => {
-  return useReset([...WorkflowVersionHistoryKey, appId])
+export const useResetWorkflowVersionHistory = () => {
+  return useReset([...WorkflowVersionHistoryKey])
 }
 
-export const useUpdateWorkflow = (appId: string) => {
+export const useUpdateWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'update'],
-    mutationFn: (params: UpdateWorkflowParams) => patch(`/apps/${appId}/workflows/${params.workflowId}`, {
+    mutationFn: (params: UpdateWorkflowParams) => patch(params.url, {
       body: {
         marked_name: params.title,
         marked_comment: params.releaseNotes,
@@ -67,10 +68,10 @@ export const useUpdateWorkflow = (appId: string) => {
   })
 }
 
-export const useDeleteWorkflow = (appId: string) => {
+export const useDeleteWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete'],
-    mutationFn: (workflowId: string) => del(`/apps/${appId}/workflows/${workflowId}`),
+    mutationFn: (url: string) => del(url),
   })
 }
 
