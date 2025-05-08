@@ -38,7 +38,9 @@ const MCPCard = ({
       )}
     >
       <div className='group flex grow items-center gap-3 rounded-t-xl p-4'>
-        <Icon className='shrink-0' src={data.icon} />
+        <div className='shrink-0 overflow-hidden rounded-xl border border-components-panel-border-subtle'>
+          <Icon src={data.icon} />
+        </div>
         <div className='grow'>
           <div className='system-md-semibold mb-1 truncate text-text-secondary' title={data.name}>{data.name}</div>
           <div className='flex items-center gap-2'>

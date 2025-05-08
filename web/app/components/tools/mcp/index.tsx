@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react'
 import NewMCPCard from './create-card'
 import MCPCard from './provider-card'
-import MCPDetailPanel from './provider-detail'
+import MCPDetailPanel from './detail/provider-detail'
 import { useAllMCPTools, useInvalidateAllMCPTools } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
