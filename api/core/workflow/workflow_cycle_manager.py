@@ -145,7 +145,6 @@ class WorkflowCycleManager:
     def _handle_workflow_run_start_fast(
         self,
         *,
-        session: Session,
         workflow_id: str,
         user_id: str,
         created_by_role: CreatedByRole,
@@ -547,7 +546,6 @@ class WorkflowCycleManager:
     def _workflow_finish_to_stream_response_fast(
         self,
         *,
-        session: Session,
         task_id: str,
         workflow_run: WorkflowRun,
     ) -> WorkflowFinishStreamResponse:

@@ -1,7 +1,7 @@
 import logging
 import time
-from datetime import UTC, datetime
 from collections.abc import Generator
+from datetime import UTC, datetime
 from typing import Optional, Union
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
@@ -36,13 +36,11 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_cycle_manager import WorkflowCycleManager
-from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatedByRole
 from models.model import EndUser
 from models.workflow import (
     Workflow,
-    WorkflowRun,
     WorkflowRunStatus,
 )
 
@@ -236,7 +234,6 @@ class WorkflowAppGenerateTaskPipelineFast:
 
                 # init workflow run
                 self._workflow_run = self._workflow_cycle_manager._handle_workflow_run_start_fast(
-                    session=None,
                     workflow_id=self._workflow_id,
                     user_id=self._user_id,
                     created_by_role=self._created_by_role,
@@ -255,7 +252,6 @@ class WorkflowAppGenerateTaskPipelineFast:
                 self._workflow_run.outputs = event.outputs
 
                 workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response_fast(
-                    session=None,
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=self._workflow_run,
                 )
@@ -268,12 +264,11 @@ class WorkflowAppGenerateTaskPipelineFast:
                     raise ValueError("graph runtime state not initialized.")
 
                 self._workflow_run.status = WorkflowRunStatus.PARTIAL_SUCCESSED
-                self._workflow_run.finished_at = datetime.now(UTC)
+                self._workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
                 self._workflow_run.elapsed_time = (self._workflow_run.finished_at - self._workflow_run.created_at).total_seconds()
                 self._workflow_run.outputs = event.outputs
 
                 workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response_fast(
-                    session=None,
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=self._workflow_run,
                 )
@@ -286,12 +281,11 @@ class WorkflowAppGenerateTaskPipelineFast:
                     raise ValueError("graph runtime state not initialized.")
 
                 self._workflow_run.status = WorkflowRunStatus.FAILED
-                self._workflow_run.finished_at = datetime.now(UTC)
-                self._workflow_run.elapsed_time = (self._workflow_run.finished_at - self._workflow_run.created_at).total_seconds() * 1000
+                self._workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
+                self._workflow_run.elapsed_time = (self._workflow_run.finished_at - self._workflow_run.created_at).total_seconds()
                 self._workflow_run.error = event.error
 
                 workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response_fast(
-                    session=None,
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=self._workflow_run,
                 )
