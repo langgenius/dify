@@ -8,7 +8,7 @@ import {
   RiEditLine,
 } from '@remixicon/react'
 import type { InputVar } from '@/app/components/workflow/types'
-import { InputField } from '@/app/components/base/icons/src/public/pipeline'
+import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import cn from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'

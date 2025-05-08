@@ -41,6 +41,7 @@ const translation = {
   },
   details: {
     structure: '文档结构',
+    structureTooltip: '文档结构决定了文档的拆分和索引方式，Dify 提供了通用、父子和问答模式，每个知识库的文档结构是唯一的。',
   },
 }
 

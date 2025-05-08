@@ -1,5 +1,5 @@
 import Button from '@/app/components/base/button'
-import { InputField } from '@/app/components/base/icons/src/public/pipeline'
+import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import { useStore } from '@/app/components/workflow/store'
 import { useCallback } from 'react'
 

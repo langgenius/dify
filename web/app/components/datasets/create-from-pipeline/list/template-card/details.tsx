@@ -87,7 +87,7 @@ const Details = ({
               {t('datasetPipeline.details.structure')}
             </span>
             <Tooltip
-              popupContent={'This is the structure of the pipeline.'}
+              popupContent={t('datasetPipeline.details.structureTooltip')}
             />
           </div>
         </div>
