@@ -4,7 +4,7 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
-import { ExternalKnowledgeBase, General, Graph, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge'
+import { ExternalKnowledgeBase, General, Graph, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 
 export enum DataSourceType {
   FILE = 'upload_file',

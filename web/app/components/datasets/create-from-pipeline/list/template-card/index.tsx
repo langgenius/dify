@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
-import { General } from '@/app/components/base/icons/src/public/knowledge'
+import { General } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { RiAddLine, RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'

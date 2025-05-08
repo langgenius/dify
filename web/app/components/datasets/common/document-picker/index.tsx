@@ -15,7 +15,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
 import SearchInput from '@/app/components/base/search-input'
-import { GeneralType, ParentChildType } from '@/app/components/base/icons/src/public/knowledge'
+import { GeneralType, ParentChildType } from '@/app/components/base/icons/src/vender/knowledge'
 import { useDocumentList } from '@/service/knowledge/use-document'
 import Loading from '@/app/components/base/loading'
 

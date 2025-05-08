@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import { GeneralType, ParentChildType } from '@/app/components/base/icons/src/public/knowledge'
+import { GeneralType, ParentChildType } from '@/app/components/base/icons/src/vender/knowledge'
 
 type Props = {
   isGeneralMode: boolean

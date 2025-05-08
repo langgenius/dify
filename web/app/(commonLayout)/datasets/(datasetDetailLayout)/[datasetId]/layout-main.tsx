@@ -31,8 +31,8 @@ import { useStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
-import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/public/pipeline'
-import { Divider } from '@/app/components/base/icons/src/public/knowledge'
+import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
+import { Divider } from '@/app/components/base/icons/src/vender/knowledge'
 import { useGetDocLanguage } from '@/context/i18n'
 
 export type IAppDetailLayoutProps = {
