@@ -1,12 +1,11 @@
 from typing import cast
 
 import flask_login  # type: ignore
-from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
-
 from configs import dify_config
 from controllers.admin import api
 from controllers.service_api_with_auth.error import AccountInFreezeError
+from flask import request
+from flask_restful import Resource, reqparse  # type: ignore
 from libs.helper import extract_remote_ip
 from models.account import Account
 from services.account_service import AccountService
@@ -24,16 +23,18 @@ class SendVerificationCodeApi(Resource):
         parameters:
           - in: body
             name: body
-            required: true
+            required: false
             schema:
               type: object
-              required:
-                - login_id
               properties:
                 login_id:
                   type: string
                   description: Admin's phone number or email address
                   example: "admin@test.edu"
+                phone:
+                  type: string
+                  description: (Legacy) Admin's phone number
+                  example: "+1234567890"
         responses:
           200:
             description: Code sent successfully
@@ -50,10 +51,21 @@ class SendVerificationCodeApi(Resource):
             description: Phone number or email not registered as admin
         """
         parser = reqparse.RequestParser()
-        parser.add_argument("login_id", type=str, required=True, location="json")
+        parser.add_argument("login_id", type=str, required=False, location="json")
+        parser.add_argument("phone", type=str, required=False, location="json")
         args = parser.parse_args()
 
         login_id = args.get("login_id")
+        phone = args.get("phone")
+
+        # Use login_id if provided, otherwise fall back to phone
+        if login_id is None and phone is not None:
+            login_id = phone
+        elif login_id is None and phone is None:
+            return {
+                "result": "fail",
+                "data": "Either login_id or phone is required",
+            }, 400
 
         # Determine if login_id is an email or phone number
         is_email = "@" in login_id
@@ -106,7 +118,6 @@ class LoginApi(Resource):
             schema:
               type: object
               required:
-                - login_id
                 - code
                 - token
               properties:
@@ -114,6 +125,10 @@ class LoginApi(Resource):
                   type: string
                   description: Admin's phone number or email address
                   example: "admin@test.edu"
+                phone:
+                  type: string
+                  description: (Legacy) Admin's phone number
+                  example: "+1234567890"
                 code:
                   type: string
                   description: Verification code
@@ -154,12 +169,23 @@ class LoginApi(Resource):
             description: Phone number or email not registered
         """
         parser = reqparse.RequestParser()
-        parser.add_argument("login_id", type=str, required=True, location="json")
+        parser.add_argument("login_id", type=str, required=False, location="json")
+        parser.add_argument("phone", type=str, required=False, location="json")
         parser.add_argument("code", type=str, required=True, location="json")
         parser.add_argument("token", type=str, required=True, location="json")
         args = parser.parse_args()
 
         login_id = args.get("login_id")
+        phone = args.get("phone")
+
+        # Use login_id if provided, otherwise fall back to phone
+        if login_id is None and phone is not None:
+            login_id = phone
+        elif login_id is None and phone is None:
+            return {
+                "result": "fail",
+                "data": "Either login_id or phone is required",
+            }, 400
 
         # Determine if login_id is an email or phone number
         is_email = "@" in login_id
