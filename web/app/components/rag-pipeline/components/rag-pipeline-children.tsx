@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useStore } from '../../workflow/store'
 import InputField from './input-field'
 import RagPipelinePanel from './panel'
@@ -17,4 +18,4 @@ const RagPipelineChildren = () => {
   )
 }
 
-export default RagPipelineChildren
+export default memo(RagPipelineChildren)

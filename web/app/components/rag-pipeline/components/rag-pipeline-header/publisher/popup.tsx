@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useState,
 } from 'react'
@@ -77,9 +78,10 @@ const Popup = () => {
           }
         </Button>
       </div>
-      <div className='space-y-1 border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
+      <div className='border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
         <Button
-          className='w-full'
+          className='mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent'
+          variant='tertiary'
         >
           <div className='flex grow items-center'>
             <RiPlayCircleLine className='mr-2 h-4 w-4' />
@@ -88,7 +90,8 @@ const Popup = () => {
           <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
         </Button>
         <Button
-          className='w-full'
+          className='w-full hover:bg-state-accent-hover hover:text-text-accent'
+          variant='tertiary'
         >
           <div className='flex grow items-center'>
             <RiTerminalBoxLine className='mr-2 h-4 w-4' />
@@ -96,16 +99,19 @@ const Popup = () => {
           </div>
           <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
         </Button>
-        <Divider />
+        <Divider className='my-2' />
         <Button
-          className='w-full'
+          className='w-full hover:bg-state-accent-hover hover:text-text-accent'
+          variant='tertiary'
         >
-          <RiHammerLine className='mr-2 h-4 w-4' />
-          Publish as a Knowledge Pipeline
+          <div className='flex grow items-center'>
+            <RiHammerLine className='mr-2 h-4 w-4' />
+            Publish as a Knowledge Pipeline
+          </div>
         </Button>
       </div>
     </div>
   )
 }
 
-export default Popup
+export default memo(Popup)

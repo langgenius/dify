@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -7,12 +6,12 @@ import {
 } from '@remixicon/react'
 import { useStore } from '../store'
 import {
-  useIsChatMode,
   useNodesReadOnly,
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
+import type { ViewHistoryProps } from './view-history'
 import ViewHistory from './view-history'
 import Checklist from './checklist'
 import cn from '@/utils/classnames'
@@ -20,7 +19,12 @@ import {
   StopCircle,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 
-const RunMode = memo(() => {
+type RunModeProps = {
+  text?: string
+}
+const RunMode = memo(({
+  text,
+}: RunModeProps) => {
   const { t } = useTranslation()
   const { handleWorkflowStartRunInWorkflow } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
@@ -50,7 +54,7 @@ const RunMode = memo(() => {
             : (
               <>
                 <RiPlayLargeLine className='mr-1 h-4 w-4' />
-                {t('workflow.common.run')}
+                {text ?? t('workflow.common.run')}
               </>
             )
         }
@@ -68,7 +72,6 @@ const RunMode = memo(() => {
     </>
   )
 })
-RunMode.displayName = 'RunMode'
 
 const PreviewMode = memo(() => {
   const { t } = useTranslation()
@@ -87,22 +90,31 @@ const PreviewMode = memo(() => {
     </div>
   )
 })
-PreviewMode.displayName = 'PreviewMode'
 
-const RunAndHistory: FC = () => {
-  const isChatMode = useIsChatMode()
+export type RunAndHistoryProps = {
+  showRunButton?: boolean
+  runButtonText?: string
+  showPreviewButton?: boolean
+  viewHistoryProps?: ViewHistoryProps
+}
+const RunAndHistory = ({
+  showRunButton,
+  runButtonText,
+  showPreviewButton,
+  viewHistoryProps,
+}: RunAndHistoryProps) => {
   const { nodesReadOnly } = useNodesReadOnly()
 
   return (
     <div className='flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs'>
       {
-        !isChatMode && <RunMode />
+        showRunButton && <RunMode text={runButtonText} />
       }
       {
-        isChatMode && <PreviewMode />
+        showPreviewButton && <PreviewMode />
       }
       <div className='mx-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
-      <ViewHistory />
+      <ViewHistory {...viewHistoryProps} />
       <Checklist disabled={nodesReadOnly} />
     </div>
   )

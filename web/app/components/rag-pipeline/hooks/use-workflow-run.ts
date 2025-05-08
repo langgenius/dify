@@ -279,6 +279,7 @@ export const useWorkflowRun = () => {
   const handleStopRun = useCallback((taskId: string) => {
     const { pipelineId } = workflowStore.getState()
 
+    return
     stopWorkflowRun(`/rag/pipeline/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
   }, [workflowStore])
 

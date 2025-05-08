@@ -13,6 +13,7 @@ import {
   useWorkflowRun,
 } from '../hooks'
 import Divider from '../../base/divider'
+import type { RunAndHistoryProps } from './run-and-history'
 import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
@@ -23,9 +24,11 @@ export type HeaderInNormalProps = {
     left?: React.ReactNode
     middle?: React.ReactNode
   }
+  runAndHistoryProps?: RunAndHistoryProps
 }
 const HeaderInNormal = ({
   components,
+  runAndHistoryProps,
 }: HeaderInNormalProps) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
@@ -58,7 +61,7 @@ const HeaderInNormal = ({
         {components?.left}
         <EnvButton disabled={nodesReadOnly} />
         <Divider type='vertical' className='mx-auto h-3.5' />
-        <RunAndHistory />
+        <RunAndHistory {...runAndHistoryProps} />
         {components?.middle}
         <VersionHistoryButton onClick={onStartRestoring} />
       </div>
