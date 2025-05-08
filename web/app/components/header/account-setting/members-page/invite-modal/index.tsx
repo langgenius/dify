@@ -32,6 +32,7 @@ const InviteModal = ({
 }: IInviteModalProps) => {
   const { t } = useTranslation()
   const licenseLimit = useProviderContextSelector(s => s.licenseLimit)
+  const refreshLicenseLimit = useProviderContextSelector(s => s.refreshLicenseLimit)
   const [emails, setEmails] = useState<string[]>([])
   const { notify } = useContext(ToastContext)
   const [isLimited, setIsLimited] = useState(false)
@@ -59,6 +60,7 @@ const InviteModal = ({
         })
 
         if (result === 'success') {
+          refreshLicenseLimit()
           onCancel()
           onSend(invitation_results)
         }

@@ -54,7 +54,8 @@ type ProviderContextState = {
       size: number
       limit: number
     }
-  }
+  },
+  refreshLicenseLimit: () => void
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
@@ -95,6 +96,7 @@ const ProviderContext = createContext<ProviderContextState>({
       limit: 0,
     },
   },
+  refreshLicenseLimit: noop,
 })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -223,6 +225,7 @@ export const ProviderContextProvider = ({
       isEducationAccount: isEducationAccount?.result || false,
       webappCopyrightEnabled,
       licenseLimit,
+      refreshLicenseLimit: fetchPlan,
     }}>
       {children}
     </ProviderContext.Provider>
