@@ -4,7 +4,7 @@ import NewMCPCard from './create-card'
 import MCPCard from './provider-card'
 import MCPDetailPanel from './provider-detail'
 import { useAllMCPTools, useInvalidateAllMCPTools } from '@/service/use-tools'
-import type { MCPProvider } from '@/app/components/tools/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -43,7 +43,7 @@ const MCPList = ({
     })
   }, [list, searchText])
 
-  const [currentProvider, setCurrentProvider] = useState<MCPProvider>()
+  const [currentProvider, setCurrentProvider] = useState<ToolWithProvider>()
 
   return (
     <>

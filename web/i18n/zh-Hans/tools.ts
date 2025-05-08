@@ -162,6 +162,15 @@ const translation = {
     updateTime: '更新于',
     toolsCount: '{{count}} 个工具',
     noTools: '没有可用的工具',
+    modal: {
+      title: '添加 MCP 服务 (HTTP)',
+      name: '名称和图标',
+      namePlaceholder: '命名你的 MCP 服务',
+      serverUrl: '服务端点 URL',
+      serverUrlPlaceholder: '服务端点的 URL',
+      cancel: '取消',
+      confirm: '添加并授权',
+    },
   },
 }
 

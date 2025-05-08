@@ -162,6 +162,15 @@ const translation = {
     updateTime: 'Updated',
     toolsCount: '{{count}} tools',
     noTools: 'No tools available',
+    modal: {
+      title: 'Add MCP Server (HTTP)',
+      name: 'Name & Icon',
+      namePlaceholder: 'Name your MCP server',
+      serverUrl: 'Server URL',
+      serverUrlPlaceholder: 'URL to server endpiont',
+      cancel: 'Cancel',
+      confirm: 'Add & Authorize',
+    },
   },
 }
 

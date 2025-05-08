@@ -4,6 +4,7 @@ import type {
   Tool,
 } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { AppIconType } from '@/types/app'
 import { useInvalid } from './use-base'
 import {
   useMutation,
@@ -76,6 +77,32 @@ export const useAllMCPTools = () => {
 
 export const useInvalidateAllMCPTools = () => {
   return useInvalid(useAllMCPToolsKey)
+}
+
+export const useCreateMCP = ({
+  onSuccess,
+}: {
+  onSuccess?: () => void
+}) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'create-mcp'],
+    mutationFn: (payload: {
+      name: string
+      server_url: string
+      icon_type: AppIconType
+      icon: string
+      icon_background?: string | null
+    }) => {
+      console.log('payload', payload)
+      return Promise.resolve(payload)
+      // return post('/console/api/workspaces/current/tool-provider/mcp', {
+      //   body: {
+      //     ...payload,
+      //   },
+      // })
+    },
+    onSuccess,
+  })
 }
 
 export const useBuiltinProviderInfo = (providerName: string) => {

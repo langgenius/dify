@@ -7,9 +7,11 @@ import {
   RiArrowRightUpLine,
   RiBookOpenLine,
 } from '@remixicon/react'
+import MCPModal from './modal'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import { useAppContext } from '@/context/app-context'
+import { useCreateMCP } from '@/service/use-tools'
 
 type Props = {
   handleCreate: () => void
@@ -20,6 +22,10 @@ const NewMCPCard = ({ handleCreate }: Props) => {
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
   const { isCurrentWorkspaceManager } = useAppContext()
+
+  const { mutate: createMCP } = useCreateMCP({
+    onSuccess: handleCreate,
+  })
 
   const linkUrl = useMemo(() => {
     // TODO help link
@@ -50,6 +56,13 @@ const NewMCPCard = ({ handleCreate }: Props) => {
             </a>
           </div>
         </div>
+      )}
+      {showModal && (
+        <MCPModal
+          show={showModal}
+          onConfirm={createMCP}
+          onHide={() => setShowModal(false)}
+        />
       )}
     </>
   )
