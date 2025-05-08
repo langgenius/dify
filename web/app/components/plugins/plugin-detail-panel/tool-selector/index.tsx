@@ -30,6 +30,7 @@ import { useAppContext } from '@/context/app-context'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
+  useAllMCPTools,
   useAllWorkflowTools,
   useInvalidateAllBuiltInTools,
   useUpdateProviderCredentials,
@@ -103,6 +104,7 @@ const ToolSelector: FC<Props> = ({
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
@@ -110,11 +112,11 @@ const ToolSelector: FC<Props> = ({
   const { inMarketPlace, manifest } = usePluginInstalledCheck(value?.provider_name)
 
   const currentProvider = useMemo(() => {
-    const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || [])]
+    const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || []), ...(mcpTools || [])]
     return mergedTools.find((toolWithProvider) => {
       return toolWithProvider.id === value?.provider_name
     })
-  }, [value, buildInTools, customTools, workflowTools])
+  }, [value, buildInTools, customTools, workflowTools, mcpTools])
 
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const handleSelectTool = (tool: ToolDefaultValue) => {
