@@ -128,7 +128,7 @@ export type FetchWorkflowDraftResponse = {
 export type VersionHistory = FetchWorkflowDraftResponse
 
 export type FetchWorkflowDraftPageParams = {
-  appId: string
+  url: string
   initialPage: number
   limit: number
   userId?: string
@@ -348,7 +348,7 @@ export type PublishWorkflowParams = {
 }
 
 export type UpdateWorkflowParams = {
-  workflowId: string
+  url: string
   title: string
   releaseNotes: string
 }

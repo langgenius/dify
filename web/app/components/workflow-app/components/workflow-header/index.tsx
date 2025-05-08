@@ -21,7 +21,7 @@ const WorkflowHeader = () => {
     setCurrentLogItem: state.setCurrentLogItem,
     setShowMessageLogModal: state.setShowMessageLogModal,
   })))
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory(appDetail!.id)
+  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const isChatMode = useIsChatMode()
 
   const handleClearLogAndMessageModal = useCallback(() => {
