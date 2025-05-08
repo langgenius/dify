@@ -8,6 +8,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import Badge from '../base/badge'
+import cn from '@/utils/classnames'
 
 type Props = {
   expand: boolean
@@ -31,46 +32,57 @@ const DatasetInfo: FC<Props> = ({
   const Icon = isExternal ? DOC_FORM_ICON_WITH_BG.external : DOC_FORM_ICON_WITH_BG[dataset!.doc_form]
 
   return (
-    <div className='relative flex flex-col p-2'>
-      <Effect className='-left-5 top-[-22px] opacity-15' />
-      <div className='flex flex-col gap-y-2 p-2'>
-        <div className='relative w-fit'>
-          <AppIcon
-            size='large'
-            iconType={iconInfo.icon_type}
-            icon={iconInfo.icon}
-            background={iconInfo.icon_background}
-            imageUrl={iconInfo.icon_url}
-          />
-          <div className='absolute -bottom-1 -right-1 z-10'>
-            <Icon className='size-4' />
-          </div>
-        </div>
-        {expand && dataset && (
-          <>
-            <div className='flex flex-col gap-y-1'>
-              <div
-                className='system-md-semibold truncate text-text-secondary'
-                title={dataset.name}
-              >
-                {dataset.name}
-              </div>
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>
-                {isExternal && t('dataset.externalTag')}
-                {!isExternal && (
-                  <div className='flex items-center gap-x-1'>
-                    <Badge>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</Badge>
-                    <Badge>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</Badge>
-                  </div>
-                )}
+    <div className={cn('relative flex flex-col', expand ? '' : 'p-1')}>
+      {expand && (
+        <>
+          <Effect className='-left-5 top-[-22px] opacity-15' />
+          <div className='flex flex-col gap-y-2 p-2'>
+            <div className='relative w-fit'>
+              <AppIcon
+                size='medium'
+                iconType={iconInfo.icon_type}
+                icon={iconInfo.icon}
+                background={iconInfo.icon_background}
+                imageUrl={iconInfo.icon_url}
+              />
+              <div className='absolute -bottom-1 -right-1 z-10'>
+                <Icon className='size-4' />
               </div>
             </div>
-            <p className='system-xs-regular line-clamp-3 text-text-tertiary first-letter:capitalize'>
-              {dataset.description}
-            </p>
-          </>
-        )}
-      </div>
+              <>
+                <div className='flex flex-col gap-y-1'>
+                  <div
+                    className='system-md-semibold truncate text-text-secondary'
+                    title={dataset!.name}
+                  >
+                    {dataset!.name}
+                  </div>
+                  <div className='system-2xs-medium-uppercase text-text-tertiary'>
+                    {isExternal && t('dataset.externalTag')}
+                    {!isExternal && (
+                      <div className='flex items-center gap-x-1'>
+                        <Badge>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset!.doc_form]}`)}</Badge>
+                        <Badge>{formatIndexingTechniqueAndMethod(dataset!.indexing_technique, dataset!.retrieval_model_dict?.search_method)}</Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <p className='system-xs-regular line-clamp-3 text-text-tertiary first-letter:capitalize'>
+                  {dataset!.description}
+                </p>
+              </>
+          </div>
+        </>
+      )}
+      {!expand && (
+        <AppIcon
+          size='medium'
+          iconType={iconInfo.icon_type}
+          icon={iconInfo.icon}
+          background={iconInfo.icon_background}
+          imageUrl={iconInfo.icon_url}
+        />
+      )}
       {extraInfo}
     </div>
   )
