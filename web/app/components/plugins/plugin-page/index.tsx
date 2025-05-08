@@ -42,6 +42,7 @@ import { noop } from 'lodash-es'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 const BUNDLE_INFO_KEY = 'bundle-info'
@@ -58,8 +59,7 @@ const PluginPage = ({
   const { locale } = useContext(I18n)
   const searchParams = useSearchParams()
   const { replace } = useRouter()
-
-  document.title = `${t('plugin.metadata.title')} - Dify`
+  useDocumentTitle(t('plugin.metadata.title'))
 
   // just support install one package now
   const packageId = useMemo(() => {

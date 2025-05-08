@@ -8,6 +8,7 @@ import { useAppContext } from '@/context/app-context'
 import { fetchMembers } from '@/service/common'
 import type { InstalledApp } from '@/models/explore'
 import { useTranslation } from 'react-i18next'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IExploreProps = {
   children: React.ReactNode
@@ -23,8 +24,9 @@ const Explore: FC<IExploreProps> = ({
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
   const { t } = useTranslation()
 
+  useDocumentTitle(t('common.menus.explore'))
+
   useEffect(() => {
-    document.title = `${t('explore.title')} - Dify`;
     (async () => {
       const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
       if (!accounts)

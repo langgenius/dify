@@ -6,13 +6,11 @@ import style from '../list.module.css'
 import Apps from './Apps'
 import { useEducationInit } from '@/app/education-apply/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import useDocumentTitle from '@/hooks/use-document-title'
 
 const AppList = () => {
   const { t } = useTranslation()
   useEducationInit()
   const { systemFeatures } = useGlobalPublicStore()
-  useDocumentTitle(t('common.menus.apps'))
   return (
     <div className='relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body'>
       <Apps />
