@@ -542,7 +542,7 @@ class WorkflowCycleManager:
                 exceptions_count=workflow_run.exceptions_count,
             ),
         )
-    
+
     def _workflow_finish_to_stream_response_fast(
         self,
         *,
