@@ -729,10 +729,6 @@ export type CreateDatasetReq = {
     user_id: string
     role?: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
   }[]
-  indexing_technique?: IndexingType
-  retrieval_mode?: RetrievalConfig
-  embedding_model?: string
-  embedding_model_provider?: string
 }
 
 export type CreateDatasetResponse = {
@@ -740,7 +736,6 @@ export type CreateDatasetResponse = {
   name: string
   description: string
   permission: DatasetPermission
-  data_source_type: DataSourceType
   indexing_technique: IndexingType
   created_by: string
   created_at: number

@@ -240,13 +240,13 @@ export const useFetchDefaultProcessRule = (
   })
 }
 
-export const useCreateDataset = (
+export const useCreatePipelineDataset = (
   mutationOptions: MutationOptions<CreateDatasetResponse, Error, CreateDatasetReq> = {},
 ) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'create-dataset'],
+    mutationKey: [NAME_SPACE, 'create-pipeline-empty-dataset'],
     mutationFn: (req: CreateDatasetReq) => {
-      return post<CreateDatasetResponse>('/datasets', { body: req })
+      return post<CreateDatasetResponse>('/rag/pipeline/empty-dataset', { body: req })
     },
     ...mutationOptions,
   })

@@ -8,12 +8,12 @@ import type { AppIconType } from '@/types/app'
 import { RiCloseLine } from '@remixicon/react'
 import PermissionSelector from '../../settings/permission-selector'
 import type { CreateDatasetReq } from '@/models/datasets'
-import { DatasetPermission } from '@/models/datasets'
+import { ChunkingMode, DatasetPermission } from '@/models/datasets'
 import { useMembers } from '@/service/use-common'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import { useCreateDataset } from '@/service/knowledge/use-create-dataset'
+import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
 import type { Member } from '@/models/common'
 
 type CreateFromScratchProps = {
@@ -75,7 +75,7 @@ const CreateFromScratch = ({
     setPermission(value!)
   }, [])
 
-  const { mutateAsync: createEmptyDataset } = useCreateDataset()
+  const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
 
   const handleCreate = useCallback(async () => {
     if (!name) {
@@ -94,6 +94,7 @@ const CreateFromScratch = ({
         icon_background: appIcon.type === 'image' ? undefined : appIcon.background,
         icon_url: appIcon.type === 'image' ? appIcon.url : undefined,
       },
+      doc_form: ChunkingMode.text,
       permission,
     }
     // Handle permission
