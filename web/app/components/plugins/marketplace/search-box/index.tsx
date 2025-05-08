@@ -33,13 +33,6 @@ const SearchBox = ({
         inputClassName,
       )}
     >
-      <TagsFilter
-        tags={tags}
-        onTagsChange={onTagsChange}
-        size={size}
-        locale={locale}
-      />
-      <div className='mx-1 h-3.5 w-[1px] bg-divider-regular'></div>
       <div className='relative flex grow items-center p-1 pl-2'>
         <div className='mr-2 flex w-full items-center'>
           <input
@@ -63,6 +56,13 @@ const SearchBox = ({
           }
         </div>
       </div>
+      <div className='mx-1 h-3.5 w-[1px] bg-divider-regular'></div>
+      <TagsFilter
+        tags={tags}
+        onTagsChange={onTagsChange}
+        size={size}
+        locale={locale}
+      />
     </div>
   )
 }
