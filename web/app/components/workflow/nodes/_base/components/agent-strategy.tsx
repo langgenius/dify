@@ -66,6 +66,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         case FormTypeEnum.textInput: {
           const def = schema as CredentialFormSchemaTextInput
           const value = props.value[schema.variable] || schema.default
+          const instanceId = schema.variable
           const onChange = (value: string) => {
             props.onChange({ ...props.value, [schema.variable]: value })
           }
@@ -77,6 +78,8 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             value={value}
             onChange={onChange}
             onGenerated={handleGenerated}
+            instanceId={instanceId}
+            key={instanceId}
             title={renderI18nObject(schema.label)}
             headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
             containerBackgroundClassName='bg-transparent'
