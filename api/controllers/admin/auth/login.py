@@ -1,12 +1,11 @@
 from typing import cast
 
 import flask_login  # type: ignore
-from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
-
 from configs import dify_config
 from controllers.admin import api
 from controllers.service_api_with_auth.error import AccountInFreezeError
+from flask import request
+from flask_restful import Resource, reqparse  # type: ignore
 from libs.helper import extract_remote_ip
 from models.account import Account
 from services.account_service import AccountService
@@ -15,12 +14,12 @@ from services.errors.account import AccountRegisterError
 
 class SendVerificationCodeApi(Resource):
     def post(self):
-        """Send verification code to admin's phone number.
+        """Send verification code to admin's phone number or email.
         ---
         tags:
           - admin/api/auth
         summary: Send Verification Code
-        description: Sends a verification code to the provided admin phone number for authentication
+        description: Sends a verification code to the provided admin phone number or email for authentication
         parameters:
           - in: body
             name: body
@@ -28,12 +27,12 @@ class SendVerificationCodeApi(Resource):
             schema:
               type: object
               required:
-                - phone
+                - login_id
               properties:
-                phone:
+                login_id:
                   type: string
-                  description: Admin's phone number
-                  example: "13800138000"
+                  description: Admin's phone number or email address
+                  example: "admin@test.edu"
         responses:
           200:
             description: Code sent successfully
@@ -45,42 +44,60 @@ class SendVerificationCodeApi(Resource):
                 data:
                   type: string
           400:
-            description: Invalid phone number format
+            description: Invalid input format or missing required fields
           404:
-            description: Phone number not registered as admin
+            description: Phone number or email not registered as admin
         """
         parser = reqparse.RequestParser()
-        parser.add_argument("phone", type=str, required=True, location="json")
+        parser.add_argument("login_id", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        phone = args["phone"]
+        login_id = args.get("login_id")
+
+        # Determine if login_id is an email or phone number
+        is_email = "@" in login_id
 
         ip_address = extract_remote_ip(request)
-        if AccountService.is_phone_send_ip_limit(ip_address) and phone != dify_config.DEBUG_ADMIN_PHONE:
-            return {"result": "fail", "data": "Too many requests from this IP address"}, 429
+
+        if AccountService.is_login_attempt_ip_limit(ip_address) and login_id not in {
+            dify_config.DEBUG_ADMIN_EMAIL,
+            dify_config.DEBUG_ADMIN_PHONE,
+        }:
+            return {
+                "result": "fail",
+                "data": "Too many requests from this IP address",
+            }, 429
 
         try:
-            # find account by phone number & chech role is end_admin
-            account = AccountService.get_admin_through_phone(phone)
+            # Use the unified method to check admin account
+            account = AccountService.get_admin_through_login_id(login_id)
         except AccountRegisterError:
             raise AccountInFreezeError()
 
         if account is None:
-            return {"result": "fail", "data": "Phone number not registered as admin"}, 404
+            error_type = "Email" if is_email else "Phone number"
+            return {
+                "result": "fail",
+                "data": f"{error_type} not registered as admin",
+            }, 404
 
-        token = AccountService.send_phone_code_login(phone=phone)
+        # Send verification code
+        if is_email:
+            token = AccountService.send_email_code_login_email(email=login_id)
+        else:
+            token = AccountService.send_phone_code_login(phone=login_id)
 
         return {"result": "success", "data": token}
 
 
 class LoginApi(Resource):
     def post(self):
-        """Admin login with phone number and verification code.
+        """Admin login with phone number/email and verification code.
         ---
         tags:
           - admin/api/auth
         summary: Admin Login
-        description: Authenticates an admin using phone number and verification code
+        description: Authenticates an admin using phone number/email and verification code
         parameters:
           - in: body
             name: body
@@ -88,14 +105,14 @@ class LoginApi(Resource):
             schema:
               type: object
               required:
-                - phone
+                - login_id
                 - code
                 - token
               properties:
-                phone:
+                login_id:
                   type: string
-                  description: Admin's phone number
-                  example: "13800138000"
+                  description: Admin's phone number or email address
+                  example: "admin@test.edu"
                 code:
                   type: string
                   description: Verification code
@@ -123,6 +140,8 @@ class LoginApi(Resource):
                           type: string
                         phone:
                           type: string
+                        email:
+                          type: string
                         name:
                           type: string
                         role:
@@ -131,39 +150,69 @@ class LoginApi(Resource):
           400:
             description: Invalid or expired verification code
           404:
-            description: Phone number not registered
+            description: Phone number or email not registered
         """
         parser = reqparse.RequestParser()
-        parser.add_argument("phone", type=str, required=True, location="json")
+        parser.add_argument("login_id", type=str, required=True, location="json")
         parser.add_argument("code", type=str, required=True, location="json")
         parser.add_argument("token", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        # Verify the token and code
-        token_data = AccountService.get_phone_code_login_data(args["token"])
-        if token_data is None:
-            return {"result": "fail", "data": "Invalid or expired token"}, 400
+        login_id = args.get("login_id")
 
-        if token_data["phone"] != args["phone"]:
-            return {"result": "fail", "data": "Phone number does not match"}, 400
+        # Determine if login_id is an email or phone number
+        is_email = "@" in login_id
 
-        if token_data["code"] != args["code"]:
-            return {"result": "fail", "data": "Invalid verification code"}, 400
+        # Handle verification based on identified type
+        if is_email:
+            # Email-based verification
+            token_data = AccountService.get_email_code_login_data(args["token"])
+            if token_data is None:
+                return {"result": "fail", "data": "Invalid or expired token"}, 400
 
-        # Revoke the token after successful verification
-        AccountService.revoke_phone_code_login_token(args["token"])
+            if token_data.get("email") != login_id:
+                return {"result": "fail", "data": "Email does not match"}, 400
+
+            if token_data["code"] != args["code"]:
+                return {"result": "fail", "data": "Invalid verification code"}, 400
+
+            # Revoke the token after successful verification
+            AccountService.revoke_email_code_login_token(args["token"])
+        else:
+            # Phone-based verification
+            token_data = AccountService.get_phone_code_login_data(args["token"])
+            if token_data is None:
+                return {"result": "fail", "data": "Invalid or expired token"}, 400
+
+            if token_data["phone"] != login_id:
+                return {"result": "fail", "data": "Phone number does not match"}, 400
+
+            if token_data["code"] != args["code"]:
+                return {"result": "fail", "data": "Invalid verification code"}, 400
+
+            # Revoke the token after successful verification
+            AccountService.revoke_phone_code_login_token(args["token"])
 
         try:
-            account = AccountService.get_admin_through_phone(args["phone"])
+            # Use the unified method to get admin account
+            account = AccountService.get_admin_through_login_id(login_id)
         except AccountRegisterError:
             raise AccountInFreezeError()
 
         if account is None:
-            return {"result": "fail", "data": "Phone number not registered as admin"}, 404
+            error_type = "Email" if is_email else "Phone number"
+            return {
+                "result": "fail",
+                "data": f"{error_type} not registered as admin",
+            }, 404
+
+        # Reset login error rate limit
+        AccountService.reset_login_error_rate_limit(login_id)
 
         # Generate token for the authenticated admin
-        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
-        AccountService.reset_login_error_rate_limit(args["phone"])
+        token_pair = AccountService.login(
+            account, ip_address=extract_remote_ip(request)
+        )
 
         response_data = token_pair.model_dump()
 
@@ -250,7 +299,7 @@ class RefreshTokenApi(Resource):
 
 
 # Register the resources
-api.add_resource(SendVerificationCodeApi, '/auth/send-code')
-api.add_resource(LoginApi, '/auth/login')
-api.add_resource(LogoutApi, '/auth/logout')
-api.add_resource(RefreshTokenApi, '/auth/refresh-token')
+api.add_resource(SendVerificationCodeApi, "/auth/send-code")
+api.add_resource(LoginApi, "/auth/login")
+api.add_resource(LogoutApi, "/auth/logout")
+api.add_resource(RefreshTokenApi, "/auth/refresh-token")
