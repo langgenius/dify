@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { type InputFieldConfiguration, InputFieldType } from './types'
 import { SupportedFileTypes, TransferMethod } from '@/app/components/rag-pipeline/components/input-field/editor/form/schema'
 
-export const generateZodSchema = <T>(fields: InputFieldConfiguration<T>[]) => {
+export const generateZodSchema = (fields: InputFieldConfiguration[]) => {
   const shape: Record<string, ZodSchema> = {}
 
   fields.forEach((field) => {

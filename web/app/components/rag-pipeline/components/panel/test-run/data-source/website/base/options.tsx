@@ -3,7 +3,6 @@ import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import type { CrawlOptions } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -14,17 +13,13 @@ import type { ZodSchema } from 'zod'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
-export type FormData = {
-  url: string
-} & CrawlOptions
-
 type OptionsProps = {
-  initialData: FormData
-  configurations: BaseConfiguration<FormData>[]
+  initialData: Record<string, any>
+  configurations: BaseConfiguration[]
   isRunning: boolean
   controlFoldOptions?: number
   schema: ZodSchema
-  onSubmit: (data: FormData) => void
+  onSubmit: (data: Record<string, any>) => void
 }
 
 const Options = ({
@@ -104,7 +99,7 @@ const Options = ({
       {!fold && (
         <div className='flex flex-col gap-3 border-t border-divider-subtle px-4 py-3'>
           {configurations.map((config, index) => {
-            const FieldComponent = BaseField<FormData>({
+            const FieldComponent = BaseField({
               initialData,
               config,
             })

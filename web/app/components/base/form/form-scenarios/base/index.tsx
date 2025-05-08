@@ -4,14 +4,14 @@ import BaseField from './field'
 import type { BaseFormProps } from './types'
 import { generateZodSchema } from './utils'
 
-const BaseForm = <T,>({
+const BaseForm = ({
   initialData,
   configurations,
   onSubmit,
   CustomActions,
-}: BaseFormProps<T>) => {
+}: BaseFormProps) => {
   const schema = useMemo(() => {
-    const schema = generateZodSchema<T>(configurations)
+    const schema = generateZodSchema(configurations)
     return schema
   }, [configurations])
 
@@ -44,7 +44,7 @@ const BaseForm = <T,>({
     >
       <div className='flex flex-col gap-4 px-4 py-2'>
         {configurations.map((config, index) => {
-          const FieldComponent = BaseField<T>({
+          const FieldComponent = BaseField({
             initialData,
             config,
           })

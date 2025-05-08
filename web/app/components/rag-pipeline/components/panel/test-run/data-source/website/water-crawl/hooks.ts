@@ -1,7 +1,6 @@
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import { useTranslation } from 'react-i18next'
-import type { FormData } from '../base/options'
 import { z } from 'zod'
 
 const ERROR_I18N_PREFIX = 'common.errorMsg'
@@ -9,7 +8,7 @@ const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 export const useConfigurations = () => {
     const { t } = useTranslation()
-    const configurations: BaseConfiguration<FormData>[] = [
+    const configurations: BaseConfiguration[] = [
       {
         type: BaseFieldType.textInput,
         variable: 'url',

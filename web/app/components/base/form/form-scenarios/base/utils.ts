@@ -2,7 +2,7 @@ import type { ZodNumber, ZodSchema, ZodString } from 'zod'
 import { z } from 'zod'
 import { type BaseConfiguration, BaseFieldType } from './types'
 
-export const generateZodSchema = <T>(fields: BaseConfiguration<T>[]) => {
+export const generateZodSchema = (fields: BaseConfiguration[]) => {
   const shape: Record<string, ZodSchema> = {}
 
   fields.forEach((field) => {

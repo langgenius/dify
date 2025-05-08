@@ -10,6 +10,7 @@ import InputTypeSelectField from './components/field/input-type-select'
 import FileTypesField from './components/field/file-types'
 import UploadMethodField from './components/field/upload-method'
 import NumberSliderField from './components/field/number-slider'
+import VariableOrConstantInputField from './components/field/variable-selector'
 
 export const { fieldContext, useFieldContext, formContext, useFormContext }
   = createFormHookContexts()
@@ -26,6 +27,7 @@ export const { useAppForm, withForm } = createFormHook({
     FileTypesField,
     UploadMethodField,
     NumberSliderField,
+    VariableOrConstantInputField,
   },
   formComponents: {
     Actions,

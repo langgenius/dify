@@ -6,6 +6,7 @@ import type {
   ExportPipelineDSLResponse,
   ImportPipelineDSLRequest,
   ImportPipelineDSLResponse,
+  PipelineProcessingParamsResponse,
   PipelineTemplateByIdResponse,
   PipelineTemplateListParams,
   PipelineTemplateListResponse,
@@ -83,5 +84,14 @@ export const useImportPipelineDSL = (
       return post<ImportPipelineDSLResponse>('/rag/pipeline/import', { body: request })
     },
     ...mutationOptions,
+  })
+}
+
+export const usePipelineProcessingParams = (pipelineId: string) => {
+  return useQuery<PipelineProcessingParamsResponse>({
+    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipelineId],
+    queryFn: () => {
+      return get<PipelineProcessingParamsResponse>(`/rag/pipeline/${pipelineId}/workflows/processing/parameters`)
+    },
   })
 }

@@ -3,15 +3,15 @@ import { type InputFieldConfiguration, InputFieldType } from './types'
 import { withForm } from '../..'
 import { useStore } from '@tanstack/react-form'
 
-type InputFieldProps<T> = {
-  initialData?: T
-  config: InputFieldConfiguration<T>
+type InputFieldProps = {
+  initialData?: Record<string, any>
+  config: InputFieldConfiguration
 }
 
-const NodePanelField = <T,>({
+const NodePanelField = ({
   initialData,
   config,
-}: InputFieldProps<T>) => withForm({
+}: InputFieldProps) => withForm({
   defaultValues: initialData,
   render: function Render({
     form,

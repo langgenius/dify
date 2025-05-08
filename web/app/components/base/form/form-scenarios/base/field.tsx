@@ -3,15 +3,15 @@ import { type BaseConfiguration, BaseFieldType } from './types'
 import { withForm } from '../..'
 import { useStore } from '@tanstack/react-form'
 
-type BaseFieldProps<T> = {
-  initialData?: T
-  config: BaseConfiguration<T>
+type BaseFieldProps = {
+  initialData?: Record<string, any>
+  config: BaseConfiguration
 }
 
-const BaseField = <T,>({
+const BaseField = ({
   initialData,
   config,
-}: BaseFieldProps<T>) => withForm({
+}: BaseFieldProps) => withForm({
   defaultValues: initialData,
   render: function Render({
     form,

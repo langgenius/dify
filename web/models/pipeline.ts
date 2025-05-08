@@ -1,3 +1,4 @@
+import type { InputVarType } from '@/app/components/workflow/types'
 import type { DSLImportMode, DSLImportStatus } from './app'
 import type { ChunkingMode, IconInfo } from './datasets'
 import type { Dependency } from '@/app/components/plugins/types'
@@ -68,4 +69,18 @@ export type ImportPipelineDSLResponse = {
   imported_dsl_version?: string
   error: string
   leaked_dependencies: Dependency[]
+}
+
+export type Variables = {
+  type: InputVarType
+  label: string
+  description: string
+  variable: string
+  max_length: number
+  required: boolean
+  options?: string[]
+}
+
+export type PipelineProcessingParamsResponse = {
+  variables: Variables[]
 }
