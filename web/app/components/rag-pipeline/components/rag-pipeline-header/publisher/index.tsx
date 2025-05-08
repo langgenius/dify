@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
@@ -25,11 +26,11 @@ const Publisher = () => {
           <RiArrowDownSLine className='h-4 w-4' />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className='z-[11]'>
         <Popup />
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )
 }
 
-export default Publisher
+export default memo(Publisher)

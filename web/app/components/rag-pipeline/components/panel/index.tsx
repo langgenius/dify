@@ -1,4 +1,7 @@
-import { useMemo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import type { PanelProps } from '@/app/components/workflow/panel'
 import Panel from '@/app/components/workflow/panel'
 import { useStore } from '@/app/components/workflow/store'
@@ -28,4 +31,4 @@ const RagPipelinePanel = () => {
   )
 }
 
-export default RagPipelinePanel
+export default memo(RagPipelinePanel)

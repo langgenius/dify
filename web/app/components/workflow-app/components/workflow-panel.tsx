@@ -1,4 +1,7 @@
-import { useMemo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/workflow/store'
 import {
@@ -106,4 +109,4 @@ const WorkflowPanel = () => {
   )
 }
 
-export default WorkflowPanel
+export default memo(WorkflowPanel)

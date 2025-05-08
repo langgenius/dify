@@ -3,6 +3,7 @@ import {
 } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
+import type { ValueSelector } from '@/app/components/workflow/types'
 import type {
   ChunkStructureEnum,
   HybridSearchModeEnum,
@@ -147,6 +148,12 @@ export const useConfig = (id: string) => {
     })
   }, [getNodeData, handleNodeDataUpdate])
 
+  const handleInputVariableChange = useCallback((inputVariable: string | ValueSelector) => {
+    handleNodeDataUpdate({
+      index_chunk_variable_selector: Array.isArray(inputVariable) ? inputVariable : [],
+    })
+  }, [handleNodeDataUpdate])
+
   return {
     handleChunkStructureChange,
     handleIndexMethodChange,
@@ -159,5 +166,6 @@ export const useConfig = (id: string) => {
     handleTopKChange,
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
+    handleInputVariableChange,
   }
 }

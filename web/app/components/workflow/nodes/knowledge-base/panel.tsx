@@ -35,12 +35,17 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     handleTopKChange,
     handleScoreThresholdChange,
     handleScoreThresholdEnabledChange,
+    handleInputVariableChange,
   } = useConfig(id)
 
   return (
     <div>
       <GroupWithBox boxProps={{ withBorderBottom: true }}>
-        <InputVariable />
+        <InputVariable
+          nodeId={id}
+          inputVariable={data.index_chunk_variable_selector}
+          onInputVariableChange={handleInputVariableChange}
+        />
       </GroupWithBox>
       <Group
         className='py-3'

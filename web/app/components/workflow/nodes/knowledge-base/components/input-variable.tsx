@@ -1,12 +1,18 @@
 import { memo } from 'react'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
+import type { ValueSelector } from '@/app/components/workflow/types'
 
-const InputVariable = () => {
-  const handleChange = () => {
-    console.log('')
-  }
-
+type InputVariableProps = {
+  nodeId: string
+  inputVariable?: string[]
+  onInputVariableChange: (inputVariable: string | ValueSelector) => void
+}
+const InputVariable = ({
+  nodeId,
+  inputVariable = [],
+  onInputVariableChange,
+}: InputVariableProps) => {
   return (
     <Field
       fieldTitleProps={{
@@ -15,10 +21,10 @@ const InputVariable = () => {
       }}
     >
       <VarReferencePicker
-        nodeId={''}
+        nodeId={nodeId}
         isShowNodeName
-        value={[]}
-        onChange={handleChange}
+        value={inputVariable}
+        onChange={onInputVariableChange}
         readonly={false}
       />
     </Field>
