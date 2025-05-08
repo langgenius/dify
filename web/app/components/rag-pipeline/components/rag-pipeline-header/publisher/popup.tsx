@@ -77,7 +77,7 @@ const Popup = () => {
           }
         </Button>
       </div>
-      <div className='border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
+      <div className='space-y-1 border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
         <Button
           className='w-full'
         >
