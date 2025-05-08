@@ -54,7 +54,7 @@ export default function AddMemberOrGroupDialog() {
     {open && <FloatingOverlay />}
     <PortalToFollowElemContent className='z-[25]'>
       <div className='relative flex max-h-[400px] w-[400px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
-        <div className='z-1 sticky top-0 bg-components-panel-bg-blur p-2 pb-0.5 backdrop-blur-[5px]'>
+        <div className='sticky top-0 z-10 bg-components-panel-bg-blur p-2 pb-0.5 backdrop-blur-[5px]'>
           <Input value={keyword} onChange={handleKeywordChange} showLeftIcon placeholder={t('app.accessControlDialog.operateGroupAndMember.searchPlaceholder') as string} />
         </div>
         {
