@@ -178,6 +178,16 @@ const translation = {
       edit: 'Edit',
       remove: 'Remove',
     },
+    authorize: 'Authorize',
+    authorizing: 'Authorizing...',
+    authorizingRequired: 'Authorization is required',
+    authorizeTip: 'After authorization, tools will be displayed here.',
+    update: 'Update',
+    updating: 'Updating',
+    gettingTools: 'Getting Tools',
+    updateTools: 'Updating Tools',
+    toolsEmpty: 'Tools not loaded',
+    getTools: 'Get tools',
   },
 }
 

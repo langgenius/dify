@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import {
   RiCloseLine,
+  RiLoader2Line,
 } from '@remixicon/react'
 import type { ToolWithProvider } from '../../../workflow/types'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -123,12 +124,43 @@ const MCPDetailContent: FC<Props> = ({
               className='w-full'
               // onClick={() => setShowSettingAuth(true)}
               disabled={!isCurrentWorkspaceManager}
-            >{t('tools.auth.unauthorized')}</Button>
+            >
+              {t('tools.mcp.authorize')}
+            </Button>
+          )}
+          {/* TODO */}
+          {deleting && (
+            <Button
+              variant='primary'
+              className='w-full'
+              // onClick={() => setShowSettingAuth(true)}
+              disabled
+            >
+              <RiLoader2Line className={cn('mr-1 h-4 w-4 animate-spin')} />
+              {t('tools.mcp.authorizing')}
+            </Button>
           )}
         </div>
       </div>
       <div className='grow overflow-y-auto'>
-        TOOL list
+        {!detail.is_team_authorization && (
+          <div className='flex h-full w-full flex-col items-center justify-center'>
+            <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizingRequired')}</div>
+            {deleting && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizing')}</div>}
+            <div className='system-sm-regular text-text-tertiary'>{t('tools.mcp.authorizeTip')}</div>
+          </div>
+        )}
+        {detail.is_team_authorization && (
+          <div className='flex h-full w-full flex-col items-center justify-center'>
+            <div className='system-sm-regular mb-3 text-text-tertiary'>{t('tools.mcp.toolsEmpty')}</div>
+            <Button
+              variant='primary'
+              onClick={() => {
+                // TODO
+              }}
+            >{t('tools.mcp.getTools')}</Button>
+          </div>
+        )}
       </div>
       {isShowUpdateModal && (
         <MCPModal

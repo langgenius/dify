@@ -178,6 +178,16 @@ const translation = {
       edit: '修改',
       remove: '删除',
     },
+    authorize: '授权',
+    authorizing: '授权中...',
+    authorizingRequired: '需要授权',
+    authorizeTip: '授权后，工具将显示在这里。',
+    update: '更新',
+    updating: '更新中',
+    gettingTools: '获取工具中...',
+    updateTools: '更新工具中...',
+    toolsEmpty: '工具未加载',
+    getTools: '获取工具',
   },
 }
 
