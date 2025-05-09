@@ -55,14 +55,18 @@ class PdfExtractor(BaseExtractor):
         import pypdfium2  # type: ignore
 
         with blob.as_bytes_io() as file_path:
-            pdf_reader = pypdfium2.PdfDocument(file_path, autoclose=True)
             try:
+                pdf_reader = pypdfium2.PdfDocument(file_path, autoclose=True)
                 for page_number, page in enumerate(pdf_reader):
-                    text_page = page.get_textpage()
-                    content = text_page.get_text_range()
-                    text_page.close()
-                    page.close()
-                    metadata = {"source": blob.source, "page": page_number}
-                    yield Document(page_content=content, metadata=metadata)
+                    try:
+                        text_page = page.get_textpage()
+                        try:
+                            content = text_page.get_text_range()
+                            metadata = {"source": blob.source, "page": page_number}
+                            yield Document(page_content=content, metadata=metadata)
+                        finally:
+                            text_page.close()
+                    finally:
+                        page.close()
             finally:
                 pdf_reader.close()
