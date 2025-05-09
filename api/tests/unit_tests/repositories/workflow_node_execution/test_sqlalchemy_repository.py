@@ -202,6 +202,9 @@ def test_get_db_models_by_workflow_run(repository, session, mocker: MockerFixtur
     configure_mock_execution(mock_execution)
     session_obj.scalars.return_value.all.return_value = [mock_execution]
 
+    # Mock the _to_domain_model method
+    to_domain_model_mock = mocker.patch.object(repository, "_to_domain_model")
+
     # Call method
     order_config = OrderConfig(order_by=["index"], order_direction="desc")
     result = repository.get_db_models_by_workflow_run(workflow_run_id="test-workflow-run-id", order_config=order_config)
@@ -215,8 +218,7 @@ def test_get_db_models_by_workflow_run(repository, session, mocker: MockerFixtur
     assert result[0] is mock_execution
 
     # Verify that _to_domain_model was NOT called (since we're returning raw DB models)
-    if hasattr(repository, "_to_domain_model"):
-        repository._to_domain_model.assert_not_called()
+    to_domain_model_mock.assert_not_called()
 
 
 def test_get_running_executions(repository, session, mocker: MockerFixture):
