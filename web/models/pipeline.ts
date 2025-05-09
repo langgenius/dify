@@ -1,4 +1,4 @@
-import type { InputVarType } from '@/app/components/workflow/types'
+import type { InputVar, InputVarType } from '@/app/components/workflow/types'
 import type { DSLImportMode, DSLImportStatus } from './app'
 import type { ChunkingMode, IconInfo } from './datasets'
 import type { Dependency } from '@/app/components/plugins/types'
@@ -85,3 +85,10 @@ export type Variables = {
 export type PipelineProcessingParamsResponse = {
   variables: Variables[]
 }
+
+export type RAGPipelineVariable = InputVar
+
+export type RAGPipelineVariables = Array<{
+  nodeId: string
+  variables: RAGPipelineVariable[]
+}>

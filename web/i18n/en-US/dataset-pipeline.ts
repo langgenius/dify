@@ -55,6 +55,17 @@ const translation = {
       localFiles: 'Local Files',
     },
   },
+  inputField: 'Input Field',
+  inputFieldPanel: {
+    title: 'User Input Fields',
+    description: 'User input fields are used to define and collect variables required during the pipeline execution process. Users can customize the field type and flexibly configure the input value to meet the needs of different data sources or document processing steps.',
+    sharedInputs: {
+      title: 'Shared Inputs',
+      tooltip: 'Shared Inputs are available to all downstream nodes across data sources. For example, variables like delimiter and maximum chunk length can be uniformly applied when processing documents from multiple sources.',
+    },
+    addInputField: 'Add Input Field',
+    editInputField: 'Edit Input Field',
+  },
 }
 
 export default translation

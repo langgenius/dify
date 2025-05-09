@@ -128,7 +128,7 @@ const TestRunPanel = () => {
 
   const { handleRun } = useWorkflowRun()
 
-  const handleProcess = useCallback(() => {
+  const handleProcess = useCallback((data: Record<string, any>) => {
     const datasourceInfo: Record<string, any> = {}
     if (datasource.type === DataSourceType.FILE)
       datasourceInfo.fileId = fileList.map(file => file.fileID)
@@ -145,8 +145,9 @@ const TestRunPanel = () => {
       datasourceInfo.jobId = websiteCrawlJobId
       datasourceInfo.result = websitePages
     }
+    // todo: TBD
     handleRun({
-      inputs: {},
+      inputs: data,
       datasource_type: datasource,
       datasource_info: datasourceInfo,
     })

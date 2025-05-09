@@ -1,65 +1,69 @@
 import {
   memo,
   useCallback,
-  useState,
+  useMemo,
 } from 'react'
 import { useStore } from '@/app/components/workflow/store'
 import { RiCloseLine } from '@remixicon/react'
-import { Jina } from '@/app/components/base/icons/src/public/llm'
-import type { InputVar } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
-import Tooltip from '@/app/components/base/tooltip'
+import { BlockEnum, type InputVar } from '@/app/components/workflow/types'
 import DialogWrapper from './dialog-wrapper'
 import FieldList from './field-list'
 import FooterTip from './footer-tip'
+import SharedInputs from './label-right-content/shared-inputs'
+import Datasource from './label-right-content/datasource'
+import { useNodes } from 'reactflow'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import { useTranslation } from 'react-i18next'
+import produce from 'immer'
 
 type InputFieldDialogProps = {
   readonly?: boolean
-  initialInputFieldsMap?: Record<string, InputVar[]>
 }
 
 const InputFieldDialog = ({
   readonly = false,
-  initialInputFieldsMap,
 }: InputFieldDialogProps) => {
+  const { t } = useTranslation()
+  const nodes = useNodes<DataSourceNodeType>()
   const showInputFieldDialog = useStore(state => state.showInputFieldDialog)
   const setShowInputFieldDialog = useStore(state => state.setShowInputFieldDialog)
-  // TODO: delete mock data
-  const [inputFieldsMap, setInputFieldsMap] = useState(initialInputFieldsMap || {
-    jina: [{
-      variable: 'name',
-      label: 'name',
-      type: InputVarType.textInput,
-      required: true,
-      max_length: 12,
-    }, {
-      variable: 'num',
-      label: 'num',
-      type: InputVarType.number,
-      required: true,
-    }],
-    firecrawl: [{
-      variable: 'name',
-      label: 'name',
-      type: InputVarType.textInput,
-      required: true,
-      max_length: 12,
-    }],
-    shared: [{
-      variable: 'name',
-      label: 'name',
-      type: InputVarType.textInput,
-      required: true,
-      max_length: 12,
-    }],
-  })
+  const ragPipelineVariables = useStore(state => state.ragPipelineVariables)
+  const setRagPipelineVariables = useStore(state => state.setRagPipelineVariables)
+
+  const datasourceTitleMap = useMemo(() => {
+    const datasourceNameMap: Record<string, string> = {}
+    const datasourceNodes = nodes.filter(node => node.data.type === BlockEnum.DataSource)
+    datasourceNodes.forEach((node) => {
+      const { id, data } = node
+      if (data?.title)
+        datasourceNameMap[id] = data.title
+    })
+    return datasourceNameMap
+  }, [nodes])
+
+  const inputFieldsMap = useMemo(() => {
+    const inputFieldsMap: Record<string, InputVar[]> = {}
+    ragPipelineVariables?.forEach((variable) => {
+      const { nodeId, variables } = variable
+      if (nodeId)
+        inputFieldsMap[nodeId] = variables
+      else
+        inputFieldsMap.shared = variables
+    })
+    return inputFieldsMap
+  }, [ragPipelineVariables])
+
+  const datasourceKeys = useMemo(() => {
+    return Object.keys(inputFieldsMap).filter(key => key !== 'shared')
+  }, [inputFieldsMap])
 
   const updateInputFields = useCallback((key: string, value: InputVar[]) => {
-    setInputFieldsMap(prev => ({
-      ...prev,
-      [key]: value,
-    }))
-  }, [])
+    const newRagPipelineVariables = produce(ragPipelineVariables!, (draft) => {
+      const index = draft.findIndex(variable => variable.nodeId === key)
+      draft[index].variables = value
+    })
+    setRagPipelineVariables?.(newRagPipelineVariables)
+  }, [ragPipelineVariables, setRagPipelineVariables])
 
   const closePanel = useCallback(() => {
     setShowInputFieldDialog?.(false)
@@ -72,9 +76,8 @@ const InputFieldDialog = ({
     >
       <div className='flex grow flex-col'>
         <div className='flex items-center p-4 pb-0'>
-          {/* // TODO： i18n */}
           <div className='system-xl-semibold grow'>
-            User input fields
+            {t('datasetPipeline.inputFieldPanel.title')}
           </div>
           <button
             type='button'
@@ -85,54 +88,31 @@ const InputFieldDialog = ({
           </button>
         </div>
         <div className='system-sm-regular px-4 py-1 text-text-tertiary'>
-          User input fields are used to define and collect variables required during the pipeline execution process. Users can customize the field type and flexibly configure the input value to meet the needs of different data sources or document processing steps.
+          {t('datasetPipeline.inputFieldPanel.description')}
         </div>
         <div className='flex grow flex-col overflow-y-auto'>
-          {/* Jina Reader Field List */}
-          <FieldList
-            LabelRightContent={(
-              <div className='flex items-center gap-x-1.5'>
-                <div className='flex size-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default'>
-                  <Jina className='size-3.5' />
-                </div>
-                <span className='system-sm-medium text-text-secondary'>Jina Reader</span>
-              </div>
-            )}
-            inputFields={inputFieldsMap.jina}
-            readonly={readonly}
-            labelClassName='pt-2 pb-1'
-            handleInputFieldsChange={updateInputFields.bind(null, 'jina')}
-          />
-          {/* Firecrawl Field List */}
-          <FieldList
-            LabelRightContent={(
-              <div className='flex items-center gap-x-1.5'>
-                <div className='flex size-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default'>
-                  <span className='text-[14px] leading-[14px]'>🔥</span>
-                </div>
-                <span className='system-sm-medium text-text-secondary'>Firecrawl</span>
-              </div>
-            )}
-            inputFields={inputFieldsMap.firecrawl}
-            readonly={readonly}
-            labelClassName='pt-2 pb-1'
-            handleInputFieldsChange={updateInputFields.bind(null, 'firecrawl')}
-          />
+          {/* Datasources Inputs */}
+          {
+            datasourceKeys.map((key) => {
+              const inputFields = inputFieldsMap[key] || []
+              return (
+                <FieldList
+                  LabelRightContent={<Datasource title={datasourceTitleMap[key]} />}
+                  inputFields={inputFields}
+                  readonly={readonly}
+                  labelClassName='pt-2 pb-1'
+                  handleInputFieldsChange={updateInputFields.bind(null, key)}
+                />
+              )
+            })
+          }
           {/* Shared Inputs */}
           <FieldList
-            LabelRightContent={(
-              <div className='flex items-center gap-x-1'>
-                <span className='system-sm-medium text-text-secondary'>SHARED INPUTS</span>
-                <Tooltip
-                  popupContent='Shared Inputs are available to all downstream nodes across data sources. For example, variables like delimiter and maximum chunk length can be uniformly applied when processing documents from multiple sources.'
-                  popupClassName='!w-[300px]'
-                />
-              </div>
-            )}
-            inputFields={inputFieldsMap.shared}
+            LabelRightContent={<SharedInputs />}
+            inputFields={inputFieldsMap.shared || []}
             readonly={readonly}
             labelClassName='pt-1 pb-2'
-            handleInputFieldsChange={updateInputFields.bind(null, 'shared')}
+            handleInputFieldsChange={updateInputFields.bind(null, '')}
           />
         </div>
         <FooterTip />

@@ -5,6 +5,7 @@ import cn from '@/utils/classnames'
 import { useCallback, useMemo, useState } from 'react'
 import InputFieldEditor from '../editor'
 import { ReactSortable } from 'react-sortablejs'
+import produce from 'immer'
 
 type FieldListProps = {
   LabelRightContent: React.ReactNode
@@ -22,6 +23,8 @@ const FieldList = ({
   labelClassName,
 }: FieldListProps) => {
   const [showInputFieldEditor, setShowInputFieldEditor] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState<number>(-1)
+  const [currentInputField, setCurrentInputField] = useState<InputVar>()
 
   const optionList = useMemo(() => {
     return inputFields.map((content, index) => {
@@ -45,12 +48,23 @@ const FieldList = ({
   }, [handleInputFieldsChange, inputFields])
 
   const handleAddField = () => {
+    setCurrentIndex(-1)
+    setCurrentInputField(undefined)
     setShowInputFieldEditor(true)
   }
 
   const handleEditField = useCallback((index: number) => {
+    setCurrentIndex(index)
+    setCurrentInputField(inputFields[index])
     setShowInputFieldEditor(true)
-  }, [])
+  }, [inputFields])
+
+  const handleSubmitChange = useCallback((data: InputVar) => {
+    const newInputFields = produce(inputFields, (draft) => {
+      draft[currentIndex] = data
+    })
+    handleInputFieldsChange(newInputFields)
+  }, [currentIndex, handleInputFieldsChange, inputFields])
 
   const handleCloseEditor = useCallback(() => {
     setShowInputFieldEditor(false)
@@ -94,6 +108,8 @@ const FieldList = ({
       {showInputFieldEditor && (
         <InputFieldEditor
           show={showInputFieldEditor}
+          initialData={currentInputField}
+          onSubmit={handleSubmitChange}
           onClose={handleCloseEditor}
         />
       )}

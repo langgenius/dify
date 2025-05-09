@@ -2,8 +2,10 @@ import Button from '@/app/components/base/button'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import { useStore } from '@/app/components/workflow/store'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 
 const InputFieldButton = () => {
+  const { t } = useTranslation()
   const setShowInputFieldDialog = useStore(state => state.setShowInputFieldDialog)
   const handleClick = useCallback(() => {
     setShowInputFieldDialog?.(true)
@@ -16,8 +18,7 @@ const InputFieldButton = () => {
       onClick={handleClick}
     >
       <InputField className='h-4 w-4' />
-      {/* // TODO: i18n */}
-      <span className='px-0.5'>Input Field</span>
+      <span className='px-0.5'>{t('datasetPipeline.inputField')}</span>
     </Button>
   )
 }
