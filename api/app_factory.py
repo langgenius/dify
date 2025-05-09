@@ -1,6 +1,8 @@
 import logging
 import time
 
+from flask import request
+
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
 from dify_app import DifyApp
@@ -22,6 +24,28 @@ def create_flask_app_with_configs() -> DifyApp:
     def before_request():
         # add an unique identifier to each request
         RecyclableContextVar.increment_thread_recycles()
+
+        try:
+            if (
+                request.method.lower() == "post"
+                and "application/json" in request.headers.get("content-type", "").lower()
+            ):
+                logging.info(
+                    f"[before request]| method: "
+                    f"{request.method}, url: {request.url}, request_data: {request.get_json()}"
+                )
+            else:
+                logging.info(f"[before request]| method: {request.method}, url: {request.url}")
+        except Exception as e:
+            logging.info(f"before_request handler err {e}")
+
+    # add extra `request_id` field for every response data
+    @dify_app.after_request
+    def add_extra_info(resp):
+        obj = resp.get_json()
+        if obj is not None and isinstance(obj, dict):
+            logging.info(f"[finish request]|response: {obj}")
+        return resp
 
     return dify_app
 
