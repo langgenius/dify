@@ -6,7 +6,6 @@ import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import Header from '@/app/components/datasets/create/website/base/header'
-import type { FormData } from '../base/options'
 import Options from '../base/options'
 import { useConfigurations, useSchema } from './hooks'
 import Crawling from '../base/crawling'
@@ -109,9 +108,9 @@ const WaterCrawl = ({
     }
   }, [crawlOptions.limit, onCheckedCrawlResultChange])
 
-  const handleRun = useCallback(async (value: FormData) => {
+  const handleRun = useCallback(async (value: Record<string, any>) => {
     const { url, ...crawlOptions } = value
-    onCrawlOptionsChange(crawlOptions)
+    onCrawlOptionsChange(crawlOptions as CrawlOptions)
     setStep(Step.running)
     try {
       const passToServerCrawlOptions: any = {

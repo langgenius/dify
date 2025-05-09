@@ -23,6 +23,8 @@ const translation = {
     editInfo: '编辑信息',
     exportDSL: '导出 DSL',
     useTemplate: '使用此知识库流水线',
+    backToDataSource: '返回数据源',
+    process: '处理',
   },
   knowledgeNameAndIcon: '知识库名称和图标',
   knowledgeNameAndIconPlaceholder: '请输入知识库名称',
@@ -42,6 +44,16 @@ const translation = {
   details: {
     structure: '文档结构',
     structureTooltip: '文档结构决定了文档的拆分和索引方式，Dify 提供了通用、父子和问答模式，每个知识库的文档结构是唯一的。',
+  },
+  testRun: {
+    title: '测试运行',
+    steps: {
+      dataSource: '数据源',
+      documentProcessing: '文档处理',
+    },
+    dataSource: {
+      localFiles: '本地文件',
+    },
   },
 }
 

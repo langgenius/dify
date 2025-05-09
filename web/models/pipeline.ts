@@ -79,6 +79,7 @@ export type Variables = {
   max_length: number
   required: boolean
   options?: string[]
+  default: string | number | boolean
 }
 
 export type PipelineProcessingParamsResponse = {

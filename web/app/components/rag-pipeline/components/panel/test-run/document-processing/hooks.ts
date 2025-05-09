@@ -1,57 +1,58 @@
-import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
+import { useMemo } from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
-import type { FormData } from './options'
-import { useTranslation } from 'react-i18next'
+import { useStore } from '@/app/components/workflow/store'
+import { InputVarType } from '@/app/components/workflow/types'
+import { usePipelineProcessingParams } from '@/service/use-pipeline'
+
+type PartialInputVarType = InputVarType.textInput | InputVarType.number | InputVarType.select | InputVarType.checkbox
+
+const VAR_TYPE_MAP: Record<PartialInputVarType, BaseFieldType> = {
+  [InputVarType.textInput]: BaseFieldType.textInput,
+  [InputVarType.number]: BaseFieldType.numberInput,
+  [InputVarType.select]: BaseFieldType.select,
+  [InputVarType.checkbox]: BaseFieldType.checkbox,
+}
 
 export const useConfigurations = () => {
-    const { t } = useTranslation()
-    const maxValue = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
+  const pipelineId = useStore(state => state.pipelineId)
+  const { data: paramsConfig } = usePipelineProcessingParams(pipelineId!)
 
-    const configurations: BaseConfiguration<FormData>[] = [
-      {
-        type: BaseFieldType.textInput,
-        variable: 'separator',
-        label: t('datasetCreation.stepTwo.separator'),
-        required: false,
-        showConditions: [],
-        placeholder: t('datasetCreation.stepTwo.separatorPlaceholder'),
-        tooltip: t('datasetCreation.stepTwo.separatorTip'),
-      },
-      {
-        type: BaseFieldType.numberInput,
-        variable: 'max_tokens',
-        label: t('datasetCreation.stepTwo.maxLength'),
-        required: false,
-        min: 1,
-        max: maxValue,
-        showConditions: [],
-        placeholder: `≤ ${maxValue}`,
-      },
-      {
-        type: BaseFieldType.numberInput,
-        variable: 'chunk_overlap',
-        label: t('datasetCreation.stepTwo.overlap'),
-        required: false,
-        min: 1,
-        showConditions: [],
-        placeholder: t('datasetCreation.stepTwo.overlap') || '',
-        tooltip: t('datasetCreation.stepTwo.overlapTip'),
-      },
-      {
-        type: BaseFieldType.checkbox,
-        variable: 'remove_extra_spaces',
-        label: t('datasetCreation.stepTwo.removeExtraSpaces'),
-        required: false,
-        showConditions: [],
-      },
-      {
-        type: BaseFieldType.checkbox,
-        variable: 'remove_urls_emails',
-        label: t('datasetCreation.stepTwo.removeUrlEmails'),
-        required: false,
-        showConditions: [],
-      },
-    ]
+  const initialData = useMemo(() => {
+    const variables = paramsConfig?.variables || []
+    return variables.reduce((acc, item) => {
+      const type = VAR_TYPE_MAP[item.type as PartialInputVarType]
+      if (type === BaseFieldType.textInput)
+        acc[item.variable] = ''
+      if (type === BaseFieldType.numberInput)
+        acc[item.variable] = 0
+      if (type === BaseFieldType.select)
+        acc[item.variable] = item.options?.[0] || ''
+      if (type === BaseFieldType.checkbox)
+        acc[item.variable] = true
+      return acc
+    }, {} as Record<string, any>)
+  }, [paramsConfig])
 
-    return configurations
+  const configurations = useMemo(() => {
+    const variables = paramsConfig?.variables || []
+    const configs = variables.map(item => ({
+      type: VAR_TYPE_MAP[item.type as PartialInputVarType],
+      variable: item.variable,
+      label: item.label,
+      required: item.required,
+      maxLength: item.max_length,
+      options: item.options?.map(option => ({
+        label: option,
+        value: option,
+      })),
+      showConditions: [],
+      default: item.default,
+    }))
+    return configs
+  }, [paramsConfig])
+
+  return {
+    initialData,
+    configurations,
+  }
 }

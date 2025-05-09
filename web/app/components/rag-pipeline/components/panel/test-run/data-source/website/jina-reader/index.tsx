@@ -9,7 +9,6 @@ import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datas
 import { sleep } from '@/utils'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Header from '@/app/components/datasets/create/website/base/header'
-import type { FormData } from '../base/options'
 import Options from '../base/options'
 import { useConfigurations, useSchema } from './hooks'
 
@@ -108,9 +107,9 @@ const JinaReader = ({
     }
   }, [crawlOptions.limit, onCheckedCrawlResultChange])
 
-  const handleRun = useCallback(async (value: FormData) => {
+  const handleRun = useCallback(async (value: Record<string, any>) => {
     const { url, ...crawlOptions } = value
-    onCrawlOptionsChange(crawlOptions)
+    onCrawlOptionsChange(crawlOptions as CrawlOptions)
     setStep(Step.running)
     try {
       const startTime = Date.now()

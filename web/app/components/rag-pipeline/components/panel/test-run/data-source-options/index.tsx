@@ -6,10 +6,11 @@ import { Notion } from '@/app/components/base/icons/src/public/common'
 import { Jina } from '@/app/components/base/icons/src/public/llm'
 import { DataSourceType } from '@/models/datasets'
 import { DataSourceProvider } from '@/models/common'
+import type { Datasource } from '../types'
 
 type DataSourceOptionsProps = {
-  dataSources: string[]
-  dataSourceType: string
+  dataSources: Datasource[]
+  dataSourceNodeId: string
   onSelect: (option: string) => void
 }
 
@@ -23,7 +24,7 @@ const DATA_SOURCE_ICONS = {
 
 const DataSourceOptions = ({
   dataSources,
-  dataSourceType,
+  dataSourceNodeId,
   onSelect,
 }: DataSourceOptionsProps) => {
   const options = useDataSourceOptions(dataSources)
@@ -38,8 +39,8 @@ const DataSourceOptions = ({
         <OptionCard
           key={option.value}
           label={option.label}
-          selected={dataSourceType === option.value}
-          Icon={DATA_SOURCE_ICONS[option.value as keyof typeof DATA_SOURCE_ICONS]}
+          selected={dataSourceNodeId === option.value}
+          Icon={DATA_SOURCE_ICONS[option.type as keyof typeof DATA_SOURCE_ICONS]}
           onClick={handelSelect.bind(null, option.value)}
         />
       ))}

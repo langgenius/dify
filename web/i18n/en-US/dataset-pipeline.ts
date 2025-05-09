@@ -23,6 +23,8 @@ const translation = {
     editInfo: 'Edit info',
     exportDSL: 'Export DSL',
     useTemplate: 'Use this Knowledge Pipeline',
+    backToDataSource: 'Back to Data Source',
+    process: 'Process',
   },
   knowledgeNameAndIcon: 'Knowledge name & icon',
   knowledgeNameAndIconPlaceholder: 'Please enter the name of the Knowledge Base',
@@ -42,6 +44,16 @@ const translation = {
   details: {
     structure: 'Structure',
     structureTooltip: 'Chunk Structure determines how documents are split and indexed—offering General, Parent-Child, and Q&A modes—and is unique to each knowledge base.',
+  },
+  testRun: {
+    title: 'Test Run',
+    steps: {
+      dataSource: 'Data Source',
+      documentProcessing: 'Document Processing',
+    },
+    dataSource: {
+      localFiles: 'Local Files',
+    },
   },
 }
 

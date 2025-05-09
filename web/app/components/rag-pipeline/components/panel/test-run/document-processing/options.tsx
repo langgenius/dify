@@ -5,20 +5,12 @@ import type { BaseConfiguration } from '@/app/components/base/form/form-scenario
 import Toast from '@/app/components/base/toast'
 import type { ZodSchema } from 'zod'
 
-export type FormData = {
-  separator: string
-  max_tokens: number
-  chunk_overlap: number
-  remove_extra_spaces: boolean
-  remove_urls_emails: boolean
-}
-
 type OptionsProps = {
-  initialData: FormData
-  configurations: BaseConfiguration<FormData>[]
+  initialData: Record<string, any>
+  configurations: BaseConfiguration[]
   schema: ZodSchema
   CustomActions: (form: FormType) => React.JSX.Element
-  onSubmit: (data: FormData) => void
+  onSubmit: (data: Record<string, any>) => void
 }
 
 const Options = ({
@@ -62,7 +54,7 @@ const Options = ({
     >
       <div className='flex flex-col gap-3 px-4 pb-6 pt-3'>
         {configurations.map((config, index) => {
-          const FieldComponent = BaseField<FormData>({
+          const FieldComponent = BaseField({
             initialData,
             config,
           })
