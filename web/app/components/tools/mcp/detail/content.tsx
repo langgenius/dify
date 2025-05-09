@@ -18,11 +18,17 @@ import Indicator from '@/app/components/header/indicator'
 import MCPModal from '../modal'
 import OperationDropdown from './operation-dropdown'
 import ListLoading from './list-loading'
-import { useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
+import {
+  useDeleteMCP,
+  useInvalidateMCPTools,
+  useMCPTools,
+  useUpdateMCP,
+  useUpdateMCPTools,
+} from '@/service/use-tools'
 import cn from '@/utils/classnames'
 
 type Props = {
-  detail?: ToolWithProvider
+  detail: ToolWithProvider
   onUpdate: (isDelete?: boolean) => void
   onHide: () => void
 }
@@ -34,6 +40,17 @@ const MCPDetailContent: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
+
+  const { data: toolList = [], isPending: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
+  const invalidateMCPTools = useInvalidateMCPTools()
+  const { mutateAsync, isPending: isUpdating } = useUpdateMCPTools(detail.id)
+
+  const handleUpdateTools = useCallback(async () => {
+    if (!detail)
+      return
+    await mutateAsync()
+    invalidateMCPTools(detail.id)
+  }, [detail, mutateAsync])
 
   const { mutate: updateMCP } = useUpdateMCP({
     onSuccess: onUpdate,
@@ -82,7 +99,7 @@ const MCPDetailContent: FC<Props> = ({
     }
   }, [detail, showDeleting, hideDeleting, hideDeleteConfirm, onUpdate])
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   if (!detail)
     return null
@@ -147,47 +164,64 @@ const MCPDetailContent: FC<Props> = ({
         </div>
       </div>
       <div className='grow'>
-        <div className='flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2'>
-          <div className='flex h-6 items-center'>
-            <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.gettingTools')}</div>
-            {/* <div className='text-text-secondary system-sm-semibold-uppercase'>{t('tools.mcp.updateTools')}</div> */}
-          </div>
-          <div>
-            <Button size='small'>
-              <RiLoopLeftLine className='mr-1 h-3.5 w-3.5' />
-              {t('tools.mcp.update')}
-            </Button>
-            {/* <Button size='small'>
-              <RiLoader2Line className='h-3.5 w-3.5 mr-1 animate-spin' />
-              {t('tools.mcp.updating')}
-            </Button> */}
-          </div>
-        </div>
-        {loading && (
-          <div className='flex h-full w-full grow flex-col overflow-hidden px-4 pb-4'>
-            <ListLoading />
+        {detail.is_team_authorization && isGettingTools && (
+          <>
+            <div className='flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2'>
+              <div className='flex h-6 items-center'>
+                <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.gettingTools')}</div>
+              </div>
+              <div></div>
+            </div>
+            <div className='flex h-full w-full grow flex-col overflow-hidden px-4 pb-4'>
+              <ListLoading />
+            </div>
+          </>
+        )}
+        {!isGettingTools && !toolList.length && (
+          <div className='flex h-full w-full flex-col items-center justify-center'>
+            <div className='system-sm-regular mb-3 text-text-tertiary'>{t('tools.mcp.toolsEmpty')}</div>
+            <Button
+              variant='primary'
+              onClick={handleUpdateTools}
+            >{t('tools.mcp.getTools')}</Button>
           </div>
         )}
-        {!loading && (
-          <div className='grow overflow-y-auto'>
-            {!detail.is_team_authorization && (
-              <div className='flex h-full w-full flex-col items-center justify-center'>
-                <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizingRequired')}</div>
-                {deleting && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizing')}</div>}
-                <div className='system-sm-regular text-text-tertiary'>{t('tools.mcp.authorizeTip')}</div>
+        {!isGettingTools && toolList.length > 0 && (
+          <>
+            <div className='flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2'>
+              <div className='flex h-6 items-center'>
+                <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.gettingTools')}</div>
               </div>
-            )}
-            {detail.is_team_authorization && (
-              <div className='flex h-full w-full flex-col items-center justify-center'>
-                <div className='system-sm-regular mb-3 text-text-tertiary'>{t('tools.mcp.toolsEmpty')}</div>
-                <Button
-                  variant='primary'
-                  onClick={() => {
-                    // TODO
-                  }}
-                >{t('tools.mcp.getTools')}</Button>
+              <div>
+                <Button size='small' onClick={handleUpdateTools}>
+                  <RiLoopLeftLine className='mr-1 h-3.5 w-3.5' />
+                  {t('tools.mcp.update')}
+                </Button>
               </div>
-            )}
+            </div>
+            <div className='grow overflow-y-auto'>
+              {/* list */}
+            </div>
+          </>
+        )}
+        {isUpdating && (
+          <>
+            <div className='flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2'>
+              <div className='flex h-6 items-center'>
+                <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.updateTools')}</div>
+              </div>
+              <div></div>
+            </div>
+            <div className='flex h-full w-full grow flex-col overflow-hidden px-4 pb-4'>
+              <ListLoading />
+            </div>
+          </>
+        )}
+        {!detail.is_team_authorization && (
+          <div className='flex h-full w-full flex-col items-center justify-center'>
+            {!loading && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizingRequired')}</div>}
+            {loading && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizing')}</div>}
+            <div className='system-sm-regular text-text-tertiary'>{t('tools.mcp.authorizeTip')}</div>
           </div>
         )}
       </div>

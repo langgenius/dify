@@ -148,15 +148,24 @@ export const useDeleteMCP = ({
 
 export const useMCPTools = (providerID: string) => {
   return useQuery({
+    enabled: !!providerID,
     queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
     queryFn: () => get<Tool[]>(`/workspaces/current/tool-provider/mcp/tools/${providerID}`),
   })
 }
+export const useInvalidateMCPTools = () => {
+  const queryClient = useQueryClient()
+  return (providerID: string) => {
+    queryClient.invalidateQueries(
+      {
+        queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
+      })
+  }
+}
 
 export const useUpdateMCPTools = (providerID: string) => {
-  return useQuery({
-    queryKey: [NAME_SPACE, 'update-MCP-provider-tool', providerID],
-    queryFn: () => get<Tool[]>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
+  return useMutation({
+    mutationFn: () => get<Tool[]>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
   })
 }
 
