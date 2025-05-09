@@ -101,19 +101,28 @@ const AgentTools: FC = () => {
   }
 
   const [isDeleting, setIsDeleting] = useState<number>(-1)
-
+  const getToolValue = (tool: ToolDefaultValue) => {
+    return {
+      provider_id: tool.provider_id,
+      provider_type: tool.provider_type as CollectionType,
+      provider_name: tool.provider_name,
+      tool_name: tool.tool_name,
+      tool_label: tool.tool_label,
+      tool_parameters: tool.params,
+      notAuthor: !tool.is_team_authorization,
+      enabled: true,
+    }
+  }
   const handleSelectTool = (tool: ToolDefaultValue) => {
     const newModelConfig = produce(modelConfig, (draft) => {
-      draft.agentConfig.tools.push({
-        provider_id: tool.provider_id,
-        provider_type: tool.provider_type as CollectionType,
-        provider_name: tool.provider_name,
-        tool_name: tool.tool_name,
-        tool_label: tool.tool_label,
-        tool_parameters: tool.params,
-        notAuthor: !tool.is_team_authorization,
-        enabled: true,
-      })
+      draft.agentConfig.tools.push(getToolValue(tool))
+    })
+    setModelConfig(newModelConfig)
+  }
+
+  const handleSelectMultipleTool = (tool: ToolDefaultValue[]) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.agentConfig.tools.push(...tool.map(getToolValue))
     })
     setModelConfig(newModelConfig)
   }
@@ -148,6 +157,7 @@ const AgentTools: FC = () => {
                   disabled={false}
                   supportAddCustomTool
                   onSelect={handleSelectTool}
+                  onSelectMultiple={handleSelectMultipleTool}
                   selectedTools={tools as unknown as ToolValue[]}
                 />
               </>
