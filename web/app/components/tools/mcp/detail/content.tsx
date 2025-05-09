@@ -18,6 +18,7 @@ import Indicator from '@/app/components/header/indicator'
 import MCPModal from '../modal'
 import OperationDropdown from './operation-dropdown'
 import ListLoading from './list-loading'
+import ToolItem from './tool-item'
 import {
   useDeleteMCP,
   useInvalidateMCPTools,
@@ -164,11 +165,12 @@ const MCPDetailContent: FC<Props> = ({
         </div>
       </div>
       <div className='grow'>
-        {detail.is_team_authorization && isGettingTools && (
+        {((detail.is_team_authorization && isGettingTools) || isUpdating) && (
           <>
             <div className='flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2'>
               <div className='flex h-6 items-center'>
-                <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.gettingTools')}</div>
+                {!isUpdating && <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.gettingTools')}</div>}
+                {isUpdating && <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.updateTools')}</div>}
               </div>
               <div></div>
             </div>
@@ -190,7 +192,8 @@ const MCPDetailContent: FC<Props> = ({
           <>
             <div className='flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2'>
               <div className='flex h-6 items-center'>
-                <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.gettingTools')}</div>
+                {toolList.length > 1 && <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.toolsNum', { count: toolList.length })}</div>}
+                {toolList.length === 1 && <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.onlyTool')}</div>}
               </div>
               <div>
                 <Button size='small' onClick={handleUpdateTools}>
@@ -199,24 +202,17 @@ const MCPDetailContent: FC<Props> = ({
                 </Button>
               </div>
             </div>
-            <div className='grow overflow-y-auto'>
-              {/* list */}
+            <div className='flex w-full grow flex-col gap-2 overflow-y-auto px-4 pb-4'>
+              {toolList.map(tool => (
+                <ToolItem
+                  key={`${detail.id}${tool.name}`}
+                  tool={tool}
+                />
+              ))}
             </div>
           </>
         )}
-        {isUpdating && (
-          <>
-            <div className='flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2'>
-              <div className='flex h-6 items-center'>
-                <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.updateTools')}</div>
-              </div>
-              <div></div>
-            </div>
-            <div className='flex h-full w-full grow flex-col overflow-hidden px-4 pb-4'>
-              <ListLoading />
-            </div>
-          </>
-        )}
+
         {!detail.is_team_authorization && (
           <div className='flex h-full w-full flex-col items-center justify-center'>
             {!loading && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizingRequired')}</div>}

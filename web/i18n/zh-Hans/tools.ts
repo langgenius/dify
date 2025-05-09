@@ -188,6 +188,8 @@ const translation = {
     updateTools: '更新工具中...',
     toolsEmpty: '工具未加载',
     getTools: '获取工具',
+    toolsNum: '包含 {{count}} 个工具',
+    onlyTool: '包含 1 个工具',
   },
 }
 

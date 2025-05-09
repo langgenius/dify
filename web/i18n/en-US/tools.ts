@@ -188,6 +188,8 @@ const translation = {
     updateTools: 'Updating Tools...',
     toolsEmpty: 'Tools not loaded',
     getTools: 'Get tools',
+    toolsNum: '{{count}} tools included',
+    onlyTool: '1 tool included',
   },
 }
 
