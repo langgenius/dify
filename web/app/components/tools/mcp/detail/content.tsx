@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import type { FC } from 'react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +7,7 @@ import { useAppContext } from '@/context/app-context'
 import {
   RiCloseLine,
   RiLoader2Line,
+  RiLoopLeftLine,
 } from '@remixicon/react'
 import type { ToolWithProvider } from '../../../workflow/types'
 import Icon from '@/app/components/plugins/card/base/card-icon'
@@ -16,6 +17,7 @@ import Confirm from '@/app/components/base/confirm'
 import Indicator from '@/app/components/header/indicator'
 import MCPModal from '../modal'
 import OperationDropdown from './operation-dropdown'
+import ListLoading from './list-loading'
 import { useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
 import cn from '@/utils/classnames'
 
@@ -80,6 +82,8 @@ const MCPDetailContent: FC<Props> = ({
     }
   }, [detail, showDeleting, hideDeleting, hideDeleteConfirm, onUpdate])
 
+  const [loading, setLoading] = useState(true)
+
   if (!detail)
     return null
 
@@ -142,23 +146,48 @@ const MCPDetailContent: FC<Props> = ({
           )}
         </div>
       </div>
-      <div className='grow overflow-y-auto'>
-        {!detail.is_team_authorization && (
-          <div className='flex h-full w-full flex-col items-center justify-center'>
-            <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizingRequired')}</div>
-            {deleting && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizing')}</div>}
-            <div className='system-sm-regular text-text-tertiary'>{t('tools.mcp.authorizeTip')}</div>
+      <div className='grow'>
+        <div className='flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2'>
+          <div className='flex h-6 items-center'>
+            <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.gettingTools')}</div>
+            {/* <div className='text-text-secondary system-sm-semibold-uppercase'>{t('tools.mcp.updateTools')}</div> */}
+          </div>
+          <div>
+            <Button size='small'>
+              <RiLoopLeftLine className='mr-1 h-3.5 w-3.5' />
+              {t('tools.mcp.update')}
+            </Button>
+            {/* <Button size='small'>
+              <RiLoader2Line className='h-3.5 w-3.5 mr-1 animate-spin' />
+              {t('tools.mcp.updating')}
+            </Button> */}
+          </div>
+        </div>
+        {loading && (
+          <div className='flex h-full w-full grow flex-col overflow-hidden px-4 pb-4'>
+            <ListLoading />
           </div>
         )}
-        {detail.is_team_authorization && (
-          <div className='flex h-full w-full flex-col items-center justify-center'>
-            <div className='system-sm-regular mb-3 text-text-tertiary'>{t('tools.mcp.toolsEmpty')}</div>
-            <Button
-              variant='primary'
-              onClick={() => {
-                // TODO
-              }}
-            >{t('tools.mcp.getTools')}</Button>
+        {!loading && (
+          <div className='grow overflow-y-auto'>
+            {!detail.is_team_authorization && (
+              <div className='flex h-full w-full flex-col items-center justify-center'>
+                <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizingRequired')}</div>
+                {deleting && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizing')}</div>}
+                <div className='system-sm-regular text-text-tertiary'>{t('tools.mcp.authorizeTip')}</div>
+              </div>
+            )}
+            {detail.is_team_authorization && (
+              <div className='flex h-full w-full flex-col items-center justify-center'>
+                <div className='system-sm-regular mb-3 text-text-tertiary'>{t('tools.mcp.toolsEmpty')}</div>
+                <Button
+                  variant='primary'
+                  onClick={() => {
+                    // TODO
+                  }}
+                >{t('tools.mcp.getTools')}</Button>
+              </div>
+            )}
           </div>
         )}
       </div>
