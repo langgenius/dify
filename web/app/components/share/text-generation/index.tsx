@@ -434,7 +434,7 @@ const TextGeneration: FC<IMainProps> = ({
       setMoreLikeThisConfig(more_like_this)
       setTextToSpeechConfig(text_to_speech)
     })()
-  }, [fetchInitData])
+  }, [])
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useDocumentTitle(siteInfo?.title || t('share.generation.title'))
@@ -536,13 +536,13 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   )
 
-  if (!appId || !siteInfo || !promptConfig || isGettingAccessMode || isCheckingPermission) {
+  if (!appId || !siteInfo || !promptConfig || (systemFeatures.webapp_auth.enabled && (isGettingAccessMode || isCheckingPermission))) {
     return (
       <div className='flex h-screen items-center'>
         <Loading type='app' />
       </div>)
   }
-  if (!userCanAccessResult?.result)
+  if (systemFeatures.webapp_auth.enabled && !userCanAccessResult?.result)
     return <AppUnavailable code={403} unknownReason='no permission.' />
 
   return (

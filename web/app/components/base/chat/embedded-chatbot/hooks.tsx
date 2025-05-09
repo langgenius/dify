@@ -38,6 +38,7 @@ import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { noop } from 'lodash-es'
 import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { AccessMode } from '@/models/access-control'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -377,9 +378,9 @@ export const useEmbeddedChatbot = () => {
 
   return {
     appInfoError,
-    appInfoLoading: appInfoLoading || isGettingAccessMode || isCheckingPermission,
-    accessMode: appAccessMode?.accessMode,
-    userCanAccess: userCanAccessResult?.result,
+    appInfoLoading: appInfoLoading || (systemFeatures.webapp_auth.enabled && (isGettingAccessMode || isCheckingPermission)),
+    accessMode: systemFeatures.webapp_auth.enabled ? appAccessMode?.accessMode : AccessMode.PUBLIC,
+    userCanAccess: systemFeatures.webapp_auth.enabled ? userCanAccessResult?.result : true,
     isInstalledApp,
     allowResetChat,
     appId,
