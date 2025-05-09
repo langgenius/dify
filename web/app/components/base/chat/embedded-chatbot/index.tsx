@@ -150,7 +150,6 @@ const EmbeddedChatbotWrapper = () => {
     handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,
-    handleStartChat,
     handleChangeConversation,
     handleNewConversationCompleted,
     chatShouldReloadKey,
@@ -165,6 +164,7 @@ const EmbeddedChatbotWrapper = () => {
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    eventEmitter,
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
@@ -184,7 +184,6 @@ const EmbeddedChatbotWrapper = () => {
     handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,
-    handleStartChat,
     handleChangeConversation,
     handleNewConversationCompleted,
     chatShouldReloadKey,
@@ -201,6 +200,7 @@ const EmbeddedChatbotWrapper = () => {
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    eventEmitter,
   }}>
     <Chatbot />
   </EmbeddedChatbotContext.Provider>
