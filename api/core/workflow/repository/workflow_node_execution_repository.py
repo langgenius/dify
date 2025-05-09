@@ -2,12 +2,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Optional, Protocol
 
-from models.workflow import WorkflowNodeExecution
+from core.workflow.entities.node_execution_entities import NodeExecution
 
 
 @dataclass
 class OrderConfig:
-    """Configuration for ordering WorkflowNodeExecution instances."""
+    """Configuration for ordering NodeExecution instances."""
 
     order_by: list[str]
     order_direction: Optional[Literal["asc", "desc"]] = None
@@ -15,10 +15,10 @@ class OrderConfig:
 
 class WorkflowNodeExecutionRepository(Protocol):
     """
-    Repository interface for WorkflowNodeExecution.
+    Repository interface for NodeExecution.
 
     This interface defines the contract for accessing and manipulating
-    WorkflowNodeExecution data, regardless of the underlying storage mechanism.
+    NodeExecution data, regardless of the underlying storage mechanism.
 
     Note: Domain-specific concepts like multi-tenancy (tenant_id), application context (app_id),
     and trigger sources (triggered_from) should be handled at the implementation level, not in
@@ -26,24 +26,28 @@ class WorkflowNodeExecutionRepository(Protocol):
     application domains or deployment scenarios.
     """
 
-    def save(self, execution: WorkflowNodeExecution) -> None:
+    def save(self, execution: NodeExecution) -> None:
         """
-        Save a WorkflowNodeExecution instance.
+        Save or update a NodeExecution instance.
+
+        This method handles both creating new records and updating existing ones.
+        The implementation should determine whether to create or update based on
+        the execution's ID or other identifying fields.
 
         Args:
-            execution: The WorkflowNodeExecution instance to save
+            execution: The NodeExecution instance to save or update
         """
         ...
 
-    def get_by_node_execution_id(self, node_execution_id: str) -> Optional[WorkflowNodeExecution]:
+    def get_by_node_execution_id(self, node_execution_id: str) -> Optional[NodeExecution]:
         """
-        Retrieve a WorkflowNodeExecution by its node_execution_id.
+        Retrieve a NodeExecution by its node_execution_id.
 
         Args:
             node_execution_id: The node execution ID
 
         Returns:
-            The WorkflowNodeExecution instance if found, None otherwise
+            The NodeExecution instance if found, None otherwise
         """
         ...
 
@@ -51,9 +55,9 @@ class WorkflowNodeExecutionRepository(Protocol):
         self,
         workflow_run_id: str,
         order_config: Optional[OrderConfig] = None,
-    ) -> Sequence[WorkflowNodeExecution]:
+    ) -> Sequence[NodeExecution]:
         """
-        Retrieve all WorkflowNodeExecution instances for a specific workflow run.
+        Retrieve all NodeExecution instances for a specific workflow run.
 
         Args:
             workflow_run_id: The workflow run ID
@@ -62,34 +66,25 @@ class WorkflowNodeExecutionRepository(Protocol):
                 order_config.order_direction: Direction to order ("asc" or "desc")
 
         Returns:
-            A list of WorkflowNodeExecution instances
+            A list of NodeExecution instances
         """
         ...
 
-    def get_running_executions(self, workflow_run_id: str) -> Sequence[WorkflowNodeExecution]:
+    def get_running_executions(self, workflow_run_id: str) -> Sequence[NodeExecution]:
         """
-        Retrieve all running WorkflowNodeExecution instances for a specific workflow run.
+        Retrieve all running NodeExecution instances for a specific workflow run.
 
         Args:
             workflow_run_id: The workflow run ID
 
         Returns:
-            A list of running WorkflowNodeExecution instances
-        """
-        ...
-
-    def update(self, execution: WorkflowNodeExecution) -> None:
-        """
-        Update an existing WorkflowNodeExecution instance.
-
-        Args:
-            execution: The WorkflowNodeExecution instance to update
+            A list of running NodeExecution instances
         """
         ...
 
     def clear(self) -> None:
         """
-        Clear all WorkflowNodeExecution records based on implementation-specific criteria.
+        Clear all NodeExecution records based on implementation-specific criteria.
 
         This method is intended to be used for bulk deletion operations, such as removing
         all records associated with a specific app_id and tenant_id in multi-tenant implementations.
