@@ -146,6 +146,20 @@ export const useDeleteMCP = ({
   })
 }
 
+export const useMCPTools = (providerID: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
+    queryFn: () => get<Tool[]>(`/workspaces/current/tool-provider/mcp/tools/${providerID}`),
+  })
+}
+
+export const useUpdateMCPTools = (providerID: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'update-MCP-provider-tool', providerID],
+    queryFn: () => get<Tool[]>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
+  })
+}
+
 export const useBuiltinProviderInfo = (providerName: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'builtin-provider-info', providerName],
