@@ -111,7 +111,7 @@ class BasePluginClient:
         path: str,
         type: type[T],
         headers: dict | None = None,
-        data: bytes | None = None,
+        data: bytes | dict | None = None,
         params: dict | None = None,
         files: dict | None = None,
     ) -> T:
