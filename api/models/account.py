@@ -47,7 +47,7 @@ class Account(UserMixin, Base):
 
     @property
     def current_tenant(self):
-        return self._current_tenant
+        return self._current_tenant  # type: ignore
 
     @current_tenant.setter
     def current_tenant(self, value: "Tenant"):
@@ -56,7 +56,7 @@ class Account(UserMixin, Base):
         if ta:
             tenant.current_role = ta.role
         else:
-            tenant = None
+            tenant = None  # type: ignore
 
         self._current_tenant = tenant
 
