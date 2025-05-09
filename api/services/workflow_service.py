@@ -284,9 +284,11 @@ class WorkflowService:
         workflow_node_execution.created_by = account.id
         workflow_node_execution.workflow_id = draft_workflow.id
 
-        # Use the repository to save the workflow node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine, tenant_id=app_model.tenant_id, app_id=app_model.id
+            session_factory=db.engine,
+            user=account,
+            app_id=app_model.id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         repository.save(workflow_node_execution)
 
