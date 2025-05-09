@@ -9,7 +9,6 @@ import pytest
 
 from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
 from core.workflow.repository.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
-from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 
 @pytest.fixture
@@ -31,7 +30,6 @@ def sample_node_execution():
         node_execution_id="test-node-execution-id",
         workflow_id="test-workflow-id",
         workflow_run_id="test-workflow-run-id",
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         index=1,
         predecessor_node_id="test-predecessor-node-id",
         node_id="test-node-id",
@@ -109,7 +107,6 @@ def test_get_by_workflow_run(repository, sample_node_execution):
         node_execution_id="test-node-execution-id-2",
         workflow_id=sample_node_execution.workflow_id,
         workflow_run_id=sample_node_execution.workflow_run_id,
-        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         index=2,
         predecessor_node_id=sample_node_execution.node_id,
         node_id="test-node-id-2",
