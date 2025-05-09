@@ -10,8 +10,6 @@ import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
-import { RiCheckLine } from '@remixicon/react'
-import Badge from '@/app/components/base/badge'
 
 type Props = {
   provider: ToolWithProvider
@@ -74,15 +72,12 @@ const ToolItem: FC<Props> = ({
           })
         }}
       >
-        <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary', disabled && 'opacity-30')}>{payload.label[language]}</div>
-        {disabled && <Badge
-          className='flex h-5 items-center space-x-0.5 text-text-tertiary'
-          uppercase
-        >
-          <RiCheckLine className='h-3 w-3 ' />
-          <div>{t('tools.addToolModal.added')}</div>
-        </Badge>
-        }
+        <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary')}>
+          <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
+        </div>
+        {disabled && (
+          <div className='system-xs-regular mr-4 text-text-tertiary'>{t('tools.addToolModal.added')}</div>
+        )}
       </div>
     </Tooltip >
   )
