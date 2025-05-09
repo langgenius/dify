@@ -294,6 +294,15 @@ class App(Base):
 
         return tags or []
 
+    @property
+    def author_name(self):
+        if self.created_by:
+            account = db.session.query(Account).filter(Account.id == self.created_by).first()
+            if account:
+                return account.name
+
+        return None
+
 
 class AppModelConfig(Base):
     __tablename__ = "app_model_configs"
