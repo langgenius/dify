@@ -66,6 +66,19 @@ const MultipleToolSelector = ({
     setOpen(false)
   }
 
+  const handleAddMultiple = (val: ToolValue[]) => {
+    const newValue = [...value, ...val]
+    // deduplication
+    const deduplication = newValue.reduce((acc, cur) => {
+      if (!acc.find(item => item.provider_name === cur.provider_name && item.tool_name === cur.tool_name))
+        acc.push(cur)
+      return acc
+    }, [] as ToolValue[])
+    // update value
+    onChange(deduplication)
+    setOpen(false)
+  }
+
   // delete tool
   const handleDelete = (index: number) => {
     const newValue = [...value]
@@ -134,6 +147,7 @@ const MultipleToolSelector = ({
             value={undefined}
             selectedTools={value}
             onSelect={handleAdd}
+            onSelectMultiple={handleAddMultiple}
             controlledState={open}
             onControlledStateChange={setOpen}
             trigger={
@@ -156,6 +170,7 @@ const MultipleToolSelector = ({
                 value={item}
                 selectedTools={value}
                 onSelect={item => handleConfigure(item, index)}
+                onSelectMultiple={handleAddMultiple}
                 onDelete={() => handleDelete(index)}
                 supportEnableSwitch
               />

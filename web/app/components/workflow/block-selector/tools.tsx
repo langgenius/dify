@@ -17,6 +17,7 @@ import classNames from '@/utils/classnames'
 type ToolsProps = {
   showWorkflowEmpty: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelectMultiple: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   tools: ToolWithProvider[]
   viewType: ViewType
   hasSearchText: boolean
@@ -27,6 +28,7 @@ type ToolsProps = {
 const Blocks = ({
   showWorkflowEmpty,
   onSelect,
+  onSelectMultiple,
   tools,
   viewType,
   hasSearchText,
@@ -107,6 +109,7 @@ const Blocks = ({
             isShowLetterIndex={isShowLetterIndex}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
           />
         ) : (
@@ -114,6 +117,7 @@ const Blocks = ({
             payload={treeViewToolsData}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
           />
         )

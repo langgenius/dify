@@ -12,6 +12,7 @@ type Props = {
   toolList: ToolWithProvider[]
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelectMultiple: (type: BlockEnum, tools: ToolValue[]) => void
   selectedTools?: ToolValue[]
 }
 
@@ -20,6 +21,7 @@ const Item: FC<Props> = ({
   toolList,
   hasSearchText,
   onSelect,
+  onSelectMultiple,
   selectedTools,
 }) => {
   return (
@@ -36,6 +38,7 @@ const Item: FC<Props> = ({
             isShowLetterIndex={false}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
           />
         ))}

@@ -35,6 +35,7 @@ type Props = {
   isShow: boolean
   onShowChange: (isShow: boolean) => void
   onSelect: (tool: ToolDefaultValue) => void
+  onSelectMultiple: (tools: ToolDefaultValue[]) => void
   supportAddCustomTool?: boolean
   scope?: string
   selectedTools?: ToolValue[]
@@ -48,6 +49,7 @@ const ToolPicker: FC<Props> = ({
   isShow,
   onShowChange,
   onSelect,
+  onSelectMultiple,
   supportAddCustomTool,
   scope = 'all',
   selectedTools,
@@ -101,6 +103,10 @@ const ToolPicker: FC<Props> = ({
 
   const handleSelect = (_type: BlockEnum, tool?: ToolDefaultValue) => {
     onSelect(tool!)
+  }
+
+  const handleSelectMultiple = (_type: BlockEnum, tools: ToolDefaultValue[]) => {
+    onSelectMultiple(tools)
   }
 
   const [isShowEditCollectionToolModal, {
@@ -164,6 +170,7 @@ const ToolPicker: FC<Props> = ({
             tags={tags}
             searchText={searchText}
             onSelect={handleSelect}
+            onSelectMultiple={handleSelectMultiple}
             buildInTools={builtinToolList || []}
             customTools={customToolList || []}
             workflowTools={workflowToolList || []}

@@ -5,10 +5,11 @@ import {
   useState,
 } from 'react'
 import type {
+  BlockEnum,
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import type { ToolValue } from './types'
+import type { ToolDefaultValue, ToolValue } from './types'
 import { ToolTypeEnum } from './types'
 import Tools from './tools'
 import { useToolTabs } from './hooks'
@@ -31,6 +32,7 @@ type AllToolsProps = {
   workflowTools: ToolWithProvider[]
   mcpTools: ToolWithProvider[]
   onSelect: OnSelectBlock
+  onSelectMultiple: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
 }
 
@@ -42,6 +44,7 @@ const AllTools = ({
   searchText,
   tags = DEFAULT_TAGS,
   onSelect,
+  onSelectMultiple,
   buildInTools,
   workflowTools,
   customTools,
@@ -136,6 +139,7 @@ const AllTools = ({
           showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
           tools={tools}
           onSelect={onSelect}
+          onSelectMultiple={onSelectMultiple}
           viewType={isSupportGroupView ? activeView : ViewType.flat}
           hasSearchText={!!searchText}
           selectedTools={selectedTools}

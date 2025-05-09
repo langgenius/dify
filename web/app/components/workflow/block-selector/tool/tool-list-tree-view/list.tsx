@@ -12,6 +12,7 @@ type Props = {
   payload: Record<string, ToolWithProvider[]>
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelectMultiple: (type: BlockEnum, tools: ToolValue[]) => void
   selectedTools?: ToolValue[]
 }
 
@@ -19,6 +20,7 @@ const ToolListTreeView: FC<Props> = ({
   payload,
   hasSearchText,
   onSelect,
+  onSelectMultiple,
   selectedTools,
 }) => {
   const { t } = useTranslation()
@@ -46,6 +48,7 @@ const ToolListTreeView: FC<Props> = ({
           toolList={payload[groupName]}
           hasSearchText={hasSearchText}
           onSelect={onSelect}
+          onSelectMultiple={onSelectMultiple}
           selectedTools={selectedTools}
         />
       ))}

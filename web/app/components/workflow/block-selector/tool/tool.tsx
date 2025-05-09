@@ -22,6 +22,7 @@ type Props = {
   isShowLetterIndex: boolean
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelectMultiple: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
 }
 
@@ -32,6 +33,7 @@ const Tool: FC<Props> = ({
   isShowLetterIndex,
   hasSearchText,
   onSelect,
+  onSelectMultiple,
   selectedTools,
 }) => {
   const { t } = useTranslation()
@@ -44,7 +46,7 @@ const Tool: FC<Props> = ({
   const isHovering = useHover(ref)
   const getIsDisabled = (tool: ToolType) => {
     if (!selectedTools || !selectedTools.length) return false
-    return selectedTools.some(selectedTool => selectedTool.provider_name === payload.name && selectedTool.tool_name === tool.name)
+    return selectedTools.some(selectedTool => (selectedTool.provider_name === payload.name || selectedTool.provider_name === payload.id) && selectedTool.tool_name === tool.name)
   }
 
   const totalToolsNum = actions.length
@@ -54,7 +56,31 @@ const Tool: FC<Props> = ({
   const selectedInfo = useMemo(() => {
     if (isHovering && !isAllSelected) {
       return (
-        <span className='system-xs-regular text-components-button-secondary-accent-text'>
+        <span className='system-xs-regular text-components-button-secondary-accent-text'
+          onClick={(e) => {
+            onSelectMultiple(BlockEnum.Tool, actions.filter(action => !getIsDisabled(action)).map((tool) => {
+              const params: Record<string, string> = {}
+              if (tool.parameters) {
+                tool.parameters.forEach((item) => {
+                  params[item.name] = ''
+                })
+              }
+              return {
+                provider_id: payload.id,
+                provider_type: payload.type,
+                provider_name: payload.name,
+                tool_name: tool.name,
+                tool_label: tool.label[language],
+                tool_description: tool.description[language],
+                title: tool.label[language],
+                is_team_authorization: payload.is_team_authorization,
+                output_schema: tool.output_schema,
+                paramSchemas: tool.parameters,
+                params,
+              }
+            }))
+          }}
+        >
           {t('workflow.tabs.addAll')}
         </span>
       )

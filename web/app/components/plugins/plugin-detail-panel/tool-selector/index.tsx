@@ -55,14 +55,8 @@ type Props = {
   scope?: string
   value?: ToolValue
   selectedTools?: ToolValue[]
-  onSelect: (tool: {
-    provider_name: string
-    tool_name: string
-    tool_label: string
-    settings?: Record<string, any>
-    parameters?: Record<string, any>
-    extra?: Record<string, any>
-  }) => void
+  onSelect: (tool: ToolValue) => void
+  onSelectMultiple: (tool: ToolValue[]) => void
   onDelete?: () => void
   supportEnableSwitch?: boolean
   supportAddCustomTool?: boolean
@@ -82,6 +76,7 @@ const ToolSelector: FC<Props> = ({
   placement = 'left',
   offset = 4,
   onSelect,
+  onSelectMultiple,
   onDelete,
   scope,
   supportEnableSwitch,
@@ -119,10 +114,10 @@ const ToolSelector: FC<Props> = ({
   }, [value, buildInTools, customTools, workflowTools, mcpTools])
 
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const handleSelectTool = (tool: ToolDefaultValue) => {
+  const getToolValue = (tool: ToolDefaultValue) => {
     const settingValues = generateFormValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form !== 'llm') as any))
     const paramValues = generateFormValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form === 'llm') as any), true)
-    const toolValue = {
+    return {
       provider_name: tool.provider_id,
       type: tool.provider_type,
       tool_name: tool.tool_name,
@@ -136,8 +131,15 @@ const ToolSelector: FC<Props> = ({
       },
       schemas: tool.paramSchemas,
     }
+  }
+  const handleSelectTool = (tool: ToolDefaultValue) => {
+    const toolValue = getToolValue(tool)
     onSelect(toolValue)
     // setIsShowChooseTool(false)
+  }
+  const handleSelectMultipleTool = (tool: ToolDefaultValue[]) => {
+    const toolValues = tool.map(item => getToolValue(item))
+    onSelectMultiple(toolValues)
   }
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -300,6 +302,7 @@ const ToolSelector: FC<Props> = ({
                       disabled={false}
                       supportAddCustomTool
                       onSelect={handleSelectTool}
+                      onSelectMultiple={handleSelectMultipleTool}
                       scope={scope}
                       selectedTools={selectedTools}
                     />
