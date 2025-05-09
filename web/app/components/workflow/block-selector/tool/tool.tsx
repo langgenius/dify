@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useGetLanguage } from '@/context/i18n'
@@ -13,6 +13,7 @@ import { ViewType } from '../view-type-select'
 import ActonItem from './action-item'
 import BlockIcon from '../../block-icon'
 import { useTranslation } from 'react-i18next'
+import { useHover } from 'ahooks'
 
 type Props = {
   className?: string
@@ -39,10 +40,39 @@ const Tool: FC<Props> = ({
   const actions = payload.tools
   const hasAction = true // Now always support actions
   const [isFold, setFold] = React.useState<boolean>(true)
+  const ref = useRef(null)
+  const isHovering = useHover(ref)
   const getIsDisabled = (tool: ToolType) => {
     if (!selectedTools || !selectedTools.length) return false
     return selectedTools.some(selectedTool => selectedTool.provider_name === payload.name && selectedTool.tool_name === tool.name)
   }
+
+  const totalToolsNum = actions.length
+  const selectedToolsNum = actions.filter(action => getIsDisabled(action)).length
+  const isAllSelected = selectedToolsNum === totalToolsNum
+
+  const selectedInfo = useMemo(() => {
+    if (isHovering && !isAllSelected) {
+      return (
+        <span className='system-xs-regular text-components-button-secondary-accent-text'>
+          {t('workflow.tabs.addAll')}
+        </span>
+      )
+    }
+
+    if (selectedToolsNum === 0)
+      return <></>
+
+    return (
+      <span className='system-xs-regular text-text-tertiary'>
+        {isAllSelected
+          ? t('workflow.tabs.allAdded')
+          : `${selectedToolsNum} / ${totalToolsNum}`
+        }
+      </span>
+    )
+  }, [isAllSelected, isHovering, selectedToolsNum, t, totalToolsNum])
+
   useEffect(() => {
     if (hasSearchText && isFold) {
       setFold(false)
@@ -72,6 +102,7 @@ const Tool: FC<Props> = ({
     <div
       key={payload.id}
       className={cn('mb-1 last-of-type:mb-0', isShowLetterIndex && 'mr-6')}
+      ref={ref}
     >
       <div className={cn(className)}>
         <div
@@ -103,13 +134,16 @@ const Tool: FC<Props> = ({
               type={BlockEnum.Tool}
               toolIcon={payload.icon}
             />
-            <div className='ml-2 w-0 flex-1 grow truncate text-sm text-text-primary'>{payload.label[language]}</div>
+            <div className='ml-2 w-0 grow truncate text-sm text-text-primary'>
+              <span>{payload.label[language]}</span>
+              {isFlatView && (
+                <span className='system-xs-regular ml-2 text-text-quaternary'>{groupName}</span>
+              )}
+            </div>
           </div>
 
-          <div className='flex items-center'>
-            {isFlatView && (
-              <div className='system-xs-regular text-text-tertiary'>{groupName}</div>
-            )}
+          <div className='ml-2 flex items-center'>
+            {selectedInfo}
             {hasAction && (
               <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-quaternary', isFold && 'text-text-tertiary')} />
             )}

@@ -230,6 +230,8 @@ const translation = {
     'utilities': '工具',
     'noResult': '未找到匹配项',
     'agent': 'Agent 策略',
+    'allAdded': '已添加全部',
+    'addAll': '添加全部',
   },
   blocks: {
     'start': '开始',
