@@ -27,8 +27,7 @@ from core.workflow.repository.workflow_node_execution_repository import Workflow
 from core.workflow.workflow_app_generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from extensions.ext_database import db
 from factories import file_factory
-from models import Account, App, EndUser, Workflow
-from models.workflow import WorkflowNodeExecutionTriggeredFrom
+from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +269,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             session_factory=session_factory,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
 
         return self._generate(
@@ -335,7 +334,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             session_factory=session_factory,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
 
         return self._generate(

@@ -24,7 +24,7 @@ from core.ops.entities.trace_entity import (
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
-from models import Account, App, EndUser, MessageFile
+from models import Account, App, EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,10 @@ class WeaveDataTrace(BaseTraceInstance):
                 raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
 
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=session_factory, user=service_account, app_id=trace_info.metadata.get("app_id")
+            session_factory=session_factory,
+            user=service_account,
+            app_id=trace_info.metadata.get("app_id"),
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
         # Get all executions for this workflow run
