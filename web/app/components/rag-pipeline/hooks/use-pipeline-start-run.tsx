@@ -8,14 +8,14 @@ import {
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
 import {
   useNodesSyncDraft,
-  useWorkflowRun,
+  usePipelineRun,
 } from '.'
 
-export const useWorkflowStartRun = () => {
+export const usePipelineStartRun = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
-  const { handleRun } = useWorkflowRun()
+  const { handleRun } = usePipelineRun()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   const handleWorkflowStartRunInWorkflow = useCallback(async () => {
