@@ -1,3 +1,4 @@
+import logging
 import time
 from datetime import datetime
 
@@ -10,12 +11,16 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import App, EndUser, Message, db
 from services.app_generate_service import AppGenerateService
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
 
 @app.celery.task(queue="dataset")
 def user_profile_generate_task():
     """Generate or update user memory based on recent messages."""
 
-    click.echo(click.style("Starting user memory generate task.", fg="green"))
+    logger.info("Starting user profile generate task.")
+    click.echo(click.style("Starting user profile generate task.", fg="green"))
     start_at = time.perf_counter()
 
     app_ids = (
@@ -26,7 +31,9 @@ def user_profile_generate_task():
 
     if len(app_ids) == 0:
         click.echo(
-            click.style("No app_id provided, skipping memory generation.", fg="yellow")
+            click.style(
+                "No app_id provided, skipping user profile generation.", fg="yellow"
+            )
         )
         return
 
@@ -275,6 +282,9 @@ def process_user_health_summary(user: EndUser, new_messages: str):
         result = result.strip("```json").strip("```")
 
     result = json.loads(result)
+
+    click.echo("parsed result: " + result)
+
     if "health_status" in result:
         user.health_status = result["health_status"]
 
