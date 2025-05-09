@@ -1,14 +1,13 @@
 import time
 from datetime import datetime
 
-import click
-from sqlalchemy import asc, func, or_
-
 import app
+import click
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import App, EndUser, Message, db
 from services.app_generate_service import AppGenerateService
+from sqlalchemy import asc, func, or_
 
 
 @app.celery.task(queue="dataset")
@@ -194,30 +193,23 @@ def process_user_memory(user: EndUser, new_messages: str):
     # Call the memory generation service
     click.echo(click.style(f"Start to generate memory for user {user.id}", fg="green"))
 
-    try:
-        response = AppGenerateService.generate(
-            app_model=memory_app_model,
-            user=user,
-            args=args,
-            invoke_from=InvokeFrom.SCHEDULER,
-            streaming=False,
-        )
+    response = AppGenerateService.generate(
+        app_model=memory_app_model,
+        user=user,
+        args=args,
+        invoke_from=InvokeFrom.SCHEDULER,
+        streaming=False,
+    )
 
-        click.echo(response)
+    click.echo(response)
 
-        if not isinstance(response, dict):
-            return
+    if not isinstance(response, dict):
+        return
 
-        result = response["data"]["outputs"]["result"]
-        user.memory = result
+    result = response["data"]["outputs"]["result"]
+    user.memory = result
 
-        click.echo(click.style(f"Updated memory for user {user.id}", fg="green"))
-    except Exception as e:
-        click.echo(
-            click.style(
-                f"Failed to update memory for user {user.id}, {str(e)}", fg="yellow"
-            )
-        )
+    click.echo(click.style(f"Updated memory for user {user.id}", fg="green"))
 
 
 def process_user_health_summary(user: EndUser, new_messages: str):
