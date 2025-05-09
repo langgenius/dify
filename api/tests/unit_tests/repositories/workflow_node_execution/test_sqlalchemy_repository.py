@@ -58,7 +58,12 @@ def repository(session, mock_user):
     """Create a repository instance with test data."""
     _, session_factory = session
     app_id = "test-app"
-    return SQLAlchemyWorkflowNodeExecutionRepository(session_factory=session_factory, user=mock_user, app_id=app_id)
+    return SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=session_factory,
+        user=mock_user,
+        app_id=app_id,
+        triggered_from=None,
+    )
 
 
 def test_save(repository, session):

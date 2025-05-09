@@ -44,8 +44,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         session_factory: sessionmaker | Engine,
         user: Union[Account, EndUser],
-        app_id: Optional[str] = None,
-        triggered_from: Optional[WorkflowNodeExecutionTriggeredFrom] = None,
+        app_id: Optional[str],
+        triggered_from: Optional[WorkflowNodeExecutionTriggeredFrom],
     ):
         """
         Initialize the repository with a SQLAlchemy sessionmaker or engine and context information.
@@ -53,8 +53,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Args:
             session_factory: SQLAlchemy sessionmaker or engine for creating sessions
             user: Account or EndUser object containing tenant_id, user ID, and role information
-            app_id: Optional app ID for filtering by application
-            triggered_from: Source of the execution trigger (single-step or workflow-run)
+            app_id: App ID for filtering by application (can be None)
+            triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
         """
         # If an engine is provided, create a sessionmaker from it
         if isinstance(session_factory, Engine):

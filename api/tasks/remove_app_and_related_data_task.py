@@ -204,7 +204,12 @@ def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
         raise ValueError(errmsg)
 
     # Create a repository instance for WorkflowNodeExecution
-    repository = SQLAlchemyWorkflowNodeExecutionRepository(session_factory=db.engine, user=user, app_id=app_id)
+    repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=db.engine,
+        user=user,
+        app_id=app_id,
+        triggered_from=None,
+    )
 
     # Use the clear method to delete all records for this tenant_id and app_id
     repository.clear()
