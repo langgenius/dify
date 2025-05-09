@@ -57,6 +57,7 @@ const translation = {
     submit: 'Submit',
     skip: 'Skip',
     format: 'Format',
+    more: 'More',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

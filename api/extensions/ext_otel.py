@@ -6,6 +6,7 @@ import socket
 import sys
 from typing import Union
 
+import flask
 from celery.signals import worker_init  # type: ignore
 from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 
@@ -27,6 +28,8 @@ def on_user_loaded(_sender, user):
 
 
 def init_app(app: DifyApp):
+    from opentelemetry.semconv.trace import SpanAttributes
+
     def is_celery_worker():
         return "celery" in sys.argv[0].lower()
 
@@ -37,7 +40,9 @@ def init_app(app: DifyApp):
     def init_flask_instrumentor(app: DifyApp):
         meter = get_meter("http_metrics", version=dify_config.CURRENT_VERSION)
         _http_response_counter = meter.create_counter(
-            "http.server.response.count", description="Total number of HTTP responses by status code", unit="{response}"
+            "http.server.response.count",
+            description="Total number of HTTP responses by status code, method and target",
+            unit="{response}",
         )
 
         def response_hook(span: Span, status: str, response_headers: list):
@@ -50,7 +55,13 @@ def init_app(app: DifyApp):
                 status = status.split(" ")[0]
                 status_code = int(status)
                 status_class = f"{status_code // 100}xx"
-                _http_response_counter.add(1, {"status_code": status_code, "status_class": status_class})
+                attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
+                request = flask.request
+                if request and request.url_rule:
+                    attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
+                if request and request.method:
+                    attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
+                _http_response_counter.add(1, attributes)
 
         instrumentor = FlaskInstrumentor()
         if dify_config.DEBUG:

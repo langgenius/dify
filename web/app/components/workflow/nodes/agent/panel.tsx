@@ -102,7 +102,6 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             agent_strategy_label: strategy?.agent_strategy_label,
             output_schema: strategy!.agent_output_schema,
             plugin_unique_identifier: strategy!.plugin_unique_identifier,
-            agent_parameters: {},
           })
           resetEditor(Date.now())
         }}

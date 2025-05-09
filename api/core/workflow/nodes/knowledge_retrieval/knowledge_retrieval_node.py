@@ -289,7 +289,7 @@ class KnowledgeRetrievalNode(LLMNode):
                                 "dataset_name": dataset.name,
                                 "document_id": document.id,
                                 "document_name": document.name,
-                                "document_data_source_type": document.data_source_type,
+                                "data_source_type": document.data_source_type,
                                 "segment_id": segment.id,
                                 "retriever_from": "workflow",
                                 "score": record.score or 0.0,
@@ -356,12 +356,12 @@ class KnowledgeRetrievalNode(LLMNode):
                 )
         elif node_data.metadata_filtering_mode == "manual":
             if node_data.metadata_filtering_conditions:
-                metadata_condition = MetadataCondition(**node_data.metadata_filtering_conditions.model_dump())
+                conditions = []
                 if node_data.metadata_filtering_conditions:
                     for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
                         metadata_name = condition.name
                         expected_value = condition.value
-                        if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
+                        if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
                             if isinstance(expected_value, str):
                                 expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                     expected_value
@@ -372,13 +372,24 @@ class KnowledgeRetrievalNode(LLMNode):
                                     expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
                                 else:
                                     raise ValueError("Invalid expected metadata value type")
-                            filters = self._process_metadata_filter_func(
-                                sequence,
-                                condition.comparison_operator,
-                                metadata_name,
-                                expected_value,
-                                filters,
+                        conditions.append(
+                            Condition(
+                                name=metadata_name,
+                                comparison_operator=condition.comparison_operator,
+                                value=expected_value,
                             )
+                        )
+                        filters = self._process_metadata_filter_func(
+                            sequence,
+                            condition.comparison_operator,
+                            metadata_name,
+                            expected_value,
+                            filters,
+                        )
+                metadata_condition = MetadataCondition(
+                    logical_operator=node_data.metadata_filtering_conditions.logical_operator,
+                    conditions=conditions,
+                )
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:

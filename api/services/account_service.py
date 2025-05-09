@@ -108,17 +108,20 @@ class AccountService:
         if account.status == AccountStatus.BANNED.value:
             raise Unauthorized("Account is banned.")
 
-        current_tenant = TenantAccountJoin.query.filter_by(account_id=account.id, current=True).first()
+        current_tenant = db.session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
         if current_tenant:
-            account.current_tenant_id = current_tenant.tenant_id
+            account.set_tenant_id(current_tenant.tenant_id)
         else:
             available_ta = (
-                TenantAccountJoin.query.filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).first()
+                db.session.query(TenantAccountJoin)
+                .filter_by(account_id=account.id)
+                .order_by(TenantAccountJoin.id.asc())
+                .first()
             )
             if not available_ta:
                 return None
 
-            account.current_tenant_id = available_ta.tenant_id
+            account.set_tenant_id(available_ta.tenant_id)
             available_ta.current = True
             db.session.commit()
 
@@ -700,7 +703,7 @@ class TenantService:
             ).update({"current": False})
             tenant_account_join.current = True
             # Set the current tenant for the account
-            account.current_tenant_id = tenant_account_join.tenant_id
+            account.set_tenant_id(tenant_account_join.tenant_id)
             db.session.commit()
 
     @staticmethod
