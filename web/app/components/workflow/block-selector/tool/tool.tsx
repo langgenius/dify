@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useGetLanguage } from '@/context/i18n'
@@ -39,20 +39,30 @@ const Tool: FC<Props> = ({
   const { t } = useTranslation()
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
+  const notShowProvider = payload.type === CollectionType.workflow
   const actions = payload.tools
-  const hasAction = true // Now always support actions
+  const hasAction = !notShowProvider
   const [isFold, setFold] = React.useState<boolean>(true)
   const ref = useRef(null)
   const isHovering = useHover(ref)
-  const getIsDisabled = (tool: ToolType) => {
+  const getIsDisabled = useCallback((tool: ToolType) => {
     if (!selectedTools || !selectedTools.length) return false
     return selectedTools.some(selectedTool => (selectedTool.provider_name === payload.name || selectedTool.provider_name === payload.id) && selectedTool.tool_name === tool.name)
-  }
+  }, [payload.id, payload.name, selectedTools])
 
   const totalToolsNum = actions.length
   const selectedToolsNum = actions.filter(action => getIsDisabled(action)).length
   const isAllSelected = selectedToolsNum === totalToolsNum
 
+  const notShowProviderSelectInfo = useMemo(() => {
+    if (isAllSelected) {
+      return (
+        <span className='system-xs-regular text-text-tertiary'>
+          {t('tools.addToolModal.added')}
+        </span>
+      )
+    }
+  }, [isAllSelected, t])
   const selectedInfo = useMemo(() => {
     if (isHovering && !isAllSelected) {
       return (
@@ -97,7 +107,7 @@ const Tool: FC<Props> = ({
         }
       </span>
     )
-  }, [isAllSelected, isHovering, selectedToolsNum, t, totalToolsNum])
+  }, [actions, getIsDisabled, isAllSelected, isHovering, language, onSelectMultiple, payload.id, payload.is_team_authorization, payload.name, payload.type, selectedToolsNum, t, totalToolsNum])
 
   useEffect(() => {
     if (hasSearchText && isFold) {
@@ -134,24 +144,31 @@ const Tool: FC<Props> = ({
         <div
           className='flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover'
           onClick={() => {
-            if (hasAction)
+            if (hasAction) {
               setFold(!isFold)
+              return
+            }
 
-            // Now always support actions
-            // if (payload.parameters) {
-            //   payload.parameters.forEach((item) => {
-            //     params[item.name] = ''
-            //   })
-            // }
-            // onSelect(BlockEnum.Tool, {
-            //   provider_id: payload.id,
-            //   provider_type: payload.type,
-            //   provider_name: payload.name,
-            //   tool_name: payload.name,
-            //   tool_label: payload.label[language],
-            //   title: payload.label[language],
-            //   params: {},
-            // })
+            const tool = actions[0]
+            const params: Record<string, string> = {}
+            if (tool.parameters) {
+              tool.parameters.forEach((item) => {
+                params[item.name] = ''
+              })
+            }
+            onSelect(BlockEnum.Tool, {
+              provider_id: payload.id,
+              provider_type: payload.type,
+              provider_name: payload.name,
+              tool_name: tool.name,
+              tool_label: tool.label[language],
+              tool_description: tool.description[language],
+              title: tool.label[language],
+              is_team_authorization: payload.is_team_authorization,
+              output_schema: tool.output_schema,
+              paramSchemas: tool.parameters,
+              params,
+            })
           }}
         >
           <div className='flex h-8 grow items-center'>
@@ -161,7 +178,7 @@ const Tool: FC<Props> = ({
               toolIcon={payload.icon}
             />
             <div className='ml-2 w-0 grow truncate text-sm text-text-primary'>
-              <span>{payload.label[language]}</span>
+              <span>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
               {isFlatView && (
                 <span className='system-xs-regular ml-2 text-text-quaternary'>{groupName}</span>
               )}
@@ -169,14 +186,14 @@ const Tool: FC<Props> = ({
           </div>
 
           <div className='ml-2 flex items-center'>
-            {selectedInfo}
+            {notShowProvider ? notShowProviderSelectInfo : selectedInfo}
             {hasAction && (
               <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-quaternary', isFold && 'text-text-tertiary')} />
             )}
           </div>
         </div>
 
-        {hasAction && !isFold && (
+        {!notShowProvider && hasAction && !isFold && (
           actions.map(action => (
             <ActonItem
               key={action.name}
