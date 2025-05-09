@@ -7,7 +7,14 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models import Account, App, EndUser, WorkflowNodeExecution, WorkflowRun, WorkflowRunTriggeredFrom
+from models import (
+    Account,
+    App,
+    EndUser,
+    WorkflowNodeExecution,
+    WorkflowRun,
+    WorkflowRunTriggeredFrom,
+)
 
 
 class WorkflowRunService:
@@ -130,7 +137,10 @@ class WorkflowRunService:
             return []
 
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine, user=user, app_id=app_model.id
+            session_factory=db.engine,
+            user=user,
+            app_id=app_model.id,
+            triggered_from=None,
         )
 
         # Use the repository to get the node executions with ordering
