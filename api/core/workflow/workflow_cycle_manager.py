@@ -65,7 +65,6 @@ from models import (
     EndUser,
     Workflow,
     WorkflowNodeExecutionStatus,
-    WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowRunStatus,
     WorkflowRunTriggeredFrom,
@@ -301,7 +300,6 @@ class WorkflowCycleManager:
         domain_execution = NodeExecution(
             id=str(uuid4()),
             workflow_id=workflow_run.workflow_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=workflow_run.id,
             predecessor_node_id=event.predecessor_node_id,
             index=event.node_run_index,
@@ -310,8 +308,6 @@ class WorkflowCycleManager:
             node_type=event.node_type.value,
             title=event.node_data.title,
             status=NodeExecutionStatus.RUNNING,
-            created_by_role=workflow_run.created_by_role,
-            created_by=workflow_run.created_by,
             metadata=metadata,
             created_at=created_at,
         )
@@ -438,7 +434,6 @@ class WorkflowCycleManager:
         domain_execution = NodeExecution(
             id=str(uuid4()),
             workflow_id=workflow_run.workflow_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             workflow_run_id=workflow_run.id,
             predecessor_node_id=event.predecessor_node_id,
             node_execution_id=event.node_execution_id,
@@ -446,8 +441,6 @@ class WorkflowCycleManager:
             node_type=event.node_type.value,
             title=event.node_data.title,
             status=NodeExecutionStatus.RETRY,
-            created_by_role=workflow_run.created_by_role,
-            created_by=workflow_run.created_by,
             created_at=created_at,
             finished_at=finished_at,
             elapsed_time=elapsed_time,

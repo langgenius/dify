@@ -72,23 +72,6 @@ class NodeExecution(BaseModel):
     created_at: datetime  # When execution started
     finished_at: Optional[datetime] = None  # When execution completed
 
-    def __init__(self, **data):
-        """
-        Initialize the NodeExecution instance.
-
-        Note: Context-specific fields (triggered_from, created_by, created_by_role) are accepted
-        for backward compatibility but are ignored as they are now handled at the repository level.
-        """
-        # Remove context-specific fields if present (for backward compatibility)
-        if "triggered_from" in data:
-            data.pop("triggered_from")
-        if "created_by" in data:
-            data.pop("created_by")
-        if "created_by_role" in data:
-            data.pop("created_by_role")
-
-        super().__init__(**data)
-
     def update_from_mapping(
         self,
         inputs: Optional[Mapping[str, Any]] = None,
