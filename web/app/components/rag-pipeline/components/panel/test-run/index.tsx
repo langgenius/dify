@@ -19,7 +19,7 @@ import WaterCrawl from './data-source/website/water-crawl'
 import Actions from './data-source/actions'
 import DocumentProcessing from './document-processing'
 import { useTranslation } from 'react-i18next'
-import { useWorkflowRun } from '../../../hooks'
+import { usePipelineRun } from '../../../hooks'
 import type { Datasource } from './types'
 
 const TestRunPanel = () => {
@@ -126,7 +126,7 @@ const TestRunPanel = () => {
     setCurrentStep(preStep => preStep - 1)
   }, [])
 
-  const { handleRun } = useWorkflowRun()
+  const { handleRun } = usePipelineRun()
 
   const handleProcess = useCallback(() => {
     const datasourceInfo: Record<string, any> = {}
