@@ -210,7 +210,8 @@ def test_get_db_models_by_workflow_run(repository, session, mocker: MockerFixtur
     assert result[0] is mock_execution
 
     # Verify that _to_domain_model was NOT called (since we're returning raw DB models)
-    assert not hasattr(repository, "_to_domain_model.assert_not_called") or not repository._to_domain_model.called
+    if hasattr(repository, "_to_domain_model"):
+        repository._to_domain_model.assert_not_called()
 
 
 def test_get_running_executions(repository, session, mocker: MockerFixture):
