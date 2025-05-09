@@ -14,7 +14,7 @@ import { stopWorkflowRun } from '@/service/workflow'
 import type { VersionHistory } from '@/types/workflow'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
-export const useWorkflowRun = () => {
+export const usePipelineRun = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()

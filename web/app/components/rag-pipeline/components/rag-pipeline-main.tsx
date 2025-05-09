@@ -7,9 +7,9 @@ import RagPipelineChildren from './rag-pipeline-children'
 import {
   useAvailableNodesMetaData,
   useNodesSyncDraft,
-  useWorkflowRefreshDraft,
-  useWorkflowRun,
-  useWorkflowStartRun,
+  usePipelineRefreshDraft,
+  usePipelineRun,
+  usePipelineStartRun,
 } from '../hooks'
 
 type RagPipelineMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
@@ -22,18 +22,18 @@ const RagPipelineMain = ({
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
   } = useNodesSyncDraft()
-  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
+  const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
   const {
     handleBackupDraft,
     handleLoadBackupDraft,
     handleRestoreFromPublishedWorkflow,
     handleRun,
     handleStopRun,
-  } = useWorkflowRun()
+  } = usePipelineRun()
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
-  } = useWorkflowStartRun()
+  } = usePipelineStartRun()
   const availableNodesMetaData = useAvailableNodesMetaData()
 
   const hooksStore = useMemo(() => {

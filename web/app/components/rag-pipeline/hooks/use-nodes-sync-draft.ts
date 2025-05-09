@@ -46,7 +46,7 @@ export const useNodesSyncDraft = () => {
         })
       })
       return {
-        url: `/datasets/${pipelineId}/workflows/draft`,
+        url: `/rag/pipeline/${pipelineId}/workflows/draft`,
         params: {
           graph: {
             nodes: producedNodes,

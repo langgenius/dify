@@ -11,8 +11,13 @@ import {
 } from '@/app/components/workflow/constants'
 import { createRagPipelineSliceSlice } from './store'
 import RagPipelineMain from './components/rag-pipeline-main'
+// import { usePipelineInit } from './hooks'
 
 const RagPipeline = () => {
+  // const {
+  //   data,
+  //   isLoading,
+  // } = usePipelineInit()
   const { newNode: knowledgeBaseNode } = generateNewNode({
     data: {
       type: knowledgeBaseNodeDefault.metaData.type,

@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 
-export const useWorkflowRefreshDraft = () => {
+export const usePipelineRefreshDraft = () => {
   const handleRefreshWorkflowDraft = useCallback(() => {
     return true
   }, [])
