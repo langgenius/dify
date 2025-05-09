@@ -29,9 +29,7 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
-from models.account import Account
-from models.model import App, Conversation, EndUser, Message
-from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
 
@@ -234,7 +232,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             session_factory=session_factory,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
 
         return self._generate(
@@ -299,7 +297,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             session_factory=session_factory,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
 
         return self._generate(
