@@ -152,6 +152,10 @@ const ToolPicker: FC<Props> = ({
               onTagsChange={setTags}
               size='small'
               placeholder={t('plugin.searchTools')!}
+              supportAddCustomTool={supportAddCustomTool}
+              onAddedCustomTool={handleAddedCustomTool}
+              onShowAddCustomCollectionModal={showEditCustomCollectionModal}
+
             />
           </div>
           <AllTools
@@ -164,9 +168,7 @@ const ToolPicker: FC<Props> = ({
             customTools={customToolList || []}
             workflowTools={workflowToolList || []}
             mcpTools={mcpTools || []}
-            supportAddCustomTool={supportAddCustomTool}
-            onAddedCustomTool={handleAddedCustomTool}
-            onShowAddCustomCollectionModal={showEditCustomCollectionModal}
+
             selectedTools={selectedTools}
           />
         </div>

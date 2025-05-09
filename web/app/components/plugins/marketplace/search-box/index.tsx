@@ -3,6 +3,7 @@ import { RiCloseLine } from '@remixicon/react'
 import TagsFilter from './tags-filter'
 import ActionButton from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
+import { RiAddLine } from '@remixicon/react'
 
 type SearchBoxProps = {
   search: string
@@ -13,6 +14,9 @@ type SearchBoxProps = {
   size?: 'small' | 'large'
   placeholder?: string
   locale?: string
+  supportAddCustomTool?: boolean
+  onShowAddCustomCollectionModal?: () => void
+  onAddedCustomTool?: () => void
 }
 const SearchBox = ({
   search,
@@ -23,6 +27,8 @@ const SearchBox = ({
   size = 'small',
   placeholder = '',
   locale,
+  supportAddCustomTool,
+  onShowAddCustomCollectionModal,
 }: SearchBoxProps) => {
   return (
     <div
@@ -63,6 +69,17 @@ const SearchBox = ({
         size={size}
         locale={locale}
       />
+      {supportAddCustomTool && (
+        <div className='flex items-center'>
+          <div className='mr-1.5 h-3.5 w-px  bg-divider-regular'></div>
+          <ActionButton
+            className='bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text'
+            onClick={onShowAddCustomCollectionModal}
+          >
+            <RiAddLine className='h-4 w-4' />
+          </ActionButton>
+        </div>
+      )}
     </div>
   )
 }

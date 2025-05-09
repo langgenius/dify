@@ -17,8 +17,6 @@ import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import ActionButton from '../../base/action-button'
-import { RiAddLine } from '@remixicon/react'
 import { PluginType } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
@@ -33,9 +31,6 @@ type AllToolsProps = {
   workflowTools: ToolWithProvider[]
   mcpTools: ToolWithProvider[]
   onSelect: OnSelectBlock
-  supportAddCustomTool?: boolean
-  onAddedCustomTool?: () => void
-  onShowAddCustomCollectionModal?: () => void
   selectedTools?: ToolValue[]
 }
 
@@ -51,8 +46,6 @@ const AllTools = ({
   workflowTools,
   customTools,
   mcpTools = [],
-  supportAddCustomTool,
-  onShowAddCustomCollectionModal,
   selectedTools,
 }: AllToolsProps) => {
   const language = useGetLanguage()
@@ -107,6 +100,7 @@ const AllTools = ({
 
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
+  const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
   return (
     <div className={cn(className)}>
@@ -128,17 +122,8 @@ const AllTools = ({
             ))
           }
         </div>
-        <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
-        {supportAddCustomTool && (
-          <div className='flex items-center'>
-            <div className='mr-1.5 h-3.5 w-px  bg-divider-regular'></div>
-            <ActionButton
-              className='bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text'
-              onClick={onShowAddCustomCollectionModal}
-            >
-              <RiAddLine className='h-4 w-4' />
-            </ActionButton>
-          </div>
+        {isSupportGroupView && (
+          <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
         )}
       </div>
       <div
@@ -151,7 +136,7 @@ const AllTools = ({
           showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
           tools={tools}
           onSelect={onSelect}
-          viewType={activeView}
+          viewType={isSupportGroupView ? activeView : ViewType.flat}
           hasSearchText={!!searchText}
           selectedTools={selectedTools}
         />
