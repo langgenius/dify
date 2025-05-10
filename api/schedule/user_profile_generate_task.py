@@ -172,7 +172,7 @@ def process_user_memory(user: EndUser, new_messages: str):
         app_model=memory_app_model,
         user=user,
         args=args,
-        invoke_from=InvokeFrom.SCHEDULER,
+        invoke_from=InvokeFrom.SERVICE_API,
         streaming=False,
     )
 
@@ -221,7 +221,7 @@ def process_user_health_summary(user: EndUser, new_messages: str):
         app_model=health_summary_app_model,
         user=user,
         args=args,
-        invoke_from=InvokeFrom.SCHEDULER,
+        invoke_from=InvokeFrom.SERVICE_API,
         streaming=False,
     )
 
