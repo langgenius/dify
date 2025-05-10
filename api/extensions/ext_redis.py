@@ -1,6 +1,7 @@
 from typing import Any, Union
 
 import redis
+from redis.cache import CacheConfig
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
@@ -8,7 +9,7 @@ from redis.sentinel import Sentinel
 from configs import dify_config
 from dify_app import DifyApp
 
-from redis.cache import CacheConfig
+
 class RedisClientWrapper:
     """
     A wrapper class for the Redis client that addresses the issue where the global
