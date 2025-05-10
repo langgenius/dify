@@ -121,7 +121,7 @@ const Doc = ({ appDetail }: IDocProps) => {
             </button>
           )}
       </div>
-      <article className={cn('prose-xl prose', theme === Theme.dark && 'dark:prose-invert')} >
+      <article className={cn('prose-xl prose', theme === Theme.dark && 'prose-invert')} >
         {(appDetail?.mode === 'chat' || appDetail?.mode === 'agent-chat') && (
           (() => {
             switch (locale) {
