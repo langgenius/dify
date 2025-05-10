@@ -60,6 +60,7 @@ def init_app(app: DifyApp):
         "encoding": "utf-8",
         "encoding_errors": "strict",
         "decode_responses": False,
+        "cache_config": CacheConfig(),
     }
 
     if dify_config.REDIS_USE_SENTINEL:
@@ -83,8 +84,13 @@ def init_app(app: DifyApp):
             ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
             for node in dify_config.REDIS_CLUSTERS.split(",")
         ]
-        # FIXME: mypy error here, try to figure out how to fix it
-        redis_client.initialize(RedisCluster(startup_nodes=nodes, password=dify_config.REDIS_CLUSTERS_PASSWORD))  # type: ignore
+        redis_client.initialize(
+            RedisCluster(
+                startup_nodes=nodes,
+                password=dify_config.REDIS_CLUSTERS_PASSWORD,
+                cache_config=CacheConfig(),
+            )
+        )
     else:
         redis_params.update(
             {
