@@ -10,7 +10,7 @@ export default function RoutePrefixHandle() {
     const addPrefixToImg = (e: HTMLImageElement) => {
       const url = new URL(e.src)
       const prefix = url.pathname.substr(0, basePath.length)
-      if (prefix !== basePath) {
+      if (prefix !== basePath && !url.pathname.includes('/console/api')) {
         url.pathname = basePath + url.pathname
         e.src = url.toString()
       }
