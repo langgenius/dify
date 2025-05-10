@@ -140,6 +140,16 @@ const WorkflowChecklist = ({
                                 </div>
                               )
                             }
+                            {
+                              node.varErrorMessage?.map((errorMessage: string) => (
+                                <div className='rounded-b-lg bg-gray-25 px-3 py-2'>
+                                  <div className='flex text-xs leading-[18px] text-gray-500'>
+                                    <AlertTriangle className='mr-2 mt-[3px] h-3 w-3 text-[#F79009]' />
+                                    {errorMessage}
+                                  </div>
+                                </div>
+                              ))
+                            }
                           </div>
                         </div>
                       ))

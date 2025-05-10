@@ -15,6 +15,7 @@ import { useStore } from '../store'
 import {
   getToolCheckParams,
   getValidTreeNodes,
+  transformStartNodeVariables,
 } from '../utils'
 import {
   CUSTOM_NODE,
@@ -45,6 +46,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { data: strategyProviders } = useStrategyProviders()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
 
+  const chatVarList = useStore(s => s.conversationVariables)
+  const environmentVariables = useStore(s => s.environmentVariables)
+
   const getCheckData = useCallback((data: CommonNodeType<{}>) => {
     let checkData = data
     if (data.type === BlockEnum.KnowledgeRetrieval) {
@@ -64,7 +68,10 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
   const needWarningNodes = useMemo(() => {
     const list = []
-    const { validNodes } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
+    const { validNodes } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges, true)
+
+    const allVariablesMap = transformStartNodeVariables(chatVarList, environmentVariables)
+    const errMessageMap = new Map()
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i]
@@ -110,7 +117,31 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             toolIcon,
             unConnected: !validNodes.find(n => n.id === node.id),
             errorMessage,
+            varErrorMessage: [],
           })
+        }
+        errMessageMap.set(node.id, list[list.length - 1])
+        if (nodesExtraData[node.data.type as BlockEnum].checkVarValid) {
+          const { errorMessage: varErrorMessages } = nodesExtraData[node.data.type as BlockEnum].checkVarValid(node.data, { ...allVariablesMap, ...node._parentOutputVarMap }, t)
+
+          if (varErrorMessages?.length) {
+            const errMessage = errMessageMap.get(node.id)
+            if (errMessage) {
+              errMessage.varErrorMessage = varErrorMessages
+            }
+            else {
+              list.push({
+                id: node.id,
+                type: node.data.type,
+                title: node.data.title,
+                toolIcon,
+                unConnected: !validNodes.find(n => n.id === node.id),
+                errorMessage: '',
+                varErrorMessage: varErrorMessages,
+              })
+              errMessageMap.set(node.id, list[list.length - 1])
+            }
+          }
         }
       }
     }
@@ -133,8 +164,13 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       })
     }
 
+    for (let i = 0; i < validNodes.length; i++) {
+      const node = validNodes[i]
+      delete node._parentOutputVarMap
+    }
+
     return list
-  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData])
+  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData, chatVarList, environmentVariables])
 
   return needWarningNodes
 }
@@ -152,6 +188,9 @@ export const useChecklistBeforePublish = () => {
   const { data: strategyProviders } = useStrategyProviders()
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
   const updateTime = useRef(0)
+
+  const chatVarList = useStore(s => s.conversationVariables)
+  const environmentVariables = useStore(s => s.environmentVariables)
 
   const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
     let checkData = data
@@ -183,12 +222,15 @@ export const useChecklistBeforePublish = () => {
     const {
       validNodes,
       maxDepth,
-    } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
+    } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges, true)
 
     if (maxDepth > MAX_TREE_DEPTH) {
       notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
       return false
     }
+
+    const allVariablesMap = transformStartNodeVariables(chatVarList, environmentVariables)
+
     // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
     const knowledgeRetrievalNodes = nodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
     const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
@@ -239,6 +281,14 @@ export const useChecklistBeforePublish = () => {
         notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.common.needConnectTip')}` })
         return false
       }
+
+      if (nodesExtraData[node.data.type as BlockEnum].checkVarValid) {
+        const { errorMessage: varErrorMessage } = nodesExtraData[node.data.type as BlockEnum].checkVarValid(node.data, { ...allVariablesMap, ...node._parentOutputVarMap }, t)
+        if (varErrorMessage?.length) {
+          notify({ type: 'error', message: `[${node.data.title}] ${varErrorMessage[0]}` })
+          return false
+        }
+      }
     }
 
     if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
@@ -252,7 +302,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, isChatMode, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData])
+  }, [store, isChatMode, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, chatVarList, environmentVariables])
 
   return {
     handleCheckBeforePublish,
