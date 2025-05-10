@@ -1,6 +1,6 @@
 'use client'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { basePath } from '@/utils/var'
+import { WEB_PREFIX } from '@/config'
 import { t } from 'i18next'
 import copy from 'copy-to-clipboard'
 import s from './index.module.css'
@@ -19,7 +19,7 @@ const InvitationLink = ({
   const selector = useRef(`invite-link-${randomString(4)}`)
 
   const copyHandle = useCallback(() => {
-    copy(`${!value.url.startsWith('http') ? window.location.origin : ''}${basePath}${value.url}`)
+    copy(`${!value.url.startsWith('http') ? WEB_PREFIX : ''}${value.url}`)
     setIsCopied(true)
   }, [value])
 
@@ -42,7 +42,7 @@ const InvitationLink = ({
           <Tooltip
             popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           >
-            <div className='r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2' onClick={copyHandle}>{basePath + value.url}</div>
+            <div className='r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2' onClick={copyHandle}>{value.url}</div>
           </Tooltip>
         </div>
         <div className="h-4 shrink-0 border bg-divider-regular" />
