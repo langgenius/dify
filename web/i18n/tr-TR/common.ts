@@ -544,7 +544,7 @@ const translation = {
       vectorHash: 'Vektör Hash:',
       hitScore: 'Geri Alım Skoru:',
     },
-    inputPlaceholder: 'Bot ile konuş',
+    inputPlaceholder: 'Lütfen karşılaştığınız sorunu bana anlatın, yeni satır için Shift + Enter kullanın',
     thought: 'Düşünce',
     thinking: 'Düşünü...',
   },

@@ -541,7 +541,7 @@ const translation = {
       vectorHash: 'Хеш вектора:',
       hitScore: 'Оцінка звернення:',
     },
-    inputPlaceholder: 'Поговоріть з ботом',
+    inputPlaceholder: 'Будь ласка, розкажіть мені про вашу проблему, використовуйте Shift + Enter для нового рядка',
     thought: 'Думка',
     thinking: 'Мислення...',
   },

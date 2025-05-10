@@ -1,0 +1,16 @@
+.embedded-header-wrapper{
+  position: relative;
+  top: 0;
+  right: 0;
+
+  &:before {
+    content: "";
+    border-style: solid;
+    border-width: 5px 0px 0px;
+    border-image: linear-gradient(270deg, rgb(235, 134, 152) 0%, rgb(19, 102, 236) 100%) 1 / 1 / 0 stretch;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+  }
+}

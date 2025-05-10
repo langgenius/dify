@@ -740,7 +740,7 @@ const translation = {
       title: 'CITATI',
     },
     conversationNameCanNotEmpty: 'Zahtevano ime pogovora',
-    inputPlaceholder: 'Pogovorite se z botom',
+    inputPlaceholder: 'Prosimo, povejte mi o svoji težavi, uporabite Shift + Enter za novo vrstico',
     renameConversation: 'Preimenovanje pogovora',
     conversationName: 'Ime pogovora',
     conversationNamePlaceholder: 'Prosimo, vnesite ime pogovora',

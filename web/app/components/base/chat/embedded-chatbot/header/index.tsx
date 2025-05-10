@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
-import { RiCollapseDiagonal2Line, RiExpandDiagonal2Line, RiResetLeftLine } from '@remixicon/react'
+import { RiCloseLine, RiCollapseDiagonal2Line, RiExpandDiagonal2Line, RiResetLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { Theme } from '../theme/theme-context'
 import { CssTransform } from '../theme/utils'
@@ -9,10 +9,9 @@ import {
 } from '../context'
 import Tooltip from '@/app/components/base/tooltip'
 import ActionButton from '@/app/components/base/action-button'
-import Divider from '@/app/components/base/divider'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
-import LogoSite from '@/app/components/base/logo/logo-site'
 import cn from '@/utils/classnames'
+import './style.scss'
 
 export type IHeaderProps = {
   isMobile?: boolean
@@ -32,7 +31,6 @@ const Header: FC<IHeaderProps> = ({
 }) => {
   const { t } = useTranslation()
   const {
-    appData,
     currentConversationId,
     inputsForms,
   } = useEmbeddedChatbotContext()
@@ -74,29 +72,17 @@ const Header: FC<IHeaderProps> = ({
     }, parentOrigin)
   }, [isIframe, parentOrigin, showToggleExpandButton, expanded])
 
+  const handleCloseIframe = useCallback(() => {
+    if (!isIframe) return
+    window.parent.postMessage({
+      type: 'dify-chatbot-iframe-close',
+    }, parentOrigin)
+  }, [isIframe, parentOrigin])
+
   if (!isMobile) {
     return (
       <div className='flex h-14 shrink-0 items-center justify-end p-3'>
         <div className='flex items-center gap-1'>
-          {/* powered by */}
-          <div className='shrink-0'>
-            {!appData?.custom_config?.remove_webapp_brand && (
-              <div className={cn(
-                'flex shrink-0 items-center gap-1.5 px-2',
-              )}>
-                <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-                {appData?.custom_config?.replace_webapp_logo && (
-                  <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
-                )}
-                {!appData?.custom_config?.replace_webapp_logo && (
-                  <LogoSite className='!h-5' />
-                )}
-              </div>
-            )}
-          </div>
-          {currentConversationId && (
-            <Divider type='vertical' className='h-3.5' />
-          )}
           {
             showToggleExpandButton && (
               <Tooltip
@@ -124,6 +110,15 @@ const Header: FC<IHeaderProps> = ({
           {currentConversationId && inputsForms.length > 0 && (
             <ViewFormDropdown />
           )}
+          {currentConversationId && isIframe && (
+            <Tooltip
+              popupContent={t('关闭')}
+            >
+              <ActionButton size='l' onClick={handleCloseIframe}>
+                <RiCloseLine className='h-[18px] w-[18px]' />
+              </ActionButton>
+            </Tooltip>
+          )}
         </div>
       </div>
     )
@@ -131,7 +126,7 @@ const Header: FC<IHeaderProps> = ({
 
   return (
     <div
-      className={cn('flex h-14 shrink-0 items-center justify-between rounded-t-2xl px-3')}
+      className={cn('embedded-header-wrapper flex h-14 shrink-0 items-center justify-between px-3')}
       style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? '')) }
     >
       <div className="flex grow items-center space-x-3">

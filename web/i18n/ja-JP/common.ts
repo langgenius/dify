@@ -561,7 +561,7 @@ const translation = {
       vectorHash: 'ベクトルハッシュ:',
       hitScore: '検索スコア:',
     },
-    inputPlaceholder: 'ボットと話す',
+    inputPlaceholder: 'お困りの問題について教えてください。新しい行では Shift + Enter を使用します',
     thought: '思考',
     thinking: '考え中...',
   },

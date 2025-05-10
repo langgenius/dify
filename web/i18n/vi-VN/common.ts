@@ -540,7 +540,7 @@ const translation = {
       vectorHash: 'Vector hash:',
       hitScore: 'Điểm truy xuất:',
     },
-    inputPlaceholder: 'Nói chuyện với Bot',
+    inputPlaceholder: 'Vui lòng cho tôi biết vấn đề bạn gặp phải, sử dụng Shift + Enter để xuống dòng',
     thought: 'Tư duy',
     thinking: 'Suy nghĩ...',
   },

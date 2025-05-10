@@ -544,7 +544,7 @@ const translation = {
       vectorHash: 'هش بردار:',
       hitScore: 'امتیاز بازیابی:',
     },
-    inputPlaceholder: 'با ربات صحبت کنید',
+    inputPlaceholder: 'لطفاً مشکل خود را به من بگویید، از Shift + Enter برای خط جدید استفاده کنید',
     thought: 'فکر',
     thinking: 'تفکر...',
   },

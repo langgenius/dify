@@ -1,3 +1,5 @@
+// eslint-disable-next-line ts/ban-ts-comment
+// @ts-ignore
 const translation = {
   pageTitle: {
     line1: 'PROMPT',

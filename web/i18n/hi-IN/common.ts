@@ -562,7 +562,7 @@ const translation = {
       vectorHash: 'वेक्टर हैश:',
       hitScore: 'पुनः प्राप्ति स्कोर:',
     },
-    inputPlaceholder: 'बॉट से बात करें',
+    inputPlaceholder: 'कृपया अपनी समस्या के बारे में मुझे बताएं, नई पंक्ति के लिए Shift + Enter का उपयोग करें',
     thought: 'विचार',
     thinking: 'सोचते हुए...',
   },

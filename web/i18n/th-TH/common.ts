@@ -539,7 +539,7 @@ const translation = {
       vectorHash: 'แฮชเวกเตอร์:',
       hitScore: 'คะแนนการดึงข้อมูล:',
     },
-    inputPlaceholder: 'พูดคุยกับบอท',
+    inputPlaceholder: 'กรุณาบอกฉันเกี่ยวกับปัญหาของคุณ ใช้ Shift + Enter เพื่อขึ้นบรรทัดใหม่',
     thought: 'ความคิด',
     thinking: 'ความคิด   ',
   },

@@ -68,6 +68,8 @@ const LocaleLayout = async ({
                 enableSystem
                 disableTransitionOnChange
               >
+                {/* eslint-disable-next-line ts/ban-ts-comment */}
+                {/* @ts-expect-error */}
                 <I18nServer>
                   {children}
                 </I18nServer>

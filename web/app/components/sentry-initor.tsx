@@ -23,7 +23,7 @@ const SentryInit = ({
       })
     }
   }, [])
-  return children
+  return <>{children}</>
 }
 
 export default SentryInit

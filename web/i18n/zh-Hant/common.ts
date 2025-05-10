@@ -540,7 +540,7 @@ const translation = {
       vectorHash: '向量雜湊：',
       hitScore: '召回得分：',
     },
-    inputPlaceholder: '與 Bot 對話',
+    inputPlaceholder: '請將您遇到的問題告訴我，使用 Shift + Enter 換行',
     thinking: '思維。。。',
     thought: '思想',
   },

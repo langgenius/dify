@@ -46,7 +46,7 @@ Object.defineProperty(globalThis, 'sessionStorage', {
 const BrowserInitor = ({
   children,
 }: { children: React.ReactNode }) => {
-  return children
+  return <>{children}</>
 }
 
 export default BrowserInitor

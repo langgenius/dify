@@ -555,7 +555,7 @@ const translation = {
       vectorHash: 'Wektor hash:',
       hitScore: 'Wynik trafień:',
     },
-    inputPlaceholder: 'Porozmawiaj z botem',
+    inputPlaceholder: 'Proszę opowiedz mi o swoim problemie, użyj Shift + Enter, aby dodać nową linię',
     thought: 'Myśl',
     thinking: 'Myślenie...',
   },

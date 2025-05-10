@@ -540,7 +540,7 @@ const translation = {
       vectorHash: 'Vektorhash:',
       hitScore: 'Abrufwertung:',
     },
-    inputPlaceholder: 'Sprechen Sie mit dem Bot',
+    inputPlaceholder: 'Bitte erzählen Sie mir von Ihrem Anliegen, verwenden Sie Umschalt + Eingabetaste für einen Zeilenumbruch',
     thought: 'Gedanke',
     thinking: 'Denken...',
   },

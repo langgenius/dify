@@ -5,12 +5,12 @@ export class Theme {
   public chatColorTheme: string | null
   public chatColorThemeInverted: boolean
 
-  public primaryColor = '#1C64F2'
-  public backgroundHeaderColorStyle = 'backgroundImage: linear-gradient(to right, #2563eb, #0ea5e9)'
+  public primaryColor = '#298df0'
+  public backgroundHeaderColorStyle = 'background: var(--color-chatbot-bg)'
   public headerBorderBottomStyle = ''
-  public colorFontOnHeaderStyle = 'color: white'
-  public colorPathOnHeader = 'text-text-primary-on-surface'
-  public backgroundButtonDefaultColorStyle = 'backgroundColor: #1C64F2'
+  public colorFontOnHeaderStyle = 'color: var(--color-text-primary)'
+  public colorPathOnHeader = 'text-quaternary'
+  public backgroundButtonDefaultColorStyle = 'backgroundColor: #298df0'
   public roundedBackgroundColorStyle = 'backgroundColor: rgb(245 248 255)'
   public chatBubbleColorStyle = 'backgroundColor: rgb(225 239 254)'
   public chatBubbleColor = 'rgb(225 239 254)'
@@ -24,7 +24,7 @@ export class Theme {
 
   private configCustomColor() {
     if (this.chatColorTheme !== null && this.chatColorTheme !== '') {
-      this.primaryColor = this.chatColorTheme ?? '#1C64F2'
+      this.primaryColor = this.chatColorTheme ?? '#298df0'
       this.backgroundHeaderColorStyle = `backgroundColor: ${this.primaryColor}`
       this.backgroundButtonDefaultColorStyle = `backgroundColor: ${this.primaryColor}; color: ${this.colorFontOnHeaderStyle};`
       this.roundedBackgroundColorStyle = `backgroundColor: ${hexToRGBA(this.primaryColor, 0.05)}`

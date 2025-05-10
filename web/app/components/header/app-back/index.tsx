@@ -18,7 +18,7 @@ export default function AppBack({ curApp }: IAppBackProps) {
     <div
       className={classNames(`
         flex items-center h-7 pl-2.5 pr-2
-        text-[#1C64F2] font-semibold cursor-pointer
+        text-[#298df0] font-semibold cursor-pointer
         rounded-[10px]
         ${curApp && 'hover:bg-[#EBF5FF]'}
       `)}

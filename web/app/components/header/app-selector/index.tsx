@@ -35,7 +35,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
             className="
               inline-flex h-7 w-full items-center justify-center
               rounded-[10px] pl-2 pr-2.5 text-[14px] font-semibold
-              text-[#1C64F2] hover:bg-[#EBF5FF]
+              text-[#298df0] hover:bg-[#EBF5FF]
             "
           >
             {curApp?.name}

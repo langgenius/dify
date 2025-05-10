@@ -27,6 +27,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { TransferMethod } from '@/types/app'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 type ChatInputAreaProps = {
   showFeatureBar?: boolean
@@ -81,6 +82,9 @@ const ChatInputArea = ({
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   const handleSend = () => {
     if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -169,12 +173,12 @@ const ChatInputArea = ({
     <>
       <div
         className={cn(
-          'relative z-10 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
+          'relative z-10 rounded-md border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
           isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
       >
-        <div className='relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]'>
+        <div className='scrollbar-small relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]'>
           <FileListInChatInput fileConfig={visionConfig!} />
           <div
             ref={wrapperRef}
@@ -212,7 +216,7 @@ const ChatInputArea = ({
               />
             </div>
             {
-              !isMultipleLine && operation
+              !isMultipleLine && !isMobile && operation
             }
           </div>
           {
@@ -225,7 +229,7 @@ const ChatInputArea = ({
           }
         </div>
         {
-          isMultipleLine && (
+          (isMultipleLine || isMobile) && (
             <div className='px-[9px]'>{operation}</div>
           )
         }

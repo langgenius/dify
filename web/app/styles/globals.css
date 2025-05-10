@@ -698,3 +698,26 @@ button:focus-within {
     scrollbar-width: none;
   }
 }
+
+/** small size scroll bar */
+.scrollbar-small {
+  &::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background-color: #b0b0b0;
+  }
+
+  &::-webkit-scrollbar-track {
+    background-color: #f0f0f0;
+    border-radius: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #888888;
+  }
+
+}

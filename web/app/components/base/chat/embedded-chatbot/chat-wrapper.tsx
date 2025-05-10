@@ -257,6 +257,7 @@ const ChatWrapper = () => {
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       inputDisabled={inputDisabled}
       isMobile={isMobile}
+      chatContainerClassName="scrollbar-small"
     />
   )
 }

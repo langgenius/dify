@@ -536,7 +536,7 @@ const translation = {
       vectorHash: '벡터 해시:',
       hitScore: '검색 점수:',
     },
-    inputPlaceholder: '봇과 대화',
+    inputPlaceholder: '문제에 대해 말씀해 주세요, 줄 바꿈을 위해 Shift + Enter 를 사용하세요',
     thought: '생각',
     thinking: '생각...',
   },

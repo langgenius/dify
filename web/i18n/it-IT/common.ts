@@ -571,7 +571,7 @@ const translation = {
       vectorHash: 'Hash del vettore:',
       hitScore: 'Punteggio di recupero:',
     },
-    inputPlaceholder: 'Parla con il bot',
+    inputPlaceholder: 'Per favore, parlami del tuo problema, usa Maiusc + Invio per una nuova riga',
     thinking: 'Pensante...',
     thought: 'Pensiero',
   },
