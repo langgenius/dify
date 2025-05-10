@@ -5,6 +5,7 @@ from collections.abc import Generator, Mapping
 from datetime import timedelta
 from typing import Any, Optional, Union
 
+from configs import dify_config
 from core.errors.error import AppInvokeQuotaExceededError
 from extensions.ext_redis import redis_client
 
@@ -12,8 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class RateLimit:
-    _MAX_ACTIVE_REQUESTS_KEY = "dify:rate_limit:{}:max_active_requests"
-    _ACTIVE_REQUESTS_KEY = "dify:rate_limit:{}:active_requests"
+    _KEY_PREFIX = dify_config.REDIS_KEY_PREFIX if dify_config.REDIS_KEY_PREFIX is not None else "dify"
+    _MAX_ACTIVE_REQUESTS_KEY = _KEY_PREFIX + ":rate_limit:{}:max_active_requests"
+    _ACTIVE_REQUESTS_KEY = _KEY_PREFIX + ":rate_limit:{}:active_requests"
     _UNLIMITED_REQUEST_ID = "unlimited_request_id"
     _REQUEST_MAX_ALIVE_TIME = 10 * 60  # 10 minutes
     _ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL = 5 * 60  # recalculate request_count from request_detail every 5 minutes
