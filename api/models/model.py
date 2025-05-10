@@ -1237,6 +1237,21 @@ class MessageFeedback(Base):
         account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
         return account
 
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "app_id": str(self.app_id),
+            "conversation_id": str(self.conversation_id),
+            "message_id": str(self.message_id),
+            "rating": self.rating,
+            "content": self.content,
+            "from_source": self.from_source,
+            "from_end_user_id": str(self.from_end_user_id) if self.from_end_user_id else None,
+            "from_account_id": str(self.from_account_id) if self.from_account_id else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
+
 
 class MessageFile(Base):
     __tablename__ = "message_files"

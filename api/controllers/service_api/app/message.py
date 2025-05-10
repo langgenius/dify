@@ -93,6 +93,18 @@ class MessageFeedbackApi(Resource):
         return {"result": "success"}
 
 
+class AppGetFeedbacksApi(Resource):
+    @validate_app_token
+    def get(self, app_model: App):
+        """Get All Feedbacks of an app"""
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, default=1, location="args")
+        parser.add_argument("limit", type=int_range(1, 101), required=False, default=20, location="args")
+        args = parser.parse_args()
+        feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=args["page"], limit=args["limit"])
+        return {"data": feedbacks}
+
+
 class MessageSuggestedApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
     def get(self, app_model: App, end_user: EndUser, message_id):
@@ -119,3 +131,4 @@ class MessageSuggestedApi(Resource):
 api.add_resource(MessageListApi, "/messages")
 api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
 api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
+api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")
