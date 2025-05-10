@@ -41,6 +41,7 @@ export type ThoughtItem = {
   tool_input: string
   tool_labels?: { [key: string]: TypeWithI18N }
   message_id: string
+  conversation_id: string
   observation: string
   position: number
   files?: string[]
