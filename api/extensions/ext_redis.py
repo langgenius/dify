@@ -53,7 +53,13 @@ def init_app(app: DifyApp):
     if dify_config.REDIS_USE_SSL:
         connection_class = SSLConnection
     resp_protocol = dify_config.REDIS_SERIALIZATION_PROTOCOL
-    clientside_cache_config = CacheConfig() if resp_protocol >= 3 else None
+    if dify_config.REDIS_ENABLE_CLIENT_SIDE_CACHE:
+        if resp_protocol >= 3:
+            clientside_cache_config = CacheConfig()
+        else:
+            raise ValueError("Client side cache is only supported in RESP3")
+    else:
+        clientside_cache_config = None
 
     redis_params: dict[str, Any] = {
         "username": dify_config.REDIS_USERNAME,
