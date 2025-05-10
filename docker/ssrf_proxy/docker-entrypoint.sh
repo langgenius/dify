@@ -16,6 +16,11 @@
 # [1] The default configuration is changed in the Dockerfile to allow local
 # network connections. See the Dockerfile for further information.
 
+echo "[ENTRYPOINT] fixing permission for log and cache directories"
+chown -R 13:13 /var/log/squid
+chown -R 13:13 /var/spool/squid
+
+
 echo "[ENTRYPOINT] re-create snakeoil self-signed certificate removed in the build process"
 if [ ! -f /etc/ssl/private/ssl-cert-snakeoil.key ]; then
     /usr/sbin/make-ssl-cert generate-default-snakeoil --force-overwrite > /dev/null 2>&1
