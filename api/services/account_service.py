@@ -822,6 +822,9 @@ class TenantService:
             db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=member.id).first()
         )
 
+        if not target_member_join:
+            raise MemberNotInTenantError("Member not in tenant.")
+
         if target_member_join.role == new_role:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
 
@@ -830,7 +833,8 @@ class TenantService:
             current_owner_join = (
                 db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, role="owner").first()
             )
-            current_owner_join.role = "admin"
+            if current_owner_join:
+                current_owner_join.role = "admin"
 
         # Update the role of the target member
         target_member_join.role = new_role
