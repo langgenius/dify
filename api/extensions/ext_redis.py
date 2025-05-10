@@ -52,7 +52,6 @@ def init_app(app: DifyApp):
     connection_class: type[Union[Connection, SSLConnection]] = Connection
     if dify_config.REDIS_USE_SSL:
         connection_class = SSLConnection
-
     resp_protocol = dify_config.REDIS_SERIALIZATION_PROTOCOL
     clientside_cache_config = CacheConfig() if resp_protocol >= 3 else None
 
