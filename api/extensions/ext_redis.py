@@ -8,7 +8,7 @@ from redis.sentinel import Sentinel
 from configs import dify_config
 from dify_app import DifyApp
 
-
+from redis.cache import CacheConfig
 class RedisClientWrapper:
     """
     A wrapper class for the Redis client that addresses the issue where the global
@@ -90,6 +90,8 @@ def init_app(app: DifyApp):
                 "host": dify_config.REDIS_HOST,
                 "port": dify_config.REDIS_PORT,
                 "connection_class": connection_class,
+                "protocol": 3,
+                "cache_config": CacheConfig(),
             }
         )
         pool = redis.ConnectionPool(**redis_params)
