@@ -8,6 +8,8 @@ import Sidebar from '@/app/components/explore/sidebar'
 import { useAppContext } from '@/context/app-context'
 import { fetchMembers } from '@/service/common'
 import type { InstalledApp } from '@/models/explore'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useStore } from '@/app/components/app/store'
 
 export type IExploreProps = {
   children: React.ReactNode
@@ -22,6 +24,10 @@ const Explore: FC<IExploreProps> = ({
   const { userProfile, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [hasEditPermission, setHasEditPermission] = useState(false)
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+  const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
 
   useEffect(() => {
     document.title = `${t('explore.title')} - Dify`;
@@ -38,6 +44,12 @@ const Explore: FC<IExploreProps> = ({
     if (isCurrentWorkspaceDatasetOperator)
       return router.replace('/datasets')
   }, [isCurrentWorkspaceDatasetOperator])
+
+  useEffect(() => {
+    const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+    const mode = isMobile ? 'collapse' : 'expand'
+    setAppSiderbarExpand(isMobile ? mode : localeMode)
+  }, [isMobile, setAppSiderbarExpand])
 
   return (
     <div className='flex h-full overflow-hidden border-t border-divider-regular bg-background-body'>

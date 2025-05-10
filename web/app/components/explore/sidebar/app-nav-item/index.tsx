@@ -9,7 +9,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import type { AppIconType } from '@/types/app'
 
 export type IAppNavItemProps = {
-  isMobile: boolean
+  expand: boolean
   name: string
   id: string
   icon_type: AppIconType | null
@@ -24,7 +24,7 @@ export type IAppNavItemProps = {
 }
 
 export default function AppNavItem({
-  isMobile,
+  expand,
   name,
   id,
   icon_type,
@@ -52,8 +52,8 @@ export default function AppNavItem({
         router.push(url) // use Link causes popup item always trigger jump. Can not be solved by e.stopPropagation().
       }}
     >
-      {isMobile && <AppIcon size='tiny' iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />}
-      {!isMobile && (
+      {!expand && <AppIcon size='tiny' iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />}
+      {expand && (
         <>
           <div className='flex w-0 grow items-center space-x-2'>
             <AppIcon size='tiny' iconType={icon_type} icon={icon} background={icon_background} imageUrl={icon_url} />
