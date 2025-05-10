@@ -4,6 +4,7 @@ import Editor, { loader } from '@monaco-editor/react'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Base from '../base'
 import cn from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import {
   getFilesInLogs,
@@ -14,7 +15,7 @@ import './style.css'
 import { noop } from 'lodash-es'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
-loader.config({ paths: { vs: '/vs' } })
+loader.config({ paths: { vs: `${basePath}/vs` } })
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 
