@@ -672,11 +672,7 @@ class TenantService:
         if not tenant:
             raise TenantNotFoundError("Tenant not found.")
 
-        ta = (
-            db.session.query(TenantAccountJoin)
-            .filter_by(tenant_id=tenant.id, account_id=account.id)
-            .first()
-        )
+        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
             tenant.role = ta.role
         else:
