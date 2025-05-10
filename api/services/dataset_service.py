@@ -1148,10 +1148,12 @@ class DocumentService:
                 db.session.commit()
 
                 # trigger async task
-                if document_ids:
-                    document_indexing_task.delay(dataset.id, document_ids)
-                if duplicate_document_ids:
-                    duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
+            if document_ids:
+                for dociment_id in document_ids:
+                    document_indexing_task.delay(dataset.id, [dociment_id])
+            if duplicate_document_ids:
+                for duplicate_document_id in duplicate_document_ids:
+                    duplicate_document_indexing_task.delay(dataset.id, [duplicate_document_id])
 
         return documents, batch
 
