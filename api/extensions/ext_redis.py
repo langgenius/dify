@@ -53,6 +53,9 @@ def init_app(app: DifyApp):
     if dify_config.REDIS_USE_SSL:
         connection_class = SSLConnection
 
+    resp_protocol = dify_config.REDIS_SERIALIZATION_PROTOCOL
+    clientside_cache_config = CacheConfig() if resp_protocol >= 3 else None
+
     redis_params: dict[str, Any] = {
         "username": dify_config.REDIS_USERNAME,
         "password": dify_config.REDIS_PASSWORD or None,  # Temporary fix for empty password
@@ -60,7 +63,8 @@ def init_app(app: DifyApp):
         "encoding": "utf-8",
         "encoding_errors": "strict",
         "decode_responses": False,
-        "cache_config": CacheConfig(),
+        "protocol": resp_protocol,
+        "cache_config": clientside_cache_config,
     }
 
     if dify_config.REDIS_USE_SENTINEL:
@@ -88,7 +92,8 @@ def init_app(app: DifyApp):
             RedisCluster(
                 startup_nodes=nodes,
                 password=dify_config.REDIS_CLUSTERS_PASSWORD,
-                cache_config=CacheConfig(),
+                protocol=resp_protocol,
+                cache_config=clientside_cache_config,
             )
         )
     else:
@@ -97,8 +102,8 @@ def init_app(app: DifyApp):
                 "host": dify_config.REDIS_HOST,
                 "port": dify_config.REDIS_PORT,
                 "connection_class": connection_class,
-                "protocol": 3,
-                "cache_config": CacheConfig(),
+                "protocol": resp_protocol,
+                "cache_config": clientside_cache_config,
             }
         )
         pool = redis.ConnectionPool(**redis_params)
