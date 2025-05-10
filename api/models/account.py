@@ -52,7 +52,7 @@ class Account(UserMixin, Base):
     @current_tenant.setter
     def current_tenant(self, value: "Tenant"):
         tenant = value
-        ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=self.id).first()
+        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).first()
         if ta:
             tenant.current_role = ta.role
         else:
