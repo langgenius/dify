@@ -33,9 +33,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
 from core.ops.utils import get_message_data
-from core.ops.weave_trace.weave_trace import WeaveDataTrace
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
@@ -56,33 +54,37 @@ def build_langsmith_trace_instance(config: LangfuseConfig):
 
 
 def build_opik_trace_instance(config: LangSmithConfig):
+    from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
+
     return LangSmithDataTrace(config)
 
 
 def build_weave_trace_instance(config: WeaveConfig):
+    from core.ops.weave_trace.weave_trace import WeaveDataTrace
+
     return WeaveDataTrace(config)
 
 
 provider_config_map: dict[str, dict[str, Any]] = {
-    TracingProviderEnum.LANGFUSE.value: {
+    TracingProviderEnum.LANGFUSE: {
         "config_class": LangfuseConfig,
         "secret_keys": ["public_key", "secret_key"],
         "other_keys": ["host", "project_key"],
         "trace_instance": lambda config: build_langfuse_trace_instance(config),
     },
-    TracingProviderEnum.LANGSMITH.value: {
+    TracingProviderEnum.LANGSMITH: {
         "config_class": LangSmithConfig,
         "secret_keys": ["api_key"],
         "other_keys": ["project", "endpoint"],
         "trace_instance": lambda config: build_langsmith_trace_instance(config),
     },
-    TracingProviderEnum.OPIK.value: {
+    TracingProviderEnum.OPIK: {
         "config_class": OpikConfig,
         "secret_keys": ["api_key"],
         "other_keys": ["project", "url", "workspace"],
         "trace_instance": lambda config: build_opik_trace_instance(config),
     },
-    TracingProviderEnum.WEAVE.value: {
+    TracingProviderEnum.WEAVE: {
         "config_class": WeaveConfig,
         "secret_keys": ["api_key"],
         "other_keys": ["project", "entity", "endpoint"],
