@@ -156,8 +156,8 @@ class AnalyticdbVectorBySql:
         values = []
         id_prefix = str(uuid.uuid4()) + "_"
         sql = f"""
-                INSERT INTO {self.table_name} 
-                (id, ref_doc_id, vector, page_content, metadata_, to_tsvector) 
+                INSERT INTO {self.table_name}
+                (id, ref_doc_id, vector, page_content, metadata_, to_tsvector)
                 VALUES (%s, %s, %s, %s, %s, to_tsvector('zh_cn',  %s));
             """
         for i, doc in enumerate(documents):
@@ -242,7 +242,7 @@ class AnalyticdbVectorBySql:
             where_clause += f"AND metadata_->>'document_id' IN ({document_ids})"
         with self._get_cursor() as cur:
             cur.execute(
-                f"""SELECT id, vector, page_content, metadata_, 
+                f"""SELECT id, vector, page_content, metadata_,
                 ts_rank(to_tsvector, to_tsquery_from_text(%s, 'zh_cn'), 32) AS score
                 FROM {self.table_name}
                 WHERE to_tsvector@@to_tsquery_from_text(%s, 'zh_cn') {where_clause}

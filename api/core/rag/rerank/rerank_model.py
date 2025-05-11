@@ -52,14 +52,16 @@ class RerankModelRunner(BaseRerankRunner):
         rerank_documents = []
 
         for result in rerank_result.docs:
-            # format document
-            rerank_document = Document(
-                page_content=result.text,
-                metadata=documents[result.index].metadata,
-                provider=documents[result.index].provider,
-            )
-            if rerank_document.metadata is not None:
-                rerank_document.metadata["score"] = result.score
-                rerank_documents.append(rerank_document)
+            if score_threshold is None or result.score >= score_threshold:
+                # format document
+                rerank_document = Document(
+                    page_content=result.text,
+                    metadata=documents[result.index].metadata,
+                    provider=documents[result.index].provider,
+                )
+                if rerank_document.metadata is not None:
+                    rerank_document.metadata["score"] = result.score
+                    rerank_documents.append(rerank_document)
 
-        return rerank_documents
+        rerank_documents.sort(key=lambda x: x.metadata.get("score", 0.0), reverse=True)
+        return rerank_documents[:top_n] if top_n else rerank_documents

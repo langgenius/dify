@@ -2,9 +2,9 @@ import json
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
+from urllib.parse import urlparse
 
 import httpx
-import validators
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
@@ -72,7 +72,9 @@ class ExternalDatasetService:
 
         endpoint = f"{settings['endpoint']}/retrieval"
         api_key = settings["api_key"]
-        if not validators.url(endpoint, simple_host=True):
+
+        parsed_url = urlparse(endpoint)
+        if not all([parsed_url.scheme, parsed_url.netloc]):
             if not endpoint.startswith("http://") and not endpoint.startswith("https://"):
                 raise ValueError(f"invalid endpoint: {endpoint} must start with http:// or https://")
             else:

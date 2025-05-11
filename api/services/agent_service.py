@@ -2,7 +2,7 @@ import threading
 from typing import Optional
 
 import pytz
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 
 import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager

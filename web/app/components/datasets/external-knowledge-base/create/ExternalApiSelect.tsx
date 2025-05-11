@@ -59,7 +59,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
   return (
     <div className="relative w-full">
       <div
-        className={`flex cursor-pointer items-center justify-between gap-0.5 self-stretch rounded-lg bg-components-input-bg-normal px-2 
+        className={`flex cursor-pointer items-center justify-between gap-0.5 self-stretch rounded-lg bg-components-input-bg-normal px-2
         py-1 hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
         onClick={() => setIsOpen(!isOpen)}
       >

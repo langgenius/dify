@@ -1,6 +1,5 @@
 'use client'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { WEB_PREFIX } from '@/config'
 import { t } from 'i18next'
 import copy from 'copy-to-clipboard'
 import s from './index.module.css'
@@ -19,7 +18,8 @@ const InvitationLink = ({
   const selector = useRef(`invite-link-${randomString(4)}`)
 
   const copyHandle = useCallback(() => {
-    copy(`${!value.url.startsWith('http') ? WEB_PREFIX : ''}${value.url}`)
+    // No prefix is needed here because the backend has already processed it
+    copy(`${!value.url.startsWith('http') ? window.location.origin : ''}${value.url}`)
     setIsCopied(true)
   }, [value])
 

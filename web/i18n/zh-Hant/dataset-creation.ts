@@ -61,7 +61,7 @@ const translation = {
       fireCrawlNotConfiguredDescription: '使用 API 金鑰配置 Firecrawl 以使用它。',
       limit: '限制',
       crawlSubPage: '抓取子頁面',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       preview: '預覽',
       configure: '配置',
       excludePaths: '排除路徑',

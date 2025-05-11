@@ -59,8 +59,8 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 )
 """
 SQL_CREATE_INDEX = """
-CREATE INDEX IF NOT EXISTS idx_docs_{table_name} ON {table_name}(text) 
-INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS 
+CREATE INDEX IF NOT EXISTS idx_docs_{table_name} ON {table_name}(text)
+INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS
 ('FILTER CTXSYS.NULL_FILTER SECTION GROUP CTXSYS.HTML_SECTION_GROUP LEXER world_lexer')
 """
 
@@ -164,7 +164,7 @@ class OracleVector(BaseVector):
                 with conn.cursor() as cur:
                     try:
                         cur.execute(
-                            f"""INSERT INTO {self.table_name} (id, text, meta, embedding) 
+                            f"""INSERT INTO {self.table_name} (id, text, meta, embedding)
                         VALUES (:1, :2, :3, :4)""",
                             value,
                         )
@@ -227,8 +227,8 @@ class OracleVector(BaseVector):
             conn.outputtypehandler = self.output_type_handler
             with conn.cursor() as cur:
                 cur.execute(
-                    f"""SELECT meta, text, vector_distance(embedding,(select to_vector(:1) from dual),cosine) 
-                    AS distance FROM {self.table_name} 
+                    f"""SELECT meta, text, vector_distance(embedding,(select to_vector(:1) from dual),cosine)
+                    AS distance FROM {self.table_name}
                     {where_clause} ORDER BY distance fetch first {top_k} rows only""",
                     [numpy.array(query_vector)],
                 )
@@ -290,7 +290,7 @@ class OracleVector(BaseVector):
                         document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
                         where_clause = f" AND metadata->>'document_id' in ({document_ids}) "
                     cur.execute(
-                        f"""select meta, text, embedding FROM {self.table_name} 
+                        f"""select meta, text, embedding FROM {self.table_name}
                     WHERE CONTAINS(text, :kk, 1) > 0  {where_clause}
                     order by score(1) desc fetch first {top_k} rows only""",
                         kk=" ACCUM ".join(entities),

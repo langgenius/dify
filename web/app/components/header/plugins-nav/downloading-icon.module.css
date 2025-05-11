@@ -13,15 +13,15 @@
 }
 
 @keyframes drop {
-  0% { 
-    transform: translateY(-4px); 
+  0% {
+    transform: translateY(-4px);
     opacity: 0;
   }
-  5% { 
-    transform: translateY(-4px); 
+  5% {
+    transform: translateY(-4px);
     opacity: 1;
   }
-  65% { 
+  65% {
     transform: translateY(2px);
     opacity: 1;
   }
@@ -29,7 +29,7 @@
     transform: translateY(2px);
     opacity: 0;
   }
-  100% { 
+  100% {
     transform: translateY(2px);
     opacity: 0;
   }

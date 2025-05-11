@@ -28,6 +28,7 @@ type QuestionProps = {
   item: ChatItem
   questionIcon?: ReactNode
   theme: Theme | null | undefined
+  enableEdit?: boolean
   switchSibling?: (siblingMessageId: string) => void
 }
 
@@ -35,6 +36,7 @@ const Question: FC<QuestionProps> = ({
   item,
   questionIcon,
   theme,
+  enableEdit = true,
   switchSibling,
 }) => {
   const { t } = useTranslation()
@@ -87,9 +89,9 @@ const Question: FC<QuestionProps> = ({
             }}>
               <RiClipboardLine className='h-4 w-4' />
             </ActionButton>
-            <ActionButton onClick={handleEdit}>
+            {enableEdit && <ActionButton onClick={handleEdit}>
               <RiEditLine className='h-4 w-4' />
-            </ActionButton>
+            </ActionButton>}
           </div>
         </div>
         <div

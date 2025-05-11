@@ -57,6 +57,7 @@ const translation = {
     copied: 'コピーしました',
     in: '中',
     format: 'フォーマット',
+    more: 'もっと',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -475,7 +476,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API拡張機能は、Difyのアプリケーション全体での簡単な使用のための設定を簡素化し、集中的なAPI管理を提供します。',
     link: '独自のAPI拡張機能を開発する方法について学ぶ。',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API拡張機能を追加',
     selector: {
       title: 'API拡張機能',
