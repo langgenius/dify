@@ -33,9 +33,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from core.ops.opik_trace.opik_trace import OpikDataTrace
 from core.ops.utils import get_message_data
 from core.ops.weave_trace.weave_trace import WeaveDataTrace
 from extensions.ext_database import db
@@ -45,8 +43,24 @@ from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
 
-def build_opik_trace_instance(config: OpikConfig):
-    return OpikDataTrace(config)
+def build_langfuse_trace_instance(config: LangfuseConfig):
+    from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
+
+    return LangFuseDataTrace(config)
+
+
+def build_langsmith_trace_instance(config: LangfuseConfig):
+    from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
+
+    return LangFuseDataTrace(config)
+
+
+def build_opik_trace_instance(config: LangSmithConfig):
+    return LangSmithDataTrace(config)
+
+
+def build_weave_trace_instance(config: WeaveConfig):
+    return WeaveDataTrace(config)
 
 
 provider_config_map: dict[str, dict[str, Any]] = {
@@ -54,13 +68,13 @@ provider_config_map: dict[str, dict[str, Any]] = {
         "config_class": LangfuseConfig,
         "secret_keys": ["public_key", "secret_key"],
         "other_keys": ["host", "project_key"],
-        "trace_instance": LangFuseDataTrace,
+        "trace_instance": lambda config: build_langfuse_trace_instance(config),
     },
     TracingProviderEnum.LANGSMITH.value: {
         "config_class": LangSmithConfig,
         "secret_keys": ["api_key"],
         "other_keys": ["project", "endpoint"],
-        "trace_instance": LangSmithDataTrace,
+        "trace_instance": lambda config: build_langsmith_trace_instance(config),
     },
     TracingProviderEnum.OPIK.value: {
         "config_class": OpikConfig,
@@ -72,7 +86,7 @@ provider_config_map: dict[str, dict[str, Any]] = {
         "config_class": WeaveConfig,
         "secret_keys": ["api_key"],
         "other_keys": ["project", "entity", "endpoint"],
-        "trace_instance": WeaveDataTrace,
+        "trace_instance": lambda config: build_weave_trace_instance(config),
     },
 }
 
