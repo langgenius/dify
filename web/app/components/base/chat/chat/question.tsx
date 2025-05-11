@@ -26,6 +26,7 @@ import { useChatContext } from './context'
 
 type QuestionProps = {
   item: ChatItem
+  enabelQuerstionIcon?: boolean
   questionIcon?: ReactNode
   theme: Theme | null | undefined
   enableEdit?: boolean
@@ -34,6 +35,7 @@ type QuestionProps = {
 
 const Question: FC<QuestionProps> = ({
   item,
+  enabelQuerstionIcon,
   questionIcon,
   theme,
   enableEdit = true,
@@ -77,7 +79,7 @@ const Question: FC<QuestionProps> = ({
 
   return (
     <div className='mb-2 flex justify-end pl-14 last:mb-0'>
-      <div className={cn('group relative mr-4 flex max-w-full items-start', isEditing && 'flex-1')}>
+      <div className={cn('group relative flex max-w-full items-start', isEditing && 'flex-1', !!enabelQuerstionIcon && 'mr-4')}>
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div className="
             absolutegap-0.5 hidden rounded-[10px] border-[0.5px] border-components-actionbar-border
@@ -140,15 +142,15 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div className='mt-1 h-[18px]' />
       </div>
-      <div className='h-10 w-10 shrink-0'>
+      {enabelQuerstionIcon ? <div className="h-10 w-10 shrink-0">
         {
           questionIcon || (
-            <div className='h-full w-full rounded-full border-[0.5px] border-black/5'>
-              <User className='h-full w-full' />
+            <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
+              <User className="h-full w-full" />
             </div>
           )
         }
-      </div>
+      </div> : null}
     </div>
   )
 }

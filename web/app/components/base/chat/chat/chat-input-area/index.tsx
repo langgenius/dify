@@ -28,6 +28,7 @@ import FeatureBar from '@/app/components/base/features/new-feature-panel/feature
 import type { FileUpload } from '@/app/components/base/features/types'
 import { TransferMethod } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import './style.scss'
 
 type ChatInputAreaProps = {
   showFeatureBar?: boolean
@@ -69,6 +70,7 @@ const ChatInputArea = ({
   } = useTextAreaHeight()
   const [query, setQuery] = useState('')
   const [showVoiceInput, setShowVoiceInput] = useState(false)
+  const [isFocus, setIsFocus] = useState(false)
   const filesStore = useFileStore()
   const {
     handleDragFileEnter,
@@ -169,70 +171,83 @@ const ChatInputArea = ({
     />
   )
 
+  const handleFocus = () => {
+    setIsFocus(true)
+  }
+  const handleBlur = () => {
+    setIsFocus(false)
+  }
+
   return (
     <>
       <div
         className={cn(
-          'relative z-10 rounded-md border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
+          'chat-input-box relative z-10 box-border rounded-md border border-components-chat-input-border bg-components-panel-bg shadow-md',
           isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
+          isFocus && 'chat-input-box-focus',
         )}
       >
-        <div className='scrollbar-small relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]'>
-          <FileListInChatInput fileConfig={visionConfig!} />
-          <div
-            ref={wrapperRef}
-            className='flex items-center justify-between'
-          >
-            <div className='relative flex w-full grow items-center'>
-              <div
-                ref={textValueRef}
-                className='body-lg-regular pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6'
-              >
-                {query}
+        <div className="rounded-md bg-components-panel-bg pb-[9px]">
+          <div className='scrollbar-small relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]'>
+            <FileListInChatInput fileConfig={visionConfig!} />
+            <div
+              ref={wrapperRef}
+              className='flex items-center justify-between'
+            >
+              <div className='relative flex w-full grow items-center'>
+                <div
+                  ref={textValueRef}
+                  className='body-lg-regular pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6'
+                >
+                  {query}
+                </div>
+                <Textarea
+                  ref={ref => textareaRef.current = ref as any}
+                  className={cn(
+                    'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-tertiary outline-none',
+                  )}
+                  style={{ scrollbarWidth: 'none' }}
+                  placeholder={t('common.chat.inputPlaceholder') || ''}
+                  autoFocus
+                  minRows={1}
+                  onResize={handleTextareaResize}
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value)
+                    setTimeout(handleTextareaResize, 0)
+                  }}
+                  onKeyDown={handleKeyDown}
+                  onCompositionStart={handleCompositionStart}
+                  onCompositionEnd={handleCompositionEnd}
+                  onPaste={handleClipboardPasteFile}
+                  onDragEnter={handleDragFileEnter}
+                  onDragLeave={handleDragFileLeave}
+                  onDragOver={handleDragFileOver}
+                  onDrop={handleDropFile}
+                  onFocus={handleFocus}
+                  onBlur={handleBlur}
+                />
               </div>
-              <Textarea
-                ref={ref => textareaRef.current = ref as any}
-                className={cn(
-                  'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-tertiary outline-none',
-                )}
-                placeholder={t('common.chat.inputPlaceholder') || ''}
-                autoFocus
-                minRows={1}
-                onResize={handleTextareaResize}
-                value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  setTimeout(handleTextareaResize, 0)
-                }}
-                onKeyDown={handleKeyDown}
-                onCompositionStart={handleCompositionStart}
-                onCompositionEnd={handleCompositionEnd}
-                onPaste={handleClipboardPasteFile}
-                onDragEnter={handleDragFileEnter}
-                onDragLeave={handleDragFileLeave}
-                onDragOver={handleDragFileOver}
-                onDrop={handleDropFile}
-              />
+              {
+                !isMultipleLine && !isMobile && operation
+              }
             </div>
             {
-              !isMultipleLine && !isMobile && operation
+              showVoiceInput && (
+                <VoiceInput
+                  onCancel={() => setShowVoiceInput(false)}
+                  onConverted={text => setQuery(text)}
+                />
+              )
             }
           </div>
           {
-            showVoiceInput && (
-              <VoiceInput
-                onCancel={() => setShowVoiceInput(false)}
-                onConverted={text => setQuery(text)}
-              />
+            (isMultipleLine || isMobile) && (
+              <div className='px-[9px]'>{operation}</div>
             )
           }
         </div>
-        {
-          (isMultipleLine || isMobile) && (
-            <div className='px-[9px]'>{operation}</div>
-          )
-        }
       </div>
       {showFeatureBar && <FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={onFeatureBarClick} />}
     </>

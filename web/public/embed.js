@@ -51,8 +51,8 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    top: 0;
-    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
     height: 100%;
     border: none;
@@ -62,6 +62,7 @@
     transition-property: width, height;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms;
+    transform-origin: right bottom;
   `
 
   // Main function to embed the chatbot
@@ -187,9 +188,10 @@
         targetButton.style.display = 'none'
       } else {
         targetIframe.style.cssText = originalIframeStyleText
-        targetButton.style.display = 'bkock'
+        targetButton.style.display = 'block'
+        resetIframePosition()
       }
-      resetIframePosition()
+
     }
 
     window.addEventListener('message', (event) => {
@@ -212,11 +214,13 @@
       } else if (event.data.type === 'dify-chatbot-expand-change') {
         toggleExpand()
       } else if (event.data.type === 'dify-chatbot-iframe-close') {
-        const targetIframe = document.getElementById(iframeId)
         if (targetIframe) {
-          targetIframe.style.display = 'none'
           setSvgIcon('open')
-          isExpanded = false
+          if(isExpanded) {
+            toggleExpand()
+          }
+          const targetIframe = document.getElementById(iframeId)
+          targetIframe.style.display = 'none'
         }
       }
     })
@@ -249,22 +253,59 @@
       // Add styles for the button
       const styleSheet = document.createElement('style')
       document.head.appendChild(styleSheet)
-      styleSheet.sheet.insertRule(`
+      styleSheet.textContent = `
         #${containerDiv.id} {
           position: fixed;
           bottom: var(--${containerDiv.id}-bottom, 1rem);
           right: var(--${containerDiv.id}-right, 1rem);
           left: var(--${containerDiv.id}-left, unset);
           top: var(--${containerDiv.id}-top, unset);
-          width: var(--${containerDiv.id}-width, 48px);
-          height: var(--${containerDiv.id}-height, 48px);
+          width: var(--${containerDiv.id}-width, 40px);
+          height: var(--${containerDiv.id}-height, 40px);
           border-radius: var(--${containerDiv.id}-border-radius, 25px);
-          background-color: var(--${containerDiv.id}-bg-color, #155EEF);
           box-shadow: var(--${containerDiv.id}-box-shadow, rgba(0, 0, 0, 0.2) 0px 4px 8px 0px);
           cursor: pointer;
           z-index: 2147483647;
+          background: linear-gradient(90deg, #eb8698, #1366ec, #eb8698);
+          background-size: 200% 100%;
+          animation: chat-bg-flow 8s ease infinite;
         }
-      `)
+        
+         @keyframes chat-bubble-float {
+            0%, 100% { 
+              transform: translateY(0) rotateY(0);
+              opacity: 1;
+            }
+            5% { transform: translateY(0) rotateY(0); }
+            20% { transform: translateY(0) rotateY(90deg); }
+            25% { transform: translateY(0) rotateY(0); }
+            40% { 
+              transform: translateY(-5px) scale(1.2) rotateY(0); 
+              opacity: 0.9;
+            }
+            50% { transform: translateY(0) rotateY(0); }
+            100% { transform: translateY(0) rotateY(0); }
+        }
+        
+        #openIcon {
+          display: inline-block;
+          animation: chat-bubble-float 4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+          transform-style: preserve-3d;
+          perspective: 1000px;
+        }
+        
+        @keyframes chat-bg-flow {
+          0% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+          100% {
+            background-position: 0% 50%;
+          }
+        }
+      `
 
       // Create display div for the button icon
       const displayDiv = document.createElement('div')

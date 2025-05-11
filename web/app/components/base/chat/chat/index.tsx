@@ -138,11 +138,11 @@ const Chat: FC<ChatProps> = ({
     if (chatContainerRef.current)
       setWidth(document.body.clientWidth - (chatContainerRef.current?.clientWidth + 16) - 8)
 
-    if (chatContainerRef.current && chatFooterRef.current)
-      chatFooterRef.current.style.width = `${chatContainerRef.current.clientWidth}px`
+    // if (chatContainerRef.current && chatFooterRef.current)
+    //   chatFooterRef.current.style.width = `${chatContainerRef.current.clientWidth}px`
 
-    if (chatContainerInnerRef.current && chatFooterInnerRef.current)
-      chatFooterInnerRef.current.style.width = `${chatContainerInnerRef.current.clientWidth}px`
+    // if (chatContainerInnerRef.current && chatFooterInnerRef.current)
+    //   chatFooterInnerRef.current.style.width = `${chatContainerInnerRef.current.clientWidth}px`
   }, [])
 
   useEffect(() => {
@@ -170,7 +170,7 @@ const Chat: FC<ChatProps> = ({
       const resizeContainerObserver = new ResizeObserver((entries) => {
         for (const entry of entries) {
           const { blockSize } = entry.borderBoxSize[0]
-          chatContainerRef.current!.style.paddingBottom = `${blockSize}px`
+          chatContainerRef.current!.style.marginBottom = `${blockSize}px`
           handleScrollToBottom()
         }
       })
@@ -227,10 +227,10 @@ const Chat: FC<ChatProps> = ({
       onAnnotationRemoved={onAnnotationRemoved}
       onFeedback={onFeedback}
     >
-      <div className='relative h-full'>
+      <div className='relative flex h-full flex-col'>
         <div
           ref={chatContainerRef}
-          className={cn('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
+          className={cn('relative h-full flex-1 overflow-y-auto overflow-x-hidden', chatContainerClassName)}
         >
           {chatNode}
           <div
@@ -274,12 +274,12 @@ const Chat: FC<ChatProps> = ({
           </div>
         </div>
         <div
-          className={`absolute bottom-0 flex justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
+          className={`absolute bottom-0 flex w-full justify-center bg-chat-input-mask ${(hasTryToAsk || !noChatInput || !noStopResponding) && chatFooterClassName}`}
           ref={chatFooterRef}
         >
           <div
             ref={chatFooterInnerRef}
-            className={cn('relative', chatFooterInnerClassName)}
+            className={cn('relative w-full', chatFooterInnerClassName)}
           >
             {
               !noStopResponding && isResponding && (

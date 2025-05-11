@@ -155,7 +155,7 @@ export default combine(
       'sonarjs/regex-complexity': 'warn',
       // maintainability
       'sonarjs/no-ignored-exceptions': 'off',
-      'sonarjs/no-commented-code': 'warn',
+      'sonarjs/no-commented-code': 'off',
       'sonarjs/no-unused-vars': 'warn',
       'sonarjs/prefer-single-boolean-return': 'warn',
       'sonarjs/duplicates-in-character-class': 'off',

@@ -110,9 +110,9 @@ const Header: FC<IHeaderProps> = ({
           {currentConversationId && inputsForms.length > 0 && (
             <ViewFormDropdown />
           )}
-          {currentConversationId && isIframe && (
+          {isIframe && (
             <Tooltip
-              popupContent={t('关闭')}
+              popupContent={t('common.operation.close')}
             >
               <ActionButton size='l' onClick={handleCloseIframe}>
                 <RiCloseLine className='h-[18px] w-[18px]' />
@@ -165,6 +165,15 @@ const Header: FC<IHeaderProps> = ({
         )}
         {currentConversationId && inputsForms.length > 0 && (
           <ViewFormDropdown iconColor={theme?.colorPathOnHeader} />
+        )}
+        {isIframe && (
+          <Tooltip
+            popupContent={t('common.operation.close')}
+          >
+            <ActionButton size='l' onClick={handleCloseIframe}>
+              <RiCloseLine className='h-[18px] w-[18px]' />
+            </ActionButton>
+          </Tooltip>
         )}
       </div>
     </div>
