@@ -5,6 +5,7 @@ from flask import request
 from flask_login import current_user
 from flask_restful import Resource, marshal, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
+from sqlalchemy import select
 
 import services
 from controllers.console import api
@@ -76,7 +77,7 @@ class DatasetDocumentSegmentListApi(Resource):
         keyword = args["keyword"]
 
         query = (
-            db.session.query(DocumentSegment)
+            select(DocumentSegment)
             .filter(
                 DocumentSegment.document_id == str(document_id),
                 DocumentSegment.tenant_id == current_user.current_tenant_id,
@@ -99,7 +100,7 @@ class DatasetDocumentSegmentListApi(Resource):
             elif args["enabled"].lower() == "false":
                 query = query.filter(DocumentSegment.enabled == False)
 
-        segments = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+        segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
         response = {
             "data": marshal(segments.items, segment_fields),

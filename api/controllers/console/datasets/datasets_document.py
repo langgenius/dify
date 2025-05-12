@@ -6,7 +6,7 @@ from typing import cast
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal, marshal_with, reqparse
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -112,7 +112,7 @@ class GetProcessRuleApi(Resource):
         limits = DocumentService.DEFAULT_RULES["limits"]
         if document_id:
             # get the latest process rule
-            document = db.session.query(Document).get_or_404(document_id)
+            document = db.get_or_404(Document, document_id)
 
             dataset = DatasetService.get_dataset(document.dataset_id)
 
@@ -175,9 +175,7 @@ class DatasetDocumentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        query = db.session.query(Document).filter_by(
-            dataset_id=str(dataset_id), tenant_id=current_user.current_tenant_id
-        )
+        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=current_user.current_tenant_id)
 
         if search:
             search = f"%{search}%"
@@ -211,7 +209,7 @@ class DatasetDocumentListApi(Resource):
                 desc(Document.position),
             )
 
-        paginated_documents = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
         if fetch:
             for document in documents:

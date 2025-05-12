@@ -131,7 +131,7 @@ class DatasetService:
             else:
                 return [], 0
 
-        datasets = query.paginate(page=page, per_page=per_page, max_per_page=100, error_out=False)
+        datasets = db.paginate(select=query, page=page, per_page=per_page, max_per_page=100, error_out=False)
 
         return datasets.items, datasets.total
 
@@ -2228,7 +2228,7 @@ class SegmentService:
             query = query.filter(DocumentSegment.content.ilike(f"%{keyword}%"))
 
         query = query.order_by(DocumentSegment.position.asc())
-        paginated_segments = db.paginate(query=query, page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
         return paginated_segments.items, paginated_segments.total
 

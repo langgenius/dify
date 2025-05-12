@@ -7,6 +7,7 @@ from typing import Optional
 import click
 from flask import current_app
 from werkzeug.exceptions import NotFound
+from sqlalchemy import select
 
 from configs import dify_config
 from constants.languages import languages
@@ -297,12 +298,11 @@ def migrate_knowledge_vector_database():
     page = 1
     while True:
         try:
-            datasets = (
-                db.session.query(Dataset)
-                .filter(Dataset.indexing_technique == "high_quality")
-                .order_by(Dataset.created_at.desc())
-                .paginate(page=page, per_page=50)
+            stmt = (
+                select(Dataset).filter(Dataset.indexing_technique == "high_quality").order_by(Dataset.created_at.desc())
             )
+
+            datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
         except NotFound:
             break
 

@@ -2,7 +2,7 @@ import datetime
 import time
 
 import click
-from sqlalchemy import func
+from sqlalchemy import func, select
 from werkzeug.exceptions import NotFound
 
 import app
@@ -51,8 +51,8 @@ def clean_unused_datasets_task():
             )
 
             # Main query with join and filter
-            datasets = (
-                db.session.query(Dataset)
+            stmt = (
+                select(Dataset)
                 .outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
                 .outerjoin(document_subquery_old, Dataset.id == document_subquery_old.c.dataset_id)
                 .filter(
@@ -61,8 +61,9 @@ def clean_unused_datasets_task():
                     func.coalesce(document_subquery_old.c.document_count, 0) > 0,
                 )
                 .order_by(Dataset.created_at.desc())
-                .paginate(page=1, per_page=50)
             )
+
+            datasets = db.paginate(stmt, page=1, per_page=50)
 
         except NotFound:
             break
@@ -136,8 +137,8 @@ def clean_unused_datasets_task():
             )
 
             # Main query with join and filter
-            datasets = (
-                db.session.query(Dataset)
+            stmt = (
+                select(Dataset)
                 .outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
                 .outerjoin(document_subquery_old, Dataset.id == document_subquery_old.c.dataset_id)
                 .filter(
@@ -146,8 +147,8 @@ def clean_unused_datasets_task():
                     func.coalesce(document_subquery_old.c.document_count, 0) > 0,
                 )
                 .order_by(Dataset.created_at.desc())
-                .paginate(page=1, per_page=50)
             )
+            datasets = db.paginate(stmt, page=1, per_page=50)
 
         except NotFound:
             break
