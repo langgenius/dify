@@ -91,5 +91,5 @@ class RedisConfig(BaseSettings):
 
     REDIS_ENABLE_CLIENT_SIDE_CACHE: bool = Field(
         description="Enable client side cache in redis",
-        default=True,
+        default=False,
     )
