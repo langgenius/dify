@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from core.model_manager import ModelInstance, ModelManager
@@ -12,6 +13,8 @@ from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegm
 from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
+_logger = logging.getLogger(__name__)
+
 
 class VectorService:
     @classmethod
@@ -24,6 +27,11 @@ class VectorService:
             if doc_form == IndexType.PARENT_CHILD_INDEX:
                 document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
                 if not document:
+                    _logger.warning(
+                        "Expected DatasetDocument record to exist, but none was found, document_id=%s, segment_id=%s",
+                        segment.document_id,
+                        segment.id,
+                    )
                     continue
                 # get the process rule
                 processing_rule = (

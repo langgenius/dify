@@ -1,4 +1,5 @@
 import datetime
+import logging
 import time
 
 import click
@@ -19,6 +20,8 @@ from models.model import (
 )
 from models.web import SavedMessage
 from services.feature_service import FeatureService
+
+_logger = logging.getLogger(__name__)
 
 
 @app.celery.task(queue="dataset")
@@ -48,6 +51,11 @@ def clean_messages():
             plan_sandbox_clean_message_day = message.created_at
             app = db.session.query(App).filter_by(id=message.app_id).first()
             if not app:
+                _logger.warning(
+                    "Expected App record to exist, but none was found, app_id=%s, message_id=%s",
+                    message.app_id,
+                    message.id,
+                )
                 continue
             features_cache_key = f"features:{app.tenant_id}"
             plan_cache = redis_client.get(features_cache_key)
