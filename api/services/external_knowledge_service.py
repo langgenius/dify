@@ -5,6 +5,7 @@ from typing import Any, Optional, Union, cast
 from urllib.parse import urlparse
 
 import httpx
+from sqlalchemy import select
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
@@ -26,14 +27,16 @@ class ExternalDatasetService:
     @staticmethod
     def get_external_knowledge_apis(page, per_page, tenant_id, search=None) -> tuple[list[ExternalKnowledgeApis], int]:
         query = (
-            db.session.query(ExternalKnowledgeApis)
+            select(ExternalKnowledgeApis)
             .filter(ExternalKnowledgeApis.tenant_id == tenant_id)
             .order_by(ExternalKnowledgeApis.created_at.desc())
         )
         if search:
             query = query.filter(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
 
-        external_knowledge_apis = query.paginate(page=page, per_page=per_page, max_per_page=100, error_out=False)
+        external_knowledge_apis = db.paginate(
+            select=query, page=page, per_page=per_page, max_per_page=100, error_out=False
+        )
 
         return external_knowledge_apis.items, external_knowledge_apis.total
 
