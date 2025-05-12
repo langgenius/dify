@@ -90,6 +90,6 @@ class RedisConfig(BaseSettings):
     )
 
     REDIS_ENABLE_CLIENT_SIDE_CACHE: bool = Field(
-        description="Enable client side cache in redis",
-        default=True,
+        description="Enable client side cache in redis. Note: Currently not compatible with hiredis parser.",
+        default=False,
     )

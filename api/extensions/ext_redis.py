@@ -53,7 +53,14 @@ def init_app(app: DifyApp):
     if dify_config.REDIS_USE_SSL:
         connection_class = SSLConnection
     resp_protocol = dify_config.REDIS_SERIALIZATION_PROTOCOL
-    if dify_config.REDIS_ENABLE_CLIENT_SIDE_CACHE:
+
+    # Check if hiredis is available
+    import importlib
+
+    hiredis_available = importlib.util.find_spec("hiredis") is not None
+
+    # Disable client-side caching if hiredis is available due to compatibility issues
+    if dify_config.REDIS_ENABLE_CLIENT_SIDE_CACHE and not hiredis_available:
         if resp_protocol >= 3:
             clientside_cache_config = CacheConfig()
         else:
