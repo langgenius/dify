@@ -5,6 +5,7 @@ from flask_restful import marshal, reqparse
 from sqlalchemy import desc, select
 from werkzeug.exceptions import NotFound
 
+import services
 from controllers.common.errors import FilenameNotExistsError
 from controllers.service_api import api
 from controllers.service_api.app.error import (
@@ -24,7 +25,6 @@ from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
-import services
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from services.file_service import FileService

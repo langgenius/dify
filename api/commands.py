@@ -6,8 +6,8 @@ from typing import Optional
 
 import click
 from flask import current_app
-from werkzeug.exceptions import NotFound
 from sqlalchemy import select
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from constants.languages import languages
