@@ -89,7 +89,7 @@ tiktoken = "^0.9.0"
 tokenizers = "~0.15.0"
 transformers = "~4.39.0"
 unstructured = { version = "~0.16.1", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
-validators = "0.21.0"
+validators = "0.22.0"
 volcengine-python-sdk = {extras = ["ark"], version = "~1.0.98"}
 websocket-client = "~1.7.0"
 xinference-client = "0.15.2"
@@ -112,7 +112,7 @@ safetensors = "~0.4.3"
 # [ Tools ] dependency group
 ############################################################
 [tool.poetry.group.tools.dependencies]
-arxiv = "2.1.0"
+arxiv = "2.2.0"
 cloudscraper = "1.2.71"
 duckduckgo-search = "~6.3.0"
 jsonpath-ng = "1.6.1"
@@ -166,7 +166,7 @@ tcvectordb = "1.3.2"
 tidb-vector = "0.0.9"
 upstash-vector = "0.6.0"
 volcengine-compat = "~1.0.156"
-weaviate-client = "~3.21.0"
+weaviate-client = "~3.26.0"
 
 ############################################################
 # [ Dev ] dependency group
