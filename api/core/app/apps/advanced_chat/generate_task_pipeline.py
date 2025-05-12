@@ -116,7 +116,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         self._workflow_cycle_manager = WorkflowCycleManager(
             application_generate_entity=application_generate_entity,
             workflow_system_variables={
-                SystemVariableKey.QUERY: message.query,
+                SystemVariableKey.QUERY: db.session.query(Message),
                 SystemVariableKey.FILES: application_generate_entity.files,
                 SystemVariableKey.CONVERSATION_ID: conversation.id,
                 SystemVariableKey.USER_ID: user_session_id,
