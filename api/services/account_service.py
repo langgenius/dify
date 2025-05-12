@@ -300,9 +300,9 @@ class AccountService:
         """Link account integrate"""
         try:
             # Query whether there is an existing binding record for the same provider
-            account_integrate: Optional[AccountIntegrate] = AccountIntegrate.query.filter_by(
-                account_id=account.id, provider=provider
-            ).first()
+            account_integrate: Optional[AccountIntegrate] = (
+                db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider=provider).first()
+            )
 
             if account_integrate:
                 # If it exists, update the record
@@ -851,7 +851,7 @@ class TenantService:
 
     @staticmethod
     def get_custom_config(tenant_id: str) -> dict:
-        tenant = Tenant.query.filter(Tenant.id == tenant_id).one_or_404()
+        tenant = db.get_or_404(Tenant, tenant_id)
 
         return cast(dict, tenant.custom_config_dict)
 

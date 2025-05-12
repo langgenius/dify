@@ -45,7 +45,7 @@ def mail_clean_document_notify_task():
             if plan != "sandbox":
                 knowledge_details = []
                 # check tenant
-                tenant = Tenant.query.filter(Tenant.id == tenant_id).first()
+                tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).first()
                 if not tenant:
                     continue
                 # check current owner

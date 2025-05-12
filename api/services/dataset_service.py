@@ -1087,14 +1087,18 @@ class DocumentService:
                             exist_document[data_source_info["notion_page_id"]] = document.id
                     for notion_info in notion_info_list:
                         workspace_id = notion_info.workspace_id
-                        data_source_binding = DataSourceOauthBinding.query.filter(
-                            db.and_(
-                                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                                DataSourceOauthBinding.provider == "notion",
-                                DataSourceOauthBinding.disabled == False,
-                                DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                        data_source_binding = (
+                            db.session.query(DataSourceOauthBinding)
+                            .filter(
+                                db.and_(
+                                    DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                                    DataSourceOauthBinding.provider == "notion",
+                                    DataSourceOauthBinding.disabled == False,
+                                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                                )
                             )
-                        ).first()
+                            .first()
+                        )
                         if not data_source_binding:
                             raise ValueError("Data source binding not found.")
                         for page in notion_info.pages:
@@ -1302,14 +1306,18 @@ class DocumentService:
                 notion_info_list = document_data.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
                     workspace_id = notion_info.workspace_id
-                    data_source_binding = DataSourceOauthBinding.query.filter(
-                        db.and_(
-                            DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                            DataSourceOauthBinding.provider == "notion",
-                            DataSourceOauthBinding.disabled == False,
-                            DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                    data_source_binding = (
+                        db.session.query(DataSourceOauthBinding)
+                        .filter(
+                            db.and_(
+                                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                                DataSourceOauthBinding.provider == "notion",
+                                DataSourceOauthBinding.disabled == False,
+                                DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                            )
                         )
-                    ).first()
+                        .first()
+                    )
                     if not data_source_binding:
                         raise ValueError("Data source binding not found.")
                     for page in notion_info.pages:
