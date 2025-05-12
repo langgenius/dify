@@ -19,6 +19,7 @@ def test_dify_config(monkeypatch):
     monkeypatch.setenv("DB_HOST", "localhost")
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("HTTP_REQUEST_MAX_READ_TIMEOUT", "600")
 
     # load dotenv file with pydantic-settings
     config = DifyConfig()
@@ -56,6 +57,8 @@ def test_flask_configs(monkeypatch):
     monkeypatch.setenv("DB_HOST", "localhost")
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("WEB_API_CORS_ALLOW_ORIGINS", "http://127.0.0.1:3000,*")
+    monkeypatch.setenv("CODE_EXECUTION_ENDPOINT", "http://127.0.0.1:8194/")
 
     flask_app.config.from_mapping(DifyConfig().model_dump())  # pyright: ignore
     config = flask_app.config
@@ -101,6 +104,7 @@ def test_inner_api_config_exist(monkeypatch):
     monkeypatch.setenv("DB_HOST", "localhost")
     monkeypatch.setenv("DB_PORT", "5432")
     monkeypatch.setenv("DB_DATABASE", "dify")
+    monkeypatch.setenv("INNER_API_KEY", "test-inner-api-key")
 
     config = DifyConfig()
     assert config.INNER_API is False
