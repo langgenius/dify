@@ -46,7 +46,9 @@ def clean_messages():
             break
         for message in messages:
             plan_sandbox_clean_message_day = message.created_at
-            app = App.query.filter_by(id=message.app_id).first()
+            app = db.session.query(App).filter_by(id=message.app_id).first()
+            if not app:
+                continue
             features_cache_key = f"features:{app.tenant_id}"
             plan_cache = redis_client.get(features_cache_key)
             if plan_cache is None:

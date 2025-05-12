@@ -552,11 +552,12 @@ def old_metadata_migration():
     page = 1
     while True:
         try:
-            documents = (
-                DatasetDocument.query.filter(DatasetDocument.doc_metadata is not None)
+            stmt = (
+                select(DatasetDocument)
+                .filter(DatasetDocument.doc_metadata.is_not(None))
                 .order_by(DatasetDocument.created_at.desc())
-                .paginate(page=page, per_page=50)
             )
+            documents = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
         except NotFound:
             break
         if not documents:

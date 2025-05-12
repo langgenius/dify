@@ -42,9 +42,13 @@ class DatasetIndexToolCallbackHandler:
         """Handle tool end."""
         for document in documents:
             if document.metadata is not None:
-                dataset_document = DatasetDocument.query.filter(
-                    DatasetDocument.id == document.metadata["document_id"]
-                ).first()
+                dataset_document = (
+                    db.session.query(DatasetDocument)
+                    .filter(DatasetDocument.id == document.metadata["document_id"])
+                    .first()
+                )
+                if not dataset_document:
+                    continue
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     child_chunk = (
                         db.session.query(ChildChunk)

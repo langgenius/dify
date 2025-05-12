@@ -238,11 +238,15 @@ class DatasetRetrieval:
                     for record in records:
                         segment = record.segment
                         dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                        document = DatasetDocument.query.filter(
-                            DatasetDocument.id == segment.document_id,
-                            DatasetDocument.enabled == True,
-                            DatasetDocument.archived == False,
-                        ).first()
+                        document = (
+                            db.session.query(DatasetDocument)
+                            .filter(
+                                DatasetDocument.id == segment.document_id,
+                                DatasetDocument.enabled == True,
+                                DatasetDocument.archived == False,
+                            )
+                            .first()
+                        )
                         if dataset and document:
                             source = {
                                 "dataset_id": dataset.id,
@@ -506,9 +510,11 @@ class DatasetRetrieval:
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:
             if document.metadata is not None:
-                dataset_document = DatasetDocument.query.filter(
-                    DatasetDocument.id == document.metadata["document_id"]
-                ).first()
+                dataset_document = (
+                    db.session.query(DatasetDocument)
+                    .filter(DatasetDocument.id == document.metadata["document_id"])
+                    .first()
+                )
                 if dataset_document:
                     if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                         child_chunk = (

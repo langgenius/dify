@@ -54,7 +54,7 @@ def mail_clean_document_notify_task():
                 )
                 if not current_owner_join:
                     continue
-                account = Account.query.filter(Account.id == current_owner_join.account_id).first()
+                account = db.session.query(Account).filter(Account.id == current_owner_join.account_id).first()
                 if not account:
                     continue
 

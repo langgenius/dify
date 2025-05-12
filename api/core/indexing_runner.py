@@ -660,10 +660,10 @@ class IndexingRunner:
         """
         Update the document indexing status.
         """
-        count = DatasetDocument.query.filter_by(id=document_id, is_paused=True).count()
+        count = db.session.query(DatasetDocument).filter_by(id=document_id, is_paused=True).count()
         if count > 0:
             raise DocumentIsPausedError()
-        document = DatasetDocument.query.filter_by(id=document_id).first()
+        document = db.session.query(DatasetDocument).filter_by(id=document_id).first()
         if not document:
             raise DocumentIsDeletedPausedError()
 
@@ -672,7 +672,7 @@ class IndexingRunner:
         if extra_update_params:
             update_params.update(extra_update_params)
 
-        DatasetDocument.query.filter_by(id=document_id).update(update_params)
+        db.session.query(DatasetDocument).filter_by(id=document_id).update(update_params)
         db.session.commit()
 
     @staticmethod
