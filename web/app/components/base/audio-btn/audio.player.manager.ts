@@ -1,6 +1,6 @@
 import AudioPlayer from '@/app/components/base/audio-btn/audio'
 declare global {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+  // eslint-disable-next-line ts/consistent-type-definitions
   interface AudioPlayerManager {
     instance: AudioPlayerManager
   }
@@ -12,9 +12,6 @@ export class AudioPlayerManager {
   private audioPlayers: AudioPlayer | null = null
   private msgId: string | undefined
 
-  private constructor() {
-  }
-
   public static getInstance(): AudioPlayerManager {
     if (!AudioPlayerManager.instance) {
       AudioPlayerManager.instance = new AudioPlayerManager()
@@ -24,7 +21,7 @@ export class AudioPlayerManager {
     return AudioPlayerManager.instance
   }
 
-  public getAudioPlayer(url: string, isPublic: boolean, id: string | undefined, msgContent: string | null | undefined, voice: string | undefined, callback: ((event: string) => {}) | null): AudioPlayer {
+  public getAudioPlayer(url: string, isPublic: boolean, id: string | undefined, msgContent: string | null | undefined, voice: string | undefined, callback: ((event: string) => void) | null): AudioPlayer {
     if (this.msgId && this.msgId === id && this.audioPlayers) {
       this.audioPlayers.setCallback(callback)
       return this.audioPlayers
@@ -36,7 +33,7 @@ export class AudioPlayerManager {
           this.audioPlayers.cacheBuffers = []
           this.audioPlayers.sourceBuffer?.abort()
         }
-        catch (e) {
+        catch {
         }
       }
 

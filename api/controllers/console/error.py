@@ -101,3 +101,21 @@ class AccountInFreezeError(BaseHTTPException):
         "This email account has been deleted within the past 30 days"
         "and is temporarily unavailable for new account registration."
     )
+
+
+class EducationVerifyLimitError(BaseHTTPException):
+    error_code = "education_verify_limit"
+    description = "Rate limit exceeded"
+    code = 429
+
+
+class EducationActivateLimitError(BaseHTTPException):
+    error_code = "education_activate_limit"
+    description = "Rate limit exceeded"
+    code = 429
+
+
+class CompilanceRateLimitError(BaseHTTPException):
+    error_code = "compilance_rate_limit"
+    description = "Rate limit exceeded for downloading compliance report."
+    code = 429

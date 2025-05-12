@@ -1,16 +1,16 @@
-import type { ReactElement } from 'react'
+import type { ReactNode } from 'react'
 import RadioGroupContext from '../../context'
 import s from '../../style.module.css'
 import cn from '@/utils/classnames'
 
 export type TRadioGroupProps = {
-  children?: ReactElement | ReactElement[]
+  children?: ReactNode | ReactNode[]
   value?: string | number
   className?: string
   onChange?: (value: any) => void
 }
 
-export default function Group({ children, value, onChange, className = '' }: TRadioGroupProps): JSX.Element {
+export default function Group({ children, value, onChange, className = '' }: TRadioGroupProps): React.JSX.Element {
   const onRadioChange = (value: any) => {
     onChange?.(value)
   }

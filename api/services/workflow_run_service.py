@@ -1,12 +1,15 @@
+import threading
 from typing import Optional
 
+import contexts
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.repository.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import App
 from models.workflow import (
     WorkflowNodeExecution,
-    WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
 )
 
@@ -119,20 +122,19 @@ class WorkflowRunService:
         """
         workflow_run = self.get_workflow_run(app_model, run_id)
 
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+
         if not workflow_run:
             return []
 
-        node_executions = (
-            db.session.query(WorkflowNodeExecution)
-            .filter(
-                WorkflowNodeExecution.tenant_id == app_model.tenant_id,
-                WorkflowNodeExecution.app_id == app_model.id,
-                WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
-                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-                WorkflowNodeExecution.workflow_run_id == run_id,
-            )
-            .order_by(WorkflowNodeExecution.index.desc())
-            .all()
+        # Use the repository to get the node executions
+        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=db.engine, tenant_id=app_model.tenant_id, app_id=app_model.id
         )
 
-        return node_executions
+        # Use the repository to get the node executions with ordering
+        order_config = OrderConfig(order_by=["index"], order_direction="desc")
+        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id, order_config=order_config)
+
+        return list(node_executions)

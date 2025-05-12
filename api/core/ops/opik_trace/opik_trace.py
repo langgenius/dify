@@ -7,6 +7,7 @@ from typing import Optional, cast
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import OpikConfig
@@ -21,9 +22,9 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
-from models.workflow import WorkflowNodeExecution
 
 logger = logging.getLogger(__name__)
 
@@ -147,36 +148,18 @@ class OpikDataTrace(BaseTraceInstance):
             }
             self.add_trace(trace_data)
 
-        # through workflow_run_id get all_nodes_execution
-        workflow_nodes_execution_id_records = (
-            db.session.query(WorkflowNodeExecution.id)
-            .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
-            .all()
+        # through workflow_run_id get all_nodes_execution using repository
+        session_factory = sessionmaker(bind=db.engine)
+        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory, tenant_id=trace_info.tenant_id, app_id=trace_info.metadata.get("app_id")
         )
 
-        for node_execution_id_record in workflow_nodes_execution_id_records:
-            node_execution = (
-                db.session.query(
-                    WorkflowNodeExecution.id,
-                    WorkflowNodeExecution.tenant_id,
-                    WorkflowNodeExecution.app_id,
-                    WorkflowNodeExecution.title,
-                    WorkflowNodeExecution.node_type,
-                    WorkflowNodeExecution.status,
-                    WorkflowNodeExecution.inputs,
-                    WorkflowNodeExecution.outputs,
-                    WorkflowNodeExecution.created_at,
-                    WorkflowNodeExecution.elapsed_time,
-                    WorkflowNodeExecution.process_data,
-                    WorkflowNodeExecution.execution_metadata,
-                )
-                .filter(WorkflowNodeExecution.id == node_execution_id_record.id)
-                .first()
-            )
+        # Get all executions for this workflow run
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
+            workflow_run_id=trace_info.workflow_run_id
+        )
 
-            if not node_execution:
-                continue
-
+        for node_execution in workflow_node_executions:
             node_execution_id = node_execution.id
             tenant_id = node_execution.tenant_id
             app_id = node_execution.app_id

@@ -1,8 +1,8 @@
 from typing import cast
 
-import flask_login  # type: ignore
+import flask_login
 from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 
 import services
 from configs import dify_config
@@ -22,7 +22,7 @@ from controllers.console.error import (
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
 )
-from controllers.console.wraps import setup_required
+from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
@@ -38,6 +38,7 @@ class LoginApi(Resource):
     """Resource for user login."""
 
     @setup_required
+    @email_password_login_enabled
     def post(self):
         """Authenticate user and login."""
         parser = reqparse.RequestParser()
@@ -110,6 +111,7 @@ class LogoutApi(Resource):
 
 class ResetPasswordSendEmailApi(Resource):
     @setup_required
+    @email_password_login_enabled
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")

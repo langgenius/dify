@@ -347,14 +347,18 @@ class NotionExtractor(BaseExtractor):
 
     @classmethod
     def _get_access_token(cls, tenant_id: str, notion_workspace_id: str) -> str:
-        data_source_binding = DataSourceOauthBinding.query.filter(
-            db.and_(
-                DataSourceOauthBinding.tenant_id == tenant_id,
-                DataSourceOauthBinding.provider == "notion",
-                DataSourceOauthBinding.disabled == False,
-                DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
+        data_source_binding = (
+            db.session.query(DataSourceOauthBinding)
+            .filter(
+                db.and_(
+                    DataSourceOauthBinding.tenant_id == tenant_id,
+                    DataSourceOauthBinding.provider == "notion",
+                    DataSourceOauthBinding.disabled == False,
+                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{notion_workspace_id}"',
+                )
             )
-        ).first()
+            .first()
+        )
 
         if not data_source_binding:
             raise Exception(

@@ -1,3 +1,4 @@
+import base64
 import json
 from collections.abc import Mapping
 from copy import deepcopy
@@ -10,6 +11,7 @@ import httpx
 from configs import dify_config
 from core.file import file_manager
 from core.helper import ssrf_proxy
+from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.entities.variable_pool import VariablePool
 
 from .entities import (
@@ -57,7 +59,7 @@ class Executor:
     params: list[tuple[str, str]] | None
     content: str | bytes | None
     data: Mapping[str, Any] | None
-    files: Mapping[str, tuple[str | None, bytes, str]] | None
+    files: list[tuple[str, tuple[str | None, bytes, str]]] | None
     json: Any
     headers: dict[str, str]
     auth: HttpRequestNodeAuthorization
@@ -86,6 +88,7 @@ class Executor:
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
+        self.ssl_verify = node_data.ssl_verify
         self.params = []
         self.headers = {}
         self.content = None
@@ -207,17 +210,38 @@ class Executor:
                         self.variable_pool.convert_template(item.key).text: item.file
                         for item in filter(lambda item: item.type == "file", data)
                     }
-                    files: dict[str, Any] = {}
-                    files = {k: self.variable_pool.get_file(selector) for k, selector in file_selectors.items()}
-                    files = {k: v for k, v in files.items() if v is not None}
-                    files = {k: variable.value for k, variable in files.items() if variable is not None}
-                    files = {
-                        k: (v.filename, file_manager.download(v), v.mime_type or "application/octet-stream")
-                        for k, v in files.items()
-                        if v.related_id is not None
-                    }
+
+                    # get files from file_selectors, add support for array file variables
+                    files_list = []
+                    for key, selector in file_selectors.items():
+                        segment = self.variable_pool.get(selector)
+                        if isinstance(segment, FileSegment):
+                            files_list.append((key, [segment.value]))
+                        elif isinstance(segment, ArrayFileSegment):
+                            files_list.append((key, list(segment.value)))
+
+                    # get files from file_manager
+                    files: dict[str, list[tuple[str | None, bytes, str]]] = {}
+                    for key, files_in_segment in files_list:
+                        for file in files_in_segment:
+                            if file.related_id is not None:
+                                file_tuple = (
+                                    file.filename,
+                                    file_manager.download(file),
+                                    file.mime_type or "application/octet-stream",
+                                )
+                                if key not in files:
+                                    files[key] = []
+                                files[key].append(file_tuple)
+
+                    # convert files to list for httpx request
+                    if files:
+                        self.files = []
+                        for key, file_tuples in files.items():
+                            for file_tuple in file_tuples:
+                                self.files.append((key, file_tuple))
+
                     self.data = form_data
-                    self.files = files or None
 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.auth)
@@ -237,7 +261,12 @@ class Executor:
             if self.auth.config.type == "bearer":
                 headers[authorization.config.header] = f"Bearer {authorization.config.api_key}"
             elif self.auth.config.type == "basic":
-                headers[authorization.config.header] = f"Basic {authorization.config.api_key}"
+                credentials = authorization.config.api_key
+                if ":" in credentials:
+                    encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+                else:
+                    encoded_credentials = credentials
+                headers[authorization.config.header] = f"Basic {encoded_credentials}"
             elif self.auth.config.type == "custom":
                 headers[authorization.config.header] = authorization.config.api_key or ""
 
@@ -291,6 +320,7 @@ class Executor:
             "headers": headers,
             "params": self.params,
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
+            "ssl_verify": self.ssl_verify,
             "follow_redirects": True,
             "max_retries": self.max_retries,
         }
@@ -344,10 +374,16 @@ class Executor:
 
         body_string = ""
         if self.files:
-            for k, v in self.files.items():
+            for key, (filename, content, mime_type) in self.files:
                 body_string += f"--{boundary}\r\n"
-                body_string += f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
-                body_string += f"{v[1]}\r\n"
+                body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
+                # decode content
+                try:
+                    body_string += content.decode("utf-8")
+                except UnicodeDecodeError:
+                    # fix: decode binary content
+                    pass
+                body_string += "\r\n"
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:

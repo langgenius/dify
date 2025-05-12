@@ -27,8 +27,8 @@ const ExploreNav = ({
     )}>
       {
         activated
-          ? <RiPlanetFill className='mr-2 w-4 h-4' />
-          : <RiPlanetLine className='mr-2 w-4 h-4' />
+          ? <RiPlanetFill className='mr-2 h-4 w-4' />
+          : <RiPlanetLine className='mr-2 h-4 w-4' />
       }
       {t('common.menus.explore')}
     </Link>

@@ -24,7 +24,7 @@ from core.app.entities.task_entities import (
     WorkflowTaskState,
 )
 from core.llm_generator.llm_generator import LLMGenerator
-from core.tools.tool_file_manager import ToolFileManager
+from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
@@ -48,7 +48,7 @@ class MessageCycleManage:
     def _generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
         """
         Generate conversation name.
-        :param conversation: conversation
+        :param conversation_id: conversation id
         :param query: query
         :return: thread
         """
@@ -154,7 +154,7 @@ class MessageCycleManage:
             if message_file.url.startswith("http"):
                 url = message_file.url
             else:
-                url = ToolFileManager.sign_file(tool_file_id=tool_file_id, extension=extension)
+                url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
 
             return MessageFileStreamResponse(
                 task_id=self._application_generate_entity.task_id,
@@ -182,10 +182,12 @@ class MessageCycleManage:
             from_variable_selector=from_variable_selector,
         )
 
-    def _message_replace_to_stream_response(self, answer: str) -> MessageReplaceStreamResponse:
+    def _message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:
         """
         Message replace to stream response.
         :param answer: answer
         :return:
         """
-        return MessageReplaceStreamResponse(task_id=self._application_generate_entity.task_id, answer=answer)
+        return MessageReplaceStreamResponse(
+            task_id=self._application_generate_entity.task_id, answer=answer, reason=reason
+        )

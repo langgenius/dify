@@ -26,13 +26,13 @@ const StatusPanel: FC<ResultProps> = ({
     <StatusContainer status={status}>
       <div className='flex'>
         <div className={cn(
-          'flex-[33%] max-w-[120px]',
+          'max-w-[120px] flex-[33%]',
           status === 'partial-succeeded' && 'min-w-[140px]',
         )}>
-          <div className='mb-1 text-text-tertiary system-2xs-medium-uppercase'>{t('runLog.resultPanel.status')}</div>
+          <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.status')}</div>
           <div
             className={cn(
-              'flex items-center gap-1 system-xs-semibold-uppercase',
+              'system-xs-semibold-uppercase flex items-center gap-1',
               status === 'succeeded' && 'text-util-colors-green-green-600',
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
@@ -78,11 +78,11 @@ const StatusPanel: FC<ResultProps> = ({
             )}
           </div>
         </div>
-        <div className='flex-[33%] max-w-[152px]'>
-          <div className='mb-1 text-text-tertiary system-2xs-medium-uppercase'>{t('runLog.resultPanel.time')}</div>
-          <div className='flex items-center gap-1 system-sm-medium text-text-secondary'>
+        <div className='max-w-[152px] flex-[33%]'>
+          <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.time')}</div>
+          <div className='system-sm-medium flex items-center gap-1 text-text-secondary'>
             {status === 'running' && (
-              <div className='w-16 h-2 rounded-sm bg-text-quaternary' />
+              <div className='h-2 w-16 rounded-sm bg-text-quaternary' />
             )}
             {status !== 'running' && (
               <span>{time ? `${time?.toFixed(3)}s` : '-'}</span>
@@ -90,10 +90,10 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className='flex-[33%]'>
-          <div className='mb-1 text-text-tertiary system-2xs-medium-uppercase'>{t('runLog.resultPanel.tokens')}</div>
-          <div className='flex items-center gap-1 system-sm-medium text-text-secondary'>
+          <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.tokens')}</div>
+          <div className='system-sm-medium flex items-center gap-1 text-text-secondary'>
             {status === 'running' && (
-              <div className='w-20 h-2 rounded-sm bg-text-quaternary' />
+              <div className='h-2 w-20 rounded-sm bg-text-quaternary' />
             )}
             {status !== 'running' && (
               <span>{`${tokens || 0} Tokens`}</span>

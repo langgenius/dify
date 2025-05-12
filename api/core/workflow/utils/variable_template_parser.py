@@ -95,7 +95,6 @@ class VariableTemplateParser:
 
         Args:
             inputs: A dictionary containing the values for the template variables.
-            remove_template_variables: A boolean indicating whether to remove the template variables from the output.
 
         Returns:
             The formatted string with template variables replaced by their values.

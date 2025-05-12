@@ -13,7 +13,7 @@ import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
-import classNames from '@/utils/classnames'
+import cn from '@/utils/classnames'
 
 type ModelTriggerProps = {
   open: boolean
@@ -33,42 +33,44 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
 
   return (
     <div
-      className={classNames(
-        'group flex items-center px-2 h-8 rounded-lg bg-components-input-bg-normal',
-        !readonly && 'hover:bg-components-input-bg-hover cursor-pointer',
+      className={cn(
+        'group flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1',
+        !readonly && 'cursor-pointer hover:bg-components-input-bg-hover',
+        open && 'bg-components-input-bg-hover',
+        model.status !== ModelStatusEnum.active && 'bg-components-input-bg-disabled hover:bg-components-input-bg-disabled',
         className,
-        open && '!bg-components-input-bg-hover',
-        model.status !== ModelStatusEnum.active && '!bg-[#FFFAEB]',
       )}
     >
       <ModelIcon
-        className='shrink-0 mr-1.5'
+        className='p-0.5'
         provider={provider}
         modelName={model.model}
       />
-      <ModelName
-        className='grow'
-        modelItem={model}
-        showMode
-        showFeatures
-      />
-      {!readonly && (
-        <div className='shrink-0 flex items-center justify-center w-4 h-4'>
-          {
-            model.status !== ModelStatusEnum.active
-              ? (
-                <Tooltip popupContent={MODEL_STATUS_TEXT[model.status][language]}>
-                  <AlertTriangle className='w-4 h-4 text-[#F79009]' />
-                </Tooltip>
-              )
-              : (
-                <RiArrowDownSLine
-                  className='w-3.5 h-3.5 text-gray-500'
-                />
-              )
-          }
-        </div>
-      )}
+      <div className='flex grow items-center gap-1 truncate px-1 py-[3px]'>
+        <ModelName
+          className='grow'
+          modelItem={model}
+          showMode
+          showFeatures
+        />
+        {!readonly && (
+          <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
+            {
+              model.status !== ModelStatusEnum.active
+                ? (
+                  <Tooltip popupContent={MODEL_STATUS_TEXT[model.status][language]}>
+                    <AlertTriangle className='h-4 w-4 text-text-warning-secondary' />
+                  </Tooltip>
+                )
+                : (
+                  <RiArrowDownSLine
+                    className='h-3.5 w-3.5 text-text-tertiary'
+                  />
+                )
+            }
+          </div>
+        )}
+      </div>
     </div>
   )
 }

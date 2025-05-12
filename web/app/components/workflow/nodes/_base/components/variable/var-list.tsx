@@ -99,10 +99,7 @@ const VarList: FC<Props> = ({
             isSupportFileVar={isSupportFileVar}
           />
           {!readonly && (
-            <RemoveButton
-              className='!p-2 !bg-gray-100 hover:!bg-gray-200'
-              onClick={handleVarRemove(index)}
-            />
+            <RemoveButton onClick={handleVarRemove(index)}/>
           )}
         </div>
       ))}

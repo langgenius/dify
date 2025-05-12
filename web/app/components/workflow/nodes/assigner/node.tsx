@@ -3,7 +3,7 @@ import React from 'react'
 import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import NodeVariableItem from '../variable-assigner/components/node-variable-item'
-import { type AssignerNodeType } from './types'
+import type { AssignerNodeType } from './types'
 import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, type Node, type NodeProps } from '@/app/components/workflow/types'
 
@@ -13,7 +13,6 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-
   const nodes: Node[] = useNodes()
   if (data.version === '2') {
     const { items: operationItems } = data
@@ -23,17 +22,17 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
 
     if (validOperationItems.length === 0) {
       return (
-        <div className='relative flex flex-col px-3 py-1 gap-0.5 items-start self-stretch'>
+        <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
           <div className='flex flex-col items-start gap-1 self-stretch'>
-            <div className='flex px-[5px] py-1 items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg'>
-              <div className='flex-1 text-text-tertiary system-xs-medium'>{t(`${i18nPrefix}.varNotSet`)}</div>
+            <div className='flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg px-[5px] py-1'>
+              <div className='system-xs-medium flex-1 text-text-tertiary'>{t(`${i18nPrefix}.varNotSet`)}</div>
             </div>
           </div>
         </div>
       )
     }
     return (
-      <div className='relative flex flex-col px-3 py-1 gap-0.5 items-start self-stretch'>
+      <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
         {operationItems.map((value, index) => {
           const variable = value.variable_selector
           if (!variable || variable.length === 0)
@@ -71,7 +70,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
   const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
 
   return (
-    <div className='relative flex flex-col px-3 py-1 gap-0.5 items-start self-stretch'>
+    <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
       <NodeVariableItem
         node={node as Node}
         isEnv={isEnv}

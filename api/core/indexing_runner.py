@@ -9,7 +9,7 @@ import uuid
 from typing import Any, Optional, cast
 
 from flask import current_app
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config
@@ -30,7 +30,7 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from core.tools.utils.web_reader_tool import get_image_upload_file_ids
+from core.tools.utils.rag_web_reader import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -51,7 +51,7 @@ class IndexingRunner:
         for dataset_document in dataset_documents:
             try:
                 # get dataset
-                dataset = Dataset.query.filter_by(id=dataset_document.dataset_id).first()
+                dataset = db.session.query(Dataset).filter_by(id=dataset_document.dataset_id).first()
 
                 if not dataset:
                     raise ValueError("no dataset found")
@@ -103,15 +103,17 @@ class IndexingRunner:
         """Run the indexing process when the index_status is splitting."""
         try:
             # get dataset
-            dataset = Dataset.query.filter_by(id=dataset_document.dataset_id).first()
+            dataset = db.session.query(Dataset).filter_by(id=dataset_document.dataset_id).first()
 
             if not dataset:
                 raise ValueError("no dataset found")
 
             # get exist document_segment list and delete
-            document_segments = DocumentSegment.query.filter_by(
-                dataset_id=dataset.id, document_id=dataset_document.id
-            ).all()
+            document_segments = (
+                db.session.query(DocumentSegment)
+                .filter_by(dataset_id=dataset.id, document_id=dataset_document.id)
+                .all()
+            )
 
             for document_segment in document_segments:
                 db.session.delete(document_segment)
@@ -162,15 +164,17 @@ class IndexingRunner:
         """Run the indexing process when the index_status is indexing."""
         try:
             # get dataset
-            dataset = Dataset.query.filter_by(id=dataset_document.dataset_id).first()
+            dataset = db.session.query(Dataset).filter_by(id=dataset_document.dataset_id).first()
 
             if not dataset:
                 raise ValueError("no dataset found")
 
             # get exist document_segment list and delete
-            document_segments = DocumentSegment.query.filter_by(
-                dataset_id=dataset.id, document_id=dataset_document.id
-            ).all()
+            document_segments = (
+                db.session.query(DocumentSegment)
+                .filter_by(dataset_id=dataset.id, document_id=dataset_document.id)
+                .all()
+            )
 
             documents = []
             if document_segments:
@@ -187,7 +191,7 @@ class IndexingRunner:
                             },
                         )
                         if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                            child_chunks = document_segment.child_chunks
+                            child_chunks = document_segment.get_child_chunks()
                             if child_chunks:
                                 child_documents = []
                                 for child_chunk in child_chunks:
@@ -254,7 +258,7 @@ class IndexingRunner:
 
         embedding_model_instance = None
         if dataset_id:
-            dataset = Dataset.query.filter_by(id=dataset_id).first()
+            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
             if not dataset:
                 raise ValueError("Dataset not found.")
             if dataset.indexing_technique == "high_quality" or indexing_technique == "high_quality":
@@ -587,7 +591,7 @@ class IndexingRunner:
     @staticmethod
     def _process_keyword_index(flask_app, dataset_id, document_id, documents):
         with flask_app.app_context():
-            dataset = Dataset.query.filter_by(id=dataset_id).first()
+            dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
             if not dataset:
                 raise ValueError("no dataset found")
             keyword = Keyword(dataset)
@@ -618,10 +622,8 @@ class IndexingRunner:
 
             tokens = 0
             if embedding_model_instance:
-                tokens += sum(
-                    embedding_model_instance.get_text_embedding_num_tokens([document.page_content])
-                    for document in chunk_documents
-                )
+                page_content_list = [document.page_content for document in chunk_documents]
+                tokens += sum(embedding_model_instance.get_text_embedding_num_tokens(page_content_list))
 
             # load index
             index_processor.load(dataset, chunk_documents, with_keywords=False)
@@ -678,7 +680,7 @@ class IndexingRunner:
         """
         Update the document segment by document id.
         """
-        DocumentSegment.query.filter_by(document_id=dataset_document_id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(document_id=dataset_document_id).update(update_params)
         db.session.commit()
 
     def _transform(

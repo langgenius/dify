@@ -5,7 +5,6 @@ from typing import Optional
 
 import click
 from celery import shared_task  # type: ignore
-from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
@@ -27,7 +26,9 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
     if not segment:
-        raise NotFound("Segment not found")
+        logging.info(click.style("Segment not found: {}".format(segment_id), fg="red"))
+        db.session.close()
+        return
 
     if segment.status != "waiting":
         return
@@ -40,7 +41,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
             DocumentSegment.status: "indexing",
             DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         }
-        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
         db.session.commit()
         document = Document(
             page_content=segment.content,
@@ -77,7 +78,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
             DocumentSegment.status: "completed",
             DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         }
-        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
         db.session.commit()
 
         end_at = time.perf_counter()
@@ -93,3 +94,4 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         db.session.commit()
     finally:
         redis_client.delete(indexing_cache_key)
+        db.session.close()

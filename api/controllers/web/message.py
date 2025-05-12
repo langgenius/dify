@@ -1,7 +1,7 @@
 import logging
 
-from flask_restful import fields, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_restful import fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -21,7 +21,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import message_file_fields
-from fields.message_fields import agent_thought_fields
+from fields.message_fields import agent_thought_fields, feedback_fields, retriever_resource_fields
 from fields.raws import FilesContainedField
 from libs import helper
 from libs.helper import TimestampField, uuid_value
@@ -34,27 +34,6 @@ from services.message_service import MessageService
 
 
 class MessageListApi(WebApiResource):
-    feedback_fields = {"rating": fields.String}
-
-    retriever_resource_fields = {
-        "id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "dataset_id": fields.String,
-        "dataset_name": fields.String,
-        "document_id": fields.String,
-        "document_name": fields.String,
-        "data_source_type": fields.String,
-        "segment_id": fields.String,
-        "score": fields.Float,
-        "hit_count": fields.Integer,
-        "word_count": fields.Integer,
-        "segment_position": fields.Integer,
-        "index_node_hash": fields.String,
-        "content": fields.String,
-        "created_at": TimestampField,
-    }
-
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,
@@ -67,6 +46,7 @@ class MessageListApi(WebApiResource):
         "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
+        "metadata": fields.Raw(attribute="message_metadata_dict"),
         "status": fields.String,
         "error": fields.String,
     }
@@ -91,7 +71,7 @@ class MessageListApi(WebApiResource):
 
         try:
             return MessageService.pagination_by_first_id(
-                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"], "desc"
+                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

@@ -4,6 +4,7 @@ on:
   pull_request:
     branches:
       - main
+      - plugins/beta
     paths:
       - api/migrations/**
       - .github/workflows/db-migration-test.yml
@@ -19,14 +20,17 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup Poetry and Python
-        uses: ./.github/actions/setup-poetry
         with:
-          poetry-lockfile: api/poetry.lock
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup UV and Python
+        uses: ./.github/actions/setup-uv
+        with:
+          uv-lockfile: api/uv.lock
 
       - name: Install dependencies
-        run: poetry install -C api
+        run: uv sync --project api
 
       - name: Prepare middleware env
         run: |
@@ -50,6 +54,4 @@ jobs:
       - name: Run DB Migration
         env:
           DEBUG: true
-        run: |
-          cd api
-          poetry run python -m flask upgrade-db
+        run: uv run --directory api flask upgrade-db

@@ -1,9 +1,12 @@
 import enum
 import json
+from typing import cast
 
 from flask_login import UserMixin  # type: ignore
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
+
+from models.base import Base
 
 from .engine import db
 from .types import StringUUID
@@ -17,7 +20,7 @@ class AccountStatus(enum.StrEnum):
     CLOSED = "closed"
 
 
-class Account(UserMixin, db.Model):  # type: ignore[name-defined]
+class Account(UserMixin, Base):
     __tablename__ = "accounts"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="account_pkey"), db.Index("account_email_idx", "email"))
 
@@ -44,43 +47,40 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
 
     @property
     def current_tenant(self):
-        # FIXME: fix the type error later, because the type is important maybe cause some bugs
         return self._current_tenant  # type: ignore
 
     @current_tenant.setter
     def current_tenant(self, value: "Tenant"):
         tenant = value
-        ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=self.id).first()
+        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).first()
         if ta:
             tenant.current_role = ta.role
         else:
-            # FIXME: fix the type error later, because the type is important maybe cause some bugs
             tenant = None  # type: ignore
+
         self._current_tenant = tenant
 
     @property
     def current_tenant_id(self) -> str | None:
         return self._current_tenant.id if self._current_tenant else None
 
-    @current_tenant_id.setter
-    def current_tenant_id(self, value: str):
-        try:
-            tenant_account_join = (
+    def set_tenant_id(self, tenant_id: str):
+        tenant_account_join = cast(
+            tuple[Tenant, TenantAccountJoin],
+            (
                 db.session.query(Tenant, TenantAccountJoin)
-                .filter(Tenant.id == value)
+                .filter(Tenant.id == tenant_id)
                 .filter(TenantAccountJoin.tenant_id == Tenant.id)
                 .filter(TenantAccountJoin.account_id == self.id)
                 .one_or_none()
-            )
+            ),
+        )
 
-            if tenant_account_join:
-                tenant, ta = tenant_account_join
-                tenant.current_role = ta.role
-            else:
-                tenant = None
-        except:
-            tenant = None
+        if not tenant_account_join:
+            return
 
+        tenant, join = tenant_account_join
+        tenant.current_role = join.role
         self._current_tenant = tenant
 
     @property
@@ -102,6 +102,7 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
             return db.session.query(Account).filter(Account.id == account_integrate.account_id).one_or_none()
         return None
 
+    # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
         return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
@@ -137,6 +138,8 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_valid_role(role: str) -> bool:
+        if not role:
+            return False
         return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
@@ -147,14 +150,20 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_privileged_role(role: str) -> bool:
+        if not role:
+            return False
         return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
 
     @staticmethod
     def is_admin_role(role: str) -> bool:
+        if not role:
+            return False
         return role == TenantAccountRole.ADMIN
 
     @staticmethod
     def is_non_owner_role(role: str) -> bool:
+        if not role:
+            return False
         return role in {
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
@@ -164,10 +173,14 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_editing_role(role: str) -> bool:
+        if not role:
+            return False
         return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
     @staticmethod
     def is_dataset_edit_role(role: str) -> bool:
+        if not role:
+            return False
         return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
@@ -176,7 +189,7 @@ class TenantAccountRole(enum.StrEnum):
         }
 
 
-class Tenant(db.Model):  # type: ignore[name-defined]
+class Tenant(Base):
     __tablename__ = "tenants"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="tenant_pkey"),)
 
@@ -205,14 +218,7 @@ class Tenant(db.Model):  # type: ignore[name-defined]
         self.custom_config = json.dumps(value)
 
 
-class TenantAccountJoinRole(enum.Enum):
-    OWNER = "owner"
-    ADMIN = "admin"
-    NORMAL = "normal"
-    DATASET_OPERATOR = "dataset_operator"
-
-
-class TenantAccountJoin(db.Model):  # type: ignore[name-defined]
+class TenantAccountJoin(Base):
     __tablename__ = "tenant_account_joins"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tenant_account_join_pkey"),
@@ -231,7 +237,7 @@ class TenantAccountJoin(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class AccountIntegrate(db.Model):  # type: ignore[name-defined]
+class AccountIntegrate(Base):
     __tablename__ = "account_integrates"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="account_integrate_pkey"),
@@ -248,7 +254,7 @@ class AccountIntegrate(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class InvitationCode(db.Model):  # type: ignore[name-defined]
+class InvitationCode(Base):
     __tablename__ = "invitation_codes"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="invitation_code_pkey"),
@@ -264,4 +270,29 @@ class InvitationCode(db.Model):  # type: ignore[name-defined]
     used_by_tenant_id = db.Column(StringUUID)
     used_by_account_id = db.Column(StringUUID)
     deprecated_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class TenantPluginPermission(Base):
+    class InstallPermission(enum.StrEnum):
+        EVERYONE = "everyone"
+        ADMINS = "admins"
+        NOBODY = "noone"
+
+    class DebugPermission(enum.StrEnum):
+        EVERYONE = "everyone"
+        ADMINS = "admins"
+        NOBODY = "noone"
+
+    __tablename__ = "account_plugin_permissions"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="account_plugin_permission_pkey"),
+        db.UniqueConstraint("tenant_id", name="unique_tenant_plugin"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    install_permission: Mapped[InstallPermission] = mapped_column(
+        db.String(16), nullable=False, server_default="everyone"
+    )
+    debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), nullable=False, server_default="noone")

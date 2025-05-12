@@ -33,10 +33,28 @@ export const languages = data.languages
 export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
 
 export const getLanguage = (locale: string) => {
-  if (locale === 'zh-Hans')
+  if (['zh-Hans', 'ja-JP'].includes(locale))
     return locale.replace('-', '_')
 
   return LanguagesSupported[0].replace('-', '_')
+}
+
+const DOC_LANGUAGE: Record<string, string> = {
+  'zh-Hans': 'zh-hans',
+  'ja-JP': 'ja-jp',
+  'en-US': 'en',
+}
+
+export const getDocLanguage = (locale: string) => {
+  return DOC_LANGUAGE[locale] || 'en'
+}
+
+const PRICING_PAGE_LANGUAGE: Record<string, string> = {
+  'ja-JP': 'jp',
+}
+
+export const getPricingPageLanguage = (locale: string) => {
+  return PRICING_PAGE_LANGUAGE[locale] || ''
 }
 
 export const NOTICE_I18N = {

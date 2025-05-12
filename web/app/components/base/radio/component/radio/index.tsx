@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactNode } from 'react'
 import { useId } from 'react'
 import { useContext } from 'use-context-selector'
 import RadioGroupContext from '../../context'
@@ -8,7 +8,7 @@ import cn from '@/utils/classnames'
 export type IRadioProps = {
   className?: string
   labelClassName?: string
-  children?: string | ReactElement
+  children?: string | ReactNode
   checked?: boolean
   value?: string | number
   disabled?: boolean
@@ -23,7 +23,7 @@ export default function Radio({
   value,
   disabled,
   onChange,
-}: IRadioProps): JSX.Element {
+}: IRadioProps): React.JSX.Element {
   const groupContext = useContext(RadioGroupContext)
   const labelId = useId()
   const handleChange = (e: IRadioProps['value']) => {
@@ -51,7 +51,7 @@ export default function Radio({
     >
       {children && (
         <label className={
-          cn(labelClassName, 'text-sm cursor-pointer')
+          cn(labelClassName, 'cursor-pointer text-sm')
         }
         id={labelId}
         >

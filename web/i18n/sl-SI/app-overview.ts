@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'Nastavite barvno temo klepetalnega bota',
         chatColorThemeInverted: 'Inverzna',
         invalidHexMessage: 'Neveljavna vrednost heksa',
+        invalidPrivacyPolicy: 'Neveljavna povezava do pravilnika o zasebnosti. Uporabite veljavno povezavo, ki se začne z http ali https',
         sso: {
           label: 'SSO avtentikacija',
           title: 'SSO spletne aplikacije',
@@ -112,6 +113,7 @@ const translation = {
           operation: 'Dokumentacija',
         },
       },
+      launch: 'Začetek',
     },
     apiInfo: {
       title: 'API storitev v ozadju',

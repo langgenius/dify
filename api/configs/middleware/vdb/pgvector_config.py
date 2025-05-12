@@ -43,3 +43,8 @@ class PGVectorConfig(BaseSettings):
         description="Max connection of the PostgreSQL database",
         default=5,
     )
+
+    PGVECTOR_PG_BIGM: bool = Field(
+        description="Whether to use pg_bigm module for full text search",
+        default=False,
+    )

@@ -8,6 +8,8 @@ import type {
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
+import { useIsChatMode } from './use-workflow'
+import { useStoreApi } from 'reactflow'
 
 export const useWorkflowVariables = () => {
   const { t } = useTranslation()
@@ -44,6 +46,7 @@ export const useWorkflowVariables = () => {
     parentNode,
     valueSelector,
     isIterationItem,
+    isLoopItem,
     availableNodes,
     isChatMode,
     isConstant,
@@ -51,6 +54,7 @@ export const useWorkflowVariables = () => {
     valueSelector: ValueSelector
     parentNode?: Node | null
     isIterationItem?: boolean
+    isLoopItem?: boolean
     availableNodes: any[]
     isChatMode: boolean
     isConstant?: boolean
@@ -59,6 +63,7 @@ export const useWorkflowVariables = () => {
       parentNode,
       valueSelector,
       isIterationItem,
+      isLoopItem,
       availableNodes,
       isChatMode,
       isConstant,
@@ -71,4 +76,38 @@ export const useWorkflowVariables = () => {
     getNodeAvailableVars,
     getCurrentVariableType,
   }
+}
+
+export const useWorkflowVariableType = () => {
+  const store = useStoreApi()
+  const {
+    getNodes,
+  } = store.getState()
+  const { getCurrentVariableType } = useWorkflowVariables()
+
+  const isChatMode = useIsChatMode()
+
+  const getVarType = ({
+    nodeId,
+    valueSelector,
+  }: {
+    nodeId: string,
+    valueSelector: ValueSelector,
+  }) => {
+    const node = getNodes().find(n => n.id === nodeId)
+    const isInIteration = !!node?.data.isInIteration
+    const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
+    const availableNodes = [node]
+
+    const type = getCurrentVariableType({
+      parentNode: iterationNode,
+      valueSelector,
+      availableNodes,
+      isChatMode,
+      isConstant: false,
+    })
+    return type
+  }
+
+  return getVarType
 }

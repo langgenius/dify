@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'Criar Conhecimento',
       update: 'Adicionar dados',
+      fallbackRoute: 'Conhecimento',
     },
     one: 'Escolher fonte de dados',
     two: 'Pré-processamento e Limpeza de Texto',
@@ -21,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Enviar arquivo de texto',
-      button: 'Arraste e solte o arquivo, ou',
+      button: 'Arraste e solte arquivos ou pastas, ou',
       browse: 'Navegar',
       tip: 'Suporta {{supportTypes}}. Máximo de {{size}}MB cada.',
       validation: {
@@ -57,7 +58,7 @@ const translation = {
       crawlSubPage: 'Rastrear subpáginas',
       selectAll: 'Selecionar tudo',
       resetAll: 'Redefinir tudo',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       includeOnlyPaths: 'Incluir apenas caminhos',
       configure: 'Configurar',
       limit: 'Limite',

@@ -9,6 +9,12 @@ concurrency:
   group: style-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  checks: write
+  statuses: write
+  contents: read
+
+
 jobs:
   python-style:
     name: Python Style
@@ -17,6 +23,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files
@@ -26,24 +34,27 @@ jobs:
             api/**
             .github/workflows/style.yml
 
-      - name: Setup Poetry and Python
+      - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: ./.github/actions/setup-poetry
+        uses: ./.github/actions/setup-uv
+        with:
+          uv-lockfile: api/uv.lock
+          enable-cache: false
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry install -C api --only lint
+        run: uv sync --project api --dev
 
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
         run: |
-          poetry run -C api ruff --version
-          poetry run -C api ruff check ./
-          poetry run -C api ruff format --check ./
+          uv run --directory api ruff --version
+          uv run --directory api ruff check --diff ./
+          uv run --directory api ruff format --check --diff ./
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry run -P api dotenv-linter ./api/.env.example ./web/.env.example
+        run: uv run --project api dotenv-linter ./api/.env.example ./web/.env.example
 
       - name: Lint hints
         if: failure()
@@ -59,6 +70,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files
@@ -66,21 +79,27 @@ jobs:
         with:
           files: web/**
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
       - name: Setup NodeJS
         uses: actions/setup-node@v4
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
-          node-version: 20
-          cache: yarn
+          node-version: 22
+          cache: pnpm
           cache-dependency-path: ./web/package.json
 
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Web style check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: yarn run lint
+        run: pnpm run lint
 
   docker-compose-template:
     name: Docker Compose Template
@@ -89,6 +108,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files
@@ -117,6 +138,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Check changed files
         id: changed-files
@@ -135,6 +158,7 @@ jobs:
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: main
+          FILTER_REGEX_INCLUDE: pnpm-lock.yaml
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true
@@ -145,3 +169,14 @@ jobs:
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_XML: true
           VALIDATE_YAML: true
+
+      - name: EditorConfig checks
+        uses: super-linter/super-linter/slim@v7
+        env:
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IGNORE_GENERATED_FILES: true
+          IGNORE_GITIGNORED_FILES: true
+          # EditorConfig validation
+          VALIDATE_EDITORCONFIG: true
+          EDITORCONFIG_FILE_NAME: editorconfig-checker.json

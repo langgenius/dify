@@ -8,6 +8,7 @@ from extensions.ext_redis import redis_client
 
 class ToolProviderCredentialsCacheType(Enum):
     PROVIDER = "tool_provider"
+    ENDPOINT = "endpoint"
 
 
 class ToolProviderCredentialsCache:

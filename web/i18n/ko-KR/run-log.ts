@@ -24,6 +24,8 @@ const translation = {
     link: '상세 정보 패널',
     tipRight: '를 확인하세요.',
   },
+  actionLogs: '작업 로그',
+  circularInvocationTip: '현재 워크플로우에 도구/노드의 순환 호출이 있습니다.',
 }
 
 export default translation

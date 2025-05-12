@@ -1,8 +1,8 @@
 import logging
 
-from flask_login import current_user  # type: ignore
-from flask_restful import marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_login import current_user
+from flask_restful import marshal_with, reqparse
+from flask_restful.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -50,7 +50,7 @@ class MessageListApi(InstalledAppResource):
 
         try:
             return MessageService.pagination_by_first_id(
-                app_model, current_user, args["conversation_id"], args["first_id"], args["limit"], "desc"
+                app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

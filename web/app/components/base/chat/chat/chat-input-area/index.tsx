@@ -3,7 +3,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import Textarea from 'rc-textarea'
+import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
 import Recorder from 'js-audio-recorder'
 import type {
@@ -40,6 +40,7 @@ type ChatInputAreaProps = {
   inputsForm?: InputForm[]
   theme?: Theme | null
   isResponding?: boolean
+  disabled?: boolean
 }
 const ChatInputArea = ({
   showFeatureBar,
@@ -53,6 +54,7 @@ const ChatInputArea = ({
   inputsForm = [],
   theme,
   isResponding,
+  disabled,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -78,6 +80,7 @@ const ChatInputArea = ({
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
+  const isComposingRef = useRef(false)
   const handleSend = () => {
     if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -101,8 +104,21 @@ const ChatInputArea = ({
       }
     }
   }
+  const handleCompositionStart = () => {
+    // e: React.CompositionEvent<HTMLTextAreaElement>
+    isComposingRef.current = true
+  }
+  const handleCompositionEnd = () => {
+    // safari or some browsers will trigger compositionend before keydown.
+    // delay 50ms for safari.
+    setTimeout(() => {
+      isComposingRef.current = false
+    }, 50)
+  }
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      // if isComposing, exit
+      if (isComposingRef.current) return
       e.preventDefault()
       setQuery(query.replace(/\n$/, ''))
       historyRef.current.push(query)
@@ -153,38 +169,41 @@ const ChatInputArea = ({
     <>
       <div
         className={cn(
-          'relative pb-[9px] bg-components-panel-bg-blur border border-components-chat-input-border rounded-xl shadow-md z-10',
+          'relative z-10 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
           isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
+          disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
       >
-        <div className='relative px-[9px] pt-[9px] max-h-[158px] overflow-x-hidden overflow-y-auto'>
+        <div className='relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]'>
           <FileListInChatInput fileConfig={visionConfig!} />
           <div
             ref={wrapperRef}
             className='flex items-center justify-between'
           >
-            <div className='flex items-center relative grow w-full'>
+            <div className='relative flex w-full grow items-center'>
               <div
                 ref={textValueRef}
-                className='absolute w-auto h-auto p-1 leading-6 body-lg-regular pointer-events-none whitespace-pre invisible'
+                className='body-lg-regular pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6'
               >
                 {query}
               </div>
               <Textarea
-                ref={textareaRef}
+                ref={ref => textareaRef.current = ref as any}
                 className={cn(
-                  'p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none',
+                  'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-tertiary outline-none',
                 )}
                 placeholder={t('common.chat.inputPlaceholder') || ''}
                 autoFocus
-                autoSize={{ minRows: 1 }}
+                minRows={1}
                 onResize={handleTextareaResize}
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value)
-                  handleTextareaResize()
+                  setTimeout(handleTextareaResize, 0)
                 }}
                 onKeyDown={handleKeyDown}
+                onCompositionStart={handleCompositionStart}
+                onCompositionEnd={handleCompositionEnd}
                 onPaste={handleClipboardPasteFile}
                 onDragEnter={handleDragFileEnter}
                 onDragLeave={handleDragFileLeave}

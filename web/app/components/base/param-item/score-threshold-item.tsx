@@ -31,7 +31,7 @@ const ScoreThresholdItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const handleParamChange = (key: string, value: number) => {
-    let notOutRangeValue = parseFloat(value.toFixed(2))
+    let notOutRangeValue = Number.parseFloat(value.toFixed(2))
     notOutRangeValue = Math.max(VALUE_LIMIT.min, notOutRangeValue)
     notOutRangeValue = Math.min(VALUE_LIMIT.max, notOutRangeValue)
     onChange(key, notOutRangeValue)

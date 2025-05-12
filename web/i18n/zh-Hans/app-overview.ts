@@ -33,6 +33,7 @@ const translation = {
       explanation: '开箱即用的 AI WebApp',
       accessibleAddress: '公开访问 URL',
       preview: '预览',
+      launch: '启动',
       regenerate: '重新生成',
       regenerateNotice: '您是否要重新生成公开访问 URL？',
       preUseReminder: '使用前请先打开开关',
@@ -56,6 +57,7 @@ const translation = {
         chatColorThemeDesc: '设置聊天机器人的颜色主题',
         chatColorThemeInverted: '反转',
         invalidHexMessage: '无效的十六进制值',
+        invalidPrivacyPolicy: '无效的隐私政策链接，请使用以 http 或 https 开头的有效链接',
         sso: {
           label: '单点登录认证',
           title: 'WebApp SSO 认证',
@@ -105,7 +107,7 @@ const translation = {
           step2Tip: '点击此处将仓库导入到 Vercel 中部署',
           step2Operation: '导入仓库',
           step3: '配置环境变量',
-          step3Tip: '在 Vecel 环境变量中添加以下环境变量',
+          step3Tip: '在 Vercel 环境变量中添加以下环境变量',
         },
         way2: {
           name: '编写客户端调用 API 并部署到服务器中',
@@ -147,15 +149,15 @@ const translation = {
     },
     avgSessionInteractions: {
       title: '平均会话互动数',
-      explanation: '反应每个会话用户的持续沟通次数，如果用户与 AI 问答了 10 轮，即为 10。该指标反映了用户粘性。仅在对话型应用提供。',
+      explanation: '反映每个会话用户的持续沟通次数，如果用户与 AI 问答了 10 轮，即为 10。该指标反映了用户粘性。仅在对话型应用提供。',
     },
     avgUserInteractions: {
       title: '平均用户调用次数',
-      explanation: '反应每天用户的使用次数。该指标反映了用户粘性。',
+      explanation: '反映每天用户的使用次数。该指标反映了用户粘性。',
     },
     userSatisfactionRate: {
       title: '用户满意度',
-      explanation: '每 1000 条消息的点赞数。反应了用户对回答十分满意的比例。',
+      explanation: '每 1000 条消息的点赞数。反映了用户对回答十分满意的比例。',
     },
     avgResponseTime: {
       title: '平均响应时间',

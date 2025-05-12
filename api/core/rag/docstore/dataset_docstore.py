@@ -79,7 +79,13 @@ class DatasetDocumentStore:
                 model=self._dataset.embedding_model,
             )
 
-        for doc in docs:
+        if embedding_model:
+            page_content_list = [doc.page_content for doc in docs]
+            tokens_list = embedding_model.get_text_embedding_num_tokens(page_content_list)
+        else:
+            tokens_list = [0] * len(docs)
+
+        for doc, tokens in zip(docs, tokens_list):
             if not isinstance(doc, Document):
                 raise ValueError("doc must be a Document")
 
@@ -93,12 +99,6 @@ class DatasetDocumentStore:
                 raise ValueError(
                     f"doc_id {doc.metadata['doc_id']} already exists. Set allow_update to True to overwrite."
                 )
-
-            # calc embedding use tokens
-            if embedding_model:
-                tokens = embedding_model.get_text_embedding_num_tokens(texts=[doc.page_content])
-            else:
-                tokens = 0
 
             if not segment_document:
                 max_position += 1

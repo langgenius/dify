@@ -21,8 +21,8 @@ class FirecrawlAuth(ApiKeyAuthBase):
         headers = self._prepare_headers()
         options = {
             "url": "https://example.com",
-            "excludes": [],
-            "includes": [],
+            "includePaths": [],
+            "excludePaths": [],
             "limit": 1,
             "scrapeOptions": {"onlyMainContent": True},
         }

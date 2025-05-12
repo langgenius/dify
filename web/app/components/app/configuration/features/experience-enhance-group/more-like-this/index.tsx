@@ -34,13 +34,13 @@ const MoreLikeThis: FC = () => {
       noBodySpacing
     >
       {!isHideTip && (
-        <div className='flex justify-between items-center h-9 px-3 rounded-b-xl bg-[#FFFAEB] text-xs text-gray-700'>
+        <div className='flex h-9 items-center justify-between rounded-b-xl bg-[#FFFAEB] px-3 text-xs text-gray-700'>
           <div className='flex  items-center space-x-2'>
             <div>{warningIcon}</div>
             <div>{t('appDebug.feature.moreLikeThis.tip')}</div>
           </div>
-          <div className='flex items-center justify-center w-4 h-4 cursor-pointer' onClick={() => setIsHideTip(true)}>
-            <XMarkIcon className="w-3 h-3" />
+          <div className='flex h-4 w-4 cursor-pointer items-center justify-center' onClick={() => setIsHideTip(true)}>
+            <XMarkIcon className="h-3 w-3" />
           </div>
         </div>
       )}

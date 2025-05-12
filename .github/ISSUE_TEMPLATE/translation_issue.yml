@@ -1,5 +1,5 @@
 name: "🌐 Localization/Translation issue"
-description: Report incorrect translations. [please use English :）]
+description: Report incorrect translations. [please use English :)]
 labels:
   - translation
 body:
@@ -12,7 +12,7 @@ body:
           required: true
         - label: I confirm that I am using English to submit this report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
           required: true
-        - label: "[FOR CHINESE USERS] 请务必使用英文提交 Issue，否则会被关闭。谢谢！:）"
+        - label: "[FOR CHINESE USERS] 请务必使用英文提交 Issue，否则会被关闭。谢谢！:)"
           required: true
         - label: "Please do not modify this template :) and fill in all the required fields."
           required: true

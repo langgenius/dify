@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from langfuse import Langfuse  # type: ignore
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangfuseConfig
@@ -28,9 +29,9 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.utils import filter_none_values
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models.model import EndUser
-from models.workflow import WorkflowNodeExecution
 
 logger = logging.getLogger(__name__)
 
@@ -110,36 +111,18 @@ class LangFuseDataTrace(BaseTraceInstance):
             )
             self.add_trace(langfuse_trace_data=trace_data)
 
-        # through workflow_run_id get all_nodes_execution
-        workflow_nodes_execution_id_records = (
-            db.session.query(WorkflowNodeExecution.id)
-            .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
-            .all()
+        # through workflow_run_id get all_nodes_execution using repository
+        session_factory = sessionmaker(bind=db.engine)
+        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory, tenant_id=trace_info.tenant_id
         )
 
-        for node_execution_id_record in workflow_nodes_execution_id_records:
-            node_execution = (
-                db.session.query(
-                    WorkflowNodeExecution.id,
-                    WorkflowNodeExecution.tenant_id,
-                    WorkflowNodeExecution.app_id,
-                    WorkflowNodeExecution.title,
-                    WorkflowNodeExecution.node_type,
-                    WorkflowNodeExecution.status,
-                    WorkflowNodeExecution.inputs,
-                    WorkflowNodeExecution.outputs,
-                    WorkflowNodeExecution.created_at,
-                    WorkflowNodeExecution.elapsed_time,
-                    WorkflowNodeExecution.process_data,
-                    WorkflowNodeExecution.execution_metadata,
-                )
-                .filter(WorkflowNodeExecution.id == node_execution_id_record.id)
-                .first()
-            )
+        # Get all executions for this workflow run
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
+            workflow_run_id=trace_info.workflow_run_id
+        )
 
-            if not node_execution:
-                continue
-
+        for node_execution in workflow_node_executions:
             node_execution_id = node_execution.id
             tenant_id = node_execution.tenant_id
             app_id = node_execution.app_id
@@ -213,9 +196,24 @@ class LangFuseDataTrace(BaseTraceInstance):
 
             if process_data and process_data.get("model_mode") == "chat":
                 total_token = metadata.get("total_tokens", 0)
+                prompt_tokens = 0
+                completion_tokens = 0
+                try:
+                    if outputs.get("usage"):
+                        prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
+                        completion_tokens = outputs.get("usage", {}).get("completion_tokens", 0)
+                    else:
+                        prompt_tokens = process_data.get("usage", {}).get("prompt_tokens", 0)
+                        completion_tokens = process_data.get("usage", {}).get("completion_tokens", 0)
+                except Exception:
+                    logger.error("Failed to extract usage", exc_info=True)
+
                 # add generation
                 generation_usage = GenerationUsage(
+                    input=prompt_tokens,
+                    output=completion_tokens,
                     total=total_token,
+                    unit=UnitEnum.TOKENS,
                 )
 
                 node_generation_data = LangfuseGeneration(

@@ -13,16 +13,16 @@ const Item = ({
 }: Props) => {
   return (
     <div className={cn(
-      'mb-1 px-2.5 py-2 bg-components-panel-on-panel-item-bg radius-md border border-components-panel-border-subtle shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
+      'radius-md mb-1 border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2.5 py-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover',
     )}>
       <div className='flex items-center justify-between'>
-        <div className='grow flex gap-1 items-center'>
-          <Env className='w-4 h-4 text-util-colors-violet-violet-600' />
-          <div className='text-text-primary system-sm-medium'>{payload.name}</div>
-          <div className='text-text-tertiary system-xs-medium'>{capitalize(payload.value_type)}</div>
+        <div className='flex grow items-center gap-1'>
+          <Env className='h-4 w-4 text-util-colors-violet-violet-600' />
+          <div className='system-sm-medium text-text-primary'>{payload.name}</div>
+          <div className='system-xs-medium text-text-tertiary'>{capitalize(payload.value_type)}</div>
         </div>
       </div>
-      <div className='text-text-tertiary system-xs-regular truncate'>{payload.description}</div>
+      <div className='system-xs-regular truncate text-text-tertiary'>{payload.description}</div>
     </div>
   )
 }

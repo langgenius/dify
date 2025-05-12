@@ -1,7 +1,7 @@
 import datetime
 
 from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 
 from constants.languages import supported_language
 from controllers.console import api

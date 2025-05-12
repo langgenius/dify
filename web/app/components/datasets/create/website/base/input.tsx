@@ -20,7 +20,7 @@ const Input: FC<Props> = ({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     if (isNumber) {
-      let numberValue = parseInt(value, 10) // integer only
+      let numberValue = Number.parseInt(value, 10) // integer only
       if (isNaN(numberValue)) {
         onChange('')
         return
@@ -50,7 +50,12 @@ const Input: FC<Props> = ({
       {...otherOption}
       value={value}
       onChange={handleChange}
-      className='flex h-9 w-full py-1 px-2 rounded-lg text-xs leading-normal bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none focus:bg-gray-50 placeholder:text-gray-400'
+      className='system-xs-regular focus:bg-components-inout-border-active flex h-8 w-full rounded-lg border border-transparent
+      bg-components-input-bg-normal p-2 text-components-input-text-filled
+        caret-[#295eff] placeholder:text-components-input-text-placeholder hover:border
+        hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border focus:border-components-input-border-active
+        focus:shadow-xs focus:shadow-shadow-shadow-3
+        focus-visible:outline-none'
       placeholder={placeholder}
     />
   )

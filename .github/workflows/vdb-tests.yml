@@ -8,7 +8,7 @@ on:
       - api/core/rag/datasource/**
       - docker/**
       - .github/workflows/vdb-tests.yml
-      - api/poetry.lock
+      - api/uv.lock
       - api/pyproject.toml
 
 concurrency:
@@ -28,20 +28,20 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Setup Poetry and Python ${{ matrix.python-version }}
-        uses: ./.github/actions/setup-poetry
+      - name: Setup UV and Python
+        uses: ./.github/actions/setup-uv
         with:
           python-version: ${{ matrix.python-version }}
-          poetry-lockfile: api/poetry.lock
+          uv-lockfile: api/uv.lock
 
-      - name: Check Poetry lockfile
-        run: |
-          poetry check -C api --lock
-          poetry show -C api
+      - name: Check UV lockfile
+        run: uv lock --project api --check
 
       - name: Install dependencies
-        run: poetry install -C api --with dev
+        run: uv sync --project api --dev
 
       - name: Set up dotenvs
         run: |
@@ -51,7 +51,15 @@ jobs:
       - name: Expose Service Ports
         run: sh .github/workflows/expose_service_ports.sh
 
-      - name: Set up Vector Stores (TiDB, Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
+      - name: Set up Vector Store (TiDB)
+        uses: hoverkraft-tech/compose-action@v2.0.2
+        with:
+          compose-file: docker/tidb/docker-compose.yaml
+          services: |
+            tidb
+            tiflash
+
+      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
         uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
@@ -67,7 +75,9 @@ jobs:
             pgvector
             chroma
             elasticsearch
-            tidb
+
+      - name: Check TiDB Ready
+        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
 
       - name: Test Vector Stores
-        run: poetry run -P api bash dev/pytest/pytest_vdb.sh
+        run: uv run --project api bash dev/pytest/pytest_vdb.sh

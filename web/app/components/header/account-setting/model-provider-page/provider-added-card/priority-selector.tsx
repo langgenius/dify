@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import type { FC } from 'react'
-import { Popover, Transition } from '@headlessui/react'
+import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCheckLine,
@@ -8,6 +8,7 @@ import {
 } from '@remixicon/react'
 import { PreferredProviderTypeEnum } from '../declarations'
 import Button from '@/app/components/base/button'
+import cn from '@/utils/classnames'
 
 type SelectorProps = {
   value?: string
@@ -31,42 +32,42 @@ const Selector: FC<SelectorProps> = ({
 
   return (
     <Popover className='relative'>
-      <Popover.Button>
+      <PopoverButton as='div'>
         {
           ({ open }) => (
-            <Button className={`
-              px-0 w-6 h-6 bg-white rounded-md
-              ${open && '!bg-gray-100'}
-            `}>
-              <RiMoreFill className='w-3 h-3 text-gray-700' />
+            <Button className={cn(
+              'h-6 w-6 rounded-md px-0',
+              open && 'bg-components-button-secondary-bg-hover',
+            )}>
+              <RiMoreFill className='h-3 w-3' />
             </Button>
           )
         }
-      </Popover.Button>
+      </PopoverButton>
       <Transition
         as={Fragment}
         leave='transition ease-in duration-100'
         leaveFrom='opacity-100'
         leaveTo='opacity-0'
       >
-        <Popover.Panel className='absolute top-7 right-0 w-[144px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg z-10'>
+        <PopoverPanel className='absolute right-0 top-7 z-10 w-[144px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg'>
           <div className='p-1'>
-            <div className='px-3 pt-2 pb-1 text-sm font-medium text-gray-700'>{t('common.modelProvider.card.priorityUse')}</div>
+            <div className='px-3 pb-1 pt-2 text-sm font-medium text-text-secondary'>{t('common.modelProvider.card.priorityUse')}</div>
             {
               options.map(option => (
-                <Popover.Button as={Fragment} key={option.key}>
+                <PopoverButton as={Fragment} key={option.key}>
                   <div
-                    className='flex items-center justify-between px-3 h-9 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+                    className='flex h-9 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover'
                     onClick={() => onSelect(option.key)}
                   >
                     <div className='grow'>{option.text}</div>
-                    {value === option.key && <RiCheckLine className='w-4 h-4 text-primary-600' />}
+                    {value === option.key && <RiCheckLine className='h-4 w-4 text-text-accent' />}
                   </div>
-                </Popover.Button>
+                </PopoverButton>
               ))
             }
           </div>
-        </Popover.Panel>
+        </PopoverPanel>
       </Transition>
     </Popover>
   )

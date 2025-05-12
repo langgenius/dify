@@ -195,6 +195,12 @@ const translation = {
     byCategories: 'WEDŁUG KATEGORII',
   },
   showMyCreatedAppsOnly: 'Pokaż tylko moje utworzone aplikacje',
+  appSelector: {
+    params: 'PARAMETRY APLIKACJI',
+    noParams: 'Nie są potrzebne żadne parametry',
+    placeholder: 'Wybierz aplikację...',
+    label: 'Aplikacja',
+  },
 }
 
 export default translation

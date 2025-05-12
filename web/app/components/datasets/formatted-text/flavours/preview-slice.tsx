@@ -47,7 +47,7 @@ export const PreviewSlice: FC<PreviewSliceProps> = (props) => {
         ref={refs.setFloating}
         style={floatingStyles}
         {...getFloatingProps()}
-        className='p-2 rounded-md bg-components-tooltip-bg shadow shadow-shadow-shadow-5 backdrop-blur-[5px] text-text-secondary leading-4 border-[0.5px] border-components-panel-border text-xs'
+        className='rounded-md border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-2 text-xs leading-4 text-text-secondary shadow shadow-shadow-shadow-5 backdrop-blur-[5px]'
       >
         {tooltip}
       </span>}

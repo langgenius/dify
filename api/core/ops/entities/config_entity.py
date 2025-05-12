@@ -7,6 +7,7 @@ class TracingProviderEnum(Enum):
     LANGFUSE = "langfuse"
     LANGSMITH = "langsmith"
     OPIK = "opik"
+    WEAVE = "weave"
 
 
 class BaseTracingConfig(BaseModel):
@@ -84,6 +85,27 @@ class OpikConfig(BaseTracingConfig):
             raise ValueError("url must start with https:// or http://")
         if not v.endswith("/api/"):
             raise ValueError("url should ends with /api/")
+
+        return v
+
+
+class WeaveConfig(BaseTracingConfig):
+    """
+    Model class for Weave tracing config.
+    """
+
+    api_key: str
+    entity: str | None = None
+    project: str
+    endpoint: str = "https://trace.wandb.ai"
+
+    @field_validator("endpoint")
+    @classmethod
+    def set_value(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "https://trace.wandb.ai"
+        if not v.startswith("https://"):
+            raise ValueError("endpoint must start with https://")
 
         return v
 

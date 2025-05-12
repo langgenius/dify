@@ -5,12 +5,11 @@ from core.file import file_manager
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
-    PromptMessageContent,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessageContentUnionTypes
 from core.model_runtime.utils.encoders import jsonable_encoder
 
 
@@ -19,8 +18,8 @@ class CotChatAgentRunner(CotAgentRunner):
         """
         Organize system prompt
         """
-        if not self.app_config.agent:
-            raise ValueError("Agent configuration is not set")
+        assert self.app_config.agent
+        assert self.app_config.agent.prompt
 
         prompt_entity = self.app_config.agent.prompt
         if not prompt_entity:
@@ -40,7 +39,7 @@ class CotChatAgentRunner(CotAgentRunner):
         Organize user query
         """
         if self.files:
-            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             prompt_message_contents.append(TextPromptMessageContent(data=query))
 
             # get image detail config
@@ -83,8 +82,10 @@ class CotChatAgentRunner(CotAgentRunner):
             assistant_message.content = ""  # FIXME: type check tell mypy that assistant_message.content is str
             for unit in agent_scratchpad:
                 if unit.is_final():
+                    assert isinstance(assistant_message.content, str)
                     assistant_message.content += f"Final Answer: {unit.agent_response}"
                 else:
+                    assert isinstance(assistant_message.content, str)
                     assistant_message.content += f"Thought: {unit.thought}\n\n"
                     if unit.action_str:
                         assistant_message.content += f"Action: {unit.action_str}\n\n"

@@ -13,9 +13,9 @@ const VectorSpaceFull: FC = () => {
 
   return (
     <GridMask wrapperClassName='border border-gray-200 rounded-xl' canvasClassName='rounded-xl' gradientClassName='rounded-xl'>
-      <div className='py-5 px-6'>
-        <div className='flex justify-between items-center'>
-          <div className={cn(s.textGradient, 'leading-[24px] text-base font-semibold')}>
+      <div className='px-6 py-5'>
+        <div className='flex items-center justify-between'>
+          <div className={cn(s.textGradient, 'text-base font-semibold leading-[24px]')}>
             <div>{t('billing.vectorSpace.fullTip')}</div>
             <div>{t('billing.vectorSpace.fullSolution')}</div>
           </div>

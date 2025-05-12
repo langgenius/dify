@@ -1,4 +1,26 @@
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnIterationFinished, IOnIterationNext, IOnIterationStarted, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnTTSChunk, IOnTTSEnd, IOnTextChunk, IOnTextReplace, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
+import type {
+  IOnCompleted,
+  IOnData,
+  IOnError,
+  IOnFile,
+  IOnIterationFinished,
+  IOnIterationNext,
+  IOnIterationStarted,
+  IOnLoopFinished,
+  IOnLoopNext,
+  IOnLoopStarted,
+  IOnMessageEnd,
+  IOnMessageReplace,
+  IOnNodeFinished,
+  IOnNodeStarted,
+  IOnTTSChunk,
+  IOnTTSEnd,
+  IOnTextChunk,
+  IOnTextReplace,
+  IOnThought,
+  IOnWorkflowFinished,
+  IOnWorkflowStarted,
+} from './base'
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
@@ -78,6 +100,9 @@ export const sendWorkflowMessage = async (
     onIterationStart,
     onIterationNext,
     onIterationFinish,
+    onLoopStart,
+    onLoopNext,
+    onLoopFinish,
     onTextChunk,
     onTextReplace,
   }: {
@@ -88,6 +113,9 @@ export const sendWorkflowMessage = async (
     onIterationStart: IOnIterationStarted
     onIterationNext: IOnIterationNext
     onIterationFinish: IOnIterationFinished
+    onLoopStart: IOnLoopStarted
+    onLoopNext: IOnLoopNext
+    onLoopFinish: IOnLoopFinished
     onTextChunk: IOnTextChunk
     onTextReplace: IOnTextReplace
   },
@@ -99,7 +127,21 @@ export const sendWorkflowMessage = async (
       ...body,
       response_mode: 'streaming',
     },
-  }, { onNodeStarted, onWorkflowStarted, onWorkflowFinished, isPublicAPI: !isInstalledApp, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onTextChunk, onTextReplace })
+  }, {
+    onNodeStarted,
+    onWorkflowStarted,
+    onWorkflowFinished,
+    isPublicAPI: !isInstalledApp,
+    onNodeFinished,
+    onIterationStart,
+    onIterationNext,
+    onIterationFinish,
+    onLoopStart,
+    onLoopNext,
+    onLoopFinish,
+    onTextChunk,
+    onTextReplace,
+  })
 }
 
 export const fetchAppInfo = async () => {
@@ -220,8 +262,9 @@ export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { c
   return (getAction('post', !isPublicAPI))(url, { body, header }, { needAllResponseContent: true })
 }
 
-export const fetchAccessToken = async (appCode: string) => {
+export const fetchAccessToken = async (appCode: string, userId?: string) => {
   const headers = new Headers()
   headers.append('X-App-Code', appCode)
-  return get('/passport', { headers }) as Promise<{ access_token: string }>
+  const url = userId ? `/passport?user_id=${encodeURIComponent(userId)}` : '/passport'
+  return get(url, { headers }) as Promise<{ access_token: string }>
 }

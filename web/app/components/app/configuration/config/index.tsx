@@ -12,7 +12,7 @@ import AgentTools from './agent/agent-tools'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import { type ModelConfig, type PromptVariable } from '@/models/debug'
+import type { ModelConfig, PromptVariable } from '@/models/debug'
 import type { AppType } from '@/types/app'
 import { ModelModeType } from '@/types/app'
 
@@ -57,7 +57,7 @@ const Config: FC = () => {
   return (
     <>
       <div
-        className="grow h-0 relative px-6 pb-[50px] overflow-y-auto"
+        className="relative h-0 grow overflow-y-auto px-6 pb-[50px]"
       >
         {/* Template */}
         <ConfigPrompt

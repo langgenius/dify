@@ -133,6 +133,7 @@ const translation = {
     number: 'número',
     required: 'Requerido',
     infoAndSetting: 'Información y Ajustes',
+    file: 'archivo',
   },
   noCustomTool: {
     title: '¡Sin herramientas personalizadas!',
@@ -150,6 +151,8 @@ const translation = {
   howToGet: 'Cómo obtener',
   openInStudio: 'Abrir en Studio',
   toolNameUsageTip: 'Nombre de llamada de la herramienta para razonamiento y promoción de agentes',
+  copyToolName: 'Nombre de la copia',
+  noTools: 'No se han encontrado herramientas',
 }
 
 export default translation

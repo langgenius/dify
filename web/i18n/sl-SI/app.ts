@@ -188,6 +188,12 @@ const translation = {
     searchAllTemplate: 'Preišči vse predloge ...',
   },
   showMyCreatedAppsOnly: 'Prikaži samo aplikacije, ki sem jih ustvaril',
+  appSelector: {
+    params: 'PARAMETRI APLIKACIJE',
+    noParams: 'Parametri niso potrebni',
+    label: 'APL',
+    placeholder: 'Izberite aplikacijo ...',
+  },
 }
 
 export default translation

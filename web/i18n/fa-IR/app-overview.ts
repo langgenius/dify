@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'تم رنگی چت‌بات را تنظیم کنید',
         chatColorThemeInverted: 'معکوس',
         invalidHexMessage: 'مقدار هگز نامعتبر',
+        invalidPrivacyPolicy: 'لینک سیاست حفظ حریم خصوصی نامعتبر است. لطفاً از یک لینک معتبر که با http یا https شروع میشود استفاده کنید',
         more: {
           entry: 'نمایش تنظیمات بیشتر',
           copyright: 'حق نسخه‌برداری',
@@ -112,6 +113,7 @@ const translation = {
           operation: 'مستندات',
         },
       },
+      launch: 'راه اندازی',
     },
     apiInfo: {
       title: 'API سرویس بک‌اند',

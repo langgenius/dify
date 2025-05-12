@@ -18,6 +18,12 @@ def test_yarl_urls():
     assert str(URL("https://dify.ai/api") / "v1") == expected_3
     assert str(URL("https://dify.ai/api/") / "v1") == expected_3
 
+    expected_4 = "api"
+    assert str(URL("") / "api") == expected_4
+
+    expected_5 = "/api"
+    assert str(URL("/") / "api") == expected_5
+
     with pytest.raises(ValueError) as e1:
         str(URL("https://dify.ai") / "/api")
     assert str(e1.value) == "Appending path '/api' starting from slash is forbidden"

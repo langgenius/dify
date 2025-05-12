@@ -147,3 +147,18 @@ class BaseIterationState(BaseModel):
         pass
 
     metadata: MetaData
+
+
+class BaseLoopNodeData(BaseNodeData):
+    start_node_id: Optional[str] = None
+
+
+class BaseLoopState(BaseModel):
+    loop_node_id: str
+    index: int
+    inputs: dict
+
+    class MetaData(BaseModel):
+        pass
+
+    metadata: MetaData

@@ -19,10 +19,10 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
     [currentTime],
   )
 
-  const countdownTimeout = useRef<NodeJS.Timeout>()
+  const countdownTimeout = useRef<number>(undefined)
   const clearCountdown = useCallback(() => {
     if (countdownTimeout.current) {
-      clearTimeout(countdownTimeout.current)
+      window.clearTimeout(countdownTimeout.current)
       countdownTimeout.current = undefined
     }
   }, [])
@@ -31,7 +31,7 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
 
   const countdown = useCallback(() => {
     clearCountdown()
-    countdownTimeout.current = setTimeout(() => {
+    countdownTimeout.current = window.setTimeout(() => {
       const now = Date.now()
       if (now <= targetTime.current) {
         setCurrentTime(Date.now())
@@ -55,7 +55,7 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
   return displayTime
     ? (
       <Tooltip popupContent={t('common.modelProvider.apiKeyRateLimit', { seconds: displayTime })}>
-        <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className='w-3 h-3' />
+        <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className='h-3 w-3' />
       </Tooltip>
     )
     : null

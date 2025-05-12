@@ -200,6 +200,12 @@ const translation = {
     searchAllTemplate: 'Cerca in tutti i modelli...',
   },
   showMyCreatedAppsOnly: 'Mostra solo le mie app create',
+  appSelector: {
+    params: 'PARAMETRI DELL\'APP',
+    noParams: 'Non sono necessari parametri',
+    placeholder: 'Seleziona un\'app...',
+    label: 'APP',
+  },
 }
 
 export default translation

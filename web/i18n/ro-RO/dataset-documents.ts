@@ -133,7 +133,7 @@ const translation = {
         language: 'Limbă',
         authorPublisher: 'Autor/Editor',
         publishDate: 'Data publicării',
-        topicsKeywords: 'Subiecte/Cuvinte cheie',
+        topicKeywords: 'Subiecte/Cuvinte cheie',
         description: 'Descriere',
       },
       paper: {

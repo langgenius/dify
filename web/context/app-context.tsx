@@ -8,15 +8,13 @@ import { fetchAppList } from '@/service/apps'
 import Loading from '@/app/components/base/loading'
 import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile, getSystemFeatures } from '@/service/common'
 import type { App } from '@/types/app'
-import { Theme } from '@/types/app'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
+import { noop } from 'lodash-es'
 
 export type AppContextValue = {
-  theme: Theme
-  setTheme: (theme: Theme) => void
   apps: App[]
   systemFeatures: SystemFeatures
   mutateApps: VoidFunction
@@ -52,20 +50,18 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
   created_at: 0,
   role: 'normal',
   providers: [],
-  in_trail: true,
 }
 
 const AppContext = createContext<AppContextValue>({
-  theme: Theme.light,
   systemFeatures: defaultSystemFeatures,
-  setTheme: () => { },
   apps: [],
-  mutateApps: () => { },
+  mutateApps: noop,
   userProfile: {
     id: '',
     name: '',
     email: '',
     avatar: '',
+    avatar_url: '',
     is_password_set: false,
   },
   currentWorkspace: initialWorkspaceInfo,
@@ -73,8 +69,8 @@ const AppContext = createContext<AppContextValue>({
   isCurrentWorkspaceOwner: false,
   isCurrentWorkspaceEditor: false,
   isCurrentWorkspaceDatasetOperator: false,
-  mutateUserProfile: () => { },
-  mutateCurrentWorkspace: () => { },
+  mutateUserProfile: noop,
+  mutateCurrentWorkspace: noop,
   pageContainerRef: createRef(),
   langeniusVersionInfo: initialLangeniusVersionInfo,
   useSelector,
@@ -127,24 +123,11 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       setCurrentWorkspace(currentWorkspaceResponse)
   }, [currentWorkspaceResponse])
 
-  const [theme, setTheme] = useState<Theme>(Theme.light)
-  const handleSetTheme = useCallback((theme: Theme) => {
-    setTheme(theme)
-    globalThis.document.documentElement.setAttribute('data-theme', theme)
-  }, [])
-
-  useEffect(() => {
-    globalThis.document.documentElement.setAttribute('data-theme', theme)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   if (!appList || !userProfile)
     return <Loading type='app' />
 
   return (
     <AppContext.Provider value={{
-      theme,
-      setTheme: handleSetTheme,
       apps: appList.data,
       systemFeatures: { ...defaultSystemFeatures, ...systemFeatures },
       mutateApps,
@@ -161,9 +144,9 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
     }}>
-      <div className='flex flex-col h-full overflow-y-auto'>
+      <div className='flex h-full flex-col overflow-y-auto'>
         {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
-        <div ref={pageContainerRef} className='grow relative flex flex-col overflow-y-auto overflow-x-hidden bg-background-body'>
+        <div ref={pageContainerRef} className='relative flex grow flex-col overflow-y-auto overflow-x-hidden bg-background-body'>
           {children}
         </div>
       </div>

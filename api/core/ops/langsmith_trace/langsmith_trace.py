@@ -7,6 +7,7 @@ from typing import Optional, cast
 
 from langsmith import Client
 from langsmith.schemas import RunBase
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangSmithConfig
@@ -27,9 +28,9 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
-from models.workflow import WorkflowNodeExecution
 
 logger = logging.getLogger(__name__)
 
@@ -134,36 +135,18 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         self.add_run(langsmith_run)
 
-        # through workflow_run_id get all_nodes_execution
-        workflow_nodes_execution_id_records = (
-            db.session.query(WorkflowNodeExecution.id)
-            .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
-            .all()
+        # through workflow_run_id get all_nodes_execution using repository
+        session_factory = sessionmaker(bind=db.engine)
+        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory, tenant_id=trace_info.tenant_id, app_id=trace_info.metadata.get("app_id")
         )
 
-        for node_execution_id_record in workflow_nodes_execution_id_records:
-            node_execution = (
-                db.session.query(
-                    WorkflowNodeExecution.id,
-                    WorkflowNodeExecution.tenant_id,
-                    WorkflowNodeExecution.app_id,
-                    WorkflowNodeExecution.title,
-                    WorkflowNodeExecution.node_type,
-                    WorkflowNodeExecution.status,
-                    WorkflowNodeExecution.inputs,
-                    WorkflowNodeExecution.outputs,
-                    WorkflowNodeExecution.created_at,
-                    WorkflowNodeExecution.elapsed_time,
-                    WorkflowNodeExecution.process_data,
-                    WorkflowNodeExecution.execution_metadata,
-                )
-                .filter(WorkflowNodeExecution.id == node_execution_id_record.id)
-                .first()
-            )
+        # Get all executions for this workflow run
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
+            workflow_run_id=trace_info.workflow_run_id
+        )
 
-            if not node_execution:
-                continue
-
+        for node_execution in workflow_node_executions:
             node_execution_id = node_execution.id
             tenant_id = node_execution.tenant_id
             app_id = node_execution.app_id
@@ -199,6 +182,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             )
 
             process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
+
             if process_data and process_data.get("model_mode") == "chat":
                 run_type = LangSmithRunType.llm
                 metadata.update(
@@ -212,9 +196,23 @@ class LangSmithDataTrace(BaseTraceInstance):
             else:
                 run_type = LangSmithRunType.tool
 
+            prompt_tokens = 0
+            completion_tokens = 0
+            try:
+                if outputs.get("usage"):
+                    prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
+                    completion_tokens = outputs.get("usage", {}).get("completion_tokens", 0)
+                else:
+                    prompt_tokens = process_data.get("usage", {}).get("prompt_tokens", 0)
+                    completion_tokens = process_data.get("usage", {}).get("completion_tokens", 0)
+            except Exception:
+                logger.error("Failed to extract usage", exc_info=True)
+
             node_dotted_order = generate_dotted_order(node_execution_id, created_at, workflow_dotted_order)
             langsmith_run = LangSmithRunModel(
                 total_tokens=node_total_tokens,
+                input_tokens=prompt_tokens,
+                output_tokens=completion_tokens,
                 name=node_type,
                 inputs=inputs,
                 run_type=run_type,

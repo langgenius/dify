@@ -26,6 +26,8 @@ const translation = {
     lineBreak: '改行',
     sure: '確認済み',
     download: 'ダウンロード',
+    downloadSuccess: 'ダウンロード完了',
+    downloadFailed: 'ダウンロードに失敗しました、後で再試行してください。',
     delete: '削除',
     settings: '設定',
     setup: 'セットアップ',
@@ -50,6 +52,12 @@ const translation = {
     submit: '送信',
     skip: 'スキップ',
     imageCopied: 'コピーした画像',
+    deleteApp: 'アプリを削除',
+    viewDetails: '詳細を見る',
+    copied: 'コピーしました',
+    in: '中',
+    format: 'フォーマット',
+    more: 'もっと',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -126,6 +134,8 @@ const translation = {
       Custom: 'カスタム',
     },
     addMoreModel: '設定画面から他のモデルを追加してください',
+    capabilities: 'マルチモーダル機能',
+    settingsLink: 'モデルプロバイダー設定',
   },
   menus: {
     status: 'ベータ版',
@@ -138,6 +148,7 @@ const translation = {
     newApp: '新しいアプリ',
     newDataset: 'ナレッジの作成',
     tools: 'ツール',
+    exploreMarketplace: 'マーケットプレイスを探索する',
   },
   userProfile: {
     settings: '設定',
@@ -145,11 +156,21 @@ const translation = {
     workspace: 'ワークスペース',
     createWorkspace: 'ワークスペースを作成',
     helpCenter: 'ヘルプ',
+    support: 'サポート',
+    compliance: 'コンプライアンス',
     communityFeedback: 'フィードバック',
     roadmap: 'ロードマップ',
     community: 'コミュニティ',
     about: 'Difyについて',
     logout: 'ログアウト',
+  },
+  compliance: {
+    soc2Type1: 'SOC 2 Type I 報告書',
+    soc2Type2: 'SOC 2 Type II 報告書',
+    iso27001: 'ISO 27001:2022 認証',
+    gdpr: 'GDPR データ処理契約（DPA）',
+    sandboxUpgradeTooltip: 'プロフェッショナルプランまたはチームプランでのみ利用可能',
+    professionalUpgradeTooltip: 'チームプラン以上の契約が必要です',
   },
   settings: {
     accountGroup: 'アカウント',
@@ -163,6 +184,7 @@ const translation = {
     dataSource: 'データソース',
     plugin: 'プラグイン',
     apiBasedExtension: 'API拡張',
+    generalGroup: '一般',
   },
   account: {
     avatar: 'アバター',
@@ -198,6 +220,9 @@ const translation = {
     feedbackLabel: 'アカウントを削除した理由を教えてください。',
     feedbackPlaceholder: '随意',
     sendVerificationButton: '確認コードの送信',
+    editWorkspaceInfo: 'ワークスペース情報を編集',
+    workspaceName: 'ワークスペース名',
+    workspaceIcon: 'ワークスペースアイコン',
   },
   members: {
     team: 'チーム',
@@ -290,6 +315,7 @@ const translation = {
       usedUp: 'トライアルクォータが使い果たされました。独自のモデルプロバイダを追加してください。',
       useYourModel: '現在、独自のモデルプロバイダを使用しています。',
       close: '閉じる',
+      trialQuotaTip: 'お客様の Anthropic 試用枠は 2025/03/17 に失効し、その後は利用できなくなります。お早めにご利用ください。',
     },
     anthropic: {
       using: '埋め込み機能は使用中です',
@@ -401,6 +427,12 @@ const translation = {
     loadBalancingLeastKeyWarning: '負荷分散を利用するには、最低2つのキーを有効化する必要があります。',
     loadBalancingInfo: 'デフォルトでは、負荷分散はラウンドロビン方式を採用しています。レート制限が発生した場合、1分間のクールダウン期間が適用されます。',
     upgradeForLoadBalancing: '負荷分散を利用するには、プランのアップグレードが必要です。',
+    emptyProviderTitle: 'モデルプロバイダーが設定されていません',
+    discoverMore: 'もっと発見する',
+    installProvider: 'モデルプロバイダーをインストールする',
+    configureTip: 'APIキーを設定するか、使用するモデルを追加してください',
+    toBeConfigured: '設定中',
+    emptyProviderTip: '最初にモデルプロバイダーをインストールしてください。',
   },
   dataSource: {
     add: 'データソースの追加',
@@ -444,7 +476,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API拡張機能は、Difyのアプリケーション全体での簡単な使用のための設定を簡素化し、集中的なAPI管理を提供します。',
     link: '独自のAPI拡張機能を開発する方法について学ぶ。',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API拡張機能を追加',
     selector: {
       title: 'API拡張機能',
@@ -530,6 +562,8 @@ const translation = {
       hitScore: '検索スコア:',
     },
     inputPlaceholder: 'ボットと話す',
+    thought: '思考',
+    thinking: '考え中...',
   },
   promptEditor: {
     placeholder: 'ここにプロンプトワードを入力してください。変数を挿入するには「{」を、プロンプトコンテンツブロックを挿入するには「/」を入力します。',

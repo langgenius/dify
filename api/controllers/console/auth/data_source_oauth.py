@@ -2,8 +2,8 @@ import logging
 
 import requests
 from flask import current_app, redirect, request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -74,7 +74,9 @@ class OAuthDataSourceBinding(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
         if "code" in request.args:
-            code = request.args.get("code")
+            code = request.args.get("code", "")
+            if not code:
+                return {"error": "Invalid code"}, 400
             try:
                 oauth_provider.get_access_token(code)
             except requests.exceptions.HTTPError as e:

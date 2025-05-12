@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'Creați Cunoștințe',
       update: 'Adăugați date',
+      fallbackRoute: 'Cunoaștere',
     },
     one: 'Alegeți sursa de date',
     two: 'Prelucrarea și curățarea textului',
@@ -21,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Încărcați fișier text',
-      button: 'Trageți și fixați fișierul, sau',
+      button: 'Trageți și plasați fișiere sau foldere sau',
       browse: 'Răsfoire',
       tip: 'Acceptă {{supportTypes}}. Maxim {{size}}MB fiecare.',
       validation: {
@@ -64,7 +65,7 @@ const translation = {
       firecrawlTitle: 'Extrageți conținut web cu 🔥Firecrawl',
       unknownError: 'Eroare necunoscută',
       scrapTimeInfo: 'Pagini răzuite {{total}} în total în {{timp}}s',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       excludePaths: 'Excluderea căilor',
       resetAll: 'Resetați toate',
       extractOnlyMainContent: 'Extrageți doar conținutul principal (fără anteturi, navigări, subsoluri etc.)',

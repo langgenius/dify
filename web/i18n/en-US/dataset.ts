@@ -168,6 +168,54 @@ const translation = {
   preprocessDocument: '{{num}} Preprocess Documents',
   allKnowledge: 'All Knowledge',
   allKnowledgeDescription: 'Select to display all knowledge in this workspace. Only the Workspace Owner can manage all knowledge.',
+  embeddingModelNotAvailable: 'Embedding model is unavailable.',
+  metadata: {
+    metadata: 'Metadata',
+    addMetadata: 'Add Metadata',
+    chooseTime: 'Choose a time...',
+    createMetadata: {
+      title: 'New Metadata',
+      back: 'Back',
+      type: 'Type',
+      name: 'Name',
+      namePlaceholder: 'Add metadata name',
+    },
+    checkName: {
+      empty: 'Metadata name cannot be empty',
+      invalid: 'Metadata name can only contain lowercase letters, numbers, and underscores and must start with a lowercase letter',
+    },
+    batchEditMetadata: {
+      editMetadata: 'Edit Metadata',
+      editDocumentsNum: 'Editing {{num}} documents',
+      applyToAllSelectDocument: 'Apply to all selected documents',
+      applyToAllSelectDocumentTip: 'Automatically create all the above edited and new metadata for all selected documents, otherwise editing metadata will only apply to documents with it.',
+      multipleValue: 'Multiple Value',
+    },
+    selectMetadata: {
+      search: 'Search metadata',
+      newAction: 'New Metadata',
+      manageAction: 'Manage',
+    },
+    datasetMetadata: {
+      description: 'You can manage all metadata in this knowledge here. Modifications will be synchronized to every document.',
+      addMetaData: 'Add Metadata',
+      values: '{{num}} Values',
+      disabled: 'Disabled',
+      rename: 'Rename',
+      name: 'Name',
+      namePlaceholder: 'Metadata name',
+      builtIn: 'Built-in',
+      builtInDescription: 'Built-in metadata is automatically extracted and generated. It must be enabled before use and cannot be edited.',
+      deleteTitle: 'Confirm to delete',
+      deleteContent: 'Are you sure you want to delete the metadata "{{name}}"',
+    },
+    documentMetadata: {
+      metadataToolTip: 'Metadata serves as a critical filter that enhances the accuracy and relevance of information retrieval. You can modify and add metadata for this document here.',
+      startLabeling: 'Start Labeling',
+      documentInformation: 'Document Information',
+      technicalParameters: 'Technical Parameters',
+    },
+  },
 }
 
 export default translation

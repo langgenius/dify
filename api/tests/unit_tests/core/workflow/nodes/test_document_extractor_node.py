@@ -1,6 +1,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from docx.oxml.text.paragraph import CT_P
 
 from core.file import File, FileTransferMethod
 from core.variables import ArrayFileSegment
@@ -8,7 +9,7 @@ from core.variables.variables import StringVariable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
 from core.workflow.nodes.document_extractor.node import (
-    _extract_text_from_doc,
+    _extract_text_from_docx,
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
 )
@@ -120,7 +121,7 @@ def test_run_extract_text(
         monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
     elif mime_type.startswith("application/vnd.openxmlformats"):
         mock_docx_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_doc", mock_docx_extract)
+        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_docx", mock_docx_extract)
 
     result = document_extractor_node._run()
 
@@ -163,14 +164,19 @@ def test_extract_text_from_pdf(mock_pdf_document):
 
 
 @patch("docx.Document")
-def test_extract_text_from_doc(mock_document):
+def test_extract_text_from_docx(mock_document):
     mock_paragraph1 = Mock()
     mock_paragraph1.text = "Paragraph 1"
     mock_paragraph2 = Mock()
     mock_paragraph2.text = "Paragraph 2"
     mock_document.return_value.paragraphs = [mock_paragraph1, mock_paragraph2]
-
-    text = _extract_text_from_doc(b"PK\x03\x04")
+    mock_ct_p1 = Mock(spec=CT_P)
+    mock_ct_p1.text = "Paragraph 1"
+    mock_ct_p2 = Mock(spec=CT_P)
+    mock_ct_p2.text = "Paragraph 2"
+    mock_element = Mock(body=[mock_ct_p1, mock_ct_p2])
+    mock_document.return_value.element = mock_element
+    text = _extract_text_from_docx(b"PK\x03\x04")
     assert text == "Paragraph 1\nParagraph 2"
 
 

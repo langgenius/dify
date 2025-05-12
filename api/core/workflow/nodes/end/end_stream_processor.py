@@ -33,7 +33,7 @@ class EndStreamProcessor(StreamProcessor):
 
                 yield event
             elif isinstance(event, NodeRunStreamChunkEvent):
-                if event.in_iteration_id:
+                if event.in_iteration_id or event.in_loop_id:
                     if self.has_output and event.node_id not in self.output_node_ids:
                         event.chunk_content = "\n" + event.chunk_content
 

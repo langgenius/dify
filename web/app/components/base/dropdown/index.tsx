@@ -11,7 +11,7 @@ import {
 
 export type Item = {
   value: string | number
-  text: string | JSX.Element
+  text: string | React.JSX.Element
 }
 type DropdownProps = {
   items: Item[]
@@ -47,17 +47,17 @@ const Dropdown: FC<DropdownProps> = ({
             : (
               <div
                 className={`
-                  flex items-center justify-center w-6 h-6 cursor-pointer rounded-md
-                  ${open && 'bg-black/5'}
+                  flex h-6 w-6 cursor-pointer items-center justify-center rounded-md
+                  ${open && 'bg-divider-regular'}
                 `}
               >
-                <RiMoreFill className='w-4 h-4 text-gray-500' />
+                <RiMoreFill className='h-4 w-4 text-text-tertiary' />
               </div>
             )
         }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={popupClassName}>
-        <div className='rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg text-sm text-gray-700'>
+        <div className='rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg text-sm text-text-secondary shadow-lg'>
           {
             !!items.length && (
               <div className='p-1'>
@@ -65,7 +65,7 @@ const Dropdown: FC<DropdownProps> = ({
                   items.map(item => (
                     <div
                       key={item.value}
-                      className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
+                      className='flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-components-panel-on-panel-item-bg-hover'
                       onClick={() => handleSelect(item)}
                     >
                       {item.text}
@@ -77,7 +77,7 @@ const Dropdown: FC<DropdownProps> = ({
           }
           {
             (!!items.length && !!secondItems?.length) && (
-              <div className='h-[1px] bg-gray-100' />
+              <div className='h-[1px] bg-divider-regular' />
             )
           }
           {
@@ -87,7 +87,7 @@ const Dropdown: FC<DropdownProps> = ({
                   secondItems.map(item => (
                     <div
                       key={item.value}
-                      className='flex items-center px-3 h-8 rounded-lg cursor-pointer hover:bg-gray-100'
+                      className='flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-components-panel-on-panel-item-bg-hover'
                       onClick={() => handleSelect(item)}
                     >
                       {item.text}

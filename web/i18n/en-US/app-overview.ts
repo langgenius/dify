@@ -33,6 +33,7 @@ const translation = {
       explanation: 'Ready-to-use AI WebApp',
       accessibleAddress: 'Public URL',
       preview: 'Preview',
+      launch: 'Launch',
       regenerate: 'Regenerate',
       regenerateNotice: 'Do you want to regenerate the public URL?',
       preUseReminder: 'Please enable WebApp before continuing.',
@@ -56,6 +57,7 @@ const translation = {
         chatColorThemeDesc: 'Set the color theme of the chatbot',
         chatColorThemeInverted: 'Inverted',
         invalidHexMessage: 'Invalid hex value',
+        invalidPrivacyPolicy: 'Invalid privacy policy link. Please use a valid link that starts with http or https',
         sso: {
           label: 'SSO Enforcement',
           title: 'WebApp SSO',

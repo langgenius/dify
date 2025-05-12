@@ -30,6 +30,7 @@ import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-
 import { useFeatures } from '@/app/components/base/features/hooks'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
+import { canFindTool } from '@/utils'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter
@@ -67,7 +68,6 @@ const ChatItem: FC<ChatItemProps> = ({
   }, [modelConfig.configs.prompt_variables])
   const {
     chatList,
-    chatListRef,
     isResponding,
     handleSend,
     suggestedQuestions,
@@ -102,7 +102,7 @@ const ChatItem: FC<ChatItemProps> = ({
       query: message,
       inputs,
       model_config: configData,
-      parent_message_id: getLastAnswer(chatListRef.current)?.id || null,
+      parent_message_id: getLastAnswer(chatList)?.id || null,
     }
 
     if ((config.file_upload as any).enabled && files?.length && supportVision)
@@ -116,7 +116,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, chatListRef])
+  }, [appId, chatList, config, handleSend, inputs, modelAndParameter.model, modelAndParameter.parameters, modelAndParameter.provider, textGenerationModelList])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
@@ -129,7 +129,7 @@ const ChatItem: FC<ChatItemProps> = ({
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
-      icons[item.tool_name] = collectionList.find((collection: any) => collection.id === item.provider_id)?.icon
+      icons[item.tool_name] = collectionList.find((collection: any) => canFindTool(collection.id, item.provider_id))?.icon
     })
     return icons
   }, [collectionList, modelConfig.agentConfig.tools])

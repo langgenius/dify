@@ -14,7 +14,6 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 
 - **Unified Vector Database Services**: All vector database services are now managed from a single Docker Compose file `docker-compose.yaml`. You can switch between different vector databases by setting the `VECTOR_STORE` environment variable in your `.env` file.
 - **Mandatory .env File**: A `.env` file is now required to run `docker compose up`. This file is crucial for configuring your deployment and for any custom settings to persist through upgrades.
-- **Legacy Support**: Previous deployment files are now located in the `docker-legacy` directory and will no longer be maintained.
 
 ### How to Deploy Dify with `docker-compose.yaml`
 
@@ -27,7 +26,10 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - Execute `docker compose up` from the `docker` directory to start the services.
     - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
 4. **SSL Certificate Setup**:
-    - Rrefer `docker/certbot/README.md` to set up SSL certificates using Certbot.
+    - Refer `docker/certbot/README.md` to set up SSL certificates using Certbot.
+5. **OpenTelemetry Collector Setup**:
+   - Change `ENABLE_OTEL` to `true` in `.env`.
+   - Configure `OTLP_BASE_ENDPOINT` properly.
 
 ### How to Deploy Middleware for Developing Dify
 
@@ -36,7 +38,8 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - Navigate to the `docker` directory.
     - Ensure the `middleware.env` file is created by running `cp middleware.env.example middleware.env` (refer to the `middleware.env.example` file).
 2. **Running Middleware Services**:
-    - Execute `docker-compose -f docker-compose.middleware.yaml up --env-file middleware.env -d` to start the middleware services.
+    - Navigate to the `docker` directory.
+    - Execute `docker compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d` to start the middleware services. (Change the profile to other vector database if you are not using weaviate)
 
 ### Migration for Existing Users
 
@@ -54,7 +57,7 @@ For users migrating from the `docker-legacy` setup:
 
 - **Vector Database Services**: Depending on the type of vector database used (`VECTOR_STORE`), users can set specific endpoints, ports, and authentication details.
 - **Storage Services**: Depending on the storage type (`STORAGE_TYPE`), users can configure specific settings for S3, Azure Blob, Google Storage, etc.
-- **API and Web Services**: Users can define URLs and other settings that affect how the API and web frontends operate.
+- **API and Web Services**: Users can define URLs and other settings that affect how the API and web frontend operate.
 
 #### Other notable variables
 
@@ -88,7 +91,11 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 8. **CORS Configuration**:
     - `WEB_API_CORS_ALLOW_ORIGINS`, `CONSOLE_CORS_ALLOW_ORIGINS`: Settings for cross-origin resource sharing.
 
-9. **Other Service-Specific Environment Variables**:
+9. **OpenTelemetry Configuration**:
+    - `ENABLE_OTEL`: Enable OpenTelemetry collector in api.
+    - `OTLP_BASE_ENDPOINT`: Endpoint for your OTLP exporter.
+  
+10. **Other Service-Specific Environment Variables**:
     - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
 
 ### Additional Information

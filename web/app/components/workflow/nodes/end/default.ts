@@ -1,7 +1,7 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
-import { type EndNodeType } from './types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
+import type { EndNodeType } from './types'
+import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 
 const nodeDefault: NodeDefault<EndNodeType> = {
   defaultValue: {
@@ -16,16 +16,10 @@ const nodeDefault: NodeDefault<EndNodeType> = {
   getAvailableNextNodes() {
     return []
   },
-  checkValid(payload: EndNodeType) {
-    let isValid = true
-    let errorMessages = ''
-    if (payload.type) {
-      isValid = true
-      errorMessages = ''
-    }
+  checkValid() {
     return {
-      isValid,
-      errorMessage: errorMessages,
+      isValid: true,
+      errorMessage: '',
     }
   },
 }

@@ -188,6 +188,12 @@ const translation = {
     searchAllTemplate: 'सभी टेम्पलेट्स खोजें...',
   },
   showMyCreatedAppsOnly: 'केवल मेरे बनाए गए ऐप्स दिखाएं',
+  appSelector: {
+    params: 'ऐप पैरामीटर',
+    noParams: 'कोई पैरामीटर की आवश्यकता नहीं है।',
+    placeholder: 'एक ऐप चुनें...',
+    label: 'ऐप',
+  },
 }
 
 export default translation

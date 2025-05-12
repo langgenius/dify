@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'ज्ञान बनाएं',
       update: 'डेटा जोड़ें',
+      fallbackRoute: 'ज्ञान',
     },
     one: 'डेटा स्रोत चुनें',
     two: 'पाठ पूर्व-प्रसंस्करण और सफाई',
@@ -26,7 +27,7 @@ const translation = {
     },
     uploader: {
       title: 'फ़ाइल अपलोड करें',
-      button: 'फ़ाइल खींचें और छोड़ें, या',
+      button: 'फ़ाइलों या फ़ोल्डरों को खींचें और छोड़ें, या',
       browse: 'ब्राउज़ करें',
       tip: 'समर्थित {{supportTypes}}। प्रत्येक अधिकतम {{size}}MB।',
       validation: {

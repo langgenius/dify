@@ -19,7 +19,7 @@ const ScoreSlider: FC<Props> = ({
 
   return (
     <div className={className}>
-      <div className='h-[1px] mt-[14px]'>
+      <div className='mt-[14px] h-[1px]'>
         <Slider
           max={100}
           min={80}
@@ -28,7 +28,7 @@ const ScoreSlider: FC<Props> = ({
           onChange={onChange}
         />
       </div>
-      <div className='mt-[10px] flex justify-between items-center system-xs-semibold-uppercase'>
+      <div className='system-xs-semibold-uppercase mt-[10px] flex items-center justify-between'>
         <div className='flex space-x-1 text-util-colors-cyan-cyan-500'>
           <div>0.8</div>
           <div>·</div>

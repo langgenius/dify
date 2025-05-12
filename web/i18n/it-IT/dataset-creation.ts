@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'Crea Conoscenza',
       update: 'Aggiungi dati',
+      fallbackRoute: 'Conoscenza',
     },
     one: 'Scegli fonte dati',
     two: 'Preprocessamento e Pulizia del Testo',
@@ -26,7 +27,7 @@ const translation = {
     },
     uploader: {
       title: 'Carica file',
-      button: 'Trascina e rilascia il file, o',
+      button: 'Trascina e rilascia file o cartelle, oppure',
       browse: 'Sfoglia',
       tip: 'Supporta {{supportTypes}}. Max {{size}}MB ciascuno.',
       validation: {

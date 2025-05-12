@@ -50,7 +50,7 @@ class WordExtractor(BaseExtractor):
 
             self.web_path = self.file_path
             # TODO: use a better way to handle the file
-            self.temp_file = tempfile.NamedTemporaryFile()  # noqa: SIM115
+            self.temp_file = tempfile.NamedTemporaryFile()  # noqa SIM115
             self.temp_file.write(r.content)
             self.file_path = self.temp_file.name
         elif not os.path.isfile(self.file_path):
@@ -76,8 +76,7 @@ class WordExtractor(BaseExtractor):
         parsed = urlparse(url)
         return bool(parsed.netloc) and bool(parsed.scheme)
 
-    def _extract_images_from_docx(self, doc, image_folder):
-        os.makedirs(image_folder, exist_ok=True)
+    def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
 
@@ -85,7 +84,7 @@ class WordExtractor(BaseExtractor):
             if "image" in rel.target_ref:
                 image_count += 1
                 if rel.is_external:
-                    url = rel.reltype
+                    url = rel.target_ref
                     response = ssrf_proxy.get(url)
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
@@ -126,9 +125,7 @@ class WordExtractor(BaseExtractor):
 
                 db.session.add(upload_file)
                 db.session.commit()
-                image_map[rel.target_part] = (
-                    f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/file-preview)"
-                )
+                image_map[rel.target_part] = f"![image]({dify_config.FILES_URL}/files/{upload_file.id}/file-preview)"
 
         return image_map
 
@@ -212,7 +209,7 @@ class WordExtractor(BaseExtractor):
 
         content = []
 
-        image_map = self._extract_images_from_docx(doc, image_folder)
+        image_map = self._extract_images_from_docx(doc)
 
         hyperlinks_url = None
         url_pattern = re.compile(r"http://[^\s+]+//|https://[^\s+]+")
@@ -227,14 +224,14 @@ class WordExtractor(BaseExtractor):
                         xml = ElementTree.XML(run.element.xml)
                         x_child = [c for c in xml.iter() if c is not None]
                         for x in x_child:
-                            if x_child is None:
+                            if x is None:
                                 continue
                             if x.tag.endswith("instrText"):
                                 if x.text is None:
                                     continue
                                 for i in url_pattern.findall(x.text):
                                     hyperlinks_url = str(i)
-                    except Exception as e:
+                    except Exception:
                         logger.exception("Failed to parse HYPERLINK xml")
 
         def parse_paragraph(paragraph):

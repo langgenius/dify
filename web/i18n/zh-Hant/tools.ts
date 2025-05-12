@@ -121,6 +121,7 @@ const translation = {
     number: '數字',
     required: '必填',
     infoAndSetting: '資訊和設定',
+    file: '檔',
   },
   noCustomTool: {
     title: '沒有自定義工具!',
@@ -150,6 +151,8 @@ const translation = {
   customToolTip: '瞭解有關 Dify 自訂工具的更多資訊',
   toolNameUsageTip: '用於代理推理和提示的工具調用名稱',
   openInStudio: '在 Studio 中打開',
+  noTools: '未找到工具',
+  copyToolName: '複製名稱',
 }
 
 export default translation

@@ -9,7 +9,7 @@ export class Theme {
   public backgroundHeaderColorStyle = 'backgroundImage: linear-gradient(to right, #2563eb, #0ea5e9)'
   public headerBorderBottomStyle = ''
   public colorFontOnHeaderStyle = 'color: white'
-  public colorPathOnHeader = 'white'
+  public colorPathOnHeader = 'text-text-primary-on-surface'
   public backgroundButtonDefaultColorStyle = 'backgroundColor: #1C64F2'
   public roundedBackgroundColorStyle = 'backgroundColor: rgb(245 248 255)'
   public chatBubbleColorStyle = 'backgroundColor: rgb(225 239 254)'
@@ -48,10 +48,13 @@ export class ThemeBuilder {
   private buildChecker = false
 
   public get theme() {
-    if (this._theme === undefined)
-      throw new Error('The theme should be built first and then accessed')
-    else
+    if (this._theme === undefined) {
+      this._theme = new Theme()
       return this._theme
+    }
+    else {
+      return this._theme
+    }
   }
 
   public buildTheme(chatColorTheme: string | null = null, chatColorThemeInverted = false) {

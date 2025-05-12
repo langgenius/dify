@@ -39,6 +39,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         all_documents = []  # type: ignore
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
+            if not rules.segmentation:
+                raise ValueError("No segmentation found in rules.")
             splitter = self._get_splitter(
                 processing_rule_mode=process_rule.get("mode"),
                 max_tokens=rules.segmentation.max_tokens,
@@ -47,6 +49,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 embedding_model_instance=kwargs.get("embedding_model_instance"),
             )
             for document in documents:
+                if kwargs.get("preview") and len(all_documents) >= 10:
+                    return all_documents
                 # document clean
                 document_text = CleanProcessor.clean(document.page_content, process_rule)
                 document.page_content = document_text

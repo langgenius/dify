@@ -1,5 +1,6 @@
-from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Optional
+import json
+from collections.abc import Generator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from core.app.app_config.entities import VariableEntityType
 from core.file import File, FileUploadConfig
@@ -16,6 +17,7 @@ class BaseAppGenerator:
         user_inputs: Optional[Mapping[str, Any]],
         variables: Sequence["VariableEntity"],
         tenant_id: str,
+        strict_type_validation: bool = False,
     ) -> Mapping[str, Any]:
         user_inputs = user_inputs or {}
         # Filter input variables from form configuration, handle required fields, default values, and option values
@@ -36,6 +38,7 @@ class BaseAppGenerator:
                     allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
                     allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
                 ),
+                strict_type_validation=strict_type_validation,
             )
             for k, v in user_inputs.items()
             if isinstance(v, dict) and entity_dictionary[k].type == VariableEntityType.FILE
@@ -138,3 +141,21 @@ class BaseAppGenerator:
         if isinstance(value, str):
             return value.replace("\x00", "")
         return value
+
+    @classmethod
+    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str, None, None]]):
+        """
+        Convert messages into event stream
+        """
+        if isinstance(generator, dict):
+            return generator
+        else:
+
+            def gen():
+                for message in generator:
+                    if isinstance(message, Mapping | dict):
+                        yield f"data: {json.dumps(message)}\n\n"
+                    else:
+                        yield f"event: {message}\n\n"
+
+            return gen()

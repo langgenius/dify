@@ -1,5 +1,5 @@
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
 
 from constants import HIDDEN_VALUE
 from controllers.console import api
@@ -99,7 +99,7 @@ class APIBasedExtensionDetailAPI(Resource):
 
         APIBasedExtensionService.delete(extension_data_from_db)
 
-        return {"result": "success"}
+        return {"result": "success"}, 204
 
 
 api.add_resource(CodeBasedExtensionAPI, "/code-based-extension")

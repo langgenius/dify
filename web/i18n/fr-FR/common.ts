@@ -50,6 +50,10 @@ const translation = {
     submit: 'Envoyer',
     skip: 'Bateau',
     imageCopied: 'Image copied',
+    deleteApp: 'Supprimer l’application',
+    viewDetails: 'Voir les détails',
+    copied: 'Copied',
+    in: 'dans',
   },
   placeholder: {
     input: 'Veuillez entrer',
@@ -122,6 +126,8 @@ const translation = {
       Custom: 'Personnalisé',
     },
     addMoreModel: 'Allez dans les paramètres pour ajouter plus de modèles',
+    capabilities: 'Capacités multimodales',
+    settingsLink: 'Paramètres du fournisseur de modèles',
   },
   menus: {
     status: 'bêta',
@@ -134,6 +140,7 @@ const translation = {
     newApp: 'Nouvelle Application',
     newDataset: 'Créer des Connaissances',
     tools: 'Outils',
+    exploreMarketplace: 'Explorer Marketplace',
   },
   userProfile: {
     settings: 'Paramètres',
@@ -159,6 +166,7 @@ const translation = {
     dataSource: 'Source de Données',
     plugin: 'Plugins',
     apiBasedExtension: 'Extension API',
+    generalGroup: 'GÉNÉRALITÉS',
   },
   account: {
     avatar: 'Avatar',
@@ -286,6 +294,7 @@ const translation = {
       usedUp: 'Quota d\'essai épuisé. Ajoutez votre propre fournisseur de modèle.',
       useYourModel: 'Utilise actuellement son propre fournisseur de modèle.',
       close: 'Fermer',
+      trialQuotaTip: 'Votre quota d’essai Anthropic expirera le 11/03/2025 et ne sera plus disponible par la suite. Veuillez l’utiliser à temps.',
     },
     anthropic: {
       using: 'La capacité d\'embedding est utilisée',
@@ -397,6 +406,12 @@ const translation = {
     loadBalancingDescription: 'Réduisez la pression grâce à plusieurs ensembles d’informations d’identification.',
     providerManaged: 'Géré par le fournisseur',
     upgradeForLoadBalancing: 'Mettez à niveau votre plan pour activer l’équilibrage de charge.',
+    emptyProviderTitle: 'Le fournisseur de modèles n’est pas configuré',
+    toBeConfigured: 'À configurer',
+    configureTip: 'Configurer api-key ou ajouter un modèle à utiliser',
+    installProvider: 'Installer des fournisseurs de modèles',
+    discoverMore: 'Découvrez-en plus dans',
+    emptyProviderTip: 'Veuillez d’abord installer un fournisseur de modèles.',
   },
   dataSource: {
     add: 'Ajouter une source de données',
@@ -526,6 +541,8 @@ const translation = {
       hitScore: 'Score de Récupération:',
     },
     inputPlaceholder: 'Parler au bot',
+    thinking: 'Pensée...',
+    thought: 'Pensée',
   },
   promptEditor: {
     placeholder: 'Écrivez votre mot d\'invite ici, entrez \'{\' pour insérer une variable, entrez \'/\' pour insérer un bloc de contenu d\'invite',

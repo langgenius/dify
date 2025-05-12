@@ -3,6 +3,7 @@ const translation = {
     header: {
       creation: 'สร้างความรู้',
       update: 'เพิ่มข้อมูล',
+      fallbackRoute: 'ความรู้',
     },
     one: 'เลือกแหล่งข้อมูล',
     two: 'การประมวลผลและการทําความสะอาดข้อความล่วงหน้า',
@@ -31,7 +32,7 @@ const translation = {
     },
     uploader: {
       title: 'อัปโหลดไฟล์',
-      button: 'ลากและวางไฟล์ หรือ',
+      button: 'ลากและวางไฟล์หรือโฟลเดอร์หรือ',
       browse: 'เล็ม',
       tip: 'รองรับ {{supportTypes}} สูงสุด {{size}}MB แต่ละตัว',
       validation: {
@@ -70,7 +71,7 @@ const translation = {
       run: 'วิ่ง',
       firecrawlTitle: 'แยกเนื้อหาเว็บด้วย 🔥Firecrawl',
       firecrawlDoc: 'เอกสาร Firecrawl',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       jinaReaderTitle: 'แปลงทั้งไซต์เป็น Markdown',
       jinaReaderDoc: 'เรียนรู้เพิ่มเติมเกี่ยวกับ Jina Reader',
       jinaReaderDocLink: 'https://jina.ai/reader',

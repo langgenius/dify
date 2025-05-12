@@ -1,0 +1,44 @@
+@keyframes realistic-blink {
+  0% { fill: #37ff37; opacity: 0.4; }
+  15% { fill: #37ff37; opacity: 0.9; }
+  25% { fill: #37ff37; opacity: 0.3; }
+  38% { fill: #ff4444; opacity: 0.8; }
+  42% { fill: #ff4444; opacity: 0.3; }
+  58% { fill: #37ff37; opacity: 0.9; }
+  65% { fill: #37ff37; opacity: 0.4; }
+  79% { fill: #ff4444; opacity: 0.8; }
+  84% { fill: #ff4444; opacity: 0.3; }
+  92% { fill: #37ff37; opacity: 0.8; }
+  100% { fill: #37ff37; opacity: 0.4; }
+}
+
+@keyframes drop {
+  0% {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+  5% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+  65% {
+    transform: translateY(2px);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(2px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(2px);
+    opacity: 0;
+  }
+}
+
+#downloadingIconLight {
+  animation: realistic-blink 3s infinite ease-in-out;
+}
+
+#downloadingIconArrow {
+  animation: drop 1.2s cubic-bezier(0.4, 0, 1, 1) infinite;
+}
