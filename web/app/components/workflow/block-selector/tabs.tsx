@@ -73,6 +73,7 @@ const Tabs: FC<TabsProps> = ({
             searchText={searchText}
             onSelect={onSelect}
             tags={tags}
+            canNotSelectMultiple
             buildInTools={buildInTools || []}
             customTools={customTools || []}
             workflowTools={workflowTools || []}

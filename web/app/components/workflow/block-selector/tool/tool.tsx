@@ -22,7 +22,8 @@ type Props = {
   isShowLetterIndex: boolean
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
-  onSelectMultiple: (type: BlockEnum, tools: ToolDefaultValue[]) => void
+  canNotSelectMultiple?: boolean
+  onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
 }
 
@@ -33,6 +34,7 @@ const Tool: FC<Props> = ({
   isShowLetterIndex,
   hasSearchText,
   onSelect,
+  canNotSelectMultiple,
   onSelectMultiple,
   selectedTools,
 }) => {
@@ -68,7 +70,7 @@ const Tool: FC<Props> = ({
       return (
         <span className='system-xs-regular text-components-button-secondary-accent-text'
           onClick={(e) => {
-            onSelectMultiple(BlockEnum.Tool, actions.filter(action => !getIsDisabled(action)).map((tool) => {
+            onSelectMultiple?.(BlockEnum.Tool, actions.filter(action => !getIsDisabled(action)).map((tool) => {
               const params: Record<string, string> = {}
               if (tool.parameters) {
                 tool.parameters.forEach((item) => {
@@ -186,7 +188,7 @@ const Tool: FC<Props> = ({
           </div>
 
           <div className='ml-2 flex items-center'>
-            {notShowProvider ? notShowProviderSelectInfo : selectedInfo}
+            {!canNotSelectMultiple && (notShowProvider ? notShowProviderSelectInfo : selectedInfo)}
             {hasAction && (
               <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-quaternary', isFold && 'text-text-tertiary')} />
             )}

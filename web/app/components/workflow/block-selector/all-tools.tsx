@@ -32,7 +32,8 @@ type AllToolsProps = {
   workflowTools: ToolWithProvider[]
   mcpTools: ToolWithProvider[]
   onSelect: OnSelectBlock
-  onSelectMultiple: (type: BlockEnum, tools: ToolDefaultValue[]) => void
+  canNotSelectMultiple?: boolean
+  onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
 }
 
@@ -44,6 +45,7 @@ const AllTools = ({
   searchText,
   tags = DEFAULT_TAGS,
   onSelect,
+  canNotSelectMultiple,
   onSelectMultiple,
   buildInTools,
   workflowTools,
@@ -139,6 +141,7 @@ const AllTools = ({
           showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
           tools={tools}
           onSelect={onSelect}
+          canNotSelectMultiple={canNotSelectMultiple}
           onSelectMultiple={onSelectMultiple}
           viewType={isSupportGroupView ? activeView : ViewType.flat}
           hasSearchText={!!searchText}
