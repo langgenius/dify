@@ -275,7 +275,7 @@ class KnowledgeRetrievalNode(LLMNode):
             if records:
                 for record in records:
                     segment = record.segment
-                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
+                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  # type: ignore
                     document = (
                         db.session.query(Document)
                         .filter(

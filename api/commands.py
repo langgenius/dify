@@ -594,7 +594,7 @@ def old_metadata_migration():
                             db.session.add(dataset_metadata_binding)
                         else:
                             dataset_metadata_binding = (
-                                db.session.query(DatasetMetadataBinding)
+                                db.session.query(DatasetMetadataBinding)  # type: ignore
                                 .filter(
                                     DatasetMetadataBinding.dataset_id == document.dataset_id,
                                     DatasetMetadataBinding.document_id == document.id,
