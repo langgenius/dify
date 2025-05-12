@@ -1,0 +1,64 @@
+identity:
+  name: 进程在某类资源上的时间消耗
+  author: APO
+  label:
+    en_US: The time consumption of a process on a certain type of resource
+    zh_Hans: 进程在某类资源上的时间消耗
+description:
+  human:
+    en_US: The time consumption of a process on a certain type of resource
+    zh_Hans: 进程在某类资源上的时间消耗
+  llm: The time consumption of a process on a certain type of resource
+display:
+  type: metric
+  title: 进程在某类资源上的时间消耗
+  unit: "us"
+parameters:
+  - name: pid
+    type: string
+    required: False
+    label:
+      en_US: Process identity(eg:pid1|pid2)
+      zh_Hans: 进程id（正则查询格式：pid1|pid2）
+    human_description:
+      en_US: Process identity(eg:pid1|pid2)
+      zh_Hans: 进程id（正则查询格式：pid1|pid2）
+    llm_description: Process identity(eg:pid1|pid2)
+    form: llm
+  - name: type
+    type: string
+    required: False
+    label:
+      en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+      zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+    human_description:
+      en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+      zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+    llm_description: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
+    form: llm
