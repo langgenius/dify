@@ -29,7 +29,9 @@ def mail_clean_document_notify_task():
 
     # send document clean notify mail
     try:
-        dataset_auto_disable_logs = DatasetAutoDisableLog.query.filter(DatasetAutoDisableLog.notified == False).all()
+        dataset_auto_disable_logs = (
+            db.session.query(DatasetAutoDisableLog).filter(DatasetAutoDisableLog.notified == False).all()
+        )
         # group by tenant_id
         dataset_auto_disable_logs_map: dict[str, list[DatasetAutoDisableLog]] = defaultdict(list)
         for dataset_auto_disable_log in dataset_auto_disable_logs:
@@ -65,7 +67,7 @@ def mail_clean_document_notify_task():
                     )
 
                 for dataset_id, document_ids in dataset_auto_dataset_map.items():
-                    dataset = Dataset.query.filter(Dataset.id == dataset_id).first()
+                    dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
                     if dataset:
                         document_count = len(document_ids)
                         knowledge_details.append(rf"Knowledge base {dataset.name}: {document_count} documents")

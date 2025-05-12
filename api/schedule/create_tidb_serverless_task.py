@@ -19,7 +19,9 @@ def create_tidb_serverless_task():
     while True:
         try:
             # check the number of idle tidb serverless
-            idle_tidb_serverless_number = TidbAuthBinding.query.filter(TidbAuthBinding.active == False).count()
+            idle_tidb_serverless_number = (
+                db.session.query(TidbAuthBinding).filter(TidbAuthBinding.active == False).count()
+            )
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
             # create tidb serverless
