@@ -109,7 +109,7 @@ const AllTools = ({
 
   return (
     <div className={cn(className)}>
-      <div className='flex items-center justify-between border-b-[0.5px] border-divider-subtle bg-background-default-hover px-3 shadow-xs'>
+      <div className='flex items-center justify-between border-b border-divider-subtle px-3'>
         <div className='flex h-8 items-center space-x-1'>
           {
             tabs.map(tab => (
