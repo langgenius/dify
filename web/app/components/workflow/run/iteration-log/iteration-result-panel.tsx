@@ -112,7 +112,7 @@ const IterationResultPanel: FC<Props> = ({
               'transition-all duration-200',
               expandedIterations[index]
                 ? 'opacity-100'
-                : 'max-h-0 opacity-0 overflow-hidden',
+                : 'max-h-0 overflow-hidden opacity-0',
             )}>
               <TracingPanel
                 list={iteration}
