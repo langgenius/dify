@@ -1,9 +1,9 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ValidationInfo, field_validator
 
 
-class TracingProviderEnum(Enum):
+class TracingProviderEnum(StrEnum):
     LANGFUSE = "langfuse"
     LANGSMITH = "langsmith"
     OPIK = "opik"
