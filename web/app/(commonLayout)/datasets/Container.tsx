@@ -85,7 +85,7 @@ const Container = () => {
 
   return (
     <div ref={containerRef} className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
-      <div className='sticky top-0 z-10 flex flex-wrap justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]'>
+      <div className='sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]'>
         <TabSliderNew
           value={activeTab}
           onChange={newActiveTab => setActiveTab(newActiveTab)}
