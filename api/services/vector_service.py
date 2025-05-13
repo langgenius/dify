@@ -21,8 +21,9 @@ class VectorService:
     def create_segments_vector(
         cls, keywords_list: Optional[list[list[str]]], segments: list[DocumentSegment], dataset: Dataset, doc_form: str
     ):
-        documents = []
+        documents: list[Document] = []
 
+        document: Document | None = None
         for segment in segments:
             if doc_form == IndexType.PARENT_CHILD_INDEX:
                 document = db.session.query(DatasetDocument).filter_by(id=segment.document_id).first()
@@ -62,7 +63,7 @@ class VectorService:
                     raise ValueError("The knowledge base index technique is not high quality!")
                 cls.generate_child_chunks(segment, document, dataset, embedding_model_instance, processing_rule, False)
             else:
-                document = Document(  # type: ignore
+                document = Document(
                     page_content=segment.content,
                     metadata={
                         "doc_id": segment.index_node_id,
@@ -74,7 +75,7 @@ class VectorService:
                 documents.append(document)
         if len(documents) > 0:
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-            index_processor.load(dataset, documents, with_keywords=True, keywords_list=keywords_list)  # type: ignore
+            index_processor.load(dataset, documents, with_keywords=True, keywords_list=keywords_list)
 
     @classmethod
     def update_segment_vector(cls, keywords: Optional[list[str]], segment: DocumentSegment, dataset: Dataset):
