@@ -11,7 +11,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class NodeExecutionStatus(StrEnum):
@@ -38,9 +38,6 @@ class NodeExecution(BaseModel):
     These fields are still accepted in the constructor for backward compatibility,
     but they are not stored in the model.
     """
-
-    # Pydantic configuration.
-    model_config = ConfigDict(use_enum_values=True)
 
     # Core identification fields
     id: str  # Unique identifier for this execution record
