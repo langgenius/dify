@@ -4,11 +4,13 @@ import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/se
 import type {
   BlockEnum,
   NodeDefault,
+  ToolWithProvider,
 } from '../types'
 import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
 import AllTools from './all-tools'
+import DataSources from './data-sources'
 
 export type TabsProps = {
   activeTab: TabsEnum
@@ -17,6 +19,7 @@ export type TabsProps = {
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
   blocks: NodeDefault[]
+  dataSources?: ToolWithProvider[]
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -25,6 +28,7 @@ const Tabs: FC<TabsProps> = ({
   onSelect,
   availableBlocksTypes,
   blocks,
+  dataSources = [],
 }) => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
@@ -39,6 +43,15 @@ const Tabs: FC<TabsProps> = ({
             onSelect={onSelect}
             availableBlocksTypes={availableBlocksTypes}
             blocks={blocks}
+          />
+        )
+      }
+      {
+        activeTab === TabsEnum.Sources && !!dataSources.length && (
+          <DataSources
+            searchText={searchText}
+            onSelect={onSelect}
+            dataSources={dataSources}
           />
         )
       }

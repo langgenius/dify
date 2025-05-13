@@ -8,7 +8,7 @@ import {
   ToolTypeEnum,
 } from './types'
 
-export const useTabs = (noBlocks?: boolean) => {
+export const useTabs = (noBlocks?: boolean, noSources?: boolean) => {
   const { t } = useTranslation()
   const tabs = useMemo(() => {
     return [
@@ -22,16 +22,22 @@ export const useTabs = (noBlocks?: boolean) => {
               },
             ]
       ),
-      {
-        key: TabsEnum.Sources,
-        name: t('workflow.tabs.sources'),
-      },
+      ...(
+        noSources
+          ? []
+          : [
+            {
+              key: TabsEnum.Sources,
+              name: t('workflow.tabs.sources'),
+            },
+          ]
+      ),
       {
         key: TabsEnum.Tools,
         name: t('workflow.tabs.tools'),
       },
     ]
-  }, [t, noBlocks])
+  }, [t, noBlocks, noSources])
   const initialTab = useMemo(() => {
     if (noBlocks)
       return TabsEnum.Sources
