@@ -12,6 +12,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
+
 from .exc import (
     CodeNodeError,
     DepthLimitError,
