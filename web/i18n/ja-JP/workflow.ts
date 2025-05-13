@@ -147,7 +147,7 @@ const translation = {
       namePlaceholder: '変数名を入力',
       type: 'タイプ',
       value: 'デフォルト値',
-      valuePlaceholder: 'デフォルト値、設定しない場合は空白にしでください',
+      valuePlaceholder: 'デフォルト値、設定しない場合は空白にしてください',
       description: '説明',
       descriptionPlaceholder: '変数の説明を入力',
       editInJSON: 'JSONで編集',
