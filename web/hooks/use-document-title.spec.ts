@@ -1,12 +1,20 @@
 import { defaultSystemFeatures } from '@/types/feature'
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import useDocumentTitle from './use-document-title'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
-jest.mock('@/context/global-public-context', () => ({
-  useGlobalPublicStore: jest.fn(() => ({ ...defaultSystemFeatures })),
+jest.mock('@/service/common', () => ({
+  getSystemFeatures: jest.fn(() => ({ ...defaultSystemFeatures })),
 }))
 
-describe('branding.enabled is false', () => {
+describe('use default branding', () => {
+  beforeEach(() => {
+    act(() => {
+      useGlobalPublicStore.setState({
+        systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
+      })
+    })
+  })
   it('document title should be test-Dify if set title', () => {
     renderHook(() => useDocumentTitle('test'))
     expect(document.title).toBe('test - Dify')
@@ -15,5 +23,24 @@ describe('branding.enabled is false', () => {
   it('document title should be Dify if not set title', () => {
     renderHook(() => useDocumentTitle(''))
     expect(document.title).toBe('Dify')
+  })
+})
+
+describe('use specific branding', () => {
+  beforeEach(() => {
+    act(() => {
+      useGlobalPublicStore.setState({
+        systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: true, application_title: 'Test' } },
+      })
+    })
+  })
+  it('document title should be test-Test if set title', () => {
+    renderHook(() => useDocumentTitle('test'))
+    expect(document.title).toBe('test - Test')
+  })
+
+  it('document title should be Test if not set title', () => {
+    renderHook(() => useDocumentTitle(''))
+    expect(document.title).toBe('Test')
   })
 })
