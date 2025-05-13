@@ -2,7 +2,7 @@
 
 import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiMoreFill } from '@remixicon/react'
 import type { App } from '@/types/app'
@@ -31,6 +31,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import cn from '@/utils/classnames'
+import { formatTime } from '@/utils/time'
 
 export type AppCardProps = {
   app: App
@@ -270,6 +271,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     setTags(app.tags)
   }, [app.tags])
 
+  const EditTimeText = useMemo(() => {
+    const timeText = formatTime({
+      date: (app.updated_at || app.created_at) * 1000,
+      dateFormat: 'MM/DD/YYYY h:mm:ss',
+    })
+    return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.updated_at, app.created_at])
+
   return (
     <>
       <div
@@ -291,16 +301,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <AppTypeIcon type={app.mode} wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm' className='h-3 w-3' />
           </div>
           <div className='w-0 grow py-[1px]'>
-            <div className='flex items-center justify-between text-sm font-semibold leading-5 text-text-secondary'>
+            <div className='flex items-center text-sm font-semibold leading-5 text-text-secondary'>
               <div className='truncate' title={app.name}>{app.name}</div>
-              <div className='truncate'>{app.author_name}</div>
             </div>
-            <div className='flex items-center text-[10px] font-medium leading-[18px] text-text-tertiary'>
-              {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
-              {app.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-              {app.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
-              {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
-              {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
+            <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
+              <div className='truncate' title={app.author_name}>{app.author_name}</div>
+              <div>·</div>
+              <div className='truncate'>{EditTimeText}</div>
             </div>
           </div>
         </div>
