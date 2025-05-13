@@ -12,7 +12,6 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
-
 from .exc import (
     CodeNodeError,
     DepthLimitError,
@@ -127,7 +126,7 @@ class CodeNode(BaseNode[CodeNodeData]):
         depth: int = 1,
     ):
         if depth > dify_config.CODE_MAX_DEPTH:
-            raise DepthLimitError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep.")
+            raise DepthLimitError(f"Depth limit {dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 
         transformed_result: dict[str, Any] = {}
         if output_schema is None:
