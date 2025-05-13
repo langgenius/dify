@@ -5,6 +5,16 @@ All notable changes to Dify will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed database configuration to allow DB_EXTRAS to set search_path via options (#16a4f77)
+
+### Changed
+
+- Updated dependencies: huggingface-hub (~0.16.4 to ~0.31.0), transformers (~4.35.0 to ~4.39.0), and resend (~0.7.0 to ~2.9.0) (#19563)
+
 ## [0.15.7] - 2025-04-27
 
 ### Added
