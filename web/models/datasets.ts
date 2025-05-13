@@ -79,6 +79,7 @@ export type DataSet = {
   }
   built_in_field_enabled: boolean
   doc_metadata?: MetadataInDoc[]
+  keyword_number?: number
 }
 
 export type ExternalAPIItem = {

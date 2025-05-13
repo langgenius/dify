@@ -4,6 +4,7 @@ import cn from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import { useTranslation } from 'react-i18next'
 import { EffectColor } from './chunk-structure/types'
+import { ArrowShape } from '../../base/icons/src/vender/knowledge'
 
 const HEADER_EFFECT_MAP: Record<EffectColor, string> = {
   [EffectColor.indigo]: 'bg-util-colors-indigo-indigo-600 opacity-50',
@@ -14,36 +15,51 @@ const HEADER_EFFECT_MAP: Record<EffectColor, string> = {
 type OptionCardProps<T> = {
   id: T
   className?: string
-  showHighlightBorder?: boolean
+  isActive?: boolean
   icon?: ReactNode
+  iconActiveColor?: string
   title: string
   description?: string
   isRecommended?: boolean
   effectColor?: EffectColor
   showEffectColor?: boolean
+  disabled?: boolean
   onClick?: (id: T) => void
+  children?: ReactNode
+  showChildren?: boolean
+  ref?: React.Ref<HTMLDivElement>
 }
 const OptionCard = <T,>({
   id,
   className,
-  showHighlightBorder,
+  isActive,
   icon,
+  iconActiveColor,
   title,
   description,
   isRecommended,
   effectColor,
   showEffectColor,
+  disabled,
   onClick,
+  children,
+  showChildren,
+  ref,
 }: OptionCardProps<T>) => {
   const { t } = useTranslation()
 
   return (
     <div
+      ref={ref}
       className={cn(
         'cursor-pointer overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
-        showHighlightBorder && 'border border-components-option-card-option-selected-border ring-[0.5px] ring-inset ring-components-option-card-option-selected-border',
+        isActive && 'border border-components-option-card-option-selected-border ring-[1px] ring-components-option-card-option-selected-border',
+        disabled && 'cursor-not-allowed opacity-50',
       )}
-      onClick={() => onClick?.(id)}
+      onClick={() => {
+        if (disabled) return
+        onClick?.(id)
+      }}
     >
       <div className={cn(
         'relative flex rounded-t-xl p-2',
@@ -59,14 +75,17 @@ const OptionCard = <T,>({
         }
         {
           icon && (
-            <div className='flex size-6 shrink-0 items-center justify-center'>
+            <div className={cn(
+              'flex size-6 shrink-0 items-center justify-center text-text-tertiary',
+              isActive && iconActiveColor,
+            )}>
               {icon}
             </div>
           )
         }
         <div className='flex grow flex-col gap-y-0.5 py-px'>
           <div className='flex items-center gap-x-1'>
-            <span className='system-sm-medium grow text-text-secondary'>
+            <span className='system-sm-medium text-text-secondary'>
               {title}
             </span>
             {
@@ -86,8 +105,16 @@ const OptionCard = <T,>({
           }
         </div>
       </div>
+      {
+        children && showChildren && (
+          <div className='relative rounded-b-xl bg-components-panel-bg p-4'>
+            <ArrowShape className='absolute left-[14px] top-[-11px] size-4 text-components-panel-bg' />
+            {children}
+          </div>
+        )
+      }
     </div>
   )
 }
 
-export default React.memo(OptionCard)
+export default React.memo(OptionCard) as typeof OptionCard

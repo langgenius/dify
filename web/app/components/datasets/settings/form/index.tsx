@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionSelector from '../permission-selector'
-import IndexMethodRadio from '../index-method-radio'
+import IndexMethod from '../index-method'
 import RetrievalSettings from '../../external-knowledge-base/create/RetrievalSettings'
 import { IndexingType } from '../../create/step-two'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -17,7 +17,7 @@ import Textarea from '@/app/components/base/textarea'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { updateDatasetSetting } from '@/service/datasets'
 import type { IconInfo } from '@/models/datasets'
-import { type DataSetListResponse, DatasetPermission } from '@/models/datasets'
+import { ChunkingMode, type DataSetListResponse, DatasetPermission } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { AppIconType, RetrievalConfig } from '@/types/app'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
@@ -39,7 +39,7 @@ import ChunkStructure from '../chunk-structure'
 import Toast from '@/app/components/base/toast'
 import { RiAlertFill } from '@remixicon/react'
 
-const rowClass = 'flex'
+const rowClass = 'flex gap-x-1'
 const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
@@ -66,13 +66,14 @@ const Form = () => {
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
-  const [chunkStructure, setChunkStructure] = useState(currentDataset?.doc_form)
+  const [chunkStructure, setChunkStructure] = useState(currentDataset?.doc_form ?? ChunkingMode.text)
   const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
-  const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
+  const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique ?? IndexingType.QUALIFIED)
+  const [keywordNumber, setKeywordNumber] = useState(currentDataset?.keyword_number ?? 10)
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
     currentDataset?.embedding_model
@@ -205,6 +206,8 @@ const Form = () => {
     }
   }
 
+  const isShowIndexMethod = chunkStructure !== ChunkingMode.parentChild && currentDataset && currentDataset.indexing_technique
+
   return (
     <div className='flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]'>
       {/* Dataset name and icon */}
@@ -261,88 +264,92 @@ const Form = () => {
           />
         </div>
       </div>
-      <Divider
-        type='horizontal'
-        className='my-1 h-px bg-divider-subtle'
-        />
-      {/* Chunk Structure */}
-      <div className={rowClass}>
-        <div>
-          <div className='flex w-[180px] shrink-0 flex-col'>
-            <div className='system-sm-semibold flex h-8 items-center text-text-secondary'>
-              {t('datasetSettings.form.chunkStructure.title')}
-            </div>
-            <div className='body-xs-regular text-text-tertiary'>
-              <a
-                target='_blank'
-                rel='noopener noreferrer'
-                href='https://example.com' // todo: replace link
-                className='text-text-accent'
-              >
-                {t('datasetSettings.form.chunkStructure.learnMore')}
-              </a>
-              {t('datasetSettings.form.chunkStructure.description')}
-            </div>
-          </div>
-        </div>
-        <div className='grow'>
-          <ChunkStructure
-            chunkStructure={chunkStructure!}
-            onChunkStructureChange={setChunkStructure}
-          />
-        </div>
-      </div>
-      {currentDataset && currentDataset.indexing_technique && (
-        <>
-          <Divider
-            type='horizontal'
-            className='my-1 h-px bg-divider-subtle'
-          />
-          <div className={rowClass}>
-            <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
-            </div>
-            <div className='grow'>
-              <IndexMethodRadio
-                disable={!currentDataset?.embedding_available}
-                value={indexMethod}
-                onChange={v => setIndexMethod(v!)}
-                docForm={currentDataset.doc_form}
-                currentValue={currentDataset.indexing_technique}
-              />
-              {currentDataset.indexing_technique === IndexingType.ECONOMICAL && indexMethod === IndexingType.QUALIFIED && (
-                <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3'>
-                  <div className='flex items-center bg-toast-warning-bg' />
-                  <div className='p-1'>
-                    <RiAlertFill className='size-4 text-text-warning-secondary' />
+      {
+        !currentDataset?.doc_form && (
+          <>
+            <Divider
+              type='horizontal'
+              className='my-1 h-px bg-divider-subtle'
+            />
+            {/* Chunk Structure */}
+            <div className={rowClass}>
+              <div>
+                <div className='flex w-[180px] shrink-0 flex-col'>
+                  <div className='system-sm-semibold flex h-8 items-center text-text-secondary'>
+                    {t('datasetSettings.form.chunkStructure.title')}
                   </div>
-                  <span className='system-xs-medium text-text-primary'>
-                    {t('datasetSettings.form.upgradeHighQualityTip')}
-                  </span>
+                  <div className='body-xs-regular text-text-tertiary'>
+                    <a
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      href='https://example.com' // todo: replace link
+                      className='text-text-accent'
+                    >
+                      {t('datasetSettings.form.chunkStructure.learnMore')}
+                    </a>
+                    {t('datasetSettings.form.chunkStructure.description')}
+                  </div>
                 </div>
-              )}
+              </div>
+              <div className='grow'>
+                <ChunkStructure
+                  chunkStructure={chunkStructure!}
+                  onChunkStructureChange={setChunkStructure}
+                />
+              </div>
             </div>
-          </div>
-        </>
+          </>
+        )
+      }
+      {(isShowIndexMethod || indexMethod === 'high_quality') && (
+        <Divider
+          type='horizontal'
+          className='my-1 h-px bg-divider-subtle'
+        />
       )}
-      {indexMethod === 'high_quality' && (
-        <>
-          <div className={rowClass}>
-            <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.embeddingModel')}</div>
-            </div>
-            <div className='grow'>
-              <ModelSelector
-                triggerClassName=''
-                defaultModel={embeddingModel}
-                modelList={embeddingModelList}
-                onSelect={(model: DefaultModel) => {
-                  setEmbeddingModel(model)
-                }}
-              />
+      {isShowIndexMethod && (
+        <div className={rowClass}>
+          <div className={labelClass}>
+            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
+          </div>
+          <div className='grow'>
+            <IndexMethod
+              value={indexMethod}
+              disabled={!currentDataset?.embedding_available}
+              onChange={v => setIndexMethod(v!)}
+              currentValue={currentDataset.indexing_technique}
+              keywordNumber={keywordNumber}
+              onKeywordNumberChange={setKeywordNumber}
+            />
+            {currentDataset.indexing_technique === IndexingType.ECONOMICAL && indexMethod === IndexingType.QUALIFIED && (
+              <div className='relative mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 shadow-xs shadow-shadow-shadow-3'>
+                <div className='absolute left-0 top-0 flex h-full w-full items-center bg-toast-warning-bg opacity-40' />
+                <div className='p-1'>
+                  <RiAlertFill className='size-4 text-text-warning-secondary' />
+                </div>
+                <span className='system-xs-medium text-text-primary'>
+                  {t('datasetSettings.form.upgradeHighQualityTip')}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {indexMethod === IndexingType.QUALIFIED && (
+        <div className={rowClass}>
+          <div className={labelClass}>
+            <div className='system-sm-semibold text-text-secondary'>
+              {t('datasetSettings.form.embeddingModel')}
             </div>
           </div>
-        </>
+          <div className='grow'>
+            <ModelSelector
+              defaultModel={embeddingModel}
+              modelList={embeddingModelList}
+              onSelect={setEmbeddingModel}
+            />
+          </div>
+        </div>
       )}
       {/* Retrieval Method Config */}
       {currentDataset?.provider === 'external'

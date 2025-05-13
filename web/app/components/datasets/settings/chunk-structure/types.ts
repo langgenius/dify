@@ -10,6 +10,7 @@ export enum EffectColor {
 export type Option = {
   id: ChunkingMode
   icon?: React.ReactNode
+  iconActiveColor?: string
   title: string
   description?: string
   effectColor?: EffectColor

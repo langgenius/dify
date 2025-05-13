@@ -24,12 +24,13 @@ const ChunkStructure = ({
             key={option.id}
             id={option.id}
             icon={option.icon}
+            iconActiveColor={option.iconActiveColor}
             title={option.title}
             description={option.description}
             onClick={() => {
               onChunkStructureChange(option.id)
             }}
-            showHighlightBorder={chunkStructure === option.id}
+            isActive={chunkStructure === option.id}
             effectColor={option.effectColor}
             showEffectColor
             className='gap-x-1.5 p-3 pr-4'
