@@ -10,7 +10,7 @@ const Effect = ({
 }: EffectProps) => {
   return (
     <div
-      className={cn('absolute size-[112px] bg-util-colors-blue-brand-blue-brand-500 blur-[80px]', className)}
+      className={cn('absolute size-[112px] rounded-full bg-util-colors-blue-brand-blue-brand-500 blur-[80px]', className)}
     />
   )
 }
