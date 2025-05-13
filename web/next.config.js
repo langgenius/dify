@@ -13,7 +13,8 @@ const withMDX = require('@next/mdx')({
   },
 })
 
-const remoteImageURL = new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX}/**`)
+// the default url to prevent parse url error when running jest
+const remoteImageURL = new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX || 'http://localhost:3000'}/**`)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
