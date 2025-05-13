@@ -29,7 +29,6 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
-import useDocumentTitle from '@/hooks/use-document-title'
 
 const getKey = (
   pageIndex: number,
@@ -127,8 +126,6 @@ const Apps = () => {
     }
     return () => observer?.disconnect()
   }, [isLoading, setSize, anchorRef, mutate, data, error])
-
-  useDocumentTitle(isLoading ? '' : t('common.menus.apps'))
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)

@@ -18,7 +18,6 @@ export const viewport: Viewport = {
   userScalable: false,
 }
 export const metadata: Metadata = {
-  title: ' ',
   icons: 'data:',
 }
 
