@@ -29,6 +29,7 @@ export enum CollectionType {
   custom = 'api',
   model = 'model',
   workflow = 'workflow',
+  datasource = 'datasource',
 }
 
 export type Emoji = {

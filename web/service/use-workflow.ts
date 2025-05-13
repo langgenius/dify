@@ -21,11 +21,12 @@ export const useAppWorkflow = (appID: string) => {
   })
 }
 
-export const useWorkflowConfig = (url: string, onSuccess: (v: WorkflowConfigResponse) => void) => {
+export const useWorkflowConfig = <T = WorkflowConfigResponse>(url: string, onSuccess: (v: T) => void) => {
   return useQuery({
+    enabled: !!url,
     queryKey: [NAME_SPACE, 'config', url],
     queryFn: async () => {
-      const data = await get<WorkflowConfigResponse>(url)
+      const data = await get<T>(url)
       onSuccess(data)
       return data
     },

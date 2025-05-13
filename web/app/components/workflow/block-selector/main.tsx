@@ -17,6 +17,7 @@ import type {
   BlockEnum,
   NodeDefault,
   OnSelectBlock,
+  ToolWithProvider,
 } from '../types'
 import Tabs from './tabs'
 import { TabsEnum } from './types'
@@ -49,6 +50,7 @@ export type NodeSelectorProps = {
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
   blocks?: NodeDefault[]
+  dataSources?: ToolWithProvider[]
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -65,6 +67,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   availableBlocksTypes,
   disabled,
   blocks = [],
+  dataSources = [],
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -95,7 +98,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     activeTab,
     setActiveTab,
     tabs,
-  } = useTabs(!blocks.length)
+  } = useTabs(!blocks.length, !dataSources.length)
 
   const searchPlaceholder = useMemo(() => {
     if (activeTab === TabsEnum.Blocks)
@@ -193,6 +196,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             tags={tags}
             availableBlocksTypes={availableBlocksTypes}
             blocks={blocks}
+            dataSources={dataSources}
           />
         </div>
       </PortalToFollowElemContent>
