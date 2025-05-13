@@ -75,7 +75,7 @@ const translation = {
     exportJPEG: 'JPEGで出力',
     exportSVG: 'SVGで出力',
     model: 'モデル',
-    workflowAsTool: 'ワークフローをツールどして公開する',
+    workflowAsTool: 'ワークフローをツールとして公開する',
     configureRequired: '設定が必要',
     configure: '設定',
     manageInTools: 'ツールページで管理',
