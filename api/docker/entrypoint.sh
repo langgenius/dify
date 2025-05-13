@@ -35,6 +35,7 @@ else
       --worker-class ${SERVER_WORKER_CLASS:-gevent} \
       --worker-connections ${SERVER_WORKER_CONNECTIONS:-10} \
       --timeout ${GUNICORN_TIMEOUT:-200} \
+      --keep-alive ${GUNICORN_KEEP_ALIVE:-2} \
       app:app
   fi
 fi
