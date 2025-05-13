@@ -13,6 +13,8 @@ const withMDX = require('@next/mdx')({
   },
 })
 
+const remoteImageURL = new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX}/**`)
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath,
@@ -24,6 +26,16 @@ const nextConfig = {
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
+  // https://nextjs.org/docs/messages/next-image-unconfigured-host
+  images: {
+    remotePatterns: [{
+      protocol: remoteImageURL.protocol.replace(':', ''),
+      hostname: remoteImageURL.hostname,
+      port: remoteImageURL.port,
+      pathname: remoteImageURL.pathname,
+      search: '',
+    }],
+  },
   experimental: {
   },
   // fix all before production. Now it slow the develop speed.
