@@ -95,6 +95,8 @@ const InputFieldDialog = ({
           {
             datasourceKeys.map((key) => {
               const inputFields = inputFieldsMap[key] || []
+              if (!inputFields.length)
+                return null
               return (
                 <FieldList
                   LabelRightContent={<Datasource title={datasourceTitleMap[key]} />}
@@ -107,13 +109,15 @@ const InputFieldDialog = ({
             })
           }
           {/* Shared Inputs */}
-          <FieldList
-            LabelRightContent={<SharedInputs />}
-            inputFields={inputFieldsMap.shared || []}
-            readonly={readonly}
-            labelClassName='pt-1 pb-2'
-            handleInputFieldsChange={updateInputFields.bind(null, '')}
-          />
+          {inputFieldsMap.shared?.length > 0 && (
+            <FieldList
+              LabelRightContent={<SharedInputs />}
+              inputFields={inputFieldsMap.shared}
+              readonly={readonly}
+              labelClassName='pt-1 pb-2'
+              handleInputFieldsChange={updateInputFields.bind(null, '')}
+            />
+          )}
         </div>
         <FooterTip />
       </div>

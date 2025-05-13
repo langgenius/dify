@@ -2,6 +2,7 @@ import type { Viewport } from 'reactflow'
 import type { BlockEnum, ConversationVariable, Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
 
 export type AgentLogItem = {
   node_execution_id: string,
@@ -120,6 +121,7 @@ export type FetchWorkflowDraftResponse = {
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
+  rag_pipeline_variables?: RAGPipelineVariables
   version: string
   marked_name: string
   marked_comment: string

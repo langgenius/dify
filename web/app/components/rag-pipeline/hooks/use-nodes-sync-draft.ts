@@ -24,6 +24,7 @@ export const useNodesSyncDraft = () => {
       pipelineId,
       environmentVariables,
       syncWorkflowDraftHash,
+      ragPipelineVariables,
     } = workflowStore.getState()
 
     if (pipelineId) {
@@ -58,6 +59,7 @@ export const useNodesSyncDraft = () => {
             },
           },
           environment_variables: environmentVariables,
+          rag_pipeline_variables: ragPipelineVariables,
           hash: syncWorkflowDraftHash,
         },
       }

@@ -38,6 +38,7 @@ export const usePipelineInit = () => {
       setSyncWorkflowDraftHash,
       setDraftUpdatedAt,
       setToolPublished,
+      setRagPipelineVariables,
     } = workflowStore.getState()
     try {
       const res = await fetchWorkflowDraft(`/rag/pipeline/${datasetId}/workflows/draft`)
@@ -50,6 +51,7 @@ export const usePipelineInit = () => {
         }, {} as Record<string, string>))
       setEnvironmentVariables(res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
       setSyncWorkflowDraftHash(res.hash)
+      setRagPipelineVariables?.(res.rag_pipeline_variables || [])
       setIsLoading(false)
     }
     catch (error: any) {
