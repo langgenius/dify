@@ -1,3 +1,5 @@
+import logging
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
@@ -6,6 +8,8 @@ from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
+
+_logger = logging.getLogger(__name__)
 
 
 class DatasetIndexToolCallbackHandler:
@@ -42,9 +46,14 @@ class DatasetIndexToolCallbackHandler:
         """Handle tool end."""
         for document in documents:
             if document.metadata is not None:
-                dataset_document = DatasetDocument.query.filter(
-                    DatasetDocument.id == document.metadata["document_id"]
-                ).first()
+                document_id = document.metadata["document_id"]
+                dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
+                if not dataset_document:
+                    _logger.warning(
+                        "Expected DatasetDocument record to exist, but none was found, document_id=%s",
+                        document_id,
+                    )
+                    continue
                 if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     child_chunk = (
                         db.session.query(ChildChunk)

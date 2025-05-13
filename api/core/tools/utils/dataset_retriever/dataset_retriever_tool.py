@@ -186,11 +186,15 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         for record in records:
                             segment = record.segment
                             dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                            document = DatasetDocument.query.filter(
-                                DatasetDocument.id == segment.document_id,
-                                DatasetDocument.enabled == True,
-                                DatasetDocument.archived == False,
-                            ).first()
+                            document = (
+                                db.session.query(DatasetDocument)  # type: ignore
+                                .filter(
+                                    DatasetDocument.id == segment.document_id,
+                                    DatasetDocument.enabled == True,
+                                    DatasetDocument.archived == False,
+                                )
+                                .first()
+                            )
                             if dataset and document:
                                 source = {
                                     "dataset_id": dataset.id,
