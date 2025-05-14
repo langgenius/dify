@@ -41,7 +41,7 @@ export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
     const storedElements = localStorage.getItem('clipboard_elements')
     return storedElements ? JSON.parse(storedElements) : []
   })(),
-  setClipboardElements: clipboardElements => {
+  setClipboardElements: (clipboardElements) => {
     localStorage.setItem('clipboard_elements', JSON.stringify(clipboardElements))
   },
   selection: null,
