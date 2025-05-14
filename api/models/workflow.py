@@ -770,7 +770,7 @@ class ConversationVariable(Base):
     __tablename__ = "workflow_conversation_variables"
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
-    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, primary_key=True, index=True)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
     data = mapped_column(db.Text, nullable=False)
     created_at = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp(), index=True)
