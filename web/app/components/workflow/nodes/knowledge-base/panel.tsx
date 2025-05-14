@@ -18,11 +18,13 @@ import {
   GroupWithBox,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import Split from '../_base/components/split'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   id,
   data,
 }) => {
+  const { nodesReadOnly } = useNodesReadOnly()
   const {
     handleChunkStructureChange,
     handleIndexMethodChange,
@@ -45,6 +47,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
           nodeId={id}
           inputVariable={data.index_chunk_variable_selector}
           onInputVariableChange={handleInputVariableChange}
+          readonly={nodesReadOnly}
         />
       </GroupWithBox>
       <Group
@@ -54,6 +57,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
         <ChunkStructure
           chunkStructure={data.chunk_structure}
           onChunkStructureChange={handleChunkStructureChange}
+          readonly={nodesReadOnly}
         />
       </Group>
       <GroupWithBox>
@@ -63,6 +67,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
             onIndexMethodChange={handleIndexMethodChange}
             keywordNumber={data.keyword_number}
             onKeywordNumberChange={handleKeywordNumberChange}
+            readonly={nodesReadOnly}
           />
           {
             data.indexing_technique === IndexMethodEnum.QUALIFIED && (
@@ -70,6 +75,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                 embeddingModel={data.embedding_model}
                 embeddingModelProvider={data.embedding_model_provider}
                 onEmbeddingModelChange={handleEmbeddingModelChange}
+                readonly={nodesReadOnly}
               />
             )
           }
@@ -91,6 +97,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
             onScoreThresholdChange={handleScoreThresholdChange}
             isScoreThresholdEnabled={data.retrieval_model.score_threshold_enabled}
             onScoreThresholdEnabledChange={handleScoreThresholdEnabledChange}
+            readonly={nodesReadOnly}
           />
         </div>
       </GroupWithBox>

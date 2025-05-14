@@ -21,10 +21,12 @@ type Value = {
 type WeightedScoreProps = {
   value: Value
   onChange: (value: Value) => void
+  readonly?: boolean
 }
 const WeightedScore = ({
   value,
   onChange = noop,
+  readonly = false,
 }: WeightedScoreProps) => {
   const { t } = useTranslation()
 
@@ -37,7 +39,7 @@ const WeightedScore = ({
           min={0}
           step={0.1}
           value={value.value[0]}
-          onChange={v => onChange({ value: [v, (10 - v * 10) / 10] })}
+          onChange={v => !readonly && onChange({ value: [v, (10 - v * 10) / 10] })}
           trackClassName='weightedScoreSliderTrack'
         />
         <div className='mt-3 flex justify-between'>

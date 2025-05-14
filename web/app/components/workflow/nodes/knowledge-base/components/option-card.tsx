@@ -31,6 +31,7 @@ type OptionCardProps<T> = {
   effectColor?: string
   showEffectColor?: boolean
   onClick?: (id: T) => void
+  readonly?: boolean
 }
 const OptionCard = memo(({
   id,
@@ -47,14 +48,16 @@ const OptionCard = memo(({
   effectColor,
   showEffectColor,
   onClick,
+  readonly,
 }) => {
   return (
     <div
       className={cn(
         'cursor-pointer rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
         showHighlightBorder && 'border-[2px] border-components-option-card-option-selected-border',
+        readonly && 'cursor-not-allowed',
       )}
-      onClick={() => onClick?.(id)}
+      onClick={() => !readonly && onClick?.(id)}
     >
       <div className={cn(
         'relative flex rounded-t-xl p-2',

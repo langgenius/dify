@@ -23,6 +23,7 @@ import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import RerankingModelSelector from './reranking-model-selector'
 
 type SearchMethodOptionProps = {
+  readonly?: boolean
   option: Option
   hybridSearchModeOptions: HybridSearchModeOption[]
   searchMethod: RetrievalSearchMethodEnum
@@ -33,6 +34,7 @@ type SearchMethodOptionProps = {
   onWeightedScoreChange: (value: { value: number[] }) => void
 } & RerankingModelSelectorProps & TopKAndScoreThresholdProps
 const SearchMethodOption = ({
+  readonly,
   option,
   hybridSearchModeOptions,
   searchMethod,
@@ -89,6 +91,7 @@ const SearchMethodOption = ({
       showChildren={isActive}
       showHighlightBorder={isActive}
       showEffectColor={isActive}
+      readonly={readonly}
     >
       <div className='space-y-3'>
         {
@@ -105,6 +108,7 @@ const SearchMethodOption = ({
                     showRadio
                     radioIsActive={hybridOption.id === hybridSearchMode}
                     onClick={onHybridSearchModeChange}
+                    readonly={readonly}
                   />
                 ))
               }
@@ -116,6 +120,7 @@ const SearchMethodOption = ({
             <WeightedScoreComponent
               value={weightedScoreValue}
               onChange={onWeightedScoreChange}
+              readonly={readonly}
             />
           )
         }
@@ -124,6 +129,7 @@ const SearchMethodOption = ({
             <RerankingModelSelector
               rerankingModel={rerankingModel}
               onRerankingModelChange={onRerankingModelChange}
+              readonly={readonly}
             />
           )
         }
@@ -134,6 +140,7 @@ const SearchMethodOption = ({
           onScoreThresholdChange={onScoreThresholdChange}
           isScoreThresholdEnabled={isScoreThresholdEnabled}
           onScoreThresholdEnabledChange={onScoreThresholdEnabledChange}
+          readonly={readonly}
         />
       </div>
     </OptionCard>

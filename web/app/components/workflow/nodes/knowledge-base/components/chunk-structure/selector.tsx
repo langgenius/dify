@@ -13,11 +13,13 @@ type SelectorProps = {
   options: Option[]
   value: ChunkStructureEnum
   onChange: (key: ChunkStructureEnum) => void
+  readonly?: boolean
 }
 const Selector = ({
   options,
   value,
   onChange,
+  readonly,
 }: SelectorProps) => {
   const [open, setOpen] = useState(false)
 
@@ -31,7 +33,11 @@ const Selector = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
+      <PortalToFollowElemTrigger onClick={() => {
+        if (readonly)
+          return
+        setOpen(!open)
+      }}>
         <Button
           size='small'
           variant='ghost-accent'
@@ -54,6 +60,8 @@ const Selector = ({
                   title={option.title}
                   description={option.description}
                   onClick={() => {
+                    if (readonly)
+                      return
                     onChange(option.id)
                     setOpen(false)
                   }}
