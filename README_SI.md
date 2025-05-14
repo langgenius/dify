@@ -1,4 +1,4 @@
-![cover-v5-optimized](./images/GitHub_README_if.jpeg)
+![cover-v5-optimized](./images/GitHub_README_if.png)
 
 <p align="center">
   📌 <a href="https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast">Predstavljamo nalaganje datotek Dify Workflow: znova ustvarite Google NotebookLM Podcast</a>

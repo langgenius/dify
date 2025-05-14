@@ -1,4 +1,4 @@
-![cover-v5-optimized](./images/GitHub_README_if.jpeg)
+![cover-v5-optimized](./images/GitHub_README_if.png)
 
 <div align="center">
   <a href="https://cloud.dify.ai">Dify 云服务</a> ·
