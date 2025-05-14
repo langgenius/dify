@@ -9,7 +9,7 @@ import {
   RiMoreLine,
 } from '@remixicon/react'
 import produce from 'immer'
-import { useStoreApi } from 'reactflow'
+import { useReactFlow, useStoreApi } from 'reactflow'
 import RemoveButton from '../remove-button'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import VarReferencePopup from './var-reference-popup'
@@ -111,6 +111,9 @@ const VarReferencePicker: FC<Props> = ({
     passedInAvailableNodes,
     filterVar,
   })
+
+  const reactflow = useReactFlow()
+
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
@@ -172,7 +175,11 @@ const VarReferencePicker: FC<Props> = ({
     if (isSystemVar(value as ValueSelector))
       return startNode?.data
 
-    return getNodeInfoById(availableNodes, outputVarNodeId)?.data
+    const node = getNodeInfoById(availableNodes, outputVarNodeId)?.data
+    return {
+      ...node,
+      id: outputVarNodeId,
+    }
   }, [value, hasValue, isConstant, isIterationVar, iterationNode, availableNodes, outputVarNodeId, startNode, isLoopVar, loopNode])
 
   const isShowAPart = (value as ValueSelector).length > 2
@@ -236,6 +243,28 @@ const VarReferencePicker: FC<Props> = ({
     else
       onChange([], varKindType)
   }, [onChange, varKindType])
+
+  const handleVariableJump = useCallback((nodeId: string) => {
+    const currentNodeIndex = availableNodes.findIndex(node => node.id === nodeId)
+    const currentNode = availableNodes[currentNodeIndex]
+
+    const workflowContainer = document.getElementById('workflow-container')
+    const {
+      clientWidth,
+      clientHeight,
+    } = workflowContainer!
+    const {
+      setViewport,
+    } = reactflow
+    const { transform } = store.getState()
+    const zoom = transform[2]
+    const position = currentNode.position
+    setViewport({
+      x: (clientWidth - 400 - currentNode.width! * zoom) / 2 - position.x * zoom,
+      y: (clientHeight - currentNode.height! * zoom) / 2 - position.y * zoom,
+      zoom: transform[2],
+    })
+  }, [availableNodes, reactflow, store])
 
   const type = getCurrentVariableType({
     parentNode: isInIteration ? iterationNode : loopNode,
@@ -357,7 +386,12 @@ const VarReferencePicker: FC<Props> = ({
                               ? (
                                 <>
                                   {isShowNodeName && !isEnv && !isChatVar && (
-                                    <div className='flex items-center'>
+                                    <div className='flex items-center' onClick={(e) => {
+                                      if (e.metaKey || e.ctrlKey) {
+                                        e.stopPropagation()
+                                        handleVariableJump(outputVarNode?.id)
+                                      }
+                                    }}>
                                       <div className='h-3 px-[1px]'>
                                         {outputVarNode?.type && <VarBlockIcon
                                           className='!text-text-primary'
