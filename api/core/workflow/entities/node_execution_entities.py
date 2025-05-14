@@ -13,6 +13,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.nodes.enums import NodeType
 
 
@@ -55,9 +56,9 @@ class NodeExecution(BaseModel):
     title: str  # Display title of the node
 
     # Execution data
-    inputs: Optional[dict[str, Any]] = None  # Input variables used by this node
-    process_data: Optional[dict[str, Any]] = None  # Intermediate processing data
-    outputs: Optional[dict[str, Any]] = None  # Output variables produced by this node
+    inputs: Optional[Mapping[str, Any]] = None  # Input variables used by this node
+    process_data: Optional[Mapping[str, Any]] = None  # Intermediate processing data
+    outputs: Optional[Mapping[str, Any]] = None  # Output variables produced by this node
 
     # Execution state
     status: NodeExecutionStatus = NodeExecutionStatus.RUNNING  # Current execution status
@@ -65,7 +66,7 @@ class NodeExecution(BaseModel):
     elapsed_time: float = Field(default=0.0)  # Time taken for execution in seconds
 
     # Additional metadata
-    metadata: Optional[dict[str, Any]] = None  # Execution metadata (tokens, cost, etc.)
+    metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None  # Execution metadata (tokens, cost, etc.)
 
     # Timing information
     created_at: datetime  # When execution started
@@ -76,7 +77,7 @@ class NodeExecution(BaseModel):
         inputs: Optional[Mapping[str, Any]] = None,
         process_data: Optional[Mapping[str, Any]] = None,
         outputs: Optional[Mapping[str, Any]] = None,
-        metadata: Optional[Mapping[str, Any]] = None,
+        metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None,
     ) -> None:
         """
         Update the model from mappings.

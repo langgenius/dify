@@ -160,7 +160,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
             execution_metadata = node_execution.metadata if node_execution.metadata else {}
-            metadata = execution_metadata.copy()
+            metadata = {str(k): v for k, v in execution_metadata.items()}
             metadata.update(
                 {
                     "workflow_run_id": trace_info.workflow_run_id,

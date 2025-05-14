@@ -292,9 +292,9 @@ class WorkflowCycleManager:
         # Create a domain model
         created_at = datetime.now(UTC).replace(tzinfo=None)
         metadata = {
-            str(NodeRunMetadataKey.PARALLEL_MODE_RUN_ID): event.parallel_mode_run_id,
-            str(NodeRunMetadataKey.ITERATION_ID): event.in_iteration_id,
-            str(NodeRunMetadataKey.LOOP_ID): event.in_loop_id,
+            NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+            NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
+            NodeRunMetadataKey.LOOP_ID: event.in_loop_id,
         }
 
         domain_execution = NodeExecution(
@@ -332,7 +332,7 @@ class WorkflowCycleManager:
         execution_metadata_dict = {}
         if event.execution_metadata:
             for key, value in event.execution_metadata.items():
-                execution_metadata_dict[str(key)] = value
+                execution_metadata_dict[key] = value
 
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
@@ -377,7 +377,7 @@ class WorkflowCycleManager:
         execution_metadata_dict = {}
         if event.execution_metadata:
             for key, value in event.execution_metadata.items():
-                execution_metadata_dict[str(key)] = value
+                execution_metadata_dict[key] = value
 
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
@@ -417,16 +417,16 @@ class WorkflowCycleManager:
 
         # Convert metadata keys to strings
         origin_metadata = {
-            str(NodeRunMetadataKey.ITERATION_ID): event.in_iteration_id,
-            str(NodeRunMetadataKey.PARALLEL_MODE_RUN_ID): event.parallel_mode_run_id,
-            str(NodeRunMetadataKey.LOOP_ID): event.in_loop_id,
+            NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
+            NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+            NodeRunMetadataKey.LOOP_ID: event.in_loop_id,
         }
 
         # Convert execution metadata keys to strings
-        execution_metadata_dict = {}
+        execution_metadata_dict: dict[NodeRunMetadataKey, str | None] = {}
         if event.execution_metadata:
             for key, value in event.execution_metadata.items():
-                execution_metadata_dict[str(key)] = value
+                execution_metadata_dict[key] = value
 
         merged_metadata = {**execution_metadata_dict, **origin_metadata} if execution_metadata_dict else origin_metadata
 

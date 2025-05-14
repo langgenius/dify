@@ -28,6 +28,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models import Account, App, EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
@@ -184,8 +185,8 @@ class LangSmithDataTrace(BaseTraceInstance):
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
             execution_metadata = node_execution.metadata if node_execution.metadata else {}
-            node_total_tokens = execution_metadata.get("total_tokens", 0)
-            metadata = execution_metadata.copy()
+            node_total_tokens = execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS) or 0
+            metadata = {str(key): value for key, value in execution_metadata.items()}
             metadata.update(
                 {
                     "workflow_run_id": trace_info.workflow_run_id,
