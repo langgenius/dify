@@ -7,14 +7,14 @@ import Divider from '@/app/components/base/divider'
 import { languages } from '@/i18n/language'
 import type { Locale } from '@/i18n'
 import I18n from '@/context/i18n'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 
 const Header = () => {
   const { locale, setLocaleOnClient } = useContext(I18n)
 
   return (
     <div className='flex w-full items-center justify-between p-6'>
-      <LogoSite />
+      <DifyLogo size='large' />
       <div className='flex items-center gap-1'>
         <Select
           value={locale}
