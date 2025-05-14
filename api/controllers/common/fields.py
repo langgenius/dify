@@ -1,4 +1,5 @@
 from flask_restful import fields
+
 from libs.helper import AppIconUrlField
 
 parameters__system_parameters = {
