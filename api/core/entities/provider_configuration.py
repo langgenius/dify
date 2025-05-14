@@ -792,8 +792,10 @@ class ProviderConfiguration(BaseModel):
             )
         else:
             provider_models = self._get_custom_provider_models(
-                model_types=model_types, provider_schema=provider_schema, model_setting_map=model_setting_map,
-                model = model
+                model_types=model_types,
+                provider_schema=provider_schema,
+                model_setting_map=model_setting_map,
+                model=model,
             )
 
         if only_active:
