@@ -10,6 +10,7 @@ export type TopKAndScoreThresholdProps = {
   onScoreThresholdChange?: (value: number) => void
   isScoreThresholdEnabled?: boolean
   onScoreThresholdEnabledChange?: (value: boolean) => void
+  readonly?: boolean
 }
 const TopKAndScoreThreshold = ({
   topK,
@@ -18,6 +19,7 @@ const TopKAndScoreThreshold = ({
   onScoreThresholdChange,
   isScoreThresholdEnabled,
   onScoreThresholdEnabledChange,
+  readonly,
 }: TopKAndScoreThresholdProps) => {
   const handleTopKChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = Number(e.target.value)
@@ -47,6 +49,7 @@ const TopKAndScoreThreshold = ({
           type='number'
           value={topK}
           onChange={handleTopKChange}
+          disabled={readonly}
         />
       </div>
       <div>
@@ -55,6 +58,7 @@ const TopKAndScoreThreshold = ({
             className='mr-2'
             defaultValue={isScoreThresholdEnabled}
             onChange={onScoreThresholdEnabledChange}
+            disabled={readonly}
           />
           <div className='system-sm-medium grow truncate text-text-secondary'>
             Score Threshold
@@ -68,6 +72,7 @@ const TopKAndScoreThreshold = ({
           type='number'
           value={scoreThreshold}
           onChange={handleScoreThresholdChange}
+          disabled={readonly}
         />
       </div>
     </div>

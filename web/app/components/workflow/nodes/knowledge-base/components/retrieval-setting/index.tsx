@@ -15,6 +15,7 @@ import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import SearchMethodOption from './search-method-option'
 
 type RetrievalSettingProps = {
+  readonly?: boolean
   searchMethod: RetrievalSearchMethodEnum
   onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
   hybridSearchMode: HybridSearchModeEnum
@@ -24,6 +25,7 @@ type RetrievalSettingProps = {
 } & RerankingModelSelectorProps & TopKAndScoreThresholdProps
 
 const RetrievalSetting = ({
+  readonly,
   searchMethod,
   onRetrievalSearchMethodChange,
   hybridSearchMode,
@@ -84,6 +86,7 @@ const RetrievalSetting = ({
               onScoreThresholdEnabledChange={onScoreThresholdEnabledChange}
               rerankingModel={rerankingModel}
               onRerankingModelChange={onRerankingModelChange}
+              readonly={readonly}
             />
           ))
         }

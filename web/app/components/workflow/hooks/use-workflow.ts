@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useMemo,
 } from 'react'
 import { uniqBy } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
@@ -39,11 +38,9 @@ import {
   fetchAllCustomTools,
   fetchAllWorkflowTools,
 } from '@/service/tools'
-import { CollectionType } from '@/app/components/tools/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
-import { canFindTool } from '@/utils'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -487,26 +484,6 @@ export const useNodesReadOnly = () => {
     nodesReadOnly: !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring),
     getNodesReadOnly,
   }
-}
-
-export const useToolIcon = (data: Node['data']) => {
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const toolIcon = useMemo(() => {
-    if (data.type === BlockEnum.Tool) {
-      let targetTools = buildInTools
-      if (data.provider_type === CollectionType.builtIn)
-        targetTools = buildInTools
-      else if (data.provider_type === CollectionType.custom)
-        targetTools = customTools
-      else
-        targetTools = workflowTools
-      return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
-    }
-  }, [data, buildInTools, customTools, workflowTools])
-
-  return toolIcon
 }
 
 export const useIsNodeInIteration = (iterationId: string) => {

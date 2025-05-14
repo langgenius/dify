@@ -21,12 +21,14 @@ type IndexMethodProps = {
   onIndexMethodChange: (value: IndexMethodEnum) => void
   keywordNumber: number
   onKeywordNumberChange: (value: number) => void
+  readonly?: boolean
 }
 const IndexMethod = ({
   indexMethod,
   onIndexMethodChange,
   keywordNumber,
   onKeywordNumberChange,
+  readonly = false,
 }: IndexMethodProps) => {
   const { t } = useTranslation()
   const isHighQuality = indexMethod === IndexMethodEnum.QUALIFIED
@@ -95,11 +97,13 @@ const IndexMethod = ({
               </Tooltip>
             </div>
             <Slider
+              disabled={readonly}
               className='mr-3 w-24 shrink-0'
               value={keywordNumber}
               onChange={onKeywordNumberChange}
             />
             <Input
+              disabled={readonly}
               className='shrink-0'
               wrapperClassName='shrink-0 w-[72px]'
               type='number'

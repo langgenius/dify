@@ -15,11 +15,13 @@ type EmbeddingModelProps = {
     embeddingModel: string
     embeddingModelProvider: string
   }) => void
+  readonly?: boolean
 }
 const EmbeddingModel = ({
   embeddingModel,
   embeddingModelProvider,
   onEmbeddingModelChange,
+  readonly = false,
 }: EmbeddingModelProps) => {
   const {
     modelList: embeddingModelList,
@@ -51,6 +53,7 @@ const handleRerankingModelChange = (model: DefaultModel) => {
         defaultModel={embeddingModelConfig && { provider: embeddingModelConfig.providerName, model: embeddingModelConfig.modelName }}
         modelList={embeddingModelList}
         onSelect={handleRerankingModelChange}
+        readonly={readonly}
       />
     </Field>
   )

@@ -8,10 +8,12 @@ import { useChunkStructure } from './hooks'
 type ChunkStructureProps = {
   chunkStructure: ChunkStructureEnum
   onChunkStructureChange: (value: ChunkStructureEnum) => void
+  readonly?: boolean
 }
 const ChunkStructure = ({
   chunkStructure,
   onChunkStructureChange,
+  readonly = false,
 }: ChunkStructureProps) => {
   const {
     options,
@@ -28,6 +30,7 @@ const ChunkStructure = ({
             options={options}
             value={chunkStructure}
             onChange={onChunkStructureChange}
+            readonly={readonly}
           />
         ),
       }}

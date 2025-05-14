@@ -11,10 +11,12 @@ import type { RerankingModel } from '../../types'
 export type RerankingModelSelectorProps = {
   rerankingModel?: RerankingModel
   onRerankingModelChange?: (model: RerankingModel) => void
+  readonly?: boolean
 }
 const RerankingModelSelector = ({
   rerankingModel,
   onRerankingModelChange,
+  readonly = false,
 }: RerankingModelSelectorProps) => {
   const {
       modelList: rerankModelList,
@@ -41,6 +43,7 @@ const RerankingModelSelector = ({
       defaultModel={rerankModel && { provider: rerankModel.providerName, model: rerankModel.modelName }}
       modelList={rerankModelList}
       onSelect={handleRerankingModelChange}
+      readonly={readonly}
     />
   )
 }

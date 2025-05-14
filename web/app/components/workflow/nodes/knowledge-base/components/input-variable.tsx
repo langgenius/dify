@@ -7,11 +7,13 @@ type InputVariableProps = {
   nodeId: string
   inputVariable?: string[]
   onInputVariableChange: (inputVariable: string | ValueSelector) => void
+  readonly?: boolean
 }
 const InputVariable = ({
   nodeId,
   inputVariable = [],
   onInputVariableChange,
+  readonly = false,
 }: InputVariableProps) => {
   return (
     <Field
@@ -25,7 +27,7 @@ const InputVariable = ({
         isShowNodeName
         value={inputVariable}
         onChange={onInputVariableChange}
-        readonly={false}
+        readonly={readonly}
       />
     </Field>
   )
