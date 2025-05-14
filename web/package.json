@@ -173,8 +173,9 @@
     "@types/react": "~18.2.0",
     "@types/react-dom": "~18.2.0",
     "string-width": "4.2.3",
-    "esbuild": "^0.25.0",
-    "serialize-javascript": "^6.0.2"
+    "nanoid": "~3.3.8",
+    "esbuild": "~0.25.0",
+    "serialize-javascript": "~6.0.2"
   },
   "lint-staged": {
     "**/*.js?(x)": [
