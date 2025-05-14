@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import OrderConfig
+from models.account import Account, Tenant
 from models.workflow import WorkflowNodeExecution
 
 
@@ -44,12 +45,16 @@ def session():
 
 @pytest.fixture
 def mock_user():
-    """Create a mock user for testing."""
-    user = MagicMock()
-    user.tenant_id = "test-tenant"
+    """Create a user instance for testing."""
+    user = Account()
     user.id = "test-user-id"
-    # Set up to be recognized as an Account
-    user.__class__.__name__ = "Account"
+
+    tenant = Tenant()
+    tenant.id = "test-tenant"
+    tenant.name = "Test Workspace"
+    user._current_tenant = MagicMock()
+    user._current_tenant.id = "test-tenant"
+
     return user
 
 
