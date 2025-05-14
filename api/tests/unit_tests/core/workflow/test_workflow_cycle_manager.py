@@ -220,7 +220,7 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_run):
     assert result.workflow_run_id == mock_workflow_run.id
     assert result.node_execution_id == event.node_execution_id
     assert result.node_id == event.node_id
-    assert result.node_type == event.node_type.value
+    assert result.node_type == event.node_type
     assert result.title == event.node_data.title
     assert result.status == WorkflowNodeExecutionStatus.RUNNING.value
     # NodeExecution doesn't have created_by_role and created_by attributes, they're handled at repository level

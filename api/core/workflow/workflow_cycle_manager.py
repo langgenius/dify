@@ -305,7 +305,7 @@ class WorkflowCycleManager:
             index=event.node_run_index,
             node_execution_id=event.node_execution_id,
             node_id=event.node_id,
-            node_type=event.node_type.value,
+            node_type=event.node_type,
             title=event.node_data.title,
             status=NodeExecutionStatus.RUNNING,
             metadata=metadata,
@@ -438,7 +438,7 @@ class WorkflowCycleManager:
             predecessor_node_id=event.predecessor_node_id,
             node_execution_id=event.node_execution_id,
             node_id=event.node_id,
-            node_type=event.node_type.value,
+            node_type=event.node_type,
             title=event.node_data.title,
             status=NodeExecutionStatus.RETRY,
             created_at=created_at,
@@ -532,7 +532,7 @@ class WorkflowCycleManager:
         task_id: str,
         workflow_node_execution: NodeExecution,
     ) -> Optional[NodeStartStreamResponse]:
-        if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
+        if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_run_id:
             return None
@@ -582,7 +582,7 @@ class WorkflowCycleManager:
         task_id: str,
         workflow_node_execution: NodeExecution,
     ) -> Optional[NodeFinishStreamResponse]:
-        if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
+        if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_run_id:
             return None
@@ -625,7 +625,7 @@ class WorkflowCycleManager:
         task_id: str,
         workflow_node_execution: NodeExecution,
     ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
-        if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
+        if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
         if not workflow_node_execution.workflow_run_id:
             return None

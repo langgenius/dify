@@ -22,6 +22,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models import Account, App, EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -186,7 +187,7 @@ class OpikDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == "llm":
+            if node_type == NodeType.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
                 inputs = node_execution.inputs if node_execution.inputs else {}

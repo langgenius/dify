@@ -13,6 +13,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from core.workflow.nodes.enums import NodeType
+
 
 class NodeExecutionStatus(StrEnum):
     """
@@ -49,7 +51,7 @@ class NodeExecution(BaseModel):
     index: int  # Sequence number for ordering in trace visualization
     predecessor_node_id: Optional[str] = None  # ID of the node that executed before this one
     node_id: str  # ID of the node being executed
-    node_type: str  # Type of node (e.g., start, llm, knowledge)
+    node_type: NodeType  # Type of node (e.g., start, llm, knowledge)
     title: str  # Display title of the node
 
     # Execution data

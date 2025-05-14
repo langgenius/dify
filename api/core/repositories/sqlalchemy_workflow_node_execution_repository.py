@@ -15,6 +15,7 @@ from core.workflow.entities.node_execution_entities import (
     NodeExecution,
     NodeExecutionStatus,
 )
+from core.workflow.nodes.enums import NodeType
 from core.workflow.repository.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from models import (
     Account,
@@ -113,7 +114,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             index=db_model.index,
             predecessor_node_id=db_model.predecessor_node_id,
             node_id=db_model.node_id,
-            node_type=db_model.node_type,
+            node_type=NodeType(db_model.node_type),
             title=db_model.title,
             inputs=inputs,
             process_data=process_data,

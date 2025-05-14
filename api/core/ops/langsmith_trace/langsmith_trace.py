@@ -28,6 +28,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models import Account, App, EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
@@ -173,7 +174,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == "llm":
+            if node_type == NodeType.LLM:
                 inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
                 inputs = node_execution.inputs if node_execution.inputs else {}
@@ -207,7 +208,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                         "ls_model_name": process_data.get("model_name", ""),
                     }
                 )
-            elif node_type == "knowledge-retrieval":
+            elif node_type == NodeType.KNOWLEDGE_RETRIEVAL:
                 run_type = LangSmithRunType.retriever
             else:
                 run_type = LangSmithRunType.tool
