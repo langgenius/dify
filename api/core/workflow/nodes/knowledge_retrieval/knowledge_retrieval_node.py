@@ -264,6 +264,7 @@ class KnowledgeRetrievalNode(LLMNode):
                     "data_source_type": "external",
                     "retriever_from": "workflow",
                     "score": item.metadata.get("score"),
+                    "doc_metadata": item.metadata,
                 },
                 "title": item.metadata.get("title"),
                 "content": item.page_content,
