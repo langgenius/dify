@@ -1,5 +1,5 @@
 import RoutePrefixHandle from './routePrefixHandle'
-import type { Metadata, Viewport } from 'next'
+import type { Viewport } from 'next'
 import I18nServer from './components/i18n-server'
 import BrowserInitor from './components/browser-initor'
 import SentryInitor from './components/sentry-initor'
@@ -16,9 +16,6 @@ export const viewport: Viewport = {
   maximumScale: 1,
   viewportFit: 'cover',
   userScalable: false,
-}
-export const metadata: Metadata = {
-  icons: 'data:',
 }
 
 const LocaleLayout = async ({
