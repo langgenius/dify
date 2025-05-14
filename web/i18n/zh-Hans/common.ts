@@ -1,4 +1,10 @@
 const translation = {
+  theme: {
+    theme: '主题',
+    light: '浅色',
+    dark: '深色',
+    auto: '自动',
+  },
   api: {
     success: '成功',
     actionSuccess: '操作成功',

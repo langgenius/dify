@@ -1,4 +1,10 @@
 const translation = {
+  theme: {
+    theme: 'テーマ',
+    light: '明るい',
+    dark: '暗い',
+    auto: 'システム',
+  },
   api: {
     success: '成功',
     actionSuccess: 'アクションが成功しました',
