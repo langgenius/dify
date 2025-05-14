@@ -9,13 +9,13 @@ import Tooltip from '@/app/components/base/tooltip'
 
 type DetailsProps = {
   id: string
-  handleUseTemplate: () => void
+  onApplyTemplate: () => void
   onClose: () => void
 }
 
 const Details = ({
   id,
-  handleUseTemplate,
+  onApplyTemplate,
   onClose,
 }: DetailsProps) => {
   const { t } = useTranslation()
@@ -74,7 +74,7 @@ const Details = ({
         <div className='p-3'>
           <Button
             variant='primary'
-            onClick={handleUseTemplate}
+            onClick={onApplyTemplate}
             className='w-full gap-x-0.5'
           >
             <RiAddLine className='size-4' />

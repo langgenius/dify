@@ -6,7 +6,7 @@ import Operations from './operations'
 import CustomPopover from '@/app/components/base/popover'
 
 type ActionsProps = {
-  handleApplyTemplate: () => void
+  onApplyTemplate: () => void
   handleShowTemplateDetails: () => void
   showMoreOperations: boolean
   openEditModal: () => void
@@ -15,7 +15,7 @@ type ActionsProps = {
 }
 
 const Actions = ({
-  handleApplyTemplate,
+  onApplyTemplate,
   handleShowTemplateDetails,
   showMoreOperations,
   openEditModal,
@@ -28,7 +28,7 @@ const Actions = ({
     <div className='absolute bottom-0 left-0 z-10 hidden w-full items-center gap-x-1 bg-pipeline-template-card-hover-bg p-4 pt-8 group-hover:flex'>
       <Button
         variant='primary'
-        onClick={handleApplyTemplate}
+        onClick={onApplyTemplate}
         className='grow gap-x-0.5'
       >
         <RiAddLine className='size-4' />

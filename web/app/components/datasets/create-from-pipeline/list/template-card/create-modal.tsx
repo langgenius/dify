@@ -3,19 +3,20 @@ import CreateForm from '../../create-form'
 import { useCallback, useEffect, useState } from 'react'
 import type { CreateFormData } from '@/models/pipeline'
 import { ChunkingMode, type CreateDatasetReq, DatasetPermission } from '@/models/datasets'
-import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
 import type { Member } from '@/models/common'
 import { useMembers } from '@/service/use-common'
 
-type ApplyTemplateModalProps = {
+type CreateModalProps = {
   show: boolean
   onClose: () => void
+  onCreate: (payload: Omit<CreateDatasetReq, 'yaml_content'>) => Promise<void>
 }
 
-const ApplyTemplateModal = ({
+const CreateModal = ({
   show,
   onClose,
-}: ApplyTemplateModalProps) => {
+  onCreate,
+}: CreateModalProps) => {
   const [memberList, setMemberList] = useState<Member[]>([])
   const { data: members } = useMembers()
 
@@ -23,8 +24,6 @@ const ApplyTemplateModal = ({
     if (members?.accounts)
       setMemberList(members.accounts)
   }, [members])
-
-  const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset() // todo: yaml content
 
   const handleCreate = useCallback(async (payload: CreateFormData) => {
     const { name, appIcon, description, permission, selectedMemberIDs } = payload
@@ -50,12 +49,8 @@ const ApplyTemplateModal = ({
       })
       request.partial_member_list = selectedMemberList
     }
-    await createEmptyDataset(request, {
-      onSettled: () => {
-        onClose?.()
-      },
-    })
-  }, [createEmptyDataset, memberList, onClose])
+    onCreate(request)
+  }, [memberList, onCreate])
 
   return (
     <Modal
@@ -71,4 +66,4 @@ const ApplyTemplateModal = ({
   )
 }
 
-export default ApplyTemplateModal
+export default CreateModal

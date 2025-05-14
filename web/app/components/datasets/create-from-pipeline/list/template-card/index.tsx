@@ -7,17 +7,18 @@ import Confirm from '@/app/components/base/confirm'
 import {
   useDeletePipeline,
   useExportPipelineDSL,
-  useImportPipelineDSL,
   usePipelineTemplateById,
 } from '@/service/use-pipeline'
 import { downloadFile } from '@/utils/format'
 import Toast from '@/app/components/base/toast'
-import { DSLImportMode } from '@/models/app'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { useRouter } from 'next/navigation'
 import Details from './details'
 import Content from './content'
 import Actions from './actions'
+import type { CreateDatasetReq } from '@/models/datasets'
+import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
+import CreateModal from './create-modal'
 
 type TemplateCardProps = {
   pipeline: PipelineTemplate
@@ -33,12 +34,17 @@ const TemplateCard = ({
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowConfirmDelete] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(pipeline.id, false)
-  const { mutateAsync: importDSL } = useImportPipelineDSL()
+  const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
-  const handleUseTemplate = useCallback(async () => {
+  const openCreateModal = useCallback(() => {
+    setShowCreateModal(true)
+  }, [])
+
+  const handleUseTemplate = useCallback(async (payload: Omit<CreateDatasetReq, 'yaml_content'>) => {
     try {
       const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
       if (!pipelineTemplateInfo) {
@@ -49,17 +55,17 @@ const TemplateCard = ({
         return
       }
       const request = {
-        mode: DSLImportMode.YAML_CONTENT,
+        ...payload,
         yaml_content: pipelineTemplateInfo.export_data,
       }
-      const newPipeline = await importDSL(request)
+      const newDataset = await createEmptyDataset(request)
       Toast.notify({
         type: 'success',
         message: t('app.newApp.appCreated'),
       })
-      if (newPipeline.pipeline_id)
-        await handleCheckPluginDependencies(newPipeline.pipeline_id, true)
-      push(`dataset/${newPipeline.pipeline_id}/pipeline`)
+      if (newDataset.pipeline_info?.id)
+        await handleCheckPluginDependencies(newDataset.pipeline_info.id, true)
+      push(`dataset/${newDataset.id}/pipeline`)
     }
     catch {
       Toast.notify({
@@ -67,7 +73,7 @@ const TemplateCard = ({
         message: t('datasetPipeline.creation.errorTip'),
       })
     }
-  }, [getPipelineTemplateInfo, importDSL, t, handleCheckPluginDependencies, push])
+  }, [getPipelineTemplateInfo, createEmptyDataset, t, handleCheckPluginDependencies, push])
 
   const handleShowTemplateDetails = useCallback(() => {
     setShowDetailModal(true)
@@ -140,7 +146,7 @@ const TemplateCard = ({
         docForm={pipeline.doc_form}
       />
       <Actions
-        handleApplyTemplate={handleUseTemplate}
+        onApplyTemplate={openCreateModal}
         handleShowTemplateDetails={handleShowTemplateDetails}
         showMoreOperations={showMoreOperations}
         openEditModal={openEditModal}
@@ -177,10 +183,18 @@ const TemplateCard = ({
           <Details
             id={pipeline.id}
             onClose={closeDetailsModal}
-            handleUseTemplate={handleUseTemplate}
+            onApplyTemplate={openCreateModal}
           />
         </Modal>
       )}
+      {showCreateModal && (
+        <CreateModal
+          show={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleUseTemplate}
+        />
+      )
+      }
     </div>
   )
 }

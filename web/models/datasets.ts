@@ -6,6 +6,9 @@ import type { MetadataFilteringVariableType } from '@/app/components/workflow/no
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
 import { ExternalKnowledgeBase, General, Graph, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
+import type { Edge, EnvironmentVariable, Node } from '@/app/components/workflow/types'
+import type { Viewport } from 'reactflow'
+import type { RAGPipelineVariables } from './pipeline'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -737,6 +740,7 @@ export type CreateDatasetReq = {
     user_id: string
     role?: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
   }[]
+  yaml_content?: string
 }
 
 export type CreateDatasetResponse = {
@@ -749,4 +753,14 @@ export type CreateDatasetResponse = {
   created_at: number
   updated_by: string
   updated_at: number
+  pipeline_info: {
+    id: string
+    graph: {
+      nodes: Node[]
+      edges: Edge[]
+      viewport?: Viewport
+    }
+    environment_variables: EnvironmentVariable[]
+    rag_pipeline_variables: RAGPipelineVariables
+  }
 }
