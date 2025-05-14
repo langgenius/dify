@@ -114,8 +114,10 @@ def init_app(app: DifyApp):
                 pass
 
     from opentelemetry import trace
-    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as GRPCMetricExporter
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCSpanExporter
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter as HTTPMetricExporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
     from opentelemetry.instrumentation.celery import CeleryInstrumentor
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -158,19 +160,32 @@ def init_app(app: DifyApp):
     sampler = ParentBasedTraceIdRatio(dify_config.OTEL_SAMPLING_RATE)
     provider = TracerProvider(resource=resource, sampler=sampler)
     set_tracer_provider(provider)
-    exporter: Union[OTLPSpanExporter, ConsoleSpanExporter]
-    metric_exporter: Union[OTLPMetricExporter, ConsoleMetricExporter]
+    exporter: Union[GRPCSpanExporter, HTTPSpanExporter, ConsoleSpanExporter]
+    metric_exporter: Union[GRPCMetricExporter, HTTPMetricExporter, ConsoleMetricExporter]
+    protocol = (dify_config.OTEL_EXPORTER_OTLP_PROTOCOL or "").lower()
     if dify_config.OTEL_EXPORTER_TYPE == "otlp":
-        exporter = OTLPSpanExporter(
-            endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/traces",
-            headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
-        )
-        metric_exporter = OTLPMetricExporter(
-            endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
-            headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
-        )
+        if protocol == "grpc":
+            exporter = GRPCSpanExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT,
+                # Header field names must consist of lowercase letters, check RFC7540
+                headers=(("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),),
+                insecure=True,
+            )
+            metric_exporter = GRPCMetricExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT,
+                headers=(("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),),
+                insecure=True,
+            )
+        else:
+            exporter = HTTPSpanExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/traces",
+                headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
+            )
+            metric_exporter = HTTPMetricExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
+                headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
+            )
     else:
-        # Fallback to console exporter
         exporter = ConsoleSpanExporter()
         metric_exporter = ConsoleMetricExporter()
 
