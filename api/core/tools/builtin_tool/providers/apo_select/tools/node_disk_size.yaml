@@ -1,0 +1,53 @@
+identity:
+  name: 主机磁盘根分区大小
+  author: APO
+  label:
+    en_US: Node disk root size
+    zh_Hans: 主机磁盘根分区大小
+description:
+  human:
+    en_US: Node disk root size
+    zh_Hans: 主机磁盘根分区大小
+  llm: Node disk root size
+display:
+  type: metric
+  title: Node disk root size
+  unit: byte
+parameters:
+  - name: node
+    type: string
+    required: False
+    label:
+      en_US: node
+      zh_Hans: node
+    human_description:
+      en_US: node
+      zh_Hans: node
+    llm_description: node
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
+    form: llm
