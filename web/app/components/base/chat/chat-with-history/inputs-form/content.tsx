@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatWithHistoryContext } from '../context'
 import Input from '@/app/components/base/input'
@@ -112,4 +112,4 @@ const InputsFormContent = ({ showTip }: Props) => {
   )
 }
 
-export default InputsFormContent
+export default memo(InputsFormContent)

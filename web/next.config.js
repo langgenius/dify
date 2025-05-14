@@ -13,6 +13,9 @@ const withMDX = require('@next/mdx')({
   },
 })
 
+// the default url to prevent parse url error when running jest
+const remoteImageURL = new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX || 'http://localhost:3000'}/**`)
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath,
@@ -24,6 +27,16 @@ const nextConfig = {
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
+  // https://nextjs.org/docs/messages/next-image-unconfigured-host
+  images: {
+    remotePatterns: [{
+      protocol: remoteImageURL.protocol.replace(':', ''),
+      hostname: remoteImageURL.hostname,
+      port: remoteImageURL.port,
+      pathname: remoteImageURL.pathname,
+      search: '',
+    }],
+  },
   experimental: {
   },
   // fix all before production. Now it slow the develop speed.

@@ -1,4 +1,10 @@
 const translation = {
+  theme: {
+    theme: '主题',
+    light: '浅色',
+    dark: '深色',
+    auto: '自动',
+  },
   api: {
     success: '成功',
     actionSuccess: '操作成功',
@@ -57,6 +63,7 @@ const translation = {
     submit: '提交',
     skip: '跳过',
     format: '格式化',
+    more: '更多',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

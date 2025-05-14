@@ -1,6 +1,7 @@
 'use client'
 import React from 'react'
 import type { FC } from 'react'
+import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import Badge from '../base/badge'
@@ -28,6 +29,7 @@ const ProviderCard: FC<Props> = ({
 }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
+  const { theme } = useTheme()
   const [isShowInstallFromMarketplace, {
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
@@ -74,7 +76,7 @@ const ProviderCard: FC<Props> = ({
           className='grow'
           variant='secondary'
         >
-          <a href={`${getPluginLinkInMarketplace(payload)}?language=${locale}`} target='_blank' className='flex items-center gap-0.5'>
+          <a href={`${getPluginLinkInMarketplace(payload)}?language=${locale}${theme ? `&theme=${theme}` : ''}`} target='_blank' className='flex items-center gap-0.5'>
             {t('plugin.detailPanel.operation.detail')}
             <RiArrowRightUpLine className='h-4 w-4' />
           </a>

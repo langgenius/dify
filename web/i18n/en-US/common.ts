@@ -1,4 +1,10 @@
 const translation = {
+  theme: {
+    theme: 'Theme',
+    light: 'light',
+    dark: 'dark',
+    auto: 'system',
+  },
   api: {
     success: 'Success',
     actionSuccess: 'Action succeeded',
@@ -57,6 +63,7 @@ const translation = {
     submit: 'Submit',
     skip: 'Skip',
     format: 'Format',
+    more: 'More',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

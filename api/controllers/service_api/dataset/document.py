@@ -2,10 +2,10 @@ import json
 
 from flask import request
 from flask_restful import marshal, reqparse
-from sqlalchemy import desc
+from sqlalchemy import desc, select
 from werkzeug.exceptions import NotFound
 
-import services.dataset_service
+import services
 from controllers.common.errors import FilenameNotExistsError
 from controllers.service_api import api
 from controllers.service_api.app.error import (
@@ -337,7 +337,7 @@ class DocumentListApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        query = Document.query.filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
+        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
 
         if search:
             search = f"%{search}%"
@@ -345,7 +345,7 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        paginated_documents = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
 
         response = {
@@ -374,14 +374,20 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             raise NotFound("Documents not found.")
         documents_status = []
         for document in documents:
-            completed_segments = DocumentSegment.query.filter(
-                DocumentSegment.completed_at.isnot(None),
-                DocumentSegment.document_id == str(document.id),
-                DocumentSegment.status != "re_segment",
-            ).count()
-            total_segments = DocumentSegment.query.filter(
-                DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment"
-            ).count()
+            completed_segments = (
+                db.session.query(DocumentSegment)
+                .filter(
+                    DocumentSegment.completed_at.isnot(None),
+                    DocumentSegment.document_id == str(document.id),
+                    DocumentSegment.status != "re_segment",
+                )
+                .count()
+            )
+            total_segments = (
+                db.session.query(DocumentSegment)
+                .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .count()
+            )
             document.completed_segments = completed_segments
             document.total_segments = total_segments
             if document.is_paused:

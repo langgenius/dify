@@ -1,4 +1,10 @@
 const translation = {
+  theme: {
+    theme: 'テーマ',
+    light: '明るい',
+    dark: '暗い',
+    auto: 'システム',
+  },
   api: {
     success: '成功',
     actionSuccess: 'アクションが成功しました',
@@ -57,6 +63,7 @@ const translation = {
     copied: 'コピーしました',
     in: '中',
     format: 'フォーマット',
+    more: 'もっと',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
