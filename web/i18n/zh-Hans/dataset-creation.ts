@@ -100,6 +100,10 @@ const translation = {
       scrapTimeInfo: '总共在 {{time}}秒 内抓取了 {{total}} 个页面',
       preview: '预览',
       maxDepthTooltip: '相对于输入 URL 的最大抓取深度。深度0仅抓取输入 URL 本身的页面，深度1抓取输入 URL 及其后的一层目录（一个 /），依此类推。',
+      watercrawlDocLink: '从网站同步',
+      watercrawlDoc: 'Watercrawl 文档',
+      configureWatercrawl: '配置水爬行',
+      watercrawlTitle: '使用Watercrawl提取网页内容',
     },
   },
   stepTwo: {

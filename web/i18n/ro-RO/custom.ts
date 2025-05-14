@@ -3,6 +3,8 @@ const translation = {
   upgradeTip: {
     prefix: 'Actualizați-vă planul pentru a',
     suffix: 'să vă personalizați marca.',
+    des: 'Îmbunătățește-ți planul pentru a-ți personaliza marca',
+    title: 'Upgradează-ți planul',
   },
   webapp: {
     title: 'Personalizați marca WebApp',

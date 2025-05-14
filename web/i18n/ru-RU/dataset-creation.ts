@@ -87,6 +87,14 @@ const translation = {
       jinaReaderDoc: 'Узнайте больше о Jina Reader',
       jinaReaderTitle: 'Конвертируйте весь сайт в Markdown',
       useSitemapTooltip: 'Следуйте карте сайта, чтобы просканировать сайт. Если нет, Jina Reader будет сканировать итеративно в зависимости от релевантности страницы, выдавая меньшее количество страниц, но более высокого качества.',
+      watercrawlTitle: 'Извлечение веб-контента с помощью Watercrawl',
+      watercrawlDocLink: 'https://docs.dify.ai/ru/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      configureWatercrawl: 'Настроить Watercrawl',
+      waterCrawlNotConfigured: 'Watercrawl не настроен',
+      configureFirecrawl: 'Настроить Firecrawl',
+      waterCrawlNotConfiguredDescription: 'Настройте Watercrawl с помощью ключа API для его использования.',
+      configureJinaReader: 'Настройте Jina Reader',
+      watercrawlDoc: 'Документация Watercrawl',
     },
     cancel: 'Отмена',
   },
@@ -199,6 +207,11 @@ const translation = {
     learnMore: 'Подробнее',
     title: 'Подключаться к другим источникам данных?',
     description: 'В настоящее время база знаний Dify имеет лишь ограниченные источники данных. Добавление источника данных в базу знаний Dify — это отличный способ повысить гибкость и возможности платформы для всех пользователей. Наше руководство по вкладу поможет вам легко начать работу. Пожалуйста, нажмите на ссылку ниже, чтобы узнать больше.',
+  },
+  watercrawl: {
+    getApiKeyLinkText: 'Получите свой API-ключ с watercrawl.dev',
+    configWatercrawl: 'Настроить Watercrawl',
+    apiKeyPlaceholder: 'API ключ с watercrawl.dev',
   },
 }
 
