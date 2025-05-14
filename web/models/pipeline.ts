@@ -57,26 +57,46 @@ export type DeletePipelineResponse = {
   code: number
 }
 
+export type ExportPipelineDSLRequest = {
+  pipeline_id: string
+  include_secret?: boolean
+}
+
 export type ExportPipelineDSLResponse = {
   data: string
 }
 
 export type ImportPipelineDSLRequest = {
   mode: DSLImportMode
-  name: string
-  yaml_content: string
-  icon_info: IconInfo
-  description: string
+  yaml_content?: string
+  yaml_url?: string
+  pipeline_id?: string
 }
 
 export type ImportPipelineDSLResponse = {
   id: string
   status: DSLImportStatus
-  app_mode: 'pipeline'
-  dataset_id?: string
-  current_dsl_version?: string
-  imported_dsl_version?: string
+  pipeline_id: string
+  current_dsl_version: string
+  imported_dsl_version: string
   error: string
+  leaked_dependencies: Dependency[]
+}
+
+export type ImportPipelineDSLConfirmRequest = {
+  import_id: string
+}
+
+export type ImportPipelineDSLConfirmResponse = {
+  id: string
+  status: DSLImportStatus
+  pipeline_id: string
+  current_dsl_version: string
+  imported_dsl_version: string
+  error: string
+}
+
+export type PipelineCheckDependenciesResponse = {
   leaked_dependencies: Dependency[]
 }
 

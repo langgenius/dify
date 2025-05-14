@@ -10,7 +10,7 @@ type ActionsProps = {
   handleShowTemplateDetails: () => void
   showMoreOperations: boolean
   openEditModal: () => void
-  handleExportDSL: () => void
+  handleExportDSL: (includeSecret?: boolean) => void
   handleDelete: () => void
 }
 

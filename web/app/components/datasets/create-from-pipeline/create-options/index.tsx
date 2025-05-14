@@ -76,4 +76,4 @@ const CreateOptions = () => {
   )
 }
 
-export default React.memo(CreateOptions)
+export default CreateOptions

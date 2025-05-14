@@ -3,9 +3,13 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { del, get, patch, post } from './base'
 import type {
   DeletePipelineResponse,
+  ExportPipelineDSLRequest,
   ExportPipelineDSLResponse,
+  ImportPipelineDSLConfirmRequest,
+  ImportPipelineDSLConfirmResponse,
   ImportPipelineDSLRequest,
   ImportPipelineDSLResponse,
+  PipelineCheckDependenciesResponse,
   PipelineProcessingParamsResponse,
   PipelineTemplateByIdResponse,
   PipelineTemplateListParams,
@@ -63,30 +67,58 @@ export const useDeletePipeline = (
 }
 
 export const useExportPipelineDSL = (
-  mutationOptions: MutationOptions<ExportPipelineDSLResponse, Error, string> = {},
+  mutationOptions: MutationOptions<ExportPipelineDSLResponse, Error, ExportPipelineDSLRequest> = {},
 ) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'template', 'export'],
-    mutationFn: (pipelineId: string) => {
-      return get<ExportPipelineDSLResponse>(`/rag/pipeline/${pipelineId}`)
+    mutationKey: [NAME_SPACE, 'dsl-export'],
+    mutationFn: (request: ExportPipelineDSLRequest) => {
+      return get<ExportPipelineDSLResponse>(`/rag/pipeline/${request.pipeline_id}/export`, {
+        params: {
+          include_secret: !!request.include_secret,
+        },
+      })
     },
     ...mutationOptions,
   })
 }
 
-// TODO: replace with real API
 export const useImportPipelineDSL = (
   mutationOptions: MutationOptions<ImportPipelineDSLResponse, Error, ImportPipelineDSLRequest> = {},
 ) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'template', 'import'],
+    mutationKey: [NAME_SPACE, 'dsl-import'],
     mutationFn: (request: ImportPipelineDSLRequest) => {
-      return post<ImportPipelineDSLResponse>('/rag/pipeline/import', { body: request })
+      return post<ImportPipelineDSLResponse>('/rag/pipeline/imports', { body: request })
     },
     ...mutationOptions,
   })
 }
 
+export const useImportPipelineDSLConfirm = (
+  mutationOptions: MutationOptions<ImportPipelineDSLConfirmResponse, Error, ImportPipelineDSLConfirmRequest> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'dsl-import-confirm'],
+    mutationFn: (request: ImportPipelineDSLConfirmRequest) => {
+      return post<ImportPipelineDSLConfirmResponse>('/rag/pipeline/import/confirm', { body: request })
+    },
+    ...mutationOptions,
+  })
+}
+
+export const useCheckPipelineDependencies = (
+  mutationOptions: MutationOptions<PipelineCheckDependenciesResponse, Error, string> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'check-dependencies'],
+    mutationFn: (pipelineId: string) => {
+      return post<PipelineCheckDependenciesResponse>(`/rag/pipelines/imports/${pipelineId}/check-dependencies`)
+    },
+    ...mutationOptions,
+  })
+}
+
+// Get the config of shared input fields
 export const usePipelineProcessingParams = (pipelineId: string) => {
   return useQuery<PipelineProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'pipeline-processing-params', pipelineId],

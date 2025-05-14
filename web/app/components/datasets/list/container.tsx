@@ -115,7 +115,7 @@ const Container = () => {
               onChange={e => handleKeywordsChange(e.target.value)}
               onClear={() => handleKeywordsChange('')}
             />
-            <div className="h-4 w-[1px] bg-divider-regular" />
+            <div className='h-4 w-[1px] bg-divider-regular' />
             <Button
               className='shadows-shadow-xs gap-0.5'
               onClick={() => setShowExternalApiPanel(true)}

@@ -75,6 +75,8 @@ const translation = {
     hideTemplates: '返回应用类型选择',
     Create: '创建',
     Cancel: '取消',
+    Confirm: '确认',
+    import: '导入',
     nameNotEmpty: '名称不能为空',
     appTemplateNotSelected: '请选择应用模版',
     appTypeRequired: '请选择应用类型',
@@ -87,7 +89,6 @@ const translation = {
     appCreateDSLErrorPart3: '当前应用 DSL 版本：',
     appCreateDSLErrorPart4: '系统支持 DSL 版本：',
     appCreateFailed: '应用创建失败',
-    Confirm: '确认',
   },
   newAppFromTemplate: {
     byCategories: '分类',

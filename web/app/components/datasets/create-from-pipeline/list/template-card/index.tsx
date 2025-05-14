@@ -4,7 +4,12 @@ import Modal from '@/app/components/base/modal'
 import EditPipelineInfo from './edit-pipeline-info'
 import type { PipelineTemplate } from '@/models/pipeline'
 import Confirm from '@/app/components/base/confirm'
-import { useDeletePipeline, useExportPipelineDSL, useImportPipelineDSL, usePipelineTemplateById } from '@/service/use-pipeline'
+import {
+  useDeletePipeline,
+  useExportPipelineDSL,
+  useImportPipelineDSL,
+  usePipelineTemplateById,
+} from '@/service/use-pipeline'
 import { downloadFile } from '@/utils/format'
 import Toast from '@/app/components/base/toast'
 import { DSLImportMode } from '@/models/app'
@@ -30,7 +35,7 @@ const TemplateCard = ({
   const [showDetailModal, setShowDetailModal] = useState(false)
 
   const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(pipeline.id, false)
-  const { mutateAsync: importPipelineDSL } = useImportPipelineDSL()
+  const { mutateAsync: importDSL } = useImportPipelineDSL()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
   const handleUseTemplate = useCallback(async () => {
@@ -45,19 +50,16 @@ const TemplateCard = ({
       }
       const request = {
         mode: DSLImportMode.YAML_CONTENT,
-        name: pipeline.name,
         yaml_content: pipelineTemplateInfo.export_data,
-        icon_info: pipeline.icon_info,
-        description: pipeline.description,
       }
-      const newPipeline = await importPipelineDSL(request)
+      const newPipeline = await importDSL(request)
       Toast.notify({
         type: 'success',
         message: t('app.newApp.appCreated'),
       })
-      if (newPipeline.dataset_id)
-        await handleCheckPluginDependencies(newPipeline.dataset_id) // todo: replace with pipeline dependency check
-      push(`dataset/${newPipeline.dataset_id}/pipeline`)
+      if (newPipeline.pipeline_id)
+        await handleCheckPluginDependencies(newPipeline.pipeline_id, true)
+      push(`dataset/${newPipeline.pipeline_id}/pipeline`)
     }
     catch {
       Toast.notify({
@@ -65,7 +67,7 @@ const TemplateCard = ({
         message: t('datasetPipeline.creation.errorTip'),
       })
     }
-  }, [getPipelineTemplateInfo, importPipelineDSL, pipeline, t, push, handleCheckPluginDependencies])
+  }, [getPipelineTemplateInfo, importDSL, t, handleCheckPluginDependencies, push])
 
   const handleShowTemplateDetails = useCallback(() => {
     setShowDetailModal(true)
@@ -85,9 +87,12 @@ const TemplateCard = ({
 
   const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportPipelineDSL()
 
-  const handleExportDSL = useCallback(async () => {
+  const handleExportDSL = useCallback(async (includeSecret = false) => {
     if (isExporting) return
-    await exportPipelineDSL(pipeline.id, {
+    await exportPipelineDSL({
+      pipeline_id: pipeline.id,
+      include_secret: includeSecret,
+    }, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
         downloadFile({
