@@ -164,6 +164,10 @@ const translation = {
       title: 'オピック',
       description: 'Opik は、LLM アプリケーションを評価、テスト、監視するためのオープンソース プラットフォームです。',
     },
+    weave: {
+      description: 'Weaveは、LLMアプリケーションを評価、テスト、および監視するためのオープンソースプラットフォームです。',
+      title: '織る',
+    },
   },
   answerIcon: {
     title: 'Webアプリアイコンを使用して🤖を置き換える',

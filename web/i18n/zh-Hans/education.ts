@@ -42,7 +42,6 @@ const translation = {
   rejectTitle: '您的 Dify 教育版认证已被拒绝',
   rejectContent: '非常遗憾，您无法使用此电子邮件以获得教育版认证资格，也无法领取 Dify Professional 版的 100% 独家优惠券。',
   emailLabel: '您当前的邮箱',
-
 }
 
 export default translation

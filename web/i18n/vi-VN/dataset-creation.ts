@@ -82,6 +82,14 @@ const translation = {
       jinaReaderNotConfigured: 'Jina Reader không được cấu hình',
       jinaReaderNotConfiguredDescription: 'Thiết lập Jina Reader bằng cách nhập khóa API miễn phí của bạn để truy cập.',
       useSitemapTooltip: 'Thực hiện theo sơ đồ trang web để thu thập dữ liệu trang web. Nếu không, Jina Reader sẽ thu thập dữ liệu lặp đi lặp lại dựa trên mức độ liên quan của trang, mang lại ít trang hơn nhưng chất lượng cao hơn.',
+      configureWatercrawl: 'Cấu hình Watercrawl',
+      configureFirecrawl: 'Cấu hình Firecrawl',
+      configureJinaReader: 'Cấu hình Jina Reader',
+      waterCrawlNotConfiguredDescription: 'Cấu hình Watercrawl với khóa API để sử dụng nó.',
+      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      watercrawlTitle: 'Trích xuất nội dung web bằng Watercrawl',
+      watercrawlDoc: 'Tài liệu Watercrawl',
+      waterCrawlNotConfigured: 'Watercrawl chưa được cấu hình',
     },
     cancel: 'Hủy',
   },
@@ -199,6 +207,11 @@ const translation = {
     title: 'Kết nối với các nguồn dữ liệu khác?',
     description: 'Hiện tại, cơ sở tri thức của Dify chỉ có nguồn dữ liệu hạn chế. Đóng góp nguồn dữ liệu vào cơ sở kiến thức Dify là một cách tuyệt vời để giúp nâng cao tính linh hoạt và sức mạnh của nền tảng cho tất cả người dùng. Hướng dẫn đóng góp của chúng tôi giúp bạn dễ dàng bắt đầu. Vui lòng nhấp vào liên kết bên dưới để tìm hiểu thêm.',
     learnMore: 'Tìm hiểu thêm',
+  },
+  watercrawl: {
+    configWatercrawl: 'Cấu hình Watercrawl',
+    apiKeyPlaceholder: 'Khóa API từ watercrawl.dev',
+    getApiKeyLinkText: 'Lấy mã API của bạn từ watercrawl.dev',
   },
 }
 

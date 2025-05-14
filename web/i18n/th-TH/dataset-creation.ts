@@ -92,6 +92,14 @@ const translation = {
       scrapTimeInfo: 'ขูด {{total}} หน้าทั้งหมดภายใน {{time}}s',
       preview: 'ดูตัวอย่าง',
       maxDepthTooltip: 'ความลึกสูงสุดในการรวบรวมข้อมูลเมื่อเทียบกับ URL ที่ป้อน ความลึก 0 เพียงแค่ขูดหน้าของ URL ที่ป้อนความลึก 1 ขูด url และทุกอย่างหลังจาก enteredURL + หนึ่ง / เป็นต้น',
+      watercrawlTitle: 'ดึงเนื้อหาจากเว็บด้วย Watercrawl',
+      configureJinaReader: 'ตั้งค่า Jina Reader',
+      watercrawlDocLink: 'https://docs.dify.ai/th/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      configureFirecrawl: 'กำหนดค่า Firecrawl',
+      configureWatercrawl: 'กำหนดค่าการเข้าถึงน้ำ',
+      waterCrawlNotConfiguredDescription: 'กำหนดค่า Watercrawl ด้วย API key เพื่อใช้งาน.',
+      watercrawlDoc: 'เอกสาร Watercrawl',
+      waterCrawlNotConfigured: 'Watercrawl ยังไม่ได้ตั้งค่า',
     },
     cancel: 'ยกเลิก',
   },
@@ -199,6 +207,11 @@ const translation = {
     learnMore: 'ศึกษาเพิ่มเติม',
     title: 'เชื่อมต่อกับแหล่งข้อมูลอื่นใช่ไหม',
     description: 'ปัจจุบัน ฐานความรู้ของ Dify มีแหล่งข้อมูลที่จํากัดเท่านั้น การมีส่วนร่วมในแหล่งข้อมูลในฐานความรู้ Dify เป็นวิธีที่ยอดเยี่ยมในการช่วยเพิ่มความยืดหยุ่นและพลังของแพลตฟอร์มสําหรับผู้ใช้ทุกคน คู่มือการมีส่วนร่วมของเราทําให้ง่ายต่อการเริ่มต้นใช้งาน โปรดคลิกที่ลิงค์ด้านล่างเพื่อเรียนรู้เพิ่มเติม',
+  },
+  watercrawl: {
+    configWatercrawl: 'กำหนด Watercrawl',
+    getApiKeyLinkText: 'รับคีย์ API ของคุณจาก watercrawl.dev',
+    apiKeyPlaceholder: 'คีย์ API จาก watercrawl.dev',
   },
 }
 
