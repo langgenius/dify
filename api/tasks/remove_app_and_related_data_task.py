@@ -200,7 +200,7 @@ def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
         errmsg = (
             f"Failed to delete workflow node executions for tenant {tenant_id} and app {app_id}, app's owner not found"
         )
-        logging.error(click.style(errmsg, fg="red"))
+        logging.error(errmsg)
         raise ValueError(errmsg)
 
     # Create a repository instance for WorkflowNodeExecution
