@@ -1049,6 +1049,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         """Calculate num tokens for gpt-3.5-turbo and gpt-4 with tiktoken package.
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
+        if not messages and not tools:
+            return 0
+
         if model.startswith("ft:"):
             model = model.split(":")[1]
 
@@ -1058,17 +1061,17 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         try:
             encoding = tiktoken.get_encoding(model)
-        except KeyError:
+        except (KeyError, ValueError) as e:
             logger.warning("Warning: model not found. Using cl100k_base encoding.")
-            model = "cl100k_base"
-            encoding = tiktoken.get_encoding(model)
+            encoding_name = "cl100k_base"
+            encoding = tiktoken.get_encoding(encoding_name)
 
         if model.startswith("gpt-3.5-turbo-0301"):
             # every message follows <im_start>{role/name}\n{content}<im_end>\n
             tokens_per_message = 4
             # if there's a name, the role is omitted
             tokens_per_name = -1
-        elif model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4") or model.startswith(("o1", "o3")):
+        elif model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4") or model.startswith(("o1", "o3", "o4")):
             tokens_per_message = 3
             tokens_per_name = 1
         else:
