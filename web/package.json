@@ -161,7 +161,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "lint-staged": "^13.2.2",
     "magicast": "^0.3.4",
-    "postcss": "^8.4.31",
+    "postcss": "^8.4.47",
     "sass": "^1.61.0",
     "storybook": "^8.3.5",
     "tailwindcss": "^3.4.4",
@@ -172,7 +172,10 @@
   "resolutions": {
     "@types/react": "~18.2.0",
     "@types/react-dom": "~18.2.0",
-    "string-width": "4.2.3"
+    "string-width": "4.2.3",
+    "nanoid": "~3.3.8",
+    "esbuild": "~0.25.0",
+    "serialize-javascript": "~6.0.2"
   },
   "lint-staged": {
     "**/*.js?(x)": [
