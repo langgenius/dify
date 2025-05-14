@@ -4,8 +4,6 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
-  push:
-    branches: [fix/auto-translate]
 
 jobs:
   check-and-update:

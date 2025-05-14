@@ -915,7 +915,6 @@ const translation = {
       updateFailure: 'Failed to update version',
     },
   },
-  test: 'just for test i18n',
 }
 
 export default translation
