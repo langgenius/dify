@@ -1,8 +1,9 @@
-import type { InputVar, InputVarType } from '@/app/components/workflow/types'
+import type { Edge, InputVar, InputVarType, Node } from '@/app/components/workflow/types'
 import type { DSLImportMode, DSLImportStatus } from './app'
 import type { ChunkingMode, DatasetPermission, IconInfo } from './datasets'
 import type { Dependency } from '@/app/components/plugins/types'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { Viewport } from 'reactflow'
 
 export type PipelineTemplateListParams = {
   type: 'built-in' | 'customized'
@@ -27,6 +28,11 @@ export type PipelineTemplateByIdResponse = {
   description: string
   author: string // todo: TBD
   structure: string // todo: TBD
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport: Viewport
+  }
   export_data: string
 }
 

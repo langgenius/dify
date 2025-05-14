@@ -7,6 +7,7 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
+import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 
 type DetailsProps = {
   id: string
@@ -39,7 +40,9 @@ const Details = ({
   return (
     <div className='flex h-full'>
       <div className='flex grow items-center justify-center p-3 pr-0'>
-        Pipeline Preview
+        <WorkflowPreview
+          {...pipelineTemplateInfo.graph}
+        />
       </div>
       <div className='relative flex w-[360px] shrink-0 flex-col'>
         <button
