@@ -6,6 +6,7 @@ import { RiAddLine, RiCloseLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
+import Loading from '@/app/components/base/loading'
 
 type DetailsProps = {
   id: string
@@ -31,9 +32,7 @@ const Details = ({
 
   if (!pipelineTemplateInfo) {
     return (
-      <div className='flex h-full items-center justify-center'>
-        <div className='system-md-medium text-text-secondary'>Loading...</div>
-      </div>
+      <Loading type='app' />
     )
   }
 

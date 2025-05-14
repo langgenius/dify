@@ -77,6 +77,7 @@ export type ImportPipelineDSLResponse = {
   id: string
   status: DSLImportStatus
   pipeline_id: string
+  dataset_id: string
   current_dsl_version: string
   imported_dsl_version: string
   error: string
@@ -91,6 +92,7 @@ export type ImportPipelineDSLConfirmResponse = {
   id: string
   status: DSLImportStatus
   pipeline_id: string
+  dataset_id: string
   current_dsl_version: string
   imported_dsl_version: string
   error: string

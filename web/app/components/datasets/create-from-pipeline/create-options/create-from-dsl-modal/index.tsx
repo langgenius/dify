@@ -103,7 +103,7 @@ const CreateFromDSLModal = ({
 
       if (!response)
         return
-      const { id, status, pipeline_id, imported_dsl_version, current_dsl_version } = response
+      const { id, status, pipeline_id, dataset_id, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         if (onSuccess)
           onSuccess()
@@ -117,7 +117,7 @@ const CreateFromDSLModal = ({
         })
         if (pipeline_id)
           await handleCheckPluginDependencies(pipeline_id, true)
-        push(`datasets/${pipeline_id}/pipeline`)
+        push(`datasets/${dataset_id}/pipeline`)
       }
       else if (status === DSLImportStatus.PENDING) {
         setVersions({
@@ -160,7 +160,7 @@ const CreateFromDSLModal = ({
         import_id: importId,
       })
 
-      const { status, pipeline_id } = response
+      const { status, pipeline_id, dataset_id } = response
 
       if (status === DSLImportStatus.COMPLETED) {
         if (onSuccess)
@@ -174,7 +174,7 @@ const CreateFromDSLModal = ({
         })
         if (pipeline_id)
           await handleCheckPluginDependencies(pipeline_id, true)
-        push(`datasets/${pipeline_id}/pipeline`)
+        push(`datasets/${dataset_id}/pipeline`)
       }
       else if (status === DSLImportStatus.FAILED) {
         notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
