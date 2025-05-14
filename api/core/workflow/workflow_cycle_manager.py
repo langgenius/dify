@@ -61,7 +61,7 @@ from core.workflow.repository.workflow_node_execution_repository import Workflow
 from core.workflow.workflow_entry import WorkflowEntry
 from models import (
     Account,
-    CreatedByRole,
+    CreatorUserRole,
     EndUser,
     Workflow,
     WorkflowNodeExecutionStatus,
@@ -90,7 +90,7 @@ class WorkflowCycleManager:
         session: Session,
         workflow_id: str,
         user_id: str,
-        created_by_role: CreatedByRole,
+        created_by_role: CreatorUserRole,
     ) -> WorkflowRun:
         workflow_stmt = select(Workflow).where(Workflow.id == workflow_id)
         workflow = session.scalar(workflow_stmt)
@@ -484,7 +484,7 @@ class WorkflowCycleManager:
         workflow_run: WorkflowRun,
     ) -> WorkflowFinishStreamResponse:
         created_by = None
-        if workflow_run.created_by_role == CreatedByRole.ACCOUNT:
+        if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
             stmt = select(Account).where(Account.id == workflow_run.created_by)
             account = session.scalar(stmt)
             if account:
@@ -493,7 +493,7 @@ class WorkflowCycleManager:
                     "name": account.name,
                     "email": account.email,
                 }
-        elif workflow_run.created_by_role == CreatedByRole.END_USER:
+        elif workflow_run.created_by_role == CreatorUserRole.END_USER:
             stmt = select(EndUser).where(EndUser.id == workflow_run.created_by)
             end_user = session.scalar(stmt)
             if end_user:

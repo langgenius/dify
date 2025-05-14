@@ -19,7 +19,7 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.repository.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from models import (
     Account,
-    CreatedByRole,
+    CreatorUserRole,
     EndUser,
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -78,10 +78,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         # Extract user context
         self._triggered_from = triggered_from
-        self._created_by = user.id
+        self._creator_user_id = user.id
 
         # Determine user role based on user type
-        self._created_by_role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
+        self._creator_user_role = CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER
 
         # Initialize in-memory cache for node executions
         # Key: node_execution_id, Value: NodeExecution
@@ -140,9 +140,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         # Use values from constructor if provided
         if not self._triggered_from:
             raise ValueError("triggered_from is required in repository constructor")
-        if not self._created_by:
+        if not self._creator_user_id:
             raise ValueError("created_by is required in repository constructor")
-        if not self._created_by_role:
+        if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
 
         db_model = WorkflowNodeExecution()
@@ -167,8 +167,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_model.elapsed_time = domain_model.elapsed_time
         db_model.execution_metadata = json.dumps(domain_model.metadata) if domain_model.metadata else None
         db_model.created_at = domain_model.created_at
-        db_model.created_by_role = self._created_by_role
-        db_model.created_by = self._created_by
+        db_model.created_by_role = self._creator_user_role
+        db_model.created_by = self._creator_user_id
         db_model.finished_at = domain_model.finished_at
         return db_model
 

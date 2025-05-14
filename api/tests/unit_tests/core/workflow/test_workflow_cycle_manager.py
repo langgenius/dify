@@ -16,7 +16,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_cycle_manager import WorkflowCycleManager
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionStatus,
@@ -93,7 +93,7 @@ def mock_workflow_run():
     workflow_run.app_id = "test-app-id"
     workflow_run.workflow_id = "test-workflow-id"
     workflow_run.status = WorkflowRunStatus.RUNNING
-    workflow_run.created_by_role = CreatedByRole.ACCOUNT
+    workflow_run.created_by_role = CreatorUserRole.ACCOUNT
     workflow_run.created_by = "test-user-id"
     workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
     workflow_run.inputs_dict = {"query": "test query"}
@@ -121,7 +121,7 @@ def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, mock_wo
         session=mock_session,
         workflow_id="test-workflow-id",
         user_id="test-user-id",
-        created_by_role=CreatedByRole.ACCOUNT,
+        created_by_role=CreatorUserRole.ACCOUNT,
     )
 
     # Verify the result
@@ -130,7 +130,7 @@ def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, mock_wo
     assert workflow_run.workflow_id == mock_workflow.id
     assert workflow_run.sequence_number == 6  # max_sequence + 1
     assert workflow_run.status == WorkflowRunStatus.RUNNING
-    assert workflow_run.created_by_role == CreatedByRole.ACCOUNT
+    assert workflow_run.created_by_role == CreatorUserRole.ACCOUNT
     assert workflow_run.created_by == "test-user-id"
 
     # Verify session.add was called
