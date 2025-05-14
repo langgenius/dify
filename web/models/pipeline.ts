@@ -80,16 +80,9 @@ export type ImportPipelineDSLResponse = {
   dataset_id: string
   current_dsl_version: string
   imported_dsl_version: string
-  error: string
-  leaked_dependencies: Dependency[]
-}
-
-export type ImportPipelineDSLConfirmRequest = {
-  import_id: string
 }
 
 export type ImportPipelineDSLConfirmResponse = {
-  id: string
   status: DSLImportStatus
   pipeline_id: string
   dataset_id: string

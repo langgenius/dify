@@ -156,9 +156,7 @@ const CreateFromDSLModal = ({
     try {
       if (!importId)
         return
-      const response = await importDSLConfirm({
-        import_id: importId,
-      })
+      const response = await importDSLConfirm(importId)
 
       const { status, pipeline_id, dataset_id } = response
 

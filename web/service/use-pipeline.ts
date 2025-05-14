@@ -5,7 +5,6 @@ import type {
   DeletePipelineResponse,
   ExportPipelineDSLRequest,
   ExportPipelineDSLResponse,
-  ImportPipelineDSLConfirmRequest,
   ImportPipelineDSLConfirmResponse,
   ImportPipelineDSLRequest,
   ImportPipelineDSLResponse,
@@ -95,12 +94,12 @@ export const useImportPipelineDSL = (
 }
 
 export const useImportPipelineDSLConfirm = (
-  mutationOptions: MutationOptions<ImportPipelineDSLConfirmResponse, Error, ImportPipelineDSLConfirmRequest> = {},
+  mutationOptions: MutationOptions<ImportPipelineDSLConfirmResponse, Error, string> = {},
 ) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-import-confirm'],
-    mutationFn: (request: ImportPipelineDSLConfirmRequest) => {
-      return post<ImportPipelineDSLConfirmResponse>('/rag/pipeline/import/confirm', { body: request })
+    mutationFn: (importId: string) => {
+      return post<ImportPipelineDSLConfirmResponse>(`/rag/pipeline/imports/${importId}/confirm`)
     },
     ...mutationOptions,
   })
