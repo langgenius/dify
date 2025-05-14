@@ -1,7 +1,7 @@
+import hashlib
 import json
 import logging
 import uuid
-import hashlib
 from contextlib import contextmanager
 from typing import Any
 
@@ -258,15 +258,9 @@ class PGVector(BaseVector):
                 # PG hnsw index only support 2000 dimension or less
                 # ref: https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
                 if dimension <= 2000:
-                    cur.execute(SQL_CREATE_INDEX.format(
-                        table_name=self.table_name,
-                        index_hash=self.index_hash
-                    ))
+                    cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name, index_hash=self.index_hash))
                 if self.pg_bigm:
-                    cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(
-                        table_name=self.table_name,
-                        index_hash=self.index_hash
-                    ))
+                    cur.execute(SQL_CREATE_INDEX_PG_BIGM.format(table_name=self.table_name, index_hash=self.index_hash))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
 
