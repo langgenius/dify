@@ -98,10 +98,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             The domain model
         """
         # Parse JSON fields
-        inputs = json.loads(db_model.inputs) if db_model.inputs else None
-        process_data = json.loads(db_model.process_data) if db_model.process_data else None
-        outputs = json.loads(db_model.outputs) if db_model.outputs else None
-        metadata = json.loads(db_model.execution_metadata) if db_model.execution_metadata else None
+        inputs = db_model.inputs_dict
+        process_data = db_model.process_data_dict
+        outputs = db_model.outputs_dict
+        metadata = db_model.execution_metadata_dict
 
         # Convert status to domain enum
         status = NodeExecutionStatus(db_model.status)
