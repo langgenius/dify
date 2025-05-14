@@ -1,13 +1,14 @@
 import type { InputVar, InputVarType } from '@/app/components/workflow/types'
 import type { DSLImportMode, DSLImportStatus } from './app'
-import type { ChunkingMode, IconInfo } from './datasets'
+import type { ChunkingMode, DatasetPermission, IconInfo } from './datasets'
 import type { Dependency } from '@/app/components/plugins/types'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 
 export type PipelineTemplateListParams = {
   type: 'built-in' | 'customized'
 }
 
-export type PipelineTemple = {
+export type PipelineTemplate = {
   id: string
   name: string
   icon_info: IconInfo
@@ -17,7 +18,7 @@ export type PipelineTemple = {
 }
 
 export type PipelineTemplateListResponse = {
-  pipelines: PipelineTemple[]
+  pipelines: PipelineTemplate[]
 }
 
 export type PipelineTemplateByIdResponse = {
@@ -27,6 +28,14 @@ export type PipelineTemplateByIdResponse = {
   author: string // todo: TBD
   structure: string // todo: TBD
   export_data: string
+}
+
+export type CreateFormData = {
+  name: string
+  appIcon: AppIconSelection
+  description: string
+  permission: DatasetPermission
+  selectedMemberIDs: string[]
 }
 
 export type UpdatePipelineInfoRequest = {

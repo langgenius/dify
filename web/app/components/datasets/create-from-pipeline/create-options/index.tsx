@@ -1,8 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import Item from './item'
 import { RiAddCircleFill, RiFileUploadLine } from '@remixicon/react'
-import Modal from '@/app/components/base/modal'
-import CreateFromScratch from './create-from-scratch'
+import CreateFromScratchModal from './create-from-scratch-modal'
 import { useRouter, useSearchParams } from 'next/navigation'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from './create-from-dsl-modal'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -62,15 +61,10 @@ const CreateOptions = () => {
         description={t('datasetPipeline.creation.ImportDSL.description')}
         onClick={openImportFromDSL}
       />
-      <Modal
-        isShow={showCreateModal}
+      <CreateFromScratchModal
+        show={showCreateModal}
         onClose={closeCreateFromScratch}
-        className='max-w-[520px] p-0'
-      >
-        <CreateFromScratch
-          onClose={closeCreateFromScratch}
-        />
-      </Modal>
+      />
       <CreateFromDSLModal
         show={showImportModal}
         onClose={onCloseImportModal}

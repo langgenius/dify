@@ -8,12 +8,12 @@ import React, { useCallback, useRef, useState } from 'react'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import type { PipelineTemple } from '@/models/pipeline'
+import type { PipelineTemplate } from '@/models/pipeline'
 import { useUpdatePipelineInfo } from '@/service/use-pipeline'
 
 type EditPipelineInfoProps = {
   onClose: () => void
-  pipeline: PipelineTemple
+  pipeline: PipelineTemplate
 }
 
 const EditPipelineInfo = ({

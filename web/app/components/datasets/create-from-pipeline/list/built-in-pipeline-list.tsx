@@ -1,11 +1,11 @@
 import { usePipelineTemplateList } from '@/service/use-pipeline'
 import TemplateCard from './template-card'
 import { ChunkingMode } from '@/models/datasets'
-import type { PipelineTemple } from '@/models/pipeline'
+import type { PipelineTemplate } from '@/models/pipeline'
 
 const BuiltInPipelineList = () => {
   // TODO: remove mock data
-  const mockData: PipelineTemple[] = [{
+  const mockData: PipelineTemplate[] = [{
     id: '1',
     name: 'Pipeline 1',
     description: 'This is a description of Pipeline 1. When use the general chunking mode, the chunks retrieved and recalled are the same. When use the general chunking mode, the chunks retrieved and recalled are the same.',

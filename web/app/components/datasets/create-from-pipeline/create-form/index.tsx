@@ -1,24 +1,19 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import type { AppIconType } from '@/types/app'
-import { RiCloseLine } from '@remixicon/react'
-import PermissionSelector from '../../settings/permission-selector'
-import type { CreateDatasetReq } from '@/models/datasets'
-import { ChunkingMode, DatasetPermission } from '@/models/datasets'
-import { useMembers } from '@/service/use-common'
-import Button from '@/app/components/base/button'
-import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
-import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
 import type { Member } from '@/models/common'
-
-type CreateFromScratchProps = {
-  onClose: () => void
-}
+import { DatasetPermission } from '@/models/datasets'
+import { useMembers } from '@/service/use-common'
+import type { AppIconType } from '@/types/app'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import PermissionSelector from '../../settings/permission-selector'
+import Button from '@/app/components/base/button'
+import { RiCloseLine } from '@remixicon/react'
+import Toast from '@/app/components/base/toast'
+import type { CreateFormData } from '@/models/pipeline'
 
 const DEFAULT_APP_ICON: AppIconSelection = {
   type: 'emoji',
@@ -26,9 +21,15 @@ const DEFAULT_APP_ICON: AppIconSelection = {
   background: '#FFF4ED',
 }
 
-const CreateFromScratch = ({
+type CreateFormProps = {
+  onCreate: (payload: CreateFormData) => void
+  onClose: () => void
+}
+
+const CreateForm = ({
+  onCreate,
   onClose,
-}: CreateFromScratchProps) => {
+}: CreateFormProps) => {
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [appIcon, setAppIcon] = useState<AppIconSelection>(DEFAULT_APP_ICON)
@@ -75,9 +76,7 @@ const CreateFromScratch = ({
     setPermission(value!)
   }, [])
 
-  const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
-
-  const handleCreate = useCallback(async () => {
+  const handleCreate = useCallback(() => {
     if (!name) {
       Toast.notify({
         type: 'error',
@@ -85,34 +84,14 @@ const CreateFromScratch = ({
       })
       return
     }
-    const request: CreateDatasetReq = {
+    onCreate({
       name,
+      appIcon,
       description,
-      icon_info: {
-        icon_type: appIcon.type,
-        icon: appIcon.type === 'image' ? appIcon.fileId : appIcon.icon,
-        icon_background: appIcon.type === 'image' ? undefined : appIcon.background,
-        icon_url: appIcon.type === 'image' ? appIcon.url : undefined,
-      },
-      doc_form: ChunkingMode.text,
       permission,
-    }
-    // Handle permission
-    if (request.permission === DatasetPermission.partialMembers) {
-      const selectedMemberList = selectedMemberIDs.map((id) => {
-        return {
-          user_id: id,
-          role: memberList.find(member => member.id === id)?.role,
-        }
-      })
-      request.partial_member_list = selectedMemberList
-    }
-    await createEmptyDataset(request, {
-      onSettled: () => {
-        onClose?.()
-      },
+      selectedMemberIDs,
     })
-  }, [name, permission, appIcon, description, createEmptyDataset, memberList, selectedMemberIDs, onClose])
+  }, [name, appIcon, description, permission, selectedMemberIDs, onCreate])
 
   return (
     <div className='relative flex flex-col'>
@@ -200,4 +179,4 @@ const CreateFromScratch = ({
   )
 }
 
-export default React.memo(CreateFromScratch)
+export default React.memo(CreateForm)
