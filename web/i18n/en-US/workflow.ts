@@ -113,8 +113,6 @@ const translation = {
     addFailureBranch: 'Add Fail Branch',
     loadMore: 'Load More',
     noHistory: 'No History',
-    referenceVar: 'Reference Variable',
-    noExist: 'No such variable',
   },
   env: {
     envPanelTitle: 'Environment Variables',
@@ -598,7 +596,6 @@ const translation = {
       selectVariable: 'Select variable...',
       addSubVariable: 'Sub Variable',
       select: 'Select',
-      condition: 'Condition',
     },
     variableAssigner: {
       title: 'Assign variables',
