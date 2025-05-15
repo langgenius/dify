@@ -86,8 +86,6 @@ docker compose up -d
 **1. 工作流程**：
 在視覺化畫布上建立和測試強大的 AI 工作流程，利用以下所有功能及更多。
 
-https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
-
 **2. 全面的模型支援**：
 無縫整合來自數十個推理提供商和自託管解決方案的數百個專有/開源 LLM，涵蓋 GPT、Mistral、Llama3 和任何與 OpenAI API 兼容的模型。您可以在[此處](https://docs.dify.ai/getting-started/readme/model-providers)找到支援的模型提供商完整列表。
 

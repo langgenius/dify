@@ -58,11 +58,6 @@ Dify é uma plataforma de desenvolvimento de aplicativos LLM de código aberto. 
 **1. Workflow**: 
   Construa e teste workflows poderosos de IA em uma interface visual, aproveitando todos os recursos a seguir e muito mais.
 
-
-  https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
-
-
-
 **2. Suporte abrangente a modelos**: 
   Integração perfeita com centenas de LLMs proprietários e de código aberto de diversas provedoras e soluções auto-hospedadas, abrangendo GPT, Mistral, Llama3 e qualquer modelo compatível com a API da OpenAI. A lista completa de provedores suportados pode ser encontrada [aqui](https://docs.dify.ai/getting-started/readme/model-providers).
 
