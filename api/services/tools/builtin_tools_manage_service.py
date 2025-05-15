@@ -5,6 +5,7 @@ from pathlib import Path
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.datasource.entities.api_entities import DatasourceProviderApiEntity
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
@@ -16,7 +17,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ProviderConfigEncrypter
 from extensions.ext_database import db
-from models.tools import BuiltinToolProvider
+from models.tools import BuiltinDatasourceProvider, BuiltinToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -285,6 +286,67 @@ class BuiltinToolManageService:
                     raise e
 
         return BuiltinToolProviderSort.sort(result)
+
+    @staticmethod
+    def list_rag_pipeline_datasources(tenant_id: str) -> list[DatasourceProviderApiEntity]:
+        """
+        list rag pipeline datasources
+        """
+        # get all builtin providers
+        datasource_provider_controllers = ToolManager.list_datasource_providers(tenant_id)
+
+        with db.session.no_autoflush:
+            # get all user added providers
+            db_providers: list[BuiltinDatasourceProvider] = (
+                db.session.query(BuiltinDatasourceProvider)
+                .filter(BuiltinDatasourceProvider.tenant_id == tenant_id)
+                .all()
+                or []
+            )
+
+            # find provider
+            def find_provider(provider):
+                return next(filter(lambda db_provider: db_provider.provider == provider, db_providers), None)
+
+            result: list[DatasourceProviderApiEntity] = []
+
+            for provider_controller in datasource_provider_controllers:
+                try:
+                    # handle include, exclude
+                    if is_filtered(
+                        include_set=dify_config.POSITION_TOOL_INCLUDES_SET,  # type: ignore
+                        exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,  # type: ignore
+                        data=provider_controller,
+                        name_func=lambda x: x.identity.name,
+                    ):
+                        continue
+
+                    # convert provider controller to user provider
+                    user_builtin_provider = ToolTransformService.builtin_datasource_provider_to_user_provider(
+                        provider_controller=provider_controller,
+                        db_provider=find_provider(provider_controller.entity.identity.name),
+                        decrypt_credentials=True,
+                    )
+
+                    # add icon
+                    ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_builtin_provider)
+
+                    datasources = provider_controller.get_datasources()
+                    for datasource in datasources or []:
+                        user_builtin_provider.datasources.append(
+                            ToolTransformService.convert_datasource_entity_to_api_entity(
+                                tenant_id=tenant_id,
+                                datasource=datasource,
+                                credentials=user_builtin_provider.original_credentials,
+                                labels=ToolLabelManager.get_tool_labels(provider_controller),
+                            )
+                        )
+
+                    result.append(user_builtin_provider)
+                except Exception as e:
+                    raise e
+
+        return result
 
     @staticmethod
     def _fetch_builtin_provider(provider_name: str, tenant_id: str) -> BuiltinToolProvider | None:

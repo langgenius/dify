@@ -4,12 +4,11 @@ from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType
 from core.entities.provider_entities import ProviderConfig
-from core.plugin.manager.tool import PluginToolManager
-from core.tools.builtin_tool.provider import BuiltinToolProviderController
+from core.plugin.impl.tool import PluginToolManager
 from core.tools.errors import ToolProviderCredentialValidationError
 
 
-class DatasourcePluginProviderController(BuiltinToolProviderController):
+class DatasourcePluginProviderController:
     entity: DatasourceProviderEntityWithPlugin
     tenant_id: str
     plugin_id: str
@@ -32,12 +31,21 @@ class DatasourcePluginProviderController(BuiltinToolProviderController):
         """
         return DatasourceProviderType.RAG_PIPELINE
 
+    @property
+    def need_credentials(self) -> bool:
+        """
+        returns whether the provider needs credentials
+
+        :return: whether the provider needs credentials
+        """
+        return self.entity.credentials_schema is not None and len(self.entity.credentials_schema) != 0
+
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         """
         validate the credentials of the provider
         """
         manager = PluginToolManager()
-        if not manager.validate_provider_credentials(
+        if not manager.validate_datasource_credentials(
             tenant_id=self.tenant_id,
             user_id=user_id,
             provider=self.entity.identity.name,
@@ -69,7 +77,7 @@ class DatasourcePluginProviderController(BuiltinToolProviderController):
             plugin_unique_identifier=self.plugin_unique_identifier,
         )
 
-    def get_datasources(self) -> list[DatasourceTool]:  # type: ignore
+    def get_datasources(self) -> list[DatasourcePlugin]:  # type: ignore
         """
         get all datasources
         """

@@ -1,28 +1,45 @@
 import json
+import threading
 import time
 from collections.abc import Callable, Generator, Sequence
 from datetime import UTC, datetime
 from typing import Any, Literal, Optional
+from uuid import uuid4
 
 from flask_login import current_user
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+import contexts
 from configs import dify_config
+from core.model_runtime.utils.encoders import jsonable_encoder
+from core.repository.repository_factory import RepositoryFactory
+from core.repository.workflow_node_execution_repository import OrderConfig
 from core.variables.variables import Variable
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base.node import BaseNode
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.enums import ErrorStrategy, NodeType
+from core.workflow.nodes.event.event import RunCompletedEvent
 from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
+from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
 from models.dataset import Pipeline, PipelineBuiltInTemplate, PipelineCustomizedTemplate  # type: ignore
-from models.workflow import Workflow, WorkflowNodeExecution, WorkflowType
+from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
+from models.workflow import (
+    Workflow,
+    WorkflowNodeExecution,
+    WorkflowNodeExecutionStatus,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowRun,
+    WorkflowType,
+)
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.app import WorkflowHashNotEqualError
-from services.errors.workflow_service import DraftWorkflowDeletionError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 
 
@@ -180,7 +197,6 @@ class RagPipelineService:
         *,
         pipeline: Pipeline,
         graph: dict,
-        features: dict,
         unique_hash: Optional[str],
         account: Account,
         environment_variables: Sequence[Variable],
@@ -197,9 +213,6 @@ class RagPipelineService:
         if workflow and workflow.unique_hash != unique_hash:
             raise WorkflowHashNotEqualError()
 
-        # validate features structure
-        self.validate_features_structure(pipeline=pipeline, features=features)
-
         # create draft workflow if not found
         if not workflow:
             workflow = Workflow(
@@ -208,7 +221,6 @@ class RagPipelineService:
                 type=WorkflowType.RAG_PIPELINE.value,
                 version="draft",
                 graph=json.dumps(graph),
-                features=json.dumps(features),
                 created_by=account.id,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
@@ -218,7 +230,6 @@ class RagPipelineService:
         # update draft workflow if found
         else:
             workflow.graph = json.dumps(graph)
-            workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
@@ -227,8 +238,8 @@ class RagPipelineService:
         # commit db session changes
         db.session.commit()
 
-        # trigger app workflow events
-        app_draft_workflow_was_synced.send(pipeline, synced_draft_workflow=workflow)
+        # trigger  workflow events TODO
+        # app_draft_workflow_was_synced.send(pipeline, synced_draft_workflow=workflow)
 
         # return draft workflow
         return workflow
@@ -269,8 +280,8 @@ class RagPipelineService:
         # commit db session changes
         session.add(workflow)
 
-        # trigger app workflow events
-        app_published_workflow_was_updated.send(pipeline, published_workflow=workflow)
+        # trigger app workflow events TODO
+        # app_published_workflow_was_updated.send(pipeline, published_workflow=workflow)
 
         # return new workflow
         return workflow
@@ -508,46 +519,6 @@ class RagPipelineService:
 
         return workflow_node_execution
 
-    def convert_to_workflow(self, app_model: App, account: Account, args: dict) -> App:
-        """
-        Basic mode of chatbot app(expert mode) to workflow
-        Completion App to Workflow App
-
-        :param app_model: App instance
-        :param account: Account instance
-        :param args: dict
-        :return:
-        """
-        # chatbot convert to workflow mode
-        workflow_converter = WorkflowConverter()
-
-        if app_model.mode not in {AppMode.CHAT.value, AppMode.COMPLETION.value}:
-            raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
-
-        # convert to workflow
-        new_app: App = workflow_converter.convert_to_workflow(
-            app_model=app_model,
-            account=account,
-            name=args.get("name", "Default Name"),
-            icon_type=args.get("icon_type", "emoji"),
-            icon=args.get("icon", "🤖"),
-            icon_background=args.get("icon_background", "#FFEAD5"),
-        )
-
-        return new_app
-
-    def validate_features_structure(self, app_model: App, features: dict) -> dict:
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
-            return AdvancedChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
-            )
-        elif app_model.mode == AppMode.WORKFLOW.value:
-            return WorkflowAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
-            )
-        else:
-            raise ValueError(f"Invalid app mode: {app_model.mode}")
-
     def update_workflow(
         self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict
     ) -> Optional[Workflow]:
@@ -578,38 +549,6 @@ class RagPipelineService:
 
         return workflow
 
-    def delete_workflow(self, *, session: Session, workflow_id: str, tenant_id: str) -> bool:
-        """
-        Delete a workflow
-
-        :param session: SQLAlchemy database session
-        :param workflow_id: Workflow ID
-        :param tenant_id: Tenant ID
-        :return: True if successful
-        :raises: ValueError if workflow not found
-        :raises: WorkflowInUseError if workflow is in use
-        :raises: DraftWorkflowDeletionError if workflow is a draft version
-        """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
-        workflow = session.scalar(stmt)
-
-        if not workflow:
-            raise ValueError(f"Workflow with ID {workflow_id} not found")
-
-        # Check if workflow is a draft version
-        if workflow.version == "draft":
-            raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
-
-        # Check if this workflow is currently referenced by an app
-        stmt = select(App).where(App.workflow_id == workflow_id)
-        app = session.scalar(stmt)
-        if app:
-            # Cannot delete a workflow that's currently in use by an app
-            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.name}'")
-
-        session.delete(workflow)
-        return True
-
     def get_second_step_parameters(self, pipeline: Pipeline, datasource_provider: str) -> dict:
         """
         Get second step parameters of rag pipeline
@@ -627,3 +566,101 @@ class RagPipelineService:
         datasource_provider_variables = pipeline_variables.get(datasource_provider, [])
         shared_variables = pipeline_variables.get("shared", [])
         return datasource_provider_variables + shared_variables
+
+    def get_rag_pipeline_paginate_workflow_runs(self, pipeline: Pipeline, args: dict) -> InfiniteScrollPagination:
+        """
+        Get debug workflow run list
+        Only return triggered_from == debugging
+
+        :param app_model: app model
+        :param args: request args
+        """
+        limit = int(args.get("limit", 20))
+
+        base_query = db.session.query(WorkflowRun).filter(
+            WorkflowRun.tenant_id == pipeline.tenant_id,
+            WorkflowRun.app_id == pipeline.id,
+            WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.DEBUGGING.value,
+        )
+
+        if args.get("last_id"):
+            last_workflow_run = base_query.filter(
+                WorkflowRun.id == args.get("last_id"),
+            ).first()
+
+            if not last_workflow_run:
+                raise ValueError("Last workflow run not exists")
+
+            workflow_runs = (
+                base_query.filter(
+                    WorkflowRun.created_at < last_workflow_run.created_at, WorkflowRun.id != last_workflow_run.id
+                )
+                .order_by(WorkflowRun.created_at.desc())
+                .limit(limit)
+                .all()
+            )
+        else:
+            workflow_runs = base_query.order_by(WorkflowRun.created_at.desc()).limit(limit).all()
+
+        has_more = False
+        if len(workflow_runs) == limit:
+            current_page_first_workflow_run = workflow_runs[-1]
+            rest_count = base_query.filter(
+                WorkflowRun.created_at < current_page_first_workflow_run.created_at,
+                WorkflowRun.id != current_page_first_workflow_run.id,
+            ).count()
+
+            if rest_count > 0:
+                has_more = True
+
+        return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
+
+    def get_rag_pipeline_workflow_run(self, pipeline: Pipeline, run_id: str) -> Optional[WorkflowRun]:
+        """
+        Get workflow run detail
+
+        :param app_model: app model
+        :param run_id: workflow run id
+        """
+        workflow_run = (
+            db.session.query(WorkflowRun)
+            .filter(
+                WorkflowRun.tenant_id == pipeline.tenant_id,
+                WorkflowRun.app_id == pipeline.id,
+                WorkflowRun.id == run_id,
+            )
+            .first()
+        )
+
+        return workflow_run
+
+    def get_rag_pipeline_workflow_run_node_executions(
+        self,
+        pipeline: Pipeline,
+        run_id: str,
+    ) -> list[WorkflowNodeExecution]:
+        """
+        Get workflow run node execution list
+        """
+        workflow_run = self.get_rag_pipeline_workflow_run(pipeline, run_id)
+
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+
+        if not workflow_run:
+            return []
+
+        # Use the repository to get the node executions
+        repository = RepositoryFactory.create_workflow_node_execution_repository(
+            params={
+                "tenant_id": pipeline.tenant_id,
+                "app_id": pipeline.id,
+                "session_factory": db.session.get_bind(),
+            }
+        )
+
+        # Use the repository to get the node executions with ordering
+        order_config = OrderConfig(order_by=["index"], order_direction="desc")
+        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id, order_config=order_config)
+
+        return list(node_executions)

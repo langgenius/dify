@@ -52,6 +52,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     RetrievalModel,
     SegmentUpdateArgs,
 )
+from services.entities.knowledge_entities.rag_pipeline_entities import RagPipelineDatasetCreateEntity
 from services.errors.account import InvalidActionError, NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
@@ -59,6 +60,7 @@ from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureModel, FeatureService
+from services.rag_pipeline.rag_pipeline_dsl_service import ImportMode, RagPipelineDslService, RagPipelineImportInfo
 from services.tag_service import TagService
 from services.vector_service import VectorService
 from tasks.batch_clean_document_task import batch_clean_document_task
@@ -234,6 +236,63 @@ class DatasetService:
 
         db.session.commit()
         return dataset
+
+    @staticmethod
+    def create_empty_rag_pipeline_dataset(
+        tenant_id: str,
+        rag_pipeline_dataset_create_entity: RagPipelineDatasetCreateEntity,
+    ):
+        # check if dataset name already exists
+        if Dataset.query.filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id).first():
+            raise DatasetNameDuplicateError(
+                f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
+            )
+
+        dataset = Dataset(
+            name=rag_pipeline_dataset_create_entity.name,
+            description=rag_pipeline_dataset_create_entity.description,
+            permission=rag_pipeline_dataset_create_entity.permission,
+            provider="vendor",
+            runtime_mode="rag_pipeline",
+            icon_info=rag_pipeline_dataset_create_entity.icon_info,
+        )
+        db.session.add(dataset)
+        db.session.commit()
+        return dataset
+
+    @staticmethod
+    def create_rag_pipeline_dataset(
+        tenant_id: str,
+        rag_pipeline_dataset_create_entity: RagPipelineDatasetCreateEntity,
+    ):
+        # check if dataset name already exists
+        if Dataset.query.filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id).first():
+            raise DatasetNameDuplicateError(
+                f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
+            )
+
+        dataset = Dataset(
+            name=rag_pipeline_dataset_create_entity.name,
+            description=rag_pipeline_dataset_create_entity.description,
+            permission=rag_pipeline_dataset_create_entity.permission,
+            provider="vendor",
+            runtime_mode="rag_pipeline",
+            icon_info=rag_pipeline_dataset_create_entity.icon_info,
+        )
+
+        if rag_pipeline_dataset_create_entity.yaml_content:
+            rag_pipeline_import_info: RagPipelineImportInfo = RagPipelineDslService.import_rag_pipeline(
+                current_user, ImportMode.YAML_CONTENT, rag_pipeline_dataset_create_entity.yaml_content, dataset
+            )
+        return {
+            "id": rag_pipeline_import_info.id,
+            "dataset_id": dataset.id,
+            "pipeline_id": rag_pipeline_import_info.pipeline_id,
+            "status": rag_pipeline_import_info.status,
+            "imported_dsl_version": rag_pipeline_import_info.imported_dsl_version,
+            "current_dsl_version": rag_pipeline_import_info.current_dsl_version,
+            "error": rag_pipeline_import_info.error,
+        }
 
     @staticmethod
     def get_dataset(dataset_id) -> Optional[Dataset]:

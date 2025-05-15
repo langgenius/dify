@@ -63,6 +63,10 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     collection_binding_id = db.Column(StringUUID, nullable=True)
     retrieval_model = db.Column(JSONB, nullable=True)
     built_in_field_enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    icon_info = db.Column(JSONB, nullable=True)
+    runtime_mode = db.Column(db.String(255), nullable=True, server_default=db.text("'general'::character varying"))
+    pipeline_id = db.Column(StringUUID, nullable=True)
+    chunk_structure = db.Column(db.String(255), nullable=True)
 
     @property
     def dataset_keyword_table(self):

@@ -4,6 +4,7 @@ from typing import cast
 
 from flask import abort, request
 from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore  # type: ignore
+from flask_restful.inputs import int_range  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -23,12 +24,18 @@ from controllers.console.wraps import (
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
 from factories import variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
-from fields.workflow_run_fields import workflow_run_node_execution_fields
+from fields.workflow_run_fields import (
+    workflow_run_detail_fields,
+    workflow_run_node_execution_fields,
+    workflow_run_node_execution_list_fields,
+    workflow_run_pagination_fields,
+)
 from libs import helper
-from libs.helper import TimestampField
+from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.account import Account
 from models.dataset import Pipeline
@@ -36,6 +43,7 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 
 logger = logging.getLogger(__name__)
@@ -461,45 +469,6 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         rag_pipeline_service = RagPipelineService()
         return rag_pipeline_service.get_default_block_config(node_type=block_type, filters=filters)
 
-
-class ConvertToRagPipelineApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_rag_pipeline
-    def post(self, pipeline: Pipeline):
-        """
-        Convert basic mode of chatbot app to workflow mode
-        Convert expert mode of chatbot app to workflow mode
-        Convert Completion App to Workflow App
-        """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        if request.data:
-            parser = reqparse.RequestParser()
-            parser.add_argument("name", type=str, required=False, nullable=True, location="json")
-            parser.add_argument("icon_type", type=str, required=False, nullable=True, location="json")
-            parser.add_argument("icon", type=str, required=False, nullable=True, location="json")
-            parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
-            args = parser.parse_args()
-        else:
-            args = {}
-
-        # convert to workflow mode
-        rag_pipeline_service = RagPipelineService()
-        new_app_model = rag_pipeline_service.convert_to_workflow(pipeline=pipeline, account=current_user, args=args)
-
-        # return app id
-        return {
-            "new_app_id": new_app_model.id,
-        }
-
-
 class RagPipelineConfigApi(Resource):
     """Resource for rag pipeline configuration."""
 
@@ -674,6 +643,85 @@ class RagPipelineSecondStepApi(Resource):
         )
 
 
+class RagPipelineWorkflowRunListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    @marshal_with(workflow_run_pagination_fields)
+    def get(self, pipeline: Pipeline):
+        """
+        Get workflow run list
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument("last_id", type=uuid_value, location="args")
+        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        args = parser.parse_args()
+
+        rag_pipeline_service = RagPipelineService()
+        result = rag_pipeline_service.get_rag_pipeline_paginate_workflow_runs(pipeline=pipeline, args=args)
+
+        return result
+
+
+class RagPipelineWorkflowRunDetailApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    @marshal_with(workflow_run_detail_fields)
+    def get(self, pipeline: Pipeline, run_id):
+        """
+        Get workflow run detail
+        """
+        run_id = str(run_id)
+
+        rag_pipeline_service = RagPipelineService()
+        workflow_run = rag_pipeline_service.get_rag_pipeline_workflow_run(pipeline=pipeline, run_id=run_id)
+
+        return workflow_run
+
+
+class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    @marshal_with(workflow_run_node_execution_list_fields)
+    def get(self, pipeline: Pipeline, run_id):
+        """
+        Get workflow run node execution list
+        """
+        run_id = str(run_id)
+
+        rag_pipeline_service = RagPipelineService()
+        node_executions = rag_pipeline_service.get_rag_pipeline_workflow_run_node_executions(
+            pipeline=pipeline,
+            run_id=run_id,
+        )
+
+        return {"data": node_executions}
+
+
+class DatasourceListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user = current_user
+
+        tenant_id = user.current_tenant_id
+
+        return jsonable_encoder(
+            [
+                provider.to_dict()
+                for provider in BuiltinToolManageService.list_rag_pipeline_datasources(
+                    tenant_id,
+                )
+            ]
+        )
+
+
 api.add_resource(
     DraftRagPipelineApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft",
@@ -694,10 +742,10 @@ api.add_resource(
     RagPipelineDraftNodeRunApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run",
 )
-api.add_resource(
-    RagPipelinePublishedNodeRunApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/nodes/<string:node_id>/run",
-)
+# api.add_resource(
+#     RagPipelinePublishedNodeRunApi,
+#     "/rag/pipelines/<uuid:pipeline_id>/workflows/published/nodes/<string:node_id>/run",
+# )
 
 api.add_resource(
     RagPipelineDraftRunIterationNodeApi,
@@ -724,11 +772,24 @@ api.add_resource(
     DefaultRagPipelineBlockConfigApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs/<string:block_type>",
 )
-api.add_resource(
-    ConvertToRagPipelineApi,
-    "/rag/pipelines/<uuid:pipeline_id>/convert-to-workflow",
-)
+
 api.add_resource(
     RagPipelineByIdApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>",
+)
+api.add_resource(
+    RagPipelineWorkflowRunListApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflow-runs",
+)
+api.add_resource(
+    RagPipelineWorkflowRunDetailApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>",
+)
+api.add_resource(
+    RagPipelineWorkflowRunNodeExecutionListApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflow-runs/<uuid:run_id>/node-executions",
+)
+api.add_resource(
+    DatasourceListApi,
+    "/rag/pipelines/datasources",
 )

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -14,3 +14,100 @@ class PipelineTemplateInfoEntity(BaseModel):
     name: str
     description: str
     icon_info: IconInfo
+
+
+class RagPipelineDatasetCreateEntity(BaseModel):
+    name: str
+    description: str
+    icon_info: IconInfo
+    permission: str
+    partial_member_list: list[str]
+    yaml_content: str
+
+
+class RerankingModelConfig(BaseModel):
+    """
+    Reranking Model Config.
+    """
+
+    reranking_provider_name: str
+    reranking_model_name: str
+
+
+class VectorSetting(BaseModel):
+    """
+    Vector Setting.
+    """
+
+    vector_weight: float
+    embedding_provider_name: str
+    embedding_model_name: str
+
+
+class KeywordSetting(BaseModel):
+    """
+    Keyword Setting.
+    """
+
+    keyword_weight: float
+
+
+class WeightedScoreConfig(BaseModel):
+    """
+    Weighted score Config.
+    """
+
+    vector_setting: VectorSetting
+    keyword_setting: KeywordSetting
+
+
+class EmbeddingSetting(BaseModel):
+    """
+    Embedding Setting.
+    """
+
+    embedding_provider_name: str
+    embedding_model_name: str
+
+
+class EconomySetting(BaseModel):
+    """
+    Economy Setting.
+    """
+
+    keyword_number: int
+
+
+class RetrievalSetting(BaseModel):
+    """
+    Retrieval Setting.
+    """
+
+    search_method: Literal["semantic_search", "keyword_search", "hybrid_search"]
+    top_k: int
+    score_threshold: Optional[float] = 0.5
+    score_threshold_enabled: bool = False
+    reranking_mode: str = "reranking_model"
+    reranking_enable: bool = True
+    reranking_model: Optional[RerankingModelConfig] = None
+    weights: Optional[WeightedScoreConfig] = None
+
+
+class IndexMethod(BaseModel):
+    """
+    Knowledge Index Setting.
+    """
+
+    indexing_technique: Literal["high_quality", "economy"]
+    embedding_setting: EmbeddingSetting
+    economy_setting: EconomySetting
+
+
+class KnowledgeConfiguration(BaseModel):
+    """
+    Knowledge Configuration.
+    """
+
+    chunk_structure: str
+    index_method: IndexMethod
+    retrieval_setting: RetrievalSetting

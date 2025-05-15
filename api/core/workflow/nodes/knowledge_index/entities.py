@@ -10,8 +10,8 @@ class RerankingModelConfig(BaseModel):
     Reranking Model Config.
     """
 
-    provider: str
-    model: str
+    reranking_provider_name: str
+    reranking_model_name: str
 
 
 class VectorSetting(BaseModel):
