@@ -303,8 +303,9 @@ class TenantPluginPermission(Base):
     )
     debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), nullable=False, server_default="noone")
 
+
 class TenantPluginAutoUpgradeStrategy(Base):
-    class StrategyOption(enum.StrEnum):
+    class StrategySetting(enum.StrEnum):
         DISABLED = "disabled"
         FIX_ONLY = "fix_only"
         LATEST = "latest"
@@ -321,10 +322,14 @@ class TenantPluginAutoUpgradeStrategy(Base):
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    strategy_option: Mapped[StrategyOption] = mapped_column(db.String(16), nullable=False)
-    upgrade_time_of_day: Mapped[int] = mapped_column(db.Integer, nullable=False)
-    upgrade_mode: Mapped[UpgradeMode] = mapped_column(db.String(16), nullable=False)
-    exclude_plugins: Mapped[list[str]] = mapped_column(db.ARRAY(db.String(255)), nullable=False)
-    include_plugins: Mapped[list[str]] = mapped_column(db.ARRAY(db.String(255)), nullable=False)
+    strategy_setting: Mapped[StrategySetting] = mapped_column(db.String(16), nullable=False, server_default="fix_only")
+    upgrade_time_of_day: Mapped[int] = mapped_column(db.Integer, nullable=False, default=0)  # seconds of the day
+    upgrade_mode: Mapped[UpgradeMode] = mapped_column(db.String(16), nullable=False, server_default="exclude")
+    exclude_plugins: Mapped[list[str]] = mapped_column(
+        db.ARRAY(db.String(255)), nullable=False
+    )  # plugin_id (author/name)
+    include_plugins: Mapped[list[str]] = mapped_column(
+        db.ARRAY(db.String(255)), nullable=False
+    )  # plugin_id (author/name)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
