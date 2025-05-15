@@ -392,7 +392,7 @@ export const getNotExistVariablesByArray = (array: string[][], varMap: Record<st
       return
     if (['sys'].includes(item[0]))
       return
-    const var_warning = varMap[item.join('.')]
+    const var_warning = varMap[item.join?.('.')]
     if (var_warning)
       return
     const arr = [...item]
