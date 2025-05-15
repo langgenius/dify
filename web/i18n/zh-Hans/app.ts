@@ -173,6 +173,10 @@ const translation = {
       removeConfirmTitle: '删除 {{key}} 配置?',
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
     },
+    weave: {
+      title: '编织',
+      description: 'Weave是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
+    },
   },
   appSelector: {
     label: '应用',

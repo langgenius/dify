@@ -1,4 +1,5 @@
-import type { NodeDefault } from '../../types'
+import type { NodeDefault, Var } from '../../types'
+import { getNotExistVariablesByArray, getNotExistVariablesByText } from '../../utils/workflow'
 import { type ParameterExtractorNodeType, ReasoningModeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -59,6 +60,30 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
+    }
+  },
+  checkVarValid(payload: ParameterExtractorNodeType, varMap: Record<string, Var>, t: any) {
+    const errorMessageArr: string[] = []
+
+    const variables_warnings = getNotExistVariablesByArray([payload.query], varMap)
+    if (variables_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.parameterExtractor.inputVar')} ${t('workflow.common.referenceVar')}${variables_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    let vision_variable_warnings: string[] = []
+    if (payload.vision?.configs?.variable_selector?.length) {
+      vision_variable_warnings = getNotExistVariablesByArray([payload.vision.configs.variable_selector], varMap)
+      if (vision_variable_warnings.length)
+        errorMessageArr.push(`${t('workflow.nodes.llm.vision')} ${t('workflow.common.referenceVar')}${vision_variable_warnings.join('、')}${t('workflow.common.noExist')}`)
+    }
+
+    const instruction_warnings = getNotExistVariablesByText(payload.instruction, varMap)
+    if (instruction_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.parameterExtractor.instruction')} ${t('workflow.common.referenceVar')}${instruction_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    return {
+      isValid: true,
+      warning_vars: [...variables_warnings, ...vision_variable_warnings, ...instruction_warnings],
+      errorMessage: errorMessageArr,
     }
   },
 }

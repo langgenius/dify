@@ -1,9 +1,9 @@
-import { VarType } from '../../types'
-import type { NodeDefault } from '../../types'
+import { BlockEnum, VarType } from '../../types'
+import type { NodeDefault, Var } from '../../types'
+import { getNotExistVariablesByArray } from '../../utils/workflow'
 import { comparisonOperatorNotRequireValue } from '../if-else/utils'
 import { type ListFilterNodeType, OrderBy } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 const i18nPrefix = 'workflow.errorMsg'
 
@@ -56,6 +56,18 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
+    }
+  },
+  checkVarValid(payload: ListFilterNodeType, varMap: Record<string, Var>, t: any) {
+    const errorMessageArr = []
+
+    const variable_warnings = getNotExistVariablesByArray([payload.variable], varMap)
+    if (variable_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.listFilter.inputVar')} ${t('workflow.common.referenceVar')}${variable_warnings.join('、')}${t('workflow.common.noExist')}`)
+    return {
+      isValid: true,
+      warning_vars: variable_warnings,
+      errorMessage: errorMessageArr,
     }
   },
 }

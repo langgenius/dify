@@ -1,4 +1,5 @@
-import type { NodeDefault } from '../../types'
+import type { NodeDefault, Var } from '../../types'
+import { getNotExistVariablesByArray, getNotExistVariablesByText } from '../../utils/workflow'
 import type { QuestionClassifierNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -66,6 +67,30 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
+    }
+  },
+  checkVarValid(payload: QuestionClassifierNodeType, varMap: Record<string, Var>, t: any) {
+    const errorMessageArr = []
+
+    const query_variable_selector_warnings = getNotExistVariablesByArray([payload.query_variable_selector], varMap)
+    if (query_variable_selector_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.questionClassifiers.inputVars')} ${t('workflow.common.referenceVar')}${query_variable_selector_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    let vision_variable_selector_warnings: string[] = []
+    if (payload.vision?.configs?.variable_selector?.length) {
+      vision_variable_selector_warnings = getNotExistVariablesByArray([payload.vision?.configs?.variable_selector], varMap)
+      if (vision_variable_selector_warnings.length)
+        errorMessageArr.push(`${t('workflow.nodes.llm.vision')} ${t('workflow.common.referenceVar')}${vision_variable_selector_warnings.join('、')}${t('workflow.common.noExist')}`)
+    }
+
+    const instruction_warnings: string[] = getNotExistVariablesByText(payload.instruction, varMap)
+    if (instruction_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.questionClassifiers.advancedSetting')}-${t('workflow.nodes.questionClassifiers.instruction')} ${t('workflow.common.referenceVar')}${instruction_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    return {
+      isValid: true,
+      warning_vars: [...query_variable_selector_warnings, ...vision_variable_selector_warnings, ...instruction_warnings],
+      errorMessage: errorMessageArr,
     }
   },
 }

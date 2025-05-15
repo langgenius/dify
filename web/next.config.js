@@ -14,7 +14,10 @@ const withMDX = require('@next/mdx')({
 })
 
 // the default url to prevent parse url error when running jest
-const remoteImageURL = new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX || 'http://localhost:3000'}/**`)
+const hasSetWebPrefix = process.env.NEXT_PUBLIC_WEB_PREFIX
+const port = process.env.PORT || 3000
+const locImageURLs = !hasSetWebPrefix ? [new URL(`http://localhost:${port}/**`), new URL(`http://127.0.0.1:${port}/**`)] : []
+const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WEB_PREFIX}/**`) : '', ...locImageURLs].filter(item => !!item)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -29,13 +32,13 @@ const nextConfig = {
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   // https://nextjs.org/docs/messages/next-image-unconfigured-host
   images: {
-    remotePatterns: [{
+    remotePatterns: remoteImageURLs.map(remoteImageURL => ({
       protocol: remoteImageURL.protocol.replace(':', ''),
       hostname: remoteImageURL.hostname,
       port: remoteImageURL.port,
       pathname: remoteImageURL.pathname,
       search: '',
-    }],
+    })),
   },
   experimental: {
   },

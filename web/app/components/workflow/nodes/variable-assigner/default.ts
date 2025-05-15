@@ -1,4 +1,6 @@
+import type { Var } from '../../types'
 import { type NodeDefault, VarType } from '../../types'
+import { getNotExistVariablesByArray } from '../../utils/workflow'
 import type { VariableAssignerNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -49,6 +51,18 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
+    }
+  },
+  checkVarValid(payload: VariableAssignerNodeType, varMap: Record<string, Var>, t: any) {
+    const errorMessageArr: string[] = []
+    const variables_warnings = getNotExistVariablesByArray(payload.variables ?? [], varMap)
+    if (variables_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.variableAssigner.title')} ${t('workflow.common.referenceVar')}${variables_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    return {
+      isValid: true,
+      warning_vars: variables_warnings,
+      errorMessage: errorMessageArr,
     }
   },
 }

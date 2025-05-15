@@ -1,4 +1,5 @@
-import type { NodeDefault } from '../../types'
+import type { NodeDefault, Var } from '../../types'
+import { getNotExistVariablesByArray } from '../../utils/workflow'
 import type { DocExtractorNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -27,6 +28,19 @@ const nodeDefault: NodeDefault<DocExtractorNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
+    }
+  },
+  checkVarValid(payload: DocExtractorNodeType, varMap: Record<string, Var>, t: any) {
+    const errorMessageArr: string[] = []
+
+    const variables_warnings = getNotExistVariablesByArray([payload.variable_selector], varMap)
+    if (variables_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.docExtractor.inputVar')} ${t('workflow.common.referenceVar')}${variables_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    return {
+      isValid: true,
+      warning_vars: variables_warnings,
+      errorMessage: errorMessageArr,
     }
   },
 }

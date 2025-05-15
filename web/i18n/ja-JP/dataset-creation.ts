@@ -93,6 +93,12 @@ const translation = {
       scrapTimeInfo: '{{time}} 秒以内に合計 {{total}} ページをスクレイピングしました',
       preview: 'プレビュー',
       maxDepthTooltip: '入力されたURLを基にしたクローリング作業での設定可能な最大深度について説明します。深度0は入力されたURL自体のページを対象としたスクレイピングを意味します。深度1では、元のURLの直下にあるページ（URLに続く最初の"/"以降の内容）もスクレイピングの対象になります。この深度は指定した数値まで増加させることができ、それに応じてスクレイピングの範囲も広がっていきます。',
+      waterCrawlNotConfiguredDescription: 'APIキーを使ってWatercrawlを設定します。',
+      configureWatercrawl: 'ウォータークローラーを設定する',
+      watercrawlDoc: 'ウォータークローリングの文書',
+      watercrawlTitle: 'Watercrawlを使用してウェブコンテンツを抽出する',
+      waterCrawlNotConfigured: 'Watercrawlは設定されていません',
+      watercrawlDocLink: 'https://docs.dify.ai/ja/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
     },
   },
   stepTwo: {
@@ -199,6 +205,11 @@ const translation = {
     title: '他のデータソースと接続しますか？',
     description: '現在、Difyのナレッジベースには利用できるデータソースが限られています。Difyのナレッジベースにデータソースを提供いただくことは、プラットフォームの柔軟性と能力を向上させる上で非常に有益です。貢献ガイドをご用意していますので、ぜひご協力ください。詳細については、以下のリンクをクリックしてください。',
     learnMore: '詳細はこちら',
+  },
+  watercrawl: {
+    getApiKeyLinkText: 'watercrawl.devからAPIキーを取得してください。',
+    configWatercrawl: 'ウォータークローラーを設定する',
+    apiKeyPlaceholder: 'watercrawl.devからのAPIキー',
   },
 }
 

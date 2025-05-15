@@ -1,4 +1,5 @@
-import type { NodeDefault } from '../../types'
+import type { NodeDefault, Var } from '../../types'
+import { getNotExistVariablesByArray } from '../../utils/workflow'
 import { type AssignerNodeType, WriteMode } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -43,6 +44,23 @@ const nodeDefault: NodeDefault<AssignerNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
+    }
+  },
+
+  checkVarValid(payload: AssignerNodeType, varMap: Record<string, Var>, t: any) {
+    const errorMessageArr: string[] = []
+    const variables_warnings = getNotExistVariablesByArray(payload.items.map(item => item.variable_selector ?? []) ?? [], varMap)
+    if (variables_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.assigner.assignedVariable')} ${t('workflow.common.referenceVar')}${variables_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    const value_warnings = getNotExistVariablesByArray(payload.items.map(item => item.value ?? []) ?? [], varMap)
+    if (value_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.assigner.setVariable')} ${t('workflow.common.referenceVar')}${value_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    return {
+      isValid: true,
+      warning_vars: [...variables_warnings, ...value_warnings],
+      errorMessage: errorMessageArr,
     }
   },
 }
