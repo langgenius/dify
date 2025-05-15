@@ -37,7 +37,7 @@ import Toast from '@/app/components/base/toast'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
 import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
 import { AccessMode } from '@/models/access-control'
@@ -644,7 +644,7 @@ const TextGeneration: FC<IMainProps> = ({
             {systemFeatures.branding.enabled ? (
               <img src={systemFeatures.branding.login_page_logo} alt='logo' className='block h-5 w-auto' />
             ) : (
-              <LogoSite className='!h-5' />
+              <DifyLogo size='small' />
             )}
           </div>
         )}
