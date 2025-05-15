@@ -128,8 +128,8 @@ class Workflow(Base):
     _conversation_variables: Mapped[str] = mapped_column(
         "conversation_variables", db.Text, nullable=False, server_default="{}"
     )
-    _pipeline_variables: Mapped[str] = mapped_column(
-        "conversation_variables", db.Text, nullable=False, server_default="{}"
+    _rag_pipeline_variables: Mapped[str] = mapped_column(
+        "rag_pipeline_variables", db.Text, nullable=False, server_default="{}"
     )
 
     @classmethod
@@ -354,10 +354,10 @@ class Workflow(Base):
     @property
     def pipeline_variables(self) -> dict[str, Sequence[Variable]]:
         # TODO: find some way to init `self._conversation_variables` when instance created.
-        if self._pipeline_variables is None:
-            self._pipeline_variables = "{}"
+        if self._rag_pipeline_variables is None:
+            self._rag_pipeline_variables = "{}"
 
-        variables_dict: dict[str, Any] = json.loads(self._pipeline_variables)
+        variables_dict: dict[str, Any] = json.loads(self._rag_pipeline_variables)
         results = {}
         for k, v in variables_dict.items():
             results[k] = [variable_factory.build_pipeline_variable_from_mapping(item) for item in v.values()]
@@ -365,7 +365,7 @@ class Workflow(Base):
 
     @pipeline_variables.setter
     def pipeline_variables(self, values: dict[str, Sequence[Variable]]) -> None:
-        self._pipeline_variables = json.dumps(
+        self._rag_pipeline_variables = json.dumps(
             {k: {item.name: item.model_dump() for item in v} for k, v in values.items()},
             ensure_ascii=False,
         )

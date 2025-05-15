@@ -2,13 +2,13 @@ from collections.abc import Generator
 from typing import Any, Optional
 
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
-from core.datasource.datasource_manager import DatasourceManager
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
     DatasourceInvokeMessage,
     DatasourceParameter,
     DatasourceProviderType,
 )
+from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
 
 
@@ -44,7 +44,7 @@ class DatasourcePlugin:
         datasource_parameters: dict[str, Any],
         rag_pipeline_id: Optional[str] = None,
     ) -> Generator[DatasourceInvokeMessage, None, None]:
-        manager = DatasourceManager()
+        manager = PluginDatasourceManager()
 
         datasource_parameters = convert_parameters_to_plugin_format(datasource_parameters)
 
@@ -64,7 +64,7 @@ class DatasourcePlugin:
         datasource_parameters: dict[str, Any],
         rag_pipeline_id: Optional[str] = None,
     ) -> Generator[DatasourceInvokeMessage, None, None]:
-        manager = DatasourceManager()
+        manager = PluginDatasourceManager()
 
         datasource_parameters = convert_parameters_to_plugin_format(datasource_parameters)
 

@@ -7,8 +7,8 @@ from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.datasource.entities.common_entities import I18nObject
 from core.datasource.entities.datasource_entities import DatasourceProviderType
-from core.datasource.errors import ToolProviderNotFoundError
-from core.plugin.manager.tool import PluginToolManager
+from core.datasource.errors import DatasourceProviderNotFoundError
+from core.plugin.impl.tool import PluginToolManager
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +37,9 @@ class DatasourceManager:
                 return datasource_plugin_providers[provider]
 
             manager = PluginToolManager()
-            provider_entity = manager.fetch_tool_provider(tenant_id, provider)
+            provider_entity = manager.fetch_datasource_provider(tenant_id, provider)
             if not provider_entity:
-                raise ToolProviderNotFoundError(f"plugin provider {provider} not found")
+                raise DatasourceProviderNotFoundError(f"plugin provider {provider} not found")
 
             controller = DatasourcePluginProviderController(
                 entity=provider_entity.declaration,
@@ -73,7 +73,7 @@ class DatasourceManager:
         if provider_type == DatasourceProviderType.RAG_PIPELINE:
             return cls.get_datasource_plugin_provider(provider_id, tenant_id).get_datasource(datasource_name)
         else:
-            raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
+            raise DatasourceProviderNotFoundError(f"provider type {provider_type.value} not found")
 
     @classmethod
     def list_datasource_providers(cls, tenant_id: str) -> list[DatasourcePluginProviderController]:
@@ -81,7 +81,7 @@ class DatasourceManager:
         list all the datasource providers
         """
         manager = PluginToolManager()
-        provider_entities = manager.fetch_tool_providers(tenant_id)
+        provider_entities = manager.fetch_datasources(tenant_id)
         return [
             DatasourcePluginProviderController(
                 entity=provider.declaration,

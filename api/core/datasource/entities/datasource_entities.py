@@ -321,9 +321,6 @@ class DatasourceEntity(BaseModel):
     output_schema: Optional[dict] = None
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
-    # pydantic configs
-    model_config = ConfigDict(protected_namespaces=())
-
     @field_validator("parameters", mode="before")
     @classmethod
     def set_parameters(cls, v, validation_info: ValidationInfo) -> list[DatasourceParameter]:
