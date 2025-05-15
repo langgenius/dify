@@ -6,7 +6,7 @@ import random
 import time
 import uuid
 from collections import Counter
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
 from flask_login import current_user
 from sqlalchemy import func, select
@@ -20,9 +20,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexType
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.nodes.knowledge_index.entities import IndexMethod, RetrievalSetting
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
@@ -1515,60 +1513,6 @@ class DocumentService:
                     duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
 
         return documents, batch
-
-    @staticmethod
-    def invoke_knowledge_index(
-        dataset: Dataset,
-        document: Document,
-        chunks: list[Any],
-        index_method: IndexMethod,
-        retrieval_setting: RetrievalSetting,
-        chunk_structure: Literal["text_model", "hierarchical_model"],
-    ):
-        if not dataset.indexing_technique:
-            if index_method.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
-                raise ValueError("Indexing technique is invalid")
-
-            dataset.indexing_technique = index_method.indexing_technique
-            if index_method.indexing_technique == "high_quality":
-                model_manager = ModelManager()
-                if (
-                    index_method.embedding_setting.embedding_model
-                    and index_method.embedding_setting.embedding_model_provider
-                ):
-                    dataset_embedding_model = index_method.embedding_setting.embedding_model
-                    dataset_embedding_model_provider = index_method.embedding_setting.embedding_model_provider
-                else:
-                    embedding_model = model_manager.get_default_model_instance(
-                        tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
-                    )
-                    dataset_embedding_model = embedding_model.model
-                    dataset_embedding_model_provider = embedding_model.provider
-                dataset.embedding_model = dataset_embedding_model
-                dataset.embedding_model_provider = dataset_embedding_model_provider
-                dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                    dataset_embedding_model_provider, dataset_embedding_model
-                )
-                dataset.collection_binding_id = dataset_collection_binding.id
-                if not dataset.retrieval_model:
-                    default_retrieval_model = {
-                        "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
-                        "reranking_enable": False,
-                        "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
-                        "top_k": 2,
-                        "score_threshold_enabled": False,
-                    }
-
-                    dataset.retrieval_model = (
-                        retrieval_setting.model_dump() if retrieval_setting else default_retrieval_model
-                    )  # type: ignore
-        index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
-        index_processor.index(dataset, document, chunks)
-
-        # update document status
-        document.indexing_status = "completed"
-        document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-        db.session.commit()
 
     @staticmethod
     def check_documents_upload_quota(count: int, features: FeatureModel):

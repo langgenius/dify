@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_serializer, field_validator, model_validator
 
 from core.datasource.entities.constants import DATASOURCE_SELECTOR_MODEL_IDENTITY
 from core.entities.provider_entities import ProviderConfig

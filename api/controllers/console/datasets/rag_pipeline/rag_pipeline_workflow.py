@@ -469,6 +469,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         rag_pipeline_service = RagPipelineService()
         return rag_pipeline_service.get_default_block_config(node_type=block_type, filters=filters)
 
+
 class RagPipelineConfigApi(Resource):
     """Resource for rag pipeline configuration."""
 
