@@ -14,13 +14,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
+from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
     ArizeConfig,
-    PhoenixConfig,
     LangfuseConfig,
     LangSmithConfig,
     OpikConfig,
+    PhoenixConfig,
     TracingProviderEnum,
     WeaveConfig,
 )
@@ -35,7 +36,6 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
 from core.ops.opik_trace.opik_trace import OpikDataTrace

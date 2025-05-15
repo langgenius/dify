@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { ArizeConfig, PhoenixConfig, LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
+import type { ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
