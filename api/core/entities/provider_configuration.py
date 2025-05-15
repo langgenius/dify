@@ -910,9 +910,7 @@ class ProviderConfiguration(BaseModel):
                             custom_model_schema.model_type in model_setting_map
                             and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
                         ):
-                            model_setting = model_setting_map[custom_model_schema.model_type][
-                                custom_model_schema.model
-                            ]
+                            model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
                             if model_setting.enabled is False:
                                 status = ModelStatus.DISABLED
 
