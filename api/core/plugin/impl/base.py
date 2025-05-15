@@ -17,6 +17,7 @@ from core.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from core.plugin.endpoint.exc import EndpointSetupFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginDaemonError, PluginDaemonInnerError
 from core.plugin.impl.exc import (
     PluginDaemonBadRequestError,
@@ -219,6 +220,8 @@ class BasePluginClient:
                         raise InvokeServerUnavailableError(description=args.get("description"))
                     case CredentialsValidateFailedError.__name__:
                         raise CredentialsValidateFailedError(error_object.get("message"))
+                    case EndpointSetupFailedError.__name__:
+                        raise EndpointSetupFailedError(error_object.get("message"))
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:
