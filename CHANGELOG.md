@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed database configuration to allow DB_EXTRAS to set search_path via options (#16a4f77)
 - Fixed frontend third-party package security issues (#19655)
 - Updated dependencies: huggingface-hub (~0.16.4 to ~0.31.0), transformers (~4.35.0 to ~4.39.0), and resend (~0.7.0 to ~2.9.0) (#19563)
+- Downgrade boto3 from 1.36 to 1.35 (#19736)
 
 ## [0.15.7] - 2025-04-27
 
