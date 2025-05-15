@@ -20,12 +20,16 @@ class ThreadPolarisOtherTimeTool(BuiltinTool):
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         pod = tool_parameters.get('pod', '.*')
+        node = tool_parameters.get('node', '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
+        if not node:
+            node = '.*'
         params = {
             'metricName': 'Thread Polaris Metrics - 北极星指标（线程） - 各类型耗时折线图 - Other',
             'params': {
-                'pod': pod
+                'pod': pod,
+                'node_name': node
             },
             'startTime': start_time,
             'endTime': end_time,

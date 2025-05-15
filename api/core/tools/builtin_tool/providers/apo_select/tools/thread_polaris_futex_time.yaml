@@ -25,6 +25,17 @@ parameters:
       zh_Hans: Pod名称
     llm_description: Pod name
     form: llm
+  - name: node
+    type: string
+    required: False
+    label: 
+      en_US: Node name
+      zh_Hans: 主机名
+    human_description:
+      en_US: Node name
+      zh_Hans: 主机名
+    llm_description: Node name
+    form: llm
   - name: startTime
     type: number
     required: true
