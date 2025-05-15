@@ -3,6 +3,8 @@ const translation = {
   upgradeTip: {
     prefix: '升級您的計劃以',
     suffix: '定製您的品牌。',
+    des: '升級您的計劃以自訂您的品牌',
+    title: '升級您的計劃',
   },
   webapp: {
     title: '定製 WebApp 品牌',

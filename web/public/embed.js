@@ -274,7 +274,10 @@
       // Add click event listener to toggle chatbot
       containerDiv.addEventListener("click", handleClick);
       // Add touch event listener
-      containerDiv.addEventListener("touchend", handleClick);
+      containerDiv.addEventListener("touchend", (event) => {
+        event.preventDefault();
+        handleClick();
+      }, { passive: false });
 
       function handleClick() {
         if (isDragging) return;

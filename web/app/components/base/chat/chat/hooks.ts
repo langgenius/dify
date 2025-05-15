@@ -424,6 +424,8 @@ export const useChat = (
           const response = responseItem as any
           if (thought.message_id && !hasSetResponseId)
             response.id = thought.message_id
+          if (thought.conversation_id)
+            response.conversationId = thought.conversation_id
 
           if (response.agent_thoughts.length === 0) {
             response.agent_thoughts.push(thought)

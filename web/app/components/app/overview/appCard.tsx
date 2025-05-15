@@ -17,7 +17,6 @@ import type { ConfigParams } from './settings'
 import Tooltip from '@/app/components/base/tooltip'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { asyncRunSafe, randomString } from '@/utils'
-import { basePath } from '@/utils/var'
 import Button from '@/app/components/base/button'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
@@ -89,7 +88,7 @@ function AppCard({
   const runningStatus = isApp ? appInfo.enable_site : appInfo.enable_api
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
-  const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`
+  const appUrl = `${app_base_url}/${appMode}/${access_token}`
   const apiUrl = appInfo?.api_base_url
 
   const genClickFuncByName = (opName: string) => {

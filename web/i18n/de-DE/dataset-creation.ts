@@ -82,6 +82,14 @@ const translation = {
       jinaReaderNotConfiguredDescription: 'Richten Sie Jina Reader ein, indem Sie Ihren kostenlosen API-Schlüssel für den Zugriff eingeben.',
       useSitemapTooltip: 'Folgen Sie der Sitemap, um die Website zu crawlen. Ist dies nicht der Fall, crawlt Jina Reader iterativ basierend auf der Seitenrelevanz, sodass weniger, aber qualitativ hochwertigere Seiten angezeigt werden.',
       jinaReaderDoc: 'Erfahre mehr über Jina Reader',
+      configureJinaReader: 'Jina Reader konfigurieren',
+      waterCrawlNotConfigured: 'Watercrawl ist nicht konfiguriert',
+      configureWatercrawl: 'Wasserkrabbe konfigurieren',
+      watercrawlDocLink: 'https://docs.dify.ai/de/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      watercrawlTitle: 'Webinhalt mit Watercrawl extrahieren',
+      watercrawlDoc: 'Wasserkriechen-Dokumente',
+      configureFirecrawl: 'Firecrawl konfigurieren',
+      waterCrawlNotConfiguredDescription: 'Konfigurieren Sie Watercrawl mit dem API-Schlüssel, um es zu verwenden.',
     },
     cancel: 'Abbrechen',
   },
@@ -199,6 +207,11 @@ const translation = {
     learnMore: 'Weitere Informationen',
     title: 'Verbinden Sie sich mit anderen Datenquellen?',
     description: 'Derzeit verfügt die Wissensdatenbank von Dify nur über begrenzte Datenquellen. Das Beitragen einer Datenquelle zur Dify-Wissensdatenbank ist eine fantastische Möglichkeit, die Flexibilität und Leistungsfähigkeit der Plattform für alle Benutzer zu verbessern. Unser Beitragsleitfaden erleichtert Ihnen den Einstieg. Bitte klicken Sie auf den untenstehenden Link, um mehr zu erfahren.',
+  },
+  watercrawl: {
+    configWatercrawl: 'Wasserkrabbe konfigurieren',
+    apiKeyPlaceholder: 'API-Schlüssel von watercrawl.dev',
+    getApiKeyLinkText: 'Holen Sie sich Ihren API-Schlüssel von watercrawl.dev',
   },
 }
 

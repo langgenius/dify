@@ -6,7 +6,7 @@ from typing import cast
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal, marshal_with, reqparse
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -112,7 +112,7 @@ class GetProcessRuleApi(Resource):
         limits = DocumentService.DEFAULT_RULES["limits"]
         if document_id:
             # get the latest process rule
-            document = Document.query.get_or_404(document_id)
+            document = db.get_or_404(Document, document_id)
 
             dataset = DatasetService.get_dataset(document.dataset_id)
 
@@ -175,7 +175,7 @@ class DatasetDocumentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        query = Document.query.filter_by(dataset_id=str(dataset_id), tenant_id=current_user.current_tenant_id)
+        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=current_user.current_tenant_id)
 
         if search:
             search = f"%{search}%"
@@ -209,18 +209,24 @@ class DatasetDocumentListApi(Resource):
                 desc(Document.position),
             )
 
-        paginated_documents = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
         if fetch:
             for document in documents:
-                completed_segments = DocumentSegment.query.filter(
-                    DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document.id),
-                    DocumentSegment.status != "re_segment",
-                ).count()
-                total_segments = DocumentSegment.query.filter(
-                    DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment"
-                ).count()
+                completed_segments = (
+                    db.session.query(DocumentSegment)
+                    .filter(
+                        DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id),
+                        DocumentSegment.status != "re_segment",
+                    )
+                    .count()
+                )
+                total_segments = (
+                    db.session.query(DocumentSegment)
+                    .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                    .count()
+                )
                 document.completed_segments = completed_segments
                 document.total_segments = total_segments
             data = marshal(documents, document_with_segments_fields)
@@ -563,14 +569,20 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
         documents = self.get_batch_documents(dataset_id, batch)
         documents_status = []
         for document in documents:
-            completed_segments = DocumentSegment.query.filter(
-                DocumentSegment.completed_at.isnot(None),
-                DocumentSegment.document_id == str(document.id),
-                DocumentSegment.status != "re_segment",
-            ).count()
-            total_segments = DocumentSegment.query.filter(
-                DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment"
-            ).count()
+            completed_segments = (
+                db.session.query(DocumentSegment)
+                .filter(
+                    DocumentSegment.completed_at.isnot(None),
+                    DocumentSegment.document_id == str(document.id),
+                    DocumentSegment.status != "re_segment",
+                )
+                .count()
+            )
+            total_segments = (
+                db.session.query(DocumentSegment)
+                .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .count()
+            )
             document.completed_segments = completed_segments
             document.total_segments = total_segments
             if document.is_paused:
@@ -589,14 +601,20 @@ class DocumentIndexingStatusApi(DocumentResource):
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
 
-        completed_segments = DocumentSegment.query.filter(
-            DocumentSegment.completed_at.isnot(None),
-            DocumentSegment.document_id == str(document_id),
-            DocumentSegment.status != "re_segment",
-        ).count()
-        total_segments = DocumentSegment.query.filter(
-            DocumentSegment.document_id == str(document_id), DocumentSegment.status != "re_segment"
-        ).count()
+        completed_segments = (
+            db.session.query(DocumentSegment)
+            .filter(
+                DocumentSegment.completed_at.isnot(None),
+                DocumentSegment.document_id == str(document_id),
+                DocumentSegment.status != "re_segment",
+            )
+            .count()
+        )
+        total_segments = (
+            db.session.query(DocumentSegment)
+            .filter(DocumentSegment.document_id == str(document_id), DocumentSegment.status != "re_segment")
+            .count()
+        )
 
         document.completed_segments = completed_segments
         document.total_segments = total_segments

@@ -113,6 +113,8 @@ const translation = {
     addFailureBranch: 'Add Fail Branch',
     loadMore: 'Load More',
     noHistory: 'No History',
+    referenceVar: 'Reference Variable',
+    noExist: 'No such variable',
   },
   env: {
     envPanelTitle: 'Environment Variables',
@@ -596,6 +598,7 @@ const translation = {
       selectVariable: 'Select variable...',
       addSubVariable: 'Sub Variable',
       select: 'Select',
+      condition: 'Condition',
     },
     variableAssigner: {
       title: 'Assign variables',
@@ -738,6 +741,9 @@ const translation = {
       loop_one: '{{count}} Loop',
       loop_other: '{{count}} Loops',
       currentLoop: 'Current Loop',
+      comma: ', ',
+      error_one: '{{count}} Error',
+      error_other: '{{count}} Errors',
       breakCondition: 'Loop Termination Condition',
       breakConditionTip: 'Only variables within loops with termination conditions and conversation variables can be referenced.',
       loopMaxCount: 'Maximum Loop Count',

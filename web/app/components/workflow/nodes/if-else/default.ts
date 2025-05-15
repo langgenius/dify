@@ -1,4 +1,6 @@
+import type { Var } from '../../types'
 import { BlockEnum, type NodeDefault } from '../../types'
+import { getNotExistVariablesByArray, getNotExistVariablesByText } from '../../utils/workflow'
 import { type IfElseNodeType, LogicalOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
@@ -73,6 +75,41 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
+    }
+  },
+  checkVarValid(payload: IfElseNodeType, varMap: Record<string, Var>, t: any) {
+    const errorMessageArr = []
+
+    const condition_variable_selector_warnings: string[] = []
+    const condition_value_warnings: string[] = []
+    payload.cases.forEach((caseItem) => {
+      caseItem.conditions.forEach((condition) => {
+        if (!condition.variable_selector)
+          return
+        const selector_warnings = getNotExistVariablesByArray([condition.variable_selector], varMap)
+        if (selector_warnings.length)
+          condition_variable_selector_warnings.push(...selector_warnings)
+        const value_warnings = Array.isArray(condition.value) ? getNotExistVariablesByArray([condition.value], varMap) : getNotExistVariablesByText(condition.value, varMap)
+        if (value_warnings.length)
+          condition_value_warnings.push(...value_warnings)
+        condition.sub_variable_condition?.conditions.forEach((subCondition) => {
+          const sub_variable_value_warnings = Array.isArray(subCondition.value) ? getNotExistVariablesByArray([subCondition.value], varMap) : getNotExistVariablesByText(subCondition.value, varMap)
+          if (sub_variable_value_warnings.length)
+            condition_value_warnings.push(...sub_variable_value_warnings)
+        })
+      })
+    })
+
+    if (condition_variable_selector_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.ifElse.condition')} ${t('workflow.common.referenceVar')}${condition_variable_selector_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    if (condition_value_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.ifElse.enterValue')} ${t('workflow.common.referenceVar')}${condition_value_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    return {
+      isValid: true,
+      warning_vars: condition_variable_selector_warnings,
+      errorMessage: errorMessageArr,
     }
   },
 }
