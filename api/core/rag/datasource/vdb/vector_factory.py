@@ -168,9 +168,16 @@ class Vector:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
     def create(self, texts: Optional[list] = None, **kwargs):
+        max_batch_documents = 1000
         if texts:
-            embeddings = self._embeddings.embed_documents([document.page_content for document in texts])
-            self._vector_processor.create(texts=texts, embeddings=embeddings, **kwargs)
+            for i in range(0, len(texts), max_batch_documents):
+                batch_documents = texts[i : i + max_batch_documents]
+                batch_contents = [document.page_content for document in batch_documents]
+                batch_embeddings = self._embeddings.embed_documents(batch_contents)
+                if i < max_batch_documents:
+                    self._vector_processor.create(texts=batch_documents, embeddings=batch_embeddings, **kwargs)
+                else:
+                    self._vector_processor.add_texts(documents=batch_documents, embeddings=batch_embeddings, **kwargs)
 
     def add_texts(self, documents: list[Document], **kwargs):
         if kwargs.get("duplicate_check", False):
