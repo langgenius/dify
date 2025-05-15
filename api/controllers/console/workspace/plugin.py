@@ -13,6 +13,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import login_required
 from models.account import TenantPluginPermission
+from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
@@ -493,6 +494,67 @@ class PluginFetchPermissionApi(Resource):
         )
 
 
+class PluginChangeAutoUpgradeStrategyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        user = current_user
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        req = reqparse.RequestParser()
+        req.add_argument("strategy_setting", type=str, required=True, location="json")
+        req.add_argument("upgrade_time_of_day", type=int, required=True, location="json")
+        req.add_argument("upgrade_mode", type=str, required=True, location="json")
+        req.add_argument("exclude_plugins", type=list, required=True, location="json")
+        req.add_argument("include_plugins", type=list, required=True, location="json")
+        args = req.parse_args()
+
+        tenant_id = user.current_tenant_id
+
+        return {
+            "success": PluginAutoUpgradeService.change_strategy(
+                tenant_id,
+                args["strategy_setting"],
+                args["upgrade_time_of_day"],
+                args["upgrade_mode"],
+                args["exclude_plugins"],
+                args["include_plugins"],
+            )
+        }
+
+
+class PluginFetchAutoUpgradeStrategyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        tenant_id = current_user.current_tenant_id
+
+        strategy = PluginAutoUpgradeService.get_strategy(tenant_id)
+        if not strategy:
+            return jsonable_encoder(
+                {
+                    "strategy_setting": "fix_only",
+                    "upgrade_time_of_day": 0,
+                    "upgrade_mode": "exclude",
+                    "exclude_plugins": [],
+                    "include_plugins": [],
+                }
+            )
+
+        return jsonable_encoder(
+            {
+                "strategy_setting": strategy.strategy_setting,
+                "upgrade_time_of_day": strategy.upgrade_time_of_day,
+                "upgrade_mode": strategy.upgrade_mode,
+                "exclude_plugins": strategy.exclude_plugins,
+                "include_plugins": strategy.include_plugins,
+            }
+        )
+
+
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
 api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
@@ -517,3 +579,6 @@ api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marke
 
 api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
 api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
+
+api.add_resource(PluginFetchAutoUpgradeStrategyApi, "/workspaces/current/plugin/autoupgrade/fetch")
+api.add_resource(PluginChangeAutoUpgradeStrategyApi, "/workspaces/current/plugin/autoupgrade/change")
