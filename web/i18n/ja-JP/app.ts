@@ -47,7 +47,7 @@ const translation = {
     advancedFor: '上級ユーザー向け',
     advancedDescription: 'ワークフロー オーケストレートは、ワークフロー形式でチャットボットをオーケストレートし、組み込みのプロンプトを編集する機能を含む高度なカスタマイズを提供します。経験豊富なユーザー向けです。',
     captionName: 'アプリのアイコンと名前',
-    appNamePlaceholder: 'アプリに名前を付ける',
+    appNamePlaceholder: 'アプリ名を入力してください',
     captionDescription: '説明',
     appDescriptionPlaceholder: 'アプリの説明を入力してください',
     useTemplate: 'このテンプレートを使用する',
@@ -163,6 +163,10 @@ const translation = {
     opik: {
       title: 'オピック',
       description: 'Opik は、LLM アプリケーションを評価、テスト、監視するためのオープンソース プラットフォームです。',
+    },
+    weave: {
+      description: 'Weaveは、LLMアプリケーションを評価、テスト、および監視するためのオープンソースプラットフォームです。',
+      title: '織る',
     },
   },
   answerIcon: {

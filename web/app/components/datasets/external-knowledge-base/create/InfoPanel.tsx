@@ -16,12 +16,12 @@ const InfoPanel = () => {
           </span>
           <span className='system-sm-regular text-text-tertiary'>
             {t('dataset.connectDatasetIntro.content.front')}
-            <a className='system-sm-regular ml-1 text-text-accent' href='https://docs.dify.ai/guides/knowledge-base/external-knowledge-api-documentation' target='_blank' rel="noopener noreferrer">
+            <a className='system-sm-regular ml-1 text-text-accent' href='https://docs.dify.ai/en/guides/knowledge-base/external-knowledge-api' target='_blank' rel="noopener noreferrer">
               {t('dataset.connectDatasetIntro.content.link')}
             </a>
             {t('dataset.connectDatasetIntro.content.end')}
           </span>
-          <a className='system-sm-regular self-stretch text-text-accent' href='https://docs.dify.ai/guides/knowledge-base/connect-external-knowledge' target='_blank' rel="noopener noreferrer">
+          <a className='system-sm-regular self-stretch text-text-accent' href='https://docs.dify.ai/en/guides/knowledge-base/connect-external-knowledge-base' target='_blank' rel="noopener noreferrer">
             {t('dataset.connectDatasetIntro.learnMore')}
           </a>
         </p>

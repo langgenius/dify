@@ -37,7 +37,7 @@ export function middleware(request: NextRequest) {
     style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
     worker-src 'self' ${scheme_source} ${csp} ${whiteList};
     media-src 'self' ${scheme_source} ${csp} ${whiteList};
-    img-src 'self' ${scheme_source} ${csp} ${whiteList};
+    img-src *;
     font-src 'self';
     object-src 'none';
     base-uri 'self';

@@ -128,13 +128,19 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
   const chartData = useMemo(() => {
+    const str = String(children).replace(/\n$/, '')
     if (language === 'echarts') {
       try {
-        return JSON.parse(String(children).replace(/\n$/, ''))
+        return JSON.parse(str)
+      }
+      catch { }
+      try {
+        // eslint-disable-next-line no-new-func, sonarjs/code-eval
+        return new Function(`return ${str}`)()
       }
       catch { }
     }
-    return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
+    return JSON.parse('{"title":{"text":"ECharts error - Wrong option."}}')
   }, [language, children])
 
   const renderCodeContent = useMemo(() => {

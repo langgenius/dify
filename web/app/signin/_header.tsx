@@ -3,6 +3,8 @@ import React from 'react'
 import { useContext } from 'use-context-selector'
 import LoginLogo from './LoginLogo'
 import Select from '@/app/components/base/select/locale'
+import ThemeSelector from '@/app/components/base/theme-selector'
+import Divider from '@/app/components/base/divider'
 import { languages } from '@/i18n/language'
 import type { Locale } from '@/i18n'
 import I18n from '@/context/i18n'
@@ -19,7 +21,8 @@ const Header = () => {
         setLocaleOnClient(value as Locale)
       }}
     />
-
+    <Divider type='vertical' className='mx-0 ml-2 h-4' />
+    <ThemeSelector />
   </div>
 }
 

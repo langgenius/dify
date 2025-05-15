@@ -506,7 +506,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 "dataset_name": metadata.get("dataset_name"),
                 "document_id": metadata.get("document_id"),
                 "document_name": metadata.get("document_name"),
-                "data_source_type": metadata.get("document_data_source_type"),
+                "data_source_type": metadata.get("data_source_type"),
                 "segment_id": metadata.get("segment_id"),
                 "retriever_from": metadata.get("retriever_from"),
                 "score": metadata.get("score"),

@@ -53,7 +53,10 @@ const ProviderList = () => {
     })
   }, [activeTab, tagFilterValue, keywords, collectionList])
 
-  const [currentProvider, setCurrentProvider] = useState<Collection | undefined>()
+  const [currentProviderId, setCurrentProviderId] = useState<string | undefined>()
+  const currentProvider = useMemo<Collection | undefined>(() => {
+    return filteredCollectionList.find(collection => collection.id === currentProviderId)
+  }, [currentProviderId, filteredCollectionList])
   const { data: pluginList } = useInstalledPluginList()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginDetail = useMemo(() => {
@@ -70,14 +73,14 @@ const ProviderList = () => {
         >
           <div className={cn(
             'sticky top-0 z-20 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]',
-            currentProvider && 'pr-6',
+            currentProviderId && 'pr-6',
           )}>
             <TabSliderNew
               value={activeTab}
               onChange={(state) => {
                 setActiveTab(state)
                 if (state !== activeTab)
-                  setCurrentProvider(undefined)
+                  setCurrentProviderId(undefined)
               }}
               options={options}
             />
@@ -93,47 +96,43 @@ const ProviderList = () => {
               />
             </div>
           </div>
-          {
-            (filteredCollectionList.length > 0 || activeTab !== 'builtin') && (
-              <div className={cn(
-                'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
-                !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
-              )}>
-                {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
-                {filteredCollectionList.map(collection => (
-                  <div
-                    key={collection.id}
-                    onClick={() => setCurrentProvider(collection)}
-                  >
-                    <Card
-                      className={cn(
-                        'cursor-pointer border-[1.5px] border-transparent',
-                        currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
-                      )}
-                      hideCornerMark
-                      payload={{
-                        ...collection,
-                        brief: collection.description,
-                        org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
-                        name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
-                      } as any}
-                      footer={
-                        <CardMoreInfo
-                          tags={collection.labels}
-                        />
-                      }
-                    />
-                  </div>
-                ))}
-                {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty /></div>}
-              </div>
-            )
-          }
-          {
-            !filteredCollectionList.length && activeTab === 'builtin' && (
-              <Empty lightCard text={t('tools.noTools')} className='h-[224px] px-12' />
-            )
-          }
+          {(filteredCollectionList.length > 0 || activeTab !== 'builtin') && (
+            <div className={cn(
+              'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+              !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
+            )}>
+              {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
+              {filteredCollectionList.map(collection => (
+                <div
+                  key={collection.id}
+                  onClick={() => setCurrentProviderId(collection.id)}
+                >
+                  <Card
+                    className={cn(
+                      'cursor-pointer border-[1.5px] border-transparent',
+                      currentProviderId === collection.id && 'border-components-option-card-option-selected-border',
+                    )}
+                    hideCornerMark
+                    payload={{
+                      ...collection,
+                      brief: collection.description,
+                      org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
+                      name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
+                    } as any}
+                    footer={
+                      <CardMoreInfo
+                        tags={collection.labels}
+                      />
+                    }
+                  />
+                </div>
+              ))}
+              {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty /></div>}
+            </div>
+          )}
+          {!filteredCollectionList.length && activeTab === 'builtin' && (
+            <Empty lightCard text={t('tools.noTools')} className='h-[224px] px-12' />
+          )}
           {
             enable_marketplace && activeTab === 'builtin' && (
               <Marketplace
@@ -150,14 +149,14 @@ const ProviderList = () => {
       {currentProvider && !currentProvider.plugin_id && (
         <ProviderDetail
           collection={currentProvider}
-          onHide={() => setCurrentProvider(undefined)}
+          onHide={() => setCurrentProviderId(undefined)}
           onRefreshData={refetch}
         />
       )}
       <PluginDetailPanel
         detail={currentPluginDetail}
         onUpdate={() => invalidateInstalledPluginList()}
-        onHide={() => setCurrentProvider(undefined)}
+        onHide={() => setCurrentProviderId(undefined)}
       />
     </>
   )

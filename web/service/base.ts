@@ -1,7 +1,6 @@
-import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
+import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX, WEB_PREFIX } from '@/config'
 import { refreshAccessTokenOrRelogin } from './refresh-token'
 import Toast from '@/app/components/base/toast'
-import { basePath } from '@/utils/var'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
@@ -433,29 +432,29 @@ export const ssePost = async (
         }
         onData?.(str, isFirstMessage, moreInfo)
       },
-      onCompleted,
-      onThought,
-      onMessageEnd,
-      onMessageReplace,
-      onFile,
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onParallelBranchStarted,
-      onParallelBranchFinished,
-      onTextChunk,
-      onTTSChunk,
-      onTTSEnd,
-      onTextReplace,
-      onAgentLog,
+        onCompleted,
+        onThought,
+        onMessageEnd,
+        onMessageReplace,
+        onFile,
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onParallelBranchStarted,
+        onParallelBranchFinished,
+        onTextChunk,
+        onTTSChunk,
+        onTTSEnd,
+        onTextReplace,
+        onAgentLog,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
@@ -474,7 +473,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
     const errResp: Response = err as any
     if (errResp.status === 401) {
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
-      const loginUrl = `${globalThis.location.origin}${basePath}/signin`
+      const loginUrl = `${WEB_PREFIX}/signin`
       if (parseErr) {
         globalThis.location.href = loginUrl
         return Promise.reject(err)
@@ -510,11 +509,11 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         return Promise.reject(err)
       }
       if (code === 'not_init_validated' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}${basePath}/init`
+        globalThis.location.href = `${WEB_PREFIX}/init`
         return Promise.reject(err)
       }
       if (code === 'not_setup' && IS_CE_EDITION) {
-        globalThis.location.href = `${globalThis.location.origin}${basePath}/install`
+        globalThis.location.href = `${WEB_PREFIX}/install`
         return Promise.reject(err)
       }
 
@@ -522,7 +521,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrRelogin(TIME_OUT))
       if (refreshErr === null)
         return baseFetch<T>(url, options, otherOptionsForBaseFetch)
-      if (location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
+      if (!location.pathname.includes('/signin') || !IS_CE_EDITION) {
         globalThis.location.href = loginUrl
         return Promise.reject(err)
       }

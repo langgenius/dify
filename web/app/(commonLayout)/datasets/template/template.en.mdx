@@ -314,7 +314,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index technique (optional)
-        If this is not set, embedding_model, embedding_provider_name and retrieval_model will be set to null
+        If this is not set, embedding_model, embedding_model_provider and retrieval_model will be set to null
           - <code>high_quality</code> High quality
           - <code>economy</code> Economy
       </Property>
@@ -338,7 +338,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='embedding_model' type='str' key='embedding_model'>
         Embedding model name (optional)
       </Property>
-      <Property name='embedding_provider_name' type='str' key='embedding_provider_name'>
+      <Property name='embedding_model_provider' type='str' key='embedding_model_provider'>
         Embedding model provider name (optional)
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
@@ -1040,10 +1040,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -1335,10 +1333,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -1620,10 +1616,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>

@@ -37,8 +37,13 @@ export type WorkflowSliceShape = {
 export const createWorkflowSlice: StateCreator<WorkflowSliceShape> = set => ({
   workflowRunningData: undefined,
   setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
-  clipboardElements: [],
-  setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
+  clipboardElements: (() => {
+    const storedElements = localStorage.getItem('clipboard_elements')
+    return storedElements ? JSON.parse(storedElements) : []
+  })(),
+  setClipboardElements: (clipboardElements) => {
+    localStorage.setItem('clipboard_elements', JSON.stringify(clipboardElements))
+  },
   selection: null,
   setSelection: selection => set(() => ({ selection })),
   bundleNodeSize: null,

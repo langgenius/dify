@@ -168,6 +168,54 @@ const translation = {
   preprocessDocument: '{{num}}預處理文件',
   allKnowledge: '所有知識',
   allKnowledgeDescription: '選擇以顯示此工作區中的所有知識。只有 Workspace 擁有者可以管理所有知識。',
+  metadata: {
+    createMetadata: {
+      type: '類型',
+      title: '新元數據',
+      back: '返回',
+      namePlaceholder: '添加元數據名稱',
+      name: '名字',
+    },
+    checkName: {
+      empty: '元數據名稱不能為空',
+      invalid: '元數據名稱只能包含小寫字母、數字和底線，並且必須以小寫字母開頭',
+    },
+    batchEditMetadata: {
+      applyToAllSelectDocumentTip: '自動為所有選定文檔創建上述所有編輯和新元數據，否則編輯元數據將僅適用於具有該元數據的文檔。',
+      editDocumentsNum: '編輯 {{num}} 份文件',
+      multipleValue: '多重價值',
+      applyToAllSelectDocument: '應用於所有選定的文件',
+      editMetadata: '編輯元資料',
+    },
+    selectMetadata: {
+      search: '搜尋元數據',
+      newAction: '新元數據',
+      manageAction: '管理',
+    },
+    datasetMetadata: {
+      rename: '重新命名',
+      addMetaData: '添加元數據',
+      builtInDescription: '內建的元數據會自動提取和生成。在使用之前必須啟用，且無法編輯。',
+      name: '名字',
+      disabled: '禁用',
+      deleteTitle: '確認刪除',
+      values: '{{num}} 值',
+      deleteContent: '您確定要刪除元數據 "{{name}}" 嗎？',
+      builtIn: '內建的',
+      description: '您可以在這裡管理所有的元數據。對所有文件的修改將會同步。',
+      namePlaceholder: '元數據名稱',
+    },
+    documentMetadata: {
+      startLabeling: '開始標記',
+      documentInformation: '文件資訊',
+      technicalParameters: '技術參數',
+      metadataToolTip: '元數據作為一個關鍵的過濾器，提高了信息檢索的準確性和相關性。您可以在此處修改和添加此文檔的元數據。',
+    },
+    metadata: '元數據',
+    chooseTime: '選擇一個時間...',
+    addMetadata: '添加元數據',
+  },
+  embeddingModelNotAvailable: '嵌入模型無法使用。',
 }
 
 export default translation

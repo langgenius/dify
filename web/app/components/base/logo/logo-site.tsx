@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { basePath } from '@/utils/var'
+import { WEB_PREFIX } from '@/config'
 import classNames from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
@@ -13,7 +13,7 @@ const LogoSite: FC<LogoSiteProps> = ({
 }) => {
   const { systemFeatures } = useGlobalPublicStore()
 
-  let src = `${basePath}/logo/logo.png`
+  let src = `${WEB_PREFIX}/logo/logo.png`
   if (systemFeatures.branding.enabled)
     src = systemFeatures.branding.workspace_logo
 

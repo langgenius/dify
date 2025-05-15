@@ -113,6 +113,8 @@ const translation = {
     openInExplore: '在“探索”中打开',
     loadMore: '加载更多',
     noHistory: '没有历史版本',
+    referenceVar: '引用变量',
+    noExist: '不存在',
   },
   env: {
     envPanelTitle: '环境变量',
@@ -597,6 +599,7 @@ const translation = {
       selectVariable: '选择变量',
       addSubVariable: '添加子变量',
       select: '选择',
+      condition: '条件',
     },
     variableAssigner: {
       title: '变量赋值',
@@ -739,6 +742,9 @@ const translation = {
       loop_one: '{{count}} 个循环',
       loop_other: '{{count}} 个循环',
       currentLoop: '当前循环',
+      comma: '，',
+      error_one: '{{count}}个失败',
+      error_other: '{{count}}个失败',
       breakCondition: '循环终止条件',
       breakConditionTip: '支持引用终止条件循环内的变量和会话变量。',
       loopMaxCount: '最大循环次数',
