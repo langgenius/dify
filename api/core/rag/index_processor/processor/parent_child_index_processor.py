@@ -4,7 +4,7 @@ import uuid
 from typing import Optional
 
 from configs import dify_config
-from core.model_manager import ModelInstance
+from core.model_manager import ModelManager, ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -12,6 +12,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import ChildDocument, Document
+from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from libs import helper
 from models.dataset import ChildChunk, Dataset, DocumentSegment
@@ -37,6 +38,20 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             raise ValueError("No rules found in process rule.")
         rules = Rule(**process_rule.get("rules"))
         all_documents = []  # type: ignore
+        
+        # Get the chunking strategy from process_rule or default to "fixed"
+        chunking_strategy = process_rule.get("chunking_strategy", "fixed")
+        
+        # Get LLM model instance if semantic chunking is enabled
+        llm_model_instance = None
+        if chunking_strategy == "semantic":
+            try:
+                model_manager = ModelManager()
+                llm_model_instance = kwargs.get("llm_model_instance") or model_manager.get_default_model_instance(ModelType.LLM)
+            except Exception as e:
+                # Fall back to fixed chunking if we can't get a LLM model
+                chunking_strategy = "fixed"
+                
         if rules.parent_mode == ParentMode.PARAGRAPH:
             # Split the text documents into nodes.
             if not rules.segmentation:
@@ -47,6 +62,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 chunk_overlap=rules.segmentation.chunk_overlap,
                 separator=rules.segmentation.separator,
                 embedding_model_instance=kwargs.get("embedding_model_instance"),
+                chunking_strategy=chunking_strategy,
+                llm_model_instance=llm_model_instance
             )
             for document in documents:
                 if kwargs.get("preview") and len(all_documents) >= 10:
@@ -73,7 +90,12 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             document_node.page_content = page_content
                             # parse document to child nodes
                             child_nodes = self._split_child_nodes(
-                                document_node, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
+                                document_node, 
+                                rules, 
+                                process_rule.get("mode"), 
+                                kwargs.get("embedding_model_instance"),
+                                chunking_strategy=chunking_strategy,
+                                llm_model_instance=llm_model_instance
                             )
                             document_node.children = child_nodes
                             split_documents.append(document_node)
@@ -83,7 +105,12 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             document = Document(page_content=page_content, metadata=documents[0].metadata)
             # parse document to child nodes
             child_nodes = self._split_child_nodes(
-                document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance")
+                document, 
+                rules, 
+                process_rule.get("mode"), 
+                kwargs.get("embedding_model_instance"),
+                chunking_strategy=chunking_strategy,
+                llm_model_instance=llm_model_instance
             )
             if kwargs.get("preview"):
                 if len(child_nodes) > dify_config.CHILD_CHUNKS_PREVIEW_NUMBER:
@@ -173,6 +200,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
         rules: Rule,
         process_rule_mode: str,
         embedding_model_instance: Optional[ModelInstance],
+        chunking_strategy: str = "fixed",
+        llm_model_instance: Optional[ModelInstance] = None,
     ) -> list[ChildDocument]:
         if not rules.subchunk_segmentation:
             raise ValueError("No subchunk segmentation found in rules.")
@@ -182,6 +211,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             chunk_overlap=rules.subchunk_segmentation.chunk_overlap,
             separator=rules.subchunk_segmentation.separator,
             embedding_model_instance=embedding_model_instance,
+            chunking_strategy=chunking_strategy,
+            llm_model_instance=llm_model_instance
         )
         # parse document to child nodes
         child_nodes = []

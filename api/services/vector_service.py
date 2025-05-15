@@ -1,7 +1,10 @@
 import logging
 from typing import Optional
+import uuid
+from datetime import datetime
 
-from core.model_manager import ModelInstance, ModelManager
+from core.indexing_runner import IndexingRunner
+from core.model_manager import ModelManager, ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -9,8 +12,9 @@ from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
 from extensions.ext_database import db
-from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.dataset import DatasetProcessRule
 from services.entities.knowledge_entities.knowledge_entities import ParentMode
 
 _logger = logging.getLogger(__name__)
@@ -135,12 +139,28 @@ class VectorService:
         # use full doc mode to generate segment's child chunk
         processing_rule_dict = processing_rule.to_dict()
         processing_rule_dict["rules"]["parent_mode"] = ParentMode.FULL_DOC.value
+        
+        # Get chunking strategy
+        chunking_strategy = processing_rule_dict.get("rules", {}).get("chunking_strategy", "fixed")
+        
+        # If semantic chunking is used, get LLM model instance
+        llm_model_instance = None
+        if chunking_strategy == "semantic":
+            try:
+                model_manager = ModelManager()
+                llm_model_instance = model_manager.get_default_model_instance(ModelType.LLM)
+            except Exception as e:
+                # Fall back to fixed chunking if we can't get a LLM model
+                chunking_strategy = "fixed"
+                processing_rule_dict["rules"]["chunking_strategy"] = "fixed"
+        
         documents = index_processor.transform(
             [document],
             embedding_model_instance=embedding_model_instance,
             process_rule=processing_rule_dict,
             tenant_id=dataset.tenant_id,
             doc_language=dataset_document.doc_language,
+            llm_model_instance=llm_model_instance
         )
         # save child chunks
         if documents and documents[0].children:

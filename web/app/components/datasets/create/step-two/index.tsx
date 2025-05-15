@@ -63,6 +63,7 @@ import CustomDialog from '@/app/components/base/dialog'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { noop } from 'lodash-es'
+import Brain from '../../../base/icons/src/vender/solid/brain.svg'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -101,6 +102,8 @@ const DEFAULT_MAXIMUM_CHUNK_LENGTH = 1024
 const DEFAULT_OVERLAP = 50
 const MAXIMUM_CHUNK_TOKEN_LENGTH = Number.parseInt(globalThis.document?.body?.getAttribute('data-public-indexing-max-segmentation-tokens-length') || '4000', 10)
 
+type ChunkingStrategy = 'fixed' | 'semantic'
+
 type ParentChildConfig = {
   chunkForContext: ParentMode
   parent: {
@@ -111,6 +114,7 @@ type ParentChildConfig = {
     delimiter: string
     maxLength: number
   }
+  chunkingStrategy: ChunkingStrategy
 }
 
 const defaultParentChildConfig: ParentChildConfig = {
@@ -123,6 +127,7 @@ const defaultParentChildConfig: ParentChildConfig = {
     delimiter: '\\n',
     maxLength: 512,
   },
+  chunkingStrategy: 'semantic',
 }
 
 const StepTwo = ({
@@ -216,40 +221,46 @@ const StepTwo = ({
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
+  const [generalChunkingStrategy, setGeneralChunkingStrategy] = useState<ChunkingStrategy>('fixed')
+
   const getIndexing_technique = () => indexingType || indexType
   const currentDocForm = currentDataset?.doc_form || docForm
 
   const getProcessRule = (): ProcessRule => {
-    if (currentDocForm === ChunkingMode.parentChild) {
+    if (segmentationType === ProcessMode.general) {
       return {
+        mode: segmentationType,
         rules: {
           pre_processing_rules: rules,
           segmentation: {
-            separator: unescape(
-              parentChildConfig.parent.delimiter,
-            ),
-            max_tokens: parentChildConfig.parent.maxLength,
+            separator: escape(segmentIdentifier),
+            max_tokens: maxChunkLength,
+            chunk_overlap: overlap,
           },
-          parent_mode: parentChildConfig.chunkForContext,
-          subchunk_segmentation: {
-            separator: unescape(parentChildConfig.child.delimiter),
-            max_tokens: parentChildConfig.child.maxLength,
-          },
+          chunking_strategy: generalChunkingStrategy,
         },
-        mode: 'hierarchical',
-      } as ProcessRule
+      }
     }
-    return {
-      rules: {
-        pre_processing_rules: rules,
-        segmentation: {
-          separator: unescape(segmentIdentifier),
-          max_tokens: maxChunkLength,
-          chunk_overlap: overlap,
+    else {
+      return {
+        mode: segmentationType,
+        rules: {
+          pre_processing_rules: rules,
+          parent_mode: parentChildConfig.chunkForContext,
+          segmentation: {
+            separator: parentChildConfig.parent.delimiter,
+            max_tokens: parentChildConfig.parent.maxLength,
+            chunk_overlap: DEFAULT_OVERLAP,
+          },
+          subchunk_segmentation: {
+            separator: parentChildConfig.child.delimiter,
+            max_tokens: parentChildConfig.child.maxLength,
+            chunk_overlap: DEFAULT_OVERLAP,
+          },
+          chunking_strategy: parentChildConfig.chunkingStrategy,
         },
-      }, // api will check this. It will be removed after api refactored.
-      mode: segmentationType,
-    } as ProcessRule
+      }
+    }
   }
 
   const fileIndexingEstimateQuery = useFetchFileIndexingEstimateForFile({
@@ -337,9 +348,13 @@ const StepTwo = ({
       setSegmentIdentifier(defaultConfig.segmentation.separator)
       setMaxChunkLength(defaultConfig.segmentation.max_tokens)
       setOverlap(defaultConfig.segmentation.chunk_overlap!)
-      setRules(defaultConfig.pre_processing_rules)
+      setRules(defaultConfig.pre_processing_rules || [])
+      setGeneralChunkingStrategy('fixed')
+      setParentChildConfig({
+        ...defaultParentChildConfig,
+        chunkingStrategy: 'fixed',
+      })
     }
-    setParentChildConfig(defaultParentChildConfig)
   }
 
   const updatePreview = () => {
@@ -634,6 +649,30 @@ const StepTwo = ({
                   onChange={setOverlap}
                 />
               </div>
+              <div className='mt-4'>
+                <div className='flex items-center gap-x-2'>
+                  <div className='inline-flex shrink-0'>
+                    <TextLabel>{t('datasetCreation.stepTwo.chunkingStrategy')}</TextLabel>
+                  </div>
+                  <Divider className='grow' bgStyle='gradient' />
+                </div>
+                <div className='mt-2 flex gap-3'>
+                  <RadioCard className='flex-1'
+                    icon={<Image src={Note} alt='' width={16} height={16} />}
+                    title={t('datasetCreation.stepTwo.fixedChunking')}
+                    description={t('datasetCreation.stepTwo.fixedChunkingTip')}
+                    isChosen={generalChunkingStrategy === 'fixed'}
+                    onChosen={() => setGeneralChunkingStrategy('fixed')}
+                  />
+                  <RadioCard className='flex-1'
+                    icon={<Image src={Brain} alt='' width={16} height={16} />}
+                    title={t('datasetCreation.stepTwo.semanticChunking')}
+                    description={t('datasetCreation.stepTwo.semanticChunkingTip')}
+                    isChosen={generalChunkingStrategy === 'semantic'}
+                    onChosen={() => setGeneralChunkingStrategy('semantic')}
+                  />
+                </div>
+              </div>
               <div className='flex w-full flex-col'>
                 <div className='flex items-center gap-x-2'>
                   <div className='inline-flex shrink-0'>
@@ -811,6 +850,36 @@ const StepTwo = ({
                         ...parentChildConfig.child,
                         maxLength: value,
                       },
+                    })}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className='flex items-center gap-x-2'>
+                  <div className='inline-flex shrink-0'>
+                    <TextLabel>{t('datasetCreation.stepTwo.chunkingStrategy')}</TextLabel>
+                  </div>
+                  <Divider className='grow' bgStyle='gradient' />
+                </div>
+                <div className='mt-2 flex gap-3'>
+                  <RadioCard className='flex-1'
+                    icon={<Image src={Note} alt='' width={16} height={16} />}
+                    title={t('datasetCreation.stepTwo.fixedChunking')}
+                    description={t('datasetCreation.stepTwo.fixedChunkingTip')}
+                    isChosen={parentChildConfig.chunkingStrategy === 'fixed'}
+                    onChosen={() => setParentChildConfig({
+                      ...parentChildConfig,
+                      chunkingStrategy: 'fixed',
+                    })}
+                  />
+                  <RadioCard className='flex-1'
+                    icon={<Image src={Brain} alt='' width={16} height={16} />}
+                    title={t('datasetCreation.stepTwo.semanticChunking')}
+                    description={t('datasetCreation.stepTwo.semanticChunkingTip')}
+                    isChosen={parentChildConfig.chunkingStrategy === 'semantic'}
+                    onChosen={() => setParentChildConfig({
+                      ...parentChildConfig,
+                      chunkingStrategy: 'semantic',
                     })}
                   />
                 </div>

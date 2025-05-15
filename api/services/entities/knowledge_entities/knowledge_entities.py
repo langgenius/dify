@@ -72,6 +72,7 @@ class Rule(BaseModel):
     segmentation: Optional[Segmentation] = None
     parent_mode: Optional[Literal["full-doc", "paragraph"]] = None
     subchunk_segmentation: Optional[Segmentation] = None
+    chunking_strategy: Optional[Literal["fixed", "semantic"]] = "fixed"
 
 
 class ProcessRule(BaseModel):
