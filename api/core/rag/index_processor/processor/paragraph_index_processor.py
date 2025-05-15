@@ -12,9 +12,8 @@ from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import Document
+from core.rag.models.document import Document, GeneralStructureChunk
 from core.tools.utils.text_processing_utils import remove_leading_symbols
-from core.workflow.nodes.knowledge_index.entities import GeneralStructureChunk
 from libs import helper
 from models.dataset import Dataset, DatasetProcessRule
 from services.entities.knowledge_entities.knowledge_entities import Rule

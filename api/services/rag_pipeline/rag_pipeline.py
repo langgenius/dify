@@ -13,8 +13,7 @@ from sqlalchemy.orm import Session
 import contexts
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.repository.repository_factory import RepositoryFactory
-from core.repository.workflow_node_execution_repository import OrderConfig
+from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -24,6 +23,7 @@ from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.event.event import RunCompletedEvent
 from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+from core.workflow.repository.workflow_node_execution_repository import OrderConfig
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -650,13 +650,9 @@ class RagPipelineService:
         if not workflow_run:
             return []
 
-        # Use the repository to get the node executions
-        repository = RepositoryFactory.create_workflow_node_execution_repository(
-            params={
-                "tenant_id": pipeline.tenant_id,
-                "app_id": pipeline.id,
-                "session_factory": db.session.get_bind(),
-            }
+        # Use the repository to get the node execution
+        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=db.engine, tenant_id=pipeline.tenant_id, app_id=pipeline.id
         )
 
         # Use the repository to get the node executions with ordering

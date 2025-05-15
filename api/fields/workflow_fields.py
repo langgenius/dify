@@ -62,10 +62,6 @@ workflow_fields = {
     "tool_published": fields.Boolean,
     "environment_variables": fields.List(EnvironmentVariableField()),
     "conversation_variables": fields.List(fields.Nested(conversation_variable_fields)),
-    "pipeline_variables": fields.Dict(
-        keys=fields.String,
-        values=fields.List(fields.Nested(pipeline_variable_fields)),
-    ),
 }
 
 workflow_partial_fields = {

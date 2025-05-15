@@ -1,7 +1,7 @@
 import datetime
 import logging
 import time
-from typing import Any, cast
+from typing import Any, cast, Mapping
 
 from flask_login import current_user
 
@@ -106,7 +106,7 @@ class KnowledgeIndexNode(LLMNode):
                 error_type=type(e).__name__,
             )
 
-    def _invoke_knowledge_index(self, node_data: KnowledgeIndexNodeData, chunks: list[Any]) -> Any:
+    def _invoke_knowledge_index(self, node_data: KnowledgeIndexNodeData, chunks: Mapping[str, Any]) -> Any:
         dataset = Dataset.query.filter_by(id=node_data.dataset_id).first()
         if not dataset:
             raise KnowledgeIndexNodeError(f"Dataset {node_data.dataset_id} not found.")

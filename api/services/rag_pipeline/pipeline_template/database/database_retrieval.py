@@ -2,12 +2,12 @@ from typing import Optional
 
 from extensions.ext_database import db
 from models.dataset import Pipeline, PipelineBuiltInTemplate
-from services.app_dsl_service import AppDslService
-from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
-from services.recommend_app.recommend_app_type import RecommendAppType
+from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
+from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
+#from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
-class DatabasePipelineTemplateRetrieval(RecommendAppRetrievalBase):
+class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
     Retrieval pipeline   template from database
     """
@@ -21,7 +21,7 @@ class DatabasePipelineTemplateRetrieval(RecommendAppRetrievalBase):
         return result
 
     def get_type(self) -> str:
-        return RecommendAppType.DATABASE
+        return PipelineTemplateType.DATABASE
 
     @classmethod
     def fetch_pipeline_templates_from_db(cls, language: str) -> dict:
@@ -61,5 +61,5 @@ class DatabasePipelineTemplateRetrieval(RecommendAppRetrievalBase):
             "name": pipeline.name,
             "icon": pipeline.icon,
             "mode": pipeline.mode,
-            "export_data": AppDslService.export_dsl(app_model=pipeline),
+            "export_data": RagPipelineDslService.export_rag_pipeline_dsl(pipeline=pipeline),
         }

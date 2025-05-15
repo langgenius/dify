@@ -25,12 +25,12 @@ from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
 from core.workflow.nodes.tool.entities import ToolNodeData
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from factories import variable_factory
 from models import Account
-from models.dataset import Dataset, Pipeline
+from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.workflow import Workflow
-from services.dataset_service import DatasetCollectionBindingService
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -306,6 +306,26 @@ class RagPipelineDslService:
                             knowledge_configuration.index_method.embedding_setting.embedding_provider_name,  # type: ignore
                             knowledge_configuration.index_method.embedding_setting.embedding_model_name,  # type: ignore
                         )
+                        dataset_collection_binding = (
+                            db.session.query(DatasetCollectionBinding)
+                            .filter(
+                                DatasetCollectionBinding.provider_name == knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
+                                DatasetCollectionBinding.model_name == knowledge_configuration.index_method.embedding_setting.embedding_model_name,
+                                DatasetCollectionBinding.type == "dataset",
+                            )
+                            .order_by(DatasetCollectionBinding.created_at)
+                            .first()
+                        )
+
+                        if not dataset_collection_binding:
+                            dataset_collection_binding = DatasetCollectionBinding(
+                                provider_name=knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
+                                model_name=knowledge_configuration.index_method.embedding_setting.embedding_model_name,
+                                collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
+                                type="dataset",
+                            )
+                            db.session.add(dataset_collection_binding)
+                            db.session.commit()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = (
