@@ -356,6 +356,7 @@ const translation = {
     keywords: 'KEYWORDS',
     addKeyWord: 'Add keyword',
     keywordError: 'The maximum length of keyword is 20',
+    keywordDuplicate: 'The keyword already exists',
     characters_one: 'character',
     characters_other: 'characters',
     hitCount: 'Retrieval count',
