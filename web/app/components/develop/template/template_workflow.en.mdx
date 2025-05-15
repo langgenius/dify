@@ -612,6 +612,92 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
+  url='/workflows/run/:workflow_run_id/node-executions'
+  method='GET'
+  title='Get node execution information of a workflow'
+  name='#Get-Workflow-Run-Node-Executions'
+/>
+<Row>
+  <Col>
+    Returns the node execution information of a workflow in descending order
+
+    ### Response
+    - `data` (array[object])
+      - `id` (string) Identifier
+      - `created_at` (timestamp) Creation time
+      - `created_by_account` (object) Account information that created the node
+        - `email` (string) Email
+        - `id` (string) Identifier
+        - `name` (string) Name
+      - `created_by_end_user` (object|null) End user
+      - `created_by_role` (string) Role, e.g. `account`
+      - `elapsed_time` (float) Elapsed time in seconds
+      - `error` (string|null) Error message
+      - `execution_metadata` (object|null) Execution metadata
+      - `extras` (object) Additional information
+      - `finished_at` (timestamp) Finish time
+      - `index` (int) Node index
+      - `inputs` (any|null) Input data
+      - `node_id` (string) Node identifier
+      - `node_type` (string) Node type, e.g. `end`
+      - `outputs` (any|null) Output data
+      - `predecessor_node_id` (string|null) Predecessor node identifier
+      - `process_data` (object|null) Processing data
+      - `status` (string) Execution status, `running` / `succeeded` / `failed` / `stopped`
+      - `title` (string) Node title
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_run_id/node-executions" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id/node-executions'\\\n --header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id/node-executions'
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "data": [
+            {
+            "created_at": 1747244722,
+            "created_by_account": 
+                {
+                    "email": "lizb@test.com",
+                    "id": "17f71940-a7b5-4c77-b60f-2bd645c1ffa0",
+                    "name": "lizb"
+                 },
+           "created_by_end_user": None,
+           "created_by_role": "account",
+           "elapsed_time": 0.838795,
+           "error": None,
+           "execution_metadata": None,
+           "extras": {},
+           "finished_at": 1747244722,
+           "id": "bffa2838-0e2c-4cba-bc9c-9abbcc38d001",
+           "index": 3,
+           "inputs": None,
+           "node_id": "1747273509709",
+           "node_type": "end",
+           "outputs": None,
+           "predecessor_node_id": "1745917690204",
+           "process_data": None,
+           "status": "succeeded",
+           "title": "Finish",
+            },
+               ...
+          ]
+    }
+
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
   url='/info'
   method='GET'
   title='Get Application Basic Information'
