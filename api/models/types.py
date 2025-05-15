@@ -50,7 +50,7 @@ class EnumText(TypeDecorator, Generic[_E]):
             # leave some rooms for future longer enum values.
             self._length = max(max_enum_value_len, 20)
 
-    def process_bind_param(self, value: _E | str, dialect):
+    def process_bind_param(self, value: _E | str | None, dialect):
         if value is None:
             return value
         if isinstance(value, self._enum_class):

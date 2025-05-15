@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
@@ -28,6 +29,8 @@ from .base import Base
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType
 from .types import EnumText, StringUUID
+
+_logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from models.model import AppMode
@@ -890,7 +893,15 @@ class WorkflowDraftVariable(Base):
     editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
 
     def get_selector(self) -> list[str]:
-        return json.loads(self.selector)
+        selector = json.loads(self.selector)
+        if not isinstance(selector, list):
+            _logger.error(
+                "invalid selector loaded from database, type=%s, value=%s",
+                type(selector),
+                self.selector,
+            )
+            raise ValueError("invalid selector.")
+        return selector
 
     def _set_selector(self, value: list[str]):
         self.selector = json.dumps(value)
