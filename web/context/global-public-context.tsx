@@ -9,11 +9,15 @@ import { getSystemFeatures } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 
 type GlobalPublicStore = {
+  isPending: boolean
+  setIsPending: (isPending: boolean) => void
   systemFeatures: SystemFeatures
   setSystemFeatures: (systemFeatures: SystemFeatures) => void
 }
 
 export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
+  isPending: true,
+  setIsPending: (isPending: boolean) => set(() => ({ isPending })),
   systemFeatures: defaultSystemFeatures,
   setSystemFeatures: (systemFeatures: SystemFeatures) => set(() => ({ systemFeatures })),
 }))
@@ -25,11 +29,16 @@ const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
     queryKey: ['systemFeatures'],
     queryFn: getSystemFeatures,
   })
-  const { setSystemFeatures } = useGlobalPublicStore()
+  const { setSystemFeatures, setIsPending } = useGlobalPublicStore()
   useEffect(() => {
     if (data)
       setSystemFeatures({ ...defaultSystemFeatures, ...data })
   }, [data, setSystemFeatures])
+
+  useEffect(() => {
+    setIsPending(isPending)
+  }, [isPending, setIsPending])
+
   if (isPending)
     return <div className='flex h-screen w-screen items-center justify-center'><Loading /></div>
   return <>{children}</>
