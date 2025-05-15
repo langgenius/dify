@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import produce from 'immer'
-import { useBoolean } from 'ahooks'
+import { useBoolean, useDebounceFn } from 'ahooks'
 import type {
   CodeNodeType,
   OutputVar,
@@ -42,6 +42,19 @@ function useOutputVarList<T>({
 
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
 
+  // record the first old name value
+  const oldNameRecord = useRef<Record<string, string>>({})
+
+  const {
+    run: renameInspectNameWithDebounce,
+  } = useDebounceFn(
+    (id: string, newName: string) => {
+      const oldName = oldNameRecord.current[id]
+      renameInspectVarName(id, oldName, newName)
+      delete oldNameRecord.current[id]
+    },
+    { wait: 500 },
+  )
   const handleVarsChange = useCallback((newVars: OutputVar, changedIndex?: number, newKey?: string) => {
     const newInputs = produce(inputs, (draft: any) => {
       draft[varKey] = newVars
@@ -60,12 +73,14 @@ function useOutputVarList<T>({
 
     if (newKey) {
       handleOutVarRenameChange(id, [id, outputKeyOrders[changedIndex!]], [id, newKey])
-      renameInspectVarName(id, outputKeyOrders[changedIndex!], newKey)
+      if(!(id in oldNameRecord.current))
+        oldNameRecord.current[id] = outputKeyOrders[changedIndex!]
+      renameInspectNameWithDebounce(id, newKey)
     }
     else if (changedIndex === undefined) {
       deleteNodeInspectorVars(id)
     }
-  }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange, handleOutVarRenameChange, id, renameInspectVarName, deleteNodeInspectorVars])
+  }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange, handleOutVarRenameChange, id, renameInspectNameWithDebounce, deleteNodeInspectorVars])
 
   const generateNewKey = useCallback(() => {
     let keyIndex = Object.keys((inputs as any)[varKey]).length + 1
