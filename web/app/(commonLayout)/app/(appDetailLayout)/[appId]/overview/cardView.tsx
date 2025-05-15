@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext, useContextSelector } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/appCard'
 import Loading from '@/app/components/base/loading'
+import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import { ToastContext } from '@/app/components/base/toast'
 import {
   fetchAppDetail,
@@ -137,6 +138,12 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
         isInPanel={isInPanel}
         onChangeStatus={onChangeApiStatus}
       />
+      {isInPanel && appDetail.mode === 'workflow' && (
+        <MCPServiceCard
+          appInfo={appDetail}
+          onGenerateCode={onGenerateCode}
+        />
+      )}
     </div>
   )
 }
