@@ -68,12 +68,14 @@ def init_app(app: DifyApp):
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             content_type = flask.request.content_type
             # only log body if the request is JSON
-            if flask.request.data and 'application/json' in content_type.lower():
+            if flask.request.data and "application/json" in content_type.lower():
                 try:
                     json_data = json.loads(flask.request.data)
                     formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
-                    logging.debug(f"Received Request {flask.request.method} -> {flask.request.path}, "
-                                  f"Request Body:\n{formatted_json}")
+                    logging.debug(
+                        f"Received Request {flask.request.method} -> {flask.request.path}, "
+                        f"Request Body:\n{formatted_json}"
+                    )
                 except Exception:
                     logging.exception("Failed to parse JSON request")
             else:
@@ -85,18 +87,20 @@ def init_app(app: DifyApp):
         # only log if DEBUG is enabled
         if logging.getLogger().isEnabledFor(logging.DEBUG):
             # only log body if the response is JSON
-            if response.content_type and 'application/json' in response.content_type.lower():
+            if response.content_type and "application/json" in response.content_type.lower():
                 try:
                     response_data = response.get_data(as_text=True)
                     json_data = json.loads(response_data)
                     formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
-                    logging.debug(f"Response {response.status} {response.content_type}, "
-                                  f"Response Body:\n{formatted_json}")
+                    logging.debug(
+                        f"Response {response.status} {response.content_type}, Response Body:\n{formatted_json}"
+                    )
                 except Exception:
                     logging.exception("Failed to parse JSON response")
             else:
                 logging.debug(f"Response {response.status} {response.content_type}")
             return response
+
 
 def get_request_id():
     if getattr(flask.g, "request_id", None):
