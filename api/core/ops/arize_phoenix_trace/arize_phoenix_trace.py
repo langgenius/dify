@@ -41,23 +41,25 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[Tra
     try:
         # Choose the appropriate exporter based on config type
         if isinstance(arize_phoenix_config, ArizeConfig):
+            arize_endpoint = f"{arize_phoenix_config.endpoint}/v1"
             arize_headers = {
                 "api_key": arize_phoenix_config.api_key,
                 "space_id": arize_phoenix_config.space_id,
                 "authorization": f"Bearer {arize_phoenix_config.api_key}",
             }
             exporter = GrpcOTLPSpanExporter(
-                endpoint=arize_phoenix_config.endpoint,
+                endpoint=arize_endpoint,
                 headers=arize_headers,
                 timeout=30
             )
         else:
+            phoenix_endpoint = f"{arize_phoenix_config.endpoint}/v1/traces"
             phoenix_headers = {
                 "api_key": arize_phoenix_config.api_key,
                 "authorization": f"Bearer {arize_phoenix_config.api_key}",
             }
             exporter = HttpOTLPSpanExporter(
-                endpoint=arize_phoenix_config.endpoint,
+                endpoint=phoenix_endpoint,
                 headers=phoenix_headers,
                 timeout=30
             )
