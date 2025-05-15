@@ -28,12 +28,11 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Input from '@/app/components/base/input'
-// import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import cn from '@/utils/classnames'
-
 import {
   Plus02,
 } from '@/app/components/base/icons/src/vender/line/general'
+import ToolSearchInputTag from './tool-search-input-tag'
 
 export type NodeSelectorProps = {
   open?: boolean
@@ -164,31 +163,31 @@ const NodeSelector: FC<NodeSelectorProps> = ({
               }
             </div>
             <div className='relative z-[1] bg-components-panel-bg p-2'>
-              <Input
-                showLeftIcon
-                showClearIcon
-                autoFocus
-                value={searchText}
-                placeholder={searchPlaceholder}
-                onChange={e => setSearchText(e.target.value)}
-                onClear={() => setSearchText('')}
-              />
+              <div className='flex items-center rounded-lg' onClick={e => e.stopPropagation()}>
+                <Input
+                  wrapperClassName='flex items-center'
+                  showLeftIcon
+                  showClearIcon
+                  autoFocus
+                  value={searchText}
+                  placeholder={searchPlaceholder}
+                  onChange={e => setSearchText(e.target.value)}
+                  onClear={() => setSearchText('')}
+                />
+                {
+                  activeTab === TabsEnum.Tools && (
+                    <>
+                      <div className='mr-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
+                      <ToolSearchInputTag
+                        tags={tags}
+                        onTagsChange={setTags}
+                      />
+                    </>
+                  )
+                }
+              </div>
             </div>
           </div>
-          {/* <div className='p-2' onClick={e => e.stopPropagation()}>
-            {activeTab === TabsEnum.Blocks && (
-            )}
-            {activeTab === TabsEnum.Tools && (
-              <SearchBox
-                search={searchText}
-                onSearchChange={setSearchText}
-                tags={tags}
-                onTagsChange={setTags}
-                size='small'
-                placeholder={t('plugin.searchTools')!}
-              />
-            )}
-          </div> */}
           <Tabs
             activeTab={activeTab}
             onSelect={handleSelect}

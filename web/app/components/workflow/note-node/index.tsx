@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import type { NodeProps } from 'reactflow'
 import NodeResizer from '../nodes/_base/components/node-resizer'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 import {
   useNodeDataUpdate,
   useNodesInteractions,
@@ -57,6 +58,8 @@ const NoteNode = ({
   useClickAway(() => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { selected: false } })
   }, ref)
+
+  const { setShortcutsEnabled } = useWorkflowHistoryStore()
 
   return (
     <div
@@ -111,6 +114,7 @@ const NoteNode = ({
                 containerElement={ref.current}
                 placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
                 onChange={handleEditorChange}
+                setShortcutsEnabled={setShortcutsEnabled}
               />
             </div>
           </div>

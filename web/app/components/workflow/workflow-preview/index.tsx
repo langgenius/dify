@@ -38,7 +38,6 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import { CUSTOM_NOTE_NODE } from '@/app/components/workflow/note-node/constants'
-import { WorkflowHistoryProvider } from '@/app/components/workflow/workflow-history-store'
 import CustomNode from './components/nodes'
 import CustomEdge from './components/custom-edge'
 import ZoomInOut from './components/zoom-in-out'
@@ -137,9 +136,7 @@ const WorkflowPreview = ({
 const WorkflowPreviewWrapper = (props: WorkflowPreviewProps) => {
   return (
     <ReactFlowProvider>
-      <WorkflowHistoryProvider nodes={[]} edges={[]}>
-        <WorkflowPreview {...props} />
-      </WorkflowHistoryProvider>
+      <WorkflowPreview {...props} />
     </ReactFlowProvider>
   )
 }
