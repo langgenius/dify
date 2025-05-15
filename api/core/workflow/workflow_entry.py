@@ -9,6 +9,7 @@ from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.workflow.callbacks import WorkflowCallback
+from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
@@ -364,4 +365,5 @@ class WorkflowEntry:
                 input_value = file_factory.build_from_mappings(mappings=input_value, tenant_id=tenant_id)
 
             # append variable and value to variable pool
-            variable_pool.add([variable_node_id] + variable_key_list, input_value)
+            if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
+                variable_pool.add([variable_node_id] + variable_key_list, input_value)

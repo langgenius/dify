@@ -1,5 +1,5 @@
-from flask_login import current_user  # type: ignore  # type: ignore
-from flask_restful import marshal, reqparse  # type: ignore
+from flask_login import current_user  # type: ignore
+from flask_restful import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api import api

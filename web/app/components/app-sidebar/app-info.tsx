@@ -6,9 +6,11 @@ import {
   RiDeleteBinLine,
   RiEditLine,
   RiEqualizer2Line,
+  RiExchange2Line,
   RiFileCopy2Line,
   RiFileDownloadLine,
   RiFileUploadLine,
+  RiMoreLine,
 } from '@remixicon/react'
 import AppIcon from '../base/app-icon'
 import SwitchAppModal from '../app/switch-app-modal'
@@ -32,6 +34,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import ContentDialog from '@/app/components/base/content-dialog'
 import Button from '@/app/components/base/button'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/cardView'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../base/portal-to-follow-elem'
 
 export type IAppInfoProps = {
   expand: boolean
@@ -179,6 +182,11 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
 
   const { isCurrentWorkspaceEditor } = useAppContext()
 
+  const [showMore, setShowMore] = useState(false)
+  const handleTriggerMore = useCallback(() => {
+    setShowMore(true)
+  }, [setShowMore])
+
   if (!appDetail)
     return null
 
@@ -276,22 +284,50 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               <RiFileDownloadLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
               <span className='system-xs-medium text-components-button-secondary-text'>{t('app.export')}</span>
             </Button>
-            {
-              (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (
+            {appDetail.mode !== 'agent-chat' && <PortalToFollowElem
+              open={showMore}
+              onOpenChange={setShowMore}
+              placement='bottom-end'
+              offset={{
+                mainAxis: 4,
+              }}>
+              <PortalToFollowElemTrigger onClick={handleTriggerMore}>
                 <Button
                   size={'small'}
                   variant={'secondary'}
                   className='gap-[1px]'
-                  onClick={() => {
-                    setOpen(false)
-                    setShowImportDSLModal(true)
-                  }}
                 >
-                  <RiFileUploadLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
-                  <span className='system-xs-medium text-components-button-secondary-text'>{t('workflow.common.importDSL')}</span>
+                  <RiMoreLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
+                  <span className='system-xs-medium text-components-button-secondary-text'>{t('common.operation.more')}</span>
                 </Button>
-              )
-            }
+              </PortalToFollowElemTrigger>
+              <PortalToFollowElemContent className='z-[21]'>
+                <div className='flex w-[264px] flex-col rounded-[12px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]'>
+                  {
+                    (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow')
+                    && <div className='flex h-8 cursor-pointer items-center gap-x-1 rounded-lg p-1.5 hover:bg-state-base-hover'
+                      onClick={() => {
+                        setOpen(false)
+                        setShowImportDSLModal(true)
+                      }}>
+                      <RiFileUploadLine className='h-4 w-4 text-text-tertiary' />
+                      <span className='system-md-regular text-text-secondary'>{t('workflow.common.importDSL')}</span>
+                    </div>
+                  }
+                  {
+                    (appDetail.mode === 'completion' || appDetail.mode === 'chat')
+                    && <div className='flex h-8 cursor-pointer items-center gap-x-1 rounded-lg p-1.5 hover:bg-state-base-hover'
+                      onClick={() => {
+                        setOpen(false)
+                        setShowSwitchModal(true)
+                      }}>
+                      <RiExchange2Line className='h-4 w-4 text-text-tertiary' />
+                      <span className='system-md-regular text-text-secondary'>{t('app.switch')}</span>
+                    </div>
+                  }
+                </div>
+              </PortalToFollowElemContent>
+            </PortalToFollowElem>}
           </div>
         </div>
         <div className='flex flex-1'>

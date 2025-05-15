@@ -1,7 +1,7 @@
 from urllib.parse import quote
 
 from flask import Response, request
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import NotFound
 
 import services
@@ -70,12 +70,26 @@ class FilePreviewApi(Resource):
             direct_passthrough=True,
             headers={},
         )
+        # add Accept-Ranges header for audio/video files
+        if upload_file.mime_type in [
+            "audio/mpeg",
+            "audio/wav",
+            "audio/mp4",
+            "audio/ogg",
+            "audio/flac",
+            "audio/aac",
+            "video/mp4",
+            "video/webm",
+            "video/quicktime",
+            "audio/x-m4a",
+        ]:
+            response.headers["Accept-Ranges"] = "bytes"
         if upload_file.size > 0:
             response.headers["Content-Length"] = str(upload_file.size)
         if args["as_attachment"]:
             encoded_filename = quote(upload_file.name)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
-        response.headers["Content-Type"] = "application/octet-stream"
+            response.headers["Content-Type"] = "application/octet-stream"
 
         return response
 

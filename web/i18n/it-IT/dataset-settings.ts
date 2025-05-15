@@ -32,6 +32,7 @@ const translation = {
       description: ' sul metodo di recupero.',
       longDescription:
         ' sul metodo di recupero, puoi cambiare questo in qualsiasi momento nelle impostazioni della Conoscenza.',
+      method: 'Metodo di recupero',
     },
     save: 'Salva',
     retrievalSettings: 'Impostazioni di recupero',

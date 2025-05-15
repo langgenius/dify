@@ -22,6 +22,7 @@ from extensions.ext_storage import storage
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 from .account import Account
+from .base import Base
 from .engine import db
 from .model import App, Tag, TagBinding, UploadFile
 from .types import StringUUID
@@ -33,7 +34,7 @@ class DatasetPermissionEnum(enum.StrEnum):
     PARTIAL_TEAM = "partial_members"
 
 
-class Dataset(db.Model):  # type: ignore[name-defined]
+class Dataset(Base):
     __tablename__ = "datasets"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_pkey"),
@@ -97,7 +98,8 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     @property
     def latest_process_rule(self):
         return (
-            DatasetProcessRule.query.filter(DatasetProcessRule.dataset_id == self.id)
+            db.session.query(DatasetProcessRule)
+            .filter(DatasetProcessRule.dataset_id == self.id)
             .order_by(DatasetProcessRule.created_at.desc())
             .first()
         )
@@ -142,7 +144,8 @@ class Dataset(db.Model):  # type: ignore[name-defined]
     @property
     def word_count(self):
         return (
-            Document.query.with_entities(func.coalesce(func.sum(Document.word_count)))
+            db.session.query(Document)
+            .with_entities(func.coalesce(func.sum(Document.word_count)))
             .filter(Document.dataset_id == self.id)
             .scalar()
         )
@@ -260,7 +263,7 @@ class Dataset(db.Model):  # type: ignore[name-defined]
         return f"Vector_index_{normalized_dataset_id}_Node"
 
 
-class DatasetProcessRule(db.Model):  # type: ignore[name-defined]
+class DatasetProcessRule(Base):
     __tablename__ = "dataset_process_rules"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_process_rule_pkey"),
@@ -300,7 +303,7 @@ class DatasetProcessRule(db.Model):  # type: ignore[name-defined]
             return None
 
 
-class Document(db.Model):  # type: ignore[name-defined]
+class Document(Base):
     __tablename__ = "documents"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="document_pkey"),
@@ -444,12 +447,13 @@ class Document(db.Model):  # type: ignore[name-defined]
 
     @property
     def segment_count(self):
-        return DocumentSegment.query.filter(DocumentSegment.document_id == self.id).count()
+        return db.session.query(DocumentSegment).filter(DocumentSegment.document_id == self.id).count()
 
     @property
     def hit_count(self):
         return (
-            DocumentSegment.query.with_entities(func.coalesce(func.sum(DocumentSegment.hit_count)))
+            db.session.query(DocumentSegment)
+            .with_entities(func.coalesce(func.sum(DocumentSegment.hit_count)))
             .filter(DocumentSegment.document_id == self.id)
             .scalar()
         )
@@ -640,7 +644,7 @@ class Document(db.Model):  # type: ignore[name-defined]
         )
 
 
-class DocumentSegment(db.Model):  # type: ignore[name-defined]
+class DocumentSegment(Base):
     __tablename__ = "document_segments"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="document_segment_pkey"),
@@ -791,7 +795,7 @@ class DocumentSegment(db.Model):  # type: ignore[name-defined]
         return text
 
 
-class ChildChunk(db.Model):  # type: ignore[name-defined]
+class ChildChunk(Base):
     __tablename__ = "child_chunks"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="child_chunk_pkey"),
@@ -834,7 +838,7 @@ class ChildChunk(db.Model):  # type: ignore[name-defined]
         return db.session.query(DocumentSegment).filter(DocumentSegment.id == self.segment_id).first()
 
 
-class AppDatasetJoin(db.Model):  # type: ignore[name-defined]
+class AppDatasetJoin(Base):
     __tablename__ = "app_dataset_joins"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_dataset_join_pkey"),
@@ -851,7 +855,7 @@ class AppDatasetJoin(db.Model):  # type: ignore[name-defined]
         return db.session.get(App, self.app_id)
 
 
-class DatasetQuery(db.Model):  # type: ignore[name-defined]
+class DatasetQuery(Base):
     __tablename__ = "dataset_queries"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_query_pkey"),
@@ -868,7 +872,7 @@ class DatasetQuery(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
 
-class DatasetKeywordTable(db.Model):  # type: ignore[name-defined]
+class DatasetKeywordTable(Base):
     __tablename__ = "dataset_keyword_tables"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_keyword_table_pkey"),
@@ -896,7 +900,7 @@ class DatasetKeywordTable(db.Model):  # type: ignore[name-defined]
                 return dct
 
         # get dataset
-        dataset = Dataset.query.filter_by(id=self.dataset_id).first()
+        dataset = db.session.query(Dataset).filter_by(id=self.dataset_id).first()
         if not dataset:
             return None
         if self.data_source_type == "database":
@@ -913,7 +917,7 @@ class DatasetKeywordTable(db.Model):  # type: ignore[name-defined]
                 return None
 
 
-class Embedding(db.Model):  # type: ignore[name-defined]
+class Embedding(Base):
     __tablename__ = "embeddings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="embedding_pkey"),
@@ -937,7 +941,7 @@ class Embedding(db.Model):  # type: ignore[name-defined]
         return cast(list[float], pickle.loads(self.embedding))  # noqa: S301
 
 
-class DatasetCollectionBinding(db.Model):  # type: ignore[name-defined]
+class DatasetCollectionBinding(Base):
     __tablename__ = "dataset_collection_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_collection_bindings_pkey"),
@@ -952,7 +956,7 @@ class DatasetCollectionBinding(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class TidbAuthBinding(db.Model):  # type: ignore[name-defined]
+class TidbAuthBinding(Base):
     __tablename__ = "tidb_auth_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tidb_auth_bindings_pkey"),
@@ -972,7 +976,7 @@ class TidbAuthBinding(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class Whitelist(db.Model):  # type: ignore[name-defined]
+class Whitelist(Base):
     __tablename__ = "whitelists"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="whitelists_pkey"),
@@ -984,7 +988,7 @@ class Whitelist(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class DatasetPermission(db.Model):  # type: ignore[name-defined]
+class DatasetPermission(Base):
     __tablename__ = "dataset_permissions"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_permission_pkey"),
@@ -1001,7 +1005,7 @@ class DatasetPermission(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class ExternalKnowledgeApis(db.Model):  # type: ignore[name-defined]
+class ExternalKnowledgeApis(Base):
     __tablename__ = "external_knowledge_apis"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="external_knowledge_apis_pkey"),
@@ -1054,7 +1058,7 @@ class ExternalKnowledgeApis(db.Model):  # type: ignore[name-defined]
         return dataset_bindings
 
 
-class ExternalKnowledgeBindings(db.Model):  # type: ignore[name-defined]
+class ExternalKnowledgeBindings(Base):
     __tablename__ = "external_knowledge_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="external_knowledge_bindings_pkey"),
@@ -1075,7 +1079,7 @@ class ExternalKnowledgeBindings(db.Model):  # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class DatasetAutoDisableLog(db.Model):  # type: ignore[name-defined]
+class DatasetAutoDisableLog(Base):
     __tablename__ = "dataset_auto_disable_logs"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_auto_disable_log_pkey"),
@@ -1092,7 +1096,7 @@ class DatasetAutoDisableLog(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class RateLimitLog(db.Model):  # type: ignore[name-defined]
+class RateLimitLog(Base):
     __tablename__ = "rate_limit_logs"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="rate_limit_log_pkey"),
@@ -1107,7 +1111,7 @@ class RateLimitLog(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class DatasetMetadata(db.Model):  # type: ignore[name-defined]
+class DatasetMetadata(Base):
     __tablename__ = "dataset_metadatas"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_metadata_pkey"),
@@ -1126,7 +1130,7 @@ class DatasetMetadata(db.Model):  # type: ignore[name-defined]
     updated_by = db.Column(StringUUID, nullable=True)
 
 
-class DatasetMetadataBinding(db.Model):  # type: ignore[name-defined]
+class DatasetMetadataBinding(Base):
     __tablename__ = "dataset_metadata_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_metadata_binding_pkey"),

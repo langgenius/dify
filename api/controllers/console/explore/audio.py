@@ -66,7 +66,7 @@ class ChatAudioApi(InstalledAppResource):
 
 class ChatTextApi(InstalledAppResource):
     def post(self, installed_app):
-        from flask_restful import reqparse  # type: ignore
+        from flask_restful import reqparse
 
         app_model = installed_app.app
         try:

@@ -8,9 +8,9 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repository.workflow_node_execution_repository import OrderConfig
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.repository.workflow_node_execution_repository import OrderConfig
 from models.workflow import WorkflowNodeExecution
-from repositories.workflow_node_execution.sqlalchemy_repository import SQLAlchemyWorkflowNodeExecutionRepository
 
 
 @pytest.fixture
@@ -80,7 +80,7 @@ def test_get_by_node_execution_id(repository, session, mocker: MockerFixture):
     """Test get_by_node_execution_id method."""
     session_obj, _ = session
     # Set up mock
-    mock_select = mocker.patch("repositories.workflow_node_execution.sqlalchemy_repository.select")
+    mock_select = mocker.patch("core.repositories.sqlalchemy_workflow_node_execution_repository.select")
     mock_stmt = mocker.MagicMock()
     mock_select.return_value = mock_stmt
     mock_stmt.where.return_value = mock_stmt
@@ -99,7 +99,7 @@ def test_get_by_workflow_run(repository, session, mocker: MockerFixture):
     """Test get_by_workflow_run method."""
     session_obj, _ = session
     # Set up mock
-    mock_select = mocker.patch("repositories.workflow_node_execution.sqlalchemy_repository.select")
+    mock_select = mocker.patch("core.repositories.sqlalchemy_workflow_node_execution_repository.select")
     mock_stmt = mocker.MagicMock()
     mock_select.return_value = mock_stmt
     mock_stmt.where.return_value = mock_stmt
@@ -120,7 +120,7 @@ def test_get_running_executions(repository, session, mocker: MockerFixture):
     """Test get_running_executions method."""
     session_obj, _ = session
     # Set up mock
-    mock_select = mocker.patch("repositories.workflow_node_execution.sqlalchemy_repository.select")
+    mock_select = mocker.patch("core.repositories.sqlalchemy_workflow_node_execution_repository.select")
     mock_stmt = mocker.MagicMock()
     mock_select.return_value = mock_stmt
     mock_stmt.where.return_value = mock_stmt
@@ -158,7 +158,7 @@ def test_clear(repository, session, mocker: MockerFixture):
     """Test clear method."""
     session_obj, _ = session
     # Set up mock
-    mock_delete = mocker.patch("repositories.workflow_node_execution.sqlalchemy_repository.delete")
+    mock_delete = mocker.patch("core.repositories.sqlalchemy_workflow_node_execution_repository.delete")
     mock_stmt = mocker.MagicMock()
     mock_delete.return_value = mock_stmt
     mock_stmt.where.return_value = mock_stmt

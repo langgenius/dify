@@ -36,7 +36,7 @@ import Toast from '@/app/components/base/toast'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
@@ -302,10 +302,17 @@ const TextGeneration: FC<IMainProps> = ({
     const varLen = promptConfig?.prompt_variables.length || 0
     setIsCallBatchAPI(true)
     const allTaskList: Task[] = payloadData.map((item, i) => {
-      const inputs: Record<string, string> = {}
+      const inputs: Record<string, any> = {}
       if (varLen > 0) {
         item.slice(0, varLen).forEach((input, index) => {
-          inputs[promptConfig?.prompt_variables[index].key as string] = input
+          const varSchema = promptConfig?.prompt_variables[index]
+          inputs[varSchema?.key as string] = input
+          if (!input) {
+            if (varSchema?.type === 'string' || varSchema?.type === 'paragraph')
+              inputs[varSchema?.key as string] = ''
+            else
+              inputs[varSchema?.key as string] = undefined
+          }
         })
       }
       return {
@@ -628,7 +635,7 @@ const TextGeneration: FC<IMainProps> = ({
               <img src={customConfig?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
             )}
             {!customConfig?.replace_webapp_logo && (
-              <LogoSite className='!h-5' />
+              <DifyLogo size='small' />
             )}
           </div>
         )}
@@ -657,7 +664,7 @@ const TextGeneration: FC<IMainProps> = ({
                 showResultPanel()
             }}
           >
-            <div className='h-1 w-8 cursor-grab rounded bg-divider-solid'/>
+            <div className='h-1 w-8 cursor-grab rounded bg-divider-solid' />
           </div>
         )}
         {renderResWrap}

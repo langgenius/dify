@@ -3,6 +3,8 @@ const translation = {
   upgradeTip: {
     prefix: 'Markanızı özelleştirmek için planınızı yükseltin',
     suffix: '.',
+    des: 'Markanızı özelleştirmek için planınızı yükseltin',
+    title: 'Planınızı yükseltin',
   },
   webapp: {
     title: 'WebApp markasını özelleştir',

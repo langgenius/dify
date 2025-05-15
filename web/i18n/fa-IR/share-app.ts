@@ -26,6 +26,12 @@ const translation = {
     },
     tryToSolve: 'سعی کنید حل کنید',
     temporarySystemIssue: 'ببخشید، مشکل موقت سیستمی.',
+    expand: 'باز کردن',
+    collapse: 'بستن',
+    newChatTip: 'قبلاً در یک چت جدید',
+    viewChatSettings: 'تنظیمات چت را مشاهده کنید',
+    chatFormTip: 'تنظیمات چت پس از شروع چت قابل تغییر نیستند.',
+    chatSettingsTitle: 'راه‌اندازی چت جدید',
   },
   generation: {
     tabs: {
@@ -64,6 +70,8 @@ const translation = {
       moreThanMaxLengthLine: 'ردیف {{rowIndex}}: مقدار {{varName}} نمی‌تواند بیشتر از {{maxLength}} کاراکتر باشد',
       atLeastOne: 'لطفاً حداقل یک ردیف در فایل بارگذاری شده وارد کنید.',
     },
+    executions: '{{num}} اعدام',
+    execution: 'اجرا',
   },
 }
 

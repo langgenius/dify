@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource, marshal, marshal_with, reqparse  # type: ignore
+from flask_restful import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.service_api import api
@@ -79,7 +79,7 @@ class AnnotationListApi(Resource):
 class AnnotationUpdateDeleteApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     @marshal_with(annotation_fields)
-    def post(self, app_model: App, end_user: EndUser, annotation_id):
+    def put(self, app_model: App, end_user: EndUser, annotation_id):
         if not current_user.is_editor:
             raise Forbidden()
 

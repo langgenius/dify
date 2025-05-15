@@ -7,7 +7,7 @@ from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 
-from core.repository import RepositoryFactory
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
 from models.model import (
@@ -189,12 +189,8 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
     # Create a repository instance for WorkflowNodeExecution
-    repository = RepositoryFactory.create_workflow_node_execution_repository(
-        params={
-            "tenant_id": tenant_id,
-            "app_id": app_id,
-            "session_factory": db.session.get_bind(),
-        }
+    repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=db.engine, tenant_id=tenant_id, app_id=app_id
     )
 
     # Use the clear method to delete all records for this tenant_id and app_id

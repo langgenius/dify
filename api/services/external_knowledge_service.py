@@ -2,9 +2,10 @@ import json
 from copy import deepcopy
 from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
+from urllib.parse import urlparse
 
 import httpx
-import validators
+from sqlalchemy import select
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
@@ -24,14 +25,20 @@ from services.errors.dataset import DatasetNameDuplicateError
 
 class ExternalDatasetService:
     @staticmethod
-    def get_external_knowledge_apis(page, per_page, tenant_id, search=None) -> tuple[list[ExternalKnowledgeApis], int]:
-        query = ExternalKnowledgeApis.query.filter(ExternalKnowledgeApis.tenant_id == tenant_id).order_by(
-            ExternalKnowledgeApis.created_at.desc()
+    def get_external_knowledge_apis(
+        page, per_page, tenant_id, search=None
+    ) -> tuple[list[ExternalKnowledgeApis], int | None]:
+        query = (
+            select(ExternalKnowledgeApis)
+            .filter(ExternalKnowledgeApis.tenant_id == tenant_id)
+            .order_by(ExternalKnowledgeApis.created_at.desc())
         )
         if search:
             query = query.filter(ExternalKnowledgeApis.name.ilike(f"%{search}%"))
 
-        external_knowledge_apis = query.paginate(page=page, per_page=per_page, max_per_page=100, error_out=False)
+        external_knowledge_apis = db.paginate(
+            select=query, page=page, per_page=per_page, max_per_page=100, error_out=False
+        )
 
         return external_knowledge_apis.items, external_knowledge_apis.total
 
@@ -72,7 +79,9 @@ class ExternalDatasetService:
 
         endpoint = f"{settings['endpoint']}/retrieval"
         api_key = settings["api_key"]
-        if not validators.url(endpoint, simple_host=True):
+
+        parsed_url = urlparse(endpoint)
+        if not all([parsed_url.scheme, parsed_url.netloc]):
             if not endpoint.startswith("http://") and not endpoint.startswith("https://"):
                 raise ValueError(f"invalid endpoint: {endpoint} must start with http:// or https://")
             else:
@@ -90,18 +99,18 @@ class ExternalDatasetService:
 
     @staticmethod
     def get_external_knowledge_api(external_knowledge_api_id: str) -> ExternalKnowledgeApis:
-        external_knowledge_api: Optional[ExternalKnowledgeApis] = ExternalKnowledgeApis.query.filter_by(
-            id=external_knowledge_api_id
-        ).first()
+        external_knowledge_api: Optional[ExternalKnowledgeApis] = (
+            db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id).first()
+        )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
         return external_knowledge_api
 
     @staticmethod
     def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api: Optional[ExternalKnowledgeApis] = ExternalKnowledgeApis.query.filter_by(
-            id=external_knowledge_api_id, tenant_id=tenant_id
-        ).first()
+        external_knowledge_api: Optional[ExternalKnowledgeApis] = (
+            db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
         if args.get("settings") and args.get("settings").get("api_key") == HIDDEN_VALUE:
@@ -118,9 +127,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def delete_external_knowledge_api(tenant_id: str, external_knowledge_api_id: str):
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
-            id=external_knowledge_api_id, tenant_id=tenant_id
-        ).first()
+        external_knowledge_api = (
+            db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
 
@@ -129,25 +138,29 @@ class ExternalDatasetService:
 
     @staticmethod
     def external_knowledge_api_use_check(external_knowledge_api_id: str) -> tuple[bool, int]:
-        count = ExternalKnowledgeBindings.query.filter_by(external_knowledge_api_id=external_knowledge_api_id).count()
+        count = (
+            db.session.query(ExternalKnowledgeBindings)
+            .filter_by(external_knowledge_api_id=external_knowledge_api_id)
+            .count()
+        )
         if count > 0:
             return True, count
         return False, 0
 
     @staticmethod
     def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
-        external_knowledge_binding: Optional[ExternalKnowledgeBindings] = ExternalKnowledgeBindings.query.filter_by(
-            dataset_id=dataset_id, tenant_id=tenant_id
-        ).first()
+        external_knowledge_binding: Optional[ExternalKnowledgeBindings] = (
+            db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
+        )
         if not external_knowledge_binding:
             raise ValueError("external knowledge binding not found")
         return external_knowledge_binding
 
     @staticmethod
     def document_create_args_validate(tenant_id: str, external_knowledge_api_id: str, process_parameter: dict):
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
-            id=external_knowledge_api_id, tenant_id=tenant_id
-        ).first()
+        external_knowledge_api = (
+            db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        )
         if external_knowledge_api is None:
             raise ValueError("api template not found")
         settings = json.loads(external_knowledge_api.settings)
@@ -210,11 +223,13 @@ class ExternalDatasetService:
     @staticmethod
     def create_external_dataset(tenant_id: str, user_id: str, args: dict) -> Dataset:
         # check if dataset name already exists
-        if Dataset.query.filter_by(name=args.get("name"), tenant_id=tenant_id).first():
+        if db.session.query(Dataset).filter_by(name=args.get("name"), tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(f"Dataset with name {args.get('name')} already exists.")
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
-            id=args.get("external_knowledge_api_id"), tenant_id=tenant_id
-        ).first()
+        external_knowledge_api = (
+            db.session.query(ExternalKnowledgeApis)
+            .filter_by(id=args.get("external_knowledge_api_id"), tenant_id=tenant_id)
+            .first()
+        )
 
         if external_knowledge_api is None:
             raise ValueError("api template not found")
@@ -252,15 +267,17 @@ class ExternalDatasetService:
         external_retrieval_parameters: dict,
         metadata_condition: Optional[MetadataCondition] = None,
     ) -> list:
-        external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(
-            dataset_id=dataset_id, tenant_id=tenant_id
-        ).first()
+        external_knowledge_binding = (
+            db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
+        )
         if not external_knowledge_binding:
             raise ValueError("external knowledge binding not found")
 
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
-            id=external_knowledge_binding.external_knowledge_api_id
-        ).first()
+        external_knowledge_api = (
+            db.session.query(ExternalKnowledgeApis)
+            .filter_by(id=external_knowledge_binding.external_knowledge_api_id)
+            .first()
+        )
         if not external_knowledge_api:
             raise ValueError("external api template not found")
 

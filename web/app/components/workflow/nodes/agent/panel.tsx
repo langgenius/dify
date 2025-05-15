@@ -81,7 +81,11 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const resetEditor = useStore(s => s.setControlPromptEditorRerenderKey)
 
   return <div className='my-2'>
-    <Field title={t('workflow.nodes.agent.strategy.label')} className='px-4 py-2' tooltip={t('workflow.nodes.agent.strategy.tooltip')} >
+    <Field
+    required
+    title={t('workflow.nodes.agent.strategy.label')}
+    className='px-4 py-2'
+    tooltip={t('workflow.nodes.agent.strategy.tooltip')} >
       <AgentStrategy
         strategy={inputs.agent_strategy_name ? {
           agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
@@ -98,7 +102,6 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             agent_strategy_label: strategy?.agent_strategy_label,
             output_schema: strategy!.agent_output_schema,
             plugin_unique_identifier: strategy!.plugin_unique_identifier,
-            agent_parameters: {},
           })
           resetEditor(Date.now())
         }}

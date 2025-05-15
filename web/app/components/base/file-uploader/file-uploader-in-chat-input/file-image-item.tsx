@@ -32,6 +32,7 @@ const FileImageItem = ({
 }: FileImageItemProps) => {
   const { id, progress, base64Url, url, name } = file
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const download_url = url ? `${url}&as_attachment=true` : base64Url
 
   return (
     <>
@@ -84,7 +85,7 @@ const FileImageItem = ({
                 className='absolute bottom-0.5 right-0.5  flex h-6 w-6 items-center justify-center rounded-lg bg-components-actionbar-bg shadow-md'
                 onClick={(e) => {
                   e.stopPropagation()
-                  downloadFile(url || base64Url || '', name)
+                  downloadFile(download_url || '', name)
                 }}
               >
                 <RiDownloadLine className='h-4 w-4 text-text-tertiary' />

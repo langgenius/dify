@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import { basePath } from '@/utils/var'
+import { WEB_PREFIX } from '@/config'
 import PlanBadge from '@/app/components/header/plan-badge'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
@@ -23,7 +23,7 @@ const WorkplaceSelector = () => {
         return
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      location.assign(`${location.origin}${basePath}`)
+      location.assign(WEB_PREFIX)
     }
     catch {
       notify({ type: 'error', message: t('common.provider.saveFailed') })
@@ -61,7 +61,8 @@ const WorkplaceSelector = () => {
               <MenuItems
                 className={cn(
                   `
-                    shadows-shadow-lg absolute left-[-15px] mt-1 flex w-[280px] flex-col items-start rounded-xl bg-components-panel-bg-blur backdrop-blur-[5px]
+                    shadows-shadow-lg absolute left-[-15px] mt-1 flex max-h-[400px] w-[280px] flex-col items-start overflow-y-auto rounded-xl
+                    bg-components-panel-bg-blur backdrop-blur-[5px]
                   `,
                 )}
               >

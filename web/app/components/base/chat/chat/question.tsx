@@ -5,6 +5,8 @@ import type {
 import {
   memo,
   useCallback,
+  useEffect,
+  useRef,
   useState,
 } from 'react'
 import type { ChatItem } from '../types'
@@ -28,6 +30,7 @@ type QuestionProps = {
   item: ChatItem
   questionIcon?: ReactNode
   theme: Theme | null | undefined
+  enableEdit?: boolean
   switchSibling?: (siblingMessageId: string) => void
 }
 
@@ -35,6 +38,7 @@ const Question: FC<QuestionProps> = ({
   item,
   questionIcon,
   theme,
+  enableEdit = true,
   switchSibling,
 }) => {
   const { t } = useTranslation()
@@ -50,6 +54,8 @@ const Question: FC<QuestionProps> = ({
 
   const [isEditing, setIsEditing] = useState(false)
   const [editedContent, setEditedContent] = useState(content)
+  const [contentWidth, setContentWidth] = useState(0)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   const handleEdit = useCallback(() => {
     setIsEditing(true)
@@ -73,26 +79,44 @@ const Question: FC<QuestionProps> = ({
       item.nextSibling && switchSibling?.(item.nextSibling)
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
+  const getContentWidth = () => {
+    if (contentRef.current)
+      setContentWidth(contentRef.current?.clientWidth)
+  }
+
+  useEffect(() => {
+    if (!contentRef.current)
+      return
+    const resizeObserver = new ResizeObserver(() => {
+      getContentWidth()
+    })
+    resizeObserver.observe(contentRef.current)
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
   return (
-    <div className='mb-2 flex justify-end pl-14 last:mb-0'>
-      <div className={cn('group relative mr-4 flex max-w-full items-start', isEditing && 'flex-1')}>
+    <div className='mb-2 flex justify-end last:mb-0'>
+      <div className={cn('group relative mr-4 flex max-w-full items-start pl-14', isEditing && 'flex-1')}>
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
-          <div className="
-            absolutegap-0.5 hidden rounded-[10px] border-[0.5px] border-components-actionbar-border
-            bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex
-          ">
+          <div
+            className="absolute hidden gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex"
+            style={{ right: contentWidth + 8 }}
+          >
             <ActionButton onClick={() => {
               copy(content)
               Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
             }}>
               <RiClipboardLine className='h-4 w-4' />
             </ActionButton>
-            <ActionButton onClick={handleEdit}>
+            {enableEdit && <ActionButton onClick={handleEdit}>
               <RiEditLine className='h-4 w-4' />
-            </ActionButton>
+            </ActionButton>}
           </div>
         </div>
         <div
+          ref={contentRef}
           className='w-full rounded-2xl bg-[#D1E9FF]/50 px-4 py-3 text-sm text-gray-900'
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >

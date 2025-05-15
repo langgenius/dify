@@ -1,5 +1,6 @@
 import { BlockEnum, ErrorHandleMode } from '../../types'
-import type { NodeDefault } from '../../types'
+import type { NodeDefault, Var } from '../../types'
+import { getNotExistVariablesByArray } from '../../utils/workflow'
 import type { IterationNodeType } from './types'
 import {
   ALL_CHAT_AVAILABLE_BLOCKS,
@@ -56,6 +57,19 @@ const nodeDefault: NodeDefault<IterationNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
+    }
+  },
+  checkVarValid(payload: IterationNodeType, varMap: Record<string, Var>, t: any) {
+    const errorMessageArr: string[] = []
+
+    const iterator_selector_warnings = getNotExistVariablesByArray([payload.iterator_selector], varMap)
+    if (iterator_selector_warnings.length)
+      errorMessageArr.push(`${t('workflow.nodes.iteration.input')} ${t('workflow.common.referenceVar')}${iterator_selector_warnings.join('、')}${t('workflow.common.noExist')}`)
+
+    return {
+      isValid: true,
+      warning_vars: iterator_selector_warnings,
+      errorMessage: errorMessageArr,
     }
   },
 }

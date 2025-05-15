@@ -155,6 +155,10 @@ const translation = {
       title: '오픽',
       description: 'Opik은 LLM 애플리케이션을 평가, 테스트 및 모니터링하기 위한 오픈 소스 플랫폼입니다.',
     },
+    weave: {
+      title: '직조하다',
+      description: 'Weave는 LLM 애플리케이션을 평가하고 테스트하며 모니터링하기 위한 오픈 소스 플랫폼입니다.',
+    },
   },
   answerIcon: {
     description: 'WebApp 아이콘을 사용하여 공유 응용 프로그램에서 바꿀🤖지 여부',
@@ -189,6 +193,17 @@ const translation = {
     noParams: '매개 변수가 필요하지 않습니다.',
     label: '앱',
     placeholder: '앱 선택...',
+  },
+  structOutput: {
+    required: '필수',
+    LLMResponse: 'LLM 응답',
+    modelNotSupported: '모델이 지원되지 않습니다.',
+    notConfiguredTip: '구성이 아직 설정되지 않았습니다.',
+    structured: '구조화된',
+    configure: '설정하다',
+    moreFillTip: '최대 10단계 중첩을 표시합니다.',
+    modelNotSupportedTip: '현재 모델은 이 기능을 지원하지 않으며 자동으로 프롬프트 주입으로 다운그레이드됩니다.',
+    structuredTip: '구조화된 출력은 모델이 제공한 JSON 스키마를 항상 준수하는 응답을 생성하도록 보장하는 기능입니다.',
   },
 }
 

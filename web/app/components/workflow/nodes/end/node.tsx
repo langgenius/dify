@@ -52,7 +52,7 @@ const Node: FC<NodeProps<EndNodeType>> = ({
           isChatMode,
         })
         return (
-          <div key={index} className='flex h-6 items-center justify-between space-x-1 rounded-md  bg-components-badge-white-to-dark px-1 text-xs font-normal text-text-secondary'>
+          <div key={index} className='flex h-6 items-center justify-between space-x-1 rounded-md  bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary'>
             <div className='flex items-center text-xs font-medium text-text-tertiary'>
               {!isEnv && !isChatVar && (
                 <>

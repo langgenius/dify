@@ -2,39 +2,38 @@
     @apply flex flex-col border-l border-components-panel-border shrink-0 bg-background-default-lighter;
     width: 100%;
   }
-  
+
   .previewHeader {
     @apply border-b border-divider-subtle shrink-0;
     margin: 42px 32px 0;
     padding-bottom: 16px;
   }
-  
+
   .previewHeader .title {
     @apply flex justify-between items-center text-text-primary;
   }
-  
+
   .previewHeader .fileName {
     @apply text-text-tertiary;
   }
-  
+
   .previewHeader .filetype {
     @apply text-text-tertiary;
   }
-  
+
   .previewContent {
     @apply overflow-y-auto grow text-text-secondary;
     padding: 20px 32px;
   }
-  
+
   .previewContent .loading {
     width: 100%;
     height: 180px;
     background: transparent center no-repeat url(../assets/Loading.svg);
     background-size: contain;
   }
-  
+
   .fileContent {
     white-space: pre-line;
     word-break: break-all;
   }
-  

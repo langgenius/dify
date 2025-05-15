@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
-import { basePath } from '@/utils/var'
+import Link from 'next/link'
 import cn from 'classnames'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import Input from '../components/base/input'
@@ -164,7 +164,7 @@ const ChangePasswordForm = () => {
           </div>
           <div className="mx-auto mt-6 w-full">
             <Button variant='primary' className='w-full'>
-              <a href={`${basePath}/signin`}>{t('login.passwordChanged')}</a>
+              <Link href={'/signin'}>{t('login.passwordChanged')}</Link>
             </Button>
           </div>
         </div>
