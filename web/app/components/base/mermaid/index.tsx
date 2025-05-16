@@ -476,15 +476,15 @@ const Flowchart = React.forwardRef((props: {
       'bg-white': currentTheme === Theme.light,
       'bg-slate-900': currentTheme === Theme.dark,
     }),
-    mermaidDiv: cn('mermaid cursor-pointer h-auto w-full relative', {
+    mermaidDiv: cn('mermaid relative h-auto w-full cursor-pointer', {
       'bg-white': currentTheme === Theme.light,
       'bg-slate-900': currentTheme === Theme.dark,
     }),
-    errorMessage: cn('py-4 px-[26px]', {
+    errorMessage: cn('px-[26px] py-4', {
       'text-red-500': currentTheme === Theme.light,
       'text-red-400': currentTheme === Theme.dark,
     }),
-    errorIcon: cn('w-6 h-6', {
+    errorIcon: cn('h-6 w-6', {
       'text-red-500': currentTheme === Theme.light,
       'text-red-400': currentTheme === Theme.dark,
     }),
@@ -492,7 +492,7 @@ const Flowchart = React.forwardRef((props: {
       'text-gray-700': currentTheme === Theme.light,
       'text-gray-300': currentTheme === Theme.dark,
     }),
-    themeToggle: cn('flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 shadow-md backdrop-blur-sm', {
+    themeToggle: cn('flex h-10 w-10 items-center justify-center rounded-full shadow-md backdrop-blur-sm transition-all duration-300', {
       'bg-white/80 hover:bg-white hover:shadow-lg text-gray-700 border border-gray-200': currentTheme === Theme.light,
       'bg-slate-800/80 hover:bg-slate-700 hover:shadow-lg text-yellow-300 border border-slate-600': currentTheme === Theme.dark,
     }),
@@ -501,7 +501,7 @@ const Flowchart = React.forwardRef((props: {
   // Style classes for look options
   const getLookButtonClass = (lookType: 'classic' | 'handDrawn') => {
     return cn(
-      'flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
+      'system-sm-medium mb-4 flex h-8 w-[calc((100%-8px)/2)] cursor-pointer items-center justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary',
       look === lookType && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
       currentTheme === Theme.dark && 'border-slate-600 bg-slate-800 text-slate-300',
       look === lookType && currentTheme === Theme.dark && 'border-blue-500 bg-slate-700 text-white',
@@ -512,7 +512,7 @@ const Flowchart = React.forwardRef((props: {
     <div ref={ref as React.RefObject<HTMLDivElement>} className={themeClasses.container}>
       <div className={themeClasses.segmented}>
         <div className="msh-segmented-group">
-          <label className="msh-segmented-item flex items-center space-x-1 m-2 w-[200px]">
+          <label className="msh-segmented-item m-2 flex w-[200px] items-center space-x-1">
             <div
               key='classic'
               className={getLookButtonClass('classic')}
@@ -534,7 +534,7 @@ const Flowchart = React.forwardRef((props: {
       <div ref={containerRef} style={{ position: 'absolute', visibility: 'hidden', height: 0, overflow: 'hidden' }} />
 
       {isLoading && !svgCode && (
-        <div className='py-4 px-[26px]'>
+        <div className='px-[26px] py-4'>
           <LoadingAnim type='text'/>
           {!isCodeComplete && (
             <div className="mt-2 text-sm text-gray-500">
@@ -546,7 +546,7 @@ const Flowchart = React.forwardRef((props: {
 
       {svgCode && (
         <div className={themeClasses.mermaidDiv} style={{ objectFit: 'cover' }} onClick={() => setImagePreviewUrl(svgCode)}>
-          <div className="absolute left-2 bottom-2 z-[100]">
+          <div className="absolute bottom-2 left-2 z-[100]">
             <button
               onClick={(e) => {
                 e.stopPropagation()

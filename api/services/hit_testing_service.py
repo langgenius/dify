@@ -69,6 +69,7 @@ class HitTestingService:
         query: str,
         account: Account,
         external_retrieval_model: dict,
+        metadata_filtering_conditions: dict,
     ) -> dict:
         if dataset.provider != "external":
             return {
@@ -82,6 +83,7 @@ class HitTestingService:
             dataset_id=dataset.id,
             query=cls.escape_query_for_search(query),
             external_retrieval_model=external_retrieval_model,
+            metadata_filtering_conditions=metadata_filtering_conditions,
         )
 
         end = time.perf_counter()

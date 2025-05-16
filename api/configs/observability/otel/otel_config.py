@@ -27,6 +27,11 @@ class OTelConfig(BaseSettings):
         default="otlp",
     )
 
+    OTEL_EXPORTER_OTLP_PROTOCOL: str = Field(
+        description="OTLP exporter protocol ('grpc' or 'http')",
+        default="http",
+    )
+
     OTEL_SAMPLING_RATE: float = Field(default=0.1, description="Sampling rate for traces (0.0 to 1.0)")
 
     OTEL_BATCH_EXPORT_SCHEDULE_DELAY: int = Field(

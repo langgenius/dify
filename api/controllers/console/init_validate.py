@@ -1,7 +1,7 @@
 import os
 
 from flask import session
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 

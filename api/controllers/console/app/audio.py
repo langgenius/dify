@@ -1,7 +1,7 @@
 import logging
 
 from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services

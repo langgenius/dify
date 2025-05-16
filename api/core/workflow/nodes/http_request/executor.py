@@ -262,7 +262,10 @@ class Executor:
                 headers[authorization.config.header] = f"Bearer {authorization.config.api_key}"
             elif self.auth.config.type == "basic":
                 credentials = authorization.config.api_key
-                encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+                if ":" in credentials:
+                    encoded_credentials = base64.b64encode(credentials.encode("utf-8")).decode("utf-8")
+                else:
+                    encoded_credentials = credentials
                 headers[authorization.config.header] = f"Basic {encoded_credentials}"
             elif self.auth.config.type == "custom":
                 headers[authorization.config.header] = authorization.config.api_key or ""

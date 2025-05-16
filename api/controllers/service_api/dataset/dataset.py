@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import marshal, reqparse  # type: ignore
+from flask_restful import marshal, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service
@@ -313,7 +313,7 @@ class DatasetApi(DatasetApiResource):
         try:
             if DatasetService.delete_dataset(dataset_id_str, current_user):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-                return {"result": "success"}, 204
+                return 204
             else:
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:

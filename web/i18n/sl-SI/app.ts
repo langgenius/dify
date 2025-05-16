@@ -176,6 +176,10 @@ const translation = {
       description: 'Opik je odprtokodna platforma za ocenjevanje, testiranje in spremljanje aplikacij LLM.',
       title: 'Opik',
     },
+    weave: {
+      title: 'Tkanje',
+      description: 'Weave je odprtokodna platforma za vrednotenje, testiranje in spremljanje aplikacij LLM.',
+    },
   },
   mermaid: {
     handDrawn: 'Ročno narisano',
@@ -201,6 +205,17 @@ const translation = {
     noParams: 'Parametri niso potrebni',
     label: 'APL',
     placeholder: 'Izberite aplikacijo ...',
+  },
+  structOutput: {
+    configure: 'Konfiguriraj',
+    structured: 'Strukturirano',
+    modelNotSupported: 'Model ni podprt',
+    required: 'Zahtevano',
+    moreFillTip: 'Prikazovanje največ 10 ravni gnezdenja',
+    LLMResponse: 'LLM odziv',
+    notConfiguredTip: 'Strukturiranega izhoda še ni mogoče konfigurirati',
+    modelNotSupportedTip: 'Trenutni model ne podpira te funkcije in se samodejno zniža na vbrizgavanje pozivov.',
+    structuredTip: 'Strukturirani izhodi so funkcija, ki zagotavlja, da bo model vedno generiral odgovore, ki se držijo vašega posredovanega JSON sheme.',
   },
 }
 

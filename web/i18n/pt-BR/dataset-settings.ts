@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'Saiba mais',
       description: ' sobre o método de recuperação.',
       longDescription: ' sobre o método de recuperação, você pode alterar isso a qualquer momento nas configurações do conhecimento.',
+      method: 'Método de Recuperação',
     },
     save: 'Salvar',
     permissionsInvitedMembers: 'Membros parciais da equipe',

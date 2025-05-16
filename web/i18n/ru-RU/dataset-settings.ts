@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'Узнать больше',
       description: ' о методе поиска.',
       longDescription: ' о методе поиска, вы можете изменить это в любое время в настройках базы знаний.',
+      method: 'Метод извлечения',
     },
     save: 'Сохранить',
     externalKnowledgeAPI: 'API внешних знаний',

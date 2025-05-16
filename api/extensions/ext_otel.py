@@ -6,6 +6,7 @@ import socket
 import sys
 from typing import Union
 
+import flask
 from celery.signals import worker_init  # type: ignore
 from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 
@@ -27,6 +28,8 @@ def on_user_loaded(_sender, user):
 
 
 def init_app(app: DifyApp):
+    from opentelemetry.semconv.trace import SpanAttributes
+
     def is_celery_worker():
         return "celery" in sys.argv[0].lower()
 
@@ -37,7 +40,9 @@ def init_app(app: DifyApp):
     def init_flask_instrumentor(app: DifyApp):
         meter = get_meter("http_metrics", version=dify_config.CURRENT_VERSION)
         _http_response_counter = meter.create_counter(
-            "http.server.response.count", description="Total number of HTTP responses by status code", unit="{response}"
+            "http.server.response.count",
+            description="Total number of HTTP responses by status code, method and target",
+            unit="{response}",
         )
 
         def response_hook(span: Span, status: str, response_headers: list):
@@ -50,7 +55,13 @@ def init_app(app: DifyApp):
                 status = status.split(" ")[0]
                 status_code = int(status)
                 status_class = f"{status_code // 100}xx"
-                _http_response_counter.add(1, {"status_code": status_code, "status_class": status_class})
+                attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
+                request = flask.request
+                if request and request.url_rule:
+                    attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
+                if request and request.method:
+                    attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
+                _http_response_counter.add(1, attributes)
 
         instrumentor = FlaskInstrumentor()
         if dify_config.DEBUG:
@@ -103,8 +114,10 @@ def init_app(app: DifyApp):
                 pass
 
     from opentelemetry import trace
-    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as GRPCMetricExporter
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCSpanExporter
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter as HTTPMetricExporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
     from opentelemetry.instrumentation.celery import CeleryInstrumentor
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -147,19 +160,32 @@ def init_app(app: DifyApp):
     sampler = ParentBasedTraceIdRatio(dify_config.OTEL_SAMPLING_RATE)
     provider = TracerProvider(resource=resource, sampler=sampler)
     set_tracer_provider(provider)
-    exporter: Union[OTLPSpanExporter, ConsoleSpanExporter]
-    metric_exporter: Union[OTLPMetricExporter, ConsoleMetricExporter]
+    exporter: Union[GRPCSpanExporter, HTTPSpanExporter, ConsoleSpanExporter]
+    metric_exporter: Union[GRPCMetricExporter, HTTPMetricExporter, ConsoleMetricExporter]
+    protocol = (dify_config.OTEL_EXPORTER_OTLP_PROTOCOL or "").lower()
     if dify_config.OTEL_EXPORTER_TYPE == "otlp":
-        exporter = OTLPSpanExporter(
-            endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/traces",
-            headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
-        )
-        metric_exporter = OTLPMetricExporter(
-            endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
-            headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
-        )
+        if protocol == "grpc":
+            exporter = GRPCSpanExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT,
+                # Header field names must consist of lowercase letters, check RFC7540
+                headers=(("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),),
+                insecure=True,
+            )
+            metric_exporter = GRPCMetricExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT,
+                headers=(("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),),
+                insecure=True,
+            )
+        else:
+            exporter = HTTPSpanExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/traces",
+                headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
+            )
+            metric_exporter = HTTPMetricExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
+                headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
+            )
     else:
-        # Fallback to console exporter
         exporter = ConsoleSpanExporter()
         metric_exporter = ConsoleMetricExporter()
 

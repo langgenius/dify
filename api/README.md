@@ -90,3 +90,4 @@
    ```bash
    uv run -P api bash dev/pytest/pytest_all_tests.sh
    ```
+

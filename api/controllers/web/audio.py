@@ -65,7 +65,7 @@ class AudioApi(WebApiResource):
 
 class TextApi(WebApiResource):
     def post(self, app_model: App, end_user):
-        from flask_restful import reqparse  # type: ignore
+        from flask_restful import reqparse
 
         try:
             parser = reqparse.RequestParser()

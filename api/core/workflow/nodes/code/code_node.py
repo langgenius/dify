@@ -127,7 +127,7 @@ class CodeNode(BaseNode[CodeNodeData]):
         depth: int = 1,
     ):
         if depth > dify_config.CODE_MAX_DEPTH:
-            raise DepthLimitError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep.")
+            raise DepthLimitError(f"Depth limit {dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 
         transformed_result: dict[str, Any] = {}
         if output_schema is None:

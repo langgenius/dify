@@ -1,7 +1,7 @@
 import uuid
 
 from flask import request
-from flask_restful import Resource  # type: ignore
+from flask_restful import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from controllers.web import api

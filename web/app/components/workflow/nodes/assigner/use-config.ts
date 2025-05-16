@@ -69,7 +69,7 @@ const useConfig = (id: string, rawPayload: AssignerNodeType) => {
     newSetInputs(newInputs)
   }, [inputs, newSetInputs])
 
-  const writeModeTypesArr = [WriteMode.overwrite, WriteMode.clear, WriteMode.append, WriteMode.extend]
+  const writeModeTypesArr = [WriteMode.overwrite, WriteMode.clear, WriteMode.append, WriteMode.extend, WriteMode.removeFirst, WriteMode.removeLast]
   const writeModeTypes = [WriteMode.overwrite, WriteMode.clear, WriteMode.set]
   const writeModeTypesNum = [WriteMode.increment, WriteMode.decrement, WriteMode.multiply, WriteMode.divide]
 

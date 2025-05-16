@@ -25,6 +25,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { getLocaleOnClient } from '@/i18n'
 import { noop } from 'lodash-es'
+import DifyLogo from '../components/base/logo/dify-logo'
 
 const EducationApplyAge = () => {
   const { t } = useTranslation()
@@ -93,12 +94,8 @@ const EducationApplyAge = () => {
           }}
         >
         </div>
-        <div className='mt-[-349px] flex h-[88px] items-center justify-between px-8 py-6'>
-          <img
-            src='/logo/logo-site-dark.png'
-            alt='dify logo'
-            className='h-10'
-          />
+        <div className='mt-[-349px] box-content flex h-7 items-center justify-between p-6'>
+          <DifyLogo size='large' style='monochromeWhite' />
         </div>
         <div className='mx-auto max-w-[720px] px-8 pb-[180px]'>
           <div className='mb-2 flex h-[192px] flex-col justify-end pb-4 pt-3 text-text-primary-on-surface'>

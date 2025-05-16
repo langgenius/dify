@@ -152,6 +152,7 @@ const VarList: FC<Props> = ({
                 />
               </div>
               {item.operation !== WriteMode.clear && item.operation !== WriteMode.set
+                && item.operation !== WriteMode.removeFirst && item.operation !== WriteMode.removeLast
                 && !writeModeTypesNum?.includes(item.operation)
                 && (
                   <VarReferencePicker

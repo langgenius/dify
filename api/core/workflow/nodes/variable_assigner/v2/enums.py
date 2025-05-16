@@ -11,6 +11,8 @@ class Operation(StrEnum):
     SUBTRACT = "-="
     MULTIPLY = "*="
     DIVIDE = "/="
+    REMOVE_FIRST = "remove-first"
+    REMOVE_LAST = "remove-last"
 
 
 class InputType(StrEnum):

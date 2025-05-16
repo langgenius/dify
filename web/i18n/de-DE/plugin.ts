@@ -180,6 +180,8 @@ const translation = {
     pluginsResult: '{{num}} Ergebnisse',
     empower: 'Unterstützen Sie Ihre KI-Entwicklung',
     and: 'und',
+    partnerTip: 'Von einem Dify-Partner verifiziert',
+    verifiedTip: 'Von Dify überprüft',
   },
   task: {
     clearAll: 'Alle löschen',
@@ -204,6 +206,10 @@ const translation = {
   findMoreInMarketplace: 'Weitere Informationen finden Sie im Marketplace',
   installPlugin: 'Plugin installieren',
   installFrom: 'INSTALLIEREN VON',
+  metadata: {
+    title: 'Plugins',
+  },
+  difyVersionNotCompatible: 'Die aktuelle Dify-Version ist mit diesem Plugin nicht kompatibel, bitte aktualisieren Sie auf die erforderliche Mindestversion: {{minimalDifyVersion}}',
 }
 
 export default translation

@@ -264,8 +264,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             target='_blank'
             href={
               locale === LanguagesSupported[1]
-                ? 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
-                : 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application'
+                ? 'https://docs.dify.ai/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
+                : 'https://docs.dify.ai/en/guides/knowledge-base/integrate-knowledge-within-application'
             }
             >
             <span>{t('datasetDocuments.list.learnMore')}</span>

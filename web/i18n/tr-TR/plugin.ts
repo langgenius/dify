@@ -180,6 +180,8 @@ const translation = {
     noPluginFound: 'Eklenti bulunamadı',
     viewMore: 'Daha fazla göster',
     discover: 'Keşfetmek',
+    verifiedTip: 'Dify tarafından doğrulanmıştır.',
+    partnerTip: 'Dify partner\'ı tarafından doğrulandı',
   },
   task: {
     installedError: '{{errorLength}} eklentileri yüklenemedi',
@@ -204,6 +206,10 @@ const translation = {
   findMoreInMarketplace: 'Marketplace\'te daha fazla bilgi edinin',
   searchCategories: 'Arama Kategorileri',
   searchInMarketplace: 'Marketplace\'te arama yapma',
+  metadata: {
+    title: 'Eklentiler',
+  },
+  difyVersionNotCompatible: 'Mevcut Dify sürümü bu eklentiyle uyumlu değil, lütfen gerekli minimum sürüme güncelleyin: {{minimalDifyVersion}}',
 }
 
 export default translation

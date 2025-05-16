@@ -54,6 +54,10 @@ const translation = {
     copied: '복사',
     viewDetails: '세부 정보보기',
     in: '안으로',
+    downloadFailed: '다운로드 실패했습니다. 나중에 다시 시도하십시오.',
+    format: '형식',
+    more: '더 많은',
+    downloadSuccess: '다운로드 완료.',
   },
   placeholder: {
     input: '입력해주세요',
@@ -149,6 +153,9 @@ const translation = {
     community: '커뮤니티',
     about: 'Dify 소개',
     logout: '로그아웃',
+    github: '깃허브',
+    compliance: '컴플라이언스',
+    support: '지원',
   },
   settings: {
     accountGroup: '계정',
@@ -198,6 +205,9 @@ const translation = {
     feedbackLabel: '계정을 삭제한 이유를 알려주시겠습니까?',
     feedbackPlaceholder: '선택적',
     deletePrivacyLinkTip: '당사가 귀하의 데이터를 처리하는 방법에 대한 자세한 내용은 다음을 참조하십시오.',
+    workspaceIcon: '작업 공간 아이콘',
+    editWorkspaceInfo: '작업 공간 정보 편집',
+    workspaceName: '작업 공간 이름',
   },
   members: {
     team: '팀',
@@ -451,7 +461,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API 기반 확장은 Dify 애플리케이션 전체에서 간편한 사용을 위한 설정을 단순화하고 집중적인 API 관리를 제공합니다.',
     link: '사용자 정의 API 기반 확장을 개발하는 방법 배우기',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API 기반 확장 추가',
     selector: {
       title: 'API 기반 확장',
@@ -539,6 +549,7 @@ const translation = {
     inputPlaceholder: '봇과 대화',
     thought: '생각',
     thinking: '생각...',
+    resend: '재전송',
   },
   promptEditor: {
     placeholder: '여기에 프롬프트 단어를 입력하세요. 변수를 삽입하려면 "{{"를 입력하고, 프롬프트 컨텐츠 블록을 삽입하려면 "/"를 입력하세요.',
@@ -632,6 +643,25 @@ const translation = {
   },
   pagination: {
     perPage: '페이지당 항목 수',
+  },
+  theme: {
+    theme: '주제',
+    light: '빛',
+    dark: '어둠',
+    auto: '시스템',
+  },
+  compliance: {
+    iso27001: 'ISO 27001:2022 인증',
+    soc2Type1: 'SOC 2 유형 I 보고서',
+    soc2Type2: 'SOC 2 유형 II 보고서',
+    gdpr: 'GDPR DPA',
+    professionalUpgradeTooltip: '팀 플랜 이상에서만 사용할 수 있습니다.',
+    sandboxUpgradeTooltip: '전문가 또는 팀 플랜에서만 사용할 수 있습니다.',
+  },
+  imageInput: {
+    supportedFormats: 'PNG, JPG, JPEG, WEBP 및 GIF를 지원합니다.',
+    browse: '브라우즈',
+    dropImageHere: '여기에 이미지를 드롭하거나',
   },
 }
 

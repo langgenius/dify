@@ -31,8 +31,8 @@ class ToolFileMessageTransformer:
                 # try to download image
                 try:
                     assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-
-                    file = ToolFileManager.create_file_by_url(
+                    tool_file_manager = ToolFileManager()
+                    file = tool_file_manager.create_file_by_url(
                         user_id=user_id,
                         tenant_id=tenant_id,
                         file_url=message.message.text,
@@ -60,7 +60,7 @@ class ToolFileMessageTransformer:
 
                 mimetype = meta.get("mime_type", "application/octet-stream")
                 # get filename from meta
-                filename = meta.get("file_name", None)
+                filename = meta.get("filename", None)
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
@@ -68,7 +68,8 @@ class ToolFileMessageTransformer:
 
                 # FIXME: should do a type check here.
                 assert isinstance(message.message.blob, bytes)
-                file = ToolFileManager.create_file_by_raw(
+                tool_file_manager = ToolFileManager()
+                file = tool_file_manager.create_file_by_raw(
                     user_id=user_id,
                     tenant_id=tenant_id,
                     conversation_id=conversation_id,

@@ -168,6 +168,54 @@ const translation = {
   enable: 'Omogočiti',
   allKnowledge: 'Vse znanje',
   allKnowledgeDescription: 'Izberite, če želite prikazati vse znanje v tem delovnem prostoru. Samo lastnik delovnega prostora lahko upravlja vse znanje.',
+  metadata: {
+    createMetadata: {
+      name: 'Ime',
+      type: 'Tip',
+      namePlaceholder: 'Dodajte ime metapodatkov',
+      back: 'Nazaj',
+      title: 'Nova metapodatki',
+    },
+    checkName: {
+      empty: 'Ime metapodatkov ne more biti prazno',
+      invalid: 'Ime metapodatkov lahko vsebuje samo male črke, številke in podčrtaje ter se mora začeti z malo črko.',
+    },
+    batchEditMetadata: {
+      editMetadata: 'Uredi metapodatke',
+      applyToAllSelectDocument: 'Uporabi za vse izbrane dokumente',
+      multipleValue: 'Več vrednosti',
+      applyToAllSelectDocumentTip: 'Samodejno ustvarite vse zgoraj omenjene urejene in nove metapodatke za vsa izbrana dokumenta, sicer bo urejanje metapodatkov veljalo le za dokumente, ki jih imajo.',
+      editDocumentsNum: 'Urejanje {{num}} dokumentov',
+    },
+    selectMetadata: {
+      search: 'Išči metapodatke',
+      newAction: 'Nova metapodatki',
+      manageAction: 'Upravljati',
+    },
+    datasetMetadata: {
+      rename: 'Preimenuj',
+      namePlaceholder: 'Ime metapodatkov',
+      deleteTitle: 'Potrdite, da želite izbrisati',
+      builtIn: 'Vgrajeno',
+      deleteContent: 'Ali ste prepričani, da želite izbrisati metadata "{{name}}"',
+      builtInDescription: 'Vgrajeni metapodatki so samodejno izvlečeni in ustvarjeni. Morajo biti omogočeni pred uporabo in jih ni mogoče urejati.',
+      values: '{{num}} Vrednosti',
+      addMetaData: 'Dodaj metapodatke',
+      description: 'Vse metapodatke lahko upravljate tukaj v tej bazi znanja. Spremembe bodo usklajene z vsakim dokumentom.',
+      disabled: 'Onemogočeno',
+      name: 'Ime',
+    },
+    documentMetadata: {
+      startLabeling: 'Začni označevanje',
+      technicalParameters: 'Tehnični parametri',
+      metadataToolTip: 'Metapodatki služijo kot pomemben filter, ki izboljšuje natančnost in pomembnost iskanja informacij. Tukaj lahko spremenite in dodate metapodatke za ta dokument.',
+      documentInformation: 'Informacije o dokumentu',
+    },
+    metadata: 'Meta podatki',
+    chooseTime: 'Izberi čas...',
+    addMetadata: 'Dodaj metapodatke',
+  },
+  embeddingModelNotAvailable: 'Model za zajemanje ni na voljo.',
 }
 
 export default translation

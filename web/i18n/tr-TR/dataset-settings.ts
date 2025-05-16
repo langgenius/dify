@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'Daha fazla bilgi edinin',
       description: ' geri alım yöntemi hakkında.',
       longDescription: ' geri alım yöntemi hakkında, bunu Bilgi ayarlarında istediğiniz zaman değiştirebilirsiniz.',
+      method: 'Retrieval Yöntemi',
     },
     save: 'Kaydet',
     retrievalSettings: 'Alma Ayarları',

@@ -180,6 +180,8 @@ const translation = {
     viewMore: 'Подробнее',
     and: 'и',
     discover: 'Обнаруживать',
+    verifiedTip: 'Подтверждено Dify',
+    partnerTip: 'Подтверждено партнером Dify',
   },
   task: {
     installing: 'Установка плагинов {{installingLength}}, 0 готово.',
@@ -204,6 +206,10 @@ const translation = {
   installPlugin: 'Установка плагина',
   searchPlugins: 'Плагины поиска',
   fromMarketplace: 'Из маркетплейса',
+  metadata: {
+    title: 'Плагины',
+  },
+  difyVersionNotCompatible: 'Текущая версия Dify не совместима с этим плагином, пожалуйста, обновите до минимально необходимой версии: {{minimalDifyVersion}}',
 }
 
 export default translation

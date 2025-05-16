@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'Aflați mai multe',
       description: ' despre metoda de recuperare.',
       longDescription: ' despre metoda de recuperare, o puteți schimba în orice moment în setările cunoștințelor.',
+      method: 'Metoda de recuperare',
     },
     save: 'Salvare',
     permissionsInvitedMembers: 'Membri parțiali ai echipei',

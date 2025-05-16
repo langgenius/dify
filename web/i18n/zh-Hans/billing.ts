@@ -184,6 +184,7 @@ const translation = {
     fullTipLine2: '标注更多对话。',
     quotaTitle: '标注的配额',
   },
+  teamMembers: '团队成员',
 }
 
 export default translation

@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'بیشتر بدانید',
       description: ' درباره روش بازیابی.',
       longDescription: ' درباره روش بازیابی، می‌توانید در هر زمانی در تنظیمات دانش این را تغییر دهید.',
+      method: 'روش بازیابی',
     },
     save: 'ذخیره',
     externalKnowledgeAPI: 'API دانش خارجی',

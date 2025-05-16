@@ -180,6 +180,8 @@ const translation = {
     discover: 'Descubrir',
     and: 'y',
     difyMarketplace: 'Mercado de Dify',
+    verifiedTip: 'Verificado por Dify',
+    partnerTip: 'Verificado por un socio de Dify',
   },
   task: {
     installing: 'Instalando plugins {{installingLength}}, 0 hecho.',
@@ -204,6 +206,10 @@ const translation = {
   findMoreInMarketplace: 'Más información en Marketplace',
   installPlugin: 'Instalar plugin',
   searchPlugins: 'Plugins de búsqueda',
+  metadata: {
+    title: 'Complementos',
+  },
+  difyVersionNotCompatible: 'La versión actual de Dify no es compatible con este plugin, por favor actualiza a la versión mínima requerida: {{minimalDifyVersion}}',
 }
 
 export default translation

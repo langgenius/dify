@@ -2,8 +2,7 @@ from enum import Enum
 
 from sqlalchemy import func
 
-from models.base import Base
-
+from .base import Base
 from .engine import db
 from .types import StringUUID
 

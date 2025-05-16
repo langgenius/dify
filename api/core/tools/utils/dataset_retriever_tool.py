@@ -34,6 +34,8 @@ class DatasetRetrieverTool(Tool):
         return_resource: bool,
         invoke_from: InvokeFrom,
         hit_callback: DatasetIndexToolCallbackHandler,
+        user_id: str,
+        inputs: dict,
     ) -> list["DatasetRetrieverTool"]:
         """
         get dataset tool
@@ -57,6 +59,8 @@ class DatasetRetrieverTool(Tool):
             return_resource=return_resource,
             invoke_from=invoke_from,
             hit_callback=hit_callback,
+            user_id=user_id,
+            inputs=inputs,
         )
         if retrieval_tools is None or len(retrieval_tools) == 0:
             return []

@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "private": true,
   "engines": {
     "node": ">=v22.11.0"
@@ -220,5 +220,10 @@
     "@types/react": "19.0.11",
     "@types/react-dom": "19.0.4",
     "@storybook/test": "8.5.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild@<0.25.0": "0.25.0"
+    }
   }
 }

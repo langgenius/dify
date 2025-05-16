@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restful import fields
 
 simple_end_user_fields = {
     "id": fields.String,

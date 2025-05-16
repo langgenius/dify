@@ -1,4 +1,4 @@
-![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
+![cover-v5-optimized](./images/GitHub_README_if.png)
 
 <div align="center">
   <a href="https://cloud.dify.ai">Dify 云服务</a> ·
@@ -60,11 +60,6 @@ Dify 是一个开源的 LLM 应用开发平台。其直观的界面结合了 AI 
 
 **1. 工作流**: 
   在画布上构建和测试功能强大的 AI 工作流程，利用以下所有功能以及更多功能。
-
-
-  https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
-
-
 
 **2. 全面的模型支持**: 
   与数百种专有/开源 LLMs 以及数十种推理提供商和自托管解决方案无缝集成，涵盖 GPT、Mistral、Llama3 以及任何与 OpenAI API 兼容的模型。完整的支持模型提供商列表可在[此处](https://docs.dify.ai/getting-started/readme/model-providers)找到。

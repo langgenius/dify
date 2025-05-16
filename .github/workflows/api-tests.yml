@@ -88,3 +88,6 @@ jobs:
 
       - name: Run Workflow
         run: uv run --project api bash dev/pytest/pytest_workflow.sh
+
+      - name: Run Tool
+        run: uv run --project api bash dev/pytest/pytest_tools.sh

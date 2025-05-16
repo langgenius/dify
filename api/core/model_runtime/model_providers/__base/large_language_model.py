@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Sequence
-from typing import Optional, Union, cast
+from typing import Optional, Union
 
 from pydantic import ConfigDict
 
@@ -13,14 +13,15 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContentUnionTypes,
     PromptMessageTool,
+    TextPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import (
     ModelType,
     PriceType,
 )
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.model_runtime.utils.helper import convert_llm_result_chunk_to_str
 from core.plugin.impl.model import PluginModelClient
 
 logger = logging.getLogger(__name__)
@@ -238,7 +239,7 @@ class LargeLanguageModel(AIModel):
     def _invoke_result_generator(
         self,
         model: str,
-        result: Generator,
+        result: Generator[LLMResultChunk, None, None],
         credentials: dict,
         prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
@@ -255,10 +256,20 @@ class LargeLanguageModel(AIModel):
         :return: result generator
         """
         callbacks = callbacks or []
-        assistant_message = AssistantPromptMessage(content="")
+        message_content: list[PromptMessageContentUnionTypes] = []
         usage = None
         system_fingerprint = None
         real_model = model
+
+        def _update_message_content(content: str | list[PromptMessageContentUnionTypes] | None):
+            if not content:
+                return
+            if isinstance(content, list):
+                message_content.extend(content)
+                return
+            if isinstance(content, str):
+                message_content.append(TextPromptMessageContent(data=content))
+                return
 
         try:
             for chunk in result:
@@ -281,9 +292,8 @@ class LargeLanguageModel(AIModel):
                     callbacks=callbacks,
                 )
 
-                text = convert_llm_result_chunk_to_str(chunk.delta.message.content)
-                current_content = cast(str, assistant_message.content)
-                assistant_message.content = current_content + text
+                _update_message_content(chunk.delta.message.content)
+
                 real_model = chunk.model
                 if chunk.delta.usage:
                     usage = chunk.delta.usage
@@ -293,6 +303,7 @@ class LargeLanguageModel(AIModel):
         except Exception as e:
             raise self._transform_invoke_error(e)
 
+        assistant_message = AssistantPromptMessage(content=message_content)
         self._trigger_after_invoke_callbacks(
             model=model,
             result=LLMResult(

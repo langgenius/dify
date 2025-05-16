@@ -23,6 +23,15 @@ def is_operation_supported(*, variable_type: SegmentType, operation: Operation):
                 SegmentType.ARRAY_NUMBER,
                 SegmentType.ARRAY_FILE,
             }
+        case Operation.REMOVE_FIRST | Operation.REMOVE_LAST:
+            # Only array variable can have elements removed
+            return variable_type in {
+                SegmentType.ARRAY_ANY,
+                SegmentType.ARRAY_OBJECT,
+                SegmentType.ARRAY_STRING,
+                SegmentType.ARRAY_NUMBER,
+                SegmentType.ARRAY_FILE,
+            }
         case _:
             return False
 
@@ -51,7 +60,7 @@ def is_constant_input_supported(*, variable_type: SegmentType, operation: Operat
 
 
 def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, value: Any):
-    if operation == Operation.CLEAR:
+    if operation in {Operation.CLEAR, Operation.REMOVE_FIRST, Operation.REMOVE_LAST}:
         return True
     match variable_type:
         case SegmentType.STRING:

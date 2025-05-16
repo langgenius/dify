@@ -1,3 +1,5 @@
+import { LanguagesSupported } from '@/i18n/language'
+
 import {
   categoryKeys,
   tagKeys,
@@ -9,4 +11,16 @@ export const getValidTagKeys = (tags: string[]) => {
 
 export const getValidCategoryKeys = (category?: string) => {
   return categoryKeys.find(key => key === category)
+}
+
+export const getDocsUrl = (locale: string, path: string) => {
+  let localePath = 'en'
+
+  if (locale === LanguagesSupported[1])
+    localePath = 'zh-hans'
+
+  else if (locale === LanguagesSupported[7])
+    localePath = 'ja-jp'
+
+  return `https://docs.dify.ai/${localePath}${path}`
 }

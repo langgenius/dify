@@ -25,6 +25,7 @@ const translation = {
       learnMore: '자세히 알아보기',
       description: ' 검색 방법에 대한 자세한 정보',
       longDescription: ' 검색 방법에 대한 자세한 내용은 언제든지 지식 설정에서 변경할 수 있습니다.',
+      method: '검색 방법',
     },
     save: '저장',
     permissionsInvitedMembers: '부분 팀 구성원',

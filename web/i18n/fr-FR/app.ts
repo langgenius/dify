@@ -167,6 +167,10 @@ const translation = {
       description: 'Opik est une plate-forme open-source pour l’évaluation, le test et la surveillance des applications LLM.',
       title: 'Opik',
     },
+    weave: {
+      title: 'Tisser',
+      description: 'Weave est une plateforme open-source pour évaluer, tester et surveiller les applications LLM.',
+    },
   },
   answerIcon: {
     description: 'S’il faut utiliser l’icône WebApp pour remplacer 🤖 dans l’application partagée',
@@ -201,6 +205,16 @@ const translation = {
     params: 'PARAMÈTRES DE L’APPLICATION',
     label: 'APPLI',
     placeholder: 'Sélectionnez une application...',
+  },
+  structOutput: {
+    LLMResponse: 'Réponse LLM',
+    notConfiguredTip: 'La sortie structurée n\'a pas encore été configurée.',
+    required: 'Obligatoire',
+    structuredTip: 'Les sorties structurées sont une fonctionnalité qui garantit que le modèle générera toujours des réponses qui respectent votre schéma JSON fourni.',
+    modelNotSupportedTip: 'Le modèle actuel ne prend pas en charge cette fonctionnalité et est automatiquement rétrogradé à l\'injection de prompt.',
+    modelNotSupported: 'Modèle non pris en charge',
+    moreFillTip: 'Affichage d\'un maximum de 10 niveaux d\'imbrication',
+    configure: 'Configurer',
   },
 }
 

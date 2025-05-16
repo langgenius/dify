@@ -180,6 +180,8 @@ const translation = {
     difyMarketplace: 'Marché Dify',
     empower: 'Renforcez le développement de votre IA',
     sortBy: 'Ville noire',
+    partnerTip: 'Vérifié par un partenaire Dify',
+    verifiedTip: 'Vérifié par Dify',
   },
   task: {
     installError: '{{errorLength}} les plugins n’ont pas pu être installés, cliquez pour voir',
@@ -204,6 +206,10 @@ const translation = {
   endpointsEnabled: '{{num}} ensembles de points de terminaison activés',
   searchTools: 'Outils de recherche...',
   installPlugin: 'Installer le plugin',
+  metadata: {
+    title: 'Plugins',
+  },
+  difyVersionNotCompatible: 'La version actuelle de Dify n\'est pas compatible avec ce plugin, veuillez mettre à niveau vers la version minimale requise : {{minimalDifyVersion}}',
 }
 
 export default translation

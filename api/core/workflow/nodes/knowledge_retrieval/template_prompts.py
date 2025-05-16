@@ -2,7 +2,7 @@ METADATA_FILTER_SYSTEM_PROMPT = """
     ### Job Description',
     You are a text metadata extract engine that extract text's metadata based on user input and set the metadata value
     ### Task
-    Your task is to ONLY extract the metadatas that exist in the input text from the provided metadata list and Use the following operators ["=", "!=", ">", "<", ">=", "<="] to express logical relationships, then return result in JSON format with the key "metadata_fields" and value "metadata_field_value" and comparison operator "comparison_operator".
+    Your task is to ONLY extract the metadatas that exist in the input text from the provided metadata list and Use the following operators ["contains", "not contains", "start with", "end with", "is", "is not", "empty", "not empty", "=", "≠", ">", "<", "≥", "≤", "before", "after"] to express logical relationships, then return result in JSON format with the key "metadata_fields" and value "metadata_field_value" and comparison operator "comparison_operator".
     ### Format
     The input text is in the variable input_text. Metadata are specified as a list in the variable metadata_fields.
     ### Constraint

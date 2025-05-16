@@ -39,7 +39,7 @@ class SubCondition(BaseModel):
 
 class SubVariableCondition(BaseModel):
     logical_operator: Literal["and", "or"]
-    conditions: list[SubCondition] = Field(default=list)
+    conditions: list[SubCondition] = Field(default_factory=list)
 
 
 class Condition(BaseModel):

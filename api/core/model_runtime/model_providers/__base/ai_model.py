@@ -24,7 +24,6 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderEntity
 from core.plugin.impl.model import PluginModelClient
 
@@ -253,15 +252,3 @@ class AIModel(BaseModel):
             raise Exception(f"Invalid model parameter rule name {name}")
 
         return default_parameter_rule
-
-    def _get_num_tokens_by_gpt2(self, text: str) -> int:
-        """
-        Get number of tokens for given prompt messages by gpt2
-        Some provider models do not provide an interface for obtaining the number of tokens.
-        Here, the gpt2 tokenizer is used to calculate the number of tokens.
-        This method can be executed offline, and the gpt2 tokenizer has been cached in the project.
-
-        :param text: plain text of prompt. You need to convert the original message to plain text
-        :return: number of tokens
-        """
-        return GPT2Tokenizer.get_num_tokens(text)

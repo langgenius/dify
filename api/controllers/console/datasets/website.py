@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.datasets.error import WebsiteCrawlError

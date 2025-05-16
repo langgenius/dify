@@ -7,7 +7,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Optional, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import Integer, and_, or_, text
+from sqlalchemy import Float, and_, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
 
 from core.app.app_config.entities import (
@@ -149,7 +149,7 @@ class DatasetRetrieval:
         else:
             inputs = {}
         available_datasets_ids = [dataset.id for dataset in available_datasets]
-        metadata_filter_document_ids, metadata_condition = self._get_metadata_filter_condition(
+        metadata_filter_document_ids, metadata_condition = self.get_metadata_filter_condition(
             available_datasets_ids,
             query,
             tenant_id,
@@ -237,12 +237,16 @@ class DatasetRetrieval:
                 if show_retrieve_source:
                     for record in records:
                         segment = record.segment
-                        dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
-                        document = DatasetDocument.query.filter(
-                            DatasetDocument.id == segment.document_id,
-                            DatasetDocument.enabled == True,
-                            DatasetDocument.archived == False,
-                        ).first()
+                        dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
+                        document = (
+                            db.session.query(DatasetDocument)
+                            .filter(
+                                DatasetDocument.id == segment.document_id,
+                                DatasetDocument.enabled == True,
+                                DatasetDocument.archived == False,
+                            )
+                            .first()
+                        )
                         if dataset and document:
                             source = {
                                 "dataset_id": dataset.id,
@@ -506,19 +510,30 @@ class DatasetRetrieval:
         dify_documents = [document for document in documents if document.provider == "dify"]
         for document in dify_documents:
             if document.metadata is not None:
-                dataset_document = DatasetDocument.query.filter(
-                    DatasetDocument.id == document.metadata["document_id"]
-                ).first()
+                dataset_document = (
+                    db.session.query(DatasetDocument)
+                    .filter(DatasetDocument.id == document.metadata["document_id"])
+                    .first()
+                )
                 if dataset_document:
                     if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                        child_chunk = ChildChunk.query.filter(
-                            ChildChunk.index_node_id == document.metadata["doc_id"],
-                            ChildChunk.dataset_id == dataset_document.dataset_id,
-                            ChildChunk.document_id == dataset_document.id,
-                        ).first()
+                        child_chunk = (
+                            db.session.query(ChildChunk)
+                            .filter(
+                                ChildChunk.index_node_id == document.metadata["doc_id"],
+                                ChildChunk.dataset_id == dataset_document.dataset_id,
+                                ChildChunk.document_id == dataset_document.id,
+                            )
+                            .first()
+                        )
                         if child_chunk:
-                            segment = DocumentSegment.query.filter(DocumentSegment.id == child_chunk.segment_id).update(
-                                {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
+                            segment = (
+                                db.session.query(DocumentSegment)
+                                .filter(DocumentSegment.id == child_chunk.segment_id)
+                                .update(
+                                    {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
+                                    synchronize_session=False,
+                                )
                             )
                             db.session.commit()
                     else:
@@ -649,6 +664,8 @@ class DatasetRetrieval:
         return_resource: bool,
         invoke_from: InvokeFrom,
         hit_callback: DatasetIndexToolCallbackHandler,
+        user_id: str,
+        inputs: dict,
     ) -> Optional[list[DatasetRetrieverBaseTool]]:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
@@ -706,6 +723,9 @@ class DatasetRetrieval:
                     hit_callbacks=[hit_callback],
                     return_resource=return_resource,
                     retriever_from=invoke_from.to_source(),
+                    retrieve_config=retrieve_config,
+                    user_id=user_id,
+                    inputs=inputs,
                 )
 
                 tools.append(tool)
@@ -826,7 +846,7 @@ class DatasetRetrieval:
         )
         return filter_documents[:top_k] if top_k else filter_documents
 
-    def _get_metadata_filter_condition(
+    def get_metadata_filter_condition(
         self,
         dataset_ids: list,
         query: str,
@@ -876,20 +896,31 @@ class DatasetRetrieval:
                 )
         elif metadata_filtering_mode == "manual":
             if metadata_filtering_conditions:
-                metadata_condition = MetadataCondition(**metadata_filtering_conditions.model_dump())
+                conditions = []
                 for sequence, condition in enumerate(metadata_filtering_conditions.conditions):  # type: ignore
                     metadata_name = condition.name
                     expected_value = condition.value
-                    if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
+                    if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
                         if isinstance(expected_value, str):
                             expected_value = self._replace_metadata_filter_value(expected_value, inputs)
-                        filters = self._process_metadata_filter_func(
-                            sequence,
-                            condition.comparison_operator,
-                            metadata_name,
-                            expected_value,
-                            filters,
+                    conditions.append(
+                        Condition(
+                            name=metadata_name,
+                            comparison_operator=condition.comparison_operator,
+                            value=expected_value,
                         )
+                    )
+                    filters = self._process_metadata_filter_func(
+                        sequence,
+                        condition.comparison_operator,
+                        metadata_name,
+                        expected_value,
+                        filters,
+                    )
+                metadata_condition = MetadataCondition(
+                    logical_operator=metadata_filtering_conditions.logical_operator,
+                    conditions=conditions,
+                )
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
@@ -1005,28 +1036,24 @@ class DatasetRetrieval:
                 if isinstance(value, str):
                     filters.append(DatasetDocument.doc_metadata[metadata_name] == f'"{value}"')
                 else:
-                    filters.append(
-                        sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) == value
-                    )
+                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) == value)
             case "is not" | "≠":
                 if isinstance(value, str):
                     filters.append(DatasetDocument.doc_metadata[metadata_name] != f'"{value}"')
                 else:
-                    filters.append(
-                        sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) != value
-                    )
+                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != value)
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
             case "not empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].isnot(None))
             case "before" | "<":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) < value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) < value)
             case "after" | ">":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) > value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) > value)
             case "≤" | "<=":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) <= value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) <= value)
             case "≥" | ">=":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Integer) >= value)
+                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) >= value)
             case _:
                 pass
         return filters

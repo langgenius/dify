@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
+import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import {
@@ -49,6 +50,7 @@ const DetailHeader = ({
   onUpdate,
 }: Props) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
   const locale = useGetLanguage()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
@@ -85,9 +87,9 @@ const DetailHeader = ({
     if (isFromGitHub)
       return `https://github.com/${meta!.repo}`
     if (isFromMarketplace)
-      return `${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`
+      return `${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}${theme ? `?theme=${theme}` : ''}`
     return ''
-  }, [author, isFromGitHub, isFromMarketplace, meta, name])
+  }, [author, isFromGitHub, isFromMarketplace, meta, name, theme])
 
   const [isShowUpdateModal, {
     setTrue: showUpdateModal,

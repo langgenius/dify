@@ -49,7 +49,7 @@ const DEFAULT_SCHEMA: SchemaRoot = {
 
 const HELP_DOC_URL = {
   zh_Hans: 'https://docs.dify.ai/zh-hans/guides/workflow/structured-outputs',
-  en_US: 'https://docs.dify.ai/guides/workflow/structured-outputs',
+  en_US: 'https://docs.dify.ai/en/guides/workflow/structured-outputs',
   ja_JP: 'https://docs.dify.ai/ja-jp/guides/workflow/structured-outputs',
 }
 

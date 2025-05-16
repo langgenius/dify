@@ -1,8 +1,8 @@
 import logging
 from datetime import UTC, datetime
 
-from flask_login import current_user  # type: ignore
-from flask_restful import reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services

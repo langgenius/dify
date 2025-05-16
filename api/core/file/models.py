@@ -4,11 +4,11 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field, model_validator
 
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.tools.signature import sign_tool_file
 
 from . import helpers
 from .constants import FILE_MODEL_IDENTITY
 from .enums import FileTransferMethod, FileType
-from .tool_file_parser import ToolFileParser
 
 
 class ImageConfig(BaseModel):
@@ -34,13 +34,21 @@ class FileUploadConfig(BaseModel):
 
 
 class File(BaseModel):
+    # NOTE: dify_model_identity is a special identifier used to distinguish between
+    # new and old data formats during serialization and deserialization.
     dify_model_identity: str = FILE_MODEL_IDENTITY
 
     id: Optional[str] = None  # message file id
     tenant_id: str
     type: FileType
     transfer_method: FileTransferMethod
+    # If `transfer_method` is `FileTransferMethod.remote_url`, the
+    # `remote_url` attribute must not be `None`.
     remote_url: Optional[str] = None  # remote url
+    # If `transfer_method` is `FileTransferMethod.local_file` or
+    # `FileTransferMethod.tool_file`, the `related_id` attribute must not be `None`.
+    #
+    # It should be set to `ToolFile.id` when `transfer_method` is `tool_file`.
     related_id: Optional[str] = None
     filename: Optional[str] = None
     extension: Optional[str] = Field(default=None, description="File extension, should contains dot")
@@ -110,9 +118,7 @@ class File(BaseModel):
         elif self.transfer_method == FileTransferMethod.TOOL_FILE:
             assert self.related_id is not None
             assert self.extension is not None
-            return ToolFileParser.get_tool_file_manager().sign_file(
-                tool_file_id=self.related_id, extension=self.extension
-            )
+            return sign_tool_file(tool_file_id=self.related_id, extension=self.extension)
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return {

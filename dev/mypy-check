@@ -2,6 +2,9 @@
 
 set -x
 
+SCRIPT_DIR="$(dirname "$(realpath "$0")")"
+cd "$SCRIPT_DIR/.."
+
 # run mypy checks
-uv run --directory api --dev \
-  python -m mypy --install-types --non-interactive .
+uv run --directory api --dev --with pip \
+  python -m mypy --install-types --non-interactive --cache-fine-grained --sqlite-cache .

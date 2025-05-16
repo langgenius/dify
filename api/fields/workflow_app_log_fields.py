@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restful import fields
 
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields

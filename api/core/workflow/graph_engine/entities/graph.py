@@ -36,7 +36,7 @@ class Graph(BaseModel):
     root_node_id: str = Field(..., description="root node id of the graph")
     node_ids: list[str] = Field(default_factory=list, description="graph node ids")
     node_id_config_mapping: dict[str, dict] = Field(
-        default_factory=list, description="node configs mapping (node id: node config)"
+        default_factory=dict, description="node configs mapping (node id: node config)"
     )
     edge_mapping: dict[str, list[GraphEdge]] = Field(
         default_factory=dict, description="graph edge mapping (source node id: edges)"

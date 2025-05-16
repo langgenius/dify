@@ -1,7 +1,7 @@
 from urllib import parse
 
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, abort, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, abort, marshal_with, reqparse
 
 import services
 from configs import dify_config
@@ -71,7 +71,6 @@ class MemberInviteEmailApi(Resource):
                 invitation_results.append(
                     {"status": "success", "email": invitee_email, "url": f"{console_web_url}/signin"}
                 )
-                break
             except Exception as e:
                 invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
 

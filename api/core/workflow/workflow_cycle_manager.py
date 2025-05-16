@@ -69,7 +69,7 @@ from models.workflow import (
 )
 
 
-class WorkflowCycleManage:
+class WorkflowCycleManager:
     def __init__(
         self,
         *,

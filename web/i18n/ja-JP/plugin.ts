@@ -207,6 +207,9 @@ const translation = {
   searchInMarketplace: 'マーケットプレイスで検索',
   submitPlugin: 'プラグインを提出する',
   difyVersionNotCompatible: '現在のDifyバージョンはこのプラグインと互換性がありません。最小バージョンは{{minimalDifyVersion}}です。',
+  metadata: {
+    title: 'プラグイン',
+  },
 }
 
 export default translation

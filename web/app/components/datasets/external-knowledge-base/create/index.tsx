@@ -59,7 +59,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 <span>{t('dataset.connectHelper.helper1')}</span>
                 <span className='system-sm-medium text-text-secondary'>{t('dataset.connectHelper.helper2')}</span>
                 <span>{t('dataset.connectHelper.helper3')}</span>
-                <a className='system-sm-regular self-stretch text-text-accent' href='https://docs.dify.ai/guides/knowledge-base/connect-external-knowledge' target='_blank' rel="noopener noreferrer">
+                <a className='system-sm-regular self-stretch text-text-accent' href='https://docs.dify.ai/en/guides/knowledge-base/connect-external-knowledge-base' target='_blank' rel="noopener noreferrer">
                   {t('dataset.connectHelper.helper4')}
                 </a>
                 <span>{t('dataset.connectHelper.helper5')} </span>

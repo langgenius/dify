@@ -168,6 +168,52 @@ const translation = {
   localDocs: 'Documentos locales',
   allKnowledgeDescription: 'Seleccione esta opción para mostrar todos los conocimientos de este espacio de trabajo. Solo el propietario del espacio de trabajo puede administrar todo el conocimiento.',
   allKnowledge: 'Todo el conocimiento',
+  metadata: {
+    createMetadata: {
+      title: 'Nuevos Metadatos',
+      back: 'Atrás',
+      type: 'Escribe',
+      namePlaceholder: 'Agregar nombre de metadatos',
+      name: 'Nombre',
+    },
+    checkName: {
+      empty: 'El nombre de metadatos no puede estar vacío',
+      invalid: 'El nombre de los metadatos solo puede contener letras minúsculas, números y guiones bajos, y debe comenzar con una letra minúscula.',
+    },
+    batchEditMetadata: {
+      multipleValue: 'Valor Múltiple',
+      editMetadata: 'Editar Metadatos',
+      editDocumentsNum: 'Editando {{num}} documentos',
+      applyToAllSelectDocument: 'Aplicar a todos los documentos seleccionados',
+      applyToAllSelectDocumentTip: 'Cree automáticamente todos los metadatos editados y nuevos anteriores para todos los documentos seleccionados, de lo contrario, la edición de metadatos solo se aplicará a los documentos que ya los tengan.',
+    },
+    selectMetadata: {
+      manageAction: 'Gestionar',
+      search: 'Buscar metadatos',
+      newAction: 'Nuevos Metadatos',
+    },
+    datasetMetadata: {
+      addMetaData: 'Agregar Metadatos',
+      values: '{{num}} Valores',
+      deleteContent: '¿Estás seguro de que quieres eliminar los metadatos "{{name}}"?',
+      rename: 'Renombrar',
+      deleteTitle: 'Confirme para eliminar',
+      namePlaceholder: 'Nombre de metadatos',
+      builtInDescription: 'Los metadatos integrados se extraen y generan automáticamente. Deben estar habilitados antes de su uso y no se pueden editar.',
+      name: 'Nombre',
+      description: 'Puedes gestionar todos los metadatos en este conocimiento aquí. Las modificaciones se sincronizarán en todos los documentos.',
+    },
+    documentMetadata: {
+      technicalParameters: 'Parámetros técnicos',
+      startLabeling: 'Comenzar a etiquetar',
+      documentInformation: 'Información del documento',
+      metadataToolTip: 'Los metadatos sirven como un filtro crítico que mejora la precisión y relevancia de la recuperación de información. Puede modificar y agregar metadatos para este documento aquí.',
+    },
+    metadata: 'Metadatos',
+    chooseTime: 'Elige una hora...',
+    addMetadata: 'Agregar Metadatos',
+  },
+  embeddingModelNotAvailable: 'El modelo de embeddings no está disponible.',
 }
 
 export default translation

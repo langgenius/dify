@@ -180,6 +180,8 @@ const translation = {
     sortBy: 'Thành phố đen',
     noPluginFound: 'Không tìm thấy plugin nào',
     and: 'và',
+    verifiedTip: 'Được xác nhận bởi Dify',
+    partnerTip: 'Được xác nhận bởi một đối tác của Dify',
   },
   task: {
     installingWithError: 'Cài đặt {{installingLength}} plugins, {{successLength}} thành công, {{errorLength}} không thành công',
@@ -204,6 +206,10 @@ const translation = {
   allCategories: 'Tất cả các danh mục',
   searchTools: 'Công cụ tìm kiếm...',
   installFrom: 'CÀI ĐẶT TỪ',
+  metadata: {
+    title: 'Plugin',
+  },
+  difyVersionNotCompatible: 'Phiên bản Dify hiện tại không tương thích với plugin này, vui lòng nâng cấp lên phiên bản tối thiểu cần thiết: {{minimalDifyVersion}}',
 }
 
 export default translation

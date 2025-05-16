@@ -2,8 +2,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, inputs, marshal_with, reqparse
 from sqlalchemy import and_
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
@@ -66,7 +66,7 @@ class InstalledAppsListApi(Resource):
         parser.add_argument("app_id", type=str, required=True, help="Invalid app_id")
         args = parser.parse_args()
 
-        recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args["app_id"]).first()
+        recommended_app = db.session.query(RecommendedApp).filter(RecommendedApp.app_id == args["app_id"]).first()
         if recommended_app is None:
             raise NotFound("App not found")
 
@@ -79,9 +79,11 @@ class InstalledAppsListApi(Resource):
         if not app.is_public:
             raise Forbidden("You can't install a non-public app")
 
-        installed_app = InstalledApp.query.filter(
-            and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id)
-        ).first()
+        installed_app = (
+            db.session.query(InstalledApp)
+            .filter(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
+            .first()
+        )
 
         if installed_app is None:
             # todo: position

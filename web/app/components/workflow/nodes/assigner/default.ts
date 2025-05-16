@@ -29,7 +29,7 @@ const nodeDefault: NodeDefault<AssignerNodeType> = {
       if (!errorMessages && !value.variable_selector?.length)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.assignedVariable') })
 
-      if (!errorMessages && value.operation !== WriteMode.clear) {
+      if (!errorMessages && value.operation !== WriteMode.clear && value.operation !== WriteMode.removeFirst && value.operation !== WriteMode.removeLast) {
         if (value.operation === WriteMode.set || value.operation === WriteMode.increment
           || value.operation === WriteMode.decrement || value.operation === WriteMode.multiply
           || value.operation === WriteMode.divide) {

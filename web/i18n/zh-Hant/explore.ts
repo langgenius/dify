@@ -37,6 +37,7 @@ const translation = {
     HR: '人力資源',
     Agent: '代理',
     Workflow: '工作流',
+    Entertainment: '娛樂',
   },
 }
 

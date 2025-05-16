@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'Izvedite več',
       description: ' o metodi pridobivanja.',
       longDescription: ' o metodi pridobivanja, to lahko kadar koli spremenite v nastavitvah znanja.',
+      method: 'Metoda pridobivanja',
     },
     externalKnowledgeAPI: 'Zunanji API za znanje',
     externalKnowledgeID: 'ID zunanjega znanja',

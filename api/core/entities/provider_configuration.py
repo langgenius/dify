@@ -897,37 +897,36 @@ class ProviderConfiguration(BaseModel):
                             )
                         except Exception as ex:
                             logger.warning(f"get custom model schema failed, {ex}")
+                            continue
 
-                            if not custom_model_schema:
-                                continue
+                        if not custom_model_schema:
+                            continue
 
-                            if custom_model_schema.model_type not in model_types:
-                                continue
+                        if custom_model_schema.model_type not in model_types:
+                            continue
 
-                            status = ModelStatus.ACTIVE
-                            if (
-                                custom_model_schema.model_type in model_setting_map
-                                and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
-                            ):
-                                model_setting = model_setting_map[custom_model_schema.model_type][
-                                    custom_model_schema.model
-                                ]
-                                if model_setting.enabled is False:
-                                    status = ModelStatus.DISABLED
+                        status = ModelStatus.ACTIVE
+                        if (
+                            custom_model_schema.model_type in model_setting_map
+                            and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
+                        ):
+                            model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
+                            if model_setting.enabled is False:
+                                status = ModelStatus.DISABLED
 
-                            provider_models.append(
-                                ModelWithProviderEntity(
-                                    model=custom_model_schema.model,
-                                    label=custom_model_schema.label,
-                                    model_type=custom_model_schema.model_type,
-                                    features=custom_model_schema.features,
-                                    fetch_from=FetchFrom.PREDEFINED_MODEL,
-                                    model_properties=custom_model_schema.model_properties,
-                                    deprecated=custom_model_schema.deprecated,
-                                    provider=SimpleModelProviderEntity(self.provider),
-                                    status=status,
-                                )
+                        provider_models.append(
+                            ModelWithProviderEntity(
+                                model=custom_model_schema.model,
+                                label=custom_model_schema.label,
+                                model_type=custom_model_schema.model_type,
+                                features=custom_model_schema.features,
+                                fetch_from=FetchFrom.PREDEFINED_MODEL,
+                                model_properties=custom_model_schema.model_properties,
+                                deprecated=custom_model_schema.deprecated,
+                                provider=SimpleModelProviderEntity(self.provider),
+                                status=status,
                             )
+                        )
 
             # if llm name not in restricted llm list, remove it
             restrict_model_names = [rm.model for rm in restrict_models]

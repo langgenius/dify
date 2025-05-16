@@ -337,7 +337,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                     return {"check_break_result": True}
             elif isinstance(event, NodeRunFailedEvent):
                 # Loop run failed
-                yield event
+                yield self._handle_event_metadata(event=event, iter_run_index=current_index)
                 yield LoopRunFailedEvent(
                     loop_id=self.id,
                     loop_node_id=self.node_id,

@@ -18,6 +18,7 @@ type CommonHooksFnMap = {
     }
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
+  handleRefreshWorkflowDraft: () => void
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
@@ -35,6 +36,7 @@ export type Shape = {
 export const createHooksStore = ({
   doSyncWorkflowDraft = async () => noop(),
   syncWorkflowDraftWhenPageClose = noop,
+  handleRefreshWorkflowDraft = noop,
   handleBackupDraft = noop,
   handleLoadBackupDraft = noop,
   handleRestoreFromPublishedWorkflow = noop,
@@ -48,6 +50,7 @@ export const createHooksStore = ({
     refreshAll: props => set(state => ({ ...state, ...props })),
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
+    handleRefreshWorkflowDraft,
     handleBackupDraft,
     handleLoadBackupDraft,
     handleRestoreFromPublishedWorkflow,

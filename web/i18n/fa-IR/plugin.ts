@@ -180,6 +180,8 @@ const translation = {
     difyMarketplace: 'بازار دیفی',
     empower: 'توسعه هوش مصنوعی خود را توانمند کنید',
     discover: 'کشف',
+    verifiedTip: 'تأیید شده توسط دیفی',
+    partnerTip: 'تأیید شده توسط یک شریک دیفی',
   },
   task: {
     installing: 'نصب پلاگین های {{installingLength}}، 0 انجام شد.',
@@ -204,6 +206,10 @@ const translation = {
   installAction: 'نصب',
   allCategories: 'همه دسته بندی ها',
   search: 'جستجو',
+  metadata: {
+    title: 'پلاگین ها',
+  },
+  difyVersionNotCompatible: 'نسخه فعلی دیفی با این پلاگین سازگار نیست، لطفاً به نسخه حداقل مورد نیاز به‌روزرسانی کنید: {{minimalDifyVersion}}',
 }
 
 export default translation

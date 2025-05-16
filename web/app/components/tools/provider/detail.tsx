@@ -6,7 +6,7 @@ import {
   RiCloseLine,
 } from '@remixicon/react'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
-import { basePath } from '@/utils/var'
+import Link from 'next/link'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import ToolItem from './tool-item'
 import cn from '@/utils/classnames'
@@ -279,10 +279,10 @@ const ProviderDetail = ({
                 variant='primary'
                 className={cn('my-3 w-[183px] shrink-0')}
               >
-                <a className='flex items-center' href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
+                <Link className='flex items-center' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
                   <div className='system-sm-medium'>{t('tools.openInStudio')}</div>
                   <LinkExternal02 className='ml-1 h-4 w-4' />
-                </a>
+                </Link>
               </Button>
               <Button
                 className={cn('my-3 w-[183px] shrink-0')}

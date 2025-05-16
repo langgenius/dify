@@ -54,6 +54,10 @@ const translation = {
     viewDetails: 'Voir les détails',
     copied: 'Copied',
     in: 'dans',
+    format: 'Format',
+    downloadFailed: 'Échec du téléchargement. Veuillez réessayer plus tard.',
+    more: 'Plus',
+    downloadSuccess: 'Téléchargement terminé.',
   },
   placeholder: {
     input: 'Veuillez entrer',
@@ -153,6 +157,9 @@ const translation = {
     community: 'Communauté',
     about: 'À propos',
     logout: 'Se déconnecter',
+    support: 'Soutien',
+    github: 'GitHub',
+    compliance: 'Conformité',
   },
   settings: {
     accountGroup: 'COMPTE',
@@ -202,6 +209,9 @@ const translation = {
     feedbackTitle: 'Rétroaction',
     feedbackLabel: 'Dites-nous pourquoi vous avez supprimé votre compte ?',
     feedbackPlaceholder: 'Optionnel',
+    workspaceName: 'Nom de l\'espace de travail',
+    workspaceIcon: 'Icône de l\'espace de travail',
+    editWorkspaceInfo: 'Modifier les informations de l\'espace de travail',
   },
   members: {
     team: 'Équipe',
@@ -543,6 +553,7 @@ const translation = {
     inputPlaceholder: 'Parler au bot',
     thinking: 'Pensée...',
     thought: 'Pensée',
+    resend: 'Renvoyer',
   },
   promptEditor: {
     placeholder: 'Écrivez votre mot d\'invite ici, entrez \'{\' pour insérer une variable, entrez \'/\' pour insérer un bloc de contenu d\'invite',
@@ -636,6 +647,25 @@ const translation = {
   },
   pagination: {
     perPage: 'Articles par page',
+  },
+  theme: {
+    auto: 'système',
+    light: 'lumière',
+    dark: 'sombre',
+    theme: 'Thème',
+  },
+  compliance: {
+    soc2Type1: 'Rapport SOC 2 Type I',
+    iso27001: 'Certification ISO 27001:2022',
+    professionalUpgradeTooltip: 'Disponible uniquement avec un plan Équipe ou supérieur.',
+    gdpr: 'RGPD DPA',
+    soc2Type2: 'Rapport SOC 2 Type II',
+    sandboxUpgradeTooltip: 'Disponible uniquement avec un plan Professionnel ou Équipe.',
+  },
+  imageInput: {
+    browse: 'naviguer',
+    dropImageHere: 'Déposez votre image ici, ou',
+    supportedFormats: 'Prend en charge PNG, JPG, JPEG, WEBP et GIF',
   },
 }
 

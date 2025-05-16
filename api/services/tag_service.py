@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
 
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 from sqlalchemy import func
 from werkzeug.exceptions import NotFound
 

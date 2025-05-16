@@ -1,6 +1,6 @@
 import json
 
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api

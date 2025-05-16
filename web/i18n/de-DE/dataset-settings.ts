@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'Mehr erfahren',
       description: ' über die Abrufmethode.',
       longDescription: ' über die Abrufmethode, dies kann jederzeit in den Wissenseinstellungen geändert werden.',
+      method: 'Abrufmethode',
     },
     save: 'Speichern',
     permissionsInvitedMembers: 'Teilweise Teammitglieder',

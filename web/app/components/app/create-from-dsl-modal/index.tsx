@@ -262,7 +262,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           {
             currentTab === CreateFromDSLModalTab.FROM_URL && (
               <div>
-                <div className='system-md-semibold leading6 mb-1'>DSL URL</div>
+                <div className='system-md-semibold mb-1 text-text-secondary'>DSL URL</div>
                 <Input
                   placeholder={t('app.importFromDSLUrlPlaceholder') || ''}
                   value={dslUrlValue}

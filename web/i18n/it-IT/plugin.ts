@@ -180,6 +180,8 @@ const translation = {
     sortBy: 'Città nera',
     and: 'e',
     viewMore: 'Vedi di più',
+    verifiedTip: 'Verificato da Dify',
+    partnerTip: 'Verificato da un partner Dify',
   },
   task: {
     clearAll: 'Cancella tutto',
@@ -204,6 +206,10 @@ const translation = {
   searchPlugins: 'Plugin di ricerca',
   search: 'Ricerca',
   installFrom: 'INSTALLA DA',
+  metadata: {
+    title: 'Plugin',
+  },
+  difyVersionNotCompatible: 'L\'attuale versione di Dify non è compatibile con questo plugin, si prega di aggiornare alla versione minima richiesta: {{minimalDifyVersion}}',
 }
 
 export default translation

@@ -175,6 +175,53 @@ const translation = {
   localDocs: 'Documenti locali',
   allKnowledge: 'Tutta la conoscenza',
   allKnowledgeDescription: 'Selezionare questa opzione per visualizzare tutte le informazioni in questa area di lavoro. Solo il proprietario dell\'area di lavoro può gestire tutte le conoscenze.',
+  metadata: {
+    createMetadata: {
+      title: 'Nuovi Metadati',
+      back: 'Indietro',
+      type: 'Tipo',
+      name: 'Nome',
+      namePlaceholder: 'Aggiungi nome dei metadati',
+    },
+    checkName: {
+      invalid: 'Il nome dei metadati può contenere solo lettere minuscole, numeri e underscore e deve iniziare con una lettera minuscola.',
+      empty: 'Il nome dei metadati non può essere vuoto',
+    },
+    batchEditMetadata: {
+      multipleValue: 'Valore Multiplo',
+      editDocumentsNum: 'Modifica {{num}} documenti',
+      applyToAllSelectDocument: 'Applica a tutti i documenti selezionati',
+      editMetadata: 'Modifica metadati',
+      applyToAllSelectDocumentTip: 'Creare automaticamente tutti i metadati modificati e nuovi sopra menzionati per tutti i documenti selezionati, altrimenti la modifica dei metadati si applicherà solo ai documenti che li possiedono.',
+    },
+    selectMetadata: {
+      search: 'Cerca metadati',
+      newAction: 'Nuovi Metadati',
+      manageAction: 'Gestire',
+    },
+    datasetMetadata: {
+      deleteTitle: 'Conferma per eliminare',
+      name: 'Nome',
+      addMetaData: 'Aggiungi metadata',
+      values: '{{num}} Valori',
+      disabled: 'Disabilitato',
+      rename: 'Rinomina',
+      namePlaceholder: 'Nome dei metadati',
+      deleteContent: 'Sei sicuro di voler eliminare i metadati "{{name}}"?',
+      builtInDescription: 'I metadati incorporati vengono estratti e generati automaticamente. Devono essere abilitati prima dell\'uso e non possono essere modificati.',
+      description: 'Puoi gestire tutti i metadati in questa conoscenza qui. Le modifiche saranno sincronizzate con ogni documento.',
+    },
+    documentMetadata: {
+      documentInformation: 'Informazioni sul documento',
+      technicalParameters: 'Parametri tecnici',
+      startLabeling: 'Inizia a etichettare',
+      metadataToolTip: 'I metadati fungono da filtro critico che migliora l\'accuratezza e la rilevanza del recupero delle informazioni. Puoi modificare e aggiungere metadati per questo documento qui.',
+    },
+    addMetadata: 'Aggiungi metadata',
+    metadata: 'Metadata',
+    chooseTime: 'Scegli un orario...',
+  },
+  embeddingModelNotAvailable: 'Il modello di embedding non è disponibile.',
 }
 
 export default translation

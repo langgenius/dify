@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Optional
 
 from flask import request
-from flask_restful import reqparse  # type: ignore
+from flask_restful import reqparse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 

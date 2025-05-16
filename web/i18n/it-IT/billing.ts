@@ -77,6 +77,7 @@ const translation = {
       title: 'Crediti Messaggi',
       tooltip:
         'Quote di invocazione dei messaggi per vari piani utilizzando i modelli OpenAI (eccetto gpt4). I messaggi oltre il limite utilizzeranno la tua chiave API OpenAI.',
+      titlePerMonth: '{{count,number}} messaggi/mese',
     },
     annotatedResponse: {
       title: 'Limiti di Quota di Annotazione',
@@ -87,30 +88,97 @@ const translation = {
       'Si riferisce al numero di chiamate API che invocano solo le capacità di elaborazione della base di conoscenza di Dify.',
     receiptInfo:
       'Solo il proprietario del team e l\'amministratore del team possono abbonarsi e visualizzare le informazioni di fatturazione',
+    comparePlanAndFeatures: 'Confronta piani e caratteristiche',
+    teamWorkspace: '{{count,number}} Spazio di lavoro di squadra',
+    apiRateLimit: 'Limite di richiesta API',
+    unlimitedApiRate: 'Nessun limite di tasso API',
+    freeTrialTipPrefix: 'Iscriviti e ricevi un',
+    teamMember_one: '{{count,number}} membro del team',
+    documents: '{{count,number}} Documenti di Conoscenza',
+    apiRateLimitUnit: '{{count,number}}/giorno',
+    documentsRequestQuota: '{{count,number}}/min Limite di richiesta di conoscenza',
+    teamMember_other: '{{count,number}} membri del team',
+    freeTrialTip: 'prova gratuita di 200 chiamate OpenAI.',
+    priceTip: 'per spazio di lavoro/',
+    self: 'Auto-ospitato',
+    documentsTooltip: 'Quota sul numero di documenti importati dalla Fonte di Dati Conoscitiva.',
+    freeTrialTipSuffix: 'Nessuna carta di credito richiesta',
+    cloud: 'Servizio Cloud',
+    apiRateLimitTooltip: 'Il limite di utilizzo dell\'API si applica a tutte le richieste effettuate tramite l\'API Dify, comprese la generazione di testo, le conversazioni chat, le esecuzioni di flussi di lavoro e l\'elaborazione di documenti.',
+    getStarted: 'Inizia',
+    annualBilling: 'Fatturazione annuale',
+    documentsRequestQuotaTooltip: 'Specifica il numero totale di azioni che un\'area di lavoro può eseguire al minuto all\'interno della base di conoscenza, compresi la creazione, l\'eliminazione, gli aggiornamenti dei dataset, il caricamento di documenti, le modifiche, l\'archiviazione e le query sulla base di conoscenza. Questa metrica viene utilizzata per valutare le prestazioni delle richieste alla base di conoscenza. Ad esempio, se un utente di Sandbox esegue 10 test consecutivi in un minuto, la sua area di lavoro sarà temporaneamente limitata dall\'eseguire le seguenti azioni per il minuto successivo: creazione, eliminazione, aggiornamenti dei dataset e caricamento o modifica di documenti.',
   },
   plans: {
     sandbox: {
       name: 'Sandbox',
       description: '200 prove gratuite di GPT',
       includesTitle: 'Include:',
+      for: 'Prova gratuita delle capacità principali',
     },
     professional: {
       name: 'Professional',
       description:
         'Per individui e piccoli team per sbloccare più potenza a prezzi accessibili.',
       includesTitle: 'Tutto nel piano gratuito, più:',
+      for: 'Per sviluppatori indipendenti / piccoli team',
     },
     team: {
       name: 'Team',
       description:
         'Collabora senza limiti e goditi prestazioni di alto livello.',
       includesTitle: 'Tutto nel piano Professional, più:',
+      for: 'Per team di medie dimensioni',
     },
     enterprise: {
       name: 'Enterprise',
       description:
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
+      features: {
+        6: 'Sicurezza e Controlli Avanzati',
+        2: 'Funzionalità esclusive per le imprese',
+        4: 'SSO',
+        8: 'Supporto Tecnico Professionale',
+        5: 'SLA negoziati da Dify Partners',
+        0: 'Soluzioni di distribuzione scalabili di livello enterprise',
+        7: 'Aggiornamenti e manutenzione di Dify ufficialmente',
+        1: 'Autorizzazione alla Licenza Commerciale',
+        3: 'Gestione di più spazi di lavoro e imprese',
+      },
+      price: 'Personalizzato',
+      for: 'Per team di grandi dimensioni',
+      btnText: 'Contatta le vendite',
+      priceTip: 'Solo fatturazione annuale',
+    },
+    community: {
+      features: {
+        1: 'Spazio di Lavoro Unico',
+        2: 'Rispetta la Licenza Open Source di Dify',
+        0: 'Tutte le funzionalità principali rilasciate sotto il repository pubblico',
+      },
+      name: 'Comunità',
+      btnText: 'Inizia con la comunità',
+      includesTitle: 'Caratteristiche Gratuite:',
+      description: 'Per utenti individuali, piccole squadre o progetti non commerciali',
+      price: 'Gratuito',
+      for: 'Per utenti individuali, piccole squadre o progetti non commerciali',
+    },
+    premium: {
+      features: {
+        0: 'Affidabilità autogestita da vari fornitori di cloud',
+        3: 'Supporto prioritario via Email e Chat',
+        2: 'Personalizzazione del logo e del marchio dell\'app web',
+        1: 'Spazio di Lavoro Unico',
+      },
+      name: 'Premium',
+      priceTip: 'Basato su Cloud Marketplace',
+      includesTitle: 'Tutto dalla Community, oltre a:',
+      description: 'Per organizzazioni e team di medie dimensioni',
+      for: 'Per organizzazioni e team di medie dimensioni',
+      btnText: 'Ottieni Premium in',
+      price: 'Scalabile',
+      comingSoon: 'Supporto di Microsoft Azure e Google Cloud in arrivo presto',
     },
   },
   vectorSpace: {
@@ -120,12 +188,26 @@ const translation = {
   apps: {
     fullTipLine1: 'Aggiorna il tuo piano per',
     fullTipLine2: 'creare più app.',
+    fullTip1des: 'Hai raggiunto il limite di costruzione delle app su questo piano.',
+    fullTip2des: 'Si consiglia di disinstallare le applicazioni inattive per liberare spazio, o contattarci.',
+    contactUs: 'Contattaci',
+    fullTip2: 'Limite del piano raggiunto',
+    fullTip1: 'Aggiorna per creare più app',
   },
   annotatedResponse: {
     fullTipLine1: 'Aggiorna il tuo piano per',
     fullTipLine2: 'annotare più conversazioni.',
     quotaTitle: 'Quota di Risposta Annotata',
   },
+  usagePage: {
+    buildApps: 'Costruisci app',
+    vectorSpace: 'Archiviazione dei dati conoscitivi',
+    annotationQuota: 'Quota di annotazione',
+    teamMembers: 'Membri del team',
+    documentsUploadQuota: 'Quota di Caricamento Documenti',
+    vectorSpaceTooltip: 'I documenti con la modalità di indicizzazione ad alta qualità consumeranno risorse di Knowledge Data Storage. Quando il Knowledge Data Storage raggiunge il limite, nuovi documenti non verranno caricati.',
+  },
+  teamMembers: 'Membri del team',
 }
 
 export default translation

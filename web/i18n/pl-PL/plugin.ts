@@ -180,6 +180,8 @@ const translation = {
     difyMarketplace: 'Rynek Dify',
     noPluginFound: 'Nie znaleziono wtyczki',
     pluginsResult: '{{num}} wyniki',
+    partnerTip: 'Zweryfikowane przez partnera Dify',
+    verifiedTip: 'Zweryfikowane przez Dify',
   },
   task: {
     installError: 'Nie udało się zainstalować wtyczek {{errorLength}}, kliknij, aby wyświetlić',
@@ -204,6 +206,10 @@ const translation = {
   searchPlugins: 'Wtyczki wyszukiwania',
   searchTools: 'Narzędzia wyszukiwania...',
   submitPlugin: 'Prześlij wtyczkę',
+  metadata: {
+    title: 'Wtyczki',
+  },
+  difyVersionNotCompatible: 'Obecna wersja Dify nie jest kompatybilna z tym wtyczką, proszę zaktualizować do minimalnej wymaganej wersji: {{minimalDifyVersion}}',
 }
 
 export default translation

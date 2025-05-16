@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from deprecated import deprecated
@@ -263,8 +263,8 @@ class ToolConversationVariables(Base):
 
 
 class ToolFile(Base):
-    """
-    store the file created by agent
+    """This table stores file metadata generated in workflows,
+    not only files created by agent.
     """
 
     __tablename__ = "tool_files"
@@ -304,8 +304,11 @@ class DeprecatedPublishedAppTool(Base):
         db.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
     )
 
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # id of the app
     app_id = db.Column(StringUUID, ForeignKey("apps.id"), nullable=False)
+
+    user_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     # who published this tool
     description = db.Column(db.Text, nullable=False)
     # llm_description of the tool, for LLM
@@ -325,34 +328,3 @@ class DeprecatedPublishedAppTool(Base):
     @property
     def description_i18n(self) -> I18nObject:
         return I18nObject(**json.loads(self.description))
-
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    user_id: Mapped[str] = db.Column(StringUUID, nullable=False)
-    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
-    conversation_id: Mapped[Optional[str]] = db.Column(StringUUID, nullable=True)
-    file_key: Mapped[str] = db.Column(db.String(255), nullable=False)
-    mimetype: Mapped[str] = db.Column(db.String(255), nullable=False)
-    original_url: Mapped[Optional[str]] = db.Column(db.String(2048), nullable=True)
-    name: Mapped[str] = mapped_column(default="")
-    size: Mapped[int] = mapped_column(default=-1)
-
-    def __init__(
-        self,
-        *,
-        user_id: str,
-        tenant_id: str,
-        conversation_id: Optional[str] = None,
-        file_key: str,
-        mimetype: str,
-        original_url: Optional[str] = None,
-        name: str,
-        size: int,
-    ):
-        self.user_id = user_id
-        self.tenant_id = tenant_id
-        self.conversation_id = conversation_id
-        self.file_key = file_key
-        self.mimetype = mimetype
-        self.original_url = original_url
-        self.name = name
-        self.size = size

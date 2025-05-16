@@ -26,7 +26,7 @@ class Mail:
 
         match mail_type:
             case "resend":
-                import resend  # type: ignore
+                import resend
 
                 api_key = dify_config.RESEND_API_KEY
                 if not api_key:

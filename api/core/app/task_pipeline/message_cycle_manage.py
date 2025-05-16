@@ -24,7 +24,7 @@ from core.app.entities.task_entities import (
     WorkflowTaskState,
 )
 from core.llm_generator.llm_generator import LLMGenerator
-from core.tools.tool_file_manager import ToolFileManager
+from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
@@ -154,7 +154,7 @@ class MessageCycleManage:
             if message_file.url.startswith("http"):
                 url = message_file.url
             else:
-                url = ToolFileManager.sign_file(tool_file_id=tool_file_id, extension=extension)
+                url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
 
             return MessageFileStreamResponse(
                 task_id=self._application_generate_entity.task_id,

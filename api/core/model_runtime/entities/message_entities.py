@@ -1,4 +1,5 @@
-from collections.abc import Sequence
+from abc import ABC
+from collections.abc import Mapping, Sequence
 from enum import Enum, StrEnum
 from typing import Annotated, Any, Literal, Optional, Union
 
@@ -60,8 +61,12 @@ class PromptMessageContentType(StrEnum):
     DOCUMENT = "document"
 
 
-class PromptMessageContent(BaseModel):
-    pass
+class PromptMessageContent(ABC, BaseModel):
+    """
+    Model class for prompt message content.
+    """
+
+    type: PromptMessageContentType
 
 
 class TextPromptMessageContent(PromptMessageContent):
@@ -125,7 +130,16 @@ PromptMessageContentUnionTypes = Annotated[
 ]
 
 
-class PromptMessage(BaseModel):
+CONTENT_TYPE_MAPPING: Mapping[PromptMessageContentType, type[PromptMessageContent]] = {
+    PromptMessageContentType.TEXT: TextPromptMessageContent,
+    PromptMessageContentType.IMAGE: ImagePromptMessageContent,
+    PromptMessageContentType.AUDIO: AudioPromptMessageContent,
+    PromptMessageContentType.VIDEO: VideoPromptMessageContent,
+    PromptMessageContentType.DOCUMENT: DocumentPromptMessageContent,
+}
+
+
+class PromptMessage(ABC, BaseModel):
     """
     Model class for prompt message.
     """
@@ -141,6 +155,23 @@ class PromptMessage(BaseModel):
         :return: True if prompt message is empty, False otherwise
         """
         return not self.content
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def validate_content(cls, v):
+        if isinstance(v, list):
+            prompts = []
+            for prompt in v:
+                if isinstance(prompt, PromptMessageContent):
+                    if not isinstance(prompt, TextPromptMessageContent | MultiModalPromptMessageContent):
+                        prompt = CONTENT_TYPE_MAPPING[prompt.type].model_validate(prompt.model_dump())
+                elif isinstance(prompt, dict):
+                    prompt = CONTENT_TYPE_MAPPING[prompt["type"]].model_validate(prompt)
+                else:
+                    raise ValueError(f"invalid prompt message {prompt}")
+                prompts.append(prompt)
+            return prompts
+        return v
 
     @field_serializer("content")
     def serialize_content(

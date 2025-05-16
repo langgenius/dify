@@ -91,6 +91,8 @@ class BaseAgentRunner(AppRunner):
             return_resource=app_config.additional_features.show_retrieve_source,
             invoke_from=application_generate_entity.invoke_from,
             hit_callback=hit_callback,
+            user_id=user_id,
+            inputs=cast(dict, application_generate_entity.inputs),
         )
         # get how many agent thoughts have been created
         self.agent_thought_count = (

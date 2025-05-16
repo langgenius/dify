@@ -9,7 +9,7 @@ from .engine import db
 from .types import StringUUID
 
 
-class DataSourceOauthBinding(db.Model):  # type: ignore[name-defined]
+class DataSourceOauthBinding(Base):
     __tablename__ = "data_source_oauth_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="source_binding_pkey"),

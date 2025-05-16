@@ -180,6 +180,8 @@ const translation = {
     noPluginFound: 'ไม่พบปลั๊กอิน',
     empower: 'เพิ่มศักยภาพในการพัฒนา AI ของคุณ',
     difyMarketplace: 'ตลาด Dify',
+    partnerTip: 'ได้รับการตรวจสอบโดยพันธมิตรของ Dify',
+    verifiedTip: 'ได้รับการตรวจสอบโดย Dify',
   },
   task: {
     installing: 'การติดตั้งปลั๊กอิน {{installingLength}} 0 เสร็จแล้ว',
@@ -204,6 +206,10 @@ const translation = {
   fromMarketplace: 'จาก Marketplace',
   submitPlugin: 'ส่งปลั๊กอิน',
   allCategories: 'หมวดหมู่ทั้งหมด',
+  metadata: {
+    title: 'ปลั๊กอิน',
+  },
+  difyVersionNotCompatible: 'เวอร์ชั่นปัจจุบันของ Dify ไม่สามารถใช้งานร่วมกับปลั๊กอินนี้ได้ กรุณาอัปเกรดไปยังเวอร์ชั่นขั้นต่ำที่ต้องการ: {{minimalDifyVersion}}',
 }
 
 export default translation

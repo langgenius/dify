@@ -149,7 +149,7 @@ const EndpointCard = ({
             </ActionButton>
           </div>
         </div>
-        {data.declaration.endpoints.map((endpoint, index) => (
+        {data.declaration.endpoints.filter(endpoint => !endpoint.hidden).map((endpoint, index) => (
           <div key={index} className='flex h-6 items-center'>
             <div className='system-xs-regular w-12 shrink-0 text-text-tertiary'>{endpoint.method}</div>
             <div className='group/item system-xs-regular flex grow items-center truncate text-text-secondary'>

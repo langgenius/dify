@@ -1,8 +1,8 @@
 from typing import cast
 
-import flask_login  # type: ignore
+import flask_login
 from flask import request
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_restful import Resource, reqparse
 
 import services
 from configs import dify_config

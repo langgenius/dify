@@ -1,6 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { useContext } from 'use-context-selector'
+import I18n from '@/context/i18n'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -9,12 +11,14 @@ import { useTranslation } from 'react-i18next'
 import KeyValueItem from '../base/key-value-item'
 import Tooltip from '@/app/components/base/tooltip'
 import Button from '@/app/components/base/button'
+import { getDocsUrl } from '@/app/components/plugins/utils'
 import { useDebugKey } from '@/service/use-plugins'
 
 const i18nPrefix = 'plugin.debugInfo'
 
 const DebugInfo: FC = () => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
   const { data: info, isLoading } = useDebugKey()
 
   // info.key likes 4580bdb7-b878-471c-a8a4-bfd760263a53 mask the middle part using *.
@@ -30,7 +34,7 @@ const DebugInfo: FC = () => {
         <>
           <div className='flex items-center gap-1 self-stretch'>
             <span className='system-sm-semibold flex shrink-0 grow basis-0 flex-col items-start justify-center text-text-secondary'>{t(`${i18nPrefix}.title`)}</span>
-            <a href='https://docs.dify.ai/plugins/quick-start/develop-plugins/debug-plugin' target='_blank' className='flex cursor-pointer items-center gap-0.5 text-text-accent-light-mode-only'>
+            <a href={getDocsUrl(locale, '/plugins/quick-start/debug-plugin')} target='_blank' className='flex cursor-pointer items-center gap-0.5 text-text-accent-light-mode-only'>
               <span className='system-xs-medium'>{t(`${i18nPrefix}.viewDocs`)}</span>
               <RiArrowRightUpLine className='h-3 w-3' />
             </a>

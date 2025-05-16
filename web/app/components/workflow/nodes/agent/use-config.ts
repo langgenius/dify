@@ -85,12 +85,13 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     enabled: Boolean(pluginId),
   })
   const formData = useMemo(() => {
+    const paramNameList = (currentStrategy?.parameters || []).map(item => item.name)
     return Object.fromEntries(
-      Object.entries(inputs.agent_parameters || {}).map(([key, value]) => {
+      Object.entries(inputs.agent_parameters || {}).filter(([name]) => paramNameList.includes(name)).map(([key, value]) => {
         return [key, value.value]
       }),
     )
-  }, [inputs.agent_parameters])
+  }, [inputs.agent_parameters, currentStrategy?.parameters])
   const onFormChange = (value: Record<string, any>) => {
     const res: ToolVarInputs = {}
     Object.entries(value).forEach(([key, val]) => {

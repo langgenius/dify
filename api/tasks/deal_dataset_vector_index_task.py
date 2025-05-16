@@ -24,7 +24,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
     start_at = time.perf_counter()
 
     try:
-        dataset = Dataset.query.filter_by(id=dataset_id).first()
+        dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
 
         if not dataset:
             raise Exception("Dataset not found")

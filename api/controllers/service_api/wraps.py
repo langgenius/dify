@@ -7,7 +7,7 @@ from typing import Optional
 
 from flask import current_app, request
 from flask_login import user_logged_in  # type: ignore
-from flask_restful import Resource  # type: ignore
+from flask_restful import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session

@@ -168,6 +168,53 @@ const translation = {
   enable: 'Activer',
   allKnowledge: 'Toutes les connaissances',
   allKnowledgeDescription: 'Sélectionnez cette option pour afficher toutes les connaissances dans cet espace de travail. Seul le propriétaire de l’espace de travail peut gérer toutes les connaissances.',
+  metadata: {
+    createMetadata: {
+      name: 'Nom',
+      title: 'Nouveaux Métadonnées',
+      namePlaceholder: 'Ajouter le nom des métadonnées',
+      type: 'Type',
+      back: 'Retour',
+    },
+    checkName: {
+      empty: 'Le nom des métadonnées ne peut pas être vide',
+      invalid: 'Le nom des métadonnées ne peut contenir que des lettres minuscules, des chiffres et des tirets bas et doit commencer par une lettre minuscule.',
+    },
+    batchEditMetadata: {
+      editMetadata: 'Modifier les métadonnées',
+      applyToAllSelectDocumentTip: 'Créez automatiquement toutes les métadonnées modifiées et nouvelles pour tous les documents sélectionnés, sinon l\'édition des métadonnées ne s\'appliquera qu\'aux documents qui en ont.',
+      applyToAllSelectDocument: 'Appliquer à tous les documents sélectionnés',
+      multipleValue: 'Valeur multiple',
+      editDocumentsNum: 'Édition de {{num}} documents',
+    },
+    selectMetadata: {
+      search: 'Rechercher des métadonnées',
+      newAction: 'Nouveaux métadonnées',
+      manageAction: 'Gérer',
+    },
+    datasetMetadata: {
+      description: 'Vous pouvez gérer toutes les métadonnées dans cette connaissance ici. Les modifications seront synchronisées avec chaque document.',
+      rename: 'Renommer',
+      builtIn: 'Intégré',
+      addMetaData: 'Ajouter des métadonnées',
+      namePlaceholder: 'Nom de métadonnées',
+      builtInDescription: 'Les métadonnées intégrées sont automatiquement extraites et générées. Elles doivent être activées avant utilisation et ne peuvent pas être modifiées.',
+      deleteTitle: 'Confirmer la suppression',
+      values: '{{num}} Valeurs',
+      deleteContent: 'Êtes-vous sûr de vouloir supprimer les métadonnées "{{name}}" ?',
+      name: 'Nom',
+    },
+    documentMetadata: {
+      technicalParameters: 'Paramètres techniques',
+      metadataToolTip: 'Les métadonnées servent de filtre essentiel qui améliore l\'exactitude et la pertinence de la recherche d\'informations. Vous pouvez modifier et ajouter des métadonnées pour ce document ici.',
+      documentInformation: 'Informations du document',
+      startLabeling: 'Commencer l\'étiquetage',
+    },
+    addMetadata: 'Ajouter des métadonnées',
+    metadata: 'Métadonnées',
+    chooseTime: 'Choisissez un moment...',
+  },
+  embeddingModelNotAvailable: 'Le modèle d\'embedding n\'est pas disponible.',
 }
 
 export default translation

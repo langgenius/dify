@@ -34,7 +34,7 @@ const DefaultValue = ({
         {t('workflow.nodes.common.errorHandle.defaultValue.desc')}
         &nbsp;
         <a
-          href='https://docs.dify.ai/guides/workflow/error-handling'
+          href='https://docs.dify.ai/en/guides/workflow/error-handling/README'
           target='_blank'
           className='text-text-accent'
         >
