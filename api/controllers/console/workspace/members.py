@@ -6,6 +6,7 @@ from flask_restful import Resource, abort, marshal_with, reqparse
 import services
 from configs import dify_config
 from controllers.console import api
+from controllers.console.error import WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -17,6 +18,7 @@ from libs.login import login_required
 from models.account import Account, TenantAccountRole
 from services.account_service import RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
+from services.feature_service import FeatureService
 
 
 class MemberListApi(Resource):
@@ -54,6 +56,12 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
+
+        workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
+
+        if not workspace_members.is_available(len(invitee_emails)):
+            raise WorkspaceMembersLimitExceeded()
+
         for invitee_email in invitee_emails:
             try:
                 token = RegisterService.invite_new_member(

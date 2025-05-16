@@ -72,7 +72,7 @@ const translation = {
         sso: {
           label: 'SSO 인증',
           title: '웹앱 SSO',
-          tooltip: '관리자에게 문의하여 WebApp SSO를 사용하도록 설정합니다.',
+          tooltip: '관리자에게 문의하여 web app SSO를 사용하도록 설정합니다.',
           description: '모든 사용자는 WebApp을 사용하기 전에 SSO로 로그인해야 합니다.',
         },
         modalTip: '클라이언트 쪽 웹앱 설정.',

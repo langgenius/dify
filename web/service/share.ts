@@ -33,7 +33,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { SystemFeatures } from '@/types/feature'
+import type { AccessMode } from '@/models/access-control'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -186,10 +186,6 @@ export const fetchAppParams = async (isInstalledApp: boolean, installedAppId = '
   return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId)) as Promise<ChatConfig>
 }
 
-export const fetchSystemFeatures = async () => {
-  return (getAction('get', false))(getUrl('system-features', false, '')) as Promise<SystemFeatures>
-}
-
 export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
   return (getAction('get', false))(getUrl('/enterprise/sso/saml/login', false, ''), {
     params: {
@@ -267,4 +263,18 @@ export const fetchAccessToken = async (appCode: string, userId?: string) => {
   headers.append('X-App-Code', appCode)
   const url = userId ? `/passport?user_id=${encodeURIComponent(userId)}` : '/passport'
   return get(url, { headers }) as Promise<{ access_token: string }>
+}
+
+export const getAppAccessMode = (appId: string, isInstalledApp: boolean) => {
+  if (isInstalledApp)
+    return consoleGet<{ accessMode: AccessMode }>(`/enterprise/webapp/app/access-mode?appId=${appId}`)
+
+  return get<{ accessMode: AccessMode }>(`/webapp/access-mode?appId=${appId}`)
+}
+
+export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {
+  if (isInstalledApp)
+    return consoleGet<{ result: boolean }>(`/enterprise/webapp/permission?appId=${appId}`)
+
+  return get<{ result: boolean }>(`/webapp/permission?appId=${appId}`)
 }

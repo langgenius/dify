@@ -165,9 +165,9 @@ const translation = {
     },
   },
   answerIcon: {
-    description: 'S’il faut utiliser l’icône WebApp pour remplacer 🤖 dans l’application partagée',
-    title: 'Utiliser l’icône WebApp pour remplacer 🤖',
-    descriptionInExplore: 'Utilisation de l’icône WebApp pour remplacer 🤖 dans Explore',
+    description: 'S’il faut utiliser l’icône web app pour remplacer 🤖 dans l’application partagée',
+    title: 'Utiliser l’icône web app pour remplacer 🤖',
+    descriptionInExplore: 'Utilisation de l’icône web app pour remplacer 🤖 dans Explore',
   },
   importFromDSLUrlPlaceholder: 'Collez le lien DSL ici',
   importFromDSL: 'Importation à partir d’une DSL',

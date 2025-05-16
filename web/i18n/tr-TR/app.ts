@@ -165,9 +165,9 @@ const translation = {
     },
   },
   answerIcon: {
-    descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 WebApp simgesinin kullanılıp kullanılmayacağı',
-    title: 'Değiştirmek 🤖 için WebApp simgesini kullanın',
-    description: 'Paylaşılan uygulamada değiştirmek 🤖 için WebApp simgesinin kullanılıp kullanılmayacağı',
+    descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 web app simgesinin kullanılıp kullanılmayacağı',
+    title: 'Değiştirmek 🤖 için web app simgesini kullanın',
+    description: 'Paylaşılan uygulamada değiştirmek 🤖 için web app simgesinin kullanılıp kullanılmayacağı',
   },
   mermaid: {
     handDrawn: 'Elle çizilmiş',

@@ -30,7 +30,7 @@ const translation = {
   overview: {
     title: '概覽',
     appInfo: {
-      explanation: '開箱即用的 AI WebApp',
+      explanation: '開箱即用的 AI web app',
       accessibleAddress: '公開訪問 URL',
       preview: '預覽',
       regenerate: '重新生成',
@@ -38,18 +38,18 @@ const translation = {
       preUseReminder: '使用前請先開啟開關',
       settings: {
         entry: '設定',
-        title: 'WebApp 設定',
-        webName: 'WebApp 名稱',
-        webDesc: 'WebApp 描述',
+        title: 'web app 設定',
+        webName: 'web app 名稱',
+        webDesc: 'web app 描述',
         webDescTip: '以下文字將展示在客戶端中，對應用進行說明和使用上的基本引導',
-        webDescPlaceholder: '請輸入 WebApp 的描述',
+        webDescPlaceholder: '請輸入 web app 的描述',
         language: '語言',
         workflow: {
           title: '工作流程步驟',
           show: '展示',
           hide: '隱藏',
           subTitle: '工作流詳細資訊',
-          showDesc: '在 WebApp 中顯示或隱藏工作流詳細資訊',
+          showDesc: '在 web app 中顯示或隱藏工作流詳細資訊',
         },
         chatColorTheme: '聊天顏色主題',
         chatColorThemeDesc: '設定聊天機器人的顏色主題',
@@ -70,9 +70,9 @@ const translation = {
           copyrightTooltip: '請升級至專業計劃或以上',
         },
         sso: {
-          description: '所有使用者在使用 WebApp 之前都需要使用 SSO 登錄',
-          title: 'WebApp SSO',
-          tooltip: '聯繫管理員以啟用 WebApp SSO',
+          description: '所有使用者在使用 web app 之前都需要使用 SSO 登錄',
+          title: 'web app SSO',
+          tooltip: '聯繫管理員以啟用 web app SSO',
           label: 'SSO 身份驗證',
         },
         modalTip: '用戶端 Web 應用程式設置。',
@@ -95,7 +95,7 @@ const translation = {
       customize: {
         way: '方法',
         entry: '定製化',
-        title: '定製化 AI WebApp',
+        title: '定製化 AI web app',
         explanation: '你可以定製化 Web App 前端以符合你的情景與風格需求',
         way1: {
           name: 'Fork 客戶端程式碼修改後部署到 Vercel（推薦）',

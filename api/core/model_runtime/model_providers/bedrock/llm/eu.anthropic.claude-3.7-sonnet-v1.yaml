@@ -1,0 +1,115 @@
+model: us.anthropic.claude-3-7-sonnet-20250219-v1:0
+label:
+  en_US: Claude 3.7 Sonnet(US.Cross Region Inference)
+icon: icon_s_en.svg
+model_type: llm
+features:
+  - agent-thought
+  - vision
+  - tool-call
+  - stream-tool-call
+model_properties:
+  mode: chat
+  context_size: 200000
+# docs: https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-anthropic-claude-messages.html
+parameter_rules:
+  - name: enable_cache
+    label:
+      zh_Hans: 启用提示缓存
+      en_US: Enable Prompt Cache
+    type: boolean
+    required: false
+    default: true
+    help:
+      zh_Hans: 启用提示缓存可以提高性能并降低成本。Claude 3.7 Sonnet支持在system、messages和tools字段中使用缓存检查点。
+      en_US: Enable prompt caching to improve performance and reduce costs. Claude 3.7 Sonnet supports cache checkpoints in system, messages, and tools fields.
+  - name: reasoning_type
+    label:
+      zh_Hans: 推理配置
+      en_US: Reasoning Type
+    type: boolean
+    required: false
+    default: false
+    placeholder:
+      zh_Hans: 设置推理配置
+      en_US: Set reasoning configuration
+    help:
+      zh_Hans: 控制模型的推理能力。启用时，temperature将固定为1且top_p将被禁用。
+      en_US: Controls the model's reasoning capability. When enabled, temperature will be fixed to 1 and top_p will be disabled.
+  - name: reasoning_budget
+    show_on:
+      - variable: reasoning_type
+        value: true
+    label:
+      zh_Hans: 推理预算
+      en_US: Reasoning Budget
+    type: int
+    default: 1024
+    min: 0
+    max: 128000
+    help:
+      zh_Hans: 推理的预算限制（最小1024），必须小于max_tokens。仅在推理类型为enabled时可用。
+      en_US: Budget limit for reasoning (minimum 1024), must be less than max_tokens. Only available when reasoning type is enabled.
+
+  - name: max_tokens
+    use_template: max_tokens
+    required: true
+    label:
+      zh_Hans: 最大token数
+      en_US: Max Tokens
+    type: int
+    default: 8192
+    min: 1
+    max: 128000
+    help:
+      zh_Hans: 停止前生成的最大令牌数。请注意，Anthropic Claude 模型可能会在达到 max_tokens 的值之前停止生成令牌。不同的 Anthropic Claude 模型对此参数具有不同的最大值。
+      en_US: The maximum number of tokens to generate before stopping. Note that Anthropic Claude models might stop generating tokens before reaching the value of max_tokens. Different Anthropic Claude models have different maximum values for this parameter.
+  - name: temperature
+    use_template: temperature
+    required: false
+    label:
+      zh_Hans: 模型温度
+      en_US: Model Temperature
+    type: float
+    default: 1
+    min: 0.0
+    max: 1.0
+    help:
+      zh_Hans: 生成内容的随机性。当推理功能启用时，该值将被固定为1。
+      en_US: The amount of randomness injected into the response. When reasoning is enabled, this value will be fixed to 1.
+  - name: top_p
+    show_on:
+      - variable: reasoning_type
+        value: disabled
+    use_template: top_p
+    label:
+      zh_Hans: Top P
+      en_US: Top P
+    required: false
+    type: float
+    default: 0.999
+    min: 0.000
+    max: 1.000
+    help:
+      zh_Hans: 在核采样中的概率阈值。当推理功能启用时，该参数将被禁用。
+      en_US: The probability threshold in nucleus sampling. When reasoning is enabled, this parameter will be disabled.
+  - name: top_k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    required: false
+    type: int
+    default: 0
+    min: 0
+    # tip docs from aws has error, max value is 500
+    max: 500
+    help:
+      zh_Hans: 对于每个后续标记，仅从前 K 个选项中进行采样。使用 top_k 删除长尾低概率响应。
+      en_US: Only sample from the top K options for each subsequent token. Use top_k to remove long tail low probability responses.
+  - name: response_format
+    use_template: response_format
+pricing:
+  input: '0.003'
+  output: '0.015'
+  unit: '0.001'
+  currency: USD

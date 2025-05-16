@@ -3,8 +3,8 @@ import { useAppContext } from '@/context/app-context'
 import Toast from '../../base/toast'
 import { useTranslation } from 'react-i18next'
 import { useInvalidatePermissions, useMutationPermissions, usePermissions } from '@/service/use-plugins'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useMemo } from 'react'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
   if (!permission)
@@ -46,7 +46,7 @@ const usePermission = () => {
 }
 
 export const useCanInstallPluginFromMarketplace = () => {
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const { canManagement } = usePermission()
 
   const canInstallPluginFromMarketplace = useMemo(() => {

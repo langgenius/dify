@@ -15,17 +15,17 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useContextSelector } from 'use-context-selector'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'
-import { fetchAppDetail, fetchAppSSO } from '@/service/apps'
-import AppContext, { useAppContext } from '@/context/app-context'
+import { fetchAppDetail } from '@/service/apps'
+import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { App } from '@/types/app'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -56,7 +56,6 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     icon: NavIcon
     selectedIcon: NavIcon
   }>>([])
-  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
 
   const getNavigations = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
     const navs = [
@@ -96,9 +95,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return navs
   }, [])
 
+  useDocumentTitle(appDetail?.name || t('common.menus.appDetail'))
+
   useEffect(() => {
     if (appDetail) {
-      document.title = `${(appDetail.name || 'App')} - Dify`
       const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
       setAppSiderbarExpand(isMobile ? mode : localeMode)
@@ -142,14 +142,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     else {
       setAppDetail({ ...res, enable_sso: false })
       setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
-      if (systemFeatures.enable_web_sso_switch_component && canIEditApp) {
-        fetchAppSSO({ appId }).then((ssoRes) => {
-          setAppDetail({ ...res, enable_sso: ssoRes.enabled })
-        })
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace, systemFeatures.enable_web_sso_switch_component])
+  }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
 
   useUnmount(() => {
     setAppDetail()

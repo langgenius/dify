@@ -2,12 +2,13 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
 import ExploreContext from '@/context/explore-context'
 import Sidebar from '@/app/components/explore/sidebar'
 import { useAppContext } from '@/context/app-context'
 import { fetchMembers } from '@/service/common'
 import type { InstalledApp } from '@/models/explore'
+import { useTranslation } from 'react-i18next'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IExploreProps = {
   children: React.ReactNode
@@ -16,15 +17,16 @@ export type IExploreProps = {
 const Explore: FC<IExploreProps> = ({
   children,
 }) => {
-  const { t } = useTranslation()
   const router = useRouter()
   const [controlUpdateInstalledApps, setControlUpdateInstalledApps] = useState(0)
   const { userProfile, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [hasEditPermission, setHasEditPermission] = useState(false)
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
+  const { t } = useTranslation()
+
+  useDocumentTitle(t('common.menus.explore'))
 
   useEffect(() => {
-    document.title = `${t('explore.title')} - Dify`;
     (async () => {
       const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
       if (!accounts)

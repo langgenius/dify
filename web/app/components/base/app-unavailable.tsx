@@ -4,7 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type IAppUnavailableProps = {
-  code?: number
+  code?: number | string
   isUnknownReason?: boolean
   unknownReason?: string
 }

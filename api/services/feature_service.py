@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from configs import dify_config
 from services.billing_service import BillingService
@@ -27,6 +27,32 @@ class LimitationModel(BaseModel):
     limit: int = 0
 
 
+class LicenseLimitationModel(BaseModel):
+    """
+    - enabled: whether this limit is enforced
+    - size: current usage count
+    - limit: maximum allowed count; 0 means unlimited
+    """
+
+    enabled: bool = Field(False, description="Whether this limit is currently active")
+    size: int = Field(0, description="Number of resources already consumed")
+    limit: int = Field(0, description="Maximum number of resources allowed; 0 means no limit")
+
+    def is_available(self, required: int = 1) -> bool:
+        """
+        Determine whether the requested amount can be allocated.
+
+        Returns True if:
+         - this limit is not active, or
+         - the limit is zero (unlimited), or
+         - there is enough remaining quota.
+        """
+        if not self.enabled or self.limit == 0:
+            return True
+
+        return (self.limit - self.size) >= required
+
+
 class LicenseStatus(StrEnum):
     NONE = "none"
     INACTIVE = "inactive"
@@ -39,6 +65,27 @@ class LicenseStatus(StrEnum):
 class LicenseModel(BaseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
+    workspaces: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
+
+
+class BrandingModel(BaseModel):
+    enabled: bool = False
+    application_title: str = ""
+    login_page_logo: str = ""
+    workspace_logo: str = ""
+    favicon: str = ""
+
+
+class WebAppAuthSSOModel(BaseModel):
+    protocol: str = ""
+
+
+class WebAppAuthModel(BaseModel):
+    enabled: bool = False
+    allow_sso: bool = False
+    sso_config: WebAppAuthSSOModel = WebAppAuthSSOModel()
+    allow_email_code_login: bool = False
+    allow_email_password_login: bool = False
 
 
 class FeatureModel(BaseModel):
@@ -54,6 +101,8 @@ class FeatureModel(BaseModel):
     can_replace_logo: bool = False
     model_load_balancing_enabled: bool = False
     dataset_operator_enabled: bool = False
+    webapp_copyright_enabled: bool = False
+    workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -68,9 +117,6 @@ class KnowledgeRateLimitModel(BaseModel):
 class SystemFeatureModel(BaseModel):
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
-    sso_enforced_for_web: bool = False
-    sso_enforced_for_web_protocol: str = ""
-    enable_web_sso_switch_component: bool = False
     enable_marketplace: bool = False
     max_plugin_package_size: int = dify_config.PLUGIN_MAX_PACKAGE_SIZE
     enable_email_code_login: bool = False
@@ -80,6 +126,8 @@ class SystemFeatureModel(BaseModel):
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
+    branding: BrandingModel = BrandingModel()
+    webapp_auth: WebAppAuthModel = WebAppAuthModel()
 
 
 class FeatureService:
@@ -91,6 +139,10 @@ class FeatureService:
 
         if dify_config.BILLING_ENABLED and tenant_id:
             cls._fulfill_params_from_billing_api(features, tenant_id)
+
+        if dify_config.ENTERPRISE_ENABLED:
+            features.webapp_copyright_enabled = True
+            cls._fulfill_params_from_workspace_info(features, tenant_id)
 
         return features
 
@@ -111,8 +163,8 @@ class FeatureService:
         cls._fulfill_system_params_from_env(system_features)
 
         if dify_config.ENTERPRISE_ENABLED:
-            system_features.enable_web_sso_switch_component = True
-
+            system_features.branding.enabled = True
+            system_features.webapp_auth.enabled = True
             cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MARKETPLACE_ENABLED:
@@ -137,6 +189,14 @@ class FeatureService:
         features.education.enabled = dify_config.EDUCATION_ENABLED
 
     @classmethod
+    def _fulfill_params_from_workspace_info(cls, features: FeatureModel, tenant_id: str):
+        workspace_info = EnterpriseService.get_workspace_info(tenant_id)
+        if "WorkspaceMembers" in workspace_info:
+            features.workspace_members.size = workspace_info["WorkspaceMembers"]["used"]
+            features.workspace_members.limit = workspace_info["WorkspaceMembers"]["limit"]
+            features.workspace_members.enabled = workspace_info["WorkspaceMembers"]["enabled"]
+
+    @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
         billing_info = BillingService.get_info(tenant_id)
 
@@ -144,6 +204,9 @@ class FeatureService:
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
         features.education.activated = billing_info["subscription"].get("education", False)
+
+        if features.billing.subscription.plan != "sandbox":
+            features.webapp_copyright_enabled = True
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]
@@ -178,38 +241,53 @@ class FeatureService:
             features.knowledge_rate_limit = billing_info["knowledge_rate_limit"]["limit"]
 
     @classmethod
-    def _fulfill_params_from_enterprise(cls, features):
+    def _fulfill_params_from_enterprise(cls, features: SystemFeatureModel):
         enterprise_info = EnterpriseService.get_info()
 
-        if "sso_enforced_for_signin" in enterprise_info:
-            features.sso_enforced_for_signin = enterprise_info["sso_enforced_for_signin"]
+        if "SSOEnforcedForSignin" in enterprise_info:
+            features.sso_enforced_for_signin = enterprise_info["SSOEnforcedForSignin"]
 
-        if "sso_enforced_for_signin_protocol" in enterprise_info:
-            features.sso_enforced_for_signin_protocol = enterprise_info["sso_enforced_for_signin_protocol"]
+        if "SSOEnforcedForSigninProtocol" in enterprise_info:
+            features.sso_enforced_for_signin_protocol = enterprise_info["SSOEnforcedForSigninProtocol"]
 
-        if "sso_enforced_for_web" in enterprise_info:
-            features.sso_enforced_for_web = enterprise_info["sso_enforced_for_web"]
+        if "EnableEmailCodeLogin" in enterprise_info:
+            features.enable_email_code_login = enterprise_info["EnableEmailCodeLogin"]
 
-        if "sso_enforced_for_web_protocol" in enterprise_info:
-            features.sso_enforced_for_web_protocol = enterprise_info["sso_enforced_for_web_protocol"]
+        if "EnableEmailPasswordLogin" in enterprise_info:
+            features.enable_email_password_login = enterprise_info["EnableEmailPasswordLogin"]
 
-        if "enable_email_code_login" in enterprise_info:
-            features.enable_email_code_login = enterprise_info["enable_email_code_login"]
+        if "IsAllowRegister" in enterprise_info:
+            features.is_allow_register = enterprise_info["IsAllowRegister"]
 
-        if "enable_email_password_login" in enterprise_info:
-            features.enable_email_password_login = enterprise_info["enable_email_password_login"]
+        if "IsAllowCreateWorkspace" in enterprise_info:
+            features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
 
-        if "is_allow_register" in enterprise_info:
-            features.is_allow_register = enterprise_info["is_allow_register"]
+        if "Branding" in enterprise_info:
+            features.branding.application_title = enterprise_info["Branding"].get("applicationTitle", "")
+            features.branding.login_page_logo = enterprise_info["Branding"].get("loginPageLogo", "")
+            features.branding.workspace_logo = enterprise_info["Branding"].get("workspaceLogo", "")
+            features.branding.favicon = enterprise_info["Branding"].get("favicon", "")
 
-        if "is_allow_create_workspace" in enterprise_info:
-            features.is_allow_create_workspace = enterprise_info["is_allow_create_workspace"]
+        if "WebAppAuth" in enterprise_info:
+            features.webapp_auth.allow_sso = enterprise_info["WebAppAuth"].get("allowSso", False)
+            features.webapp_auth.allow_email_code_login = enterprise_info["WebAppAuth"].get(
+                "allowEmailCodeLogin", False
+            )
+            features.webapp_auth.allow_email_password_login = enterprise_info["WebAppAuth"].get(
+                "allowEmailPasswordLogin", False
+            )
+            features.webapp_auth.sso_config.protocol = enterprise_info.get("SSOEnforcedForWebProtocol", "")
 
-        if "license" in enterprise_info:
-            license_info = enterprise_info["license"]
+        if "License" in enterprise_info:
+            license_info = enterprise_info["License"]
 
             if "status" in license_info:
                 features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
 
-            if "expired_at" in license_info:
-                features.license.expired_at = license_info["expired_at"]
+            if "expiredAt" in license_info:
+                features.license.expired_at = license_info["expiredAt"]
+
+            if "workspaces" in license_info:
+                features.license.workspaces.enabled = license_info["workspaces"]["enabled"]
+                features.license.workspaces.limit = license_info["workspaces"]["limit"]
+                features.license.workspaces.size = license_info["workspaces"]["used"]

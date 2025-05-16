@@ -173,7 +173,7 @@ const translation = {
   },
   answerIcon: {
     description: 'Czy w aplikacji udostępnionej ma być używana ikona aplikacji internetowej do zamiany 🤖.',
-    title: 'Użyj ikony WebApp, aby zastąpić 🤖',
+    title: 'Użyj ikony web app, aby zastąpić 🤖',
     descriptionInExplore: 'Czy używać ikony aplikacji internetowej do zastępowania 🤖 w Eksploruj',
   },
   importFromDSL: 'Importowanie z DSL',

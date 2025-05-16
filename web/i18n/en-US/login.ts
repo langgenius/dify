@@ -104,6 +104,11 @@ const translation = {
   licenseLostTip: 'Failed to connect Dify license server. Please contact your administrator to continue using Dify.',
   licenseInactive: 'License Inactive',
   licenseInactiveTip: 'The Dify Enterprise license for your workspace is inactive. Please contact your administrator to continue using Dify.',
+  webapp: {
+    noLoginMethod: 'Authentication method not configured for web app',
+    noLoginMethodTip: 'Please contact the system admin to add an authentication method.',
+    disabled: 'Webapp authentication is disabled. Please contact the system admin to enable it. You can try to use the app directly.',
+  },
 }
 
 export default translation
