@@ -64,9 +64,9 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         )
 
         return {
-            "inputs": execution.inputs_dict,
-            "outputs": execution.outputs_dict,
-            "process_data": execution.process_data_dict,
+            "inputs": execution.inputs,
+            "outputs": execution.outputs,
+            "process_data": execution.process_data,
         }
 
     @classmethod
@@ -113,7 +113,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         )
 
         return {
-            "inputs": execution.inputs_dict,
-            "outputs": execution.outputs_dict,
-            "process_data": execution.process_data_dict,
+            "inputs": execution.inputs,
+            "outputs": execution.outputs,
+            "process_data": execution.process_data,
         }
