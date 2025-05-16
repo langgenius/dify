@@ -41,8 +41,6 @@ from models.workflow import (
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.app import WorkflowHashNotEqualError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
-from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
-
 
 class RagPipelineService:
     @staticmethod
@@ -115,20 +113,6 @@ class RagPipelineService:
             raise ValueError("Customized pipeline template not found.")
         db.delete(customized_template)
         db.commit()
-
-    @classmethod
-    def export_template_rag_pipeline_dsl(cls, template_id: str) -> str:
-        """
-        Export template rag pipeline dsl
-        """
-        template = db.session.query(PipelineCustomizedTemplate).filter(PipelineCustomizedTemplate.id == template_id).first()
-        if not template:
-            raise ValueError("Customized pipeline template not found.")
-        pipeline = db.session.query(Pipeline).filter(Pipeline.id == template.pipeline_id).first()
-        if not pipeline:
-            raise ValueError("Pipeline not found.")
-        
-        return RagPipelineDslService.export_rag_pipeline_dsl(pipeline, include_secret=True)
 
     def get_draft_workflow(self, pipeline: Pipeline) -> Optional[Workflow]:
         """
