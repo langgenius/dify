@@ -164,7 +164,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   return res
 }
 
-export const formatItem = (
+const formatItem = (
   item: any,
   isChatMode: boolean,
   filterVar: (payload: Var, selector: ValueSelector) => boolean,
@@ -613,6 +613,7 @@ const getIterationItemType = ({
   const isSystem = isSystemVar(valueSelector)
 
   const targetVar = isSystem ? beforeNodesOutputVars.find(v => v.isStartNode) : beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
+
   if (!targetVar)
     return VarType.string
 
@@ -623,9 +624,9 @@ const getIterationItemType = ({
     arrayType = curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type
   }
   else {
-    for (let i = 1; i < valueSelector.length - 1; i++) {
+    for (let i = 1; i < valueSelector.length; i++) {
       const key = valueSelector[i]
-      const isLast = i === valueSelector.length - 2
+      const isLast = i === valueSelector.length - 1
       curr = Array.isArray(curr) ? curr.find(v => v.variable === key) : []
 
       if (isLast)

@@ -3,6 +3,8 @@ const translation = {
   upgradeTip: {
     prefix: 'Nadgradite svoj načrt za',
     suffix: 'prilagoditev vaše blagovne znamke.',
+    des: 'Nadgradite svoj načrt, da prilagodite svojo blagovno znamko',
+    title: 'Nadgradite svoj načrt',
   },
   webapp: {
     title: 'Prilagodi blagovno znamko spletne aplikacije',

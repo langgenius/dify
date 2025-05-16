@@ -159,6 +159,10 @@ const translation = {
       title: 'Opik Belediyesi',
       description: 'Opik, LLM uygulamalarını değerlendirmek, test etmek ve izlemek için açık kaynaklı bir platformdur.',
     },
+    weave: {
+      title: 'Dokuma',
+      description: 'Weave, LLM uygulamalarını değerlendirmek, test etmek ve izlemek için açık kaynaklı bir platformdur.',
+    },
   },
   answerIcon: {
     descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 WebApp simgesinin kullanılıp kullanılmayacağı',
@@ -189,6 +193,17 @@ const translation = {
     label: 'Uygulama',
     placeholder: 'Bir uygulama seçin...',
     params: 'UYGULAMA PARAMETRELERI',
+  },
+  structOutput: {
+    required: 'Gerekli',
+    structured: 'Yapılandırılmış',
+    LLMResponse: 'LLM Yanıtı',
+    notConfiguredTip: 'Yapılandırılmış çıktı henüz yapılandırılmamış.',
+    configure: 'Yapılandır',
+    modelNotSupported: 'Model desteklenmiyor',
+    moreFillTip: 'Maksimum 10 katmanlı iç içe geçişleri gösterme',
+    modelNotSupportedTip: 'Mevcut model bu özelliği desteklemiyor ve otomatik olarak prompt enjeksiyonuna düşürülüyor.',
+    structuredTip: 'Yapılandırılmış Çıktılar, modelin sağladığınız JSON Şemasına uyacak şekilde her zaman yanıtlar üretmesini sağlayan bir özelliktir.',
   },
 }
 

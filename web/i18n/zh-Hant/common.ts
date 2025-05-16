@@ -54,6 +54,10 @@ const translation = {
     viewDetails: '查看詳情',
     in: '在',
     copied: '複製',
+    more: '更多',
+    downloadSuccess: '下載完成。',
+    downloadFailed: '下載失敗。請稍後再試。',
+    format: '格式',
   },
   placeholder: {
     input: '請輸入',
@@ -153,6 +157,9 @@ const translation = {
     community: '社群',
     about: '關於',
     logout: '登出',
+    support: '支持',
+    github: 'GitHub',
+    compliance: '合規',
   },
   settings: {
     accountGroup: '賬戶',
@@ -202,6 +209,9 @@ const translation = {
     feedbackLabel: '告訴我們您刪除帳戶的原因？',
     feedbackPlaceholder: '自選',
     sendVerificationButton: '發送驗證碼',
+    workspaceName: '工作區名稱',
+    workspaceIcon: '工作區域圖示',
+    editWorkspaceInfo: '編輯工作區資訊',
   },
   members: {
     team: '團隊',
@@ -543,6 +553,7 @@ const translation = {
     inputPlaceholder: '與 Bot 對話',
     thinking: '思維。。。',
     thought: '思想',
+    resend: '重新發送',
   },
   promptEditor: {
     placeholder: '在這裡寫你的提示詞，輸入\'{\' 插入變數、輸入\'/\' 插入提示內容塊',
@@ -636,6 +647,25 @@ const translation = {
   },
   pagination: {
     perPage: '每頁項目數',
+  },
+  theme: {
+    light: '光',
+    auto: '系統',
+    dark: '黑暗',
+    theme: '主題',
+  },
+  compliance: {
+    sandboxUpgradeTooltip: '僅可用於專業或團隊計劃。',
+    soc2Type1: 'SOC 2 類型 I 報告',
+    professionalUpgradeTooltip: '僅可用於團隊計劃或更高版本。',
+    gdpr: 'GDPR DPA',
+    soc2Type2: 'SOC 2 類型 II 報告',
+    iso27001: 'ISO 27001:2022 認證',
+  },
+  imageInput: {
+    supportedFormats: '支援PNG、JPG、JPEG、WEBP和GIF',
+    browse: '瀏覽',
+    dropImageHere: '將您的圖片放在這裡，或',
   },
 }
 

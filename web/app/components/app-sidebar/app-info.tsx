@@ -247,7 +247,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
           </div>
           {/* description */}
           {appDetail.description && (
-            <div className='system-xs-regular text-text-tertiary'>{appDetail.description}</div>
+            <div className='system-xs-regular overflow-wrap-anywhere w-full max-w-full whitespace-normal break-words text-text-tertiary'>{appDetail.description}</div>
           )}
           {/* operations */}
           <div className='flex flex-wrap items-center gap-1 self-stretch'>
