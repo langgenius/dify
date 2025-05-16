@@ -153,6 +153,7 @@ pipeline_import_fields = {
     "id": fields.String,
     "status": fields.String,
     "pipeline_id": fields.String,
+    "dataset_id": fields.String,
     "current_dsl_version": fields.String,
     "imported_dsl_version": fields.String,
     "error": fields.String,

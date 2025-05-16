@@ -352,7 +352,7 @@ class Workflow(Base):
         )
 
     @property
-    def pipeline_variables(self) -> dict[str, Sequence[Variable]]:
+    def rag_pipeline_variables(self) -> dict[str, Sequence[Variable]]:
         # TODO: find some way to init `self._conversation_variables` when instance created.
         if self._rag_pipeline_variables is None:
             self._rag_pipeline_variables = "{}"
@@ -363,8 +363,8 @@ class Workflow(Base):
             results[k] = [variable_factory.build_pipeline_variable_from_mapping(item) for item in v.values()]
         return results
 
-    @pipeline_variables.setter
-    def pipeline_variables(self, values: dict[str, Sequence[Variable]]) -> None:
+    @rag_pipeline_variables.setter
+    def rag_pipeline_variables(self, values: dict[str, Sequence[Variable]]) -> None:
         self._rag_pipeline_variables = json.dumps(
             {k: {item.name: item.model_dump() for item in v} for k, v in values.items()},
             ensure_ascii=False,

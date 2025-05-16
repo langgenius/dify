@@ -40,6 +40,7 @@ from models.dataset import (
     Document,
     DocumentSegment,
     ExternalKnowledgeBindings,
+    Pipeline,
 )
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
@@ -248,6 +249,15 @@ class DatasetService:
             raise DatasetNameDuplicateError(
                 f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
             )
+        
+        pipeline = Pipeline(
+            tenant_id=tenant_id,
+            name=rag_pipeline_dataset_create_entity.name,
+            description=rag_pipeline_dataset_create_entity.description,
+            created_by=current_user.id
+        )
+        db.session.add(pipeline)
+        db.session.flush()
 
         dataset = Dataset(
             tenant_id=tenant_id,
@@ -257,7 +267,8 @@ class DatasetService:
             provider="vendor",
             runtime_mode="rag_pipeline",
             icon_info=rag_pipeline_dataset_create_entity.icon_info,
-            created_by=current_user.id
+            created_by=current_user.id,
+            pipeline_id=pipeline.id
         )
         db.session.add(dataset)
         db.session.commit()
@@ -282,10 +293,13 @@ class DatasetService:
             runtime_mode="rag_pipeline",
             icon_info=rag_pipeline_dataset_create_entity.icon_info,
         )
-
-        if rag_pipeline_dataset_create_entity.yaml_content:
-            rag_pipeline_import_info: RagPipelineImportInfo = RagPipelineDslService.import_rag_pipeline(
-                current_user, ImportMode.YAML_CONTENT, rag_pipeline_dataset_create_entity.yaml_content, dataset
+        with Session(db.engine) as session:
+            rag_pipeline_dsl_service = RagPipelineDslService(session)
+            rag_pipeline_import_info: RagPipelineImportInfo = rag_pipeline_dsl_service.import_rag_pipeline(
+                account=current_user,
+                import_mode=ImportMode.YAML_CONTENT.value,
+                yaml_content=rag_pipeline_dataset_create_entity.yaml_content,
+                dataset=dataset
             )
         return {
             "id": rag_pipeline_import_info.id,

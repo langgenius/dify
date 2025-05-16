@@ -516,17 +516,14 @@ class RagPipelineDslService:
         dependencies: Optional[list[PluginDependency]] = None,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
-        pipeline_data = data.get("pipeline", {})
-        pipeline_mode = pipeline_data.get("mode")
-        if not pipeline_mode:
-            raise ValueError("loss pipeline mode")
+        pipeline_data = data.get("rag_pipeline", {})
         # Set icon type
-        icon_type_value = icon_type or pipeline_data.get("icon_type")
+        icon_type_value = pipeline_data.get("icon_type")
         if icon_type_value in ["emoji", "link"]:
             icon_type = icon_type_value
         else:
             icon_type = "emoji"
-        icon = icon or str(pipeline_data.get("icon", ""))
+        icon = str(pipeline_data.get("icon", ""))
 
         if pipeline:
             # Update existing pipeline
@@ -544,7 +541,6 @@ class RagPipelineDslService:
             pipeline = Pipeline()
             pipeline.id = str(uuid4())
             pipeline.tenant_id = account.current_tenant_id
-            pipeline.mode = pipeline_mode.value
             pipeline.name = pipeline_data.get("name", "")
             pipeline.description = pipeline_data.get("description", "")
             pipeline.icon_type = icon_type

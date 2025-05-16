@@ -1,10 +1,9 @@
 from typing import Optional
 
 from extensions.ext_database import db
-from models.dataset import Pipeline, PipelineBuiltInTemplate
+from models.dataset import Dataset, Pipeline, PipelineBuiltInTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
-#from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
 class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
@@ -30,11 +29,32 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param language: language
         :return:
         """
-        pipeline_templates = (
-            db.session.query(PipelineBuiltInTemplate).filter(PipelineBuiltInTemplate.language == language).all()
-        )
+            
+        pipeline_built_in_templates: list[PipelineBuiltInTemplate] = db.session.query(PipelineBuiltInTemplate).filter(
+            PipelineBuiltInTemplate.language == language
+        ).all()
 
-        return {"pipeline_templates": pipeline_templates}
+        recommended_pipelines_results = []
+        for pipeline_built_in_template in pipeline_built_in_templates:
+            pipeline_model: Pipeline = pipeline_built_in_template.pipeline
+
+            recommended_pipeline_result = {
+                'id': pipeline_built_in_template.id,
+                'name': pipeline_built_in_template.name,
+                'pipeline_id': pipeline_model.id,
+                'description': pipeline_built_in_template.description,
+                'icon': pipeline_built_in_template.icon,
+                'copyright': pipeline_built_in_template.copyright,
+                'privacy_policy': pipeline_built_in_template.privacy_policy,
+                'position': pipeline_built_in_template.position,
+            }
+            dataset: Dataset = pipeline_model.dataset
+            if dataset:
+                recommended_pipeline_result['chunk_structure'] = dataset.chunk_structure
+                recommended_pipelines_results.append(recommended_pipeline_result)
+
+        return {'pipeline_templates': recommended_pipelines_results}
+
 
     @classmethod
     def fetch_pipeline_template_detail_from_db(cls, pipeline_id: str) -> Optional[dict]:
@@ -43,6 +63,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param pipeline_id: Pipeline ID
         :return:
         """
+        from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
         # is in public recommended list
         pipeline_template = (
             db.session.query(PipelineBuiltInTemplate).filter(PipelineBuiltInTemplate.id == pipeline_id).first()

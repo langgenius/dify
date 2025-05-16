@@ -42,6 +42,7 @@ from services.entities.knowledge_entities.rag_pipeline_entities import PipelineT
 from services.errors.app import WorkflowHashNotEqualError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 
+
 class RagPipelineService:
     @staticmethod
     def get_pipeline_templates(
@@ -49,7 +50,7 @@ class RagPipelineService:
     ) -> list[PipelineBuiltInTemplate | PipelineCustomizedTemplate]:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
-            retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)
+            retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             result = retrieval_instance.get_pipeline_templates(language)
             if not result.get("pipeline_templates") and language != "en-US":
                 template_retrieval = PipelineTemplateRetrievalFactory.get_built_in_pipeline_template_retrieval()
@@ -57,7 +58,7 @@ class RagPipelineService:
             return result.get("pipeline_templates")
         else:
             mode = "customized"
-            retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)
+            retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             result = retrieval_instance.get_pipeline_templates(language)
             return result.get("pipeline_templates")
 
@@ -200,7 +201,7 @@ class RagPipelineService:
         account: Account,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
-        pipeline_variables: dict[str, Sequence[Variable]],
+        rag_pipeline_variables: dict[str, Sequence[Variable]],
     ) -> Workflow:
         """
         Sync draft workflow
@@ -217,15 +218,18 @@ class RagPipelineService:
             workflow = Workflow(
                 tenant_id=pipeline.tenant_id,
                 app_id=pipeline.id,
+                features="{}",
                 type=WorkflowType.RAG_PIPELINE.value,
                 version="draft",
                 graph=json.dumps(graph),
                 created_by=account.id,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
-                pipeline_variables=pipeline_variables,
+                rag_pipeline_variables=rag_pipeline_variables,
             )
             db.session.add(workflow)
+            db.session.flush()
+            pipeline.workflow_id = workflow.id
         # update draft workflow if found
         else:
             workflow.graph = json.dumps(graph)
@@ -233,7 +237,7 @@ class RagPipelineService:
             workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
-            workflow.pipeline_variables = pipeline_variables
+            workflow.rag_pipeline_variables = rag_pipeline_variables
         # commit db session changes
         db.session.commit()
 

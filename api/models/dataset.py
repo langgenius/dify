@@ -1166,6 +1166,9 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
+    @property
+    def pipeline(self):
+        return db.session.query(Pipeline).filter(Pipeline.id == self.pipeline_id).first()
 
 class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
     __tablename__ = "pipeline_customized_templates"
@@ -1195,7 +1198,6 @@ class Pipeline(Base):  # type: ignore[name-defined]
     tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
-    mode = db.Column(db.String(255), nullable=False)
     workflow_id = db.Column(StringUUID, nullable=True)
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     is_published = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
@@ -1203,3 +1205,6 @@ class Pipeline(Base):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    @property
+    def dataset(self):
+        return db.session.query(Dataset).filter(Dataset.pipeline_id == self.id).first()
