@@ -32,7 +32,6 @@ type NodesExtraData = {
   getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
   checkValid: any
   defaultRunInputData?: Record<string, any>
-  checkVarValid?: any
 }
 export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
   [BlockEnum.Start]: {
@@ -61,7 +60,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: AnswerDefault.getAvailablePrevNodes,
     getAvailableNextNodes: AnswerDefault.getAvailableNextNodes,
     checkValid: AnswerDefault.checkValid,
-    checkVarValid: AnswerDefault.checkVarValid,
   },
   [BlockEnum.LLM]: {
     author: 'Dify',
@@ -72,7 +70,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: LLMDefault.getAvailableNextNodes,
     checkValid: LLMDefault.checkValid,
     defaultRunInputData: LLMDefault.defaultRunInputData,
-    checkVarValid: LLMDefault.checkVarValid,
   },
   [BlockEnum.KnowledgeRetrieval]: {
     author: 'Dify',
@@ -82,7 +79,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: KnowledgeRetrievalDefault.getAvailablePrevNodes,
     getAvailableNextNodes: KnowledgeRetrievalDefault.getAvailableNextNodes,
     checkValid: KnowledgeRetrievalDefault.checkValid,
-    checkVarValid: KnowledgeRetrievalDefault.checkVarValid,
   },
   [BlockEnum.IfElse]: {
     author: 'Dify',
@@ -92,7 +88,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: IfElseDefault.getAvailablePrevNodes,
     getAvailableNextNodes: IfElseDefault.getAvailableNextNodes,
     checkValid: IfElseDefault.checkValid,
-    checkVarValid: IfElseDefault.checkVarValid,
   },
   [BlockEnum.Iteration]: {
     author: 'Dify',
@@ -102,7 +97,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: IterationDefault.getAvailablePrevNodes,
     getAvailableNextNodes: IterationDefault.getAvailableNextNodes,
     checkValid: IterationDefault.checkValid,
-    checkVarValid: IterationDefault.checkVarValid,
   },
   [BlockEnum.IterationStart]: {
     author: 'Dify',
@@ -148,7 +142,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: CodeDefault.getAvailablePrevNodes,
     getAvailableNextNodes: CodeDefault.getAvailableNextNodes,
     checkValid: CodeDefault.checkValid,
-    checkVarValid: CodeDefault.checkVarValid,
   },
   [BlockEnum.TemplateTransform]: {
     author: 'Dify',
@@ -158,7 +151,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: TemplateTransformDefault.getAvailablePrevNodes,
     getAvailableNextNodes: TemplateTransformDefault.getAvailableNextNodes,
     checkValid: TemplateTransformDefault.checkValid,
-    checkVarValid: TemplateTransformDefault.checkVarValid,
   },
   [BlockEnum.QuestionClassifier]: {
     author: 'Dify',
@@ -168,7 +160,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: QuestionClassifierDefault.getAvailablePrevNodes,
     getAvailableNextNodes: QuestionClassifierDefault.getAvailableNextNodes,
     checkValid: QuestionClassifierDefault.checkValid,
-    checkVarValid: QuestionClassifierDefault.checkVarValid,
   },
   [BlockEnum.HttpRequest]: {
     author: 'Dify',
@@ -178,7 +169,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: HttpRequestDefault.getAvailablePrevNodes,
     getAvailableNextNodes: HttpRequestDefault.getAvailableNextNodes,
     checkValid: HttpRequestDefault.checkValid,
-    checkVarValid: HttpRequestDefault.checkVarValid,
   },
   [BlockEnum.VariableAssigner]: {
     author: 'Dify',
@@ -197,7 +187,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: AssignerDefault.getAvailablePrevNodes,
     getAvailableNextNodes: AssignerDefault.getAvailableNextNodes,
     checkValid: AssignerDefault.checkValid,
-    checkVarValid: AssignerDefault.checkVarValid,
   },
   [BlockEnum.VariableAggregator]: {
     author: 'Dify',
@@ -207,7 +196,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: VariableAssignerDefault.getAvailablePrevNodes,
     getAvailableNextNodes: VariableAssignerDefault.getAvailableNextNodes,
     checkValid: VariableAssignerDefault.checkValid,
-    checkVarValid: VariableAssignerDefault.checkVarValid,
   },
   [BlockEnum.ParameterExtractor]: {
     author: 'Dify',
@@ -217,7 +205,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: ParameterExtractorDefault.getAvailablePrevNodes,
     getAvailableNextNodes: ParameterExtractorDefault.getAvailableNextNodes,
     checkValid: ParameterExtractorDefault.checkValid,
-    checkVarValid: ParameterExtractorDefault.checkVarValid,
   },
   [BlockEnum.Tool]: {
     author: 'Dify',
@@ -227,7 +214,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: ToolDefault.getAvailablePrevNodes,
     getAvailableNextNodes: ToolDefault.getAvailableNextNodes,
     checkValid: ToolDefault.checkValid,
-    checkVarValid: ToolDefault.checkVarValid,
   },
   [BlockEnum.DocExtractor]: {
     author: 'Dify',
@@ -237,7 +223,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: DocExtractorDefault.getAvailablePrevNodes,
     getAvailableNextNodes: DocExtractorDefault.getAvailableNextNodes,
     checkValid: DocExtractorDefault.checkValid,
-    checkVarValid: DocExtractorDefault.checkVarValid,
   },
   [BlockEnum.ListFilter]: {
     author: 'Dify',
@@ -247,7 +232,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: ListFilterDefault.getAvailablePrevNodes,
     getAvailableNextNodes: ListFilterDefault.getAvailableNextNodes,
     checkValid: ListFilterDefault.checkValid,
-    checkVarValid: ListFilterDefault.checkVarValid,
   },
   [BlockEnum.Agent]: {
     author: 'Dify',
