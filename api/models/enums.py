@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class CreatedByRole(StrEnum):
+class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
 

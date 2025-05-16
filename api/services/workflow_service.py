@@ -26,7 +26,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.account import Account
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import (
@@ -284,9 +284,11 @@ class WorkflowService:
         workflow_node_execution.created_by = account.id
         workflow_node_execution.workflow_id = draft_workflow.id
 
-        # Use the repository to save the workflow node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine, tenant_id=app_model.tenant_id, app_id=app_model.id
+            session_factory=db.engine,
+            user=account,
+            app_id=app_model.id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
         repository.save(workflow_node_execution)
 
@@ -390,7 +392,7 @@ class WorkflowService:
         workflow_node_execution.node_type = node_instance.node_type
         workflow_node_execution.title = node_instance.node_data.title
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
-        workflow_node_execution.created_by_role = CreatedByRole.ACCOUNT.value
+        workflow_node_execution.created_by_role = CreatorUserRole.ACCOUNT.value
         workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_node_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
         if run_succeeded and node_run_result:
