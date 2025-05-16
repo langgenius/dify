@@ -5,11 +5,6 @@ from typing import Optional, Union, cast
 from yarl import URL
 
 from configs import dify_config
-from core.datasource.__base.datasource_plugin import DatasourcePlugin
-from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
-from core.datasource.__base.datasource_runtime import DatasourceRuntime
-from core.datasource.entities.api_entities import DatasourceApiEntity, DatasourceProviderApiEntity
-from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -26,7 +21,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.configuration import ProviderConfigEncrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from models.tools import ApiToolProvider, BuiltinDatasourceProvider, BuiltinToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)
 
@@ -111,64 +106,6 @@ class ToolTransformService:
         if isinstance(provider_controller, PluginToolProviderController):
             result.plugin_id = provider_controller.plugin_id
             result.plugin_unique_identifier = provider_controller.plugin_unique_identifier
-
-        # get credentials schema
-        schema = {x.to_basic_provider_config().name: x for x in provider_controller.get_credentials_schema()}
-
-        for name, value in schema.items():
-            if result.masked_credentials:
-                result.masked_credentials[name] = ""
-
-        # check if the provider need credentials
-        if not provider_controller.need_credentials:
-            result.is_team_authorization = True
-            result.allow_delete = False
-        elif db_provider:
-            result.is_team_authorization = True
-
-            if decrypt_credentials:
-                credentials = db_provider.credentials
-
-                # init tool configuration
-                tool_configuration = ProviderConfigEncrypter(
-                    tenant_id=db_provider.tenant_id,
-                    config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
-                    provider_type=provider_controller.provider_type.value,
-                    provider_identity=provider_controller.entity.identity.name,
-                )
-                # decrypt the credentials and mask the credentials
-                decrypted_credentials = tool_configuration.decrypt(data=credentials)
-                masked_credentials = tool_configuration.mask_tool_credentials(data=decrypted_credentials)
-
-                result.masked_credentials = masked_credentials
-                result.original_credentials = decrypted_credentials
-
-        return result
-
-    @classmethod
-    def builtin_datasource_provider_to_user_provider(
-        cls,
-        provider_controller: DatasourcePluginProviderController,
-        db_provider: Optional[BuiltinDatasourceProvider],
-        decrypt_credentials: bool = True,
-    ) -> DatasourceProviderApiEntity:
-        """
-        convert provider controller to user provider
-        """
-        result = DatasourceProviderApiEntity(
-            id=provider_controller.entity.identity.name,
-            author=provider_controller.entity.identity.author,
-            name=provider_controller.entity.identity.name,
-            description=provider_controller.entity.identity.description,
-            icon=provider_controller.entity.identity.icon,
-            label=provider_controller.entity.identity.label,
-            type=DatasourceProviderType.RAG_PIPELINE,
-            masked_credentials={},
-            is_team_authorization=False,
-            plugin_id=provider_controller.plugin_id,
-            plugin_unique_identifier=provider_controller.plugin_unique_identifier,
-            datasources=[],
-        )
 
         # get credentials schema
         schema = {x.to_basic_provider_config().name: x for x in provider_controller.get_credentials_schema()}
@@ -367,48 +304,3 @@ class ToolTransformService:
                 parameters=tool.parameters,
                 labels=labels or [],
             )
-
-    @staticmethod
-    def convert_datasource_entity_to_api_entity(
-        datasource: DatasourcePlugin,
-        tenant_id: str,
-        credentials: dict | None = None,
-        labels: list[str] | None = None,
-    ) -> DatasourceApiEntity:
-        """
-        convert tool to user tool
-        """
-        # fork tool runtime
-        datasource = datasource.fork_datasource_runtime(
-            runtime=DatasourceRuntime(
-                credentials=credentials or {},
-                tenant_id=tenant_id,
-            )
-        )
-
-        # get datasource parameters
-        parameters = datasource.entity.parameters or []
-        # get datasource runtime parameters
-        runtime_parameters = datasource.get_runtime_parameters()
-        # override parameters
-        current_parameters = parameters.copy()
-        for runtime_parameter in runtime_parameters:
-            found = False
-            for index, parameter in enumerate(current_parameters):
-                if parameter.name == runtime_parameter.name and parameter.form == runtime_parameter.form:
-                    current_parameters[index] = runtime_parameter
-                    found = True
-                    break
-
-            if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
-                current_parameters.append(runtime_parameter)
-
-        return DatasourceApiEntity(
-            author=datasource.entity.identity.author,
-            name=datasource.entity.identity.name,
-            label=datasource.entity.identity.label,
-            description=datasource.entity.description.human if datasource.entity.description else I18nObject(en_US=""),
-            output_schema=datasource.entity.output_schema,
-            parameters=current_parameters,
-            labels=labels or [],
-        )

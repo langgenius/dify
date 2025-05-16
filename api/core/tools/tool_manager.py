@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any, Union, cast
 from yarl import URL
 
 import contexts
-from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
@@ -495,31 +494,6 @@ class ToolManager:
         yield from cls.list_hardcoded_providers()
         # get plugin providers
         yield from cls.list_plugin_providers(tenant_id)
-
-    @classmethod
-    def list_datasource_providers(cls, tenant_id: str) -> list[DatasourcePluginProviderController]:
-        """
-        list all the datasource providers
-        """
-        manager = PluginToolManager()
-        provider_entities = manager.fetch_datasources(tenant_id)
-        return [
-            DatasourcePluginProviderController(
-                entity=provider.declaration,
-                plugin_id=provider.plugin_id,
-                plugin_unique_identifier=provider.plugin_unique_identifier,
-                tenant_id=tenant_id,
-            )
-            for provider in provider_entities
-        ]
-
-    @classmethod
-    def list_builtin_datasources(cls, tenant_id: str) -> Generator[DatasourcePluginProviderController, None, None]:
-        """
-        list all the builtin datasources
-        """
-        # get builtin datasources
-        yield from cls.list_datasource_providers(tenant_id)
 
     @classmethod
     def _list_hardcoded_providers(cls) -> Generator[BuiltinToolProviderController, None, None]:

@@ -1,16 +1,16 @@
-from collections.abc import Generator
-from typing import Any, Optional
-
-from pydantic import BaseModel
+from collections.abc import Mapping
+from typing import Any
 
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
-from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
+from core.plugin.entities.plugin_daemon import (
+    PluginBasicBooleanResponse,
+    PluginDatasourceProviderEntity,
+)
 from core.plugin.impl.base import BasePluginClient
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 
 
 class PluginDatasourceManager(BasePluginClient):
-    def fetch_datasource_providers(self, tenant_id: str) -> list[PluginToolProviderEntity]:
+    def fetch_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
         """
         Fetch datasource providers for the given tenant.
         """
@@ -27,7 +27,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/datasources",
-            list[PluginToolProviderEntity],
+            list[PluginDatasourceProviderEntity],
             params={"page": 1, "page_size": 256},
             transformer=transformer,
         )
@@ -36,12 +36,12 @@ class PluginDatasourceManager(BasePluginClient):
             provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"
 
             # override the provider name for each tool to plugin_id/provider_name
-            for tool in provider.declaration.tools:
-                tool.identity.provider = provider.declaration.identity.name
+            for datasource in provider.declaration.datasources:
+                datasource.identity.provider = provider.declaration.identity.name
 
         return response
 
-    def fetch_datasource_provider(self, tenant_id: str, provider: str) -> PluginToolProviderEntity:
+    def fetch_datasource_provider(self, tenant_id: str, provider: str) -> PluginDatasourceProviderEntity:
         """
         Fetch datasource provider for the given tenant and plugin.
         """
@@ -58,7 +58,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/datasources",
-            PluginToolProviderEntity,
+            PluginDatasourceProviderEntity,
             params={"provider": tool_provider_id.provider_name, "plugin_id": tool_provider_id.plugin_id},
             transformer=transformer,
         )
@@ -66,8 +66,8 @@ class PluginDatasourceManager(BasePluginClient):
         response.declaration.identity.name = f"{response.plugin_id}/{response.declaration.identity.name}"
 
         # override the provider name for each tool to plugin_id/provider_name
-        for tool in response.declaration.tools:
-            tool.identity.provider = response.declaration.identity.name
+        for datasource in response.declaration.datasources:
+            datasource.identity.provider = response.declaration.identity.name
 
         return response
 
@@ -79,7 +79,7 @@ class PluginDatasourceManager(BasePluginClient):
         datasource_name: str,
         credentials: dict[str, Any],
         datasource_parameters: dict[str, Any],
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Mapping[str, Any]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -88,8 +88,8 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/{online_document}/pages",
-            ToolInvokeMessage,
+            f"plugin/{tenant_id}/dispatch/datasource/first_step",
+            dict,
             data={
                 "user_id": user_id,
                 "data": {
@@ -104,7 +104,10 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        return response
+        for resp in response:
+            return resp
+
+        raise Exception("No response from plugin daemon")
 
     def invoke_second_step(
         self,
@@ -114,7 +117,7 @@ class PluginDatasourceManager(BasePluginClient):
         datasource_name: str,
         credentials: dict[str, Any],
         datasource_parameters: dict[str, Any],
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Mapping[str, Any]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -123,8 +126,8 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/invoke_second_step",
-            ToolInvokeMessage,
+            f"plugin/{tenant_id}/dispatch/datasource/second_step",
+            dict,
             data={
                 "user_id": user_id,
                 "data": {
@@ -139,7 +142,10 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        return response
+        for resp in response:
+            return resp
+
+        raise Exception("No response from plugin daemon")
 
     def validate_provider_credentials(
         self, tenant_id: str, user_id: str, provider: str, credentials: dict[str, Any]
@@ -151,7 +157,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/tool/validate_credentials",
+            f"plugin/{tenant_id}/dispatch/datasource/validate_credentials",
             PluginBasicBooleanResponse,
             data={
                 "user_id": user_id,
@@ -170,48 +176,3 @@ class PluginDatasourceManager(BasePluginClient):
             return resp.result
 
         return False
-
-    def get_runtime_parameters(
-        self,
-        tenant_id: str,
-        user_id: str,
-        provider: str,
-        credentials: dict[str, Any],
-        datasource: str,
-        conversation_id: Optional[str] = None,
-        app_id: Optional[str] = None,
-        message_id: Optional[str] = None,
-    ) -> list[ToolParameter]:
-        """
-        get the runtime parameters of the datasource
-        """
-        datasource_provider_id = GenericProviderID(provider)
-
-        class RuntimeParametersResponse(BaseModel):
-            parameters: list[ToolParameter]
-
-        response = self._request_with_plugin_daemon_response_stream(
-            "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/get_runtime_parameters",
-            RuntimeParametersResponse,
-            data={
-                "user_id": user_id,
-                "conversation_id": conversation_id,
-                "app_id": app_id,
-                "message_id": message_id,
-                "data": {
-                    "provider": datasource_provider_id.provider_name,
-                    "datasource": datasource,
-                    "credentials": credentials,
-                },
-            },
-            headers={
-                "X-Plugin-ID": datasource_provider_id.plugin_id,
-                "Content-Type": "application/json",
-            },
-        )
-
-        for resp in response:
-            return resp.parameters
-
-        return []

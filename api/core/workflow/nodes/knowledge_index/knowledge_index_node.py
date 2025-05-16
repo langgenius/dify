@@ -1,7 +1,8 @@
 import datetime
 import logging
 import time
-from typing import Any, cast, Mapping
+from collections.abc import Mapping
+from typing import Any, cast
 
 from flask_login import current_user
 

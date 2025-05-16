@@ -309,8 +309,10 @@ class RagPipelineDslService:
                         dataset_collection_binding = (
                             db.session.query(DatasetCollectionBinding)
                             .filter(
-                                DatasetCollectionBinding.provider_name == knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
-                                DatasetCollectionBinding.model_name == knowledge_configuration.index_method.embedding_setting.embedding_model_name,
+                                DatasetCollectionBinding.provider_name
+                                == knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
+                                DatasetCollectionBinding.model_name
+                                == knowledge_configuration.index_method.embedding_setting.embedding_model_name,
                                 DatasetCollectionBinding.type == "dataset",
                             )
                             .order_by(DatasetCollectionBinding.created_at)

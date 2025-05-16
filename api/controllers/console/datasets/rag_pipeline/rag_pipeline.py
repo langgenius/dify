@@ -101,7 +101,9 @@ class CustomizedPipelineTemplateApi(Resource):
     @enterprise_license_required
     def post(self, template_id: str):
         with Session(db.engine) as session:
-            template = session.query(PipelineCustomizedTemplate).filter(PipelineCustomizedTemplate.id == template_id).first()
+            template = (
+                session.query(PipelineCustomizedTemplate).filter(PipelineCustomizedTemplate.id == template_id).first()
+            )
             if not template:
                 raise ValueError("Customized pipeline template not found.")
             pipeline = session.query(Pipeline).filter(Pipeline.id == template.pipeline_id).first()

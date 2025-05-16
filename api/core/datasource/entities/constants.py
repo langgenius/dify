@@ -1,1 +1,0 @@
-DATASOURCE_SELECTOR_MODEL_IDENTITY = "__dify__datasource_selector__"

@@ -43,7 +43,7 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 
 logger = logging.getLogger(__name__)
@@ -711,14 +711,7 @@ class DatasourceListApi(Resource):
 
         tenant_id = user.current_tenant_id
 
-        return jsonable_encoder(
-            [
-                provider.to_dict()
-                for provider in BuiltinToolManageService.list_rag_pipeline_datasources(
-                    tenant_id,
-                )
-            ]
-        )
+        return jsonable_encoder(RagPipelineManageService.list_rag_pipeline_datasources(tenant_id))
 
 
 api.add_resource(

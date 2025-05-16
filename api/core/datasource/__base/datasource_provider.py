@@ -2,7 +2,7 @@ from typing import Any
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
-from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType
+from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.errors import ToolProviderCredentialValidationError
@@ -21,15 +21,6 @@ class DatasourcePluginProviderController:
         self.tenant_id = tenant_id
         self.plugin_id = plugin_id
         self.plugin_unique_identifier = plugin_unique_identifier
-
-    @property
-    def provider_type(self) -> DatasourceProviderType:
-        """
-        returns the type of the provider
-
-        :return: type of the provider
-        """
-        return DatasourceProviderType.RAG_PIPELINE
 
     @property
     def need_credentials(self) -> bool:
