@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Încărcați fișier text',
-      button: 'Trageți și fixați fișierul, sau',
+      button: 'Trageți și plasați fișiere sau foldere sau',
       browse: 'Răsfoire',
       tip: 'Acceptă {{supportTypes}}. Maxim {{size}}MB fiecare.',
       validation: {
@@ -65,7 +65,7 @@ const translation = {
       firecrawlTitle: 'Extrageți conținut web cu 🔥Firecrawl',
       unknownError: 'Eroare necunoscută',
       scrapTimeInfo: 'Pagini răzuite {{total}} în total în {{timp}}s',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       excludePaths: 'Excluderea căilor',
       resetAll: 'Resetați toate',
       extractOnlyMainContent: 'Extrageți doar conținutul principal (fără anteturi, navigări, subsoluri etc.)',
@@ -82,6 +82,14 @@ const translation = {
       jinaReaderTitle: 'Convertiți întregul site în Markdown',
       jinaReaderNotConfigured: 'Jina Reader nu este configurat',
       useSitemapTooltip: 'Urmați harta site-ului pentru a accesa cu crawlere site-ul. Dacă nu, Jina Reader va accesa cu crawlere iterativ în funcție de relevanța paginii, producând mai puține pagini, dar de calitate superioară.',
+      waterCrawlNotConfigured: 'Watercrawl nu este configurat',
+      watercrawlTitle: 'Extrageți conținut web cu Watercrawl',
+      configureJinaReader: 'Configurează Jina Reader',
+      waterCrawlNotConfiguredDescription: 'Configurează Watercrawl cu cheia API pentru a-l folosi.',
+      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      configureFirecrawl: 'Configurează Firecrawl',
+      watercrawlDoc: 'Documentele Watercrawl',
+      configureWatercrawl: 'Configurează Watercrawl',
     },
     cancel: 'Anula',
   },
@@ -199,6 +207,11 @@ const translation = {
     title: 'Conectați-vă la alte surse de date?',
     description: 'În prezent, baza de cunoștințe a Dify are doar surse de date limitate. Contribuția cu o sursă de date la baza de cunoștințe Dify este o modalitate fantastică de a ajuta la îmbunătățirea flexibilității și puterii platformei pentru toți utilizatorii. Ghidul nostru de contribuție vă ajută să începeți. Vă rugăm să faceți clic pe linkul de mai jos pentru a afla mai multe.',
     learnMore: 'Află mai multe',
+  },
+  watercrawl: {
+    getApiKeyLinkText: 'Obțineți cheia dvs. API de la watercrawl.dev',
+    apiKeyPlaceholder: 'Cheia API de la watercrawl.dev',
+    configWatercrawl: 'Configurează Watercrawl',
   },
 }
 

@@ -54,6 +54,10 @@ const translation = {
     copied: 'Copiado',
     in: 'em',
     viewDetails: 'Ver detalhes',
+    downloadFailed: 'Download falhou. Por favor, tente novamente mais tarde.',
+    more: 'Mais',
+    downloadSuccess: 'Download concluído.',
+    format: 'Formato',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -153,6 +157,9 @@ const translation = {
     community: 'Comunidade',
     about: 'Sobre',
     logout: 'Sair',
+    github: 'GitHub',
+    support: 'Suporte',
+    compliance: 'Conformidade',
   },
   settings: {
     accountGroup: 'CONTA',
@@ -202,6 +209,9 @@ const translation = {
     feedbackTitle: 'Realimentação',
     feedbackLabel: 'Diga-nos por que você excluiu sua conta?',
     feedbackPlaceholder: 'Opcional',
+    workspaceName: 'Nome do Espaço de Trabalho',
+    workspaceIcon: 'Ícone de Área de Trabalho',
+    editWorkspaceInfo: 'Editar Informações do Espaço de Trabalho',
   },
   members: {
     team: 'Equipe',
@@ -455,7 +465,7 @@ const translation = {
   apiBasedExtension: {
     title: 'As extensões de API fornecem gerenciamento centralizado de API, simplificando a configuração para uso fácil em todos os aplicativos da Dify.',
     link: 'Saiba como desenvolver sua própria Extensão de API.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Adicionar Extensão de API',
     selector: {
       title: 'Extensão de API',
@@ -543,6 +553,7 @@ const translation = {
     inputPlaceholder: 'Fale com o bot',
     thinking: 'Pensante...',
     thought: 'Pensamento',
+    resend: 'Reenviar',
   },
   promptEditor: {
     placeholder: 'Escreva sua palavra de incentivo aqui, digite \'{\' para inserir uma variável, digite \'/\' para inserir um bloco de conteúdo de incentivo',
@@ -636,6 +647,25 @@ const translation = {
   },
   pagination: {
     perPage: 'Itens por página',
+  },
+  theme: {
+    light: 'luz',
+    dark: 'escuro',
+    theme: 'Tema',
+    auto: 'sistema',
+  },
+  compliance: {
+    soc2Type1: 'Relatório SOC 2 Tipo I',
+    sandboxUpgradeTooltip: 'Apenas disponível com um plano Profissional ou de Equipe.',
+    soc2Type2: 'Relatório SOC 2 Tipo II',
+    professionalUpgradeTooltip: 'Apenas disponível com um plano Team ou superior.',
+    gdpr: 'GDPR DPA',
+    iso27001: 'Certificação ISO 27001:2022',
+  },
+  imageInput: {
+    dropImageHere: 'Arraste sua imagem aqui, ou',
+    supportedFormats: 'Suporta PNG, JPG, JPEG, WEBP e GIF',
+    browse: 'navegar',
   },
 }
 

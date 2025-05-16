@@ -180,6 +180,8 @@ const translation = {
     difyMarketplace: 'डिफाई मार्केटप्लेस',
     sortBy: 'काला शहर',
     discover: 'खोजें',
+    partnerTip: 'Dify भागीदार द्वारा सत्यापित',
+    verifiedTip: 'डिफाई द्वारा सत्यापित',
   },
   task: {
     clearAll: 'सभी साफ करें',
@@ -204,6 +206,10 @@ const translation = {
   findMoreInMarketplace: 'मार्केटप्लेस में और खोजें',
   endpointsEnabled: '{{num}} एंडपॉइंट्स के सेट सक्षम किए गए',
   from: 'से',
+  metadata: {
+    title: 'प्लगइन्स',
+  },
+  difyVersionNotCompatible: 'वर्तमान डिफाई संस्करण इस प्लगइन के साथ संगत नहीं है, कृपया आवश्यक न्यूनतम संस्करण में अपग्रेड करें: {{minimalDifyVersion}}',
 }
 
 export default translation

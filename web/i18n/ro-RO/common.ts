@@ -54,6 +54,10 @@ const translation = {
     copied: 'Copiat',
     in: 'în',
     viewDetails: 'Vezi detalii',
+    downloadFailed: 'Descărcarea a eșuat. Vă rugăm să încercați din nou mai târziu.',
+    format: 'Format',
+    downloadSuccess: 'Descărcarea a fost finalizată.',
+    more: 'Mai mult',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -153,6 +157,9 @@ const translation = {
     community: 'Comunitate',
     about: 'Despre',
     logout: 'Deconectare',
+    github: 'GitHub',
+    support: 'Suport',
+    compliance: 'Conformitate',
   },
   settings: {
     accountGroup: 'CONT',
@@ -202,6 +209,9 @@ const translation = {
     feedbackPlaceholder: 'Facultativ',
     feedbackTitle: 'Feedback',
     verificationLabel: 'Cod de verificare',
+    workspaceName: 'Numele spațiului de lucru',
+    editWorkspaceInfo: 'Editează informațiile spațiului de lucru',
+    workspaceIcon: 'Iconița de spațiu de lucru',
   },
   members: {
     team: 'Echipă',
@@ -455,7 +465,7 @@ const translation = {
   apiBasedExtension: {
     title: 'Extensiile bazate pe API oferă o gestionare centralizată a API-urilor, simplificând configurația pentru o utilizare ușoară în aplicațiile Dify.',
     link: 'Aflați cum să dezvoltați propria extensie bazată pe API.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Adăugați extensie API',
     selector: {
       title: 'Extensie API',
@@ -543,6 +553,7 @@ const translation = {
     inputPlaceholder: 'Vorbește cu Bot',
     thinking: 'Gândire...',
     thought: 'Gând',
+    resend: 'Reexpediați',
   },
   promptEditor: {
     placeholder: 'Scrieți aici prompt-ul, introduceți \'{}\' pentru a insera o variabilă, introduceți \'/\' pentru a insera un bloc de conținut prompt',
@@ -636,6 +647,25 @@ const translation = {
   },
   pagination: {
     perPage: 'Articole pe pagină',
+  },
+  theme: {
+    theme: 'Temă',
+    light: 'lumina',
+    auto: 'sistem',
+    dark: 'întunecat',
+  },
+  compliance: {
+    sandboxUpgradeTooltip: 'Disponibilă doar cu un plan Profesional sau de Echipă.',
+    iso27001: 'Certificare ISO 27001:2022',
+    professionalUpgradeTooltip: 'Disponibilă doar cu un plan de echipă sau superior.',
+    gdpr: 'GDPR DPA',
+    soc2Type1: 'Raport SOC 2 Tip I',
+    soc2Type2: 'Raport SOC 2 Tip II',
+  },
+  imageInput: {
+    supportedFormats: 'Suportă PNG, JPG, JPEG, WEBP și GIF',
+    browse: 'naviga',
+    dropImageHere: 'Trageți imaginea aici sau',
   },
 }
 

@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional, Union
@@ -30,8 +31,8 @@ class LangSmithMultiModel(BaseModel):
 
 class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
     name: Optional[str] = Field(..., description="Name of the run")
-    inputs: Optional[Union[str, dict[str, Any], list, None]] = Field(None, description="Inputs of the run")
-    outputs: Optional[Union[str, dict[str, Any], list, None]] = Field(None, description="Outputs of the run")
+    inputs: Optional[Union[str, Mapping[str, Any], list, None]] = Field(None, description="Inputs of the run")
+    outputs: Optional[Union[str, Mapping[str, Any], list, None]] = Field(None, description="Outputs of the run")
     run_type: LangSmithRunType = Field(..., description="Type of the run")
     start_time: Optional[datetime | str] = Field(None, description="Start time of the run")
     end_time: Optional[datetime | str] = Field(None, description="End time of the run")

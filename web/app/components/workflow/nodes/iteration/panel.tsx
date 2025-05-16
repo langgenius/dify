@@ -73,6 +73,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.input`)}
+          required
           operations={(
             <div className='system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary'>Array</div>
           )}
@@ -91,6 +92,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       <div className='mt-2 space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.output`)}
+          required
           operations={(
             <div className='system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary'>Array</div>
           )}

@@ -3,6 +3,8 @@ const translation = {
   upgradeTip: {
     prefix: 'Aggiorna il tuo piano per',
     suffix: 'personalizzare il tuo marchio.',
+    title: 'Aggiorna il tuo piano',
+    des: 'Aggiorna il tuo piano per personalizzare il tuo marchio',
   },
   webapp: {
     title: 'Personalizza il marchio WebApp',

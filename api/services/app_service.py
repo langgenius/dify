@@ -3,7 +3,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Optional, cast
 
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 from flask_sqlalchemy.pagination import Pagination
 
 from configs import dify_config

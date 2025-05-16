@@ -159,6 +159,10 @@ const translation = {
       description: 'Opik là một nền tảng mã nguồn mở để đánh giá, thử nghiệm và giám sát các ứng dụng LLM.',
       title: 'Opik',
     },
+    weave: {
+      title: 'Dệt',
+      description: 'Weave là một nền tảng mã nguồn mở để đánh giá, thử nghiệm và giám sát các ứng dụng LLM.',
+    },
   },
   answerIcon: {
     description: 'Có nên sử dụng biểu tượng WebApp để thay thế 🤖 trong ứng dụng được chia sẻ hay không',
@@ -193,6 +197,17 @@ const translation = {
     placeholder: 'Chọn một ứng dụng...',
     noParams: 'Không cần thông số',
     label: 'Ứng dụng',
+  },
+  structOutput: {
+    configure: 'Cấu hình',
+    required: 'Yêu cầu',
+    notConfiguredTip: 'Đầu ra có cấu trúc chưa được cấu hình.',
+    modelNotSupported: 'Mô hình không được hỗ trợ',
+    LLMResponse: 'Phản hồi của LLM',
+    structured: 'Cấu trúc',
+    structuredTip: 'Đầu ra có cấu trúc là một tính năng đảm bảo rằng mô hình sẽ luôn tạo ra các phản hồi tuân theo sơ đồ JSON mà bạn cung cấp.',
+    modelNotSupportedTip: 'Mô hình hiện tại không hỗ trợ tính năng này và tự động bị hạ cấp xuống việc tiêm lệnh.',
+    moreFillTip: 'Hiển thị tối đa 10 cấp độ lồng ghép',
   },
 }
 

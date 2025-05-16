@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: '上傳文字檔案',
-      button: '拖拽檔案至此，或者',
+      button: '拖拽檔案或檔案夾至此，或者',
       browse: '選擇檔案',
       tip: '已支援 {{supportTypes}}，每個檔案不超過 {{size}}MB。',
       validation: {
@@ -61,7 +61,7 @@ const translation = {
       fireCrawlNotConfiguredDescription: '使用 API 金鑰配置 Firecrawl 以使用它。',
       limit: '限制',
       crawlSubPage: '抓取子頁面',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       preview: '預覽',
       configure: '配置',
       excludePaths: '排除路徑',
@@ -83,6 +83,14 @@ const translation = {
       useSitemap: '使用網站地圖',
       jinaReaderDocLink: 'https://jina.ai/reader',
       useSitemapTooltip: '按照網站地圖對網站進行爬網。否則，Jina Reader 將根據頁面相關性反覆運算抓取，從而生成更少但品質更高的頁面。',
+      watercrawlDoc: 'Watercrawl 文檔',
+      configureFirecrawl: '配置 Firecrawl',
+      configureWatercrawl: '配置水爬行',
+      watercrawlTitle: '使用 Watercrawl 提取網頁內容',
+      watercrawlDocLink: 'https://docs.dify.ai/zh-TW/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      waterCrawlNotConfiguredDescription: '配置 Watercrawl 並使用 API 金鑰來使用它。',
+      configureJinaReader: '配置 Jina Reader',
+      waterCrawlNotConfigured: 'Watercrawl 尚未配置',
     },
   },
   stepTwo: {
@@ -199,6 +207,11 @@ const translation = {
     learnMore: '瞭解更多資訊',
     description: '目前，Dify 的知識庫只有有限的數據源。向 Dify 知識庫貢獻數據源是説明所有使用者增強平台靈活性和強大功能的絕佳方式。我們的貢獻指南使入門變得容易。請點擊下面的連結瞭解更多資訊。',
     title: '連接到其他數據源？',
+  },
+  watercrawl: {
+    apiKeyPlaceholder: '來自 watercrawl.dev 的 API 金鑰',
+    configWatercrawl: '配置水爬行',
+    getApiKeyLinkText: '從 watercrawl.dev 獲取您的 API 金鑰',
   },
 }
 

@@ -35,6 +35,7 @@ export type CreateAppModalProps = {
     description: string
     use_icon_as_answer_icon?: boolean
   }) => Promise<void>
+  confirmDisabled?: boolean
   onHide: () => void
 }
 
@@ -50,6 +51,7 @@ const CreateAppModal = ({
   appMode,
   appUseIconAsAnswerIcon,
   onConfirm,
+  confirmDisabled,
   onHide,
 }: CreateAppModalProps) => {
   const { t } = useTranslation()
@@ -160,7 +162,7 @@ const CreateAppModal = ({
         </div>
         <div className='flex flex-row-reverse'>
           <Button
-            disabled={(!isEditModal && isAppsFull) || !name.trim()}
+            disabled={(!isEditModal && isAppsFull) || !name.trim() || confirmDisabled}
             className='ml-2 w-24 gap-1'
             variant='primary'
             onClick={handleSubmit}

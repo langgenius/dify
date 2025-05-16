@@ -41,7 +41,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
             DocumentSegment.status: "indexing",
             DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         }
-        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
         db.session.commit()
         document = Document(
             page_content=segment.content,
@@ -78,7 +78,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
             DocumentSegment.status: "completed",
             DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         }
-        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
         db.session.commit()
 
         end_at = time.perf_counter()

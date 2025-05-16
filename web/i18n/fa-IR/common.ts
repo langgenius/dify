@@ -54,6 +54,10 @@ const translation = {
     copied: 'کپی',
     viewDetails: 'دیدن جزئیات',
     in: 'در',
+    downloadFailed: 'دانلود ناموفق بود. لطفاً بعداً دوباره تلاش کنید.',
+    more: 'بیشتر',
+    format: 'قالب',
+    downloadSuccess: 'دانلود کامل شد.',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -157,6 +161,9 @@ const translation = {
     community: 'انجمن',
     about: 'درباره',
     logout: 'خروج',
+    github: 'گیت‌هاب',
+    compliance: 'انطباق',
+    support: 'پشتیبانی',
   },
   settings: {
     accountGroup: 'حساب کاربری',
@@ -206,6 +213,9 @@ const translation = {
     deleteSuccessTip: 'حساب شما برای پایان دادن به حذف به زمان نیاز دارد. وقتی همه چیز تمام شد به شما ایمیل خواهیم زد.',
     deletePrivacyLinkTip: 'برای کسب اطلاعات بیشتر در مورد نحوه مدیریت داده های شما، لطفا به ما مراجعه کنید',
     feedbackLabel: 'به ما بگویید چرا حساب خود را حذف کرده اید؟',
+    editWorkspaceInfo: 'ویرایش اطلاعات فضای کار',
+    workspaceName: 'نام فضای کاری',
+    workspaceIcon: 'آیکون محیط کار',
   },
   members: {
     team: 'تیم',
@@ -459,7 +469,7 @@ const translation = {
   apiBasedExtension: {
     title: 'افزونه‌های مبتنی بر API مدیریت متمرکز API را فراهم می‌کنند و پیکربندی را برای استفاده آسان در برنامه‌های Dify ساده می‌کنند.',
     link: 'نحوه توسعه افزونه API خود را بیاموزید.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'افزودن افزونه API',
     selector: {
       title: 'افزونه API',
@@ -547,6 +557,7 @@ const translation = {
     inputPlaceholder: 'با ربات صحبت کنید',
     thought: 'فکر',
     thinking: 'تفکر...',
+    resend: 'دوباره ارسال کنید',
   },
   promptEditor: {
     placeholder: 'دستور خود را اینجا بنویسید، «{» را وارد کنید تا یک متغیر درج کنید، «/» را وارد کنید تا یک بلوک محتوای دستور درج کنید',
@@ -636,6 +647,25 @@ const translation = {
   },
   pagination: {
     perPage: 'موارد در هر صفحه',
+  },
+  theme: {
+    auto: 'سیستم',
+    theme: 'تم',
+    dark: 'تاریک',
+    light: 'نور',
+  },
+  compliance: {
+    soc2Type1: 'گزارش نوع I SOC 2',
+    sandboxUpgradeTooltip: 'تنها با برنامه حرفه‌ای یا تیمی در دسترس است.',
+    gdpr: 'GDPR DPA',
+    soc2Type2: 'گزارش نوع II SOC 2',
+    iso27001: 'گواهینامه ISO 27001:2022',
+    professionalUpgradeTooltip: 'تنها با برنامه تیم یا بالاتر در دسترس است.',
+  },
+  imageInput: {
+    dropImageHere: 'عکس خود را اینجا رها کنید، یا',
+    supportedFormats: 'از فرمت‌های PNG، JPG، JPEG، WEBP و GIF پشتیبانی می‌کند',
+    browse: 'مرورگر',
   },
 }
 

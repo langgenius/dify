@@ -134,6 +134,9 @@ class ProviderEntity(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
+    # position from plugin _position.yaml
+    position: Optional[dict[str, list[str]]] = {}
+
     @field_validator("models", mode="before")
     @classmethod
     def validate_models(cls, v):

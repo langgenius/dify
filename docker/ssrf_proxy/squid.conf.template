@@ -44,7 +44,7 @@ refresh_pattern .		0	20%	4320
 
 # cache_dir ufs /var/spool/squid 100 16 256
 # upstream proxy, set to your own upstream proxy IP to avoid SSRF attacks
-# cache_peer 172.1.1.1 parent 3128 0 no-query no-digest no-netdb-exchange default 
+# cache_peer 172.1.1.1 parent 3128 0 no-query no-digest no-netdb-exchange default
 
 ################################## Reverse Proxy To Sandbox ################################
 http_port ${REVERSE_PROXY_PORT} accel vhost

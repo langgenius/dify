@@ -175,12 +175,18 @@ const translation = {
   apps: {
     fullTipLine1: 'より多くのアプリを作成するには、',
     fullTipLine2: 'プランをアップグレードしてください。',
+    fullTip1: 'アプリをもっと作成するためにアップグレードする',
+    contactUs: 'お問い合わせ',
+    fullTip2: 'プランの制限に達しました',
+    fullTip2des: '使用状況を解放するために非アクティブなアプリケーションを整理することをお勧めします。または、お問い合わせください。',
+    fullTip1des: 'このプランでのアプリ構築の制限に達しました',
   },
   annotatedResponse: {
     fullTipLine1: 'より多くの会話を注釈するには、',
     fullTipLine2: 'プランをアップグレードしてください。',
     quotaTitle: '注釈返信クォータ',
   },
+  teamMembers: 'チームメンバー',
 }
 
 export default translation

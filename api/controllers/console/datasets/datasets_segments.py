@@ -2,8 +2,9 @@ import uuid
 
 import pandas as pd
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, marshal, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal, reqparse
+from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -26,6 +27,7 @@ from controllers.console.wraps import (
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.login import login_required
@@ -74,9 +76,14 @@ class DatasetDocumentSegmentListApi(Resource):
         hit_count_gte = args["hit_count_gte"]
         keyword = args["keyword"]
 
-        query = DocumentSegment.query.filter(
-            DocumentSegment.document_id == str(document_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).order_by(DocumentSegment.position.asc())
+        query = (
+            select(DocumentSegment)
+            .filter(
+                DocumentSegment.document_id == str(document_id),
+                DocumentSegment.tenant_id == current_user.current_tenant_id,
+            )
+            .order_by(DocumentSegment.position.asc())
+        )
 
         if status_list:
             query = query.filter(DocumentSegment.status.in_(status_list))
@@ -93,7 +100,7 @@ class DatasetDocumentSegmentListApi(Resource):
             elif args["enabled"].lower() == "false":
                 query = query.filter(DocumentSegment.enabled == False)
 
-        segments = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+        segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
         response = {
             "data": marshal(segments.items, segment_fields),
@@ -131,7 +138,7 @@ class DatasetDocumentSegmentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segments(segment_ids, document, dataset)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class DatasetDocumentSegmentApi(Resource):
@@ -276,9 +283,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
             # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -320,9 +329,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -333,7 +344,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segment(segment, document, dataset)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class DatasetDocumentSegmentBatchImportApi(Resource):
@@ -423,9 +434,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         if not current_user.is_dataset_editor:
@@ -478,9 +491,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         parser = reqparse.RequestParser()
@@ -523,9 +538,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -567,16 +584,20 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = ChildChunk.query.filter(
-            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
-        ).first()
+        child_chunk = (
+            db.session.query(ChildChunk)
+            .filter(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not child_chunk:
             raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor
@@ -590,7 +611,7 @@ class ChildChunkUpdateApi(Resource):
             SegmentService.delete_child_chunk(child_chunk, dataset)
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
     @setup_required
     @login_required
@@ -612,16 +633,20 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id = str(segment_id)
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
+        segment = (
+            db.session.query(DocumentSegment)
+            .filter(DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not segment:
             raise NotFound("Segment not found.")
         # check child chunk
         child_chunk_id = str(child_chunk_id)
-        child_chunk = ChildChunk.query.filter(
-            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
-        ).first()
+        child_chunk = (
+            db.session.query(ChildChunk)
+            .filter(ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id)
+            .first()
+        )
         if not child_chunk:
             raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, dataset_operator, or editor

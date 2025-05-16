@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'En savoir plus',
       description: 'à propos de la méthode de récupération.',
       longDescription: 'À propos de la méthode de récupération, vous pouvez la modifier à tout moment dans les paramètres de Connaissance.',
+      method: 'Méthode de récupération',
     },
     save: 'Enregistrer',
     me: '(Vous)',

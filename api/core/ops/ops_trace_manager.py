@@ -16,9 +16,6 @@ from sqlalchemy.orm import Session
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
-    LangfuseConfig,
-    LangSmithConfig,
-    OpikConfig,
     TracingProviderEnum,
 )
 from core.ops.entities.trace_entity import (
@@ -32,8 +29,6 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
-from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -42,32 +37,58 @@ from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
 
 
-def build_opik_trace_instance(config: OpikConfig):
-    from core.ops.opik_trace.opik_trace import OpikDataTrace
+class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
+    def __getitem__(self, provider: str) -> dict[str, Any]:
+        match provider:
+            case TracingProviderEnum.LANGFUSE:
+                from core.ops.entities.config_entity import LangfuseConfig
+                from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 
-    return OpikDataTrace(config)
+                return {
+                    "config_class": LangfuseConfig,
+                    "secret_keys": ["public_key", "secret_key"],
+                    "other_keys": ["host", "project_key"],
+                    "trace_instance": LangFuseDataTrace,
+                }
+
+            case TracingProviderEnum.LANGSMITH:
+                from core.ops.entities.config_entity import LangSmithConfig
+                from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
+
+                return {
+                    "config_class": LangSmithConfig,
+                    "secret_keys": ["api_key"],
+                    "other_keys": ["project", "endpoint"],
+                    "trace_instance": LangSmithDataTrace,
+                }
+
+            case TracingProviderEnum.OPIK:
+                from core.ops.entities.config_entity import OpikConfig
+                from core.ops.opik_trace.opik_trace import OpikDataTrace
+
+                return {
+                    "config_class": OpikConfig,
+                    "secret_keys": ["api_key"],
+                    "other_keys": ["project", "url", "workspace"],
+                    "trace_instance": OpikDataTrace,
+                }
+
+            case TracingProviderEnum.WEAVE:
+                from core.ops.entities.config_entity import WeaveConfig
+                from core.ops.weave_trace.weave_trace import WeaveDataTrace
+
+                return {
+                    "config_class": WeaveConfig,
+                    "secret_keys": ["api_key"],
+                    "other_keys": ["project", "entity", "endpoint"],
+                    "trace_instance": WeaveDataTrace,
+                }
+
+            case _:
+                raise KeyError(f"Unsupported tracing provider: {provider}")
 
 
-provider_config_map: dict[str, dict[str, Any]] = {
-    TracingProviderEnum.LANGFUSE.value: {
-        "config_class": LangfuseConfig,
-        "secret_keys": ["public_key", "secret_key"],
-        "other_keys": ["host", "project_key"],
-        "trace_instance": LangFuseDataTrace,
-    },
-    TracingProviderEnum.LANGSMITH.value: {
-        "config_class": LangSmithConfig,
-        "secret_keys": ["api_key"],
-        "other_keys": ["project", "endpoint"],
-        "trace_instance": LangSmithDataTrace,
-    },
-    TracingProviderEnum.OPIK.value: {
-        "config_class": OpikConfig,
-        "secret_keys": ["api_key"],
-        "other_keys": ["project", "url", "workspace"],
-        "trace_instance": lambda config: build_opik_trace_instance(config),
-    },
-}
+provider_config_map: dict[str, dict[str, Any]] = OpsTraceProviderConfigMap()
 
 
 class OpsTraceManager:

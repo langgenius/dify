@@ -1,5 +1,5 @@
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -72,7 +72,7 @@ class ConversationDetailApi(Resource):
             ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class ConversationRenameApi(Resource):

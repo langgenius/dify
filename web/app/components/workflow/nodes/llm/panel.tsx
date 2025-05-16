@@ -147,6 +147,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.model`)}
+          required
         >
           <ModelParameterModal
             popupClassName='!w-[387px]'
@@ -295,7 +296,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         onCollapse={setStructuredOutputCollapsed}
         operations={
           <div className='mr-4 flex shrink-0 items-center'>
-            {!isModelSupportStructuredOutput && (
+            {(!isModelSupportStructuredOutput && !!inputs.structured_output_enabled) && (
               <Tooltip noDecoration popupContent={
                 <div className='w-[232px] rounded-xl border-[0.5px] border-components-panel-border bg-components-tooltip-bg px-4 py-3.5 shadow-lg backdrop-blur-[5px]'>
                   <div className='title-xs-semi-bold text-text-primary'>{t('app.structOutput.modelNotSupported')}</div>

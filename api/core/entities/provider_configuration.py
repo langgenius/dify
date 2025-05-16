@@ -798,7 +798,25 @@ class ProviderConfiguration(BaseModel):
             provider_models = [m for m in provider_models if m.status == ModelStatus.ACTIVE]
 
         # resort provider_models
-        return sorted(provider_models, key=lambda x: x.model_type.value)
+        # Optimize sorting logic: first sort by provider.position order, then by model_type.value
+        # Get the position list for model types (retrieve only once for better performance)
+        model_type_positions = {}
+        if hasattr(self.provider, "position") and self.provider.position:
+            model_type_positions = self.provider.position
+
+        def get_sort_key(model: ModelWithProviderEntity):
+            # Get the position list for the current model type
+            positions = model_type_positions.get(model.model_type.value, [])
+
+            # If the model name is in the position list, use its index for sorting
+            # Otherwise use a large value (list length) to place undefined models at the end
+            position_index = positions.index(model.model) if model.model in positions else len(positions)
+
+            # Return composite sort key: (model_type value, model position index)
+            return (model.model_type.value, position_index)
+
+        # Sort using the composite sort key
+        return sorted(provider_models, key=get_sort_key)
 
     def _get_system_provider_models(
         self,
@@ -879,37 +897,36 @@ class ProviderConfiguration(BaseModel):
                             )
                         except Exception as ex:
                             logger.warning(f"get custom model schema failed, {ex}")
+                            continue
 
-                            if not custom_model_schema:
-                                continue
+                        if not custom_model_schema:
+                            continue
 
-                            if custom_model_schema.model_type not in model_types:
-                                continue
+                        if custom_model_schema.model_type not in model_types:
+                            continue
 
-                            status = ModelStatus.ACTIVE
-                            if (
-                                custom_model_schema.model_type in model_setting_map
-                                and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
-                            ):
-                                model_setting = model_setting_map[custom_model_schema.model_type][
-                                    custom_model_schema.model
-                                ]
-                                if model_setting.enabled is False:
-                                    status = ModelStatus.DISABLED
+                        status = ModelStatus.ACTIVE
+                        if (
+                            custom_model_schema.model_type in model_setting_map
+                            and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]
+                        ):
+                            model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
+                            if model_setting.enabled is False:
+                                status = ModelStatus.DISABLED
 
-                            provider_models.append(
-                                ModelWithProviderEntity(
-                                    model=custom_model_schema.model,
-                                    label=custom_model_schema.label,
-                                    model_type=custom_model_schema.model_type,
-                                    features=custom_model_schema.features,
-                                    fetch_from=FetchFrom.PREDEFINED_MODEL,
-                                    model_properties=custom_model_schema.model_properties,
-                                    deprecated=custom_model_schema.deprecated,
-                                    provider=SimpleModelProviderEntity(self.provider),
-                                    status=status,
-                                )
+                        provider_models.append(
+                            ModelWithProviderEntity(
+                                model=custom_model_schema.model,
+                                label=custom_model_schema.label,
+                                model_type=custom_model_schema.model_type,
+                                features=custom_model_schema.features,
+                                fetch_from=FetchFrom.PREDEFINED_MODEL,
+                                model_properties=custom_model_schema.model_properties,
+                                deprecated=custom_model_schema.deprecated,
+                                provider=SimpleModelProviderEntity(self.provider),
+                                status=status,
                             )
+                        )
 
             # if llm name not in restricted llm list, remove it
             restrict_model_names = [rm.model for rm in restrict_models]
