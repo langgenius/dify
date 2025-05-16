@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import sys
@@ -60,49 +59,6 @@ def init_app(app: DifyApp):
         for handler in logging.root.handlers:
             if handler.formatter:
                 handler.formatter.converter = time_converter
-
-    # for debugging purposes, log the request context
-    @app.before_request
-    def log_request():
-        # only log if DEBUG is enabled
-        if logging.getLogger().isEnabledFor(logging.DEBUG):
-            content_type = flask.request.content_type
-            # only log body if the request is JSON
-            if flask.request.data and "application/json" in content_type.lower():
-                try:
-                    json_data = json.loads(flask.request.data)
-                    formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
-                    logging.debug(
-                        "Received Request %s -> %s, Request Body:\n%s",
-                        flask.request.method,
-                        flask.request.path,
-                        formatted_json,
-                    )
-                except Exception:
-                    logging.exception("Failed to parse JSON request")
-            else:
-                logging.debug("Received Request %s -> %s", flask.request.method, flask.request.path)
-
-    # for debugging purposes, log the response
-    @app.after_request
-    def log_response(response):
-        # only log if DEBUG is enabled
-        if logging.getLogger().isEnabledFor(logging.DEBUG):
-            # only log body if the response is JSON
-            if response.content_type and "application/json" in response.content_type.lower():
-                try:
-                    response_data = response.get_data(as_text=True)
-                    json_data = json.loads(response_data)
-                    formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
-                    logging.debug(
-                        "Response %s %s, Response Body:\n%s", response.status, response.content_type, formatted_json
-                    )
-                except Exception:
-                    logging.exception("Failed to parse JSON response")
-            else:
-                logging.debug("Response %s %s", response.status, response.content_type)
-
-        return response
 
 
 def get_request_id():
