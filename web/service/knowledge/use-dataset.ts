@@ -41,6 +41,6 @@ export const useDatasetDetail = (datasetId: string) => {
 export const useDatasetRelatedApps = (datasetId: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'related-apps', datasetId],
-    queryFn: () => get<RelatedAppResponse>(`/datasets/${datasetId}/related_apps`),
+    queryFn: () => get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`),
   })
 }

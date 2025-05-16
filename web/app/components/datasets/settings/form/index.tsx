@@ -284,7 +284,7 @@ const Form = () => {
                   <a
                     target='_blank'
                     rel='noopener noreferrer'
-                    href='https://example.com' // todo: replace link
+                    href={`https://docs.dify.ai/${docLanguage}/guides/knowledge-base/create-knowledge-and-upload-documents/chunking-and-cleaning-text`}
                     className='text-text-accent'
                   >
                     {t('datasetSettings.form.chunkStructure.learnMore')}
