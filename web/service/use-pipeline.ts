@@ -2,9 +2,8 @@ import type { MutationOptions } from '@tanstack/react-query'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { del, get, patch, post } from './base'
 import type {
-  DeletePipelineResponse,
-  ExportPipelineDSLRequest,
-  ExportPipelineDSLResponse,
+  DeleteTemplateResponse,
+  ExportTemplateDSLResponse,
   ImportPipelineDSLConfirmResponse,
   ImportPipelineDSLRequest,
   ImportPipelineDSLResponse,
@@ -13,8 +12,8 @@ import type {
   PipelineTemplateByIdResponse,
   PipelineTemplateListParams,
   PipelineTemplateListResponse,
-  UpdatePipelineInfoRequest,
-  UpdatePipelineInfoResponse,
+  UpdateTemplateInfoRequest,
+  UpdateTemplateInfoResponse,
 } from '@/models/pipeline'
 
 const NAME_SPACE = 'pipeline'
@@ -23,7 +22,7 @@ export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
   return useQuery<PipelineTemplateListResponse>({
     queryKey: [NAME_SPACE, 'template', 'list'],
     queryFn: () => {
-      return get<PipelineTemplateListResponse>('/rag/pipeline/template', { params })
+      return get<PipelineTemplateListResponse>('/rag/pipeline/templates', { params })
     },
   })
 }
@@ -32,20 +31,20 @@ export const usePipelineTemplateById = (templateId: string, enabled: boolean) =>
   return useQuery<PipelineTemplateByIdResponse>({
     queryKey: [NAME_SPACE, 'template', templateId],
     queryFn: () => {
-      return get<PipelineTemplateByIdResponse>(`/rag/pipeline/template/${templateId}`)
+      return get<PipelineTemplateByIdResponse>(`/rag/pipeline/templates/${templateId}`)
     },
     enabled,
   })
 }
 
-export const useUpdatePipelineInfo = (
-  mutationOptions: MutationOptions<UpdatePipelineInfoResponse, Error, UpdatePipelineInfoRequest> = {},
+export const useUpdateTemplateInfo = (
+  mutationOptions: MutationOptions<UpdateTemplateInfoResponse, Error, UpdateTemplateInfoRequest> = {},
 ) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'template', 'update'],
-    mutationFn: (request: UpdatePipelineInfoRequest) => {
-      const { pipeline_id, ...rest } = request
-      return patch<UpdatePipelineInfoResponse>(`/rag/pipeline/${pipeline_id}`, {
+    mutationFn: (request: UpdateTemplateInfoRequest) => {
+      const { template_id, ...rest } = request
+      return patch<UpdateTemplateInfoResponse>(`/rag/customized/templates/${template_id}`, {
         body: rest,
       })
     },
@@ -53,29 +52,25 @@ export const useUpdatePipelineInfo = (
   })
 }
 
-export const useDeletePipeline = (
-  mutationOptions: MutationOptions<DeletePipelineResponse, Error, string> = {},
+export const useDeleteTemplate = (
+  mutationOptions: MutationOptions<DeleteTemplateResponse, Error, string> = {},
 ) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'template', 'delete'],
-    mutationFn: (pipelineId: string) => {
-      return del<DeletePipelineResponse>(`/rag/pipeline/${pipelineId}`)
+    mutationFn: (templateId: string) => {
+      return del<DeleteTemplateResponse>(`/rag/customized/templates/${templateId}`)
     },
     ...mutationOptions,
   })
 }
 
-export const useExportPipelineDSL = (
-  mutationOptions: MutationOptions<ExportPipelineDSLResponse, Error, ExportPipelineDSLRequest> = {},
+export const useExportTemplateDSL = (
+  mutationOptions: MutationOptions<ExportTemplateDSLResponse, Error, ExportTemplateDSLRequest> = {},
 ) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-export'],
-    mutationFn: (request: ExportPipelineDSLRequest) => {
-      return get<ExportPipelineDSLResponse>(`/rag/pipeline/${request.pipeline_id}/export`, {
-        params: {
-          include_secret: !!request.include_secret,
-        },
-      })
+    mutationFn: (templateId: string) => {
+      return get<ExportTemplateDSLResponse>(`/rag/customized/templates/${templateId}`)
     },
     ...mutationOptions,
   })

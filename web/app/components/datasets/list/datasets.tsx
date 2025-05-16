@@ -29,7 +29,7 @@ const Datasets = ({
   } = useDatasetList({
     initialPage: 1,
     tag_ids: tags,
-    limit: 20,
+    limit: 30,
     include_all: includeAll,
     keyword: keywords,
   })

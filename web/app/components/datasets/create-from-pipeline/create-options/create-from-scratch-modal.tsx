@@ -7,6 +7,7 @@ import type { Member } from '@/models/common'
 import CreateForm from '../create-form'
 import type { CreateFormData } from '@/models/pipeline'
 import Modal from '@/app/components/base/modal'
+import { useRouter } from 'next/navigation'
 
 type CreateFromScratchModalProps = {
   show: boolean
@@ -17,6 +18,7 @@ const CreateFromScratchModal = ({
   show,
   onClose,
 }: CreateFromScratchModalProps) => {
+  const { push } = useRouter()
   const [memberList, setMemberList] = useState<Member[]>([])
   const { data: members } = useMembers()
 
@@ -52,11 +54,15 @@ const CreateFromScratchModal = ({
       request.partial_member_list = selectedMemberList
     }
     await createEmptyDataset(request, {
-      onSettled: () => {
+      onSettled: (data) => {
+        if (data) {
+          const { id } = data
+          push(`/datasets/${id}/pipeline`)
+        }
         onClose?.()
       },
     })
-  }, [createEmptyDataset, memberList, onClose])
+  }, [createEmptyDataset, memberList, onClose, push])
 
   return (
     <Modal

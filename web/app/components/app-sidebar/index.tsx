@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
-import AppBasic from './basic'
 import AppInfo from './app-info'
 import DatasetInfo from './dataset-info'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -12,11 +11,6 @@ import cn from '@/utils/classnames'
 
 export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset' | 'notion'
-  title: string
-  desc: string
-  isExternal?: boolean
-  icon: string
-  icon_background: string
   navigation: Array<{
     name: string
     href: string
@@ -27,11 +21,6 @@ export type IAppDetailNavProps = {
 }
 
 const AppDetailNav = ({
-  title,
-  desc,
-  isExternal,
-  icon,
-  icon_background,
   navigation,
   extraInfo,
   iconType = 'app',
@@ -71,21 +60,10 @@ const AppDetailNav = ({
         {iconType === 'app' && (
           <AppInfo expand={expand} />
         )}
-        {iconType === 'dataset' && (
+        {iconType !== 'app' && (
           <DatasetInfo
             expand={expand}
             extraInfo={extraInfo && extraInfo(appSidebarExpand)}
-          />
-        )}
-        {!['app', 'dataset'].includes(iconType) && (
-          <AppBasic
-            mode={appSidebarExpand}
-            iconType={iconType}
-            icon={icon}
-            icon_background={icon_background}
-            name={title}
-            type={desc}
-            isExternal={isExternal}
           />
         )}
       </div>

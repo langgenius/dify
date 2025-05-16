@@ -28,9 +28,10 @@ const DatasetInfo: FC<Props> = ({
     icon_background: '#FFF4ED',
     icon_url: '',
   }
-  const isExternal = dataset.provider === 'external'
+  const isExternalProvider = dataset.provider === 'external'
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
-  const Icon = isExternal ? DOC_FORM_ICON_WITH_BG.external : DOC_FORM_ICON_WITH_BG[dataset.doc_form]
+  const chunkingModeIcon = dataset.doc_form ? DOC_FORM_ICON_WITH_BG[dataset.doc_form] : React.Fragment
+  const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : chunkingModeIcon
 
   return (
     <div className={cn('relative flex flex-col', expand ? '' : 'p-1')}>
@@ -46,32 +47,34 @@ const DatasetInfo: FC<Props> = ({
                 background={iconInfo.icon_background}
                 imageUrl={iconInfo.icon_url}
               />
-              <div className='absolute -bottom-1 -right-1 z-10'>
-                <Icon className='size-4' />
-              </div>
-            </div>
-              <>
-                <div className='flex flex-col gap-y-1'>
-                  <div
-                    className='system-md-semibold truncate text-text-secondary'
-                    title={dataset.name}
-                  >
-                    {dataset.name}
-                  </div>
-                  <div className='system-2xs-medium-uppercase text-text-tertiary'>
-                    {isExternal && t('dataset.externalTag')}
-                    {!isExternal && (
-                      <div className='flex items-center gap-x-1'>
-                        <Badge>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</Badge>
-                        <Badge>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</Badge>
-                      </div>
-                    )}
-                  </div>
+              {(dataset.doc_form || isExternalProvider) && (
+                <div className='absolute -bottom-1 -right-1 z-10'>
+                  <Icon className='size-4' />
                 </div>
-                <p className='system-xs-regular line-clamp-3 text-text-tertiary first-letter:capitalize'>
-                  {dataset.description}
-                </p>
-              </>
+              )}
+            </div>
+            <>
+              <div className='flex flex-col gap-y-1'>
+                <div
+                  className='system-md-semibold truncate text-text-secondary'
+                  title={dataset.name}
+                >
+                  {dataset.name}
+                </div>
+                <div className='system-2xs-medium-uppercase text-text-tertiary'>
+                  {isExternalProvider && t('dataset.externalTag')}
+                  {!isExternalProvider && dataset.doc_form && dataset.indexing_technique && (
+                    <div className='flex items-center gap-x-1'>
+                      <Badge>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</Badge>
+                      <Badge>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className='system-xs-regular line-clamp-3 text-text-tertiary first-letter:capitalize'>
+                {dataset.description}
+              </p>
+            </>
           </div>
         </>
       )}

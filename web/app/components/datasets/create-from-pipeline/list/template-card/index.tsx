@@ -5,8 +5,8 @@ import EditPipelineInfo from './edit-pipeline-info'
 import type { PipelineTemplate } from '@/models/pipeline'
 import Confirm from '@/app/components/base/confirm'
 import {
-  useDeletePipeline,
-  useExportPipelineDSL,
+  useDeleteTemplate,
+  useExportTemplateDSL,
   usePipelineTemplateById,
 } from '@/service/use-pipeline'
 import { downloadFile } from '@/utils/format'
@@ -63,8 +63,8 @@ const TemplateCard = ({
         type: 'success',
         message: t('app.newApp.appCreated'),
       })
-      if (newDataset.pipeline_info?.id)
-        await handleCheckPluginDependencies(newDataset.pipeline_info.id, true)
+      if (newDataset.pipeline_id)
+        await handleCheckPluginDependencies(newDataset.pipeline_id, true)
       push(`dataset/${newDataset.id}/pipeline`)
     }
     catch {
@@ -91,14 +91,11 @@ const TemplateCard = ({
     setShowDetailModal(false)
   }, [])
 
-  const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportPipelineDSL()
+  const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
 
-  const handleExportDSL = useCallback(async (includeSecret = false) => {
+  const handleExportDSL = useCallback(async () => {
     if (isExporting) return
-    await exportPipelineDSL({
-      pipeline_id: pipeline.id,
-      include_secret: includeSecret,
-    }, {
+    await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })
         downloadFile({
@@ -127,7 +124,7 @@ const TemplateCard = ({
     setShowConfirmDelete(false)
   }, [])
 
-  const { mutateAsync: deletePipeline } = useDeletePipeline()
+  const { mutateAsync: deletePipeline } = useDeleteTemplate()
 
   const onConfirmDelete = useCallback(async () => {
     await deletePipeline(pipeline.id, {

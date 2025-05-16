@@ -44,14 +44,14 @@ export type CreateFormData = {
   selectedMemberIDs: string[]
 }
 
-export type UpdatePipelineInfoRequest = {
-  pipeline_id: string
+export type UpdateTemplateInfoRequest = {
+  template_id: string
   name: string
   icon_info: IconInfo
   description: string
 }
 
-export type UpdatePipelineInfoResponse = {
+export type UpdateTemplateInfoResponse = {
   pipeline_id: string
   name: string
   icon_info: IconInfo
@@ -59,16 +59,11 @@ export type UpdatePipelineInfoResponse = {
   position: number
 }
 
-export type DeletePipelineResponse = {
+export type DeleteTemplateResponse = {
   code: number
 }
 
-export type ExportPipelineDSLRequest = {
-  pipeline_id: string
-  include_secret?: boolean
-}
-
-export type ExportPipelineDSLResponse = {
+export type ExportTemplateDSLResponse = {
   data: string
 }
 

@@ -173,11 +173,6 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       }}>
         {!hideSideBar && (
           <AppSideBar
-            title={datasetRes?.name || '--'}
-            icon={datasetRes?.icon_info?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
-            icon_background={datasetRes?.icon_info?.icon_background || '#F5F5F5'}
-            desc={datasetRes?.description || '--'}
-            isExternal={datasetRes?.provider === 'external'}
             navigation={navigation}
             extraInfo={
               !isCurrentWorkspaceDatasetOperator

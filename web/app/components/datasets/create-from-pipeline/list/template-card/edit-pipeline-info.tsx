@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import type { PipelineTemplate } from '@/models/pipeline'
-import { useUpdatePipelineInfo } from '@/service/use-pipeline'
+import { useUpdateTemplateInfo } from '@/service/use-pipeline'
 
 type EditPipelineInfoProps = {
   onClose: () => void
@@ -61,7 +61,7 @@ const EditPipelineInfo = ({
     setDescription(value)
   }, [])
 
-  const { mutateAsync: updatePipeline } = useUpdatePipelineInfo()
+  const { mutateAsync: updatePipeline } = useUpdateTemplateInfo()
 
   const handleSave = useCallback(async () => {
     if (!name) {
@@ -72,7 +72,7 @@ const EditPipelineInfo = ({
       return
     }
     const request = {
-      pipeline_id: pipeline.id,
+      template_id: pipeline.id,
       name,
       icon_info: {
         icon_type: appIcon.type,

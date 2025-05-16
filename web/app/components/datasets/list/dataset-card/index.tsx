@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { DataSet } from '@/models/datasets'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
 import cn from '@/utils/classnames'
@@ -49,7 +49,8 @@ const DatasetCard = ({
   const isExternalProvider = useMemo(() => {
     return dataset.provider === EXTERNAL_PROVIDER
   }, [dataset.provider])
-  const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : DOC_FORM_ICON_WITH_BG[dataset.doc_form]
+  const chunkingModeIcon = dataset.doc_form ? DOC_FORM_ICON_WITH_BG[dataset.doc_form] : React.Fragment
+  const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : chunkingModeIcon
   const iconInfo = dataset.icon_info || {
     icon: '📙',
     icon_type: 'emoji',
@@ -133,9 +134,11 @@ const DatasetCard = ({
               background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
               imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
             />
-            <div className='absolute -bottom-1 -right-1 z-[5]'>
-              <Icon className='size-4' />
-            </div>
+            {(dataset.doc_form || isExternalProvider) && (
+              <div className='absolute -bottom-1 -right-1 z-[5]'>
+                <Icon className='size-4' />
+              </div>
+            )}
           </div>
           <div className='flex grow flex-col gap-y-1 overflow-hidden py-px'>
             <div
@@ -145,13 +148,12 @@ const DatasetCard = ({
               {dataset.name}
             </div>
             <div className='system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary'>
-              {!isExternalProvider ? (
+              {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
+              {!isExternalProvider && dataset.doc_form && dataset.indexing_technique && (
                 <>
                   <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>
                   <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
                 </>
-              ) : (
-                <span>{t('dataset.externalKnowledgeBase')}</span>
               )}
             </div>
           </div>
