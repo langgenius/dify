@@ -57,7 +57,7 @@ const OptionCard = <T,>({
         disabled && 'cursor-not-allowed opacity-50',
       )}
       onClick={() => {
-        if (disabled) return
+        if (isActive || disabled) return
         onClick?.(id)
       }}
     >
@@ -70,7 +70,7 @@ const OptionCard = <T,>({
             <div className={cn(
               'absolute left-[-2px] top-[-2px] h-14 w-14 rounded-full blur-[80px]',
               `${HEADER_EFFECT_MAP[effectColor]}`,
-            )}/>
+            )} />
           )
         }
         {
