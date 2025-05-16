@@ -135,9 +135,9 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   let base: string
   if (isMarketplaceAPI)
     base = MARKETPLACE_API_PREFIX
-   else if (isPublicAPI)
+  else if (isPublicAPI)
     base = PUBLIC_API_PREFIX
-   else
+  else
     base = API_PREFIX
 
   if (getAbortController) {
