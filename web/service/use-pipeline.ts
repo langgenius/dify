@@ -66,7 +66,7 @@ export const useDeleteTemplate = (
 }
 
 export const useExportTemplateDSL = (
-  mutationOptions: MutationOptions<ExportTemplateDSLResponse, Error, ExportTemplateDSLRequest> = {},
+  mutationOptions: MutationOptions<ExportTemplateDSLResponse, Error, string> = {},
 ) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-export'],
@@ -83,7 +83,7 @@ export const useImportPipelineDSL = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-import'],
     mutationFn: (request: ImportPipelineDSLRequest) => {
-      return post<ImportPipelineDSLResponse>('/rag/pipeline/imports', { body: request })
+      return post<ImportPipelineDSLResponse>('/rag/pipelines/imports', { body: request })
     },
     ...mutationOptions,
   })

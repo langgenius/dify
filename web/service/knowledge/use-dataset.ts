@@ -1,5 +1,5 @@
-import { useInfiniteQuery } from '@tanstack/react-query'
-import type { DataSetListResponse, DatasetListRequest } from '@/models/datasets'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import type { DataSet, DataSetListResponse, DatasetListRequest, RelatedAppResponse } from '@/models/datasets'
 import { get } from '../base'
 import { useReset } from '../use-base'
 import qs from 'qs'
@@ -29,4 +29,18 @@ export const useDatasetList = (params: DatasetListRequest) => {
 
 export const useResetDatasetList = () => {
   return useReset([...DatasetListKey])
+}
+
+export const useDatasetDetail = (datasetId: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'detail', datasetId],
+    queryFn: () => get<DataSet>(`/datasets/${datasetId}`),
+  })
+}
+
+export const useDatasetRelatedApps = (datasetId: string) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'related-apps', datasetId],
+    queryFn: () => get<RelatedAppResponse>(`/datasets/${datasetId}/related_apps`),
+  })
 }

@@ -1,7 +1,6 @@
 'use client'
 import { useCallback, useRef, useState } from 'react'
 import { useMount } from 'ahooks'
-import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
@@ -18,7 +17,7 @@ import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/d
 import { updateDatasetSetting } from '@/service/datasets'
 import type { IconInfo } from '@/models/datasets'
 import { ChunkingMode, type DataSetListResponse, DatasetPermission } from '@/models/datasets'
-import DatasetDetailContext from '@/context/dataset-detail'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import type { AppIconType, RetrievalConfig } from '@/types/app'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
@@ -60,7 +59,8 @@ const Form = () => {
   const { t } = useTranslation()
   const { mutate } = useSWRConfig()
   const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
-  const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
+  const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
+  const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [iconInfo, setIconInfo] = useState(currentDataset?.icon_info || DEFAULT_APP_ICON)

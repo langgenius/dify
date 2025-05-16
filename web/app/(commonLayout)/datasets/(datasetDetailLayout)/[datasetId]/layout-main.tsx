@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type { RemixiconComponentType } from '@remixicon/react'
 import {
@@ -16,7 +15,6 @@ import {
 } from '@remixicon/react'
 import { RiInformation2Line } from '@remixicon/react'
 import classNames from '@/utils/classnames'
-import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
 import type { RelatedAppResponse } from '@/models/datasets'
 import AppSideBar from '@/app/components/app-sidebar'
 import Loading from '@/app/components/base/loading'
@@ -30,6 +28,7 @@ import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
 import { Divider } from '@/app/components/base/icons/src/vender/knowledge'
 import NoLinkedAppsPanel from '@/app/components/datasets/no-linked-apps-panel'
+import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -116,15 +115,9 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { data: datasetRes, error, mutate: mutateDatasetRes } = useSWR({
-    url: 'fetchDatasetDetail',
-    datasetId,
-  }, apiParams => fetchDatasetDetail(apiParams.datasetId))
+  const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
 
-  const { data: relatedApps } = useSWR({
-    action: 'fetchDatasetRelatedApps',
-    datasetId,
-  }, apiParams => fetchDatasetRelatedApps(apiParams.datasetId))
+  const { data: relatedApps } = useDatasetRelatedApps(datasetId)
 
   const navigation = useMemo(() => {
     const baseNavigation = [
@@ -169,7 +162,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       <DatasetDetailContext.Provider value={{
         indexingTechnique: datasetRes?.indexing_technique,
         dataset: datasetRes,
-        mutateDatasetRes: () => mutateDatasetRes(),
+        mutateDatasetRes,
       }}>
         {!hideSideBar && (
           <AppSideBar
