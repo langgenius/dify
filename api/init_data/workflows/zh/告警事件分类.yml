@@ -1,9 +1,9 @@
 app:
-  description: 将告警事件分类为，延时，可用，基础设施问题等不同场景
+  description: ''
   icon: 🤖
   icon_background: '#FFEAD5'
   mode: workflow
-  name: 告警事件分类
+  name: alert event classify
   use_icon_as_answer_icon: false
 dependencies:
 - current_identifier: null
@@ -73,39 +73,6 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        sourceType: code
-        targetType: if-else
-      id: 1745224789961-source-1745224899681-target
-      source: '1745224789961'
-      sourceHandle: source
-      target: '1745224899681'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: if-else
-        targetType: question-classifier
-      id: 1745224899681-false-1745224927277-target
-      source: '1745224899681'
-      sourceHandle: 'false'
-      target: '1745224927277'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: question-classifier
-        targetType: variable-aggregator
-      id: 1745224927277-1-1745225185151-target
-      source: '1745224927277'
-      sourceHandle: '1'
-      target: '1745225185151'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
         sourceType: if-else
         targetType: variable-aggregator
       id: 1745224899681-true-1745225185151-target
@@ -137,11 +104,66 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: variable-aggregator
+      id: 1747310030413-1-1745225185151-target
+      source: '1747310030413'
+      sourceHandle: '1'
+      target: '1745225185151'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: variable-aggregator
+      id: 1747310030413-2-1745225185151-target
+      source: '1747310030413'
+      sourceHandle: '2'
+      target: '1745225185151'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: variable-aggregator
+      id: 1747310030413-1747310114991-1745225185151-target
+      source: '1747310030413'
+      sourceHandle: '1747310114991'
+      target: '1745225185151'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: if-else
+      id: 1745224789961-source-1745224899681-target
+      source: '1745224789961'
+      sourceHandle: source
+      target: '1745224899681'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: question-classifier
+      id: 1745224899681-false-1747310030413-target
+      source: '1745224899681'
+      sourceHandle: 'false'
+      target: '1747310030413'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
         selected: false
-        title: 开始
+        title: start
         type: start
         variables:
         - label: alertName
@@ -156,45 +178,44 @@ workflow:
           required: true
           type: paragraph
           variable: alertGroup
-      height: 116
+      height: 114
       id: '1745224781828'
       position:
         x: 30
-        y: 302
+        y: 264.5
       positionAbsolute:
         x: 30
-        y: 302
+        y: 264.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
-        code: "import re\n\n\nLATENCY = \"request_latency\"\nAVAILABILITY = \"service_availability\"\
+        code: "import re\n\nLATENCY = \"request_latency\"\nAVAILABILITY = \"service_availability\"\
           \nINFRASTRUCTURE = \"infrastructure\"\nUNKNOWN = \"unknown\"\n\nclass AlertClassifier:\n\
-          \    def __init__(self):\n        # 关键词规则库\n        self.rules = {\n   \
-          \         AVAILABILITY: [\n                r'\\b(downtime|unavailable|offline|crash|failure|服务不可用|无法访问|中断|停止|error\
-          \ rate|error count|killed)\\b',\n                r'\\b(service|应用|系统|request|log|container).*(不可用|失败|错误率|宕机|终止)\\\
+          \    def __init__(self):\n        \n        self.rules = {\n           \
+          \ AVAILABILITY: [\n                r'\\b(downtime|unavailable|offline|crash|failure|服务不可用|无法访问|中断|停止|error\
+          \ rate|error count|killed)\\b',\n                r'\\b.*(service|应用|系统|request|log|container|请求|日志).*(不可用|失败|错误率|宕机|终止|错误).*\\\
           b',\n                r'\\b(5xx|503|502|404)\\b',\n            ],\n     \
           \       INFRASTRUCTURE: [\n                r'\\b(network.*rtt|rtt.*latency)\\\
-          b',  # 优先匹配network rtt\n                r'\\b(cpu|memory|disk|network|bandwidth|storage|资源|硬件|负载|容量|throughput|read\
+          b',  # match network rtt\n                r'\\b(cpu|memory|disk|network|bandwidth|storage|资源|硬件|负载|容量|throughput|read\
           \ speed|write speed|i/o|file descriptor|cfs_throttled|usage|utilization)\\\
           b',\n                r'\\b(usage|utilization|exhausted|不足|过载|瓶颈|high|abnormal|low|less\
           \ than|exceeds)\\b',\n                r'\\b(server|node|cluster|数据库|队列|container).*(高负载|故障|资源|使用率|异常)\\\
           b',\n            ],\n            LATENCY: [\n                r'\\b(request|api|接口|调用|查询).*(latency|延时|延迟|缓慢)\\\
-          b',  # 更具体的请求相关延迟\n                r'.*(request|请求).*(latency|延时|延迟|缓慢).*\\\
-          b',\n                r'\\b(latency|delay|response time|timeout|slow|秒|毫秒|ms)\\\
-          b(?!.*(network|rtt))',  # 排除network和rtt\n            ]\n        }\n\n  \
-          \      # 编译正则表达式\n        self.compiled_rules = {\n            category:\
-          \ [re.compile(pattern, re.IGNORECASE) for pattern in patterns]\n       \
-          \     for category, patterns in self.rules.items()\n        }\n\n    def\
-          \ classify_alert(self, alert_text: str) -> str:\n        text = alert_text.lower()\n\
-          \n        for category, patterns in self.compiled_rules.items():\n     \
-          \       for pattern in patterns:\n                if pattern.search(text):\n\
+          b',  \n                r'.*(request|请求).*(latency|延时|延迟|缓慢).*\\b',\n   \
+          \             r'\\b(latency|delay|response time|timeout|slow|秒|毫秒|ms)\\\
+          b(?!.*(network|rtt))',  \n            ]\n        }\n\n        \n       \
+          \ self.compiled_rules = {\n            category: [re.compile(pattern, re.IGNORECASE)\
+          \ for pattern in patterns]\n            for category, patterns in self.rules.items()\n\
+          \        }\n\n    def classify_alert(self, alert_text: str) -> str:\n  \
+          \      text = alert_text.lower()\n\n        for category, patterns in self.compiled_rules.items():\n\
+          \            for pattern in patterns:\n                if pattern.search(text):\n\
           \                    return category\n        \n        return UNKNOWN\n\
           \ndef main(arg1: str, arg2: str) -> dict:\n    classifier = AlertClassifier()\n\
           \    category = classifier.classify_alert(arg1)\n    return {\n        \"\
-          result\": str(category),\n    }\n"
+          result\": str(category),\n    }\n\n"
         code_language: python3
         desc: ''
         outputs:
@@ -202,7 +223,7 @@ workflow:
             children: null
             type: string
         selected: false
-        title: 告警事件分类
+        title: alert event classify
         type: code
         variables:
         - value_selector:
@@ -213,19 +234,19 @@ workflow:
           - '1745224781828'
           - alertGroup
           variable: arg2
-      height: 54
+      height: 52
       id: '1745224789961'
       position:
-        x: 334
-        y: 302
+        x: 333
+        y: 264.5
       positionAbsolute:
-        x: 334
-        y: 302
+        x: 333
+        y: 264.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         outputs:
@@ -237,22 +258,22 @@ workflow:
           - '1745304707998'
           - result
           variable: workflowId
-        selected: true
-        title: 结束
+        selected: false
+        title: end
         type: end
-      height: 116
+      height: 114
       id: '1745224862564'
       position:
-        x: 1872.571428571428
-        y: 302
+        x: 1848
+        y: 264.5
       positionAbsolute:
-        x: 1872.571428571428
-        y: 302
-      selected: true
+        x: 1848
+        y: 264.5
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         cases:
         - case_id: 'true'
@@ -268,112 +289,45 @@ workflow:
           logical_operator: and
         desc: ''
         selected: false
-        title: 是否分类成功
+        title: classify succeed
         type: if-else
-      height: 126
+      height: 124
       id: '1745224899681'
       position:
-        x: 636.5714285714284
-        y: 302
+        x: 636
+        y: 264.5
       positionAbsolute:
-        x: 636.5714285714284
-        y: 302
+        x: 636
+        y: 264.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
-    - data:
-        classes:
-        - id: '1'
-          name: request_latency
-        - id: '2'
-          name: service_availability
-        - id: '1745225250483'
-          name: infrastructure
-        desc: ''
-        instruction: '你是一个可观测性平台的告警分类专家。你的任务是根据给定的告警事件描述，将其分类到以下告警类型之一，并简要说明理由。告警类型包括：
-
-          1. request_latency（如 API响应时间过长)
-
-          2. service_availability（如服务错误率山生，服务不可用）
-
-          3. infrastructure (如服务器CPU使用率过高、内存不足、磁盘空间不足)
-
-
-
-          输入格式：
-
-          告警描述: [具体的告警事件描述]
-
-
-
-          输出格式：
-
-          json格式, kv如下
-
-          "告警类型": "具体类型",
-
-          "理由": "简要说明分类依据"
-
-
-
-          现在请根据以下告警描述进行分类：
-
-          告警描述: {{#1745224781828.alertName#}}'
-        instructions: ''
-        model:
-          completion_params:
-            temperature: 0.7
-          mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
-        query_variable_selector:
-        - '1745224781828'
-        - alertName
-        selected: false
-        title: LLM 分类告警事件
-        topics: []
-        type: question-classifier
-        vision:
-          enabled: false
-      height: 204
-      id: '1745224927277'
-      position:
-        x: 853.4285714285713
-        y: 524.8571428571429
-      positionAbsolute:
-        x: 853.4285714285713
-        y: 524.8571428571429
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         output_type: string
         selected: false
-        title: 结果汇总
+        title: summary
         type: variable-aggregator
         variables:
-        - - '1745224927277'
+        - - '1747310030413'
           - class_name
         - - '1745224789961'
           - result
-      height: 130
+      height: 129
       id: '1745225185151'
       position:
-        x: 1184.5714285714287
-        y: 302
+        x: 1242
+        y: 264.5
       positionAbsolute:
-        x: 1184.5714285714287
-        y: 302
+        x: 1242
+        y: 264.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "\ndef main(arg1: str) -> dict:\n    res = \"a2d4d3aa-3401-4393-859e-df051bdd5cd1\"\
           \n    match arg1:\n        case \"request_latency\":\n            res =\
@@ -388,27 +342,66 @@ workflow:
             children: null
             type: string
         selected: false
-        title: 获取对应类型worflow_id
+        title: get worflow_id
         type: code
         variables:
         - value_selector:
           - '1745225185151'
           - output
           variable: arg1
-      height: 54
+      height: 52
       id: '1745304707998'
       position:
-        x: 1562.8571428571431
-        y: 302
+        x: 1545
+        y: 264.5
       positionAbsolute:
-        x: 1562.8571428571431
-        y: 302
+        x: 1545
+        y: 264.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
+    - data:
+        classes:
+        - id: '1'
+          name: request_latency
+        - id: '2'
+          name: service_availability
+        - id: '1747310114991'
+          name: infrastructure
+        desc: ''
+        instruction: ''
+        instructions: ''
+        model:
+          completion_params:
+            temperature: 0.1
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        query_variable_selector:
+        - '1745224781828'
+        - alertName
+        selected: false
+        title: 问题分类器
+        topics: []
+        type: question-classifier
+        vision:
+          enabled: false
+      height: 202
+      id: '1747310030413'
+      position:
+        x: 939
+        y: 395.5
+      positionAbsolute:
+        x: 939
+        y: 395.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
     viewport:
-      x: -367.5313416118354
-      y: 120.10464079818826
-      zoom: 0.7019435051307544
+      x: -390.0498275252221
+      y: -1.7848260842371246
+      zoom: 0.544042198619822

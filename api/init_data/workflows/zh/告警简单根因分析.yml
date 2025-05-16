@@ -206,18 +206,6 @@ workflow:
       type: custom
       zIndex: 0
     - data:
-        isInIteration: false
-        sourceType: start
-        targetType: code
-      id: 1741227526517-source-1742807803325-target
-      selected: false
-      source: '1741227526517'
-      sourceHandle: source
-      target: '1742807803325'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
         isInIteration: true
         iteration_id: '1741497176064'
         sourceType: tool
@@ -282,18 +270,6 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 1002
-    - data:
-        isInIteration: false
-        sourceType: code
-        targetType: code
-      id: 1741509454645-source-17430589567120-target
-      selected: false
-      source: '1741509454645'
-      sourceHandle: source
-      target: '17430589567120'
-      targetHandle: target
-      type: custom
-      zIndex: 0
     - data:
         isInIteration: false
         sourceType: tool
@@ -882,61 +858,6 @@ workflow:
       type: custom
       zIndex: 0
     - data:
-        isInIteration: false
-        sourceType: code
-        targetType: tool
-      id: 17430589567120-source-17430595109950-target
-      source: '17430589567120'
-      sourceHandle: source
-      target: '17430595109950'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: code
-        targetType: tool
-      id: 17430589567120-source-17430597987060-target
-      source: '17430589567120'
-      sourceHandle: source
-      target: '17430597987060'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: code
-        targetType: tool
-      id: 17430589567120-source-17430598907140-target
-      source: '17430589567120'
-      sourceHandle: source
-      target: '17430598907140'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: code
-        targetType: tool
-      id: 17430589567120-source-17430610719970-target
-      source: '17430589567120'
-      sourceHandle: source
-      target: '17430610719970'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: code
-        targetType: tool
-      id: 17430589567120-source-17430610599980-target
-      source: '17430589567120'
-      sourceHandle: source
-      target: '17430610599980'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
         isInIteration: true
         iteration_id: '1741497176064'
         sourceType: code
@@ -1062,6 +983,226 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: start
+        targetType: code
+      id: 1741227526517-source-1742807803325-target
+      source: '1741227526517'
+      sourceHandle: source
+      target: '1742807803325'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: if-else
+      id: 1741509454645-source-1745494305165-target
+      source: '1741509454645'
+      sourceHandle: source
+      target: '1745494305165'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: code
+      id: 1745494305165-true-17430589567120-target
+      source: '1745494305165'
+      sourceHandle: 'true'
+      target: '17430589567120'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 1745494305165-false-1745494335273-target
+      source: '1745494305165'
+      sourceHandle: 'false'
+      target: '1745494335273'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: template-transform
+        targetType: end
+      id: 1745494335273-source-1745494338512-target
+      source: '1745494335273'
+      sourceHandle: source
+      target: '1745494338512'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1747355869184-true-1747355986489-target
+      source: '1747355869184'
+      sourceHandle: 'true'
+      target: '1747355986489'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: if-else
+      id: 17430589567120-source-1747355869184-target
+      source: '17430589567120'
+      sourceHandle: source
+      target: '1747355869184'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1747355869184-false-17430598907140-target
+      source: '1747355869184'
+      sourceHandle: 'false'
+      target: '17430598907140'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1747355869184-false-17430595109950-target
+      source: '1747355869184'
+      sourceHandle: 'false'
+      target: '17430595109950'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1747355869184-false-17430610719970-target
+      source: '1747355869184'
+      sourceHandle: 'false'
+      target: '17430610719970'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1747355869184-false-17430610599980-target
+      source: '1747355869184'
+      sourceHandle: 'false'
+      target: '17430610599980'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1747355869184-true-17473562733380-target
+      source: '1747355869184'
+      sourceHandle: 'true'
+      target: '17473562733380'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 17473562733380-source-17473564454180-target
+      source: '17473562733380'
+      sourceHandle: source
+      target: '17473564454180'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1747355986489-source-17473564423850-target
+      source: '1747355986489'
+      sourceHandle: source
+      target: '17473564423850'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1747355869184-false-17430597987060-target
+      source: '1747355869184'
+      sourceHandle: 'false'
+      target: '17430597987060'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17473564423850-source-1747356893645-target
+      source: '17473564423850'
+      sourceHandle: source
+      target: '1747356893645'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17473564454180-source-1747356923703-target
+      source: '17473564454180'
+      sourceHandle: source
+      target: '1747356923703'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 1747356893645-source-17473569800940-target
+      source: '1747356893645'
+      sourceHandle: source
+      target: '17473569800940'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 1747356923703-source-17473569800940-target
+      source: '1747356923703'
+      sourceHandle: source
+      target: '17473569800940'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: end
+      id: 17473569800940-source-1747357345949-target
+      source: '17473569800940'
+      sourceHandle: source
+      target: '1747357345949'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -1099,19 +1240,19 @@ workflow:
           required: false
           type: text-input
           variable: nodeIp
-      height: 194
+      height: 192
       id: '1741227526517'
       position:
         x: 30
-        y: 528
+        y: 372
       positionAbsolute:
         x: 30
-        y: 528
+        y: 372
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         error_handle_mode: terminated
@@ -1133,10 +1274,10 @@ workflow:
       height: 1408
       id: '1741497176064'
       position:
-        x: 4590
+        x: 5181
         y: 904
       positionAbsolute:
-        x: 4590
+        x: 5181
         y: 904
       selected: false
       sourcePosition: right
@@ -1158,7 +1299,7 @@ workflow:
         x: 24
         y: 68
       positionAbsolute:
-        x: 4614
+        x: 5205
         y: 972
       selectable: false
       selected: false
@@ -1170,13 +1311,16 @@ workflow:
     - data:
         code: "\ndef main(arg1: str) -> dict:\n    data = json.loads(arg1)\n    return\
           \ {\n        \"pod\": data.get(\"pod\", \"\"),\n        \"namespace\": data.get(\"\
-          namespace\", \"\")\n    }\n"
+          namespace\", \"\"),\n        \"pid\": data.get(\"pid\", \"\")\n    }\n"
         code_language: python3
         desc: ''
         isInIteration: true
         iteration_id: '1741497176064'
         outputs:
           namespace:
+            children: null
+            type: string
+          pid:
             children: null
             type: string
           pod:
@@ -1190,20 +1334,20 @@ workflow:
           - '1741497176064'
           - item
           variable: arg1
-      height: 54
+      height: 52
       id: '1741497181784'
       parentId: '1741497176064'
       position:
         x: 247.70722025930104
         y: 65
       positionAbsolute:
-        x: 4837.707220259301
+        x: 5428.707220259301
         y: 969
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -1340,20 +1484,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741502699500'
       parentId: '1741497176064'
       position:
         x: 844.0068118865438
         y: 800.2561082923241
       positionAbsolute:
-        x: 5434.006811886544
+        x: 6025.006811886544
         y: 1704.2561082923241
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -1367,19 +1511,19 @@ workflow:
         selected: false
         title: End
         type: end
-      height: 90
+      height: 88
       id: '1741502839759'
       position:
-        x: 11457
+        x: 12047
         y: 904
       positionAbsolute:
-        x: 11457
+        x: 12047
         y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         context:
           enabled: false
@@ -1420,34 +1564,36 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '1741506766037'
       parentId: '1741497176064'
       position:
         x: 3100.843852684704
         y: 616.9747534648541
       positionAbsolute:
-        x: 7690.843852684704
+        x: 8281.843852684704
         y: 1520.974753464854
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\ndef main(arg: str) -> dict:\n    data = json.loads(arg)\n\
           \    timeseries = data[\"data\"][\"timeseries\"]\n    \n    seen = set()\n\
-          \    pod_info = []\n    first_pod = None\n    \n    for item in timeseries:\n\
+          \    pod_info = []\n    first_pod = \"{}\"\n    \n    for item in timeseries:\n\
           \        labels = item[\"labels\"]\n        namespace = labels.get(\"namespace\"\
-          , \"\")\n        pod = labels.get(\"pod\", \"\")\n \n        unique_key\
-          \ = (namespace, pod)\n        \n        if unique_key not in seen:\n   \
-          \         seen.add(unique_key)\n            info = {\n                \"\
-          namespace\": namespace,\n                \"pod\": pod\n            }\n \
-          \           if first_pod is None:\n                first_pod = json.dumps(info)\n\
-          \            else:\n              pod_info.append(json.dumps(info))\n  \
-          \          \n    return {\n        \"first\": first_pod,\n        \"monitor\"\
-          : pod_info,\n    }"
+          , \"\")\n        pod = labels.get(\"pod\", \"\")\n        pid = labels.get(\"\
+          pid\", \"\")\n        node = labels.get(\"node\", \"\")\n        if pid\
+          \ == '1':\n            continue\n \n        unique_key = (namespace, pod,\
+          \ pid)\n        \n        if unique_key not in seen:\n            seen.add(unique_key)\n\
+          \            info = {\n                \"namespace\": namespace,\n     \
+          \           \"pod\": pod,\n                \"pid\": pid,\n             \
+          \   \"node\": node\n            }\n            if first_pod == '{}':\n \
+          \               first_pod = json.dumps(info)\n            else:\n      \
+          \        pod_info.append(json.dumps(info))\n            \n    return {\n\
+          \        \"first\": first_pod,\n        \"monitor\": pod_info,\n    }"
         code_language: python3
         desc: ''
         outputs:
@@ -1465,19 +1611,19 @@ workflow:
           - '1741597274153'
           - output
           variable: arg
-      height: 54
+      height: 52
       id: '1741509454645'
       position:
-        x: 1550
-        y: 716
+        x: 1545
+        y: 556
       positionAbsolute:
-        x: 1550
-        y: 716
+        x: 1545
+        y: 556
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         context:
           enabled: false
@@ -1543,19 +1689,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '1741512806512'
       position:
-        x: 11153
+        x: 11744
         y: 904
       positionAbsolute:
-        x: 11153
+        x: 11744
         y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         selected: false
@@ -1563,19 +1709,19 @@ workflow:
         title: unsupport alert
         type: template-transform
         variables: []
-      height: 54
+      height: 52
       id: '1741592094819'
       position:
-        x: 942
-        y: 528
+        x: 939
+        y: 372
       positionAbsolute:
-        x: 942
-        y: 528
+        x: 939
+        y: 372
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         outputs:
@@ -1586,19 +1732,19 @@ workflow:
         selected: false
         title: End
         type: end
-      height: 90
+      height: 88
       id: '1741592144815'
       position:
-        x: 1246
-        y: 528
+        x: 1242
+        y: 372
       positionAbsolute:
-        x: 1246
-        y: 528
+        x: 1242
+        y: 372
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -1703,19 +1849,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1741597223833'
       position:
-        x: 942
-        y: 622
+        x: 939
+        y: 464
       positionAbsolute:
-        x: 942
-        y: 622
+        x: 939
+        y: 464
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         output_type: string
@@ -1729,26 +1875,27 @@ workflow:
           - result
         - - '1742629595400'
           - text
-      height: 152
+      height: 151
       id: '1741597274153'
       position:
-        x: 1246
-        y: 685
+        x: 1242
+        y: 524.5
       positionAbsolute:
-        x: 1246
-        y: 685
+        x: 1242
+        y: 524.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
-        code: "\ndef main(arg1: str, arg2: str) -> dict:\n    data = {\n        \"\
-          data\": {\n            \"timeseries\": [\n                {\n          \
-          \          \"labels\": {\n                        \"namespace\": arg2,\n\
-          \                        \"pod\": arg1,\n                    }\n       \
-          \         }\n            ]\n        }\n    }\n    return {\n        \"result\"\
-          : json.dumps(data),\n    }\n"
+        code: "\ndef main(arg1: str, arg2: str, arg3: str) -> dict:\n    data = {\n\
+          \        \"data\": {\n            \"timeseries\": [\n                {\n\
+          \                    \"labels\": {\n                        \"namespace\"\
+          : arg2,\n                        \"pod\": arg1,\n                      \
+          \  \"pid\": arg3,\n                    }\n                }\n          \
+          \  ]\n        }\n    }\n    return {\n        \"result\": json.dumps(data),\n\
+          \    }\n"
         code_language: python3
         desc: ''
         outputs:
@@ -1767,19 +1914,23 @@ workflow:
           - '1742807803325'
           - namespace
           variable: arg2
-      height: 54
+        - value_selector:
+          - '1742807803325'
+          - pid
+          variable: arg3
+      height: 52
       id: '1741599658821'
       position:
-        x: 942
-        y: 716
+        x: 939
+        y: 556
       positionAbsolute:
-        x: 942
-        y: 716
+        x: 939
+        y: 556
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         cases:
         - case_id: 'true'
@@ -1798,8 +1949,15 @@ workflow:
             variable_selector:
             - '1742807803325'
             - namespace
+          - comparison_operator: not empty
+            id: 21b420f6-cac6-4cf3-88b4-69ce01140ef8
+            value: ''
+            varType: string
+            variable_selector:
+            - '1742807803325'
+            - pid
           id: 'true'
-          logical_operator: and
+          logical_operator: or
         - case_id: 2949ad86-bdc0-4b1d-bd84-6e01f41915eb
           conditions:
           - comparison_operator: not empty
@@ -1826,19 +1984,19 @@ workflow:
         selected: false
         title: alert instance info
         type: if-else
-      height: 248
+      height: 272
       id: '1742453019576'
       position:
-        x: 638
-        y: 528
+        x: 636
+        y: 372
       positionAbsolute:
-        x: 638
-        y: 528
+        x: 636
+        y: 372
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         isInIteration: true
@@ -1973,20 +2131,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742547917612'
       parentId: '1741497176064'
       position:
         x: 837.913049217997
         y: 567.6173152328563
       positionAbsolute:
-        x: 5427.9130492179975
+        x: 6018.9130492179975
         y: 1471.6173152328563
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -2117,19 +2275,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742629595400'
       position:
-        x: 942
-        y: 810
+        x: 939
+        y: 648
       positionAbsolute:
-        x: 942
-        y: 810
+        x: 939
+        y: 648
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         isInIteration: true
@@ -2264,20 +2422,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742798505742'
       parentId: '1741497176064'
       position:
         x: 838.2707565556775
         y: 677.0915533804653
       positionAbsolute:
-        x: 5428.2707565556775
+        x: 6019.2707565556775
         y: 1581.0915533804653
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "  \ndef get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
@@ -2287,7 +2445,8 @@ workflow:
           \  \"service\": get_value(data, [\"svc_name\", \"service\"]), \n  \"endpoint\"\
           : get_value(data,[\"endpoint\", \"content_key\"]), \n  \"pod\": get_value(data,[\"\
           pod\", \"src_pod\", \"pod_name\"]), \n  \"namespace\": get_value(data,[\"\
-          namespace\", \"src_namespace\"]), \n}"
+          namespace\", \"src_namespace\"]),\n  \"pid\": get_value(data,[\"pid\"]),\n\
+          }"
         code_language: python3
         desc: ''
         outputs:
@@ -2298,6 +2457,9 @@ workflow:
             children: null
             type: string
           namespace:
+            children: null
+            type: string
+          pid:
             children: null
             type: string
           pod:
@@ -2314,19 +2476,19 @@ workflow:
           - '1741227526517'
           - params
           variable: arg
-      height: 54
+      height: 52
       id: '1742807803325'
       position:
-        x: 334
-        y: 528
+        x: 333
+        y: 372
       positionAbsolute:
-        x: 334
-        y: 528
+        x: 333
+        y: 372
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         isInIteration: true
@@ -2488,20 +2650,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742980228913'
       parentId: '1741497176064'
       position:
         x: 817.3433448742644
         y: 386.77445077825655
       positionAbsolute:
-        x: 5407.343344874264
+        x: 5998.343344874264
         y: 1290.7744507782566
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -2664,20 +2826,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742980318484'
       parentId: '1741497176064'
       position:
         x: 829.6661633624499
         y: 478.0639330308825
       positionAbsolute:
-        x: 5419.66616336245
+        x: 6010.66616336245
         y: 1382.0639330308825
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -2776,6 +2938,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#1741497181784.pid#}}'
           pod:
             type: mixed
             value: '{{#1741497181784.pod#}}'
@@ -2785,20 +2953,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742980720651'
       parentId: '1741497176064'
       position:
-        x: 557.006724576253
-        y: 325.2394319656114
+        x: 563.9711290826226
+        y: 320.3569405139135
       positionAbsolute:
-        x: 5147.006724576253
-        y: 1229.2394319656114
+        x: 5744.971129082623
+        y: 1224.3569405139135
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -2897,6 +3065,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#1741497181784.pid#}}'
           pod:
             type: mixed
             value: '{{#1741497181784.pod#}}'
@@ -2906,20 +3080,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742980748320'
       parentId: '1741497176064'
       position:
-        x: 548.076686016545
-        y: 437.5579711908215
+        x: 555.0492745306183
+        y: 435.2337750194638
       positionAbsolute:
-        x: 5138.076686016545
-        y: 1341.5579711908215
+        x: 5736.049274530618
+        y: 1339.2337750194638
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -3018,6 +3192,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#1741497181784.pid#}}'
           pod:
             type: mixed
             value: '{{#1741497181784.pod#}}'
@@ -3027,20 +3207,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742980780865'
       parentId: '1741497176064'
       position:
-        x: 537.1563167397626
+        x: 539.4805129111201
         y: 551.2424325586171
       positionAbsolute:
-        x: 5127.156316739763
+        x: 5720.48051291112
         y: 1455.242432558617
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -3139,6 +3319,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#1741497181784.pid#}}'
           pod:
             type: mixed
             value: '{{#1741497181784.pod#}}'
@@ -3148,20 +3334,20 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742980837261'
       parentId: '1741497176064'
       position:
         x: 513.7505744250511
         y: 675.3340235425774
       positionAbsolute:
-        x: 5103.750574425051
+        x: 5694.750574425051
         y: 1579.3340235425774
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -3260,6 +3446,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#17430589567120.pid#}}'
           pod:
             type: mixed
             value: '{{#1741497181784.pod#}}'
@@ -3269,31 +3461,34 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1742980885557'
       parentId: '1741497176064'
       position:
-        x: 519.4457802875913
-        y: 800.367276200539
+        x: 514.5915555600113
+        y: 800.5850619112191
       positionAbsolute:
-        x: 5109.445780287591
-        y: 1704.367276200539
+        x: 5695.591555560011
+        y: 1704.585061911219
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "\ndef main(arg1: str) -> dict:\n    data = json.loads(arg1)\n    return\
           \ {\n        \"pod\": data.get(\"pod\", \"\"),\n        \"namespace\": data.get(\"\
-          namespace\", \"\")\n    }\n"
+          namespace\", \"\"),\n        \"pid\": data.get(\"pid\", \"\")\n    }\n"
         code_language: python3
         desc: ''
         isInIteration: true
         iteration_id: '1741497176064'
         outputs:
           namespace:
+            children: null
+            type: string
+          pid:
             children: null
             type: string
           pod:
@@ -3307,19 +3502,19 @@ workflow:
           - '1741509454645'
           - first
           variable: arg1
-      height: 54
+      height: 52
       id: '17430589567120'
       position:
-        x: 1854
-        y: 716
+        x: 2151
+        y: 702
       positionAbsolute:
-        x: 1854
-        y: 716
+        x: 2151
+        y: 702
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -3418,6 +3613,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#17430589567120.pid#}}'
           pod:
             type: mixed
             value: '{{#17430589567120.pod#}}'
@@ -3427,19 +3628,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430595109950'
       position:
-        x: 2462
+        x: 3060
         y: 904
       positionAbsolute:
-        x: 2462
+        x: 3060
         y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -3601,19 +3802,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430595158080'
       position:
-        x: 2766
+        x: 3363
         y: 904
       positionAbsolute:
-        x: 2766
+        x: 3363
         y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         context:
@@ -3637,38 +3838,38 @@ workflow:
           text: "# 分析目标\n基于跨资源类别的异常线程数据，判断应用实例{{#17430589567120.pod#}}是否受告警事件{{#1742807803325.alertName#}}影响，并进行初步根因定位。\n\
             \n# 输入数据规范\n- **分资源类别数据**：线程延迟及关联的北极星指标（如网络类延迟加上对应的异常网络RTT数据,不要忽略RTT数据）。\n\
             - **异常数据点计数**：延迟超过同类型线程历史均值20%的实例数，需标注线程延迟均值。\n\n# 分析规则\n1. **主异常方向判定**\n\
-            - 标注异常线程的延迟均值。\n- 识别延迟增幅最显著的资源类型（如延迟从毫秒级跃升至秒级）。\n- **线程数量优先原则**：若某资源类型（如网络/epoll）的异常线程数量最多，则归因至该类别。\n\
-            *示例：网络/epoll类异常线程4条 vs CPU类2条 → 归因为网络问题。*\n\n2. **误判规避**\n- 若CPU或运行队列（RunQ）延迟突增且无并发网络/epoll异常，优先归因为CPU资源争用。\n\
+            - 标注异常线程的延迟均值。\n- 识别延迟增幅最显著的资源类型（如延迟从毫秒级跃升至秒级）。\n- **线程数量优先原则**：若某资源类型（如网络/epoll）的异常线程数量最多，则归因至该类别。请仔细分析各方向异常线程数量。\n\
+            *示例：网络/epoll类异常线程4条 vs CPU类2条 → 归因为网络方向问题。*\n\n2. **误判规避**\n- 若CPU或运行队列（RunQ）延迟突增且无并发网络/epoll异常，优先归因为CPU资源争用。\n\
             \n3. **决胜优先级（降序）**\n'CPU > 网络 > Epoll > 文件 > RunQ'\n\n# 根因归因与建议\n- **CPU延迟突增**：检查代码过度嵌套问题，确认后执行版本回滚。\n\
             - **CPU抢占过高**：排查同节点进程的资源争用。\n- **网络/Epoll延迟突增**：\n- 若RTT异常 → 网络链路问题;\n\
             - 若RTT正常 → 下游服务延迟问题。\n- **文件操作延迟升高**：审计文件句柄泄漏。\n\n# 输出格式\n**应用实例**:{{#17430589567120.pod#}}\
             \  \n**北极星指标趋势摘要**\n- 按指标维度描述显著变化，若无异常标注\"未观测到显著偏离\"。\n\n**初步根因结论**\n\
             - 明确告警事件对应用的影响状态。\n- 基于北极星指标与分析规则输出单一归因结论。\n*注：若网络/Epoll类异常但RTT正常，归因为下游服务延迟。*\n\
-            注： 如果对应方向有报告，需展示报告链接，可点击\n\n# 输入数据\n-cpu：{{#17443388433580.result#}} \
-            \ \n- net：{{#17443388438160.result#}}  \n- file：{{#17443388421360.result#}}\
+            注： 如果对应方向有报告连接，需展示报告链接，可点击\n没有不用展示报告\n\n# 输入数据\n-cpu：{{#17443388433580.result#}}\
+            \  \n- net：{{#17443388438160.result#}}  \n- file：{{#17443388421360.result#}}\
             \  \n- epoll：{{#1744290470304.result#}}  \n- RunQ：{{#17443388443000.result#}}\n\
-            \n#报告链接（说明是报告即可，不用关联线程）\ncpu {{#1745388058502.text#}}\nnetwork方向 {{#17453881280910.text#}}\n\
-            runq方向 {{#17453881639600.text#}}\n\n# 输出准则\n- 使用简洁的非技术表述，避免歧义。\n- 结论需聚焦可执行建议（如\"\
-            检查代码嵌套\"而非\"可能存在性能问题\"）。"
+            \n#报告链接（说明是报告即可，不用关联线程）\n没有报告链接不用给出来\ncpu {{#1745388058502.text#}}\nnetwork方向\
+            \ {{#17453881280910.text#}}\nrunq方向 {{#17453881639600.text#}}\n\n# 输出准则\n\
+            - 使用简洁的非技术表述，避免歧义。\n- 结论需聚焦可执行建议（如\"检查代码嵌套\"而非\"可能存在性能问题\"）。"
         selected: false
         title: llm analysis root cause
         type: llm
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '17430596469370'
       position:
-        x: 4286
+        x: 4878
         y: 904
       positionAbsolute:
-        x: 4286
+        x: 4878
         y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -3767,6 +3968,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#17430589567120.pid#}}'
           pod:
             type: mixed
             value: '{{#17430589567120.pod#}}'
@@ -3776,19 +3983,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430597987060'
       position:
-        x: 2766
-        y: 716
+        x: 3363
+        y: 702
       positionAbsolute:
-        x: 2766
-        y: 716
-      selected: true
+        x: 3363
+        y: 702
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -3953,19 +4160,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430598152780'
       position:
-        x: 3070
-        y: 716
+        x: 3666
+        y: 720
       positionAbsolute:
-        x: 3070
-        y: 716
+        x: 3666
+        y: 720
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -4064,6 +4271,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#17430589567120.pid#}}'
           pod:
             type: mixed
             value: '{{#17430589567120.pod#}}'
@@ -4073,19 +4286,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430598907140'
       position:
-        x: 2158
-        y: 998
+        x: 2757
+        y: 1032
       positionAbsolute:
-        x: 2158
-        y: 998
+        x: 2757
+        y: 1032
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -4221,19 +4434,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430598942980'
       position:
-        x: 2462
-        y: 998
+        x: 3060
+        y: 1032
       positionAbsolute:
-        x: 2462
-        y: 998
+        x: 3060
+        y: 1032
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -4332,6 +4545,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#17430589567120.pid#}}'
           pod:
             type: mixed
             value: '{{#17430589567120.pod#}}'
@@ -4341,19 +4560,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430610599980'
       position:
-        x: 2462
-        y: 810
+        x: 3060
+        y: 794
       positionAbsolute:
-        x: 2462
-        y: 810
+        x: 3060
+        y: 794
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -4489,19 +4708,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430610640640'
       position:
-        x: 2766
-        y: 810
+        x: 3363
+        y: 794
       positionAbsolute:
-        x: 2766
-        y: 810
+        x: 3363
+        y: 794
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -4600,6 +4819,12 @@ workflow:
             value:
             - '1741227526517'
             - endTime
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
+          pid:
+            type: mixed
+            value: '{{#17430589567120.pid#}}'
           pod:
             type: mixed
             value: '{{#17430589567120.pod#}}'
@@ -4609,19 +4834,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430610719970'
       position:
-        x: 2462
-        y: 1092
+        x: 3060
+        y: 1160
       positionAbsolute:
-        x: 2462
-        y: 1092
+        x: 3060
+        y: 1160
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -4757,19 +4982,19 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '17430610756270'
       position:
-        x: 2766
-        y: 1092
+        x: 3363
+        y: 1160
       positionAbsolute:
-        x: 2766
-        y: 1092
+        x: 3363
+        y: 1160
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
@@ -4798,19 +5023,19 @@ workflow:
           - '17430610640640'
           - text
           variable: data_json
-      height: 54
+      height: 52
       id: '1744255998058'
       position:
-        x: 3070
-        y: 810
+        x: 3666
+        y: 812
       positionAbsolute:
-        x: 3070
-        y: 810
+        x: 3666
+        y: 812
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
           \ {}).get('timeseries', [])\n        \n    normal = 0.05\n    filtered =\
@@ -4838,19 +5063,19 @@ workflow:
           - '17430598942980'
           - text
           variable: data_json
-      height: 54
+      height: 52
       id: '17442560822670'
       position:
-        x: 2766
-        y: 998
+        x: 3363
+        y: 1032
       positionAbsolute:
-        x: 2766
-        y: 998
+        x: 3363
+        y: 1032
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='epoll')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -4875,33 +5100,33 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
+          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
+          \        if not common_ts:\n            continue\n            \n       \
+          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
+          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
           \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
           \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
           \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
           \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \n    related = []\n    for data in abnormal_data or []:\n        chart\
+          \ = data.get('chart', {})\n\n        tid = data.get('labels', {}).get('tid','')\n\
+          \        if tid == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
-          \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
+          \ []\n\n    for data in abnormal_data or []:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -4940,19 +5165,19 @@ workflow:
           - '1744255998058'
           - result
           variable: proof_json
-      height: 54
+      height: 52
       id: '1744287265980'
       position:
-        x: 3678
-        y: 810
+        x: 4272
+        y: 794
       positionAbsolute:
-        x: 3678
-        y: 810
+        x: 4272
+        y: 794
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -4986,19 +5211,19 @@ workflow:
           - '1744287265980'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '1744290470304'
       position:
-        x: 3982
-        y: 810
+        x: 4575
+        y: 794
       positionAbsolute:
-        x: 3982
-        y: 810
+        x: 4575
+        y: 794
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='runq')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5023,33 +5248,34 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get(\"labels\"\
+          , {}).get(id_key, \"\")\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid, similarity))\n    \n \
+          \   similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \n    related = []\n    for data in abnormal_data or []:\n        chart\
+          \ = data.get('chart', {})\n\n        tid = data.get('labels', {}).get('tid','')\n\
+          \        if tid == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -5088,19 +5314,19 @@ workflow:
           - '17430610756270'
           - text
           variable: proof_json
-      height: 54
+      height: 52
       id: '17443356883380'
       position:
-        x: 3374
-        y: 1092
+        x: 3969
+        y: 1178
       positionAbsolute:
-        x: 3374
-        y: 1092
+        x: 3969
+        y: 1178
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='net')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5125,33 +5351,34 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get(\"labels\"\
+          , {}).get(id_key, \"\")\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid, similarity))\n    \n \
+          \   similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
+          \ tid == '':\n            continue\n\n        # find which downstream pod\
+          \ is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -5190,19 +5417,19 @@ workflow:
           - '17442560822670'
           - result
           variable: proof_json
-      height: 54
+      height: 52
       id: '17443357536900'
       position:
-        x: 3374
-        y: 998
+        x: 3969
+        y: 1050
       positionAbsolute:
-        x: 3374
-        y: 998
+        x: 3969
+        y: 1050
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='file')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5227,33 +5454,34 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get(\"labels\"\
+          , {}).get(id_key, \"\")\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid, similarity))\n    \n \
+          \   similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \n    related = []\n    for data in abnormal_data or []:\n        chart\
+          \ = data.get('chart', {})\n\n        tid = data.get('labels', {}).get('tid','')\n\
+          \        if tid == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -5292,19 +5520,19 @@ workflow:
           - '17430598152780'
           - text
           variable: proof_json
-      height: 54
+      height: 52
       id: '17443357893440'
       position:
-        x: 3678
-        y: 716
+        x: 4272
+        y: 702
       positionAbsolute:
-        x: 3678
-        y: 716
+        x: 4272
+        y: 702
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='cpu')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5329,33 +5557,34 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get(\"labels\"\
+          , {}).get(id_key, \"\")\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid, similarity))\n    \n \
+          \   similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \n    related = []\n    for data in abnormal_data or []:\n        chart\
+          \ = data.get('chart', {})\n\n        tid = data.get('labels', {}).get('tid','')\n\
+          \        if tid == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -5394,19 +5623,19 @@ workflow:
           - '17430595158080'
           - text
           variable: proof_json
-      height: 54
+      height: 52
       id: '17443357899060'
       position:
-        x: 3374
-        y: 904
+        x: 3969
+        y: 922
       positionAbsolute:
-        x: 3374
-        y: 904
+        x: 3969
+        y: 922
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5440,19 +5669,19 @@ workflow:
           - '17443357893440'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '17443388421360'
       position:
-        x: 3982
-        y: 716
+        x: 4575
+        y: 702
       positionAbsolute:
-        x: 3982
-        y: 716
+        x: 4575
+        y: 702
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5486,19 +5715,19 @@ workflow:
           - '17443357899060'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '17443388433580'
       position:
-        x: 3678
+        x: 4272
         y: 904
       positionAbsolute:
-        x: 3678
+        x: 4272
         y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5532,19 +5761,19 @@ workflow:
           - '17443357536900'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '17443388438160'
       position:
-        x: 3678
-        y: 998
+        x: 4272
+        y: 1032
       positionAbsolute:
-        x: 3678
-        y: 998
+        x: 4272
+        y: 1032
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5578,19 +5807,19 @@ workflow:
           - '17443356883380'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '17443388443000'
       position:
-        x: 3678
-        y: 1092
+        x: 4272
+        y: 1160
       positionAbsolute:
-        x: 3678
-        y: 1092
+        x: 4272
+        y: 1160
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
           \ {}).get('timeseries', [])\n        \n    normal = 0.05\n    filtered =\
@@ -5620,20 +5849,20 @@ workflow:
           - '1742798505742'
           - text
           variable: data_json
-      height: 54
+      height: 52
       id: '1744342068305'
       parentId: '1741497176064'
       position:
         x: 1163.2885127206846
         y: 673.674875984598
       positionAbsolute:
-        x: 5753.288512720685
+        x: 6344.288512720685
         y: 1577.674875984598
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
@@ -5664,20 +5893,20 @@ workflow:
           - '1742547917612'
           - text
           variable: data_json
-      height: 54
+      height: 52
       id: '1744342138380'
       parentId: '1741497176064'
       position:
         x: 1183.3553424127522
         y: 574.6824876720586
       positionAbsolute:
-        x: 5773.355342412752
+        x: 6364.355342412752
         y: 1478.6824876720586
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='cpu')\
@@ -5703,33 +5932,33 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
+          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
+          \        if not common_ts:\n            continue\n            \n       \
+          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
+          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
           \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
           \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
           \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
           \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
+          \ tid == '':\n            continue\n\n        # find which downstream pod\
+          \ is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -5770,20 +5999,20 @@ workflow:
           - '1742980228913'
           - text
           variable: proof_json
-      height: 54
+      height: 52
       id: '1744342244843'
       parentId: '1741497176064'
       position:
         x: 1791.8192785924111
         y: 371.13327676062727
       positionAbsolute:
-        x: 6381.819278592411
+        x: 6972.819278592411
         y: 1275.1332767606273
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='file')\
@@ -5809,33 +6038,33 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
+          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
+          \        if not common_ts:\n            continue\n            \n       \
+          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
+          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
           \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
           \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
           \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
           \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
+          \ tid == '':\n            continue\n\n        # find which downstream pod\
+          \ is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -5876,20 +6105,20 @@ workflow:
           - '1742980318484'
           - text
           variable: proof_json
-      height: 54
+      height: 52
       id: '1744342309386'
       parentId: '1741497176064'
       position:
         x: 1790.2988857309501
-        y: 474.870200391917
+        y: 472.94697102100463
       positionAbsolute:
-        x: 6380.29888573095
-        y: 1378.870200391917
+        x: 6971.29888573095
+        y: 1376.9469710210046
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='net')\
@@ -5915,33 +6144,33 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
+          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
+          \        if not common_ts:\n            continue\n            \n       \
+          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
+          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
           \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
           \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
           \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
           \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
+          \ tid == '':\n            continue\n\n        # find which downstream pod\
+          \ is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -5982,20 +6211,20 @@ workflow:
           - '1744342138380'
           - result
           variable: proof_json
-      height: 54
+      height: 52
       id: '1744342372882'
       parentId: '1741497176064'
       position:
         x: 2092.972416533212
         y: 575.9896449249493
       positionAbsolute:
-        x: 6682.972416533212
+        x: 7273.972416533212
         y: 1479.9896449249493
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='epoll')\
@@ -6021,33 +6250,33 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
+          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
+          \        if not common_ts:\n            continue\n            \n       \
+          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
+          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
           \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
           \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
           \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
           \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
+          \ tid == '':\n            continue\n\n        # find which downstream pod\
+          \ is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -6088,20 +6317,20 @@ workflow:
           - '1744342068305'
           - result
           variable: proof_json
-      height: 54
+      height: 52
       id: '1744342426374'
       parentId: '1741497176064'
       position:
         x: 2092.4007677668633
-        y: 673.2187341513443
+        y: 671.2138333819241
       positionAbsolute:
-        x: 6682.400767766863
-        y: 1577.2187341513443
+        x: 7273.400767766863
+        y: 1575.2138333819241
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='runq')\
@@ -6127,33 +6356,33 @@ workflow:
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
-          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data:\n\
-          \        chart = data['chart']\n        tid = data[id_key]\n        \n \
-          \       common_ts = set(chart.keys()) & set(proof_chart.keys())\n      \
-          \  if not common_ts:\n            continue\n            \n        sorted_ts\
-          \ = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n   \
-          \     b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
+          \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
+          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
+          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
+          \        if not common_ts:\n            continue\n            \n       \
+          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
+          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
           \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
           \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
           \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
           \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('tid', '')\n        if tid == '':\n    \
-          \        continue\n\n        # find which downstream pod is related to this\
-          \ thread\n        res = find_similar_charts(proof_data, chart, id_key='dst_pod')\n\
-          \n        related.append({\n            'tid': tid,\n            'relatedItems':\
-          \ res,\n        })\n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related\n    }\n\ndef runq_analyze(abnormal_data: list)\
-          \ -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
+          \ tid == '':\n            continue\n\n        # find which downstream pod\
+          \ is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
+          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
+          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
+          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', 'tid'),\n            'abnormalCount': abnormal_count,\n\
-          \            'spikes': spikes,\n            'avg': data['avg'],\n      \
-          \      'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
+          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
+          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
+          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
           \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
           \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
           \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
@@ -6194,20 +6423,20 @@ workflow:
           - '17430610756270'
           - text
           variable: proof_json
-      height: 54
+      height: 52
       id: '1744342478278'
       parentId: '1741497176064'
       position:
         x: 1768.3401312758333
         y: 804.853363697991
       positionAbsolute:
-        x: 6358.340131275833
+        x: 6949.340131275833
         y: 1708.853363697991
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6244,20 +6473,20 @@ workflow:
           - '1744342478278'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '1744342609856'
       parentId: '1741497176064'
       position:
         x: 2075.340131275834
         y: 804.853363697991
       positionAbsolute:
-        x: 6665.340131275834
+        x: 7256.340131275834
         y: 1708.853363697991
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6294,20 +6523,20 @@ workflow:
           - '1744342426374'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '1744342800777'
       parentId: '1741497176064'
       position:
         x: 2396.2516631873705
         y: 671.1408594726702
       positionAbsolute:
-        x: 6986.2516631873705
+        x: 7577.2516631873705
         y: 1575.1408594726702
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6344,20 +6573,20 @@ workflow:
           - '1744342372882'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '1744342846753'
       parentId: '1741497176064'
       position:
         x: 2397.0575190597137
         y: 576.2913937324586
       positionAbsolute:
-        x: 6987.057519059714
+        x: 7578.057519059714
         y: 1480.2913937324586
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6394,20 +6623,20 @@ workflow:
           - '1744342309386'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '1744342890395'
       parentId: '1741497176064'
       position:
         x: 2298.297497136483
         y: 475.73311174167225
       positionAbsolute:
-        x: 6888.297497136483
+        x: 7479.297497136483
         y: 1379.7331117416722
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6444,20 +6673,20 @@ workflow:
           - '1744342244843'
           - result
           variable: data_json
-      height: 54
+      height: 52
       id: '1744342920172'
       parentId: '1741497176064'
       position:
         x: 2291.073286368818
         y: 355.5973351437458
       positionAbsolute:
-        x: 6881.073286368818
+        x: 7472.073286368818
         y: 1259.5973351437458
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -6503,19 +6732,19 @@ workflow:
             type: mixed
             value: '{{#17430610599980.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745323059455'
       position:
-        x: 3374
-        y: 810
+        x: 3969
+        y: 812
       positionAbsolute:
-        x: 3374
-        y: 810
+        x: 3969
+        y: 812
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -6560,19 +6789,19 @@ workflow:
             type: mixed
             value: '{{#17430610719970.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745323078946'
       position:
-        x: 3070
-        y: 1092
+        x: 3666
+        y: 1178
       positionAbsolute:
-        x: 3070
-        y: 1092
+        x: 3666
+        y: 1178
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -6617,19 +6846,19 @@ workflow:
             type: mixed
             value: '{{#17430595109950.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745323114690'
       position:
-        x: 3070
-        y: 904
+        x: 3666
+        y: 922
       positionAbsolute:
-        x: 3070
-        y: 904
+        x: 3666
+        y: 922
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -6674,19 +6903,19 @@ workflow:
             type: mixed
             value: '{{#17430597987060.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745323119371'
       position:
-        x: 3374
-        y: 716
+        x: 3969
+        y: 720
       positionAbsolute:
-        x: 3374
-        y: 716
+        x: 3969
+        y: 720
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -6731,19 +6960,19 @@ workflow:
             type: mixed
             value: '{{#17430598907140.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745323124559'
       position:
-        x: 3070
-        y: 998
+        x: 3666
+        y: 1050
       positionAbsolute:
-        x: 3070
-        y: 998
+        x: 3666
+        y: 1050
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         isInIteration: true
@@ -6788,22 +7017,22 @@ workflow:
         tool_parameters:
           result:
             type: mixed
-            value: /
+            value: '{{#1742980720651.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745325937486'
       parentId: '1741497176064'
       position:
         x: 1120.3433448742644
         y: 386.77445077825655
       positionAbsolute:
-        x: 5710.343344874264
+        x: 6301.343344874264
         y: 1290.7744507782566
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -6851,20 +7080,20 @@ workflow:
             type: mixed
             value: '{{#1742980748320.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745326017289'
       parentId: '1741497176064'
       position:
         x: 1132.6661633624499
         y: 478.0639330308825
       positionAbsolute:
-        x: 5722.66616336245
+        x: 6313.66616336245
         y: 1382.0639330308825
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -6912,20 +7141,20 @@ workflow:
             type: mixed
             value: '{{#1742980780865.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745326029444'
       parentId: '1741497176064'
       position:
         x: 1486.3553424127522
         y: 574.6824876720586
       positionAbsolute:
-        x: 6076.355342412752
+        x: 6667.355342412752
         y: 1478.6824876720586
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -6973,20 +7202,20 @@ workflow:
             type: mixed
             value: '{{#1742980837261.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745326038950'
       parentId: '1741497176064'
       position:
         x: 1466.2885127206846
         y: 673.674875984598
       positionAbsolute:
-        x: 6056.288512720685
+        x: 6647.288512720685
         y: 1577.674875984598
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         desc: ''
@@ -7034,20 +7263,20 @@ workflow:
             type: mixed
             value: '{{#1742980885557.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745326055068'
       parentId: '1741497176064'
       position:
         x: 1147.0068118865438
         y: 800.2561082923241
       positionAbsolute:
-        x: 5737.006811886544
+        x: 6328.006811886544
         y: 1704.2561082923241
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
       zIndex: 1002
     - data:
         default_value:
@@ -7217,19 +7446,19 @@ workflow:
             type: mixed
             value: cpu_time
         type: tool
-      height: 90
+      height: 88
       id: '1745388058502'
       position:
-        x: 3982
-        y: 904
+        x: 4575
+        y: 886
       positionAbsolute:
-        x: 3982
-        y: 904
+        x: 4575
+        y: 886
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         default_value:
         - key: text
@@ -7402,19 +7631,19 @@ workflow:
             type: mixed
             value: network_time
         type: tool
-      height: 90
+      height: 88
       id: '17453881280910'
       position:
-        x: 3982
-        y: 998
+        x: 4575
+        y: 1014
       positionAbsolute:
-        x: 3982
-        y: 998
+        x: 4575
+        y: 1014
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         default_value:
         - key: text
@@ -7583,20 +7812,725 @@ workflow:
             type: mixed
             value: scheduling_time
         type: tool
-      height: 90
+      height: 88
       id: '17453881639600'
       position:
-        x: 3982
-        y: 1092
+        x: 4575
+        y: 1142
       positionAbsolute:
-        x: 3982
-        y: 1092
+        x: 4575
+        y: 1142
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is not
+            id: a442dabe-ea1e-43c5-b85b-8e053695ff5a
+            value: '{}'
+            varType: string
+            variable_selector:
+            - '1741509454645'
+            - first
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 条件分支 2
+        type: if-else
+      height: 124
+      id: '1745494305165'
+      position:
+        x: 1848
+        y: 556
+      positionAbsolute:
+        x: 1848
+        y: 556
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        selected: false
+        template: 未查询到告警关联的服务程序，请检查apo-one-agent是否安装并监控服务。
+        title: 未查询到关联服务
+        type: template-transform
+        variables: []
+      height: 52
+      id: '1745494335273'
+      position:
+        x: 2151
+        y: 556
+      positionAbsolute:
+        x: 2151
+        y: 556
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1745494335273'
+          - output
+          variable: output
+        selected: false
+        title: 结束
+        type: end
+      height: 88
+      id: '1745494338512'
+      position:
+        x: 2454
+        y: 556
+      positionAbsolute:
+        x: 2454
+        y: 556
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: contains
+            id: c3fbfa86-caf9-4f75-94f5-2df1dae0ee50
+            value: 下游依赖耗时
+            varType: string
+            variable_selector:
+            - '1742807803325'
+            - alertName
+          - comparison_operator: contains
+            id: e7fe1ff9-6001-4551-a560-c9dcf98b1f37
+            value: 响应耗时
+            varType: string
+            variable_selector:
+            - '1742807803325'
+            - alertName
+          id: 'true'
+          logical_operator: or
+        desc: ''
+        selected: false
+        title: 告警初步方向分析
+        type: if-else
+      height: 150
+      id: '1747355869184'
+      position:
+        x: 2454
+        y: 684
+      positionAbsolute:
+        x: 2454
+        y: 684
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Node name
+            ja_JP: Node name
+            pt_BR: Node name
+            zh_Hans: 主机名
+          label:
+            en_US: Node name
+            ja_JP: Node name
+            pt_BR: Node name
+            zh_Hans: 主机名
+          llm_description: Node name
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 线程在网络操作上的耗时折线图（按Pod统计）
+        tool_configurations: {}
+        tool_label: 线程在网络操作上的耗时折线图（按Pod统计）
+        tool_name: 线程在网络操作上的耗时折线图（按Pod统计）
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - endTime
+          node:
+            type: mixed
+            value: ''
+          pod:
+            type: mixed
+            value: '{{#17430589567120.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - startTime
+        type: tool
+      height: 52
+      id: '1747355986489'
+      position:
+        x: 2757
+        y: 1270
+      positionAbsolute:
+        x: 2757
+        y: 1270
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        isInIteration: true
+        is_team_authorization: true
+        iteration_id: '1741497176064'
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified pod name
+            ja_JP: Specified pod name
+            pt_BR: Specified pod name
+            zh_Hans: 指定的容器POD名称
+          label:
+            en_US: pod
+            ja_JP: pod
+            pt_BR: pod
+            zh_Hans: pod
+          llm_description: Specified pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Specified namespace
+            ja_JP: Specified namespace
+            pt_BR: Specified namespace
+            zh_Hans: 指定的容器所在Namespace
+          label:
+            en_US: namespace
+            ja_JP: namespace
+            pt_BR: namespace
+            zh_Hans: namespace
+          llm_description: Specified namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time
+            ja_JP: Data query start time
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time
+            ja_JP: Data query end time
+            pt_BR: Data query end time
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query start time
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: RTT
+        tool_configurations: {}
+        tool_label: Query container rtt
+        tool_name: 查询容器网络与下游RTT
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#17430589567120.namespace#}}'
+          pod:
+            type: mixed
+            value: '{{#17430589567120.pod#}}'
+          startTime:
+            type: variable
+            value:
+            - '1741227526517'
+            - startTime
+        type: tool
+      height: 52
+      id: '17473562733380'
+      position:
+        x: 2757
+        y: 1362
+      positionAbsolute:
+        x: 2757
+        y: 1362
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+      zIndex: 1002
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          label:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          llm_description: Metrics query result
+          max: null
+          min: null
+          name: result
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          result: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 分析NET消耗的异常样本
+        tool_configurations: {}
+        tool_label: 分析图表的异常样本
+        tool_name: abnormal charts
+        tool_parameters:
+          result:
+            type: mixed
+            value: '{{#1747355986489.text#}}'
+        type: tool
+      height: 52
+      id: '17473564423850'
+      position:
+        x: 3060
+        y: 1270
+      positionAbsolute:
+        x: 3060
+        y: 1270
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          label:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          llm_description: Metrics query result
+          max: null
+          min: null
+          name: result
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          result: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 分析RTT消耗的异常样本
+        tool_configurations: {}
+        tool_label: 分析图表的异常样本
+        tool_name: abnormal charts
+        tool_parameters:
+          result:
+            type: mixed
+            value: '{{#17473562733380.text#}}'
+        type: tool
+      height: 52
+      id: '17473564454180'
+      position:
+        x: 3060
+        y: 1362
+      positionAbsolute:
+        x: 3060
+        y: 1362
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: NET异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '17473564423850'
+          - text
+          variable: data_json
+      height: 52
+      id: '1747356893645'
+      position:
+        x: 3363
+        y: 1270
+      positionAbsolute:
+        x: 3363
+        y: 1270
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\n\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    \n    for instance in data:\n        chart = instance['chart']\n  \
+          \      abnormal_count = instance['abnormalCount']\n        \n        # 计算\
+          \ abnormal_mean\n        sorted_values = sorted(chart.values(), reverse=True)\n\
+          \        top_abnormal_values = sorted_values[:abnormal_count]\n        mean_abnormal\
+          \ = sum(top_abnormal_values) / abnormal_count if abnormal_count > 0 else\
+          \ 0\n        instance[\"abnormal_mean\"] = mean_abnormal\n        \n   \
+          \     # 计算 abnormal_avg_growth\n        sorted_timestamps = sorted(chart.keys())\
+          \  # 按时间戳升序排列\n        time_to_index = {t: idx for idx, t in enumerate(sorted_timestamps)}\n\
+          \        # 获取 abnormal_count 个异常点，按值降序排列\n        abnormal_entries = sorted(chart.items(),\
+          \ key=lambda x: -x[1])[:abnormal_count]\n        \n        growth_rates\
+          \ = []\n        for timestamp, value in abnormal_entries:\n            idx\
+          \ = time_to_index[timestamp]\n            prev_value = None\n          \
+          \  # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n        \
+          \        prev_val = chart[sorted_timestamps[j]]\n                if prev_val\
+          \ != 0:\n                    prev_value = prev_val\n                   \
+          \ break\n            if prev_value is not None:\n                growth_rate\
+          \ = (value - prev_value) / prev_value\n                growth_rates.append(growth_rate)\n\
+          \        \n        avg_growth = sum(growth_rates) / len(growth_rates) if\
+          \ growth_rates else 0\n        instance[\"abnormal_avg_growth\"] = avg_growth\n\
+          \        \n        del instance['chart']\n    \n    # 按 abnormal_mean 降序取前3\n\
+          \    top_abnormal_means = sorted(data, key=lambda x: x['abnormal_mean'],\
+          \ reverse=True)[:5]\n    # 按 abnormal_avg_growth 降序取前3\n    top_abnormal_growths\
+          \ = sorted(data, key=lambda x: x['abnormal_avg_growth'], reverse=True)[:5]\n\
+          \    \n    return {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n\
+          \        \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n  \
+          \  }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: RTT异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '17473564454180'
+          - text
+          variable: data_json
+      height: 52
+      id: '1747356923703'
+      position:
+        x: 3363
+        y: 1362
+      positionAbsolute:
+        x: 3363
+        y: 1362
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        isInIteration: true
+        iteration_id: '1741497176064'
+        model:
+          completion_params:
+            temperature: 0.6
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: cd35fff4-a037-4e72-af99-2ff8299fc5d2
+          role: system
+          text: 你是可观测性领域的智能助手，协助用户分析解决问题。
+        - id: 2b2ad468-efcd-4bcc-aeb9-d53d2f2770ad
+          role: user
+          text: "# 分析目标\n基于NET消耗的异常线程数据和RTT异常长数据，判断应用实例{{#17430589567120.pod#}}是否受告警事件{{#1742807803325.alertName#}}影响，并进行初步根因定位。\n\
+            \n# 输入数据规范\n- 线程在北极星指标NET上的异常消耗样本。\n- Pod相关下游容器RTT异常消耗样本。\n\n# 分析规则\n\
+            1. **主异常方向判定**\n- 标注异常线程的延迟均值。\n- 识别延迟增幅最显著的线程。\n- 根据RTT识别是自身异常还是下游异常\n\
+            2. **RTT识别思路**\n- RTT显著增高或接近0.05s附近\n- 若只有个别RTT出现异常（比如只有一个下游RTT异常）则认为网络异常是由下游导致的\n\
+            - 若有多个RTT同步出现异常（比如有3个及以上下游RTT异常）则认为是容器自身网络出现问题，进而影响了RTT\n2. \n若无相关NET或RTT异常数据，则认为该时间段内对应数据无明显异常，可能只是出现短时间小幅波动。\n\
+            并给出具体的排查解决思路。\n\n# 输出格式\n**应用实例**:{{#17430589567120.pod#}}  \n**北极星指标趋势摘要**\n\
+            - 按指标维度描述显著变化，若无异常标注\"未观测到显著偏离\"。\n**与下游容器RTT分析**\n- 如果是下游RTT异常则列出异常的RTT和对应下游。\n\
+            - 如果是自身网络导致下游RTT异常则给出造成的影响并说明是自身原因导致与下游的RTT升高\n- 最后根据分析规则判断错误方向。\n\n\n\
+            **初步根因结论**\n- 明确告警事件对应用的影响状态。\n- 基于北极星指标与分析规则输出单一归因结论。\n\n# 输入数据\n- 北极星指标NET消耗异常均值最高的实例{{#1747356893645.top_abnormal_means#}}，北极星指标NET消耗异常增速均值最高的实例{{#1747356893645.top_abnormal_growths#}}\n\
+            - 容器RTT异常消耗均值最高的实例{{#1747356923703.top_abnormal_means#}}\n容器RTT异常增速均值最高的实例\n\
+            \n# 输出准则\n- 使用简洁的非技术表述，避免歧义。\n- 结论需聚焦可执行建议（如\"检查代码嵌套\"而非\"可能存在性能问题\"）。"
+        selected: false
+        title: 网络方向分析
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: '17473569800940'
+      position:
+        x: 3666
+        y: 1270
+      positionAbsolute:
+        x: 3666
+        y: 1270
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+      zIndex: 1002
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '17473569800940'
+          - text
+          variable: text
+        selected: false
+        title: 结束
+        type: end
+      height: 88
+      id: '1747357345949'
+      position:
+        x: 3969
+        y: 1270
+      positionAbsolute:
+        x: 3969
+        y: 1270
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
     viewport:
-      x: -862.1680185042887
-      y: -58.42205583896276
-      zoom: 0.57883112810777
+      x: -690.3825562997647
+      y: -43.90932228206026
+      zoom: 0.289713647959684

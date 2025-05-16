@@ -196,18 +196,6 @@ workflow:
         isInIteration: false
         sourceType: question-classifier
         targetType: tool
-      id: 1743577315409-1743584263442-1743672573550-target
-      selected: false
-      source: '1743577315409'
-      sourceHandle: '1743584263442'
-      target: '1743672573550'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: question-classifier
-        targetType: tool
       id: 1743577315409-1743584308108-1743672656692-target
       selected: false
       source: '1743577315409'
@@ -304,18 +292,6 @@ workflow:
         isInIteration: false
         sourceType: tool
         targetType: variable-aggregator
-      id: 1743672573550-source-1743673518843-target
-      selected: false
-      source: '1743672573550'
-      sourceHandle: source
-      target: '1743673518843'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
-        targetType: variable-aggregator
       id: 1743672918677-source-1743673518843-target
       selected: false
       source: '1743672918677'
@@ -387,46 +363,10 @@ workflow:
     - data:
         isInIteration: false
         sourceType: if-else
-        targetType: tool
-      id: 1743844014629-true-17438441946260-target
-      selected: false
-      source: '1743844014629'
-      sourceHandle: 'true'
-      target: '17438441946260'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
-        targetType: question-classifier
-      id: 17438441946260-source-1743846657026-target
-      selected: false
-      source: '17438441946260'
-      sourceHandle: source
-      target: '1743846657026'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: if-else
         targetType: template-transform
       id: 1743844014629-false-1743847092222-target
       selected: false
       source: '1743844014629'
-      sourceHandle: 'false'
-      target: '1743847092222'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: if-else
-        targetType: template-transform
-      id: 17438442246820-false-1743847092222-target
-      selected: false
-      source: '17438442246820'
       sourceHandle: 'false'
       target: '1743847092222'
       targetHandle: target
@@ -441,18 +381,6 @@ workflow:
       source: '1743847092222'
       sourceHandle: source
       target: '1743844231109'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: question-classifier
-        targetType: tool
-      id: 1743577315409-1743585039208-1743847618976-target
-      selected: false
-      source: '1743577315409'
-      sourceHandle: '1743585039208'
-      target: '1743847618976'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -662,39 +590,6 @@ workflow:
       zIndex: 0
     - data:
         isInIteration: false
-        sourceType: question-classifier
-        targetType: tool
-      id: 1743577315409-1743584766623-1743850453842-target
-      source: '1743577315409'
-      sourceHandle: '1743584766623'
-      target: '1743850453842'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
-        targetType: variable-aggregator
-      id: 1743850453842-source-1743673518843-target
-      source: '1743850453842'
-      sourceHandle: source
-      target: '1743673518843'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: if-else
-        targetType: tool
-      id: 17438442246820-true-1743849441196-target
-      source: '17438442246820'
-      sourceHandle: 'true'
-      target: '1743849441196'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
         sourceType: code
         targetType: question-classifier
       id: 1743670061370-source-1743577315409-target
@@ -742,20 +637,10 @@ workflow:
         sourceType: variable-aggregator
         targetType: tool
       id: 1743673518843-source-1745224561449-target
+      selected: false
       source: '1743673518843'
       sourceHandle: source
       target: '1745224561449'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
-        targetType: llm
-      id: 1745224561449-source-1743673613633-target
-      source: '1745224561449'
-      sourceHandle: source
-      target: '1743673613633'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -773,33 +658,11 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
-        targetType: llm
-      id: 1745228455097-source-17438483761510-target
-      source: '1745228455097'
-      sourceHandle: source
-      target: '17438483761510'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
         targetType: tool
       id: 1743848306370-source-1745228463913-target
       source: '1743848306370'
       sourceHandle: source
       target: '1745228463913'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
-        targetType: llm
-      id: 1745228463913-source-17438483761510-target
-      source: '1745228463913'
-      sourceHandle: source
-      target: '17438483761510'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -817,19 +680,9 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
-        targetType: llm
-      id: 1745228471960-source-17438483761510-target
-      source: '1745228471960'
-      sourceHandle: source
-      target: '17438483761510'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
         targetType: tool
       id: 1743848323475-source-1745228478308-target
+      selected: false
       source: '1743848323475'
       sourceHandle: source
       target: '1745228478308'
@@ -839,19 +692,9 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
-        targetType: llm
-      id: 1745228478308-source-17438483761510-target
-      source: '1745228478308'
-      sourceHandle: source
-      target: '17438483761510'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
         targetType: tool
       id: 1743847425675-source-1745228513830-target
+      selected: false
       source: '1743847425675'
       sourceHandle: source
       target: '1745228513830'
@@ -861,19 +704,9 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
-        targetType: llm
-      id: 1745228513830-source-17438490633890-target
-      source: '1745228513830'
-      sourceHandle: source
-      target: '17438490633890'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
         targetType: tool
       id: 1743847703261-source-1745228520609-target
+      selected: false
       source: '1743847703261'
       sourceHandle: source
       target: '1745228520609'
@@ -883,19 +716,9 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
-        targetType: llm
-      id: 1745228520609-source-17438490633890-target
-      source: '1745228520609'
-      sourceHandle: source
-      target: '17438490633890'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        sourceType: tool
         targetType: tool
       id: 1743849875119-source-1745228528400-target
+      selected: false
       source: '1743849875119'
       sourceHandle: source
       target: '1745228528400'
@@ -905,18 +728,809 @@ workflow:
     - data:
         isInIteration: false
         sourceType: tool
+        targetType: code
+      id: 1745224561449-source-1745894017978-target
+      selected: false
+      source: '1745224561449'
+      sourceHandle: source
+      target: '1745894017978'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
         targetType: llm
-      id: 1745228528400-source-17438498987710-target
+      id: 1745894017978-source-1743673613633-target
+      selected: false
+      source: '1745894017978'
+      sourceHandle: source
+      target: '1743673613633'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1745228455097-source-17458959866650-target
+      source: '1745228455097'
+      sourceHandle: source
+      target: '17458959866650'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1745228463913-source-17458959892670-target
+      selected: false
+      source: '1745228463913'
+      sourceHandle: source
+      target: '17458959892670'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1745228471960-source-17458959903430-target
+      source: '1745228471960'
+      sourceHandle: source
+      target: '17458959903430'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1745228478308-source-17458959879420-target
+      source: '1745228478308'
+      sourceHandle: source
+      target: '17458959879420'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17458959866650-source-17438483761510-target
+      source: '17458959866650'
+      sourceHandle: source
+      target: '17438483761510'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17458959892670-source-17438483761510-target
+      source: '17458959892670'
+      sourceHandle: source
+      target: '17438483761510'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17458959903430-source-17438483761510-target
+      source: '17458959903430'
+      sourceHandle: source
+      target: '17438483761510'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17458959879420-source-17438483761510-target
+      source: '17458959879420'
+      sourceHandle: source
+      target: '17438483761510'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1745228520609-source-17459056426090-target
+      selected: false
+      source: '1745228520609'
+      sourceHandle: source
+      target: '17459056426090'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17459056426090-source-17438490633890-target
+      selected: false
+      source: '17459056426090'
+      sourceHandle: source
+      target: '17438490633890'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1745228513830-source-17459056606540-target
+      selected: false
+      source: '1745228513830'
+      sourceHandle: source
+      target: '17459056606540'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17459056606540-source-17438490633890-target
+      selected: false
+      source: '17459056606540'
+      sourceHandle: source
+      target: '17438490633890'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 1745228528400-source-17459186208040-target
+      selected: false
       source: '1745228528400'
       sourceHandle: source
+      target: '17459186208040'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17459186208040-source-17438498987710-target
+      selected: false
+      source: '17459186208040'
+      sourceHandle: source
       target: '17438498987710'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: if-else
+      id: 1743577315409-1743585039208-17459265895570-target
+      selected: false
+      source: '1743577315409'
+      sourceHandle: '1743585039208'
+      target: '17459265895570'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 17459265895570-true-1743847618976-target
+      source: '17459265895570'
+      sourceHandle: 'true'
+      target: '1743847618976'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 17459265895570-false-1745926623499-target
+      source: '17459265895570'
+      sourceHandle: 'false'
+      target: '1745926623499'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: template-transform
+        targetType: end
+      id: 1745926623499-source-1745926643387-target
+      source: '1745926623499'
+      sourceHandle: source
+      target: '1745926643387'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: if-else
+      id: 1743577315409-1743584766623-17459267080670-target
+      selected: false
+      source: '1743577315409'
+      sourceHandle: '1743584766623'
+      target: '17459267080670'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 17459267080670-false-1745926623499-target
+      source: '17459267080670'
+      sourceHandle: 'false'
+      target: '1745926623499'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 17459267080670-true-1743850453842-target
+      selected: false
+      source: '17459267080670'
+      sourceHandle: 'true'
+      target: '1743850453842'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: question-classifier
+      id: 1746777077402-source-1743846657026-target
+      source: '1746777077402'
+      sourceHandle: source
+      target: '1743846657026'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: question-classifier
+      id: 17467775030610-source-17467775030611-target
+      source: '17467775030610'
+      sourceHandle: source
+      target: '17467775030611'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: template-transform
+      id: 17438442246820-false-17467775269231-target
+      source: '17438442246820'
+      sourceHandle: 'false'
+      target: '17467775269231'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: template-transform
+        targetType: end
+      id: 17467775269231-source-17467775269230-target
+      source: '17467775269231'
+      sourceHandle: source
+      target: '17467775269230'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: tool
+      id: 17467775030611-1-17467776423973-target
+      source: '17467775030611'
+      sourceHandle: '1'
+      target: '17467776423973'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 17467776423973-source-17467776423977-target
+      source: '17467776423973'
+      sourceHandle: source
+      target: '17467776423977'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17467776423977-source-174677764239710-target
+      source: '17467776423977'
+      sourceHandle: source
+      target: '174677764239710'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 174677764239710-source-17467776423974-target
+      source: '174677764239710'
+      sourceHandle: source
+      target: '17467776423974'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: tool
+      id: 17467775030611-2-17467776423960-target
+      source: '17467775030611'
+      sourceHandle: '2'
+      target: '17467776423960'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: tool
+      id: 17467775030611-2-17467776423971-target
+      source: '17467775030611'
+      sourceHandle: '2'
+      target: '17467776423971'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 17467776423960-source-17467776423975-target
+      source: '17467776423960'
+      sourceHandle: source
+      target: '17467776423975'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 17467776423971-source-17467776423976-target
+      source: '17467776423971'
+      sourceHandle: source
+      target: '17467776423976'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17467776423975-source-17467776423979-target
+      source: '17467776423975'
+      sourceHandle: source
+      target: '17467776423979'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17467776423976-source-17467776423978-target
+      source: '17467776423976'
+      sourceHandle: source
+      target: '17467776423978'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17467776423979-source-17467776423972-target
+      source: '17467776423979'
+      sourceHandle: source
+      target: '17467776423972'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17467776423978-source-17467776423972-target
+      source: '17467776423978'
+      sourceHandle: source
+      target: '17467776423972'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 17467776423974-source-1743850218410-target
+      source: '17467776423974'
+      sourceHandle: source
+      target: '1743850218410'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 17467776423972-source-1743850218410-target
+      source: '17467776423972'
+      sourceHandle: source
+      target: '1743850218410'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: code
+      id: 1743664106885-source-17469670619810-target
+      source: '1743664106885'
+      sourceHandle: source
+      target: '17469670619810'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: question-classifier
+      id: 17469670619810-source-1743577315409-target
+      source: '17469670619810'
+      sourceHandle: source
+      target: '1743577315409'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: if-else
+      id: 1743844014629-true-1746967296261-target
+      source: '1743844014629'
+      sourceHandle: 'true'
+      target: '1746967296261'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1746967296261-true-1746777077402-target
+      selected: false
+      source: '1746967296261'
+      sourceHandle: 'true'
+      target: '1746777077402'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1746967296261-false-1746967506328-target
+      selected: false
+      source: '1746967296261'
+      sourceHandle: 'false'
+      target: '1746967506328'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 1746967506328-source-17469677133940-target
+      selected: false
+      source: '1746967506328'
+      sourceHandle: source
+      target: '17469677133940'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17469677133940-source-17469677643700-target
+      selected: false
+      source: '17469677133940'
+      sourceHandle: source
+      target: '17469677643700'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1746967296261-false-17469679277020-target
+      selected: false
+      source: '1746967296261'
+      sourceHandle: 'false'
+      target: '17469679277020'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 17469679277020-source-17469681597400-target
+      selected: false
+      source: '17469679277020'
+      sourceHandle: source
+      target: '17469681597400'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17469681597400-source-17469681675370-target
+      selected: false
+      source: '17469681597400'
+      sourceHandle: source
+      target: '17469681675370'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: if-else
+      id: 17438442246820-true-1746968293209-target
+      source: '17438442246820'
+      sourceHandle: 'true'
+      target: '1746968293209'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1746968293209-true-17467775030610-target
+      source: '1746968293209'
+      sourceHandle: 'true'
+      target: '17467775030610'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1746968293209-false-17469682833510-target
+      source: '1746968293209'
+      sourceHandle: 'false'
+      target: '17469682833510'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 1746968293209-false-17469682833513-target
+      source: '1746968293209'
+      sourceHandle: 'false'
+      target: '17469682833513'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 17469682833510-source-17469682833511-target
+      source: '17469682833510'
+      sourceHandle: source
+      target: '17469682833511'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17469682833511-source-17469682833512-target
+      source: '17469682833511'
+      sourceHandle: source
+      target: '17469682833512'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: tool
+      id: 17469682833513-source-17469682833514-target
+      source: '17469682833513'
+      sourceHandle: source
+      target: '17469682833514'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: code
+      id: 17469682833514-source-17469682833515-target
+      source: '17469682833514'
+      sourceHandle: source
+      target: '17469682833515'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17469682833512-source-17469683697070-target
+      source: '17469682833512'
+      sourceHandle: source
+      target: '17469683697070'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17469682833515-source-17469683697070-target
+      source: '17469682833515'
+      sourceHandle: source
+      target: '17469683697070'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17469677643700-source-17469686621940-target
+      source: '17469677643700'
+      sourceHandle: source
+      target: '17469686621940'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 17469681675370-source-17469686621940-target
+      source: '17469681675370'
+      sourceHandle: source
+      target: '17469686621940'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 17469686621940-source-1743850218410-target
+      source: '17469686621940'
+      sourceHandle: source
+      target: '1743850218410'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 17469683697070-source-1743850218410-target
+      source: '17469683697070'
+      sourceHandle: source
+      target: '1743850218410'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: variable-aggregator
+        targetType: code
+      id: 1743673518843-source-1747206482765-target
+      selected: false
+      source: '1743673518843'
+      sourceHandle: source
+      target: '1747206482765'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: code
+        targetType: llm
+      id: 1747206482765-source-1743673613633-target
+      selected: false
+      source: '1747206482765'
+      sourceHandle: source
+      target: '1743673613633'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: if-else
+        targetType: tool
+      id: 17459267080670-true-1747274324343-target
+      source: '17459267080670'
+      sourceHandle: 'true'
+      target: '1747274324343'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1747274324343-source-17472781853800-target
+      source: '1747274324343'
+      sourceHandle: source
+      target: '17472781853800'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: tool
+        targetType: llm
+      id: 1743850453842-source-17472781853800-target
+      source: '1743850453842'
+      sourceHandle: source
+      target: '17472781853800'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: llm
+        targetType: variable-aggregator
+      id: 17472781853800-source-1743850218410-target
+      source: '17472781853800'
+      sourceHandle: source
+      target: '1743850218410'
       targetHandle: target
       type: custom
       zIndex: 0
     nodes:
     - data:
         desc: ''
-        selected: true
+        selected: false
         title: 开始
         type: start
         variables:
@@ -938,27 +1552,31 @@ workflow:
           required: true
           type: paragraph
           variable: params
-      height: 142
+        - label: nodeName
+          max_length: 48
+          options: []
+          required: false
+          type: text-input
+          variable: nodeName
+      height: 166
       id: '1743576019537'
       position:
         x: 30
-        y: 353
+        y: 299
       positionAbsolute:
         x: 30
-        y: 353
-      selected: true
+        y: 299
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         classes:
         - id: '2'
           name: CPU使用量相关
         - id: '1743577380041'
           name: CPU节流时间相关
-        - id: '1743584263442'
-          name: 内存使用量相关
         - id: '1743584285389'
           name: 内存使用率相关
         - id: '1743584308108'
@@ -995,19 +1613,19 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 528
+      height: 490
       id: '1743577315409'
       position:
         x: 2151
-        y: 463
+        y: 501
       positionAbsolute:
         x: 2151
-        y: 463
+        y: 501
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         cases:
         - case_id: 'true'
@@ -1043,19 +1661,19 @@ workflow:
         selected: false
         title: 告警等级分类
         type: if-else
-      height: 200
+      height: 198
       id: '1743649517293'
       position:
         x: 636
-        y: 353
+        y: 299
       positionAbsolute:
         x: 636
-        y: 353
+        y: 299
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         selected: false
@@ -1063,19 +1681,19 @@ workflow:
         title: 条件不足
         type: template-transform
         variables: []
-      height: 54
+      height: 52
       id: '1743650887693'
       position:
         x: 939
-        y: 353
+        y: 299
       positionAbsolute:
         x: 939
-        y: 353
+        y: 299
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         outputs:
@@ -1086,19 +1704,19 @@ workflow:
         selected: false
         title: 条件不足
         type: end
-      height: 90
+      height: 88
       id: '1743650967123'
       position:
         x: 1242
-        y: 353
+        y: 299
       positionAbsolute:
         x: 1242
-        y: 353
+        y: 299
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -1222,35 +1840,40 @@ workflow:
           node_name:
             type: mixed
             value: '{{#1744959389144.nodeName#}}'
+          pid:
+            type: mixed
+            value: ''
           startTime:
             type: variable
             value:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743652485397'
       position:
         x: 939
-        y: 463
+        y: 409
       positionAbsolute:
         x: 939
-        y: 463
+        y: 409
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "def main(arg1: str) -> dict:\n    data = json.loads(arg1)\n    \n \
           \   timeseries = data.get(\"data\", {}).get(\"timeseries\", [])\n    \n\
-          \    namespaces = []\n    pods = []\n    for entry in timeseries:\n    \
-          \    labels = entry.get(\"labels\", {})\n        \n        namespace = labels.get(\"\
-          namespace\", None)\n        pod = labels.get(\"pod\", None)\n        \n\
-          \        if namespace and namespace not in namespaces:\n            namespaces.append(namespace)\n\
+          \    namespaces = []\n    pods = []\n    pids = []\n    for entry in timeseries:\n\
+          \        labels = entry.get(\"labels\", {})\n        \n        namespace\
+          \ = labels.get(\"namespace\", None)\n        pod = labels.get(\"pod\", None)\n\
+          \        pid = labels.get(\"pid\", None)\n        \n        if namespace\
+          \ and namespace not in namespaces:\n            namespaces.append(namespace)\n\
           \n        if pod and pod not in pods:\n            pods.append(pod)\n  \
-          \  \n    output = {\"namespaces\": namespaces, \"pods\": pods}\n    return\
-          \ {\n        \"result\": json.dumps(output)\n    }"
+          \      \n        if pid and pid not in pids:\n            pids.append(pid)\n\
+          \    \n    output = {\"namespaces\": namespaces, \"pods\": pods, \"pids\"\
+          : pids}\n    return {\n        \"result\": json.dumps(output)\n    }"
         code_language: python3
         desc: ''
         outputs:
@@ -1265,19 +1888,19 @@ workflow:
           - '1743652485397'
           - text
           variable: arg1
-      height: 54
+      height: 52
       id: '1743652552181'
       position:
         x: 1242
-        y: 481
+        y: 427
       positionAbsolute:
         x: 1242
-        y: 481
+        y: 427
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         output_type: string
@@ -1289,23 +1912,24 @@ workflow:
           - result
         - - '1743652552181'
           - result
-      height: 130
+      height: 129
       id: '1743664106885'
       position:
         x: 1545
-        y: 463
+        y: 409
       positionAbsolute:
         x: 1545
-        y: 463
+        y: 409
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "def main(namespace: str, pod: str) -> dict:\n    output = {\n     \
-          \   \"namespaces\": [namespace],\n        \"pods\": [pod],\n    }  \n\n\
-          \    return {\n        \"result\": json.dumps(output)\n    }"
+          \   \"namespaces\": [namespace],\n        \"pods\": [pod],\n        \"pids\"\
+          : [],\n    }  \n\n    return {\n        \"result\": json.dumps(output)\n\
+          \    }"
         code_language: python3
         desc: ''
         outputs:
@@ -1324,19 +1948,19 @@ workflow:
           - '1744959389144'
           - pod
           variable: pod
-      height: 54
+      height: 52
       id: '1743664113196'
       position:
         x: 1242
-        y: 573
+        y: 519
       positionAbsolute:
         x: 1242
-        y: 573
+        y: 519
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -1497,19 +2121,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743668416211'
       position:
-        x: 3666
-        y: 463
+        x: 3969
+        y: 3209
       positionAbsolute:
-        x: 3666
-        y: 463
+        x: 3969
+        y: 3209
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "def main(data: str) -> dict:\r\n    namespaces = json.loads(data).get(\"\
           namespaces\")\r\n\r\n    separator = \"|\"\r\n    result_str = separator.join(\r\
@@ -1530,19 +2154,19 @@ workflow:
           - '1743664106885'
           - output
           variable: data
-      height: 54
+      height: 52
       id: '1743670061370'
       position:
         x: 1848
-        y: 463
+        y: 593
       positionAbsolute:
         x: 1848
-        y: 463
+        y: 593
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         code: "def main(data: str) -> dict:\n    pod = json.loads(data).get(\"pods\"\
           )\n\n    separator = \"|\"\n    result_str = separator.join(\n         \
@@ -1562,19 +2186,19 @@ workflow:
           - '1743664106885'
           - output
           variable: data
-      height: 54
+      height: 52
       id: '1743670099979'
       position:
         x: 1848
-        y: 555
+        y: 501
       positionAbsolute:
         x: 1848
-        y: 555
+        y: 501
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -1707,189 +2331,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743672102038'
       position:
-        x: 3666
-        y: 555
+        x: 3969
+        y: 3117
       positionAbsolute:
-        x: 3666
-        y: 555
+        x: 3969
+        y: 3117
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
-    - data:
-        desc: ''
-        is_team_authorization: true
-        output_schema: null
-        paramSchemas:
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: cAdvisor job name
-            ja_JP: cAdvisor job name
-            pt_BR: cAdvisor job name
-            zh_Hans: cAdvisor任务名称
-          label:
-            en_US: cAdvisor job name
-            ja_JP: cAdvisor job name
-            pt_BR: cAdvisor job name
-            zh_Hans: cAdvisor任务名称
-          llm_description: cAdvisor job name
-          max: null
-          min: null
-          name: cadvisor_job_name
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Namespace
-            ja_JP: Namespace
-            pt_BR: Namespace
-            zh_Hans: 命名空间
-          label:
-            en_US: Namespace
-            ja_JP: Namespace
-            pt_BR: Namespace
-            zh_Hans: 命名空间
-          llm_description: Namespace
-          max: null
-          min: null
-          name: namespace
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Pod name
-            ja_JP: Pod name
-            pt_BR: Pod name
-            zh_Hans: Pod名称
-          label:
-            en_US: Pod name
-            ja_JP: Pod name
-            pt_BR: Pod name
-            zh_Hans: Pod名称
-          llm_description: Pod name
-          max: null
-          min: null
-          name: pod
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query start time(Microsecond)
-            ja_JP: Data query start time(Microsecond)
-            pt_BR: Data query start time(Microsecond)
-            zh_Hans: 开始时间 (微秒)
-          label:
-            en_US: startTime
-            ja_JP: startTime
-            pt_BR: startTime
-            zh_Hans: startTime
-          llm_description: Data query start time(Microsecond)
-          max: null
-          min: null
-          name: startTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query end time(Microsecond)
-            ja_JP: Data query end time(Microsecond)
-            pt_BR: Data query end time(Microsecond)
-            zh_Hans: 结束时间 (微秒)
-          label:
-            en_US: endTime
-            ja_JP: endTime
-            pt_BR: endTime
-            zh_Hans: endTime
-          llm_description: Data query end time(Microsecond)
-          max: null
-          min: null
-          name: endTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        params:
-          cadvisor_job_name: ''
-          endTime: ''
-          namespace: ''
-          pod: ''
-          startTime: ''
-        provider_id: apo_select
-        provider_name: apo_select
-        provider_type: builtin
-        selected: false
-        title: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
-        tool_configurations: {}
-        tool_label: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
-        tool_name: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
-        tool_parameters:
-          endTime:
-            type: variable
-            value:
-            - '1743576019537'
-            - endTime
-          namespace:
-            type: mixed
-            value: '{{#1743670061370.result#}}'
-          pod:
-            type: mixed
-            value: '{{#1743670099979.result#}}'
-          startTime:
-            type: variable
-            value:
-            - '1743576019537'
-            - startTime
-        type: tool
-      height: 54
-      id: '1743672573550'
-      position:
-        x: 3666
-        y: 647
-      positionAbsolute:
-        x: 3666
-        y: 647
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -2022,19 +2476,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743672656692'
       position:
-        x: 3666
-        y: 739
+        x: 3969
+        y: 2841
       positionAbsolute:
-        x: 3666
-        y: 739
+        x: 3969
+        y: 2841
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -2177,7 +2631,7 @@ workflow:
         tool_parameters:
           cadvisor_job_name:
             type: mixed
-            value: ''
+            value: '{{#1744959389144.jobName#}}'
           endTime:
             type: variable
             value:
@@ -2195,19 +2649,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743672756524'
       position:
-        x: 3666
-        y: 831
+        x: 3969
+        y: 2749
       positionAbsolute:
-        x: 3666
-        y: 831
+        x: 3969
+        y: 2749
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -2348,6 +2802,9 @@ workflow:
         tool_label: 容器网络发送带宽(按命名空间和Pod统计)
         tool_name: 容器网络发送带宽(按命名空间和Pod统计)
         tool_parameters:
+          cadvisor_job_name:
+            type: mixed
+            value: '{{#1744959389144.jobName#}}'
           endTime:
             type: variable
             value:
@@ -2365,19 +2822,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743672762507'
       position:
-        x: 3666
-        y: 923
+        x: 3969
+        y: 2657
       positionAbsolute:
-        x: 3666
-        y: 923
+        x: 3969
+        y: 2657
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -2520,7 +2977,7 @@ workflow:
         tool_parameters:
           cadvisor_job_name:
             type: mixed
-            value: ''
+            value: '{{#1744959389144.jobName#}}'
           endTime:
             type: variable
             value:
@@ -2538,19 +2995,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743672918677'
       position:
-        x: 3666
-        y: 1015
+        x: 3969
+        y: 2933
       positionAbsolute:
-        x: 3666
-        y: 1015
+        x: 3969
+        y: 2933
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -2708,19 +3165,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743673124913'
       position:
-        x: 3666
-        y: 1107
+        x: 3969
+        y: 2565
       positionAbsolute:
-        x: 3666
-        y: 1107
+        x: 3969
+        y: 2565
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -2878,19 +3335,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743673153877'
       position:
-        x: 3666
-        y: 1199
+        x: 3969
+        y: 2473
       positionAbsolute:
-        x: 3666
-        y: 1199
+        x: 3969
+        y: 2473
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         output_type: string
@@ -2910,27 +3367,27 @@ workflow:
           - text
         - - '1743672656692'
           - text
-        - - '1743672573550'
-          - text
         - - '1743672102038'
           - text
         - - '1743668416211'
           - text
         - - '1743850453842'
           - text
-      height: 306
+        - - '1743847618976'
+          - text
+      height: 305
       id: '1743673518843'
       position:
-        x: 3969
-        y: 923
+        x: 4272
+        y: 2749
       positionAbsolute:
-        x: 3969
-        y: 923
+        x: 4272
+        y: 2749
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         context:
           enabled: false
@@ -2955,7 +3412,7 @@ workflow:
 
             # 分析过程
 
-            根据相关指标数据{{#1745224561449.text#}}，分析告警产生原因。
+            根据相关指标数据1.异常点均值最高的实例{{#1745894017978.top_abnormal_means#}}2.异常增速均值最高的实例{{#1745894017978.top_abnormal_growths#}}，3.资源平均使使用最高的三个实例{{#1747206482765.top_three#}}分析告警产生原因。
 
             1. 从指标中找到相关资源使用异常的容器，指标值相对较低的容器可以忽略。按使用量提供若干个疑似根因的容器。
 
@@ -2975,7 +3432,7 @@ workflow:
 
             - 若相关值在正常范围内，给出你推断的产生告警的其他原因。
 
-            - 若相关值异常，给出你推断出的疑似根因的所有容器、疑似原因和建议解决方案。若不涉及容器则回复中忽略容器。格式为：告警{{#1745224561449.text#}}产生的根因疑似是xx容器，可能存在xx问题，推荐解决解决方案xx。
+            - 若相关值异常，给出你推断出的疑似根因的所有容器、疑似原因和建议解决方案。若不涉及容器则回复中忽略容器。格式为：告警{{#1744959389144.alertName#}}产生的根因疑似是xx容器，可能存在xx问题，推荐解决解决方案xx。
 
             '
         selected: false
@@ -2984,19 +3441,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '1743673613633'
       position:
-        x: 4575
-        y: 923
+        x: 5181
+        y: 2749
       positionAbsolute:
-        x: 4575
-        y: 923
+        x: 5181
+        y: 2749
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         cases:
         - case_id: 'true'
@@ -3014,136 +3471,19 @@ workflow:
         selected: false
         title: 判断nodename
         type: if-else
-      height: 126
+      height: 124
       id: '1743844014629'
       position:
         x: 2454
-        y: 1404
+        y: 501
       positionAbsolute:
         x: 2454
-        y: 1404
+        y: 501
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
-    - data:
-        desc: ''
-        is_team_authorization: true
-        output_schema: null
-        paramSchemas:
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Specified host name
-            ja_JP: Specified host name
-            pt_BR: Specified host name
-            zh_Hans: 指定的主机名
-          label:
-            en_US: node
-            ja_JP: node
-            pt_BR: node
-            zh_Hans: node
-          llm_description: Specified host name
-          max: null
-          min: null
-          name: node
-          options: []
-          placeholder: null
-          precision: null
-          required: false
-          scope: null
-          template: null
-          type: string
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query start time(Microsecond)
-            ja_JP: Data query start time(Microsecond)
-            pt_BR: Data query start time(Microsecond)
-            zh_Hans: 开始时间 (微秒)
-          label:
-            en_US: startTime
-            ja_JP: startTime
-            pt_BR: startTime
-            zh_Hans: startTime
-          llm_description: Data query start time(Microsecond)
-          max: null
-          min: null
-          name: startTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        - auto_generate: null
-          default: null
-          form: llm
-          human_description:
-            en_US: Data query end time(Microsecond)
-            ja_JP: Data query end time(Microsecond)
-            pt_BR: Data query end time(Microsecond)
-            zh_Hans: 结束时间 (微秒)
-          label:
-            en_US: endTime
-            ja_JP: endTime
-            pt_BR: endTime
-            zh_Hans: endTime
-          llm_description: Data query end time(Microsecond)
-          max: null
-          min: null
-          name: endTime
-          options: []
-          placeholder: null
-          precision: null
-          required: true
-          scope: null
-          template: null
-          type: number
-        params:
-          endTime: ''
-          node: ''
-          startTime: ''
-        provider_id: apo_select
-        provider_name: apo_select
-        provider_type: builtin
-        selected: false
-        title: 宿主机磁盘使用率(百分比,不含rootfs) (1)
-        tool_configurations: {}
-        tool_label: 宿主机磁盘使用率(百分比,不含rootfs)
-        tool_name: 宿主机磁盘使用率(百分比,不含rootfs)
-        tool_parameters:
-          endTime:
-            type: variable
-            value:
-            - '1743576019537'
-            - endTime
-          node:
-            type: mixed
-            value: '{{#1743576019537.nodeName#}}'
-          startTime:
-            type: variable
-            value:
-            - '1743576019537'
-            - startTime
-        type: tool
-      height: 54
-      id: '17438441946260'
-      position:
-        x: 2757
-        y: 1404
-      positionAbsolute:
-        x: 2757
-        y: 1404
-      selected: false
-      sourcePosition: right
-      targetPosition: left
-      type: custom
-      width: 244
+      width: 243
     - data:
         cases:
         - case_id: 'true'
@@ -3153,7 +3493,7 @@ workflow:
             value: ''
             varType: string
             variable_selector:
-            - '1743576019537'
+            - '1744959389144'
             - nodeName
           id: 'true'
           logical_operator: and
@@ -3161,19 +3501,19 @@ workflow:
         selected: false
         title: 判断nodename
         type: if-else
-      height: 126
+      height: 124
       id: '17438442246820'
       position:
         x: 3060
-        y: 1922
+        y: 887
       positionAbsolute:
         x: 3060
-        y: 1922
+        y: 887
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         outputs:
@@ -3184,19 +3524,19 @@ workflow:
         selected: false
         title: 条件不足
         type: end
-      height: 90
+      height: 88
       id: '1743844231109'
       position:
-        x: 3666
-        y: 1736
+        x: 3060
+        y: 739
       positionAbsolute:
-        x: 3666
-        y: 1736
+        x: 3060
+        y: 739
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         classes:
         - id: '1'
@@ -3223,7 +3563,7 @@ workflow:
           name: deepseek-chat
           provider: langgenius/deepseek/deepseek
         query_variable_selector:
-        - '17438441946260'
+        - '1746777077402'
         - text
         selected: false
         title: 磁盘IO利用率是否异常
@@ -3231,19 +3571,19 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 168
+      height: 166
       id: '1743846657026'
       position:
-        x: 3060
-        y: 1404
+        x: 3363
+        y: 1936
       positionAbsolute:
-        x: 3060
-        y: 1404
+        x: 3363
+        y: 1936
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         selected: false
@@ -3251,19 +3591,19 @@ workflow:
         title: 条件不足
         type: template-transform
         variables: []
-      height: 54
+      height: 52
       id: '1743847092222'
       position:
-        x: 3363
-        y: 1754
+        x: 2757
+        y: 501
       positionAbsolute:
-        x: 3363
-        y: 1754
+        x: 2757
+        y: 501
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -3421,19 +3761,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743847425675'
       position:
-        x: 3969
-        y: 2047.5
+        x: 4272
+        y: 1464.5
       positionAbsolute:
-        x: 3969
-        y: 2047.5
+        x: 4272
+        y: 1464.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -3531,26 +3871,26 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1743576019537.nodeName#}}'
+            value: '{{#1744959389144.nodeName#}}'
           startTime:
             type: variable
             value:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743847618976'
       position:
-        x: 3666
-        y: 1291
+        x: 3969
+        y: 2381
       positionAbsolute:
-        x: 3666
-        y: 1291
+        x: 3969
+        y: 2381
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -3708,19 +4048,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743847703261'
       position:
-        x: 3969
-        y: 2139.5
+        x: 4272
+        y: 1684.5
       positionAbsolute:
-        x: 3969
-        y: 2139.5
+        x: 4272
+        y: 1684.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -3866,25 +4206,31 @@ workflow:
             value:
             - '1743576019537'
             - endTime
+          namespace:
+            type: mixed
+            value: '{{#1743670061370.result#}}'
+          pod:
+            type: mixed
+            value: '{{#1743670099979.result#}}'
           startTime:
             type: variable
             value:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743848302527'
       position:
-        x: 3969
-        y: 1530.5
+        x: 4272
+        y: 2370.5
       positionAbsolute:
-        x: 3969
-        y: 1530.5
+        x: 4272
+        y: 2370.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -4042,19 +4388,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743848306370'
       position:
-        x: 3969
-        y: 1622.5
+        x: 4272
+        y: 2278.5
       positionAbsolute:
-        x: 3969
-        y: 1622.5
+        x: 4272
+        y: 2278.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -4212,19 +4558,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743848316998'
       position:
-        x: 3969
-        y: 1714.5
+        x: 4272
+        y: 2073.5
       positionAbsolute:
-        x: 3969
-        y: 1714.5
+        x: 4272
+        y: 2073.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -4382,19 +4728,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743848323475'
       position:
-        x: 3969
-        y: 1806.5
+        x: 4272
+        y: 1868.5
       positionAbsolute:
-        x: 3969
-        y: 1806.5
+        x: 4272
+        y: 1868.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         context:
           enabled: false
@@ -4421,7 +4767,7 @@ workflow:
 
             主机的CPU IO wait出现异常，但是主机的磁盘IO利用率在正常范围内，所以请分析相关网络指标来判断是否由于网络原因引起CPU IO wait异常。
 
-            1. 分析指标数据{{#1743848302527.text#}}、{{#1743848306370.text#}}、{{#1743848316998.text#}}、{{#1743848323475.text#}}，找出相关值飙升的容器，若相关值在正常范围内则忽略。
+            1. 分析指标数据接，每组包括异常点均值最高的实例和异常点增速均值最高的实例。接收错误包数异常实例{{#17458959866650.top_abnormal_means#}}{{#17458959866650.top_abnormal_growths#}}、发送错误包数异常实例{{#17458959892670.top_abnormal_means#}}{{#17458959903430.top_abnormal_growths#}}、接收丢包数异常实例{{#17458959903430.top_abnormal_means#}}{{#17458959903430.top_abnormal_growths#}}、发送丢包异常实例{{#17458959879420.top_abnormal_means#}}{{#17458959879420.top_abnormal_growths#}}，找出相关值飙升的容器，若相关值在正常范围内则忽略。
 
             2. 如果相关指标均在正常范围内，则考虑是否是别的情况引起的CPU IO wait异常。比如：远程存储相应过慢、网络延时升高、数据库远程查询过慢等。
 
@@ -4438,19 +4784,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '17438483761510'
       position:
-        x: 4575
-        y: 1496
+        x: 5181
+        y: 1936
       positionAbsolute:
-        x: 4575
-        y: 1496
+        x: 5181
+        y: 1936
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         outputs:
@@ -4461,19 +4807,19 @@ workflow:
         selected: false
         title: 结论
         type: end
-      height: 90
+      height: 88
       id: '17438490239160'
       position:
-        x: 5181
-        y: 1496
+        x: 5787
+        y: 1199
       positionAbsolute:
-        x: 5181
-        y: 1496
+        x: 5787
+        y: 1199
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         context:
           enabled: false
@@ -4500,7 +4846,7 @@ workflow:
 
             主机的CPU IO wait出现异常，且磁盘IO利用率偏高，所以请分析相关磁盘指标来判断是否由容器原因引起CPU IO wait异常。
 
-            1. 分析指标数据{{#1743847703261.text#}}、{{#1743847425675.text#}}，找出相关值飙升的容器，若相关值在正常范围内则忽略。
+            1. 分析指标数据，每个包含两个数据1.平均异常值最高的几个实例2.平均异常值增速最高的几个实例。容器磁盘读取耗时异常实例{{#17459056426090.top_abnormal_means#}}{{#17459056426090.top_abnormal_growths#}}、容器磁盘写入异常实例{{#17459056606540.top_abnormal_means#}}{{#17459056606540.top_abnormal_growths#}}，找出相关值飙升的容器，若相关值在正常范围内则忽略。
 
             2. 如果相关指标均在正常范围内，则考虑是否是别的情况引起的CPU IO wait异常。比如：远程存储相应过慢、网络延时升高、数据库远程查询过慢等。
 
@@ -4517,19 +4863,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '17438490633890'
       position:
-        x: 4575
-        y: 1921
+        x: 5181
+        y: 1327
       positionAbsolute:
-        x: 4575
-        y: 1921
+        x: 5181
+        y: 1327
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -4650,28 +4996,31 @@ workflow:
             value:
             - '1743576019537'
             - endTime
+          job:
+            type: mixed
+            value: .*
           node:
             type: mixed
-            value: '{{#1743576019537.nodeName#}}'
+            value: '{{#1744959389144.nodeName#}}'
           startTime:
             type: variable
             value:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743849441196'
       position:
-        x: 3363
-        y: 1921
+        x: 3666
+        y: 1327
       positionAbsolute:
-        x: 3363
-        y: 1921
+        x: 3666
+        y: 1327
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         classes:
         - id: '1'
@@ -4706,19 +5055,19 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 168
+      height: 166
       id: '17438494733730'
       position:
-        x: 3666
-        y: 1864
+        x: 3969
+        y: 1270
       positionAbsolute:
-        x: 3666
-        y: 1864
+        x: 3969
+        y: 1270
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -4876,19 +5225,19 @@ workflow:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743849875119'
       position:
-        x: 3969
-        y: 2231.5
+        x: 4272
+        y: 1776.5
       positionAbsolute:
-        x: 3969
-        y: 2231.5
+        x: 4272
+        y: 1776.5
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         context:
           enabled: false
@@ -4915,7 +5264,7 @@ workflow:
 
             主机的CPU IO wait出现异常，初步推断是由SWAP区不足引起的，所以请分析相关指标来判断是否由于内存原因引起CPU IO wait异常。
 
-            1. 分析指标数据{{#1743849875119.text#}}，找出相关值飙升的容器，若相关值在正常范围内则忽略。
+            1. 分析指标数据异常均值最高的几个实例{{#17459186208040.top_abnormal_means#}}和{{#17459186208040.top_abnormal_growths#}}异常增速最高的几个实例，找出相关值飙升的容器，若相关值在正常范围内则忽略。
 
             2. 如果相关指标均在正常范围内，则考虑是否是别的情况引起的CPU IO wait异常。比如：内核占用内存过高、缓存失效、内存碎片等。
 
@@ -4932,19 +5281,19 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 90
+      height: 88
       id: '17438498987710'
       position:
-        x: 4575
-        y: 2105
+        x: 5181
+        y: 1639
       positionAbsolute:
-        x: 4575
-        y: 2105
+        x: 5181
+        y: 1639
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         output_type: string
@@ -4960,19 +5309,29 @@ workflow:
           - text
         - - '17438483761510'
           - text
-      height: 174
+        - - '17467776423974'
+          - text
+        - - '17467776423972'
+          - text
+        - - '17469686621940'
+          - text
+        - - '17469683697070'
+          - text
+        - - '17472781853800'
+          - text
+      height: 283
       id: '1743850218410'
       position:
-        x: 4878
-        y: 1496
+        x: 5484
+        y: 1199
       positionAbsolute:
-        x: 4878
-        y: 1496
+        x: 5484
+        y: 1199
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -5070,40 +5429,45 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1743576019537.nodeName#}}'
+            value: '{{#1744959389144.nodeName#}}'
           startTime:
             type: variable
             value:
             - '1743576019537'
             - startTime
         type: tool
-      height: 54
+      height: 52
       id: '1743850453842'
       position:
-        x: 3666
-        y: 2125
+        x: 3969
+        y: 2289
       positionAbsolute:
-        x: 3666
-        y: 2125
+        x: 3969
+        y: 2289
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
-        code: "  \ndef get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
-          \ \n    if value is not None: \n      return value \n  return \"\" \n\n\
-          import json \n\ndef main(arg: str) -> dict:\n  data = json.loads(arg) \n\
-          \  return { \n   \"alertName\": get_value(data, [\"alertName\"]),      \n\
-          #   \"service\": get_value(data, [\"svc_name\", \"service\"]), \n#   \"\
-          endpoint\": get_value(data,[\"endpoint\", \"content_key\"]), \n  \"pod\"\
-          : get_value(data,[\"pod\", \"src_pod\", \"pod_name\"]), \n  \"namespace\"\
-          : get_value(data,[\"namespace\", \"src_namespace\"]), \n  \"nodeName\":\
-          \ get_value(data, [\"nodename\", \"node_name\", \"nodeName\"])\n}"
+        code: "import json\ndef main(arg: str, nodeName: str) -> dict:\n    data =\
+          \ json.loads(arg) \n    return { \n        \"alertName\": get_value(data,\
+          \ [\"alertName\"]),      \n        # \"service\": get_value(data, [\"svc_name\"\
+          , \"service\"]), \n        # \"endpoint\": get_value(data,[\"endpoint\"\
+          , \"content_key\"]), \n        \"pod\": get_value(data,[\"pod\", \"src_pod\"\
+          , \"pod_name\"]), \n        \"namespace\": get_value(data,[\"namespace\"\
+          , \"src_namespace\"]), \n        \"nodeName\": nodeName if nodeName else\
+          \ get_value(data, [\"nodename\", \"node_name\", \"nodeName\", \"node\"]),\n\
+          \        \"jobName\": \".*\"\n    }\n\n  \ndef get_value(data, keys): \n\
+          \  for key in keys: \n    value = data.get(key) \n    if value is not None:\
+          \ \n      return value \n  return \"\" \n"
         code_language: python3
         desc: ''
         outputs:
           alertName:
+            children: null
+            type: string
+          jobName:
             children: null
             type: string
           namespace:
@@ -5123,19 +5487,23 @@ workflow:
           - '1743576019537'
           - params
           variable: arg
-      height: 54
+        - value_selector:
+          - '1743576019537'
+          - nodeName
+          variable: nodeName
+      height: 52
       id: '1744959389144'
       position:
         x: 333
-        y: 353
+        y: 299
       positionAbsolute:
         x: 333
-        y: 353
+        y: 299
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -5180,19 +5548,19 @@ workflow:
             type: mixed
             value: '{{#1743673518843.output#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745224561449'
       position:
-        x: 4272
-        y: 923
+        x: 4575
+        y: 2749
       positionAbsolute:
-        x: 4272
-        y: 923
+        x: 4575
+        y: 2749
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -5237,19 +5605,19 @@ workflow:
             type: mixed
             value: '{{#1743848302527.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745228455097'
       position:
-        x: 4272
-        y: 1404
+        x: 4575
+        y: 2233
       positionAbsolute:
-        x: 4272
-        y: 1404
+        x: 4575
+        y: 2233
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -5294,19 +5662,19 @@ workflow:
             type: mixed
             value: '{{#1743848306370.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745228463913'
       position:
-        x: 4272
-        y: 1496
+        x: 4575
+        y: 2141
       positionAbsolute:
-        x: 4272
-        y: 1496
+        x: 4575
+        y: 2141
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -5351,19 +5719,19 @@ workflow:
             type: mixed
             value: '{{#1743848316998.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745228471960'
       position:
-        x: 4272
-        y: 1588
+        x: 4575
+        y: 1936
       positionAbsolute:
-        x: 4272
-        y: 1588
+        x: 4575
+        y: 1936
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -5408,19 +5776,19 @@ workflow:
             type: mixed
             value: '{{#1743848323475.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745228478308'
       position:
-        x: 4272
-        y: 1680
+        x: 4575
+        y: 1731
       positionAbsolute:
-        x: 4272
-        y: 1680
+        x: 4575
+        y: 1731
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -5465,19 +5833,19 @@ workflow:
             type: mixed
             value: '{{#1743847425675.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745228513830'
       position:
-        x: 4272
-        y: 1921
+        x: 4575
+        y: 1327
       positionAbsolute:
-        x: 4272
-        y: 1921
+        x: 4575
+        y: 1327
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -5522,19 +5890,19 @@ workflow:
             type: mixed
             value: '{{#1743847703261.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745228520609'
       position:
-        x: 4272
-        y: 2013
+        x: 4575
+        y: 1547
       positionAbsolute:
-        x: 4272
-        y: 2013
+        x: 4575
+        y: 1547
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
     - data:
         desc: ''
         is_team_authorization: true
@@ -5579,20 +5947,3373 @@ workflow:
             type: mixed
             value: '{{#1743849875119.text#}}'
         type: tool
-      height: 54
+      height: 52
       id: '1745228528400'
       position:
-        x: 4272
-        y: 2105
+        x: 4575
+        y: 1639
       positionAbsolute:
-        x: 4272
-        y: 2105
+        x: 4575
+        y: 1639
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 244
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '1745224561449'
+          - text
+          variable: data_json
+      height: 52
+      id: '1745894017978'
+      position:
+        x: 4878
+        y: 2749
+      positionAbsolute:
+        x: 4878
+        y: 2749
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取接收错误包异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '1745228455097'
+          - text
+          variable: data_json
+      height: 52
+      id: '17458959866650'
+      position:
+        x: 4878
+        y: 2233
+      positionAbsolute:
+        x: 4878
+        y: 2233
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取发送丢包异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '1745228478308'
+          - text
+          variable: data_json
+      height: 52
+      id: '17458959879420'
+      position:
+        x: 4878
+        y: 1731
+      positionAbsolute:
+        x: 4878
+        y: 1731
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取发送错误包异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '1745228463913'
+          - text
+          variable: data_json
+      height: 52
+      id: '17458959892670'
+      position:
+        x: 4878
+        y: 2141
+      positionAbsolute:
+        x: 4878
+        y: 2141
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取接收丢包异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '1745228471960'
+          - text
+          variable: data_json
+      height: 52
+      id: '17458959903430'
+      position:
+        x: 4878
+        y: 1936
+      positionAbsolute:
+        x: 4878
+        y: 1936
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取读取异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '1745228520609'
+          - text
+          variable: data_json
+      height: 52
+      id: '17459056426090'
+      position:
+        x: 4878
+        y: 1547
+      positionAbsolute:
+        x: 4878
+        y: 1547
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取写入异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '1745228513830'
+          - text
+          variable: data_json
+      height: 52
+      id: '17459056606540'
+      position:
+        x: 4878
+        y: 1327
+      positionAbsolute:
+        x: 4878
+        y: 1327
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取读取异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '1745228528400'
+          - text
+          variable: data_json
+      height: 52
+      id: '17459186208040'
+      position:
+        x: 4878
+        y: 1639
+      positionAbsolute:
+        x: 4878
+        y: 1639
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: not empty
+            id: e6cd8761-43fc-4d1d-bc3e-898643d986f3
+            value: ''
+            varType: string
+            variable_selector:
+            - '1744959389144'
+            - nodeName
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 判断nodename
+        type: if-else
+      height: 124
+      id: '17459265895570'
+      position:
+        x: 3666
+        y: 2013
+      positionAbsolute:
+        x: 3666
+        y: 2013
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        selected: false
+        template: nodeName为空，条件不足
+        title: 模板转换
+        type: template-transform
+        variables: []
+      height: 52
+      id: '1745926623499'
+      position:
+        x: 3969
+        y: 1178
+      positionAbsolute:
+        x: 3969
+        y: 1178
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1745926623499'
+          - output
+          variable: output
+        selected: false
+        title: 结束 4
+        type: end
+      height: 88
+      id: '1745926643387'
+      position:
+        x: 4272
+        y: 1556.5
+      positionAbsolute:
+        x: 4272
+        y: 1556.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: not empty
+            id: e6cd8761-43fc-4d1d-bc3e-898643d986f3
+            value: ''
+            varType: string
+            variable_selector:
+            - '1744959389144'
+            - nodeName
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 判断nodename
+        type: if-else
+      height: 124
+      id: '17459267080670'
+      position:
+        x: 3666
+        y: 1787
+      positionAbsolute:
+        x: 3666
+        y: 1787
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: .*
+          form: llm
+          human_description:
+            en_US: Scrape job name
+            ja_JP: Scrape job name
+            pt_BR: Scrape job name
+            zh_Hans: 采集任务名
+          label:
+            en_US: Scrape job name
+            ja_JP: Scrape job name
+            pt_BR: Scrape job name
+            zh_Hans: 采集任务名
+          llm_description: Scrape job name
+          max: null
+          min: null
+          name: job
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: node
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          job: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 宿主机磁盘IO利用率
+        tool_configurations: {}
+        tool_label: 宿主机磁盘IO利用率
+        tool_name: 宿主机磁盘IO利用率
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          job:
+            type: mixed
+            value: .*
+          node:
+            type: mixed
+            value: '{{#1744959389144.nodeName#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+        type: tool
+      height: 52
+      id: '1746777077402'
+      position:
+        x: 3060
+        y: 1954
+      positionAbsolute:
+        x: 3060
+        y: 1954
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Prometheus job name for host metrics
+            ja_JP: Prometheus job name for host metrics
+            pt_BR: Prometheus job name for host metrics
+            zh_Hans: Prometheus任务名称（宿主机指标）
+          label:
+            en_US: Prometheus Job
+            ja_JP: Prometheus Job
+            pt_BR: Tarefa Prometheus
+            zh_Hans: Prometheus任务
+          llm_description: Unique identifier for metrics scrape job
+          max: null
+          min: null
+          name: job
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Host node identifier
+            ja_JP: Host node identifier
+            pt_BR: Host node identifier
+            zh_Hans: 宿主机节点标识
+          label:
+            en_US: Host Node
+            ja_JP: Host Node
+            pt_BR: Host Node
+            zh_Hans: 宿主机节点
+          llm_description: Unique identifier for host node
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          job: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 查询宿主机SWAP使用率
+        tool_configurations: {}
+        tool_label: 查询宿主机SWAP使用率
+        tool_name: 查询宿主机SWAP使用率
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          job:
+            type: mixed
+            value: .*
+          node:
+            type: mixed
+            value: '{{#1744959389144.nodeName#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+        type: tool
+      height: 52
+      id: '17467775030610'
+      position:
+        x: 3666
+        y: 1015
+      positionAbsolute:
+        x: 3666
+        y: 1015
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        classes:
+        - id: '1'
+          name: 是
+        - id: '2'
+          name: 否
+        desc: ''
+        instruction: '# 目的
+
+          根据相关指标的数值判断该指标是否出现异常
+
+
+          # 判断思路
+
+          根据告警{{#1743576019537.alertName#}}和指标值{{#1743849441196.text#}}判断该指标是否在某一时刻飙升
+
+
+          '
+        instructions: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        query_variable_selector:
+        - '17467775030610'
+        - text
+        selected: false
+        title: SWAP是否异常
+        topics: []
+        type: question-classifier
+        vision:
+          enabled: false
+      height: 166
+      id: '17467775030611'
+      position:
+        x: 3969
+        y: 958
+      positionAbsolute:
+        x: 3969
+        y: 958
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '17467775269231'
+          - output
+          variable: output
+        selected: false
+        title: 条件不足
+        type: end
+      height: 88
+      id: '17467775269230'
+      position:
+        x: 3666
+        y: 887
+      positionAbsolute:
+        x: 3666
+        y: 887
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        selected: false
+        template: nodeName为空，无法分析根因。
+        title: 条件不足
+        type: template-transform
+        variables: []
+      height: 52
+      id: '17467775269231'
+      position:
+        x: 3363
+        y: 962
+      positionAbsolute:
+        x: 3363
+        y: 962
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 容器磁盘写入耗时每秒(使用Containerd,按Pod和容器统计) (1)
+        tool_configurations: {}
+        tool_label: 容器磁盘写入耗时每秒(使用Containerd,按Pod和容器统计)
+        tool_name: 容器磁盘写入耗时每秒(使用Containerd,按Pod和容器统计)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1743670061370.result#}}'
+          pod:
+            type: mixed
+            value: '{{#1743670099979.result#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+        type: tool
+      height: 52
+      id: '17467776423960'
+      position:
+        x: 4272
+        y: 1244.5
+      positionAbsolute:
+        x: 4272
+        y: 1244.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 容器磁盘读取耗时每秒(使用Containerd,按Pod和容器统计) (1)
+        tool_configurations: {}
+        tool_label: 容器磁盘读取耗时每秒(使用Containerd,按Pod和容器统计)
+        tool_name: 容器磁盘读取耗时每秒(使用Containerd,按Pod和容器统计)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1743670061370.result#}}'
+          pod:
+            type: mixed
+            value: '{{#1743670099979.result#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+        type: tool
+      height: 52
+      id: '17467776423971'
+      position:
+        x: 4272
+        y: 1152.5
+      positionAbsolute:
+        x: 4272
+        y: 1152.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 5426b9f0-37c8-45b7-9faa-49695110dc7d
+          role: system
+          text: 你是一名可观测性领域智能助手和排障专家，帮助用户分析出现告警的原因。
+        - id: 394f3fde-0d44-43dc-9c6d-6737b88c199d
+          role: user
+          text: '# 目的
+
+            根据相关指标结果，分析告警{{#1744959389144.alertName#}}的正确性或者产生的原因并定位疑似根因容器，最后提供恰当的解决思路。
+
+
+            # 分析过程
+
+            以请分析相关磁盘指标来判断是否由磁盘原因引起主机磁盘利用率异常。
+
+            1. 分析指标数据，每个包含两个数据1.平均异常值最高的几个实例2.平均异常值增速最高的几个实例。容器磁盘读取耗时异常实例、容器磁盘写入异常实例{{#17467776423978.top_abnormal_means#}}{{#17467776423978.top_abnormal_growths#}}{{#17467776423979.top_abnormal_means#}}{{#17467776423979.top_abnormal_growths#}}，找出相关值飙升的容器，若相关值在正常范围内则忽略。
+
+            2. 如果相关指标均在正常范围内，则考虑是否是别的情况引起的磁盘利用率异常。
+
+            # 输出
+
+            - 若相关值在正常范围内，给出你推断的产生告警的其他原因。
+
+            - 若相关值异常，给出你推断出的疑似根因的所有容器、疑似原因和建议解决方案。格式为：告警{{#1744959389144.alertName#}}产生的根因疑似是xx容器，可能存在xx问题，推荐解决解决方案xx。
+
+            '
+        selected: false
+        title: 磁盘告警磁盘指标分析
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: '17467776423972'
+      position:
+        x: 5181
+        y: 1015
+      positionAbsolute:
+        x: 5181
+        y: 1015
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          label:
+            en_US: cAdvisor job name
+            ja_JP: cAdvisor job name
+            pt_BR: cAdvisor job name
+            zh_Hans: cAdvisor任务名称
+          llm_description: cAdvisor job name
+          max: null
+          min: null
+          name: cadvisor_job_name
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          label:
+            en_US: Namespace
+            ja_JP: Namespace
+            pt_BR: Namespace
+            zh_Hans: 命名空间
+          llm_description: Namespace
+          max: null
+          min: null
+          name: namespace
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          label:
+            en_US: Pod name
+            ja_JP: Pod name
+            pt_BR: Pod name
+            zh_Hans: Pod名称
+          llm_description: Pod name
+          max: null
+          min: null
+          name: pod
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time(Microsecond)
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          cadvisor_job_name: ''
+          endTime: ''
+          namespace: ''
+          pod: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计) (1)
+        tool_configurations: {}
+        tool_label: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
+        tool_name: 容器内存使用字节数(使用Containerd容器运行时,按容器和Pod统计)
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          namespace:
+            type: mixed
+            value: '{{#1743670061370.result#}}'
+          pod:
+            type: mixed
+            value: '{{#1743670099979.result#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+        type: tool
+      height: 52
+      id: '17467776423973'
+      position:
+        x: 4272
+        y: 1336.5
+      positionAbsolute:
+        x: 4272
+        y: 1336.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 5426b9f0-37c8-45b7-9faa-49695110dc7d
+          role: system
+          text: 你是一名可观测性领域智能助手和排障专家，帮助用户分析出现告警的原因。
+        - id: 394f3fde-0d44-43dc-9c6d-6737b88c199d
+          role: user
+          text: '# 目的
+
+            根据相关指标结果，分析告警{{#1744959389144.alertName#}}的正确性或者产生的原因并定位疑似根因容器，最后提供恰当的解决思路。
+
+
+            # 分析过程
+
+            主机的磁盘利用率出现异常，初步推断是由SWAP区引起的，所以请分析相关指标来判断是否由于内存原因引起磁盘利用率升高异常。
+
+            1. 分析指标数据异常均值最高的几个实例{{#174677764239710.top_abnormal_means#}}和异常增速最高的几个实例{{#174677764239710.top_abnormal_growths#}}，找出相关值飙升的容器，若相关值在正常范围内则忽略。
+
+            2. 如果相关指标均在正常范围内，则考虑是否是别的情况引起的磁盘利用率异常。
+
+            # 输出
+
+            - 若相关值在正常范围内，给出你推断的产生告警的其他原因。
+
+            - 若相关值异常，给出你推断出的疑似根因的所有容器、疑似原因和建议解决方案。格式为：告警{{#1744959389144.alertName#}}产生的根因疑似是xx容器，可能存在xx问题，推荐解决解决方案xx。
+
+            '
+        selected: false
+        title: 磁盘告警内存指标分析
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: '17467776423974'
+      position:
+        x: 5181
+        y: 1199
+      positionAbsolute:
+        x: 5181
+        y: 1199
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          label:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          llm_description: Metrics query result
+          max: null
+          min: null
+          name: result
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          result: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 分析图表的异常样本
+        tool_configurations: {}
+        tool_label: 分析图表的异常样本
+        tool_name: abnormal charts
+        tool_parameters:
+          result:
+            type: mixed
+            value: '{{#17467776423960.text#}}'
+        type: tool
+      height: 52
+      id: '17467776423975'
+      position:
+        x: 4575
+        y: 1107
+      positionAbsolute:
+        x: 4575
+        y: 1107
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          label:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          llm_description: Metrics query result
+          max: null
+          min: null
+          name: result
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          result: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 分析图表的异常样本
+        tool_configurations: {}
+        tool_label: 分析图表的异常样本
+        tool_name: abnormal charts
+        tool_parameters:
+          result:
+            type: mixed
+            value: '{{#17467776423971.text#}}'
+        type: tool
+      height: 52
+      id: '17467776423976'
+      position:
+        x: 4575
+        y: 1015
+      positionAbsolute:
+        x: 4575
+        y: 1015
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          label:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          llm_description: Metrics query result
+          max: null
+          min: null
+          name: result
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          result: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 分析图表的异常样本
+        tool_configurations: {}
+        tool_label: 分析图表的异常样本
+        tool_name: abnormal charts
+        tool_parameters:
+          result:
+            type: mixed
+            value: '{{#17467776423973.text#}}'
+        type: tool
+      height: 52
+      id: '17467776423977'
+      position:
+        x: 4575
+        y: 1199
+      positionAbsolute:
+        x: 4575
+        y: 1199
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取读取异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '17467776423976'
+          - text
+          variable: data_json
+      height: 52
+      id: '17467776423978'
+      position:
+        x: 4878
+        y: 1015
+      positionAbsolute:
+        x: 4878
+        y: 1015
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取写入异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '17467776423975'
+          - text
+          variable: data_json
+      height: 52
+      id: '17467776423979'
+      position:
+        x: 4878
+        y: 1107
+      positionAbsolute:
+        x: 4878
+        y: 1107
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取读取异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '17467776423977'
+          - text
+          variable: data_json
+      height: 52
+      id: '174677764239710'
+      position:
+        x: 4878
+        y: 1199
+      positionAbsolute:
+        x: 4878
+        y: 1199
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "def main(data: str) -> dict:\n    pids = json.loads(data).get(\"pids\"\
+          )\n\n    separator = \"|\"\n    result_str = separator.join(\n         \
+          \   str(pid) for pid in pids \n            if isinstance(pid, (str, int))\n\
+          \        )\n\n    return {\n        \"result\": result_str\n    }"
+        code_language: python3
+        desc: ''
+        outputs:
+          result:
+            children: null
+            type: string
+        selected: false
+        title: 获取pids
+        type: code
+        variables:
+        - value_selector:
+          - '1743664106885'
+          - output
+          variable: data
+      height: 52
+      id: '17469670619810'
+      position:
+        x: 1848
+        y: 409
+      positionAbsolute:
+        x: 1848
+        y: 409
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: not empty
+            id: 7750b99c-5b5f-4b7c-a6eb-bb15fd437d1d
+            value: ''
+            varType: string
+            variable_selector:
+            - '1743670099979'
+            - result
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 是否为集群环境
+        type: if-else
+      height: 124
+      id: '1746967296261'
+      position:
+        x: 2757
+        y: 593
+      positionAbsolute:
+        x: 2757
+        y: 593
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Process identity(eg:pid1|pid2)
+            ja_JP: Process identity(eg:pid1|pid2)
+            pt_BR: Process identity(eg:pid1|pid2)
+            zh_Hans: 进程id（正则查询格式：pid1|pid2）
+          label:
+            en_US: Process identity(eg:pid1|pid2)
+            ja_JP: Process identity(eg:pid1|pid2)
+            pt_BR: Process identity(eg:pid1|pid2)
+            zh_Hans: 进程id（正则查询格式：pid1|pid2）
+          llm_description: Process identity(eg:pid1|pid2)
+          max: null
+          min: null
+          name: pid
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            ja_JP: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            pt_BR: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+          label:
+            en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            ja_JP: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            pt_BR: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+          llm_description: Resource type(cpu, epoll, file, futex, other, idle, net,
+            runq)
+          max: null
+          min: null
+          name: type
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          pid: ''
+          startTime: ''
+          type: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 进程在file上的时间消耗
+        tool_configurations: {}
+        tool_label: 进程在某类资源上的时间消耗
+        tool_name: 进程在某类资源上的时间消耗
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          pid:
+            type: mixed
+            value: '{{#17469670619810.result#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+          type:
+            type: mixed
+            value: file
+        type: tool
+      height: 52
+      id: '1746967506328'
+      position:
+        x: 4272
+        y: 917.7551819572907
+      positionAbsolute:
+        x: 4272
+        y: 917.7551819572907
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          label:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          llm_description: Metrics query result
+          max: null
+          min: null
+          name: result
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          result: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 分析file消耗异常样本
+        tool_configurations: {}
+        tool_label: 分析图表的异常样本
+        tool_name: abnormal charts
+        tool_parameters:
+          result:
+            type: mixed
+            value: '{{#1746967506328.text#}}'
+        type: tool
+      height: 52
+      id: '17469677133940'
+      position:
+        x: 4575
+        y: 813
+      positionAbsolute:
+        x: 4575
+        y: 813
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取epoll消耗异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '17469677133940'
+          - text
+          variable: data_json
+      height: 52
+      id: '17469677643700'
+      position:
+        x: 4878
+        y: 813
+      positionAbsolute:
+        x: 4878
+        y: 813
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Process identity(eg:pid1|pid2)
+            ja_JP: Process identity(eg:pid1|pid2)
+            pt_BR: Process identity(eg:pid1|pid2)
+            zh_Hans: 进程id（正则查询格式：pid1|pid2）
+          label:
+            en_US: Process identity(eg:pid1|pid2)
+            ja_JP: Process identity(eg:pid1|pid2)
+            pt_BR: Process identity(eg:pid1|pid2)
+            zh_Hans: 进程id（正则查询格式：pid1|pid2）
+          llm_description: Process identity(eg:pid1|pid2)
+          max: null
+          min: null
+          name: pid
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            ja_JP: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            pt_BR: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+          label:
+            en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            ja_JP: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            pt_BR: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+          llm_description: Resource type(cpu, epoll, file, futex, other, idle, net,
+            runq)
+          max: null
+          min: null
+          name: type
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          pid: ''
+          startTime: ''
+          type: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 进程在epoll上的时间消耗
+        tool_configurations: {}
+        tool_label: 进程在某类资源上的时间消耗
+        tool_name: 进程在某类资源上的时间消耗
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          pid:
+            type: mixed
+            value: '{{#17469670619810.result#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+          type:
+            type: mixed
+            value: epoll
+        type: tool
+      height: 52
+      id: '17469679277020'
+      position:
+        x: 4272
+        y: 766.5
+      positionAbsolute:
+        x: 4272
+        y: 766.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          label:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          llm_description: Metrics query result
+          max: null
+          min: null
+          name: result
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          result: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 分析epoll消耗异常样本
+        tool_configurations: {}
+        tool_label: 分析图表的异常样本
+        tool_name: abnormal charts
+        tool_parameters:
+          result:
+            type: mixed
+            value: '{{#17469679277020.text#}}'
+        type: tool
+      height: 52
+      id: '17469681597400'
+      position:
+        x: 4575
+        y: 629
+      positionAbsolute:
+        x: 4575
+        y: 629
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取file消耗异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '17469681597400'
+          - text
+          variable: data_json
+      height: 52
+      id: '17469681675370'
+      position:
+        x: 4878
+        y: 629
+      positionAbsolute:
+        x: 4878
+        y: 629
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Process identity(eg:pid1|pid2)
+            ja_JP: Process identity(eg:pid1|pid2)
+            pt_BR: Process identity(eg:pid1|pid2)
+            zh_Hans: 进程id（正则查询格式：pid1|pid2）
+          label:
+            en_US: Process identity(eg:pid1|pid2)
+            ja_JP: Process identity(eg:pid1|pid2)
+            pt_BR: Process identity(eg:pid1|pid2)
+            zh_Hans: 进程id（正则查询格式：pid1|pid2）
+          llm_description: Process identity(eg:pid1|pid2)
+          max: null
+          min: null
+          name: pid
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            ja_JP: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            pt_BR: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+          label:
+            en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            ja_JP: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            pt_BR: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+          llm_description: Resource type(cpu, epoll, file, futex, other, idle, net,
+            runq)
+          max: null
+          min: null
+          name: type
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          pid: ''
+          startTime: ''
+          type: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 进程在file上的时间消耗
+        tool_configurations: {}
+        tool_label: 进程在某类资源上的时间消耗
+        tool_name: 进程在某类资源上的时间消耗
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          pid:
+            type: mixed
+            value: '{{#17469670619810.result#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+          type:
+            type: mixed
+            value: file
+        type: tool
+      height: 52
+      id: '17469682833510'
+      position:
+        x: 4272
+        y: 674.5
+      positionAbsolute:
+        x: 4272
+        y: 674.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          label:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          llm_description: Metrics query result
+          max: null
+          min: null
+          name: result
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          result: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 分析file消耗异常样本
+        tool_configurations: {}
+        tool_label: 分析图表的异常样本
+        tool_name: abnormal charts
+        tool_parameters:
+          result:
+            type: mixed
+            value: '{{#17469682833510.text#}}'
+        type: tool
+      height: 52
+      id: '17469682833511'
+      position:
+        x: 4575
+        y: 537
+      positionAbsolute:
+        x: 4575
+        y: 537
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取file消耗异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '17469682833511'
+          - text
+          variable: data_json
+      height: 52
+      id: '17469682833512'
+      position:
+        x: 4878
+        y: 537
+      positionAbsolute:
+        x: 4878
+        y: 537
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Process identity(eg:pid1|pid2)
+            ja_JP: Process identity(eg:pid1|pid2)
+            pt_BR: Process identity(eg:pid1|pid2)
+            zh_Hans: 进程id（正则查询格式：pid1|pid2）
+          label:
+            en_US: Process identity(eg:pid1|pid2)
+            ja_JP: Process identity(eg:pid1|pid2)
+            pt_BR: Process identity(eg:pid1|pid2)
+            zh_Hans: 进程id（正则查询格式：pid1|pid2）
+          llm_description: Process identity(eg:pid1|pid2)
+          max: null
+          min: null
+          name: pid
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            ja_JP: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            pt_BR: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+          label:
+            en_US: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            ja_JP: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            pt_BR: Resource type(cpu, epoll, file, futex, other, idle, net, runq)
+            zh_Hans: 资源类型(cpu, epoll, file, futex, other, idle, net, runq)
+          llm_description: Resource type(cpu, epoll, file, futex, other, idle, net,
+            runq)
+          max: null
+          min: null
+          name: type
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          pid: ''
+          startTime: ''
+          type: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 进程在epoll上的时间消耗
+        tool_configurations: {}
+        tool_label: 进程在某类资源上的时间消耗
+        tool_name: 进程在某类资源上的时间消耗
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          pid:
+            type: mixed
+            value: '{{#17469670619810.result#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+          type:
+            type: mixed
+            value: epoll
+        type: tool
+      height: 52
+      id: '17469682833513'
+      position:
+        x: 4272
+        y: 582.5
+      positionAbsolute:
+        x: 4272
+        y: 582.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          label:
+            en_US: 指标查询结果
+            ja_JP: 指标查询结果
+            pt_BR: 指标查询结果
+            zh_Hans: Metrics query result
+          llm_description: Metrics query result
+          max: null
+          min: null
+          name: result
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        params:
+          result: ''
+        provider_id: apo_analysis
+        provider_name: apo_analysis
+        provider_type: builtin
+        selected: false
+        title: 分析epoll消耗异常样本
+        tool_configurations: {}
+        tool_label: 分析图表的异常样本
+        tool_name: abnormal charts
+        tool_parameters:
+          result:
+            type: mixed
+            value: '{{#17469682833513.text#}}'
+        type: tool
+      height: 52
+      id: '17469682833514'
+      position:
+        x: 4575
+        y: 445
+      positionAbsolute:
+        x: 4575
+        y: 445
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
+          \ = instance['abnormalCount']\n        \n        # 计算abnormal_mean\n   \
+          \     sorted_values = sorted(chart.values(), reverse=True)\n        top_abnormal_values\
+          \ = sorted_values[:abnormal_count]\n        mean_abnormal = sum(top_abnormal_values)\
+          \ / abnormal_count if abnormal_count > 0 else 0\n        instance[\"abnormal_mean\"\
+          ] = mean_abnormal\n        \n        # 计算abnormal_avg_growth\n        sorted_timestamps\
+          \ = sorted(chart.keys())  # 按时间戳升序排列\n        time_to_index = {t: idx for\
+          \ idx, t in enumerate(sorted_timestamps)}\n        # 获取abnormal_count个异常点，按值降序排列\n\
+          \        abnormal_entries = sorted(chart.items(), key=lambda x: -x[1])[:abnormal_count]\n\
+          \        \n        growth_rates = []\n        for timestamp, value in abnormal_entries:\n\
+          \            idx = time_to_index[timestamp]\n            prev_value = None\n\
+          \            # 向前查找第一个非零值\n            for j in range(idx - 1, -1, -1):\n\
+          \                prev_val = chart[sorted_timestamps[j]]\n              \
+          \  if prev_val != 0:\n                    prev_value = prev_val\n      \
+          \              break\n            if prev_value is not None:\n         \
+          \       growth_rate = (value - prev_value) / prev_value\n              \
+          \  growth_rates.append(growth_rate)\n        \n        avg_growth = sum(growth_rates)\
+          \ / len(growth_rates) if growth_rates else 0\n        instance[\"abnormal_avg_growth\"\
+          ] = avg_growth\n    \n    # 按abnormal_mean降序取前3\n    top_abnormal_means\
+          \ = sorted(data, key=lambda x: x['abnormal_mean'], reverse=True)[:3]\n \
+          \   # 按abnormal_avg_growth降序取前3\n    top_abnormal_growths = sorted(data,\
+          \ key=lambda x: x['abnormal_avg_growth'], reverse=True)[:3]\n    \n    return\
+          \ {\n        \"top_abnormal_means\": json.dumps(top_abnormal_means),\n \
+          \       \"top_abnormal_growths\": json.dumps(top_abnormal_growths)\n   \
+          \ }"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_abnormal_growths:
+            children: null
+            type: string
+          top_abnormal_means:
+            children: null
+            type: string
+        selected: false
+        title: 获取epoll消耗异常实例
+        type: code
+        variables:
+        - value_selector:
+          - '17469682833514'
+          - text
+          variable: data_json
+      height: 52
+      id: '17469682833515'
+      position:
+        x: 4878
+        y: 445
+      positionAbsolute:
+        x: 4878
+        y: 445
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: not empty
+            id: e9ee8779-6aaf-475d-8b3f-b9b5d2b2c783
+            value: ''
+            varType: string
+            variable_selector:
+            - '1743670099979'
+            - result
+          id: 'true'
+          logical_operator: and
+        desc: ''
+        selected: false
+        title: 是否为集群环境
+        type: if-else
+      height: 124
+      id: '1746968293209'
+      position:
+        x: 3363
+        y: 742
+      positionAbsolute:
+        x: 3363
+        y: 742
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 5426b9f0-37c8-45b7-9faa-49695110dc7d
+          role: system
+          text: 你是一名可观测性领域智能助手和排障专家，帮助用户分析出现告警的原因。
+        - id: 394f3fde-0d44-43dc-9c6d-6737b88c199d
+          role: user
+          text: '# 目的
+
+            根据相关指标结果，分析告警{{#1744959389144.alertName#}}的正确性或者产生的原因并定位疑似根因进程，最后提供恰当的解决思路。
+
+
+            # 分析过程
+
+            以请分析相关指标来判断是否由容器原因引起主机磁盘利用率异常。
+
+            1. 分析指标数据，每个包含两个数据1.平均异常值最高的几个实例2.平均异常值增速最高的几个实例。容器磁盘读取耗时异常实例、容器磁盘写入异常实例，找出相关值飙升的容器，若相关值在正常范围内则忽略。epoll消耗异常实例：{{#17469682833512.top_abnormal_growths#}}{{#17469682833512.top_abnormal_means#}}{{#17469682833515.top_abnormal_means#}}，file消耗异常实例{{#17469682833515.top_abnormal_growths#}}{{#17469682833515.top_abnormal_means#}}
+
+            2. 如果相关指标均在正常范围内，则考虑是否是别的情况引起的磁盘利用率异常。
+
+            # 输出
+
+            - 若相关值在正常范围内，给出你推断的产生告警的其他原因。
+
+            - 若相关值异常，给出你推断出的疑似根因的所有容器、疑似原因和建议解决方案。格式为：告警{{#1744959389144.alertName#}}产生的根因疑似是xx容器，可能存在xx问题，推荐解决解决方案xx。
+
+            '
+        selected: false
+        title: 虚机磁盘告警指标分析
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: '17469683697070'
+      position:
+        x: 5181
+        y: 445
+      positionAbsolute:
+        x: 5181
+        y: 445
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 5426b9f0-37c8-45b7-9faa-49695110dc7d
+          role: system
+          text: 你是一名可观测性领域智能助手和排障专家，帮助用户分析出现告警的原因。
+        - id: 394f3fde-0d44-43dc-9c6d-6737b88c199d
+          role: user
+          text: '# 目的
+
+            根据相关指标结果，分析告警{{#1744959389144.alertName#}}的正确性或者产生的原因并定位疑似根因容器，最后提供恰当的解决思路。
+
+
+            # 分析过程
+
+            主机的CPU IO wait出现异常，请分析相关指标来判断引起CPU IO wait异常的原因。
+
+            1. 分析指标数据，每个包含两个数据1.平均异常值最高的几个实例2.平均异常值增速最高的几个实例。epoll消耗异常的实例：{{#17469677643700.top_abnormal_growths#}}{{#17469677643700.top_abnormal_means#}}，file消耗异常的实例{{#17469681675370.top_abnormal_growths#}}{{#17469681675370.top_abnormal_means#}}，找出相关值飙升的进程，若相关值在正常范围内则忽略。
+
+            2. 如果相关指标均在正常范围内，则考虑是否是别的情况引起的CPU IO wait异常。比如：远程存储相应过慢、网络延时升高、数据库远程查询过慢等。
+
+            # 输出
+
+            - 若相关值在正常范围内，给出你推断的产生告警的其他原因。
+
+            - 若相关值异常，给出你推断出的疑似根因的所有容器、疑似原因和建议解决方案。格式为：告警{{#1744959389144.alertName#}}产生的根因疑似是xx进程，可能存在xx问题，推荐解决解决方案xx。
+
+            '
+        selected: false
+        title: 虚机cpu告警指标分析
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: '17469686621940'
+      position:
+        x: 5181
+        y: 629
+      positionAbsolute:
+        x: 5181
+        y: 629
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        code: "import json\n\ndef main(data_json):\n    data = json.loads(data_json)\n\
+          \    timeseries = data.get('data', {}).get('timeseries', [])\n    unit =\
+          \ data.get('unit', '')\n    filtered = []\n\n    for entry in timeseries:\n\
+          \        labels = entry.get('labels', {})\n        chart = entry.get('chart',\
+          \ {}).get('chartData', {})\n        values = [v for v in chart.values()\
+          \ if v != 0]\n\n        if len(values) == 0:\n            continue\n\n \
+          \       avg = sum(values) / len(values)\n\n        res = {\n           \
+          \ \"labels\": labels,\n            \"avg\": avg,\n            \"unit\":\
+          \ unit\n        }\n        filtered.append(res)\n\n    top_three = sorted(filtered,\
+          \ key=lambda x: x['avg'], reverse=True)[:3]\n    return {\n        \"top_three\"\
+          : json.dumps(top_three)\n    }\n"
+        code_language: python3
+        desc: ''
+        outputs:
+          top_three:
+            children: null
+            type: string
+        selected: false
+        title: 获取使用最多的实例
+        type: code
+        variables:
+        - value_selector:
+          - '1743673518843'
+          - output
+          variable: data_json
+      height: 52
+      id: '1747206482765'
+      position:
+        x: 4575
+        y: 2876.542725263229
+      positionAbsolute:
+        x: 4575
+        y: 2876.542725263229
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          label:
+            en_US: node
+            ja_JP: node
+            pt_BR: node
+            zh_Hans: node
+          llm_description: node
+          max: null
+          min: null
+          name: node
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query start time(Microsecond)
+            ja_JP: Data query start time(Microsecond)
+            pt_BR: Data query start time
+            zh_Hans: 开始时间 (微秒)
+          label:
+            en_US: startTime
+            ja_JP: startTime
+            pt_BR: startTime
+            zh_Hans: startTime
+          llm_description: Data query start time(Microsecond)
+          max: null
+          min: null
+          name: startTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Data query end time(Microsecond)
+            ja_JP: Data query end time(Microsecond)
+            pt_BR: Data query end time(Microsecond)
+            zh_Hans: 结束时间 (微秒)
+          label:
+            en_US: endTime
+            ja_JP: endTime
+            pt_BR: endTime
+            zh_Hans: endTime
+          llm_description: Data query end time(Microsecond)
+          max: null
+          min: null
+          name: endTime
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: number
+        params:
+          endTime: ''
+          node: ''
+          startTime: ''
+        provider_id: apo_select
+        provider_name: apo_select
+        provider_type: builtin
+        selected: false
+        title: 主机磁盘根分区大小
+        tool_configurations: {}
+        tool_label: 主机磁盘根分区大小
+        tool_name: 主机磁盘根分区大小
+        tool_parameters:
+          endTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - endTime
+          node:
+            type: mixed
+            value: '{{#1744959389144.nodeName#}}'
+          startTime:
+            type: variable
+            value:
+            - '1743576019537'
+            - startTime
+        type: tool
+      height: 52
+      id: '1747274324343'
+      position:
+        x: 3969
+        y: 2212.511291604783
+      positionAbsolute:
+        x: 3969
+        y: 2212.511291604783
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: ''
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 5426b9f0-37c8-45b7-9faa-49695110dc7d
+          role: system
+          text: 你是一名可观测性领域智能助手和排障专家，帮助用户分析出现告警的原因。
+        - id: 394f3fde-0d44-43dc-9c6d-6737b88c199d
+          role: user
+          text: '# 目的
+
+            根据相关指标结果，分析告警的正确性或者产生的原因并定位疑似根因容器，最后提供恰当的解决思路。
+
+
+            # 分析过程
+
+            根据相关指标数据1.宿主机磁盘使用率{{#1743850453842.text#}}，2.主机磁盘根分区大小{{#1747274324343.text#}}。
+
+            为用户分析磁盘使用情况。
+
+            格式为：告警{{#1744959389144.alertName#}}产生的根因疑似是xx，主机的磁盘使用情况为xx，可能存在xx问题，推荐解决解决方案xx。
+
+            '
+        selected: false
+        title: 磁盘用量分析
+        type: llm
+        variables: []
+        vision:
+          enabled: false
+      height: 88
+      id: '17472781853800'
+      position:
+        x: 4882.042893405946
+        y: 2370.313896500579
+      positionAbsolute:
+        x: 4882.042893405946
+        y: 2370.313896500579
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
     viewport:
-      x: -1157.753231447897
-      y: -177.37859836671112
-      zoom: 0.7756009015013904
+      x: -707.1925808483613
+      y: -378.97495595800467
+      zoom: 0.25
