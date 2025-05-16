@@ -24,7 +24,7 @@ const MemberItem = ({
 
   return (
     <div
-      className='flex items-center gap-2 rounded-lg py-1 pl-2 pr-[10px]'
+      className='flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-2 pr-[10px] hover:bg-state-base-hover'
       onClick={onClick}
     >
       {leftIcon}

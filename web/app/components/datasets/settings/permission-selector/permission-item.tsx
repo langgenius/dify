@@ -20,7 +20,7 @@ const PermissionItem = ({
       onClick={onClick}
     >
       {leftIcon}
-      <div className='system-md-regular grow text-text-secondary'>
+      <div className='system-md-regular grow px-1 text-text-secondary'>
         {text}
       </div>
       {isSelected && <RiCheckLine className='size-4 text-text-accent' />}
