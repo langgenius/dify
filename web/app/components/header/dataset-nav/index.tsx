@@ -36,28 +36,34 @@ const DatasetNav = () => {
   const { data: datasetsData, setSize } = useSWRInfinite(datasetId ? getKey : () => null, fetchDatasets, { revalidateFirstPage: false, revalidateAll: true })
   const datasetItems = flatten(datasetsData?.map(datasetData => datasetData.data))
 
-  const handleLoadmore = useCallback(() => {
+  const handleLoadMore = useCallback(() => {
     setSize(size => size + 1)
   }, [setSize])
 
   return (
     <Nav
+      isApp={false}
       icon={<RiBook2Line className='h-4 w-4' />}
       activeIcon={<RiBook2Fill className='h-4 w-4' />}
       text={t('common.menus.datasets')}
       activeSegment='datasets'
       link='/datasets'
-      curNav={currentDataset as Omit<NavItem, 'link'>}
-      navs={datasetItems.map(dataset => ({
+      curNav={currentDataset && {
+        id: currentDataset.id,
+        name: currentDataset.name,
+        icon: currentDataset.icon_info.icon,
+        icon_background: currentDataset.icon_info.icon_background,
+      } as Omit<NavItem, 'link'>}
+      navigationItems={datasetItems.map(dataset => ({
         id: dataset.id,
         name: dataset.name,
         link: dataset.provider === 'external' ? `/datasets/${dataset.id}/hitTesting` : `/datasets/${dataset.id}/documents`,
-        icon: dataset.icon,
-        icon_background: dataset.icon_background,
+        icon: dataset.icon_info.icon,
+        icon_background: dataset.icon_info.icon_background,
       })) as NavItem[]}
       createText={t('common.menus.newDataset')}
       onCreate={() => router.push('/datasets/create')}
-      onLoadmore={handleLoadmore}
+      onLoadMore={handleLoadMore}
     />
   )
 }
