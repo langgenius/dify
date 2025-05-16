@@ -1,5 +1,4 @@
-import type { NodeDefault, Var } from '../../types'
-import { getNotExistVariablesByText } from '../../utils/workflow'
+import type { NodeDefault } from '../../types'
 import type { AnswerNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -23,19 +22,6 @@ const nodeDefault: NodeDefault<AnswerNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
-    }
-  },
-  checkVarValid(payload: AnswerNodeType, varMap: Record<string, Var>, t: any) {
-    const errorMessageArr = []
-
-    const answer_warnings = getNotExistVariablesByText(payload.answer || '', varMap)
-    if (answer_warnings.length)
-      errorMessageArr.push(`${t('workflow.nodes.answer.answer')} ${t('workflow.common.referenceVar')}${answer_warnings.join('、')}${t('workflow.common.noExist')}`)
-
-    return {
-      isValid: true,
-      warning_vars: [...answer_warnings],
-      errorMessage: errorMessageArr,
     }
   },
 }

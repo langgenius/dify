@@ -1,5 +1,4 @@
-import type { NodeDefault, Var } from '../../types'
-import { getNotExistVariablesByArray } from '../../utils/workflow'
+import type { NodeDefault } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { checkoutRerankModelConfigedInRetrievalSettings } from './utils'
 import { DATASET_DEFAULT } from '@/config'
@@ -46,19 +45,6 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
-    }
-  },
-  checkVarValid(payload: KnowledgeRetrievalNodeType, varMap: Record<string, Var>, t: any) {
-    const errorMessageArr = []
-
-    const query_variable_selector_warnings = getNotExistVariablesByArray([payload.query_variable_selector], varMap)
-    if (query_variable_selector_warnings.length)
-      errorMessageArr.push(`${t('workflow.nodes.knowledgeRetrieval.queryVariable')} ${t('workflow.common.referenceVar')}${query_variable_selector_warnings.join('、')}${t('workflow.common.noExist')}`)
-
-    return {
-      isValid: true,
-      warning_vars: [...query_variable_selector_warnings],
-      errorMessage: errorMessageArr,
     }
   },
 }
