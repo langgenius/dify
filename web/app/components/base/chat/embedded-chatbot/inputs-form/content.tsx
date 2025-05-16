@@ -36,9 +36,11 @@ const InputsFormContent = ({ showTip }: Props) => {
     })
   }, [newConversationInputsRef, handleNewConversationInputsChange, currentConversationInputs, setCurrentConversationInputs])
 
+  const visibleInputsForms = inputsForms.filter(form => form.hide !== true)
+
   return (
     <div className='space-y-4'>
-      {inputsForms.map(form => (
+      {visibleInputsForms.map(form => (
         <div key={form.variable} className='space-y-1'>
           <div className='flex h-6 items-center gap-1'>
             <div className='system-md-semibold text-text-secondary'>{form.label}</div>
