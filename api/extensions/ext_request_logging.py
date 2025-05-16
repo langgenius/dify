@@ -31,6 +31,7 @@ def _log_request_started(_sender, **_extra):
         json_data = json.loads(request.data)
     except (TypeError, ValueError):
         _logger.exception("Failed to parse JSON request")
+        return
     formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
     _logger.debug(
         "Received Request %s -> %s, Request Body:\n%s",
@@ -54,7 +55,7 @@ def _log_request_finished(_sender, response, **_extra):
         json_data = json.loads(response_data)
     except (TypeError, ValueError):
         _logger.exception("Failed to parse JSON response")
-
+        return
     formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
     _logger.debug(
         "Response %s %s, Response Body:\n%s",
