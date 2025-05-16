@@ -244,18 +244,20 @@ class DatasetService:
         rag_pipeline_dataset_create_entity: RagPipelineDatasetCreateEntity,
     ):
         # check if dataset name already exists
-        if Dataset.query.filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id).first():
+        if db.session.query(Dataset).filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(
                 f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
             )
 
         dataset = Dataset(
+            tenant_id=tenant_id,
             name=rag_pipeline_dataset_create_entity.name,
             description=rag_pipeline_dataset_create_entity.description,
             permission=rag_pipeline_dataset_create_entity.permission,
             provider="vendor",
             runtime_mode="rag_pipeline",
             icon_info=rag_pipeline_dataset_create_entity.icon_info,
+            created_by=current_user.id
         )
         db.session.add(dataset)
         db.session.commit()
@@ -267,7 +269,7 @@ class DatasetService:
         rag_pipeline_dataset_create_entity: RagPipelineDatasetCreateEntity,
     ):
         # check if dataset name already exists
-        if Dataset.query.filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id).first():
+        if db.session.query(Dataset).filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(
                 f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
             )
