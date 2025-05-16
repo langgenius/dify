@@ -101,7 +101,6 @@ export const useNodesSyncDraft = () => {
         setDraftUpdatedAt,
       } = workflowStore.getState()
       try {
-        console.log('xxx')
         const res = await syncWorkflowDraft(postParams)
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
