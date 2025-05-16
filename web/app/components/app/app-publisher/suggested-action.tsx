@@ -14,8 +14,8 @@ const SuggestedAction = ({ icon, link, disabled, children, className, ...props }
     target='_blank'
     rel='noreferrer'
     className={classNames(
-      'flex justify-start items-center gap-2 py-2 px-2.5 bg-background-section-burn rounded-lg transition-colors [&:not(:first-child)]:mt-1',
-      disabled ? 'shadow-xs opacity-30 cursor-not-allowed' : 'text-text-secondary hover:bg-state-accent-hover hover:text-text-accent cursor-pointer',
+      'flex justify-start items-center gap-2 py-2 px-2.5 bg-background-section-burn rounded-lg text-text-secondary transition-colors [&:not(:first-child)]:mt-1',
+      disabled ? 'shadow-xs opacity-30 cursor-not-allowed' : 'hover:bg-state-accent-hover hover:text-text-accent cursor-pointer',
       className,
     )}
     {...props}
