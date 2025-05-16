@@ -73,13 +73,17 @@ def init_app(app: DifyApp):
                     json_data = json.loads(flask.request.data)
                     formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
                     logging.debug(
-                        f"Received Request {flask.request.method} -> {flask.request.path}, "
-                        f"Request Body:\n{formatted_json}"
+                        "Received Request %s -> %s, Request Body:\n%s",
+                        flask.request.method,
+                        flask.request.path,
+                        formatted_json
                     )
                 except Exception:
                     logging.exception("Failed to parse JSON request")
             else:
-                logging.debug(f"Received Request {flask.request.method} -> {flask.request.path}")
+                logging.debug("Received Request %s -> %s",
+                    flask.request.method,
+                    flask.request.path)
 
     # for debugging purposes, log the response
     @app.after_request
@@ -93,13 +97,19 @@ def init_app(app: DifyApp):
                     json_data = json.loads(response_data)
                     formatted_json = json.dumps(json_data, ensure_ascii=False, indent=2)
                     logging.debug(
-                        f"Response {response.status} {response.content_type}, Response Body:\n{formatted_json}"
+                        "Response %s %s, Response Body:\n%s",
+                        response.status,
+                        response.content_type,
+                        formatted_json
                     )
                 except Exception:
                     logging.exception("Failed to parse JSON response")
             else:
-                logging.debug(f"Response {response.status} {response.content_type}")
-            return response
+                logging.debug("Response %s %s",
+                    response.status,
+                    response.content_type)
+        
+        return response
 
 
 def get_request_id():
