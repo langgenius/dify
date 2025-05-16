@@ -16,7 +16,7 @@ export const usePipelineConfig = () => {
     setWorkflowConfig(config)
   }, [workflowStore])
   useWorkflowConfig(
-    pipelineId ? `/rag/pipeline/${pipelineId}/workflows/draft/config` : '',
+    pipelineId ? `/rag/pipelines/${pipelineId}/workflows/draft/config` : '',
     handleUpdateWorkflowConfig,
   )
 
@@ -26,7 +26,7 @@ export const usePipelineConfig = () => {
     setNodesDefaultConfigs!(nodesDefaultConfigs)
   }, [workflowStore])
   useWorkflowConfig(
-    pipelineId ? `/rag/pipeline/${pipelineId}/workflows/default-workflow-block-configs` : '',
+    pipelineId ? `/rag/pipelines/${pipelineId}/workflows/default-workflow-block-configs` : '',
     handleUpdateNodesDefaultConfigs,
   )
 
@@ -36,7 +36,7 @@ export const usePipelineConfig = () => {
     setPublishedAt(publishedWorkflow?.created_at)
   }, [workflowStore])
   useWorkflowConfig(
-    pipelineId ? `/rag/pipeline/${pipelineId}/workflows/publish` : '',
+    pipelineId ? `/rag/pipelines/${pipelineId}/workflows/publish` : '',
     handleUpdatePublishedAt,
   )
 }

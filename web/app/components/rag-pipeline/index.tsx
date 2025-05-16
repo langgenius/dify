@@ -1,49 +1,64 @@
+import { useMemo } from 'react'
 import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
 import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
-import { generateNewNode } from '@/app/components/workflow/utils'
-import knowledgeBaseNodeDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import {
-  NODE_WIDTH_X_OFFSET,
-  START_INITIAL_POSITION,
-} from '@/app/components/workflow/constants'
+  initialEdges,
+  initialNodes,
+} from '@/app/components/workflow/utils'
+import Loading from '@/app/components/base/loading'
 import { createRagPipelineSliceSlice } from './store'
 import RagPipelineMain from './components/rag-pipeline-main'
-// import { usePipelineInit } from './hooks'
+import { usePipelineInit } from './hooks'
 
 const RagPipeline = () => {
-  // const {
-  //   data,
-  //   isLoading,
-  // } = usePipelineInit()
-  const { newNode: knowledgeBaseNode } = generateNewNode({
-    data: {
-      type: knowledgeBaseNodeDefault.metaData.type,
-      title: 'knowledge-base',
-      ...knowledgeBaseNodeDefault.defaultValue,
-    },
-    position: {
-      x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET,
-      y: START_INITIAL_POSITION.y,
-    },
-  } as any)
+  const {
+    data,
+    isLoading,
+  } = usePipelineInit()
+  const nodesData = useMemo(() => {
+    if (data)
+      return initialNodes(data.graph.nodes, data.graph.edges)
+
+    return []
+  }, [data])
+  const edgesData = useMemo(() => {
+    if (data)
+      return initialEdges(data.graph.edges, data.graph.nodes)
+
+    return []
+  }, [data])
+
+  if (!data || isLoading) {
+    return (
+      <div className='relative flex h-full w-full items-center justify-center'>
+        <Loading />
+      </div>
+    )
+  }
+  return (
+    <WorkflowWithDefaultContext
+      edges={edgesData}
+      nodes={nodesData}
+    >
+      <RagPipelineMain
+        edges={edgesData}
+        nodes={nodesData}
+      />
+    </WorkflowWithDefaultContext>
+  )
+}
+
+const RagPipelineWrapper = () => {
   return (
     <WorkflowContextProvider
       injectWorkflowStoreSliceFn={createRagPipelineSliceSlice as InjectWorkflowStoreSliceFn}
     >
-      <WorkflowWithDefaultContext
-        edges={[]}
-        nodes={[knowledgeBaseNode]}
-      >
-        <RagPipelineMain
-          edges={[]}
-          nodes={[knowledgeBaseNode]}
-        />
-      </WorkflowWithDefaultContext>
+      <RagPipeline />
     </WorkflowContextProvider>
   )
 }
 
-export default RagPipeline
+export default RagPipelineWrapper

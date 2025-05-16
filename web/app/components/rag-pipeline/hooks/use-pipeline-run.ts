@@ -141,8 +141,6 @@ export const usePipelineRun = () => {
       resultText: '',
     })
 
-    return true
-
     ssePost(
       url,
       {
@@ -279,7 +277,6 @@ export const usePipelineRun = () => {
   const handleStopRun = useCallback((taskId: string) => {
     const { pipelineId } = workflowStore.getState()
 
-    return
     stopWorkflowRun(`/rag/pipeline/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
   }, [workflowStore])
 

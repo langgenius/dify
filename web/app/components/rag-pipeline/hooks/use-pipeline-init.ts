@@ -3,7 +3,6 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { useParams } from 'next/navigation'
 import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
@@ -13,10 +12,10 @@ import {
   syncWorkflowDraft,
 } from '@/service/workflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { usePipelineConfig } from './use-pipeline-config'
 
 export const usePipelineInit = () => {
-  const { datasetId } = useParams()
   const workflowStore = useWorkflowStore()
   const {
     nodes: nodesTemplate,
@@ -24,9 +23,10 @@ export const usePipelineInit = () => {
   } = usePipelineTemplate()
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
+  const datasetId = useDatasetDetailContextWithSelector(s => s.dataset)?.pipeline_id
 
   useEffect(() => {
-    workflowStore.setState({ pipelineId: datasetId as string })
+    workflowStore.setState({ pipelineId: datasetId })
   }, [datasetId, workflowStore])
 
   usePipelineConfig()
@@ -41,7 +41,7 @@ export const usePipelineInit = () => {
       setRagPipelineVariables,
     } = workflowStore.getState()
     try {
-      const res = await fetchWorkflowDraft(`/rag/pipeline/${datasetId}/workflows/draft`)
+      const res = await fetchWorkflowDraft(`/rag/pipelines/${datasetId}/workflows/draft`)
       setData(res)
       setDraftUpdatedAt(res.updated_at)
       setToolPublished(res.tool_published)
@@ -60,7 +60,7 @@ export const usePipelineInit = () => {
           if (err.code === 'draft_workflow_not_exist') {
             workflowStore.setState({ notInitialWorkflow: true })
             syncWorkflowDraft({
-              url: `/rag/pipeline/${datasetId}/workflows/draft`,
+              url: `/rag/pipelines/${datasetId}/workflows/draft`,
               params: {
                 graph: {
                   nodes: nodesTemplate,

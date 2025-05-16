@@ -7,11 +7,15 @@ import {
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks/use-workflow'
+import { API_PREFIX } from '@/config'
+import { syncWorkflowDraft } from '@/service/workflow'
+import { usePipelineRefreshDraft } from '.'
 
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
 
   const getPostParams = useCallback(() => {
     const {
@@ -47,7 +51,7 @@ export const useNodesSyncDraft = () => {
         })
       })
       return {
-        url: `/rag/pipeline/${pipelineId}/workflows/draft`,
+        url: `/rag/pipelines/${pipelineId}/workflows/draft`,
         params: {
           graph: {
             nodes: producedNodes,
@@ -67,17 +71,56 @@ export const useNodesSyncDraft = () => {
   }, [store, workflowStore])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
-    return true
-  }, [])
-
-  const doSyncWorkflowDraft = useCallback(async () => {
     if (getNodesReadOnly())
       return
     const postParams = getPostParams()
 
-    if (postParams)
-      return true
+    if (postParams) {
+      navigator.sendBeacon(
+        `${API_PREFIX}${postParams.url}?_token=${localStorage.getItem('console_token')}`,
+        JSON.stringify(postParams.params),
+      )
+    }
   }, [getPostParams, getNodesReadOnly])
+
+  const doSyncWorkflowDraft = useCallback(async (
+    notRefreshWhenSyncError?: boolean,
+    callback?: {
+      onSuccess?: () => void
+      onError?: () => void
+      onSettled?: () => void
+    },
+  ) => {
+    if (getNodesReadOnly())
+      return
+    const postParams = getPostParams()
+
+    if (postParams) {
+      const {
+        setSyncWorkflowDraftHash,
+        setDraftUpdatedAt,
+      } = workflowStore.getState()
+      try {
+        console.log('xxx')
+        const res = await syncWorkflowDraft(postParams)
+        setSyncWorkflowDraftHash(res.hash)
+        setDraftUpdatedAt(res.updated_at)
+        callback?.onSuccess && callback.onSuccess()
+      }
+      catch (error: any) {
+        if (error && error.json && !error.bodyUsed) {
+          error.json().then((err: any) => {
+            if (err.code === 'draft_workflow_not_sync' && !notRefreshWhenSyncError)
+              handleRefreshWorkflowDraft()
+          })
+        }
+        callback?.onError && callback.onError()
+      }
+      finally {
+        callback?.onSettled && callback.onSettled()
+      }
+    }
+  }, [getPostParams, getNodesReadOnly, workflowStore, handleRefreshWorkflowDraft])
 
   return {
     doSyncWorkflowDraft,

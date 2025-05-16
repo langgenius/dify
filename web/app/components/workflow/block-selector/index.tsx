@@ -32,7 +32,7 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
   }, [availableNodesMetaData?.nodes])
 
   const pipelineId = useStore(s => s.pipelineId)
-  const { data: dataSourceList } = useDataSourceList(!pipelineId)
+  const { data: dataSourceList } = useDataSourceList(!!pipelineId)
 
   return (
     <NodeSelector
