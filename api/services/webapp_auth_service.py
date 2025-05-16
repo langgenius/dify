@@ -89,7 +89,11 @@ class WebAppAuthService:
     @classmethod
     def create_end_user(cls, app_code, email) -> EndUser:
         site = db.session.query(Site).filter(Site.code == app_code).first()
+        if not site:
+            raise NotFound("Site not found.")
         app_model = db.session.query(App).filter(App.id == site.app_id).first()
+        if not app_model:
+            raise NotFound("App not found.")
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
@@ -119,7 +123,7 @@ class WebAppAuthService:
 
     @classmethod
     def _get_account_jwt_token(cls, account: Account, site: Site, end_user_id: str) -> str:
-        exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.WebAppSessionTimeoutInHours * 24)
+        exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
         exp = int(exp_dt.timestamp())
 
         payload = {

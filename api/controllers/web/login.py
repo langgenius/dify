@@ -1,13 +1,13 @@
 from flask import request
 from flask_restful import Resource, reqparse
 from jwt import InvalidTokenError  # type: ignore
-from web import api
 from werkzeug.exceptions import BadRequest
 
 import services
 from controllers.console.auth.error import EmailCodeError, EmailOrPasswordMismatchError, InvalidEmailError
 from controllers.console.error import AccountBannedError, AccountNotFound
 from controllers.console.wraps import setup_required
+from controllers.web import api
 from libs.helper import email
 from libs.password import valid_password
 from services.account_service import AccountService
@@ -117,5 +117,7 @@ class EmailCodeLoginApi(Resource):
 
 api.add_resource(LoginApi, "/login")
 # api.add_resource(LogoutApi, "/logout")
+api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
+api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
 api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
 api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
