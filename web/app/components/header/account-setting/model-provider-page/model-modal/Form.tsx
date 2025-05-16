@@ -181,19 +181,21 @@ function Form<
                 editable
               />
             </div>
-            : <Input
-            className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
-            value={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
-            onChange={val => handleFormChange(variable, val)}
-            validated={validatedSuccess}
-            placeholder={placeholder?.[language] || placeholder?.en_US}
-            disabled={disabled}
-            type={formSchema.type === FormTypeEnum.secretInput ? 'password'
-              : formSchema.type === FormTypeEnum.textNumber ? 'number'
-                : 'text'}
-            {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})} />
-          {fieldMoreInfo?.(formSchema)}
-          {validating && changeKey === variable && <ValidatingTip />}
+            : <>
+              <Input
+              className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
+              value={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
+              onChange={val => handleFormChange(variable, val)}
+              validated={validatedSuccess}
+              placeholder={placeholder?.[language] || placeholder?.en_US}
+              disabled={disabled}
+              type={formSchema.type === FormTypeEnum.secretInput ? 'password'
+                : formSchema.type === FormTypeEnum.textNumber ? 'number'
+                  : 'text'}
+              {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})} />
+              {fieldMoreInfo?.(formSchema)}
+              {validating && changeKey === variable && <ValidatingTip />}
+            </>}
         </div>
       )
     }
