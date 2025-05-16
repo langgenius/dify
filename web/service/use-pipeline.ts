@@ -16,6 +16,7 @@ import type {
   UpdatePipelineInfoRequest,
   UpdatePipelineInfoResponse,
 } from '@/models/pipeline'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 
 const NAME_SPACE = 'pipeline'
 
@@ -124,5 +125,16 @@ export const usePipelineProcessingParams = (pipelineId: string) => {
     queryFn: () => {
       return get<PipelineProcessingParamsResponse>(`/rag/pipeline/${pipelineId}/workflows/processing/parameters`)
     },
+  })
+}
+
+export const useDataSourceList = (enabled?: boolean) => {
+  return useQuery<ToolWithProvider[]>({
+    enabled,
+    queryKey: [NAME_SPACE, 'data-source'],
+    queryFn: () => {
+      return get('/rag/pipelines/datasource-plugins')
+    },
+    retry: false,
   })
 }

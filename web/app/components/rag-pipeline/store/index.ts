@@ -1,6 +1,5 @@
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { StateCreator } from 'zustand'
-import type { ToolWithProvider } from '../../workflow/types'
 import { InputVarType } from '../../workflow/types'
 
 export type RagPipelineSliceShape = {
@@ -11,8 +10,6 @@ export type RagPipelineSliceShape = {
   setNodesDefaultConfigs: (nodesDefaultConfigs: Record<string, any>) => void
   ragPipelineVariables: RAGPipelineVariables
   setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) => void
-  dataSourceList: ToolWithProvider[]
-  setDataSourceList: (dataSourceList: ToolWithProvider[]) => void
 }
 
 export type CreateRagPipelineSliceSlice = StateCreator<RagPipelineSliceShape>
@@ -53,6 +50,4 @@ export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = 
       }],
     }],
   setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) => set(() => ({ ragPipelineVariables })),
-  dataSourceList: [],
-  setDataSourceList: (dataSourceList: ToolWithProvider[]) => set(() => ({ dataSourceList })),
 })

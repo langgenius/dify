@@ -85,7 +85,7 @@ const Popup = () => {
         >
           <div className='flex grow items-center'>
             <RiPlayCircleLine className='mr-2 h-4 w-4' />
-            Go to add documents
+            {t('pipeline.common.goToAddDocuments')}
           </div>
           <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
         </Button>
@@ -95,7 +95,7 @@ const Popup = () => {
         >
           <div className='flex grow items-center'>
             <RiTerminalBoxLine className='mr-2 h-4 w-4' />
-            Access API Reference
+            {t('workflow.common.accessAPIReference')}
           </div>
           <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
         </Button>
@@ -106,7 +106,7 @@ const Popup = () => {
         >
           <div className='flex grow items-center'>
             <RiHammerLine className='mr-2 h-4 w-4' />
-            Publish as a Knowledge Pipeline
+            {t('pipeline.common.publishAs')}
           </div>
         </Button>
       </div>
