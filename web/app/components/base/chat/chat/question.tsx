@@ -11,7 +11,6 @@ import {
 } from 'react'
 import type { ChatItem } from '../types'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
-import { CssTransform } from '../embedded-chatbot/theme/utils'
 import ContentSwitch from './content-switch'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
@@ -117,8 +116,7 @@ const Question: FC<QuestionProps> = ({
         </div>
         <div
           ref={contentRef}
-          className='w-full rounded-2xl bg-[#D1E9FF]/50 px-4 py-3 text-sm text-gray-900'
-          style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
+          className='w-full rounded-2xl bg-chat-bubble-bg px-4 py-3 text-sm text-gray-900'
         >
           {
             !!message_files?.length && (
