@@ -167,7 +167,7 @@ const useOneStepRun = <T>({
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
     doSetRunResult(data)
     invalidLastRun()
-    const vars = await fetchNodeInspectVars(appId!, data!.id)
+    const vars = await fetchNodeInspectVars(appId!, id)
     const { getNodes } = store.getState()
     const nodes = getNodes()
     appendNodeInspectVars(id, vars, nodes)

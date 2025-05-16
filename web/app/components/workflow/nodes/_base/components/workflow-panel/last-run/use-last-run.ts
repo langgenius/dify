@@ -207,10 +207,13 @@ const useLastRun = <T>({
 
   const handleSingleRun = () => {
     const filteredExistVarForms = getFilteredExistVarForms(singleRunParams.forms)
-    if (filteredExistVarForms.length > 0)
+    if (filteredExistVarForms.length > 0) {
       showSingleRun()
-    else
-      callRunApi({})// no need to pass params
+    }
+    else { // no need to input params
+      callRunApi({})
+      setTabType(TabType.lastRun)
+    }
   }
 
   return {
