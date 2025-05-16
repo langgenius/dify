@@ -7,10 +7,28 @@ jest.mock('@/service/common', () => ({
   getSystemFeatures: jest.fn(() => ({ ...defaultSystemFeatures })),
 }))
 
+describe('title should be empty if systemFeatures is pending', () => {
+  act(() => {
+    useGlobalPublicStore.setState({
+      systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
+      isPending: true,
+    })
+  })
+  it('document title should be empty if set title', () => {
+    renderHook(() => useDocumentTitle('test'))
+    expect(document.title).toBe('')
+  })
+  it('document title should be empty if not set title', () => {
+    renderHook(() => useDocumentTitle(''))
+    expect(document.title).toBe('')
+  })
+})
+
 describe('use default branding', () => {
   beforeEach(() => {
     act(() => {
       useGlobalPublicStore.setState({
+        isPending: false,
         systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
       })
     })
@@ -30,6 +48,7 @@ describe('use specific branding', () => {
   beforeEach(() => {
     act(() => {
       useGlobalPublicStore.setState({
+        isPending: false,
         systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: true, application_title: 'Test' } },
       })
     })
