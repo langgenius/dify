@@ -1,7 +1,8 @@
 import logging
 
 from flask import request
-from flask_restful import Resource, reqparse  # type: ignore  # type: ignore
+from flask_restful import Resource, reqparse
+from sqlalchemy.orm import Session
 
 from controllers.console import api
 from controllers.console.wraps import (
@@ -9,6 +10,7 @@ from controllers.console.wraps import (
     enterprise_license_required,
     setup_required,
 )
+from extensions.ext_database import db
 from libs.login import login_required
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -91,6 +93,15 @@ class CustomizedPipelineTemplateApi(Resource):
         RagPipelineService.delete_customized_pipeline_template(template_id)
         return 200
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @enterprise_license_required
+    def post(self, template_id: str):
+        with Session(db.engine) as session:
+            dsl = RagPipelineService.export_template_rag_pipeline_dsl(template_id)
+        return {"data": dsl}, 200
+
 
 api.add_resource(
     PipelineTemplateListApi,
@@ -102,5 +113,5 @@ api.add_resource(
 )
 api.add_resource(
     CustomizedPipelineTemplateApi,
-    "/rag/pipeline/templates/<string:template_id>",
+    "/rag/pipeline/customized/templates/<string:template_id>",
 )
