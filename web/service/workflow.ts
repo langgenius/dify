@@ -74,17 +74,27 @@ export const fetchCurrentValueOfConversationVariable: Fetcher<ConversationVariab
   return get<ConversationVariableResponse>(url, { params })
 }
 
-export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]> => {
-  // TODO: mock data. and need to get the rest data if has more data
-  console.log('fetchAllInspectVars', appId)
-  await sleep(1000)
-  const data = await Promise.resolve({
-    items: vars,
-    total: 1,
+const fetchAllInspectVarsOnePage = async (appId: string, page: number): Promise<{ total: number, items: VarInInspect[] }> => {
+  return get(`apps/${appId}/workflows/draft/variables`, {
+    params: { page, limit: 100 },
   })
-  const res = data.items
+}
+export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]> => {
+  const res = await fetchAllInspectVarsOnePage(appId, 1)
+  const { items, total } = res
+  if (total <= 100)
+    return items
 
-  return res
+  const pageCount = Math.ceil(total / 100)
+  const promises = []
+  for (let i = 2; i <= pageCount; i++)
+    promises.push(fetchAllInspectVarsOnePage(appId, i))
+
+  const restData = await Promise.all(promises)
+  restData.forEach(({ items: item }) => {
+    items.push(...item)
+  })
+  return items
 }
 
 export const fetchNodeInspectVars = async (appId: string, nodeId: string): Promise<VarInInspect[]> => {
