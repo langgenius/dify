@@ -29,7 +29,7 @@ def validate_jwt_token(view=None):
 
 def decode_jwt_token():
     system_features = FeatureService.get_system_features()
-    app_code = request.headers.get("X-App-Code")
+    app_code = str(request.headers.get("X-App-Code"))
     try:
         auth_header = request.headers.get("Authorization")
         if auth_header is None:
@@ -71,7 +71,7 @@ def decode_jwt_token():
     except Unauthorized as e:
         if system_features.webapp_auth.enabled:
             app_web_auth_enabled = (
-                EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
+                EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=str(app_code)).access_mode != "public"
             )
             if app_web_auth_enabled:
                 raise WebAppAuthRequiredError()

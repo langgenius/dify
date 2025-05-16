@@ -70,6 +70,7 @@ def user_allowed_to_access_app(view=None):
             return view(installed_app, *args, **kwargs)
 
         return decorated
+
     if view:
         return decorator(view)
     return decorator
@@ -78,4 +79,9 @@ def user_allowed_to_access_app(view=None):
 class InstalledAppResource(Resource):
     # must be reversed if there are multiple decorators
 
-    method_decorators = [user_allowed_to_access_app, installed_app_required, account_initialization_required, login_required]
+    method_decorators = [
+        user_allowed_to_access_app,
+        installed_app_required,
+        account_initialization_required,
+        login_required,
+    ]
