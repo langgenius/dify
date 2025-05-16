@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { useNodes } from 'reactflow'
+import { useCallback, useMemo } from 'react'
+import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
 import { capitalize } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import { RiErrorWarningFill } from '@remixicon/react'
@@ -48,12 +48,42 @@ const VariableTag = ({
   const variableName = isSystemVar(valueSelector) ? valueSelector.slice(0).join('.') : valueSelector.slice(1).join('.')
   const isException = isExceptionVariable(variableName, node?.data.type)
 
+  const reactflow = useReactFlow()
+  const store = useStoreApi()
+
+  const handleVariableJump = useCallback(() => {
+    const workflowContainer = document.getElementById('workflow-container')
+    const {
+      clientWidth,
+      clientHeight,
+    } = workflowContainer!
+
+    const {
+      setViewport,
+    } = reactflow
+    const { transform } = store.getState()
+    const zoom = transform[2]
+    const position = node.position
+    setViewport({
+      x: (clientWidth - 400 - node.width! * zoom) / 2 - position!.x * zoom,
+      y: (clientHeight - node.height! * zoom) / 2 - position!.y * zoom,
+      zoom: transform[2],
+    })
+  }, [node, reactflow, store])
+
   const { t } = useTranslation()
   return (
     <Tooltip popupContent={!isValid && t('workflow.errorMsg.invalidVariable')}>
       <div className={cn('border-[rgba(16, 2440,0.08)] inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-divider-subtle bg-components-badge-white-to-dark px-1.5 text-xs shadow-xs',
         !isValid && 'border-red-400 !bg-[#FEF3F2]',
-      )}>
+      )}
+        onClick={(e) => {
+          if (e.metaKey || e.ctrlKey) {
+            e.stopPropagation()
+            handleVariableJump()
+          }
+        }}
+      >
         {(!isEnv && !isChatVar && <>
           {node && (
             <>
