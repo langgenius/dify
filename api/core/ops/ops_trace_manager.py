@@ -85,6 +85,17 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                     "trace_instance": WeaveDataTrace,
                 }
 
+            case TracingProviderEnum.ALIYUN:
+                from core.ops.aliyun_trace.aliyun_trace import AliyunDataTrace
+                from core.ops.entities.config_entity import AliyunConfig
+
+                return {
+                    "config_class": AliyunConfig,
+                    "secret_keys": ["license_key"],
+                    "other_keys": ["endpoint","app_name"],
+                    "trace_instance": AliyunDataTrace,
+                }
+
             case _:
                 raise KeyError(f"Unsupported tracing provider: {provider}")
 

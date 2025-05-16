@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
+import type { AliyunConfig, LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -22,10 +22,10 @@ import Divider from '@/app/components/base/divider'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | null
+  payload?: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => void
+  onSaved: (payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -57,6 +57,12 @@ const weaveConfigTemplate = {
   endpoint: '',
 }
 
+const aliyunConfigTemplate = {
+  app_name: '',
+  license_key: '',
+  endpoint: '',
+}
+
 const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
@@ -70,7 +76,7 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig>((() => {
+  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig>((() => {
     if (isEdit)
       return payload
 
@@ -82,6 +88,9 @@ const ProviderConfigModal: FC<Props> = ({
 
     else if (type === TracingProvider.opik)
       return opikConfigTemplate
+
+    else if (type === TracingProvider.aliyun)
+      return aliyunConfigTemplate
 
     return weaveConfigTemplate
   })())
@@ -145,6 +154,11 @@ const ProviderConfigModal: FC<Props> = ({
         errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.project`) })
     }
 
+    if (type === TracingProvider.aliyun) {
+      // todo: check
+      // const postData = config as AliyunConfig
+    }
+
     return errorMessage
   }, [config, t, type])
   const handleSave = useCallback(async () => {
@@ -194,6 +208,31 @@ const ProviderConfigModal: FC<Props> = ({
                     </div>
 
                     <div className='space-y-4'>
+                      {type === TracingProvider.aliyun && (
+                        <>
+                          <Field
+                            label='License Key'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as AliyunConfig).license_key}
+                            onChange={handleConfigChange('license_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'License Key' })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            value={(config as AliyunConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder={'https://arms.console.aliyun.com/'}
+                          />
+                          <Field
+                            label='App Name'
+                            labelClassName='!text-sm'
+                            value={(config as AliyunConfig).app_name}
+                            onChange={handleConfigChange('app_name')}
+                          />
+                        </>
+                      )}
                       {type === TracingProvider.weave && (
                         <>
                           <Field

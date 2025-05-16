@@ -165,6 +165,10 @@ const translation = {
       title: 'Weave',
       description: 'Weave is an open-source platform for evaluating, testing, and monitoring LLM applications.',
     },
+    cms: {
+      title: 'Aliyun',
+      description: 'Aliyun Demo',
+    },
     inUse: 'In use',
     configProvider: {
       title: 'Config ',

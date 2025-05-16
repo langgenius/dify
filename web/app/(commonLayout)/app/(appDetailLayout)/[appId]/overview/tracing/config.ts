@@ -5,4 +5,5 @@ export const docURL = {
   [TracingProvider.langfuse]: 'https://docs.langfuse.com',
   [TracingProvider.opik]: 'https://www.comet.com/docs/opik/tracing/integrations/dify#setup-instructions',
   [TracingProvider.weave]: 'https://weave-docs.wandb.ai/',
+  [TracingProvider.aliyun]: 'https://arms.console.aliyun.com/',
 }
