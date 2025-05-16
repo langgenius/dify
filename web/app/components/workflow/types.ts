@@ -297,7 +297,6 @@ export type NodeDefault<T> = {
   getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
   getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
-  checkVarValid?: (payload: T, varMap: Record<string, Var>, t: any,) => { isValid: boolean; errorMessage?: string[] }
 }
 
 export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void
