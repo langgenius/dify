@@ -1,39 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
-import useSWRInfinite from 'swr/infinite'
-import { debounce } from 'lodash-es'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import NewDatasetCard from './new-dataset-card'
 import DatasetCard from './dataset-card'
-import type { DataSetListResponse, FetchDatasetsParams } from '@/models/datasets'
-import { fetchDatasets } from '@/service/datasets'
-import { useAppContext } from '@/context/app-context'
-
-const getKey = (
-  pageIndex: number,
-  previousPageData: DataSetListResponse,
-  tags: string[],
-  keyword: string,
-  includeAll: boolean,
-) => {
-  if (!pageIndex || previousPageData.has_more) {
-    const params: FetchDatasetsParams = {
-      url: 'datasets',
-      params: {
-        page: pageIndex + 1,
-        limit: 30,
-        include_all: includeAll,
-      },
-    }
-    if (tags.length)
-      params.params.tag_ids = tags
-    if (keyword)
-      params.params.keyword = keyword
-    return params
-  }
-  return null
-}
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useDatasetList, useResetDatasetList } from '@/service/knowledge/use-dataset'
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement>
@@ -43,53 +15,57 @@ type Props = {
 }
 
 const Datasets = ({
-  containerRef,
   tags,
   keywords,
   includeAll,
 }: Props) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
-  const { data, isLoading, setSize, mutate } = useSWRInfinite(
-    (pageIndex: number, previousPageData: DataSetListResponse) => getKey(pageIndex, previousPageData, tags, keywords, includeAll),
-    fetchDatasets,
-    { revalidateFirstPage: false, revalidateAll: true },
-  )
+  const isCurrentWorkspaceEditor = useAppContextWithSelector(state => state.isCurrentWorkspaceEditor)
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+  } = useDatasetList({
+    initialPage: 1,
+    tag_ids: tags,
+    limit: 20,
+    include_all: includeAll,
+    keyword: keywords,
+  })
+  const resetDatasetList = useResetDatasetList()
   const loadingStateRef = useRef(false)
-  const anchorRef = useRef<HTMLAnchorElement>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
+  const observerRef = useRef<IntersectionObserver>()
 
   useEffect(() => {
-    loadingStateRef.current = isLoading
+    loadingStateRef.current = isFetching
     document.title = `${t('dataset.knowledge')} - Dify`
-  }, [isLoading, t])
-
-  const onScroll = useMemo(() => {
-    return debounce(() => {
-      if (!loadingStateRef.current && containerRef.current && anchorRef.current) {
-        const { scrollTop, clientHeight } = containerRef.current
-        const anchorOffset = anchorRef.current.offsetTop
-        if (anchorOffset - scrollTop - clientHeight < 100)
-          setSize(size => size + 1)
-      }
-    }, 50)
-  }, [containerRef, setSize])
+  }, [isFetching, t])
 
   useEffect(() => {
-    const currentContainer = containerRef.current
-    currentContainer?.addEventListener('scroll', onScroll)
-    return () => {
-      currentContainer?.removeEventListener('scroll', onScroll)
-      onScroll.cancel()
+    if (anchorRef.current) {
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasNextPage)
+          fetchNextPage()
+      }, {
+        rootMargin: '100px',
+      })
+      observerRef.current.observe(anchorRef.current)
     }
-  }, [onScroll, containerRef])
+    return () => observerRef.current?.disconnect()
+  }, [anchorRef, data, hasNextPage, fetchNextPage])
 
   return (
-    <nav className='grid shrink-0 grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
-      { isCurrentWorkspaceEditor && <NewDatasetCard ref={anchorRef} /> }
-      {data?.map(({ data: datasets }) => datasets.map(dataset => (
-        <DatasetCard key={dataset.id} dataset={dataset} onSuccess={mutate} />),
-      ))}
-    </nav>
+    <>
+      <nav className='grid shrink-0 grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
+        {isCurrentWorkspaceEditor && <NewDatasetCard />}
+        {data?.pages.map(({ data: datasets }) => datasets.map(dataset => (
+          <DatasetCard key={dataset.id} dataset={dataset} onSuccess={resetDatasetList} />),
+        ))}
+      </nav>
+      <div ref={anchorRef} className='h-0' />
+    </>
   )
 }
 

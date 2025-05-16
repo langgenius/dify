@@ -133,7 +133,7 @@ const DatasetCard = ({
               background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
               imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
             />
-            <div className='absolute -bottom-1 -right-1 z-10'>
+            <div className='absolute -bottom-1 -right-1 z-[5]'>
               <Icon className='size-4' />
             </div>
           </div>
@@ -189,7 +189,7 @@ const DatasetCard = ({
           {/* Tag Mask */}
           <div
             className={cn(
-              'absolute right-0 top-0 z-10 h-full w-20 bg-tag-selector-mask-bg group-hover:bg-tag-selector-mask-hover-bg',
+              'absolute right-0 top-0 z-[5] h-full w-20 bg-tag-selector-mask-bg group-hover:bg-tag-selector-mask-hover-bg',
               isHoveringTagSelector && 'hidden',
             )}
           />
@@ -202,49 +202,49 @@ const DatasetCard = ({
         >
           <Tooltip popupContent={documentCountTooltip} >
             <div className='flex items-center gap-x-1'>
-              <RiFileTextFill className='size-3 text-text-quaternary'/>
-                <span className='system-xs-medium'>{documentCount}</span>
+              <RiFileTextFill className='size-3 text-text-quaternary' />
+              <span className='system-xs-medium'>{documentCount}</span>
             </div>
           </Tooltip>
           {!isExternalProvider && (
             <Tooltip popupContent={`${dataset.app_count} ${t('dataset.appCount')}`}>
               <div className='flex items-center gap-x-1'>
-                <RiRobot2Fill className='size-3 text-text-quaternary'/>
-                  <span className='system-xs-medium'>{dataset.app_count}</span>
+                <RiRobot2Fill className='size-3 text-text-quaternary' />
+                <span className='system-xs-medium'>{dataset.app_count}</span>
               </div>
             </Tooltip>
           )}
           <span className='system-xs-regular text-divider-deep'>/</span>
           <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at)}`}</span>
         </div>
-        <div className='absolute right-2 top-2 z-20 hidden group-hover:block'>
-            <CustomPopover
-              htmlContent={
-                <Operations
-                  showDelete={!isCurrentWorkspaceDatasetOperator}
-                  openRenameModal={() => {
-                    setShowRenameModal(true)
-                  }}
-                  detectIsUsedByApp={detectIsUsedByApp}
-                />
-              }
-              className={'z-20 min-w-[186px]'}
-              popupClassName={'rounded-xl bg-none shadow-none ring-0 min-w-[186px]'}
-              position='br'
-              trigger='click'
-              btnElement={
-                <div className='flex size-8 items-center justify-center rounded-[10px] hover:bg-state-base-hover'>
-                  <RiMoreFill className='h-5 w-5 text-text-tertiary' />
-                </div>
-              }
-              btnClassName={open =>
-                cn(
-                  'size-9 cursor-pointer justify-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-[2px] ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border',
-                  open ? 'border-components-actionbar-border bg-state-base-hover' : '',
-                )
-              }
-            />
-          </div>
+        <div className='absolute right-2 top-2 z-[5] hidden group-hover:block'>
+          <CustomPopover
+            htmlContent={
+              <Operations
+                showDelete={!isCurrentWorkspaceDatasetOperator}
+                openRenameModal={() => {
+                  setShowRenameModal(true)
+                }}
+                detectIsUsedByApp={detectIsUsedByApp}
+              />
+            }
+            className={'z-20 min-w-[186px]'}
+            popupClassName={'rounded-xl bg-none shadow-none ring-0 min-w-[186px]'}
+            position='br'
+            trigger='click'
+            btnElement={
+              <div className='flex size-8 items-center justify-center rounded-[10px] hover:bg-state-base-hover'>
+                <RiMoreFill className='h-5 w-5 text-text-tertiary' />
+              </div>
+            }
+            btnClassName={open =>
+              cn(
+                'size-9 cursor-pointer justify-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-[2px] ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border',
+                open ? 'border-components-actionbar-border bg-state-base-hover' : '',
+              )
+            }
+          />
+        </div>
       </div>
       {showRenameModal && (
         <RenameDatasetModal

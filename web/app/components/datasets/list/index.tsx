@@ -88,7 +88,7 @@ const List = () => {
 
   return (
     <div ref={containerRef} className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
-      <div className='sticky top-0 z-30 flex items-center justify-between gap-x-1 bg-background-body px-12 pb-2 pt-4'>
+      <div className='sticky top-0 z-10 flex items-center justify-between gap-x-1 bg-background-body px-12 pb-2 pt-4'>
         <SegmentedControl
           value={activeTab}
           onChange={newActiveTab => setActiveTab(newActiveTab as string)}

@@ -1,7 +1,7 @@
-import Container from '../../components/datasets/list/container'
+import List from '../../components/datasets/list'
 
-const AppList = async () => {
-  return <Container />
+const DatasetList = async () => {
+  return <List />
 }
 
-export default AppList
+export default DatasetList
