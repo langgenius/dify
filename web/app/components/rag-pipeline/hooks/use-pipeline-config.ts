@@ -4,7 +4,6 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { useWorkflowConfig } from '@/service/use-workflow'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 
 export const usePipelineConfig = () => {
@@ -19,16 +18,6 @@ export const usePipelineConfig = () => {
   useWorkflowConfig(
     pipelineId ? `/rag/pipeline/${pipelineId}/workflows/draft/config` : '',
     handleUpdateWorkflowConfig,
-  )
-
-  const handleUpdateDataSourceList = useCallback((dataSourceList: ToolWithProvider[]) => {
-    const { setDataSourceList } = workflowStore.getState()
-
-    setDataSourceList!(dataSourceList)
-  }, [workflowStore])
-  useWorkflowConfig<ToolWithProvider[]>(
-    '/rag/pipelines/datasource-plugins',
-    handleUpdateDataSourceList,
   )
 
   const handleUpdateNodesDefaultConfigs = useCallback((nodesDefaultConfigs: Record<string, any>) => {
