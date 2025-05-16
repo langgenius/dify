@@ -7,12 +7,11 @@ import type {
   NodeTracing,
   PublishWorkflowParams,
   UpdateWorkflowParams,
+  VarInInspect,
   WorkflowConfigResponse,
 } from '@/types/workflow'
 import type { CommonResponse } from '@/models/common'
 import { useInvalid, useReset } from './use-base'
-import { sleep } from '@/utils'
-import { conversationVars, systemVars } from '@/app/components/workflow/store/workflow/debug/mock-data'
 
 const NAME_SPACE = 'workflow'
 
@@ -95,34 +94,7 @@ export const useLastRun = (appID: string, nodeId: string, enabled: boolean) => {
     enabled,
     queryKey: [...useLastRunKey, appID, nodeId],
     queryFn: async () => {
-      console.log(`fetch last run : ${nodeId}`)
-      // TODO: mock data
-      await sleep(1000)
-      return Promise.resolve({
-        node_id: nodeId,
-        status: 'success',
-        node_type: 'llm',
-        title: 'LLM',
-        inputs: null,
-        outputs: {
-          text: '"abc" is a simple sequence of three letters.  Is there anything specific you\'d like to know about it, or are you just testing the system? \n\nLet me know if you have any other questions or tasks! 😊 \n',
-          usage: {
-            prompt_tokens: 3,
-            prompt_unit_price: '0',
-            prompt_price_unit: '0.000001',
-            prompt_price: '0',
-            completion_tokens: 48,
-            completion_unit_price: '0',
-            completion_price_unit: '0.000001',
-            completion_price: '0',
-            total_tokens: 51,
-            total_price: '0',
-            currency: 'USD',
-            latency: 0.7095853444188833,
-          },
-          finish_reason: '1',
-        },
-      } as any)
+      return get(`apps/${appID}/workflows/draft/nodes/${nodeId}/last-run`)
     },
   })
 }
@@ -139,17 +111,11 @@ export const useInvalidAllLastRun = (appId: string) => {
 const useConversationVarValuesKey = [NAME_SPACE, 'conversation-variable']
 
 export const useConversationVarValues = (appId: string) => {
-  let index = 1
   return useQuery({
     queryKey: [...useConversationVarValuesKey, appId],
     queryFn: async () => {
-      await sleep(1000)
-      return Promise.resolve(conversationVars.map((item) => {
-        return {
-          ...item,
-          value: item.value_type === 'string' ? `${item.value}${index++}` : item.value,
-        }
-      }))
+      const { items } = (await get(`apps/${appId}/workflows/draft/conversation-variables`)) as { items: VarInInspect[] }
+      return items
     },
   })
 }
@@ -160,18 +126,11 @@ export const useInvalidateConversationVarValues = (appId: string) => {
 
 export const useSysVarValuesKey = [NAME_SPACE, 'sys-variable']
 export const useSysVarValues = (appId: string) => {
-  let index = 1
-
   return useQuery({
     queryKey: [...useSysVarValuesKey, appId],
     queryFn: async () => {
-      await sleep(1000)
-      return Promise.resolve(systemVars.map((item) => {
-        return {
-          ...item,
-          value: item.value_type === 'string' ? `${item.value}${index++}` : item.value,
-        }
-      }))
+      const { items } = (await get(`apps/${appId}/workflows/draft/system-variables`)) as { items: VarInInspect[] }
+      return items
     },
   })
 }
@@ -184,7 +143,7 @@ export const useDeleteAllInspectorVars = (appId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete all inspector vars', appId],
     mutationFn: async () => {
-      console.log('remove all inspector vars')
+      return del(`apps/${appId}/workflows/draft/variables`)
     },
   })
 }
@@ -193,7 +152,7 @@ export const useDeleteNodeInspectorVars = (appId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete node inspector vars', appId],
     mutationFn: async (nodeId: string) => {
-      console.log('remove node inspector vars', nodeId)
+      return del(`apps/${appId}/workflows/draft/nodes/${nodeId}/variables`)
     },
   })
 }
@@ -202,7 +161,7 @@ export const useDeleteInspectVar = (appId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete inspector var', appId],
     mutationFn: async (varId: string) => {
-      console.log('remove inspector var', varId)
+      return del(`workflows/draft/variables/${varId}`)
     },
   })
 }
@@ -211,12 +170,14 @@ export const useDeleteInspectVar = (appId: string) => {
 export const useEditInspectorVar = (appId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'edit inspector var', appId],
-    mutationFn: async (params: {
+    mutationFn: async ({ varId, ...rest }: {
       varId: string
       name?: string
       value?: any
     }) => {
-      console.log('edit inspector var', params)
+      return patch(`apps/${appId}/workflows/draft/variables/${varId}`, {
+        body: rest,
+      })
     },
   })
 }

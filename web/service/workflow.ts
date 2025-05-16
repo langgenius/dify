@@ -9,8 +9,6 @@ import type {
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import type { BlockEnum } from '@/app/components/workflow/types'
-import { sleep } from '@/utils'
-import { vars } from '@/app/components/workflow/store/workflow/debug/mock-data'
 import type { VarInInspect } from '@/types/workflow'
 
 export const fetchWorkflowDraft = (url: string) => {
@@ -98,9 +96,6 @@ export const fetchAllInspectVars = async (appId: string): Promise<VarInInspect[]
 }
 
 export const fetchNodeInspectVars = async (appId: string, nodeId: string): Promise<VarInInspect[]> => {
-  // TODO
-  console.log('fetchNodeInspectVars', appId, nodeId)
-  await sleep(1000)
-  const data = await Promise.resolve(vars)
-  return data
+  const { items } = (await get(`apps/${appId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
+  return items
 }
