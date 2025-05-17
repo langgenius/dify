@@ -118,6 +118,9 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           customComponent: CustomButton,
         })
         handleCancel('add')
+        setQuestion('')
+        setAnswer('')
+        setKeywords([])
         refreshTimer.current = setTimeout(() => {
           onSave()
         }, 3000)
