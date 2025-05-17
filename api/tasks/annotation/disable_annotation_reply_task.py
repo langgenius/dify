@@ -40,7 +40,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
 
     try:
         dataset = Dataset(
-            id=app_id,
+            id=app_annotation_setting.collection_binding_id,
             tenant_id=tenant_id,
             indexing_technique="high_quality",
             collection_binding_id=app_annotation_setting.collection_binding_id,

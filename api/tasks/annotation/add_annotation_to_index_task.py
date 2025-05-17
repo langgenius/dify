@@ -33,7 +33,7 @@ def add_annotation_to_index_task(
             collection_binding_id, "annotation"
         )
         dataset = Dataset(
-            id=app_id,
+            id=dataset_collection_binding.id,
             tenant_id=tenant_id,
             indexing_technique="high_quality",
             embedding_model_provider=dataset_collection_binding.provider_name,

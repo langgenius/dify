@@ -58,7 +58,7 @@ def enable_annotation_reply_task(
                 )
                 if old_dataset_collection_binding and annotations:
                     old_dataset = Dataset(
-                        id=app_id,
+                        id=old_dataset_collection_binding.id,
                         tenant_id=tenant_id,
                         indexing_technique="high_quality",
                         embedding_model_provider=old_dataset_collection_binding.provider_name,
@@ -68,7 +68,7 @@ def enable_annotation_reply_task(
 
                     old_vector = Vector(old_dataset, attributes=["doc_id", "annotation_id", "app_id"])
                     try:
-                        old_vector.delete()
+                        old_vector.delete_by_metadata_field("app_id", app_id)
                     except Exception as e:
                         logging.info(click.style("Delete annotation index error: {}".format(str(e)), fg="red"))
             annotation_setting.score_threshold = score_threshold
@@ -87,7 +87,7 @@ def enable_annotation_reply_task(
             db.session.add(new_app_annotation_setting)
 
         dataset = Dataset(
-            id=app_id,
+            id=dataset_collection_binding.id,
             tenant_id=tenant_id,
             indexing_technique="high_quality",
             embedding_model_provider=embedding_provider_name,

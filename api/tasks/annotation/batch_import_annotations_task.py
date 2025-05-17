@@ -60,7 +60,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                 if not dataset_collection_binding:
                     raise NotFound("App annotation setting not found")
                 dataset = Dataset(
-                    id=app_id,
+                    id=dataset_collection_binding.id,
                     tenant_id=tenant_id,
                     indexing_technique="high_quality",
                     embedding_model_provider=dataset_collection_binding.provider_name,

@@ -23,7 +23,7 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
         )
 
         dataset = Dataset(
-            id=app_id,
+            id=dataset_collection_binding.id,
             tenant_id=tenant_id,
             indexing_technique="high_quality",
             collection_binding_id=dataset_collection_binding.id,

@@ -2318,10 +2318,12 @@ class DatasetCollectionBindingService:
         )
 
         if not dataset_collection_binding:
+            id = str(uuid.uuid4())
             dataset_collection_binding = DatasetCollectionBinding(
+                id=id,
                 provider_name=provider_name,
                 model_name=model_name,
-                collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
+                collection_name=Dataset.gen_collection_name_by_id(id),
                 type=collection_type,
             )
             db.session.add(dataset_collection_binding)
