@@ -5,6 +5,7 @@ import { createContext, useContext } from 'use-context-selector'
 import type {
   Callback,
   ChatConfig,
+  ChatEventMap,
   ChatItemInTree,
   Feedback,
 } from '../types'
@@ -16,6 +17,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'lodash-es'
+import type { UseMittReturn } from '@/hooks/use-mitt'
 
 export type ChatWithHistoryContextValue = {
   appInfoError?: any
@@ -34,7 +36,6 @@ export type ChatWithHistoryContextValue = {
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
-  handleStartChat: (callback?: any) => void
   handleChangeConversation: (conversationId: string) => void
   handlePinConversation: (conversationId: string) => void
   handleUnpinConversation: (conversationId: string) => void
@@ -57,6 +58,7 @@ export type ChatWithHistoryContextValue = {
   setIsResponding: (state: boolean) => void,
   currentConversationInputs: Record<string, any> | null,
   setCurrentConversationInputs: (v: Record<string, any>) => void,
+  eventEmitter?: UseMittReturn<ChatEventMap>
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -69,7 +71,6 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   handleNewConversationInputsChange: noop,
   inputsForms: [],
   handleNewConversation: noop,
-  handleStartChat: noop,
   handleChangeConversation: noop,
   handlePinConversation: noop,
   handleUnpinConversation: noop,
