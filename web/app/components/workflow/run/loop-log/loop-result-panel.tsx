@@ -118,7 +118,7 @@ const LoopResultPanel: FC<Props> = ({
               'transition-all duration-200',
               expandedLoops[index]
                 ? 'opacity-100'
-                : 'max-h-0 overflow-hidden opacity-0',
+                : 'max-h-0 opacity-0 overflow-hidden',
             )}>
               {
                 loopVariableMap?.[index] && (
