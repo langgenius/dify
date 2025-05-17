@@ -603,6 +603,92 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 ---
 
 <Heading
+  url='/workflows/run/:workflow_run_id/node-executions'
+  method='GET'
+  title='获取某个workflow的节点执行情况'
+  name='#Get-Workflow-Run-Node-Executions'
+/>
+<Row>
+  <Col>
+    倒序返回workflow的节点执行情况
+
+    ### Response
+   	- `data` (array[object])
+      - `id` (string) 标识
+      - `created_at` (timestamp) 创建时间
+      - `created_by_account` (object) 创建该节点的账户信息
+        - `email` (string) 邮箱
+        - `id` (string) 标识
+        - `name` (string) 名称
+      - `created_by_end_user` (object|null) 用户
+      - `created_by_role` (string) 角色，例如 `account`
+      - `elapsed_time` (float) 耗时，单位秒
+      - `error` (string|null) 错误信息
+      - `execution_metadata` (object|null) 执行元数据
+      - `extras` (object) 附加信息
+      - `finished_at` (timestamp) 结束时间
+      - `index` (int) 节点索引
+      - `inputs` (any|null) 输入数据
+      - `node_id` (string) 节点标识
+      - `node_type` (string) 节点类型，例如 `end`
+      - `outputs` (any|null) 输出数据
+      - `predecessor_node_id` (string|null) 前置节点标识
+      - `process_data` (object|null) 处理数据
+      - `status` (string) 执行状态，'running` / `succeeded` / `failed` / `stopped`
+      - `title` (string) 节点标题
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_run_id/node-executions" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id/node-executions'\\\n --header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id/node-executions'
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "data": [
+            {
+            "created_at": 1747244722,
+            "created_by_account": 
+                {
+                    "email": "lizb@test.com",
+                    "id": "17f71940-a7b5-4c77-b60f-2bd645c1ffa0",
+                    "name": "lizb"
+                 },
+           "created_by_end_user": None,
+           "created_by_role": "account",
+           "elapsed_time": 0.838795,
+           "error": None,
+           "execution_metadata": None,
+           "extras": {},
+           "finished_at": 1747244722,
+           "id": "bffa2838-0e2c-4cba-bc9c-9abbcc38d001",
+           "index": 3,
+           "inputs": None,
+           "node_id": "1747273509709",
+           "node_type": "end",
+           "outputs": None,
+           "predecessor_node_id": "1745917690204",
+           "process_data": None,
+           "status": "succeeded",
+           "title": "Finish",
+            },
+               ...
+          ]
+    }
+
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
   url='/info'
   method='GET'
   title='获取应用基本信息'
