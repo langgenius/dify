@@ -1,20 +1,18 @@
 import hashlib
-import json
 import mimetypes
 import os
 import re
 import site
-import subprocess
-import tempfile
 import unicodedata
 from contextlib import contextmanager
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Any, Literal, Optional, cast
 from urllib.parse import unquote
 
 import chardet
 import cloudscraper  # type: ignore
 from bs4 import BeautifulSoup, CData, Comment, NavigableString  # type: ignore
+from readability import Document  # type: ignore
 from regex import regex  # type: ignore
 
 from core.helper import ssrf_proxy
@@ -23,9 +21,7 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 
 FULL_TEMPLATE = """
 TITLE: {title}
-AUTHORS: {authors}
-PUBLISH DATE: {publish_date}
-TOP_IMAGE_URL: {top_image}
+AUTHOR: {author}
 TEXT:
 
 {text}
@@ -90,66 +86,40 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
     else:
         content = response.text
 
-    a = extract_using_readabilipy(content)
+    article = extract_using_readabilipy(content)
 
-    if not a["plain_text"] or not a["plain_text"].strip():
+    if not article.text.strip():
         return ""
 
     res = FULL_TEMPLATE.format(
-        title=a["title"],
-        authors=a["byline"],
-        publish_date=a["date"],
-        top_image="",
-        text=a["plain_text"] or "",
+        title=article.title,
+        author=article.auther,
+        text=article.text,
     )
 
     return res
 
 
-def extract_using_readabilipy(html):
-    with tempfile.NamedTemporaryFile(delete=False, mode="w+") as f_html:
-        f_html.write(html)
-        f_html.close()
-    html_path = f_html.name
+@dataclass
+class Article:
+    title: str
+    auther: str
+    text: str
 
-    # Call Mozilla's Readability.js Readability.parse() function via node, writing output to a temporary file
-    article_json_path = html_path + ".json"
-    jsdir = os.path.join(find_module_path("readabilipy"), "javascript")
-    with chdir(jsdir):
-        subprocess.check_call(["node", "ExtractArticle.js", "-i", html_path, "-o", article_json_path])
 
-    # Read output of call to Readability.parse() from JSON file and return as Python dictionary
-    input_json = json.loads(Path(article_json_path).read_text(encoding="utf-8"))
+def extract_using_readabilipy(html: str):
+    doc = Document(html)
+    article = Article(
+        title=doc.title(),
+        auther=doc.author(),
+        text=plain_content(
+            readability_content=doc.content(),
+            content_digests=False,
+            node_indexes=False,
+        ),
+    )
 
-    # Deleting files after processing
-    os.unlink(article_json_path)
-    os.unlink(html_path)
-
-    article_json: dict[str, Any] = {
-        "title": None,
-        "byline": None,
-        "date": None,
-        "content": None,
-        "plain_content": None,
-        "plain_text": None,
-    }
-    # Populate article fields from readability fields where present
-    if input_json:
-        if input_json.get("title"):
-            article_json["title"] = input_json["title"]
-        if input_json.get("byline"):
-            article_json["byline"] = input_json["byline"]
-        if input_json.get("date"):
-            article_json["date"] = input_json["date"]
-        if input_json.get("content"):
-            article_json["content"] = input_json["content"]
-            article_json["plain_content"] = plain_content(article_json["content"], False, False)
-            article_json["plain_text"] = extract_text_blocks_as_plain_text(article_json["plain_content"])
-        if input_json.get("textContent"):
-            article_json["plain_text"] = input_json["textContent"]
-            article_json["plain_text"] = re.sub(r"\n\s*\n", "\n", article_json["plain_text"])
-
-    return article_json
+    return article
 
 
 def find_module_path(module_name):
