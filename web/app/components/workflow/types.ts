@@ -196,6 +196,7 @@ export type InputVar = {
   hint?: string
   options?: string[]
   value_selector?: ValueSelector
+  hide: boolean
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {

@@ -368,6 +368,7 @@ const translation = {
     'inputPlaceholder': 'Please input',
     'content': 'Content',
     'required': 'Required',
+    'hide': 'Hide',
     'file': {
       supportFileTypes: 'Support File Types',
       image: {
