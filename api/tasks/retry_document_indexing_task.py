@@ -95,7 +95,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             db.session.commit()
             logging.info(click.style(str(ex), fg="yellow"))
             redis_client.delete(retry_indexing_cache_key)
-            pass
+            logging.exception("retry_document_indexing_task failed, document_id: {}".format(document_id))
         finally:
             db.session.close()
     end_at = time.perf_counter()
