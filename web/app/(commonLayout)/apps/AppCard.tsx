@@ -106,14 +106,16 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
   }, [app.id, mutateApps, notify, onRefresh, t])
 
-  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background, icon_url }) => {
     try {
+      console.log('icon_url', icon_url)
       const newApp = await copyApp({
         appID: app.id,
         name,
         icon_type,
         icon,
         icon_background,
+        icon_url,
         mode: app.mode,
       })
       setShowDuplicateModal(false)
