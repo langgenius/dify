@@ -145,6 +145,9 @@ class WorkflowRunService:
 
         # Use the repository to get the node executions with ordering
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        node_executions = repository.get_db_models_by_workflow_run(workflow_run_id=run_id, order_config=order_config)
+        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id, order_config=order_config)
 
-        return node_executions
+        # Convert domain models to database models
+        workflow_node_executions = [repository.to_db_model(node_execution) for node_execution in node_executions]
+
+        return workflow_node_executions

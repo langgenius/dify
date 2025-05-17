@@ -127,7 +127,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             finished_at=db_model.finished_at,
         )
 
-    def _to_db_model(self, domain_model: NodeExecution) -> WorkflowNodeExecution:
+    def to_db_model(self, domain_model: NodeExecution) -> WorkflowNodeExecution:
         """
         Convert a domain model to a database model.
 
@@ -174,27 +174,35 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
     def save(self, execution: NodeExecution) -> None:
         """
-        Save or update a NodeExecution instance and commit changes to the database.
+        Save or update a NodeExecution domain entity to the database.
 
-        This method handles both creating new records and updating existing ones.
-        It determines whether to create or update based on whether the record
-        already exists in the database. It also updates the in-memory cache.
+        This method serves as a domain-to-database adapter that:
+        1. Converts the domain entity to its database representation
+        2. Persists the database model using SQLAlchemy's merge operation
+        3. Maintains proper multi-tenancy by including tenant context during conversion
+        4. Updates the in-memory cache for faster subsequent lookups
+
+        The method handles both creating new records and updating existing ones through
+        SQLAlchemy's merge operation.
 
         Args:
-            execution: The NodeExecution instance to save or update
+            execution: The NodeExecution domain entity to persist
         """
-        with self._session_factory() as session:
-            # Convert domain model to database model using instance attributes
-            db_model = self._to_db_model(execution)
+        # Convert domain model to database model using tenant context and other attributes
+        db_model = self.to_db_model(execution)
 
-            # Use merge which will handle both insert and update
+        # Create a new database session
+        with self._session_factory() as session:
+            # SQLAlchemy merge intelligently handles both insert and update operations
+            # based on the presence of the primary key
             session.merge(db_model)
             session.commit()
 
-            # Update the cache if node_execution_id is present
-            if execution.node_execution_id:
-                logger.debug(f"Updating cache for node_execution_id: {execution.node_execution_id}")
-                self._node_execution_cache[execution.node_execution_id] = execution
+            # Update the in-memory cache for faster subsequent lookups
+            # Only cache if we have a node_execution_id to use as the cache key
+            if db_model.node_execution_id:
+                logger.debug(f"Updating cache for node_execution_id: {db_model.node_execution_id}")
+                self._node_execution_cache[db_model.node_execution_id] = db_model
 
     def get_by_node_execution_id(self, node_execution_id: str) -> Optional[NodeExecution]:
         """
@@ -257,41 +265,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         Returns:
             A list of NodeExecution instances
         """
-        # Get the raw database models using the new method
-        db_models = self.get_db_models_by_workflow_run(workflow_run_id, order_config)
-
-        # Convert database models to domain models and update cache
-        domain_models = []
-        for model in db_models:
-            domain_model = self._to_domain_model(model)
-            # Update cache if node_execution_id is present
-            if domain_model.node_execution_id:
-                self._node_execution_cache[domain_model.node_execution_id] = domain_model
-            domain_models.append(domain_model)
-
-        return domain_models
-
-    def get_db_models_by_workflow_run(
-        self,
-        workflow_run_id: str,
-        order_config: Optional[OrderConfig] = None,
-    ) -> Sequence[WorkflowNodeExecution]:
-        """
-        Retrieve all WorkflowNodeExecution database models for a specific workflow run.
-
-        This method is similar to get_by_workflow_run but returns the raw database models
-        instead of converting them to domain models. This can be useful when direct access
-        to database model properties is needed.
-
-        Args:
-            workflow_run_id: The workflow run ID
-            order_config: Optional configuration for ordering results
-                order_config.order_by: List of fields to order by (e.g., ["index", "created_at"])
-                order_config.order_direction: Direction to order ("asc" or "desc")
-
-        Returns:
-            A list of WorkflowNodeExecution database models
-        """
         with self._session_factory() as session:
             stmt = select(WorkflowNodeExecution).where(
                 WorkflowNodeExecution.workflow_run_id == workflow_run_id,
@@ -319,10 +292,16 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
             db_models = session.scalars(stmt).all()
 
-            # Note: We don't update the cache here since we're returning raw DB models
-            # and not converting to domain models
+            # Convert database models to domain models and update cache
+            domain_models = []
+            for model in db_models:
+                domain_model = self._to_domain_model(model)
+                # Update cache if node_execution_id is present
+                if domain_model.node_execution_id:
+                    self._node_execution_cache[domain_model.node_execution_id] = domain_model
+                domain_models.append(domain_model)
 
-            return db_models
+            return domain_models
 
     def get_running_executions(self, workflow_run_id: str) -> Sequence[NodeExecution]:
         """
