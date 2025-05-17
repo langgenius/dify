@@ -25,6 +25,7 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_app_generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+from core.workflow.workflow_app_generate_task_pipeline_fast import WorkflowAppGenerateTaskPipelineFast
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
@@ -414,14 +415,26 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :return:
         """
         # init generate task pipeline
-        generate_task_pipeline = WorkflowAppGenerateTaskPipeline(
-            application_generate_entity=application_generate_entity,
-            workflow=workflow,
-            queue_manager=queue_manager,
-            user=user,
-            stream=stream,
-            workflow_node_execution_repository=workflow_node_execution_repository,
-        )
+        if dify_config.WORKFLOW_FAST_MODE:
+            # Use the fast mode task pipeline with reduced database operations
+            generate_task_pipeline = WorkflowAppGenerateTaskPipelineFast(
+                application_generate_entity=application_generate_entity,
+                workflow=workflow,
+                queue_manager=queue_manager,
+                user=user,
+                stream=stream,
+                workflow_node_execution_repository=workflow_node_execution_repository,
+            )
+        else:
+            # Use the standard task pipeline
+            generate_task_pipeline = WorkflowAppGenerateTaskPipeline(
+                application_generate_entity=application_generate_entity,
+                workflow=workflow,
+                queue_manager=queue_manager,
+                user=user,
+                stream=stream,
+                workflow_node_execution_repository=workflow_node_execution_repository,
+            )
 
         try:
             return generate_task_pipeline.process()
