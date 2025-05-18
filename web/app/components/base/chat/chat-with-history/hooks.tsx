@@ -226,6 +226,11 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       }
     })
   }, [appParams])
+
+  const allInputsHidden = useMemo(() => {
+    return inputsForms.length > 0 && inputsForms.every(item => item.hide === true)
+  }, [inputsForms])
+
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
 
@@ -290,6 +295,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   const { notify } = useToastContext()
   const checkInputsRequired = useCallback((silent?: boolean) => {
+    if (allInputsHidden)
+      return true
+
     let hasEmptyInput = ''
     let fileIsUploading = false
     const requiredVars = inputsForms.filter(({ required }) => required)
@@ -325,7 +333,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     }
 
     return true
-  }, [inputsForms, notify, t])
+  }, [inputsForms, notify, t, allInputsHidden])
   const handleStartChat = useCallback((callback: any) => {
     if (checkInputsRequired()) {
       setShowNewConversationItemInList(true)
@@ -491,5 +499,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    allInputsHidden,
   }
 }
