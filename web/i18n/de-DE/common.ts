@@ -54,6 +54,10 @@ const translation = {
     viewDetails: 'Details anzeigen',
     in: 'in',
     copied: 'Kopiert',
+    downloadFailed: 'Download fehlgeschlagen. Bitte versuchen Sie es später erneut.',
+    downloadSuccess: 'Download abgeschlossen.',
+    more: 'Mehr',
+    format: 'Format',
   },
   placeholder: {
     input: 'Bitte eingeben',
@@ -153,6 +157,9 @@ const translation = {
     community: 'Gemeinschaft',
     about: 'Über',
     logout: 'Abmelden',
+    compliance: 'Einhaltung',
+    support: 'Unterstützung',
+    github: 'GitHub',
   },
   settings: {
     accountGroup: 'KONTO',
@@ -202,6 +209,9 @@ const translation = {
     feedbackLabel: 'Sagen Sie uns, warum Sie Ihr Konto gelöscht haben?',
     feedbackPlaceholder: 'Wahlfrei',
     permanentlyDeleteButton: 'Konto dauerhaft löschen',
+    workspaceIcon: 'Arbeitsbereichssymbol',
+    workspaceName: 'Arbeitsbereichsname',
+    editWorkspaceInfo: 'Arbeitsbereichsinformationen bearbeiten',
   },
   members: {
     team: 'Team',
@@ -455,7 +465,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API-Erweiterungen bieten zentralisiertes API-Management und vereinfachen die Konfiguration für eine einfache Verwendung in Difys Anwendungen.',
     link: 'Erfahren Sie, wie Sie Ihre eigene API-Erweiterung entwickeln.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API-Erweiterung hinzufügen',
     selector: {
       title: 'API-Erweiterung',
@@ -543,6 +553,7 @@ const translation = {
     inputPlaceholder: 'Sprechen Sie mit dem Bot',
     thought: 'Gedanke',
     thinking: 'Denken...',
+    resend: 'Erneut senden',
   },
   promptEditor: {
     placeholder: 'Schreiben Sie hier Ihr Aufforderungswort, geben Sie \'{\' ein, um eine Variable einzufügen, geben Sie \'/\' ein, um einen Aufforderungs-Inhaltsblock einzufügen',
@@ -636,6 +647,25 @@ const translation = {
   },
   pagination: {
     perPage: 'Artikel pro Seite',
+  },
+  theme: {
+    light: 'Licht',
+    theme: 'Thema',
+    dark: 'dunkel',
+    auto: 'System',
+  },
+  compliance: {
+    iso27001: 'ISO 27001:2022 Zertifizierung',
+    professionalUpgradeTooltip: 'Nur verfügbar mit einem Teamplan oder höher.',
+    gdpr: 'DSGVO DPA',
+    soc2Type2: 'SOC 2 Typ II Bericht',
+    soc2Type1: 'SOC 2 Typ I Bericht',
+    sandboxUpgradeTooltip: 'Nur verfügbar mit einem Professional- oder Teamplan.',
+  },
+  imageInput: {
+    dropImageHere: 'Laden Sie Ihr Bild hierher hoch oder',
+    browse: 'blättern',
+    supportedFormats: 'Unterstützt PNG, JPG, JPEG, WEBP und GIF',
   },
 }
 

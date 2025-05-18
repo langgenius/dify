@@ -3,6 +3,8 @@ import logging
 import re
 from typing import Optional, cast
 
+import json_repair
+
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
@@ -366,7 +368,20 @@ class LLMGenerator:
                 ),
             )
 
-            generated_json_schema = cast(str, response.message.content)
+            raw_content = response.message.content
+
+            if not isinstance(raw_content, str):
+                raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
+
+            try:
+                parsed_content = json.loads(raw_content)
+            except json.JSONDecodeError:
+                parsed_content = json_repair.loads(raw_content)
+
+            if not isinstance(parsed_content, dict | list):
+                raise ValueError(f"Failed to parse structured output from llm: {raw_content}")
+
+            generated_json_schema = json.dumps(parsed_content, indent=2, ensure_ascii=False)
             return {"output": generated_json_schema, "error": ""}
 
         except InvokeError as e:

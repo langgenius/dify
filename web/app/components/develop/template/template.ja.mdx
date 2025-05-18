@@ -247,7 +247,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
   ### リクエスト例
-  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/files/upload' \
@@ -375,6 +375,69 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     {
       "result": "success"
     }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/app/feedbacks'
+  method='GET'
+  title='アプリのメッセージの「いいね」とフィードバックを取得'
+  name='#app-feedbacks'
+/>
+<Row>
+  <Col>
+    アプリのエンドユーザーからのフィードバックや「いいね」を取得します。
+
+    ### クエリ
+    <Properties>
+      <Property name='page' type='string' key='page'>
+       （任意）ページ番号。デフォルト値：1
+      </Property>
+    </Properties>
+
+    <Properties>
+      <Property name='limit' type='string' key='limit'>
+       （任意）1ページあたりの件数。デフォルト値：20
+      </Property>
+    </Properties>
+
+    ### レスポンス
+    - `data` (リスト) このアプリの「いいね」とフィードバックの一覧を返します。
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/app/feedbacks" targetCode={`curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+        {
+        "data": [
+            {
+                "id": "8c0fbed8-e2f9-49ff-9f0e-15a35bdd0e25",
+                "app_id": "f252d396-fe48-450e-94ec-e184218e7346",
+                "conversation_id": "2397604b-9deb-430e-b285-4726e51fd62d",
+                "message_id": "709c0b0f-0a96-4a4e-91a4-ec0889937b11",
+                "rating": "like",
+                "content": "message feedback information-3",
+                "from_source": "user",
+                "from_end_user_id": "74286412-9a1a-42c1-929c-01edb1d381d5",
+                "from_account_id": null,
+                "created_at": "2025-04-24T09:24:38",
+                "updated_at": "2025-04-24T09:24:38"
+            }
+        ]
+        }
     ```
     </CodeGroup>
   </Col>
@@ -582,3 +645,62 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/site'
+  method='GET'
+  title='アプリのWebApp設定を取得'
+  name='#site'
+/>
+<Row>
+  <Col>
+  アプリのWebApp設定を取得するために使用します。
+  ### レスポンス
+  - `title` (string) WebApp名
+  - `chat_color_theme` (string) チャットの色テーマ、16進数形式
+  - `chat_color_theme_inverted` (bool) チャットの色テーマを反転するかどうか
+  - `icon_type` (string) アイコンタイプ、`emoji`-絵文字、`image`-画像
+  - `icon` (string) アイコン。`emoji`タイプの場合は絵文字、`image`タイプの場合は画像URL
+  - `icon_background` (string) 16進数形式の背景色
+  - `icon_url` (string) アイコンのURL
+  - `description` (string) 説明
+  - `copyright` (string) 著作権情報
+  - `privacy_policy` (string) プライバシーポリシーのリンク
+  - `custom_disclaimer` (string) カスタム免責事項
+  - `default_language` (string) デフォルト言語
+  - `show_workflow_steps` (bool) ワークフローの詳細を表示するかどうか
+  - `use_icon_as_answer_icon` (bool) WebAppのアイコンをチャット内の🤖に置き換えるかどうか
+  </Col>
+  <Col>
+  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/site' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "title": "My App",
+      "chat_color_theme": "#ff4a4a",
+      "chat_color_theme_inverted": false,
+      "icon_type": "emoji",
+      "icon": "😄",
+      "icon_background": "#FFEAD5",
+      "icon_url": null,
+      "description": "This is my app.",
+      "copyright": "all rights reserved",
+      "privacy_policy": "",
+      "custom_disclaimer": "All generated by AI",
+      "default_language": "en-US",
+      "show_workflow_steps": false,
+      "use_icon_as_answer_icon": false,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___

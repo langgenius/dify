@@ -44,14 +44,18 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         page_id = data_source_info["notion_page_id"]
         page_type = data_source_info["type"]
         page_edited_time = data_source_info["last_edited_time"]
-        data_source_binding = DataSourceOauthBinding.query.filter(
-            db.and_(
-                DataSourceOauthBinding.tenant_id == document.tenant_id,
-                DataSourceOauthBinding.provider == "notion",
-                DataSourceOauthBinding.disabled == False,
-                DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+        data_source_binding = (
+            db.session.query(DataSourceOauthBinding)
+            .filter(
+                db.and_(
+                    DataSourceOauthBinding.tenant_id == document.tenant_id,
+                    DataSourceOauthBinding.provider == "notion",
+                    DataSourceOauthBinding.disabled == False,
+                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                )
             )
-        ).first()
+            .first()
+        )
         if not data_source_binding:
             raise ValueError("Data source binding not found.")
 

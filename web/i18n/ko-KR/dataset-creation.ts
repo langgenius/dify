@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: '텍스트 파일 업로드',
-      button: '파일을 끌어다 놓거나',
+      button: '파일이나 폴더를 끌어서 놓기',
       browse: '찾아보기',
       tip: '{{supportTypes}}을(를) 지원합니다. 파일당 최대 크기는 {{size}}MB입니다.',
       validation: {
@@ -52,7 +52,7 @@ const translation = {
       failed: '생성에 실패했습니다',
     },
     website: {
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       limit: '한계',
       options: '옵션',
       firecrawlDoc: 'Firecrawl 문서',
@@ -82,6 +82,14 @@ const translation = {
       jinaReaderTitle: '전체 사이트를 Markdown으로 변환',
       jinaReaderNotConfigured: 'Jina Reader가 구성되지 않았습니다.',
       useSitemapTooltip: '사이트맵을 따라 사이트를 크롤링합니다. 그렇지 않은 경우 Jina Reader는 페이지 관련성에 따라 반복적으로 크롤링하여 더 적지만 더 높은 품질의 페이지를 생성합니다.',
+      watercrawlDoc: '워터크롤 문서',
+      waterCrawlNotConfiguredDescription: 'API 키로 Watercrawl을 구성하여 사용하십시오.',
+      watercrawlTitle: 'Watercrawl로 웹 콘텐츠 추출하기',
+      configureFirecrawl: '파이어크롤 구성하기',
+      watercrawlDocLink: '웹사이트에서 동기화하기',
+      configureJinaReader: '지나 리더 설정하기',
+      waterCrawlNotConfigured: 'Watercrawl이 설정되어 있지 않습니다.',
+      configureWatercrawl: '워터크롤 구성하기',
     },
     cancel: '취소',
   },
@@ -200,6 +208,11 @@ const translation = {
     learnMore: '더 알아보세요',
     title: '다른 데이터 소스에 연결하시겠습니까?',
     description: '현재 Dify의 기술 자료에는 제한된 데이터 소스만 있습니다. Dify 기술 자료에 데이터 소스를 제공하는 것은 모든 사용자를 위해 플랫폼의 유연성과 기능을 향상시키는 데 도움이 되는 환상적인 방법입니다. 기여 가이드를 통해 쉽게 시작할 수 있습니다. 자세한 내용은 아래 링크를 클릭하십시오.',
+  },
+  watercrawl: {
+    getApiKeyLinkText: 'watercrawl.dev에서 API 키를 얻으세요.',
+    configWatercrawl: '워터크롤 구성하기',
+    apiKeyPlaceholder: 'watercrawl.dev의 API 키',
   },
 }
 

@@ -63,8 +63,7 @@ const LocaleLayout = async ({
             <TanstackQueryIniter>
               <ThemeProvider
                 attribute='data-theme'
-                forcedTheme='light'
-                defaultTheme='light' // TODO: change to 'system' when dark mode ready
+                defaultTheme='system'
                 enableSystem
                 disableTransitionOnChange
               >

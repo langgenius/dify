@@ -54,7 +54,7 @@ def initialize_extensions(app: DifyApp):
         ext_otel,
         ext_proxy_fix,
         ext_redis,
-        ext_repositories,
+        ext_request_logging,
         ext_sentry,
         ext_set_secretkey,
         ext_storage,
@@ -75,7 +75,6 @@ def initialize_extensions(app: DifyApp):
         ext_migrate,
         ext_redis,
         ext_storage,
-        ext_repositories,
         ext_celery,
         ext_login,
         ext_mail,
@@ -85,6 +84,7 @@ def initialize_extensions(app: DifyApp):
         ext_blueprints,
         ext_commands,
         ext_otel,
+        ext_request_logging,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]

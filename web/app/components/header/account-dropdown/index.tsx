@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { Fragment, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContextSelector } from 'use-context-selector'
 import {
   RiAccountCircleLine,
   RiArrowRightUpLine,
@@ -14,6 +14,7 @@ import {
   RiMap2Line,
   RiSettings3Line,
   RiStarLine,
+  RiTShirt2Line,
 } from '@remixicon/react'
 import Link from 'next/link'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
@@ -23,13 +24,13 @@ import GithubStar from '../github-star'
 import Support from './support'
 import Compliance from './compliance'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import I18n from '@/context/i18n'
+import { useGetDocLanguage } from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
+import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { logout } from '@/service/common'
 import AppContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
-import { LanguagesSupported } from '@/i18n/language'
 import { LicenseStatus } from '@/types/feature'
 import { IS_CLOUD_EDITION } from '@/config'
 import cn from '@/utils/classnames'
@@ -43,11 +44,11 @@ export default function AppSelector() {
   const [aboutVisible, setAboutVisible] = useState(false)
   const systemFeatures = useContextSelector(AppContext, v => v.systemFeatures)
 
-  const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const { userProfile, langeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
+  const docLanguage = useGetDocLanguage()
 
   const handleLogout = async () => {
     await logout({
@@ -83,8 +84,8 @@ export default function AppSelector() {
                 <MenuItems
                   className="
                     absolute right-0 mt-1.5 w-60 max-w-80
-                    origin-top-right divide-y divide-divider-subtle rounded-xl bg-components-panel-bg-blur
-                    shadow-lg focus:outline-none
+                    origin-top-right divide-y divide-divider-subtle rounded-xl bg-components-panel-bg-blur shadow-lg
+                    backdrop-blur-sm focus:outline-none
                   "
                 >
                   <MenuItem disabled>
@@ -132,9 +133,7 @@ export default function AppSelector() {
                         className={cn(itemClassName, 'group justify-between',
                           'data-[active]:bg-state-base-hover',
                         )}
-                        href={
-                          locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
-                        }
+                        href={`https://docs.dify.ai/${docLanguage}/introduction`}
                         target='_blank' rel='noopener noreferrer'>
                         <RiBookOpenLine className='size-4 shrink-0 text-text-tertiary' />
                         <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.helpCenter')}</div>
@@ -189,6 +188,15 @@ export default function AppSelector() {
                       )
                     }
                   </div>
+                  <MenuItem disabled>
+                    <div className='p-1'>
+                      <div className={cn(itemClassName, 'hover:bg-transparent')}>
+                        <RiTShirt2Line className='size-4 shrink-0 text-text-tertiary' />
+                        <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.theme.theme')}</div>
+                        <ThemeSwitcher/>
+                      </div>
+                    </div>
+                  </MenuItem>
                   <MenuItem>
                     <div className='p-1' onClick={() => handleLogout()}>
                       <div

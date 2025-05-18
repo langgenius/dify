@@ -54,6 +54,10 @@ const translation = {
     copied: 'คัด ลอก',
     viewDetails: 'ดูรายละเอียด',
     in: 'ใน',
+    format: 'รูปแบบ',
+    downloadFailed: 'ดาวน์โหลดล้มเหลว กรุณาลองอีกครั้งในภายหลัง.',
+    more: 'มากขึ้น',
+    downloadSuccess: 'ดาวน์โหลดเสร็จสิ้นแล้ว.',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -152,6 +156,9 @@ const translation = {
     community: 'ชุมชน',
     about: 'ประมาณ',
     logout: 'ออกจากระบบ',
+    github: 'GitHub',
+    compliance: 'การปฏิบัติตามข้อกำหนด',
+    support: 'การสนับสนุน',
   },
   settings: {
     accountGroup: 'ทั่วไป',
@@ -201,6 +208,9 @@ const translation = {
     feedbackLabel: 'บอกเราว่าทําไมคุณถึงลบบัญชีของคุณ',
     feedbackPlaceholder: 'เสริม',
     deleteSuccessTip: 'บัญชีของคุณต้องใช้เวลาในการลบให้เสร็จสิ้น เราจะส่งอีเมลถึงคุณเมื่อทุกอย่างเสร็จสิ้น',
+    workspaceIcon: 'ไอคอนพื้นที่ทำงาน',
+    editWorkspaceInfo: 'แก้ไขข้อมูลเวิร์กสเปซ',
+    workspaceName: 'ชื่อพื้นที่ทำงาน',
   },
   members: {
     team: 'ทีม',
@@ -454,7 +464,7 @@ const translation = {
   apiBasedExtension: {
     title: 'ส่วนขยาย API ให้การจัดการ API แบบรวมศูนย์ ทําให้การกําหนดค่าง่ายขึ้นเพื่อให้ใช้งานได้ง่ายในแอปพลิเคชันของ Dify',
     link: 'เรียนรู้วิธีพัฒนาส่วนขยาย API ของคุณเอง',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
     add: 'เพิ่มส่วนขยาย API',
     selector: {
       title: 'ส่วนขยาย API',
@@ -542,6 +552,7 @@ const translation = {
     inputPlaceholder: 'พูดคุยกับบอท',
     thought: 'ความคิด',
     thinking: 'ความคิด   ',
+    resend: 'ส่งอีกครั้ง',
   },
   promptEditor: {
     placeholder: 'เขียนคําพร้อมท์ของคุณที่นี่ ป้อน \'{\' เพื่อแทรกตัวแปร ป้อน \'/\' เพื่อแทรกบล็อกเนื้อหาพร้อมท์',
@@ -631,6 +642,25 @@ const translation = {
   },
   pagination: {
     perPage: 'รายการต่อหน้า',
+  },
+  theme: {
+    dark: 'มืด',
+    theme: 'ธีม',
+    auto: 'ระบบ',
+    light: 'แสง',
+  },
+  compliance: {
+    professionalUpgradeTooltip: 'ใช้ได้เฉพาะแผนทีมหรือสูงกว่าเท่านั้น.',
+    gdpr: 'GDPR DPA',
+    sandboxUpgradeTooltip: 'มีให้บริการเฉพาะกับแผนการใช้งานแบบมืออาชีพหรือทีมเท่านั้น.',
+    iso27001: 'การรับรอง ISO 27001:2022',
+    soc2Type2: 'รายงาน SOC 2 Type II',
+    soc2Type1: 'รายงาน SOC 2 ประเภท I',
+  },
+  imageInput: {
+    dropImageHere: 'วางภาพของคุณที่นี่ หรือ',
+    browse: 'ท่องเว็บ',
+    supportedFormats: 'รองรับ PNG, JPG, JPEG, WEBP และ GIF',
   },
 }
 

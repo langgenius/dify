@@ -26,6 +26,12 @@ const translation = {
     },
     tryToSolve: 'พยายามแก้',
     temporarySystemIssue: 'ขออภัย ปัญหาระบบชั่วคราว',
+    expand: 'ขยาย',
+    collapse: 'ย่อ',
+    newChatTip: 'อยู่ในแชทใหม่แล้ว',
+    chatSettingsTitle: 'การตั้งค่าการสนทนาใหม่',
+    viewChatSettings: 'ดูการตั้งค่าการแชท',
+    chatFormTip: 'การตั้งค่าแชทไม่สามารถเปลี่ยนแปลงได้หลังจากที่แชทเริ่มต้นขึ้นแล้ว.',
   },
   generation: {
     tabs: {
@@ -64,6 +70,8 @@ const translation = {
       moreThanMaxLengthLine: 'แถว {{rowIndex}}: ค่า {{varName}} ต้องไม่เกิน {{maxLength}} อักขระ',
       atLeastOne: 'โปรดป้อนอย่างน้อยหนึ่งแถวในไฟล์ที่อัปโหลด',
     },
+    execution: 'การดำเนินการ',
+    executions: '{{num}} การประหารชีวิต',
   },
 }
 

@@ -27,7 +27,7 @@ const translation = {
     },
     uploader: {
       title: 'फ़ाइल अपलोड करें',
-      button: 'फ़ाइल खींचें और छोड़ें, या',
+      button: 'फ़ाइलों या फ़ोल्डरों को खींचें और छोड़ें, या',
       browse: 'ब्राउज़ करें',
       tip: 'समर्थित {{supportTypes}}। प्रत्येक अधिकतम {{size}}MB।',
       validation: {
@@ -92,6 +92,14 @@ const translation = {
       chooseProvider: 'एक प्रदाता का चयन करें',
       jinaReaderTitle: 'पूरी साइट को मार्कडाउन में बदलें',
       jinaReaderNotConfiguredDescription: 'एक्सेस के लिए अपनी मुफ्त एपीआई कुंजी दर्ज करके जीना रीडर सेट करें।',
+      watercrawlTitle: 'Watercrawl के साथ वेब सामग्री निकालें',
+      waterCrawlNotConfigured: 'Watercrawl को कॉन्फ़िगर नहीं किया गया है',
+      configureFirecrawl: 'फायरक्रॉल को कॉन्फ़िगर करें',
+      watercrawlDoc: 'वाटरक्रॉल दस्तावेज़',
+      waterCrawlNotConfiguredDescription: 'इसे उपयोग करने के लिए वॉटरक्रॉल को एपीआई कुंजी के साथ कॉन्फ़िगर करें।',
+      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      configureJinaReader: 'जिना रीडर कॉन्फ़िगर करें',
+      configureWatercrawl: 'वाटरक्रॉल कॉन्फ़िगर करें',
     },
     cancel: 'रद्द करना',
   },
@@ -219,6 +227,11 @@ const translation = {
     title: 'अन्य डेटा स्रोतों से कनेक्ट करें?',
     learnMore: 'और जानो',
     description: 'वर्तमान में, Dify के ज्ञानकोष में केवल सीमित डेटा स्रोत हैं। Dify नॉलेज बेस में डेटा स्रोत का योगदान करना सभी उपयोगकर्ताओं के लिए प्लेटफॉर्म के लचीलेपन और शक्ति को बढ़ाने में मदद करने का एक शानदार तरीका है। हमारी योगदान मार्गदर्शिका आरंभ करना आसान बनाती है। अधिक जानने के लिए कृपया नीचे दिए गए लिंक पर क्लिक करें।',
+  },
+  watercrawl: {
+    apiKeyPlaceholder: 'watercrawl.dev से API कुंजी',
+    configWatercrawl: 'वाटरक्रॉल कॉन्फ़िगर करें',
+    getApiKeyLinkText: 'watercrawl.dev से अपना एपीआई कुंजी प्राप्त करें',
   },
 }
 

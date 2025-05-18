@@ -1,4 +1,4 @@
-from flask_restful import fields  # type: ignore
+from flask_restful import fields
 
 from fields.workflow_fields import workflow_partial_fields
 from libs.helper import AppIconUrlField, TimestampField

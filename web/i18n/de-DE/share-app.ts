@@ -30,6 +30,12 @@ const translation = {
     },
     tryToSolve: 'Versuchen zu lösen',
     temporarySystemIssue: 'Entschuldigung, vorübergehendes Systemproblem.',
+    expand: 'Erweitern',
+    collapse: 'Reduzieren',
+    chatSettingsTitle: 'Neues Chat-Setup',
+    newChatTip: 'Bereits in einem neuen Chat',
+    viewChatSettings: 'Chateinstellungen anzeigen',
+    chatFormTip: 'Chat-Einstellungen können nach Beginn des Chats nicht mehr geändert werden.',
   },
   generation: {
     tabs: {
@@ -68,6 +74,8 @@ const translation = {
       moreThanMaxLengthLine: 'Zeile {{rowIndex}}: {{varName}} Wert darf nicht mehr als {{maxLength}} Zeichen sein',
       atLeastOne: 'Bitte geben Sie mindestens eine Zeile in die hochgeladene Datei ein.',
     },
+    executions: '{{num}} HINRICHTUNGEN',
+    execution: 'AUSFÜHRUNG',
   },
 }
 

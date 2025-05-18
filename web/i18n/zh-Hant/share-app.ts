@@ -26,6 +26,12 @@ const translation = {
     },
     tryToSolve: '嘗試解決',
     temporarySystemIssue: '抱歉，臨時系統問題。',
+    expand: '展開',
+    collapse: '摺疊',
+    newChatTip: '已經在一個新聊天中',
+    chatSettingsTitle: '新的聊天設置',
+    chatFormTip: '聊天設定在聊天開始後無法修改。',
+    viewChatSettings: '查看聊天設定',
   },
   generation: {
     tabs: {
@@ -64,6 +70,8 @@ const translation = {
       moreThanMaxLengthLine: '第 {{rowIndex}} 行: {{varName}}值超過最大長度 {{maxLength}}',
       atLeastOne: '上傳檔案的內容不能少於一條',
     },
+    execution: '執行',
+    executions: '{{num}} 執行',
   },
 }
 

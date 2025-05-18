@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'Tìm hiểu thêm',
       description: ' về phương pháp truy xuất.',
       longDescription: ' về phương pháp truy xuất. Bạn có thể thay đổi điều này bất kỳ lúc nào trong cài đặt Kiến thức.',
+      method: 'Phương pháp truy xuất',
     },
     save: 'Lưu',
     permissionsInvitedMembers: 'Thành viên một phần trong nhóm',

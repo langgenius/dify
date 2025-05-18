@@ -27,6 +27,12 @@ const translation = {
     },
     tryToSolve: 'Poskusite rešiti',
     temporarySystemIssue: 'Oprostite, začasna težava s sistemom.',
+    expand: 'Razširi',
+    collapse: 'Skrči',
+    newChatTip: 'Že v novem klepetu',
+    viewChatSettings: 'Ogled nastavitve klepeta',
+    chatSettingsTitle: 'Nova nastavitev klepeta',
+    chatFormTip: 'Nastavitve klepeta ni mogoče spremeniti po začetku klepeta.',
   },
   generation: {
     tabs: {
@@ -65,6 +71,8 @@ const translation = {
       moreThanMaxLengthLine: 'Vrstica {{rowIndex}}: vrednost {{varName}} ne sme biti daljša od {{maxLength}} znakov',
       atLeastOne: 'Prosimo, vnesite vsaj eno vrstico v naloženo datoteko.',
     },
+    execution: 'IZVEDBA',
+    executions: '{{num}} IZVRŠITEV',
   },
 }
 
