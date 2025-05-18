@@ -204,18 +204,18 @@ class AccountService:
         is_setup: Optional[bool] = False,
     ) -> Account:
         """create account"""
-        if not FeatureService.get_system_features().is_allow_register and not is_setup:
-            from controllers.console.error import AccountNotFound
+        # if not FeatureService.get_system_features().is_allow_register and not is_setup:
+        #     from controllers.console.error import AccountNotFound
 
-            raise AccountNotFound()
+        #     raise AccountNotFound()
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
-            raise AccountRegisterError(
-                description=(
-                    "This email account has been deleted within the past "
-                    "30 days and is temporarily unavailable for new account registration"
-                )
-            )
+        # if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(email):
+        #     raise AccountRegisterError(
+        #         description=(
+        #             "This email account has been deleted within the past "
+        #             "30 days and is temporarily unavailable for new account registration"
+        #         )
+        #     )
 
         account = Account()
         account.email = email
@@ -407,8 +407,10 @@ class AccountService:
 
             raise PasswordResetRateLimitExceededError()
 
-        code, token = cls.generate_reset_password_token(account_email, account)
-
+        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        token = TokenManager.generate_token(
+            account=account, email=email, token_type="reset_password", additional_data={"code": code}
+        )
         send_reset_password_mail_task.delay(
             language=language,
             to=account_email,
@@ -416,22 +418,6 @@ class AccountService:
         )
         cls.reset_password_rate_limiter.increment_rate_limit(account_email)
         return token
-
-    @classmethod
-    def generate_reset_password_token(
-        cls,
-        email: str,
-        account: Optional[Account] = None,
-        code: Optional[str] = None,
-        additional_data: dict[str, Any] = {},
-    ):
-        if not code:
-            code = "".join([str(random.randint(0, 9)) for _ in range(6)])
-        additional_data["code"] = code
-        token = TokenManager.generate_token(
-            account=account, email=email, token_type="reset_password", additional_data=additional_data
-        )
-        return code, token
 
     @classmethod
     def revoke_reset_password_token(cls, token: str):
@@ -589,14 +575,14 @@ class TenantService:
     @staticmethod
     def create_tenant(name: str, is_setup: Optional[bool] = False, is_from_dashboard: Optional[bool] = False) -> Tenant:
         """Create tenant"""
-        if (
-            not FeatureService.get_system_features().is_allow_create_workspace
-            and not is_setup
-            and not is_from_dashboard
-        ):
-            from controllers.console.error import NotAllowedCreateWorkspace
+        # if (
+        #     not FeatureService.get_system_features().is_allow_create_workspace
+        #     and not is_setup
+        #     and not is_from_dashboard
+        # ):
+        #     from controllers.console.error import NotAllowedCreateWorkspace
 
-            raise NotAllowedCreateWorkspace()
+        #     raise NotAllowedCreateWorkspace()
         tenant = Tenant(name=name)
 
         db.session.add(tenant)
@@ -619,11 +605,18 @@ class TenantService:
             return
 
         """Create owner tenant if not exist"""
-        if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
-            raise WorkSpaceNotAllowedCreateError()
+        # if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
+        #     raise WorkSpaceNotAllowedCreateError()
+        
+        # TODO 需要补充逻辑，根据用户的机构id，寻找是否已经创建了tenant，如果有，则将用户加入该tanent，如果没有，先创建tanent，再将用户加入tanent
+        # 当前将用户全部加进一个默认tanent
+        
+        name = "教育大模型应用空间"
 
         if name:
-            tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
+            tenant = TenantService.get_tenant_by_name(name)
+            if tenant is None:
+                tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
         else:
             tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup)
         TenantService.create_tenant_member(tenant, account, role="owner")
@@ -834,6 +827,11 @@ class TenantService:
         db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id).delete()
         db.session.delete(tenant)
         db.session.commit()
+
+    @staticmethod
+    def get_tenant_by_name(name: str) -> Optional[Tenant]:
+        """Get tenant by name"""
+        return db.session.query(Tenant).filter(Tenant.name == name).first()
 
     @staticmethod
     def get_custom_config(tenant_id: str) -> dict:

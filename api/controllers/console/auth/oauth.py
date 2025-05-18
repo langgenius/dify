@@ -1,4 +1,6 @@
 import logging
+import time
+import hashlib
 from datetime import UTC, datetime
 from typing import Optional
 
@@ -14,7 +16,7 @@ from constants.languages import languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import extract_remote_ip
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
+from libs.oauth import DigitalBaseOAuth, GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
@@ -24,6 +26,11 @@ from services.feature_service import FeatureService
 
 from .. import api
 
+BASE_OAUTH_CLIENT_ID="4e2c105294fe46a1862a273ea54f469c"
+BASE_OAUTH_CLIENT_SECRET="02f551ecffb244c69f10eb792f37c3c71cbbcc97c43c5a83240416a6f7a0cec1c4"
+BASE_OAUTH_URL="http://192.168.0.215:9002/schoolbase"
+DIFY_WEB_URL="http://120.46.81.72:1349/apps"
+DIFY_WEB_KB_URL="http://120.46.81.72:1349/datasets"
 
 def get_oauth_providers():
     with current_app.app_context():
@@ -44,7 +51,22 @@ def get_oauth_providers():
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
             )
 
-        OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
+        # if not dify_config.DIGITAL_BASE_CLIENT_ID or not dify_config.DIGITAL_BASE_CLIENT_SECRET or not dify_config.DIGITAL_BASE_URL:
+        #     digital_base_oauth = None
+        # else:
+        #     digital_base_oauth = DigitalBaseOAuth(
+        #         client_id=dify_config.DIGITAL_BASE_CLIENT_ID,
+        #         client_secret=dify_config.DIGITAL_BASE_CLIENT_SECRET,
+        #         redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/digitalbase",
+        #         base_url=dify_config.DIGITAL_BASE_URL,
+        #     )
+        digital_base_oauth = DigitalBaseOAuth(
+            client_id=BASE_OAUTH_CLIENT_ID,
+            client_secret=BASE_OAUTH_CLIENT_SECRET,
+            redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/digitalbase",
+            base_url=BASE_OAUTH_URL,
+        )
+        OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth, "digitalbase": digital_base_oauth}
         return OAUTH_PROVIDERS
 
 
@@ -67,6 +89,7 @@ class OAuthCallback(Resource):
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
         if not oauth_provider:
+            logging.error(f"无效的认证提供方: {provider}")
             return {"error": "Invalid provider"}, 400
 
         code = request.args.get("code")
@@ -80,7 +103,7 @@ class OAuthCallback(Resource):
             user_info = oauth_provider.get_user_info(token)
         except requests.exceptions.RequestException as e:
             error_text = e.response.text if e.response else str(e)
-            logging.exception(f"An error occurred during the OAuth process with {provider}: {error_text}")
+            logging.exception(f"OAuth认证过程中发生错误，认证提供方: {provider}，错误信息: {error_text}")
             return {"error": "OAuth process failed"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
@@ -127,9 +150,18 @@ class OAuthCallback(Resource):
             account=account,
             ip_address=extract_remote_ip(request),
         )
+        
+        kb = request.args.get("kb")
+        if kb:
+            return redirect(
+            # f"{dify_config.CONSOLE_WEB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
+            f"{DIFY_WEB_KB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
+        )
+
 
         return redirect(
-            f"{dify_config.CONSOLE_WEB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
+            # f"{dify_config.CONSOLE_WEB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
+            f"{DIFY_WEB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
         )
 
 
@@ -150,7 +182,8 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     if account:
         tenant = TenantService.get_join_tenants(account)
         if not tenant:
-            if not FeatureService.get_system_features().is_allow_create_workspace:
+            # if not FeatureService.get_system_features().is_allow_create_workspace:
+            if tenant:
                 raise WorkSpaceNotAllowedCreateError()
             else:
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
@@ -159,8 +192,8 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
                 tenant_was_created.send(tenant)
 
     if not account:
-        if not FeatureService.get_system_features().is_allow_register:
-            raise AccountNotFoundError()
+        # if not FeatureService.get_system_features().is_allow_register:
+        #     raise AccountNotFoundError()
         account_name = user_info.name or "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider

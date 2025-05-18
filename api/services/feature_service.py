@@ -47,7 +47,7 @@ class FeatureModel(BaseModel):
     members: LimitationModel = LimitationModel(size=0, limit=1)
     apps: LimitationModel = LimitationModel(size=0, limit=10)
     vector_space: LimitationModel = LimitationModel(size=0, limit=5)
-    knowledge_rate_limit: int = 10
+    knowledge_rate_limit: int = 100
     annotation_quota_limit: LimitationModel = LimitationModel(size=0, limit=10)
     documents_upload_quota: LimitationModel = LimitationModel(size=0, limit=50)
     docs_processing: str = "standard"
@@ -66,18 +66,18 @@ class KnowledgeRateLimitModel(BaseModel):
 
 
 class SystemFeatureModel(BaseModel):
-    sso_enforced_for_signin: bool = False
-    sso_enforced_for_signin_protocol: str = ""
+    sso_enforced_for_signin: bool = True
+    sso_enforced_for_signin_protocol: str = "oauth2"
     sso_enforced_for_web: bool = False
-    sso_enforced_for_web_protocol: str = ""
+    sso_enforced_for_web_protocol: str = "oauth2"
     enable_web_sso_switch_component: bool = False
     enable_marketplace: bool = False
     max_plugin_package_size: int = dify_config.PLUGIN_MAX_PACKAGE_SIZE
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
-    enable_social_oauth_login: bool = False
+    enable_social_oauth_login: bool = True
     is_allow_register: bool = False
-    is_allow_create_workspace: bool = False
+    is_allow_create_workspace: bool = True
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
 
@@ -100,7 +100,7 @@ class FeatureService:
         if dify_config.BILLING_ENABLED and tenant_id:
             knowledge_rate_limit.enabled = True
             limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
-            knowledge_rate_limit.limit = limit_info.get("limit", 10)
+            knowledge_rate_limit.limit = limit_info.get("limit", 100)
             knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", "sandbox")
         return knowledge_rate_limit
 
@@ -110,10 +110,10 @@ class FeatureService:
 
         cls._fulfill_system_params_from_env(system_features)
 
-        if dify_config.ENTERPRISE_ENABLED:
-            system_features.enable_web_sso_switch_component = True
+        # if dify_config.ENTERPRISE_ENABLED:
+        #     system_features.enable_web_sso_switch_component = True
 
-            cls._fulfill_params_from_enterprise(system_features)
+        #     cls._fulfill_params_from_enterprise(system_features)
 
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
@@ -124,9 +124,11 @@ class FeatureService:
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
-        system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
+        # system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
+        system_features.enable_social_oauth_login = True
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
-        system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
+        # system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
+        system_features.is_allow_create_workspace = True
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
 
     @classmethod
@@ -134,7 +136,7 @@ class FeatureService:
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
         features.dataset_operator_enabled = dify_config.DATASET_OPERATOR_ENABLED
-        features.education.enabled = dify_config.EDUCATION_ENABLED
+        # features.education.enabled = dify_config.EDUCATION_ENABLED
 
     @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
@@ -181,35 +183,35 @@ class FeatureService:
     def _fulfill_params_from_enterprise(cls, features):
         enterprise_info = EnterpriseService.get_info()
 
-        if "sso_enforced_for_signin" in enterprise_info:
-            features.sso_enforced_for_signin = enterprise_info["sso_enforced_for_signin"]
+        # if "sso_enforced_for_signin" in enterprise_info:
+        #     features.sso_enforced_for_signin = enterprise_info["sso_enforced_for_signin"]
 
-        if "sso_enforced_for_signin_protocol" in enterprise_info:
-            features.sso_enforced_for_signin_protocol = enterprise_info["sso_enforced_for_signin_protocol"]
+        # if "sso_enforced_for_signin_protocol" in enterprise_info:
+        #     features.sso_enforced_for_signin_protocol = enterprise_info["sso_enforced_for_signin_protocol"]
 
-        if "sso_enforced_for_web" in enterprise_info:
-            features.sso_enforced_for_web = enterprise_info["sso_enforced_for_web"]
+        # if "sso_enforced_for_web" in enterprise_info:
+        #     features.sso_enforced_for_web = enterprise_info["sso_enforced_for_web"]
 
-        if "sso_enforced_for_web_protocol" in enterprise_info:
-            features.sso_enforced_for_web_protocol = enterprise_info["sso_enforced_for_web_protocol"]
+        # if "sso_enforced_for_web_protocol" in enterprise_info:
+        #     features.sso_enforced_for_web_protocol = enterprise_info["sso_enforced_for_web_protocol"]
 
-        if "enable_email_code_login" in enterprise_info:
-            features.enable_email_code_login = enterprise_info["enable_email_code_login"]
+        # if "enable_email_code_login" in enterprise_info:
+        #     features.enable_email_code_login = enterprise_info["enable_email_code_login"]
 
-        if "enable_email_password_login" in enterprise_info:
-            features.enable_email_password_login = enterprise_info["enable_email_password_login"]
+        # if "enable_email_password_login" in enterprise_info:
+        #     features.enable_email_password_login = enterprise_info["enable_email_password_login"]
 
-        if "is_allow_register" in enterprise_info:
-            features.is_allow_register = enterprise_info["is_allow_register"]
+        # if "is_allow_register" in enterprise_info:
+        #     features.is_allow_register = enterprise_info["is_allow_register"]
 
-        if "is_allow_create_workspace" in enterprise_info:
-            features.is_allow_create_workspace = enterprise_info["is_allow_create_workspace"]
+        # if "is_allow_create_workspace" in enterprise_info:
+        #     features.is_allow_create_workspace = enterprise_info["is_allow_create_workspace"]
 
-        if "license" in enterprise_info:
-            license_info = enterprise_info["license"]
+        # if "license" in enterprise_info:
+        #     license_info = enterprise_info["license"]
 
-            if "status" in license_info:
-                features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
+        #     if "status" in license_info:
+        #         features.license.status = LicenseStatus(license_info.get("status", LicenseStatus.INACTIVE))
 
-            if "expired_at" in license_info:
-                features.license.expired_at = license_info["expired_at"]
+        #     if "expired_at" in license_info:
+        #         features.license.expired_at = license_info["expired_at"]

@@ -20,6 +20,7 @@ def download_plugin_pkg(plugin_unique_identifier: str):
 
 
 def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplacePluginDeclaration]:
+    return []
     if len(plugin_ids) == 0:
         return []
 
