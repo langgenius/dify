@@ -26,7 +26,7 @@ class TokenBufferMemory:
         self.model_instance = model_instance
 
     def get_history_prompt_messages(
-        self, max_token_limit: int = 100000, message_limit: Optional[int] = None
+        self, max_token_limit: int = 2000, message_limit: Optional[int] = None
     ) -> Sequence[PromptMessage]:
         """
         Get history prompt messages.
