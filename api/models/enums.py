@@ -18,6 +18,6 @@ class WorkflowRunTriggeredFrom(StrEnum):
 
 class DraftVariableType(StrEnum):
     # node means that the correspond variable
-    node = "node"
-    sys = "sys"
-    conversation = "conversation"
+    NODE = "node"
+    SYS = "sys"
+    CONVERSATION = "conversation"

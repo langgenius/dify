@@ -918,19 +918,19 @@ class WorkflowDraftVariable(Base):
         self.value_type = value.value_type
 
     def get_node_id(self) -> str | None:
-        if self.get_variable_type() == DraftVariableType.node:
+        if self.get_variable_type() == DraftVariableType.NODE:
             return self.node_id
         else:
             return None
 
     def get_variable_type(self) -> DraftVariableType:
         match self.node_id:
-            case DraftVariableType.conversation:
-                return DraftVariableType.conversation
-            case DraftVariableType.sys:
-                return DraftVariableType.sys
+            case DraftVariableType.CONVERSATION:
+                return DraftVariableType.CONVERSATION
+            case DraftVariableType.SYS:
+                return DraftVariableType.SYS
             case _:
-                return DraftVariableType.node
+                return DraftVariableType.NODE
 
     @classmethod
     def _create(
