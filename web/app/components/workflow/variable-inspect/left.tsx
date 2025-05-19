@@ -64,7 +64,7 @@ const Left = ({
           />
         )}
         {/* group SYSTEM VAR */}
-        {conversationVars.length > 0 && (
+        {systemVars.length > 0 && (
           <Group
             varType={VarInInspectType.system}
             varList={systemVars}
