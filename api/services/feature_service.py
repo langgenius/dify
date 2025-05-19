@@ -40,6 +40,7 @@ class LicenseModel(BaseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
 
+
 class PluginInstallationPermissionModel(BaseModel):
     # Plugin installation scope – possible values:
     #   PLUGIN_INSTALLATION_SCOPE_NONE: prohibit all plugin installations
@@ -50,6 +51,7 @@ class PluginInstallationPermissionModel(BaseModel):
 
     # If True, restrict plugin installation to the marketplace only
     restrict_to_marketplace_only: bool = False
+
 
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
@@ -227,5 +229,9 @@ class FeatureService:
 
         if "plugin_installation_permission" in enterprise_info:
             plugin_installation_info = enterprise_info["plugin_installation_permission"]
-            features.pluign_installation_permission.pluign_installation_scope = plugin_installation_info["pluign_installation_scope"]
-            features.pluign_installation_permission.restrict_to_marketplace_only = plugin_installation_info["restrict_to_marketplace_only"]
+            features.pluign_installation_permission.pluign_installation_scope = plugin_installation_info[
+                "pluign_installation_scope"
+            ]
+            features.pluign_installation_permission.restrict_to_marketplace_only = plugin_installation_info[
+                "restrict_to_marketplace_only"
+            ]
