@@ -933,7 +933,7 @@ class WorkflowDraftVariable(Base):
                 return DraftVariableType.NODE
 
     @classmethod
-    def _create(
+    def _new(
         cls,
         *,
         app_id: str,
@@ -955,14 +955,14 @@ class WorkflowDraftVariable(Base):
         return variable
 
     @classmethod
-    def create_conversation_variable(
+    def new_conversation_variable(
         cls,
         *,
         app_id: str,
         name: str,
         value: Segment,
     ) -> "WorkflowDraftVariable":
-        variable = cls._create(
+        variable = cls._new(
             app_id=app_id,
             node_id=CONVERSATION_VARIABLE_NODE_ID,
             name=name,
@@ -971,7 +971,7 @@ class WorkflowDraftVariable(Base):
         return variable
 
     @classmethod
-    def create_sys_variable(
+    def new_sys_variable(
         cls,
         *,
         app_id: str,
@@ -979,12 +979,12 @@ class WorkflowDraftVariable(Base):
         value: Segment,
         editable: bool = False,
     ) -> "WorkflowDraftVariable":
-        variable = cls._create(app_id=app_id, node_id=SYSTEM_VARIABLE_NODE_ID, name=name, value=value)
+        variable = cls._new(app_id=app_id, node_id=SYSTEM_VARIABLE_NODE_ID, name=name, value=value)
         variable.editable = editable
         return variable
 
     @classmethod
-    def create_node_variable(
+    def new_node_variable(
         cls,
         *,
         app_id: str,
@@ -993,7 +993,7 @@ class WorkflowDraftVariable(Base):
         value: Segment,
         visible: bool = True,
     ) -> "WorkflowDraftVariable":
-        variable = cls._create(app_id=app_id, node_id=node_id, name=name, value=value)
+        variable = cls._new(app_id=app_id, node_id=node_id, name=name, value=value)
         variable.visible = visible
         variable.editable = True
         return variable
