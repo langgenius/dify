@@ -97,7 +97,6 @@
     "qrcode.react": "^4.2.0",
     "qs": "^6.13.0",
     "react": "19.0.0",
-    "rc-textarea": "^1.5.2",
     "react-18-input-autosize": "^3.0.0",
     "react-dom": "19.0.0",
     "react-easy-crop": "^5.1.0",
