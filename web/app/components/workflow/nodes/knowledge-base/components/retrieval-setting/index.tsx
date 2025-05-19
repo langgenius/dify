@@ -1,6 +1,7 @@
 import {
   memo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import type {
   HybridSearchModeEnum,
@@ -22,6 +23,8 @@ type RetrievalSettingProps = {
   onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
   hybridSearchMode: HybridSearchModeEnum
   onHybridSearchModeChange: (value: HybridSearchModeEnum) => void
+  rerankingModelEnabled?: boolean
+  onRerankingModelEnabledChange?: (value: boolean) => void
   weightedScore?: WeightedScore
   onWeightedScoreChange: (value: { value: number[] }) => void
 } & RerankingModelSelectorProps & TopKAndScoreThresholdProps
@@ -35,6 +38,8 @@ const RetrievalSetting = ({
   onHybridSearchModeChange,
   weightedScore,
   onWeightedScoreChange,
+  rerankingModelEnabled,
+  onRerankingModelEnabledChange,
   rerankingModel,
   onRerankingModelChange,
   topK,
@@ -44,6 +49,7 @@ const RetrievalSetting = ({
   isScoreThresholdEnabled,
   onScoreThresholdEnabledChange,
 }: RetrievalSettingProps) => {
+  const { t } = useTranslation()
   const {
     options,
     hybridSearchModeOptions,
@@ -52,16 +58,10 @@ const RetrievalSetting = ({
   return (
     <Field
       fieldTitleProps={{
-        title: 'Retrieval Setting',
+        title: t('datasetSettings.form.retrievalSetting.title'),
         subTitle: (
           <div className='body-xs-regular flex items-center text-text-tertiary'>
-            <a
-              href=''
-              className='text-text-accent'
-              target='_blank'
-            >
-              Learn more
-            </a>
+            <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
             &nbsp;
             about retrieval method.
           </div>
@@ -87,6 +87,8 @@ const RetrievalSetting = ({
               onScoreThresholdChange={onScoreThresholdChange}
               isScoreThresholdEnabled={isScoreThresholdEnabled}
               onScoreThresholdEnabledChange={onScoreThresholdEnabledChange}
+              rerankingModelEnabled={rerankingModelEnabled}
+              onRerankingModelEnabledChange={onRerankingModelEnabledChange}
               rerankingModel={rerankingModel}
               onRerankingModelChange={onRerankingModelChange}
               readonly={readonly}

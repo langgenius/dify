@@ -2,6 +2,7 @@ import {
   memo,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -23,30 +24,31 @@ const EmbeddingModel = ({
   onEmbeddingModelChange,
   readonly = false,
 }: EmbeddingModelProps) => {
+  const { t } = useTranslation()
   const {
     modelList: embeddingModelList,
   } = useModelListAndDefaultModel(ModelTypeEnum.textEmbedding)
-const embeddingModelConfig = useMemo(() => {
-  if (!embeddingModel || !embeddingModelProvider)
-    return undefined
+  const embeddingModelConfig = useMemo(() => {
+    if (!embeddingModel || !embeddingModelProvider)
+      return undefined
 
-  return {
-    providerName: embeddingModelProvider,
-    modelName: embeddingModel,
+    return {
+      providerName: embeddingModelProvider,
+      modelName: embeddingModel,
+    }
+  }, [embeddingModel, embeddingModelProvider])
+
+  const handleRerankingModelChange = (model: DefaultModel) => {
+    onEmbeddingModelChange?.({
+      embeddingModelProvider: model.provider,
+      embeddingModel: model.model,
+    })
   }
-}, [embeddingModel, embeddingModelProvider])
-
-const handleRerankingModelChange = (model: DefaultModel) => {
-  onEmbeddingModelChange?.({
-    embeddingModelProvider: model.provider,
-    embeddingModel: model.model,
-  })
-}
 
   return (
     <Field
       fieldTitleProps={{
-        title: 'Embedding Model',
+        title: t('datasetSettings.form.embeddingModel'),
       }}
     >
       <ModelSelector

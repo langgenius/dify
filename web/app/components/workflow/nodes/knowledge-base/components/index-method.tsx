@@ -52,7 +52,7 @@ const IndexMethod = ({
   return (
     <Field
       fieldTitleProps={{
-        title: 'Index method',
+        title: t('datasetCreation.stepTwo.indexMode'),
       }}
     >
       <div className='space-y-1'>
