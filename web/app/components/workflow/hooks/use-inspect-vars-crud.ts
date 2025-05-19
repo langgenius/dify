@@ -1,6 +1,7 @@
 import { fetchNodeInspectVars } from '@/service/workflow'
 import { useStore, useWorkflowStore } from '../store'
 import type { ValueSelector } from '../types'
+import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import {
   useConversationVarValues,
@@ -14,6 +15,7 @@ import {
   useSysVarValues,
 } from '@/service/use-workflow'
 import { useCallback, useEffect, useState } from 'react'
+import { isConversationVar, isENV, isSystemVar } from '../nodes/_base/components/variable/utils'
 
 const useInspectVarsCrud = () => {
   const workflowStore = useWorkflowStore()
@@ -22,12 +24,10 @@ const useInspectVarsCrud = () => {
     appId,
     setNodeInspectVars,
     setInspectVarValue,
-    getVarId,
     renameInspectVarName: renameInspectVarNameInStore,
     deleteAllInspectVars: deleteAllInspectVarsInStore,
     deleteNodeInspectVars: deleteNodeInspectVarsInStore,
     deleteInspectVar: deleteInspectVarInStore,
-    isInspectVarEdited,
   } = workflowStore.getState()
 
   const { data: conversationVars } = useConversationVarValues(appId)
@@ -45,6 +45,40 @@ const useInspectVarsCrud = () => {
     const node = nodesWithInspectVars.find(node => node.nodeId === nodeId)
     return node
   }, [nodesWithInspectVars])
+
+  const getVarId = useCallback((nodeId: string, varName: string) => {
+    const node = getNodeInspectVars(nodeId)
+    if (!node)
+      return undefined
+    const varId = node.vars.find((varItem) => {
+        return varItem.selector[1] === varName
+      })?.id
+      return varId
+  }, [getNodeInspectVars])
+
+  const getInspectVar = useCallback((nodeId: string, name: string) => {
+    const node = getNodeInspectVars(nodeId)
+      if (!node)
+        return undefined
+
+      const variable = node.vars.find((varItem) => {
+        return varItem.selector[1] === name
+      })?.value
+      return variable
+  }, [getNodeInspectVars])
+
+  const hasSetInspectVar = useCallback((nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => {
+      const isEnv = isENV([nodeId])
+      if (isEnv) // always have value
+        return true
+      const isSys = isSystemVar([nodeId])
+      if (isSys)
+        return sysVars.some(varItem => varItem.selector?.[1] === name)
+      const isChatVar = isConversationVar([nodeId])
+      if (isChatVar)
+        return conversationVars.some(varItem => varItem.selector?.[1] === name)
+      return getInspectVar(nodeId, name) !== undefined
+  }, [getInspectVar])
 
   const hasNodeInspectVars = useCallback((nodeId: string) => {
     return !!getNodeInspectVars(nodeId)
@@ -129,6 +163,14 @@ const useInspectVarsCrud = () => {
     renameInspectVarNameInStore(nodeId, varId, newSelector)
   }
 
+  const isInspectVarEdited = useCallback((nodeId: string, name: string) => {
+    const inspectVar = getInspectVar(nodeId, name)
+      if (!inspectVar)
+        return false
+
+      return inspectVar.edited
+  }, [getInspectVar])
+
   const resetToLastRunVar = (nodeId: string, varId: string) => {
     setCurrNodeId(nodeId)
     setCurrEditVarId(varId)
@@ -139,6 +181,7 @@ const useInspectVarsCrud = () => {
     systemVars: systemVars || [],
     nodesWithInspectVars,
     hasNodeInspectVars,
+    hasSetInspectVar,
     fetchInspectVarValue,
     editInspectVarValue,
     renameInspectVarName,

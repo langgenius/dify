@@ -2,7 +2,6 @@ import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-s
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { useCallback, useState } from 'react'
 import { TabType } from '../tab'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import useStartSingleRunFormParams from '@/app/components/workflow/nodes/start/use-single-run-form-params'
 import useLLMSingleRunFormParams from '@/app/components/workflow/nodes/llm/use-single-run-form-params'
@@ -19,7 +18,6 @@ import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/
 import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use-single-run-form-params'
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
-
 import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
 
 // import
@@ -102,7 +100,7 @@ type Params<T> = OneStepRunParams<T>
 const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
-  const { conversationVars, systemVars } = useInspectVarsCrud()
+  const { conversationVars, systemVars, hasSetInspectVar } = useInspectVarsCrud()
   const blockType = oneStepRunParams.data.type
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
@@ -166,10 +164,6 @@ const useLastRun = <T>({
     setTabType(type)
   }, [])
 
-  const workflowStore = useWorkflowStore()
-  const {
-    hasSetInspectVar,
-  } = workflowStore.getState()
   const getExistVarValuesInForms = (forms: FormProps[]) => {
     if (!forms || forms.length === 0)
       return []
