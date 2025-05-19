@@ -70,6 +70,7 @@ def init_app(app: DifyApp) -> Celery:
         "schedule.update_tidb_serverless_status_task",
         "schedule.clean_messages",
         "schedule.mail_clean_document_notify_task",
+        "schedule.check_upgradable_plugin_task",
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
     beat_schedule = {
@@ -97,6 +98,11 @@ def init_app(app: DifyApp) -> Celery:
         "mail_clean_document_notify_task": {
             "task": "schedule.mail_clean_document_notify_task.mail_clean_document_notify_task",
             "schedule": crontab(minute="0", hour="10", day_of_week="1"),
+        },
+        # every 15 minutes
+        "check_upgradable_plugin_task": {
+            "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
+            "schedule": timedelta(minutes=15),
         },
     }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
