@@ -35,7 +35,12 @@ const ChunkStructure = ({
         ),
       }}
     >
-      <OptionCard {...optionMap[chunkStructure]} />
+      <OptionCard
+        {...optionMap[chunkStructure]}
+        selectedId={chunkStructure}
+        enableSelect={false}
+        enableHighlightBorder={false}
+      />
     </Field>
   )
 }

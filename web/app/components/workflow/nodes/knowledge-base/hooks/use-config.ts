@@ -4,10 +4,12 @@ import {
 import { useStoreApi } from 'reactflow'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import type { ValueSelector } from '@/app/components/workflow/types'
-import type {
+import {
   ChunkStructureEnum,
-  HybridSearchModeEnum,
   IndexMethodEnum,
+} from '../types'
+import type {
+  HybridSearchModeEnum,
   KnowledgeBaseNodeType,
   RerankingModel,
   RetrievalSearchMethodEnum,
@@ -32,8 +34,13 @@ export const useConfig = (id: string) => {
   }, [id, handleNodeDataUpdateWithSyncDraft])
 
   const handleChunkStructureChange = useCallback((chunkStructure: ChunkStructureEnum) => {
-    handleNodeDataUpdate({ chunk_structure: chunkStructure })
-  }, [handleNodeDataUpdate])
+    const nodeData = getNodeData()
+    const { indexing_technique } = nodeData?.data
+    handleNodeDataUpdate({
+      chunk_structure: chunkStructure,
+      indexing_technique: chunkStructure === ChunkStructureEnum.parent_child ? IndexMethodEnum.QUALIFIED : indexing_technique,
+    })
+  }, [handleNodeDataUpdate, getNodeData])
 
   const handleIndexMethodChange = useCallback((indexMethod: IndexMethodEnum) => {
     handleNodeDataUpdate({ indexing_technique: indexMethod })

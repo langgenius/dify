@@ -6,6 +6,7 @@ import {
 } from '@/app/components/base/icons/src/vender/knowledge'
 import {
   HybridSearchModeEnum,
+  IndexMethodEnum,
   RetrievalSearchMethodEnum,
 } from '../../types'
 import type {
@@ -13,7 +14,7 @@ import type {
   Option,
 } from './type'
 
-export const useRetrievalSetting = () => {
+export const useRetrievalSetting = (indexMethod: IndexMethodEnum) => {
   const VectorSearchOption: Option = useMemo(() => {
     return {
       id: RetrievalSearchMethodEnum.semantic,
@@ -41,6 +42,15 @@ export const useRetrievalSetting = () => {
       effectColor: 'purple',
     }
   }, [])
+  const InvertedIndexOption: Option = useMemo(() => {
+    return {
+      id: RetrievalSearchMethodEnum.invertedIndex,
+      icon: HybridSearch as any,
+      title: 'Inverted Index',
+      description: 'Use inverted index to search for the most relevant text chunks.',
+      effectColor: 'purple',
+    }
+  }, [])
 
   const WeightedScoreModeOption: HybridSearchModeOption = useMemo(() => {
     return {
@@ -58,7 +68,9 @@ export const useRetrievalSetting = () => {
   }, [])
 
   return useMemo(() => ({
-    options: [
+    options: indexMethod === IndexMethodEnum.ECONOMICAL ? [
+      InvertedIndexOption,
+    ] : [
       VectorSearchOption,
       FullTextSearchOption,
       HybridSearchOption,
@@ -71,6 +83,8 @@ export const useRetrievalSetting = () => {
     VectorSearchOption,
     FullTextSearchOption,
     HybridSearchOption,
+    InvertedIndexOption,
+    indexMethod,
     WeightedScoreModeOption,
     RerankModelModeOption,
   ])

@@ -63,6 +63,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
       <GroupWithBox>
         <div className='space-y-3'>
           <IndexMethod
+            chunkStructure={data.chunk_structure}
             indexMethod={data.indexing_technique}
             onIndexMethodChange={handleIndexMethodChange}
             keywordNumber={data.keyword_number}
@@ -83,6 +84,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
             <Split className='h-[1px]' />
           </div>
           <RetrievalSetting
+            indexMethod={data.indexing_technique}
             searchMethod={data.retrieval_model.search_method}
             onRetrievalSearchMethodChange={handleRetrievalSearchMethodChange}
             hybridSearchMode={data.retrieval_model.hybridSearchMode}
