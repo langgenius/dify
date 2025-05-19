@@ -815,17 +815,16 @@ def _naive_utc_datetime():
 
 
 class WorkflowDraftVariable(Base):
-    UNIQUE_INDEX_APP_ID_NODE_ID_NAME = "workflow_draft_variables_app_id_key"
-
-    __tablename__ = "workflow_draft_variables"
-    __table_args__ = (
-        UniqueConstraint(
+    @staticmethod
+    def unique_columns() -> list[str]:
+        return [
             "app_id",
             "node_id",
             "name",
-            name=UNIQUE_INDEX_APP_ID_NODE_ID_NAME,
-        ),
-    )
+        ]
+
+    __tablename__ = "workflow_draft_variables"
+    __table_args__ = (UniqueConstraint(*unique_columns()),)
 
     # id is the unique identifier of a draft variable.
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))

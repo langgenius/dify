@@ -35,7 +35,7 @@ def upgrade():
         sa.Column("value", sa.Text(), nullable=False),
         sa.Column("visible", sa.Boolean(), nullable=False),
         sa.Column("editable", sa.Boolean(), nullable=False),
-        sa.PrimaryKeyConstraint("id", name="workflow_draft_variables_pkey"),
+        sa.PrimaryKeyConstraint("id", name=op.f("workflow_draft_variables_pkey")),
         sa.UniqueConstraint("app_id", "node_id", "name", name=op.f("workflow_draft_variables_app_id_key")),
     )
 
