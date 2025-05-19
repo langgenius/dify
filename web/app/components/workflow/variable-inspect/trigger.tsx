@@ -35,7 +35,7 @@ const VariableInspectTrigger: FC = () => {
   const currentVars = useMemo(() => {
     const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
     return allVars
-  }, [conversationVars, systemVars, nodesWithInspectVars])
+  }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   // ##TODD stop handle
 

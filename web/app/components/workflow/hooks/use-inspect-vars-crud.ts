@@ -47,7 +47,6 @@ const useInspectVarsCrud = () => {
     const nodeId = selector[0]
     const isSystemVar = nodeId === 'sys'
     const isConversationVar = nodeId === 'conversation'
-    console.log(nodeId, isSystemVar, isConversationVar)
     if (isSystemVar) {
       invalidateSysVarValues()
       return

@@ -71,17 +71,24 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
         }
       })
     },
+    // after last run would call this
     appendNodeInspectVars: (nodeId, payload, allNodes) => {
       set((state) => {
         const nodes = state.nodesWithInspectVars
         const nodeInfo = allNodes.find(node => node.id === nodeId)
         if (nodeInfo) {
-          nodes.push({
-            nodeId,
-            nodeType: nodeInfo.data.type,
-            title: nodeInfo.data.title,
-            vars: payload,
-          })
+          const index = nodes.findIndex(node => node.nodeId === nodeId)
+          if (index === -1) {
+            nodes.push({
+              nodeId,
+              nodeType: nodeInfo.data.type,
+              title: nodeInfo.data.title,
+              vars: payload,
+            })
+          }
+          else {
+            nodes[index].vars = payload
+          }
         }
         return {
           nodesWithInspectVars: nodes,

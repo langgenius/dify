@@ -44,7 +44,7 @@ import AddVariablePopupWithPosition from './components/add-variable-popup-with-p
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import Tooltip from '@/app/components/base/tooltip'
-import { useWorkflowStore } from '../../store'
+import { useStore } from '../../store'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -90,10 +90,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     }
   }, [data.isInLoop, data.selected, id, handleNodeLoopChildSizeChange])
 
-  const workflowStore = useWorkflowStore()
-  const {
-    hasNodeInspectVars,
-  } = workflowStore.getState()
+  const hasNodeInspectVars = useStore(s => s.hasNodeInspectVars)
   const hasVarValue = hasNodeInspectVars(id)
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const {
