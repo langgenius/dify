@@ -46,9 +46,9 @@ export const usePipelineInit = () => {
       setDraftUpdatedAt(res.updated_at)
       setToolPublished(res.tool_published)
       setEnvSecrets((res.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
-          acc[env.id] = env.value
-          return acc
-        }, {} as Record<string, string>))
+        acc[env.id] = env.value
+        return acc
+      }, {} as Record<string, string>))
       setEnvironmentVariables(res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
       setSyncWorkflowDraftHash(res.hash)
       setRagPipelineVariables?.(res.rag_pipeline_variables || [])

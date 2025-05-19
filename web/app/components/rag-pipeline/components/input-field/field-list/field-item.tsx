@@ -34,10 +34,10 @@ const FieldItem = ({
 
   return (
     <div
-      // ref={ref}
+      ref={ref}
       className={cn(
         'flex h-8 cursor-pointer items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pl-2 shadow-xs hover:shadow-sm',
-        (!isHovering || readonly) ? 'pr-2.5' : !readonly && 'pr-1',
+        (isHovering && !readonly) ? 'pr-1' : 'pr-2.5',
       )}
     >
       <div className='flex grow basis-0 items-center gap-x-1'>
@@ -64,16 +64,8 @@ const FieldItem = ({
           </>
         )}
       </div>
-      {(!isHovering || readonly)
+      {(isHovering && !readonly)
         ? (
-          <div className='flex shrink-0 items-center gap-x-2'>
-            {payload.required && (
-              <Badge>{t('workflow.nodes.start.required')}</Badge>
-            )}
-            <InputVarTypeIcon type={payload.type as unknown as InputVarType} className='h-3 w-3 text-text-tertiary' />
-          </div>
-        )
-        : (!readonly && (
           <div className='flex shrink-0 items-center gap-x-1'>
             <button
               type='button'
@@ -89,7 +81,15 @@ const FieldItem = ({
               <RiDeleteBinLine className='size-4 text-text-tertiary group-hover:text-text-destructive' />
             </button>
           </div>
-        ))
+        )
+        : (
+          <div className='flex shrink-0 items-center gap-x-2'>
+            {payload.required && (
+              <Badge>{t('workflow.nodes.start.required')}</Badge>
+            )}
+            <InputVarTypeIcon type={payload.type as unknown as InputVarType} className='h-3 w-3 text-text-tertiary' />
+          </div>
+        )
       }
     </div>
   )
