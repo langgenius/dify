@@ -16,6 +16,8 @@ import {
 } from '@/service/use-workflow'
 import { useCallback, useEffect, useState } from 'react'
 import { isConversationVar, isENV, isSystemVar } from '../nodes/_base/components/variable/utils'
+import produce from 'immer'
+import type { Node } from '@/app/components/workflow/types'
 
 const useInspectVarsCrud = () => {
   const workflowStore = useWorkflowStore()
@@ -28,6 +30,7 @@ const useInspectVarsCrud = () => {
     deleteAllInspectVars: deleteAllInspectVarsInStore,
     deleteNodeInspectVars: deleteNodeInspectVarsInStore,
     deleteInspectVar: deleteInspectVarInStore,
+    setNodesWithInspectVars,
   } = workflowStore.getState()
 
   const { data: conversationVars } = useConversationVarValues(appId)
@@ -98,6 +101,28 @@ const useInspectVarsCrud = () => {
     }
     const vars = await fetchNodeInspectVars(appId, nodeId)
     setNodeInspectVars(nodeId, vars)
+  }
+
+  // after last run would call this
+  const appendNodeInspectVars = (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => {
+    const nodes = produce(nodesWithInspectVars, (draft) => {
+      const nodeInfo = allNodes.find(node => node.id === nodeId)
+        if (nodeInfo) {
+          const index = draft.findIndex(node => node.nodeId === nodeId)
+          if (index === -1) {
+            draft.push({
+              nodeId,
+              nodeType: nodeInfo.data.type,
+              title: nodeInfo.data.title,
+              vars: payload,
+            })
+          }
+          else {
+            draft[index].vars = payload
+          }
+        }
+    })
+    setNodesWithInspectVars(nodes)
   }
 
   const deleteInspectVar = async (nodeId: string, varId: string) => {
@@ -184,6 +209,7 @@ const useInspectVarsCrud = () => {
     fetchInspectVarValue,
     editInspectVarValue,
     renameInspectVarName,
+    appendNodeInspectVars,
     deleteInspectVar,
     deleteNodeInspectorVars,
     deleteAllInspectorVars,

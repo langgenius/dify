@@ -73,8 +73,6 @@ const BasePanel: FC<BasePanelProps> = ({
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const otherPanelWidth = useStore(s => s.otherPanelWidth)
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
-  const nodesWithInspectVars = useStore(s => s.nodesWithInspectVars)
-  console.log(nodesWithInspectVars)
 
   const maxNodePanelWidth = useMemo(() => {
     if (!workflowCanvasWidth)

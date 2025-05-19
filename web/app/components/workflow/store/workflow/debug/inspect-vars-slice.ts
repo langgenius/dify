@@ -2,7 +2,6 @@ import type { StateCreator } from 'zustand'
 import produce from 'immer'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import type { ValueSelector } from '../../../types'
-import type { Node } from '@/app/components/workflow/types'
 
 type InspectVarsState = {
   currentFocusNodeId: string | null
@@ -15,7 +14,6 @@ type InspectVarsActions = {
   setNodesWithInspectVars: (payload: NodeWithVar[]) => void
   deleteAllInspectVars: () => void
   setNodeInspectVars: (nodeId: string, payload: VarInInspect[]) => void
-  appendNodeInspectVars: (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => void
   deleteNodeInspectVars: (nodeId: string) => void
   setInspectVarValue: (nodeId: string, name: string, value: any) => void
   renameInspectVarName: (nodeId: string, varId: string, selector: ValueSelector) => void
@@ -55,30 +53,6 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
           }
         })
 
-        return {
-          nodesWithInspectVars: nodes,
-        }
-      })
-    },
-    // after last run would call this
-    appendNodeInspectVars: (nodeId, payload, allNodes) => {
-      set((state) => {
-        const nodes = state.nodesWithInspectVars
-        const nodeInfo = allNodes.find(node => node.id === nodeId)
-        if (nodeInfo) {
-          const index = nodes.findIndex(node => node.nodeId === nodeId)
-          if (index === -1) {
-            nodes.push({
-              nodeId,
-              nodeType: nodeInfo.data.type,
-              title: nodeInfo.data.title,
-              vars: payload,
-            })
-          }
-          else {
-            nodes[index].vars = payload
-          }
-        }
         return {
           nodesWithInspectVars: nodes,
         }

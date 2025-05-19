@@ -90,8 +90,9 @@ const BaseNode: FC<BaseNodeProps> = ({
     }
   }, [data.isInLoop, data.selected, id, handleNodeLoopChildSizeChange])
 
-  const { hasNodeInspectVars } = useInspectVarsCrud()
-  const hasVarValue = useMemo(() => hasNodeInspectVars(id), [id, hasNodeInspectVars])
+  const { hasNodeInspectVars, nodesWithInspectVars } = useInspectVarsCrud()
+  // window.nodesWithInspectVars = nodesWithInspectVars
+  const hasVarValue = hasNodeInspectVars(id)
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const {
     showRunningBorder,
