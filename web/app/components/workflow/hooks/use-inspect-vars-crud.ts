@@ -20,13 +20,11 @@ const useInspectVarsCrud = () => {
   const nodesWithInspectVars = useStore(s => s.nodesWithInspectVars)
   const {
     appId,
-    getNodeInspectVars,
     setNodeInspectVars,
     setInspectVarValue,
     getVarId,
     renameInspectVarName: renameInspectVarNameInStore,
     deleteAllInspectVars: deleteAllInspectVarsInStore,
-    hasNodeInspectVars,
     deleteNodeInspectVars: deleteNodeInspectVarsInStore,
     deleteInspectVar: deleteInspectVarInStore,
     isInspectVarEdited,
@@ -42,6 +40,15 @@ const useInspectVarsCrud = () => {
   const { mutate: doDeleteInspectVar } = useDeleteInspectVar(appId)
 
   const { mutate: doEditInspectorVar } = useEditInspectorVar(appId)
+
+  const getNodeInspectVars = useCallback((nodeId: string) => {
+    const node = nodesWithInspectVars.find(node => node.nodeId === nodeId)
+    return node
+  }, [nodesWithInspectVars])
+
+  const hasNodeInspectVars = useCallback((nodeId: string) => {
+    return !!getNodeInspectVars(nodeId)
+  }, [getNodeInspectVars])
 
   const fetchInspectVarValue = async (selector: ValueSelector) => {
     const nodeId = selector[0]
@@ -131,6 +138,7 @@ const useInspectVarsCrud = () => {
     conversationVars: conversationVars || [],
     systemVars: systemVars || [],
     nodesWithInspectVars,
+    hasNodeInspectVars,
     fetchInspectVarValue,
     editInspectVarValue,
     renameInspectVarName,

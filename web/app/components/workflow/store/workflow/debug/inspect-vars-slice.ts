@@ -20,7 +20,6 @@ type InspectVarsActions = {
   appendNodeInspectVars: (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => void
   deleteNodeInspectVars: (nodeId: string) => void
   getNodeInspectVars: (nodeId: string) => NodeWithVar | undefined
-  hasNodeInspectVars: (nodeId: string) => boolean
   getVarId: (nodeId: string, varName: string) => string | undefined
   setInspectVarValue: (nodeId: string, name: string, value: any) => void
   renameInspectVarName: (nodeId: string, varId: string, selector: ValueSelector) => void
@@ -105,9 +104,6 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
     getNodeInspectVars: (nodeId) => {
       const nodes = get().nodesWithInspectVars
       return nodes.find(node => node.nodeId === nodeId)
-    },
-    hasNodeInspectVars: (nodeId) => {
-      return !!get().getNodeInspectVars(nodeId)
     },
     getVarId: (nodeId: string, varName: string) => {
       const node = get().getNodeInspectVars(nodeId)
