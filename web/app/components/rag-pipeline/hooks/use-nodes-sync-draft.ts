@@ -93,8 +93,8 @@ export const useNodesSyncDraft = () => {
   ) => {
     if (getNodesReadOnly())
       return
-    const postParams = getPostParams()
 
+    const postParams = getPostParams()
     if (postParams) {
       const {
         setSyncWorkflowDraftHash,

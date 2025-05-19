@@ -1,24 +1,34 @@
 import {
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 import type { HeaderProps } from '@/app/components/workflow/header'
 import Header from '@/app/components/workflow/header'
 import { fetchWorkflowRunHistory } from '@/service/workflow'
-import { useStore } from '@/app/components/workflow/store'
+import {
+  useStore,
+  useWorkflowStore,
+} from '@/app/components/workflow/store'
 import InputFieldButton from './input-field-button'
 import Publisher from './publisher'
 
 const RagPipelineHeader = () => {
+  const workflowStore = useWorkflowStore()
   const pipelineId = useStore(s => s.pipelineId)
+  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
 
   const viewHistoryProps = useMemo(() => {
     return {
-      historyUrl: '',
-      // historyUrl: `/rag/pipeline/${pipelineId}/workflow-runs`,
+      historyUrl: `/rag/pipelines/${pipelineId}/workflow-runs`,
       historyFetcher: fetchWorkflowRunHistory,
     }
   }, [pipelineId])
+
+  const handleStopRun = useCallback(() => {
+    const { setShowDebugAndPreviewPanel } = workflowStore.getState()
+    setShowDebugAndPreviewPanel(false)
+  }, [workflowStore])
 
   const headerProps: HeaderProps = useMemo(() => {
     return {
@@ -31,13 +41,15 @@ const RagPipelineHeader = () => {
           showRunButton: true,
           runButtonText: 'Test Run',
           viewHistoryProps,
+          isRunning: showDebugAndPreviewPanel,
+          onStopRun: handleStopRun,
         },
       },
       viewHistory: {
         viewHistoryProps,
       },
     }
-  }, [viewHistoryProps])
+  }, [viewHistoryProps, showDebugAndPreviewPanel, handleStopRun])
 
   return (
     <Header {...headerProps} />
