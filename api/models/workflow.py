@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from models.model import AppMode
 
 import sqlalchemy as sa
-from sqlalchemy import PrimaryKeyConstraint, UniqueConstraint, func
+from sqlalchemy import UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 import contexts
@@ -819,7 +819,6 @@ class WorkflowDraftVariable(Base):
 
     __tablename__ = "workflow_draft_variables"
     __table_args__ = (
-        PrimaryKeyConstraint("id", name="workflow_draft_variables_pkey"),
         UniqueConstraint(
             "app_id",
             "node_id",
