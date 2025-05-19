@@ -352,7 +352,7 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/files/upload' \
@@ -1165,6 +1165,13 @@ Chat applications support session persistence, allowing previous chat history to
       - `enabled` (bool) Whether it is enabled
     - `speech_to_text` (object) Speech to text
       - `enabled` (bool) Whether it is enabled
+    - `text_to_speech` (object) Text to speech
+      - `enabled` (bool) Whether it is enabled
+      - `voice` (string) Voice type
+      - `language` (string) Language
+      - `autoPlay` (string) Auto play
+        - `enabled`   Enabled
+        - `disabled`  Disabled
     - `retriever_resource` (object) Citation and Attribution
       - `enabled` (bool) Whether it is enabled
     - `annotation_reply` (object) Annotation reply
@@ -1219,6 +1226,12 @@ Chat applications support session persistence, allowing previous chat history to
       },
       "speech_to_text": {
           "enabled": true
+      },
+      "text_to_speech": {
+          "enabled": true,
+          "voice": "sambert-zhinan-v1",
+          "language": "zh-Hans",
+          "autoPlay": "disabled"
       },
       "retriever_resource": {
           "enabled": true

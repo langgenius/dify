@@ -70,7 +70,7 @@ from events.message_event import message_was_created
 from extensions.ext_database import db
 from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.workflow import (
     Workflow,
     WorkflowRunStatus,
@@ -105,11 +105,11 @@ class AdvancedChatAppGenerateTaskPipeline:
         if isinstance(user, EndUser):
             self._user_id = user.id
             user_session_id = user.session_id
-            self._created_by_role = CreatedByRole.END_USER
+            self._created_by_role = CreatorUserRole.END_USER
         elif isinstance(user, Account):
             self._user_id = user.id
             user_session_id = user.id
-            self._created_by_role = CreatedByRole.ACCOUNT
+            self._created_by_role = CreatorUserRole.ACCOUNT
         else:
             raise NotImplementedError(f"User type not supported: {type(user)}")
 
@@ -739,9 +739,9 @@ class AdvancedChatAppGenerateTaskPipeline:
                 url=file["remote_url"],
                 belongs_to="assistant",
                 upload_file_id=file["related_id"],
-                created_by_role=CreatedByRole.ACCOUNT
+                created_by_role=CreatorUserRole.ACCOUNT
                 if message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                else CreatedByRole.END_USER,
+                else CreatorUserRole.END_USER,
                 created_by=message.from_account_id or message.from_end_user_id or "",
             )
             for file in self._recorded_files

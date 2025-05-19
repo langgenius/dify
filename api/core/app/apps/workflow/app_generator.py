@@ -27,7 +27,7 @@ from core.workflow.repository.workflow_node_execution_repository import Workflow
 from core.workflow.workflow_app_generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from extensions.ext_database import db
 from factories import file_factory
-from models import Account, App, EndUser, Workflow
+from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -138,10 +138,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
-            tenant_id=application_generate_entity.app_config.tenant_id,
+            user=user,
             app_id=application_generate_entity.app_config.app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
         return self._generate(
@@ -262,10 +264,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
-            tenant_id=application_generate_entity.app_config.tenant_id,
+            user=user,
             app_id=application_generate_entity.app_config.app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
 
         return self._generate(
@@ -325,10 +329,12 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
-            tenant_id=application_generate_entity.app_config.tenant_id,
+            user=user,
             app_id=application_generate_entity.app_config.app_id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
 
         return self._generate(

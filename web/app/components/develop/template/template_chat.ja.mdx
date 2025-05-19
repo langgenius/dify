@@ -315,7 +315,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
   <Col sticky>
   ### リクエスト例
-  <CodeGroup title="リクエスト" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+  <CodeGroup title="リクエスト" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/files/upload' \
@@ -1192,6 +1192,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       - `enabled` (bool) 有効かどうか
     - `speech_to_text` (object) 音声からテキストへ
       - `enabled` (bool) 有効かどうか
+    - `text_to_speech` (object) テキストから音声へ
+      - `enabled` (bool) 有効かどうか
+      - `voice` (string) 音声タイプ
+      - `language` (string) 言語
+      - `autoPlay` (string) 自動再生
+        - `enabled`  有効
+        - `disabled` 無効
     - `retriever_resource` (object) 引用と帰属
       - `enabled` (bool) 有効かどうか
     - `annotation_reply` (object) 注釈返信
@@ -1246,6 +1253,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       },
       "speech_to_text": {
           "enabled": true
+      },
+      "text_to_speech": {
+          "enabled": true,
+          "voice": "sambert-zhinan-v1",
+          "language": "zh-Hans",
+          "autoPlay": "disabled"
       },
       "retriever_resource": {
           "enabled": true

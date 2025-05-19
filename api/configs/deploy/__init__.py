@@ -17,6 +17,12 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
+    # Request logging configuration
+    ENABLE_REQUEST_LOGGING: bool = Field(
+        description="Enable request and response body logging",
+        default=False,
+    )
+
     EDITION: str = Field(
         description="Deployment edition of the application (e.g., 'SELF_HOSTED', 'CLOUD')",
         default="SELF_HOSTED",
