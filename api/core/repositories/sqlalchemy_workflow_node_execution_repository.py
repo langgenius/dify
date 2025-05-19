@@ -202,7 +202,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             # Only cache if we have a node_execution_id to use as the cache key
             if db_model.node_execution_id:
                 logger.debug(f"Updating cache for node_execution_id: {db_model.node_execution_id}")
-                self._node_execution_cache[db_model.node_execution_id] = db_model
+                self._node_execution_cache[db_model.node_execution_id] = execution
 
     def get_by_node_execution_id(self, node_execution_id: str) -> Optional[NodeExecution]:
         """
