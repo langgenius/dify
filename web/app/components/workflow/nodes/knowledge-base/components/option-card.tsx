@@ -3,6 +3,7 @@ import {
   memo,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import {
@@ -53,6 +54,7 @@ const OptionCard = memo(({
   onClick,
   readonly,
 }) => {
+  const { t } = useTranslation()
   const isActive = useMemo(() => {
     return id === selectedId
   }, [id, selectedId])
@@ -103,7 +105,7 @@ const OptionCard = memo(({
               {
                 isRecommended && (
                   <Badge className='ml-1 h-4 border-text-accent-secondary text-text-accent-secondary'>
-                    Recommend
+                    {t('datasetCreation.stepTwo.recommend')}
                   </Badge>
                 )
               }

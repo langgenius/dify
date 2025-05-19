@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
@@ -19,8 +20,8 @@ class WeaveMultiModel(BaseModel):
 class WeaveTraceModel(WeaveTokenUsage, WeaveMultiModel):
     id: str = Field(..., description="ID of the trace")
     op: str = Field(..., description="Name of the operation")
-    inputs: Optional[Union[str, dict[str, Any], list, None]] = Field(None, description="Inputs of the trace")
-    outputs: Optional[Union[str, dict[str, Any], list, None]] = Field(None, description="Outputs of the trace")
+    inputs: Optional[Union[str, Mapping[str, Any], list, None]] = Field(None, description="Inputs of the trace")
+    outputs: Optional[Union[str, Mapping[str, Any], list, None]] = Field(None, description="Outputs of the trace")
     attributes: Optional[Union[str, dict[str, Any], list, None]] = Field(
         None, description="Metadata and attributes associated with trace"
     )

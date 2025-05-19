@@ -3,9 +3,12 @@ import {
   useCallback,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
 import {
   HybridSearchModeEnum,
   RetrievalSearchMethodEnum,
@@ -33,6 +36,8 @@ type SearchMethodOptionProps = {
   onHybridSearchModeChange: (value: HybridSearchModeEnum) => void
   weightedScore?: WeightedScore
   onWeightedScoreChange: (value: { value: number[] }) => void
+  rerankingModelEnabled?: boolean
+  onRerankingModelEnabledChange?: (value: boolean) => void
 } & RerankingModelSelectorProps & TopKAndScoreThresholdProps
 const SearchMethodOption = ({
   readonly,
@@ -44,6 +49,8 @@ const SearchMethodOption = ({
   onHybridSearchModeChange,
   weightedScore,
   onWeightedScoreChange,
+  rerankingModelEnabled,
+  onRerankingModelEnabledChange,
   rerankingModel,
   onRerankingModelChange,
   topK,
@@ -53,6 +60,7 @@ const SearchMethodOption = ({
   isScoreThresholdEnabled,
   onScoreThresholdEnabledChange,
 }: SearchMethodOptionProps) => {
+  const { t } = useTranslation()
   const Icon = option.icon
   const isHybridSearch = option.id === RetrievalSearchMethodEnum.hybrid
   const isHybridSearchWeightedScoreMode = hybridSearchMode === HybridSearchModeEnum.WeightedScore
@@ -81,6 +89,28 @@ const SearchMethodOption = ({
   const hybridSearchModeWrapperClassName = useCallback((isActive: boolean) => {
     return isActive ? 'border-[1.5px] bg-components-option-card-option-selected-bg' : ''
   }, [])
+
+  const showRerankModelSelectorSwitch = useMemo(() => {
+    if (searchMethod === RetrievalSearchMethodEnum.semantic)
+      return true
+
+    if (searchMethod === RetrievalSearchMethodEnum.fullText)
+      return true
+
+    return false
+  }, [searchMethod])
+  const showRerankModelSelector = useMemo(() => {
+    if (searchMethod === RetrievalSearchMethodEnum.semantic)
+      return true
+
+    if (searchMethod === RetrievalSearchMethodEnum.fullText)
+      return true
+
+    if (searchMethod === RetrievalSearchMethodEnum.hybrid && hybridSearchMode !== HybridSearchModeEnum.WeightedScore)
+      return true
+
+    return false
+  }, [hybridSearchMode, searchMethod])
 
   return (
     <OptionCard
@@ -129,12 +159,31 @@ const SearchMethodOption = ({
           )
         }
         {
-          !(isHybridSearch && hybridSearchMode === HybridSearchModeEnum.WeightedScore) && (
-            <RerankingModelSelector
-              rerankingModel={rerankingModel}
-              onRerankingModelChange={onRerankingModelChange}
-              readonly={readonly}
-            />
+          showRerankModelSelector && (
+            <div>
+              {
+                showRerankModelSelectorSwitch && (
+                  <div className='system-sm-semibold mb-1 flex items-center text-text-secondary'>
+                    <Switch
+                      className='mr-1'
+                      defaultValue={rerankingModelEnabled}
+                      onChange={onRerankingModelEnabledChange}
+                      disabled={readonly}
+                    />
+                    {t('common.modelProvider.rerankModel.key')}
+                    <Tooltip
+                      triggerClassName='ml-0.5 shrink-0 w-3.5 h-3.5'
+                      popupContent={t('common.modelProvider.rerankModel.tip')}
+                    />
+                  </div>
+                )
+              }
+              <RerankingModelSelector
+                rerankingModel={rerankingModel}
+                onRerankingModelChange={onRerankingModelChange}
+                readonly={readonly}
+              />
+            </div>
           )
         }
         <TopKAndScoreThreshold
@@ -145,6 +194,7 @@ const SearchMethodOption = ({
           isScoreThresholdEnabled={isScoreThresholdEnabled}
           onScoreThresholdEnabledChange={onScoreThresholdEnabledChange}
           readonly={readonly}
+          hiddenScoreThreshold={searchMethod === RetrievalSearchMethodEnum.invertedIndex}
         />
       </div>
     </OptionCard>

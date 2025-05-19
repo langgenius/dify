@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import {
   GeneralChunk,
   ParentChildChunk,
@@ -8,6 +9,7 @@ import { ChunkStructureEnum } from '../../types'
 import type { Option } from './type'
 
 export const useChunkStructure = () => {
+  const { t } = useTranslation()
   const GeneralOption: Option = {
     id: ChunkStructureEnum.general,
     icon: (isActive: boolean) => (
@@ -17,8 +19,8 @@ export const useChunkStructure = () => {
           isActive && 'text-util-colors-indigo-indigo-600',
         )} />
     ),
-    title: 'General',
-    description: 'General text chunking mode, the chunks retrieved and recalled are the same.',
+    title: t('datasetCreation.stepTwo.general'),
+    description: t('datasetCreation.stepTwo.generalTip'),
     effectColor: 'blue',
   }
   const ParentChildOption: Option = {
@@ -31,8 +33,8 @@ export const useChunkStructure = () => {
         )}
       />
     ),
-    title: 'Parent-Child',
-    description: 'Parent-child text chunking mode, the chunks retrieved and recalled are different.',
+    title: t('datasetCreation.stepTwo.parentChild'),
+    description: t('datasetCreation.stepTwo.parentChildTip'),
     effectColor: 'blue-light',
   }
   const QuestionAnswerOption: Option = {

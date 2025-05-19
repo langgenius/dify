@@ -87,7 +87,9 @@ class OpsService:
         :param tracing_config: tracing config
         :return:
         """
-        if tracing_provider not in provider_config_map and tracing_provider:
+        try:
+            provider_config_map[tracing_provider]
+        except KeyError:
             return {"error": f"Invalid tracing provider: {tracing_provider}"}
 
         config_class, other_keys = (
@@ -150,7 +152,9 @@ class OpsService:
         :param tracing_config: tracing config
         :return:
         """
-        if tracing_provider not in provider_config_map:
+        try:
+            provider_config_map[tracing_provider]
+        except KeyError:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         # check if trace config already exists
