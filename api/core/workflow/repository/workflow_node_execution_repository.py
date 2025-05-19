@@ -1,8 +1,17 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import Enum
 from typing import Literal, Optional, Protocol
 
 from core.workflow.entities.node_execution_entities import NodeExecution
+
+
+class ExecRepoMode(str, Enum):
+    """
+    Enum for NodeExecution repository storage mode.
+    """
+    SQL = "sql"
+    MEMORY = "memory"
 
 
 @dataclass

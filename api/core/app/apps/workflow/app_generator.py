@@ -22,12 +22,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_app_generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
+from core.repositories.workflow_node_execution_factory import create_workflow_node_execution_repository
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
-        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        workflow_node_execution_repository = create_workflow_node_execution_repository(
             session_factory=session_factory,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
@@ -265,7 +265,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
-        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        workflow_node_execution_repository = create_workflow_node_execution_repository(
             session_factory=session_factory,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
@@ -330,7 +330,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
-        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        workflow_node_execution_repository = create_workflow_node_execution_repository(
             session_factory=session_factory,
             user=user,
             app_id=application_generate_entity.app_config.app_id,
