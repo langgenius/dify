@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react'
-import { memo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import cn from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import {
@@ -17,63 +20,79 @@ const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
   'purple': <OptionCardEffectPurple />,
 }
 type OptionCardProps<T> = {
-  id: T
-  className?: string
-  showHighlightBorder?: boolean
-  showRadio?: boolean
-  radioIsActive?: boolean
-  icon?: ReactNode
+  id?: T
+  selectedId?: T
+  enableSelect?: boolean
+  enableHighlightBorder?: boolean
+  enableRadio?: boolean
+  wrapperClassName?: string | ((isActive: boolean) => string)
+  className?: string | ((isActive: boolean) => string)
+  icon?: ReactNode | ((isActive: boolean) => ReactNode)
   title: string
   description?: string
   isRecommended?: boolean
   children?: ReactNode
-  showChildren?: boolean
   effectColor?: string
-  showEffectColor?: boolean
   onClick?: (id: T) => void
   readonly?: boolean
 }
 const OptionCard = memo(({
   id,
+  selectedId,
+  enableSelect = true,
+  enableHighlightBorder = true,
+  enableRadio,
+  wrapperClassName,
   className,
-  showHighlightBorder,
-  showRadio,
-  radioIsActive,
   icon,
   title,
   description,
   isRecommended,
   children,
-  showChildren,
   effectColor,
-  showEffectColor,
   onClick,
   readonly,
 }) => {
+  const isActive = useMemo(() => {
+    return id === selectedId
+  }, [id, selectedId])
+
+  const effectElement = useMemo(() => {
+    if (effectColor) {
+      return (
+        <div className={cn(
+          'absolute left-[-2px] top-[-2px] hidden h-14 w-14 rounded-full',
+          'group-hover:block',
+          isActive && 'block',
+        )}>
+          {HEADER_EFFECT_MAP[effectColor]}
+        </div>
+      )
+    }
+
+    return null
+  }, [effectColor, isActive])
+
   return (
     <div
       className={cn(
-        'cursor-pointer rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
-        showHighlightBorder && 'border-[2px] border-components-option-card-option-selected-border',
+        'group overflow-hidden rounded-xl border border-components-option-card-option-border bg-components-option-card-option-bg',
+        isActive && enableHighlightBorder && 'border-[1.5px] border-components-option-card-option-selected-border',
+        enableSelect && 'cursor-pointer hover:shadow-xs',
         readonly && 'cursor-not-allowed',
+        wrapperClassName && (typeof wrapperClassName === 'function' ? wrapperClassName(isActive) : wrapperClassName),
       )}
-      onClick={() => !readonly && onClick?.(id)}
+      onClick={() => !readonly && enableSelect && id && onClick?.(id)}
     >
       <div className={cn(
         'relative flex rounded-t-xl p-2',
-        className,
+        className && (typeof className === 'function' ? className(isActive) : className),
       )}>
-        {
-          effectColor && showEffectColor && (
-            <div className='absolute left-[-2px] top-[-2px] h-14 w-14 rounded-full'>
-              {HEADER_EFFECT_MAP[effectColor]}
-            </div>
-          )
-        }
+        {effectElement}
         {
           icon && (
             <div className='mr-1 flex h-[18px] w-[18px] shrink-0 items-center justify-center'>
-              {icon}
+              {typeof icon === 'function' ? icon(isActive) : icon}
             </div>
           )
         }
@@ -90,10 +109,10 @@ const OptionCard = memo(({
               }
             </div>
             {
-              showRadio && (
+              enableRadio && (
                 <div className={cn(
                   'ml-2 h-4 w-4 shrink-0 rounded-full border border-components-radio-border bg-components-radio-bg',
-                  radioIsActive && 'border-[5px] border-components-radio-border-checked',
+                  isActive && 'border-[5px] border-components-radio-border-checked',
                 )}>
                 </div>
               )
@@ -109,7 +128,7 @@ const OptionCard = memo(({
         </div>
       </div>
       {
-        children && showChildren && (
+        children && isActive && (
           <div className='relative rounded-b-xl bg-components-panel-bg p-3'>
             <ArrowShape className='absolute left-[14px] top-[-11px] h-4 w-4 text-components-panel-bg' />
             {children}

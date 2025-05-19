@@ -14,9 +14,13 @@ import Input from '@/app/components/base/input'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import OptionCard from './option-card'
 import cn from '@/utils/classnames'
-import { IndexMethodEnum } from '../types'
+import {
+  ChunkStructureEnum,
+  IndexMethodEnum,
+} from '../types'
 
 type IndexMethodProps = {
+  chunkStructure: ChunkStructureEnum
   indexMethod: IndexMethodEnum
   onIndexMethodChange: (value: IndexMethodEnum) => void
   keywordNumber: number
@@ -24,6 +28,7 @@ type IndexMethodProps = {
   readonly?: boolean
 }
 const IndexMethod = ({
+  chunkStructure,
   indexMethod,
   onIndexMethodChange,
   keywordNumber,
@@ -53,65 +58,68 @@ const IndexMethod = ({
       <div className='space-y-1'>
         <OptionCard<IndexMethodEnum>
           id={IndexMethodEnum.QUALIFIED}
+          selectedId={indexMethod}
           icon={
             <HighQuality
               className={cn(
-                'h-[15px] w-[15px] text-text-tertiary',
+                'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-orange-orange-500',
                 isHighQuality && 'text-util-colors-orange-orange-500',
               )}
             />
           }
           title={t('datasetCreation.stepTwo.qualified')}
           description={t('datasetSettings.form.indexMethodHighQualityTip')}
-          showHighlightBorder={isHighQuality}
           onClick={handleIndexMethodChange}
           isRecommended
+          effectColor='orange'
         ></OptionCard>
-        <OptionCard
-          id={IndexMethodEnum.ECONOMICAL}
-          icon={
-            <Economic
-              className={cn(
-                'h-[15px] w-[15px] text-text-tertiary',
-                isEconomy && 'text-util-colors-indigo-indigo-500',
-              )}
-            />
-          }
-          title={t('datasetSettings.form.indexMethodEconomy')}
-          description={t('datasetSettings.form.indexMethodEconomyTip')}
-          showChildren={isEconomy}
-          showHighlightBorder={isEconomy}
-          onClick={handleIndexMethodChange}
-          effectColor='blue'
-          showEffectColor={isEconomy}
-        >
-          <div className='flex items-center'>
-            <div className='flex grow items-center'>
-              <div className='system-xs-medium truncate text-text-secondary'>
-                Number of Keywords
+        {
+          chunkStructure !== ChunkStructureEnum.parent_child && (
+            <OptionCard
+              id={IndexMethodEnum.ECONOMICAL}
+              selectedId={indexMethod}
+              icon={
+                <Economic
+                  className={cn(
+                    'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-500',
+                    isEconomy && 'text-util-colors-indigo-indigo-500',
+                  )}
+                />
+              }
+              title={t('datasetSettings.form.indexMethodEconomy')}
+              description={t('datasetSettings.form.indexMethodEconomyTip')}
+              onClick={handleIndexMethodChange}
+              effectColor='blue'
+            >
+              <div className='flex items-center'>
+                <div className='flex grow items-center'>
+                  <div className='system-xs-medium truncate text-text-secondary'>
+                    Number of Keywords
+                  </div>
+                  <Tooltip
+                    popupContent='number of keywords'
+                  >
+                    <RiQuestionLine className='ml-0.5 h-3.5 w-3.5 text-text-quaternary' />
+                  </Tooltip>
+                </div>
+                <Slider
+                  disabled={readonly}
+                  className='mr-3 w-24 shrink-0'
+                  value={keywordNumber}
+                  onChange={onKeywordNumberChange}
+                />
+                <Input
+                  disabled={readonly}
+                  className='shrink-0'
+                  wrapperClassName='shrink-0 w-[72px]'
+                  type='number'
+                  value={keywordNumber}
+                  onChange={handleInputChange}
+                />
               </div>
-              <Tooltip
-                popupContent='number of keywords'
-              >
-                <RiQuestionLine className='ml-0.5 h-3.5 w-3.5 text-text-quaternary' />
-              </Tooltip>
-            </div>
-            <Slider
-              disabled={readonly}
-              className='mr-3 w-24 shrink-0'
-              value={keywordNumber}
-              onChange={onKeywordNumberChange}
-            />
-            <Input
-              disabled={readonly}
-              className='shrink-0'
-              wrapperClassName='shrink-0 w-[72px]'
-              type='number'
-              value={keywordNumber}
-              onChange={handleInputChange}
-            />
-          </div>
-        </OptionCard>
+            </OptionCard>
+          )
+        }
       </div>
     </Field>
   )

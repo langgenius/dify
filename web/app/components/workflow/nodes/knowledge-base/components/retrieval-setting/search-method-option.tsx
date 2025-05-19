@@ -1,5 +1,6 @@
 import {
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 import cn from '@/utils/classnames'
@@ -53,7 +54,6 @@ const SearchMethodOption = ({
   onScoreThresholdEnabledChange,
 }: SearchMethodOptionProps) => {
   const Icon = option.icon
-  const isActive = searchMethod === option.id
   const isHybridSearch = option.id === RetrievalSearchMethodEnum.hybrid
   const isHybridSearchWeightedScoreMode = hybridSearchMode === HybridSearchModeEnum.WeightedScore
 
@@ -67,30 +67,32 @@ const SearchMethodOption = ({
     }
   }, [weightedScore])
 
-  const icon = useMemo(() => {
+  const icon = useCallback((isActive: boolean) => {
     return (
       <Icon
         className={cn(
-          'h-[15px] w-[15px] text-text-tertiary',
+          'h-[15px] w-[15px] text-text-tertiary group-hover:text-util-colors-purple-purple-600',
           isActive && 'text-util-colors-purple-purple-600',
         )}
       />
     )
-  }, [isActive, Icon])
+  }, [Icon])
+
+  const hybridSearchModeWrapperClassName = useCallback((isActive: boolean) => {
+    return isActive ? 'border-[1.5px] bg-components-option-card-option-selected-bg' : ''
+  }, [])
 
   return (
     <OptionCard
       key={option.id}
       id={option.id}
+      selectedId={searchMethod}
       icon={icon}
       title={option.title}
       description={option.description}
       effectColor={option.effectColor}
       isRecommended={option.id === RetrievalSearchMethodEnum.hybrid}
       onClick={onRetrievalSearchMethodChange}
-      showChildren={isActive}
-      showHighlightBorder={isActive}
-      showEffectColor={isActive}
       readonly={readonly}
     >
       <div className='space-y-3'>
@@ -102,11 +104,13 @@ const SearchMethodOption = ({
                   <OptionCard
                     key={hybridOption.id}
                     id={hybridOption.id}
+                    selectedId={hybridSearchMode}
+                    enableHighlightBorder={false}
+                    enableRadio
+                    wrapperClassName={hybridSearchModeWrapperClassName}
                     className='p-3'
                     title={hybridOption.title}
                     description={hybridOption.description}
-                    showRadio
-                    radioIsActive={hybridOption.id === hybridSearchMode}
                     onClick={onHybridSearchModeChange}
                     readonly={readonly}
                   />

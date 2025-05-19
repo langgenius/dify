@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -22,6 +22,11 @@ const Selector = ({
   readonly,
 }: SelectorProps) => {
   const [open, setOpen] = useState(false)
+
+  const handleSelect = useCallback((optionId: ChunkStructureEnum) => {
+    onChange(optionId)
+    setOpen(false)
+  }, [onChange])
 
   return (
     <PortalToFollowElem
@@ -56,16 +61,13 @@ const Selector = ({
                 <OptionCard
                   key={option.id}
                   id={option.id}
+                  selectedId={value}
                   icon={option.icon}
                   title={option.title}
                   description={option.description}
-                  onClick={() => {
-                    if (readonly)
-                      return
-                    onChange(option.id)
-                    setOpen(false)
-                  }}
-                  showHighlightBorder={value === option.id}
+                  readonly={readonly}
+                  onClick={handleSelect}
+                  effectColor={option.effectColor}
                 ></OptionCard>
               ))
             }

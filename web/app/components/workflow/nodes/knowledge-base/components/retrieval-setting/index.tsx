@@ -7,6 +7,7 @@ import type {
   RetrievalSearchMethodEnum,
 } from '../../types'
 import type {
+  IndexMethodEnum,
   WeightedScore,
 } from '../../types'
 import { useRetrievalSetting } from './hooks'
@@ -15,6 +16,7 @@ import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import SearchMethodOption from './search-method-option'
 
 type RetrievalSettingProps = {
+  indexMethod: IndexMethodEnum
   readonly?: boolean
   searchMethod: RetrievalSearchMethodEnum
   onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
@@ -25,6 +27,7 @@ type RetrievalSettingProps = {
 } & RerankingModelSelectorProps & TopKAndScoreThresholdProps
 
 const RetrievalSetting = ({
+  indexMethod,
   readonly,
   searchMethod,
   onRetrievalSearchMethodChange,
@@ -44,7 +47,7 @@ const RetrievalSetting = ({
   const {
     options,
     hybridSearchModeOptions,
-  } = useRetrievalSetting()
+  } = useRetrievalSetting(indexMethod)
 
   return (
     <Field
