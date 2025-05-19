@@ -41,6 +41,18 @@ class LicenseModel(BaseModel):
     expired_at: str = ""
 
 
+class PluginInstallationPermissionModel(BaseModel):
+    # Plugin installation scope – possible values:
+    #   PLUGIN_INSTALLATION_SCOPE_NONE: prohibit all plugin installations
+    #   PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY: allow only Dify official plugins
+    #   PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS: allow official and specific partner plugins
+    #   PLUGIN_INSTALLATION_SCOPE_ALL: allow installation of all plugins
+    plugin_installation_scope: str = "PLUGIN_INSTALLATION_SCOPE_ALL"
+
+    # If True, restrict plugin installation to the marketplace only
+    restrict_to_marketplace_only: bool = False
+
+
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
@@ -80,6 +92,7 @@ class SystemFeatureModel(BaseModel):
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
+    plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
 
 
 class FeatureService:
@@ -213,3 +226,12 @@ class FeatureService:
 
             if "expired_at" in license_info:
                 features.license.expired_at = license_info["expired_at"]
+
+        if "plugin_installation_permission" in enterprise_info:
+            plugin_installation_info = enterprise_info["plugin_installation_permission"]
+            features.plugin_installation_permission.plugin_installation_scope = plugin_installation_info[
+                "plugin_installation_scope"
+            ]
+            features.plugin_installation_permission.restrict_to_marketplace_only = plugin_installation_info[
+                "restrict_to_marketplace_only"
+            ]
