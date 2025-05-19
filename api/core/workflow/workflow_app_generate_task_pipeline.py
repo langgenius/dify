@@ -58,7 +58,7 @@ from core.workflow.repository.workflow_node_execution_repository import Workflow
 from core.workflow.workflow_cycle_manager import WorkflowCycleManager
 from extensions.ext_database import db
 from models.account import Account
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import EndUser
 from models.workflow import (
     Workflow,
@@ -94,11 +94,11 @@ class WorkflowAppGenerateTaskPipeline:
         if isinstance(user, EndUser):
             self._user_id = user.id
             user_session_id = user.session_id
-            self._created_by_role = CreatedByRole.END_USER
+            self._created_by_role = CreatorUserRole.END_USER
         elif isinstance(user, Account):
             self._user_id = user.id
             user_session_id = user.id
-            self._created_by_role = CreatedByRole.ACCOUNT
+            self._created_by_role = CreatorUserRole.ACCOUNT
         else:
             raise ValueError(f"Invalid user type: {type(user)}")
 

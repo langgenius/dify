@@ -1,10 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import { WEB_PREFIX } from '@/config'
 import classNames from '@/utils/classnames'
 import useTheme from '@/hooks/use-theme'
+import { basePath } from '@/utils/var'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-
 export type LogoStyle = 'default' | 'monochromeWhite'
 
 export const logoPathMap: Record<LogoStyle, string> = {
@@ -35,7 +34,7 @@ const DifyLogo: FC<DifyLogoProps> = ({
   const themedStyle = (theme === 'dark' && style === 'default') ? 'monochromeWhite' : style
   const { systemFeatures } = useGlobalPublicStore()
 
-  let src = `${WEB_PREFIX}${logoPathMap[themedStyle]}`
+  let src = `${basePath}${logoPathMap[themedStyle]}`
   if (systemFeatures.branding.enabled)
     src = systemFeatures.branding.workspace_logo
 

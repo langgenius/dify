@@ -4,16 +4,19 @@ from collections.abc import Callable
 
 import click
 from celery import shared_task  # type: ignore
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from extensions.ext_database import db
-from models.dataset import AppDatasetJoin
-from models.model import (
+from models import (
+    Account,
     ApiToken,
+    App,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
+    AppDatasetJoin,
     AppModelConfig,
     Conversation,
     EndUser,
@@ -188,9 +191,24 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
+    # Get app's owner
+    with Session(db.engine, expire_on_commit=False) as session:
+        stmt = select(Account).where(Account.id == App.owner_id).where(App.id == app_id)
+        user = session.scalar(stmt)
+
+    if user is None:
+        errmsg = (
+            f"Failed to delete workflow node executions for tenant {tenant_id} and app {app_id}, app's owner not found"
+        )
+        logging.error(errmsg)
+        raise ValueError(errmsg)
+
     # Create a repository instance for WorkflowNodeExecution
     repository = SQLAlchemyWorkflowNodeExecutionRepository(
-        session_factory=db.engine, tenant_id=tenant_id, app_id=app_id
+        session_factory=db.engine,
+        user=user,
+        app_id=app_id,
+        triggered_from=None,
     )
 
     # Use the clear method to delete all records for this tenant_id and app_id

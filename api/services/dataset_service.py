@@ -992,7 +992,7 @@ class DocumentService:
                             created_by=account.id,
                         )
                     else:
-                        logging.warn(
+                        logging.warning(
                             f"Invalid process rule mode: {process_rule.mode}, can not find dataset process rule"
                         )
                         return

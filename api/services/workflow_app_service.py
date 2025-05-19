@@ -5,7 +5,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from models import App, EndUser, WorkflowAppLog, WorkflowRun
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.workflow import WorkflowRunStatus
 
 
@@ -58,7 +58,7 @@ class WorkflowAppService:
 
             stmt = stmt.outerjoin(
                 EndUser,
-                and_(WorkflowRun.created_by == EndUser.id, WorkflowRun.created_by_role == CreatedByRole.END_USER),
+                and_(WorkflowRun.created_by == EndUser.id, WorkflowRun.created_by_role == CreatorUserRole.END_USER),
             ).where(or_(*keyword_conditions))
 
         if status:

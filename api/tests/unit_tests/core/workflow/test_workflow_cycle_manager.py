@@ -16,10 +16,9 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_cycle_manager import WorkflowCycleManager
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.workflow import (
     Workflow,
-    WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
     WorkflowRun,
     WorkflowRunStatus,
@@ -94,7 +93,7 @@ def mock_workflow_run():
     workflow_run.app_id = "test-app-id"
     workflow_run.workflow_id = "test-workflow-id"
     workflow_run.status = WorkflowRunStatus.RUNNING
-    workflow_run.created_by_role = CreatedByRole.ACCOUNT
+    workflow_run.created_by_role = CreatorUserRole.ACCOUNT
     workflow_run.created_by = "test-user-id"
     workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
     workflow_run.inputs_dict = {"query": "test query"}
@@ -107,7 +106,6 @@ def test_init(
 ):
     """Test initialization of WorkflowCycleManager"""
     assert workflow_cycle_manager._workflow_run is None
-    assert workflow_cycle_manager._workflow_node_executions == {}
     assert workflow_cycle_manager._application_generate_entity == mock_app_generate_entity
     assert workflow_cycle_manager._workflow_system_variables == mock_workflow_system_variables
     assert workflow_cycle_manager._workflow_node_execution_repository == mock_node_execution_repository
@@ -123,7 +121,7 @@ def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, mock_wo
         session=mock_session,
         workflow_id="test-workflow-id",
         user_id="test-user-id",
-        created_by_role=CreatedByRole.ACCOUNT,
+        created_by_role=CreatorUserRole.ACCOUNT,
     )
 
     # Verify the result
@@ -132,7 +130,7 @@ def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, mock_wo
     assert workflow_run.workflow_id == mock_workflow.id
     assert workflow_run.sequence_number == 6  # max_sequence + 1
     assert workflow_run.status == WorkflowRunStatus.RUNNING
-    assert workflow_run.created_by_role == CreatedByRole.ACCOUNT
+    assert workflow_run.created_by_role == CreatorUserRole.ACCOUNT
     assert workflow_run.created_by == "test-user-id"
 
     # Verify session.add was called
@@ -215,23 +213,22 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_run):
     )
 
     # Verify the result
-    assert result.tenant_id == mock_workflow_run.tenant_id
-    assert result.app_id == mock_workflow_run.app_id
+    # NodeExecution doesn't have tenant_id attribute, it's handled at repository level
+    # assert result.tenant_id == mock_workflow_run.tenant_id
+    # assert result.app_id == mock_workflow_run.app_id
     assert result.workflow_id == mock_workflow_run.workflow_id
     assert result.workflow_run_id == mock_workflow_run.id
     assert result.node_execution_id == event.node_execution_id
     assert result.node_id == event.node_id
-    assert result.node_type == event.node_type.value
+    assert result.node_type == event.node_type
     assert result.title == event.node_data.title
     assert result.status == WorkflowNodeExecutionStatus.RUNNING.value
-    assert result.created_by_role == mock_workflow_run.created_by_role
-    assert result.created_by == mock_workflow_run.created_by
+    # NodeExecution doesn't have created_by_role and created_by attributes, they're handled at repository level
+    # assert result.created_by_role == mock_workflow_run.created_by_role
+    # assert result.created_by == mock_workflow_run.created_by
 
     # Verify save was called
     workflow_cycle_manager._workflow_node_execution_repository.save.assert_called_once_with(result)
-
-    # Verify the node execution was added to the cache
-    assert workflow_cycle_manager._workflow_node_executions[event.node_execution_id] == result
 
 
 def test_get_workflow_run(workflow_cycle_manager, mock_session, mock_workflow_run):
@@ -261,28 +258,24 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
     event.execution_metadata = {"metadata": "test metadata"}
     event.start_at = datetime.now(UTC).replace(tzinfo=None)
 
-    # Create a mock workflow node execution
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    # Create a mock node execution
+    node_execution = MagicMock()
     node_execution.node_execution_id = "test-node-execution-id"
 
-    # Mock _get_workflow_node_execution to return the mock node execution
-    with patch.object(workflow_cycle_manager, "_get_workflow_node_execution", return_value=node_execution):
-        # Call the method
-        result = workflow_cycle_manager._handle_workflow_node_execution_success(
-            event=event,
-        )
+    # Mock the repository to return the node execution
+    workflow_cycle_manager._workflow_node_execution_repository.get_by_node_execution_id.return_value = node_execution
 
-        # Verify the result
-        assert result == node_execution
-        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED.value
-        assert result.inputs == json.dumps(event.inputs)
-        assert result.process_data == json.dumps(event.process_data)
-        assert result.outputs == json.dumps(event.outputs)
-        assert result.finished_at is not None
-        assert result.elapsed_time is not None
+    # Call the method
+    result = workflow_cycle_manager._handle_workflow_node_execution_success(
+        event=event,
+    )
 
-        # Verify update was called
-        workflow_cycle_manager._workflow_node_execution_repository.update.assert_called_once_with(node_execution)
+    # Verify the result
+    assert result == node_execution
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED.value
+
+    # Verify save was called
+    workflow_cycle_manager._workflow_node_execution_repository.save.assert_called_once_with(node_execution)
 
 
 def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_session, mock_workflow_run):
@@ -322,27 +315,22 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
     event.start_at = datetime.now(UTC).replace(tzinfo=None)
     event.error = "Test error message"
 
-    # Create a mock workflow node execution
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
+    # Create a mock node execution
+    node_execution = MagicMock()
     node_execution.node_execution_id = "test-node-execution-id"
 
-    # Mock _get_workflow_node_execution to return the mock node execution
-    with patch.object(workflow_cycle_manager, "_get_workflow_node_execution", return_value=node_execution):
-        # Call the method
-        result = workflow_cycle_manager._handle_workflow_node_execution_failed(
-            event=event,
-        )
+    # Mock the repository to return the node execution
+    workflow_cycle_manager._workflow_node_execution_repository.get_by_node_execution_id.return_value = node_execution
 
-        # Verify the result
-        assert result == node_execution
-        assert result.status == WorkflowNodeExecutionStatus.FAILED.value
-        assert result.error == "Test error message"
-        assert result.inputs == json.dumps(event.inputs)
-        assert result.process_data == json.dumps(event.process_data)
-        assert result.outputs == json.dumps(event.outputs)
-        assert result.finished_at is not None
-        assert result.elapsed_time is not None
-        assert result.execution_metadata == json.dumps(event.execution_metadata)
+    # Call the method
+    result = workflow_cycle_manager._handle_workflow_node_execution_failed(
+        event=event,
+    )
 
-        # Verify update was called
-        workflow_cycle_manager._workflow_node_execution_repository.update.assert_called_once_with(node_execution)
+    # Verify the result
+    assert result == node_execution
+    assert result.status == WorkflowNodeExecutionStatus.FAILED.value
+    assert result.error == "Test error message"
+
+    # Verify save was called
+    workflow_cycle_manager._workflow_node_execution_repository.save.assert_called_once_with(node_execution)

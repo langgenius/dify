@@ -333,7 +333,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/files/upload' \
@@ -1204,6 +1204,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       - `enabled` (bool) 是否开启
     - `speech_to_text` (object) 语音转文本
       - `enabled` (bool) 是否开启
+    - `text_to_speech` (object) 文本转语音
+      - `enabled` (bool) 是否开启
+      - `voice` (string) 语音类型
+      - `language` (string) 语言
+      - `autoPlay` (string) 自动播放
+        - `enabled`  开启
+        - `disabled` 关闭
     - `retriever_resource` (object) 引用和归属
       - `enabled` (bool) 是否开启
     - `annotation_reply` (object) 标记回复
