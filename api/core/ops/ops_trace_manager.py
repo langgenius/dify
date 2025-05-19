@@ -41,8 +41,8 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
     def __getitem__(self, provider: str) -> dict[str, Any]:
         match provider:
             case TracingProviderEnum.ARIZE:
-                from core.ops.entities.config_entity import ArizeConfig
                 from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
+                from core.ops.entities.config_entity import ArizeConfig
 
                 return {
                     "config_class": ArizeConfig,
@@ -52,8 +52,8 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                 }
 
             case TracingProviderEnum.PHOENIX:
-                from core.ops.entities.config_entity import PhoenixConfig
                 from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
+                from core.ops.entities.config_entity import PhoenixConfig
 
                 return {
                     "config_class": PhoenixConfig,
