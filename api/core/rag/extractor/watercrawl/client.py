@@ -59,7 +59,6 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 yield data
 
     def process_response(self, response: Response) -> dict | bytes | list | None | Generator:
-
         if response.status_code == 401:
             raise WaterCrawlAuthenticationError(response)
 

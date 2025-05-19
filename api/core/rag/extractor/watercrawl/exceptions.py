@@ -26,7 +26,7 @@ class WaterCrawlPermissionError(WaterCrawlBadRequestError):
     def __str__(self):
         return f"You are exceeding your WaterCrawl API limits. {self.message}"
 
-class WaterCrawlAuthenticationError(WaterCrawlBadRequestError):
 
+class WaterCrawlAuthenticationError(WaterCrawlBadRequestError):
     def __str__(self):
         return "WaterCrawl API key is invalid or expired. Please check your API key and try again."
