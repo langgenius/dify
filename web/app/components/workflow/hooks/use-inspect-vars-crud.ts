@@ -150,7 +150,6 @@ const useInspectVarsCrud = () => {
   }, [data, currNodeId, currEditVarId, getNodeInspectVars, editInspectVarValue])
 
   const renameInspectVarName = async (nodeId: string, oldName: string, newName: string) => {
-    console.log('rename:', nodeId, oldName, newName)
     const varId = getVarId(nodeId, oldName)
     if (!varId)
       return

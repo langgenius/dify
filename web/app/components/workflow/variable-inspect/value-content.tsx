@@ -73,7 +73,7 @@ const ValueContent = ({
           ? [currentVar.value]
           : [])
     }
-  }, [currentVar.id])
+  }, [currentVar.id, currentVar.value])
 
   const handleTextChange = (value: string) => {
     if (currentVar.value_type === 'string')
