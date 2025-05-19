@@ -1,12 +1,11 @@
 import React from 'react'
 import { withForm } from '@/app/components/base/form'
-import type { FormData } from './types'
 import InputField from '@/app/components/base/form/form-scenarios/input-field/field'
 import { useStore } from '@tanstack/react-form'
 import { useHiddenConfigurations } from './hooks'
 
 type HiddenFieldsProps = {
-  initialData?: FormData
+  initialData?: Record<string, any>
 }
 
 const HiddenFields = ({
@@ -25,10 +24,10 @@ const HiddenFields = ({
     return (
       <>
         {hiddenConfigurations.map((config, index) => {
-            const FieldComponent = InputField<FormData>({
-              initialData,
-              config,
-            })
+          const FieldComponent = InputField({
+            initialData,
+            config,
+          })
           return <FieldComponent key={index} form={form} />
         })}
       </>

@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { InputVarType } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import type { InputFieldConfiguration } from '@/app/components/base/form/form-scenarios/input-field/types'
 import { InputFieldType } from '@/app/components/base/form/form-scenarios/input-field/types'
@@ -11,21 +10,22 @@ import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import type { FormData } from './types'
 import { TEXT_MAX_LENGTH } from './schema'
+import { PipelineInputVarType } from '@/models/pipeline'
 
-export const useHiddenFieldNames = (type: InputVarType) => {
+export const useHiddenFieldNames = (type: PipelineInputVarType) => {
   const { t } = useTranslation()
   const hiddenFieldNames = useMemo(() => {
     let fieldNames = []
     switch (type) {
-      case InputVarType.textInput:
-      case InputVarType.paragraph:
+      case PipelineInputVarType.textInput:
+      case PipelineInputVarType.paragraph:
         fieldNames = [
           t('appDebug.variableConfig.defaultValue'),
           t('appDebug.variableConfig.placeholder'),
           t('appDebug.variableConfig.tooltips'),
         ]
         break
-      case InputVarType.number:
+      case PipelineInputVarType.number:
         fieldNames = [
           t('appDebug.variableConfig.defaultValue'),
           t('appDebug.variableConfig.unit'),
@@ -33,19 +33,19 @@ export const useHiddenFieldNames = (type: InputVarType) => {
           t('appDebug.variableConfig.tooltips'),
         ]
         break
-      case InputVarType.select:
+      case PipelineInputVarType.select:
         fieldNames = [
           t('appDebug.variableConfig.defaultValue'),
           t('appDebug.variableConfig.tooltips'),
         ]
         break
-      case InputVarType.singleFile:
+      case PipelineInputVarType.singleFile:
         fieldNames = [
           t('appDebug.variableConfig.uploadMethod'),
           t('appDebug.variableConfig.tooltips'),
         ]
         break
-      case InputVarType.multiFiles:
+      case PipelineInputVarType.multiFiles:
         fieldNames = [
           t('appDebug.variableConfig.uploadMethod'),
           t('appDebug.variableConfig.maxNumberOfUploads'),
@@ -71,20 +71,20 @@ export const useConfigurations = (props: {
   const { setFieldValue, supportFile } = props
 
   const handleTypeChange = useCallback((type: string) => {
-    if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type as InputVarType)) {
+    if ([PipelineInputVarType.singleFile, PipelineInputVarType.multiFiles].includes(type as PipelineInputVarType)) {
       setFieldValue('allowedFileUploadMethods', DEFAULT_FILE_UPLOAD_SETTING.allowed_file_upload_methods)
       setFieldValue('allowedTypesAndExtensions', {
         allowedFileTypes: DEFAULT_FILE_UPLOAD_SETTING.allowed_file_types,
         allowedFileExtensions: DEFAULT_FILE_UPLOAD_SETTING.allowed_file_extensions,
       })
-      if (type === InputVarType.multiFiles)
+      if (type === PipelineInputVarType.multiFiles)
         setFieldValue('maxLength', DEFAULT_FILE_UPLOAD_SETTING.max_length)
     }
-    if (type === InputVarType.paragraph)
+    if (type === PipelineInputVarType.paragraph)
       setFieldValue('maxLength', DEFAULT_VALUE_MAX_LEN)
   }, [setFieldValue])
 
-  const initialConfigurations = useMemo((): InputFieldConfiguration<FormData>[] => {
+  const initialConfigurations = useMemo((): InputFieldConfiguration[] => {
     return [{
       type: InputFieldType.inputTypeSelect,
       label: t('appDebug.variableConfig.fieldType'),
@@ -117,7 +117,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.textInput,
+        value: PipelineInputVarType.textInput,
       }],
       min: 1,
       max: TEXT_MAX_LENGTH,
@@ -128,7 +128,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.select,
+        value: PipelineInputVarType.select,
       }],
     }, {
       type: InputFieldType.fileTypes,
@@ -137,7 +137,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.singleFile,
+        value: PipelineInputVarType.singleFile,
       }],
     }, {
       type: InputFieldType.fileTypes,
@@ -146,7 +146,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.multiFiles,
+        value: PipelineInputVarType.multiFiles,
       }],
     }, {
       type: InputFieldType.checkbox,
@@ -157,7 +157,7 @@ export const useConfigurations = (props: {
     }]
   }, [handleTypeChange, supportFile, t])
 
-    return initialConfigurations
+  return initialConfigurations
 }
 
 export const useHiddenConfigurations = (props: {
@@ -192,7 +192,7 @@ export const useHiddenConfigurations = (props: {
     return []
   }, [options, t])
 
-  const hiddenConfigurations = useMemo((): InputFieldConfiguration<FormData>[] => {
+  const hiddenConfigurations = useMemo((): InputFieldConfiguration[] => {
     return [{
       type: InputFieldType.textInput,
       label: t('appDebug.variableConfig.defaultValue'),
@@ -201,20 +201,20 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.textInput,
+        value: PipelineInputVarType.textInput,
       }],
       showOptional: true,
     }, {
-        type: InputFieldType.textInput,
-        label: t('appDebug.variableConfig.defaultValue'),
-        variable: 'default',
-        placeholder: t('appDebug.variableConfig.defaultValuePlaceholder'),
-        required: false,
-        showConditions: [{
-          variable: 'type',
-          value: InputVarType.paragraph,
-        }],
-        showOptional: true,
+      type: InputFieldType.textInput,
+      label: t('appDebug.variableConfig.defaultValue'),
+      variable: 'default',
+      placeholder: t('appDebug.variableConfig.defaultValuePlaceholder'),
+      required: false,
+      showConditions: [{
+        variable: 'type',
+        value: PipelineInputVarType.paragraph,
+      }],
+      showOptional: true,
     }, {
       type: InputFieldType.numberInput,
       label: t('appDebug.variableConfig.defaultValue'),
@@ -223,7 +223,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.number,
+        value: PipelineInputVarType.number,
       }],
       showOptional: true,
     }, {
@@ -233,7 +233,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.select,
+        value: PipelineInputVarType.select,
       }],
       showOptional: true,
       options: defaultSelectOptions,
@@ -248,7 +248,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.textInput,
+        value: PipelineInputVarType.textInput,
       }],
       showOptional: true,
     }, {
@@ -259,7 +259,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.paragraph,
+        value: PipelineInputVarType.paragraph,
       }],
       showOptional: true,
     }, {
@@ -270,7 +270,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.number,
+        value: PipelineInputVarType.number,
       }],
       showOptional: true,
     }, {
@@ -281,7 +281,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.number,
+        value: PipelineInputVarType.number,
       }],
       showOptional: true,
     }, {
@@ -291,7 +291,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.singleFile,
+        value: PipelineInputVarType.singleFile,
       }],
     }, {
       type: InputFieldType.uploadMethod,
@@ -300,7 +300,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.multiFiles,
+        value: PipelineInputVarType.multiFiles,
       }],
     }, {
       type: InputFieldType.numberSlider,
@@ -309,7 +309,7 @@ export const useHiddenConfigurations = (props: {
       required: false,
       showConditions: [{
         variable: 'type',
-        value: InputVarType.multiFiles,
+        value: PipelineInputVarType.multiFiles,
       }],
       description: t('appDebug.variableConfig.maxNumberTip', {
         imgLimit: formatFileSize(imgSizeLimit),

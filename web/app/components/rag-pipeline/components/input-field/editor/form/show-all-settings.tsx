@@ -1,13 +1,12 @@
 import React from 'react'
 import { withForm } from '@/app/components/base/form'
-import type { FormData } from './types'
 import { useStore } from '@tanstack/react-form'
 import { useHiddenFieldNames } from './hooks'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightSLine } from '@remixicon/react'
 
 type ShowAllSettingsProps = {
-  initialData?: FormData
+  initialData?: Record<string, any>
   handleShowAllSettings: () => void
 }
 

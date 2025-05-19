@@ -1,12 +1,10 @@
 import React, { useCallback } from 'react'
 import { withForm } from '@/app/components/base/form'
-import type { FormData } from './types'
 import InputField from '@/app/components/base/form/form-scenarios/input-field/field'
-import type { DeepKeys } from '@tanstack/react-form'
 import { useConfigurations } from './hooks'
 
 type InitialFieldsProps = {
-  initialData?: FormData
+  initialData?: Record<string, any>
   supportFile: boolean
 }
 
@@ -18,7 +16,7 @@ const InitialFields = ({
   render: function Render({
     form,
   }) {
-    const setFieldValue = useCallback((fieldName: DeepKeys<FormData>, value: any) => {
+    const setFieldValue = useCallback((fieldName: string, value: any) => {
       form.setFieldValue(fieldName, value)
     }, [form])
 
@@ -30,10 +28,10 @@ const InitialFields = ({
     return (
       <>
         {initialConfigurations.map((config, index) => {
-            const FieldComponent = InputField<FormData>({
-              initialData,
-              config,
-            })
+          const FieldComponent = InputField({
+            initialData,
+            config,
+          })
           return <FieldComponent key={index} form={form} />
         })}
       </>

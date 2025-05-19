@@ -7,11 +7,12 @@ import {
   RiDraggable,
   RiEditLine,
 } from '@remixicon/react'
-import type { InputVar } from '@/app/components/workflow/types'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import cn from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
+import type { InputVar } from '@/models/pipeline'
+import type { InputVarType } from '@/app/components/workflow/types'
 
 type FieldItemProps = {
   readonly?: boolean
@@ -33,7 +34,7 @@ const FieldItem = ({
 
   return (
     <div
-      ref={ref}
+      // ref={ref}
       className={cn(
         'flex h-8 cursor-pointer items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pl-2 shadow-xs hover:shadow-sm',
         (!isHovering || readonly) ? 'pr-2.5' : !readonly && 'pr-1',
@@ -69,7 +70,7 @@ const FieldItem = ({
             {payload.required && (
               <Badge>{t('workflow.nodes.start.required')}</Badge>
             )}
-            <InputVarTypeIcon type={payload.type} className='h-3 w-3 text-text-tertiary' />
+            <InputVarTypeIcon type={payload.type as unknown as InputVarType} className='h-3 w-3 text-text-tertiary' />
           </div>
         )
         : (!readonly && (

@@ -1,4 +1,3 @@
-import type { InputVar } from '@/app/components/workflow/types'
 import { RiAddLine } from '@remixicon/react'
 import FieldItem from './field-item'
 import cn from '@/utils/classnames'
@@ -6,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react'
 import InputFieldEditor from '../editor'
 import { ReactSortable } from 'react-sortablejs'
 import produce from 'immer'
+import type { InputVar } from '@/models/pipeline'
 
 type FieldListProps = {
   LabelRightContent: React.ReactNode
@@ -48,7 +48,7 @@ const FieldList = ({
   }, [handleInputFieldsChange, inputFields])
 
   const handleAddField = () => {
-    setCurrentIndex(-1)
+    setCurrentIndex(-1) // -1 means add new field
     setCurrentInputField(undefined)
     setShowInputFieldEditor(true)
   }
@@ -61,6 +61,10 @@ const FieldList = ({
 
   const handleSubmitChange = useCallback((data: InputVar) => {
     const newInputFields = produce(inputFields, (draft) => {
+      if (currentIndex === -1) {
+        draft.push(data)
+        return
+      }
       draft[currentIndex] = data
     })
     handleInputFieldsChange(newInputFields)
@@ -91,7 +95,7 @@ const FieldList = ({
         list={optionList}
         setList={list => handleListSortChange(list)}
         handle='.handle'
-        ghostClass="opacity-50"
+        ghostClass='opacity-50'
         animation={150}
         disabled={readonly}
       >

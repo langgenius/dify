@@ -1,8 +1,8 @@
-import { InputVarType } from '@/app/components/workflow/types'
 import { MAX_VAR_KEY_LENGTH } from '@/config'
 import type { TFunction } from 'i18next'
 import { z } from 'zod'
 import type { SchemaOptions } from './types'
+import { PipelineInputVarType } from '@/models/pipeline'
 
 export const TEXT_MAX_LENGTH = 256
 
@@ -30,7 +30,7 @@ export const SupportedFileTypes = z.enum([
   'custom',
 ])
 
-export const createInputFieldSchema = (type: InputVarType, t: TFunction, options: SchemaOptions) => {
+export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction, options: SchemaOptions) => {
   const { maxFileUploadLimit } = options
   const commonSchema = z.object({
     type: InputType,
@@ -47,22 +47,22 @@ export const createInputFieldSchema = (type: InputVarType, t: TFunction, options
       message: t('appDebug.variableConfig.errorMsg.labelNameRequired'),
     }),
     required: z.boolean(),
-    hint: z.string().optional(),
+    tooltips: z.string().optional(),
   })
-  if (type === InputVarType.textInput || type === InputVarType.paragraph) {
+  if (type === PipelineInputVarType.textInput || type === PipelineInputVarType.paragraph) {
     return z.object({
       maxLength: z.number().min(1).max(TEXT_MAX_LENGTH),
       default: z.string().optional(),
     }).merge(commonSchema).passthrough()
   }
-  if (type === InputVarType.number) {
+  if (type === PipelineInputVarType.number) {
     return z.object({
       default: z.number().optional(),
       unit: z.string().optional(),
       placeholder: z.string().optional(),
     }).merge(commonSchema).passthrough()
   }
-  if (type === InputVarType.select) {
+  if (type === PipelineInputVarType.select) {
     return z.object({
       options: z.array(z.string()).nonempty({
         message: t('appDebug.variableConfig.errorMsg.atLeastOneOption'),
@@ -75,7 +75,7 @@ export const createInputFieldSchema = (type: InputVarType, t: TFunction, options
       default: z.string().optional(),
     }).merge(commonSchema).passthrough()
   }
-  if (type === InputVarType.singleFile) {
+  if (type === PipelineInputVarType.singleFile) {
     return z.object({
       allowedFileUploadMethods: z.array(TransferMethod),
       allowedTypesAndExtensions: z.object({
@@ -84,7 +84,7 @@ export const createInputFieldSchema = (type: InputVarType, t: TFunction, options
       }),
     }).merge(commonSchema).passthrough()
   }
-  if (type === InputVarType.multiFiles) {
+  if (type === PipelineInputVarType.multiFiles) {
     return z.object({
       allowedFileUploadMethods: z.array(TransferMethod),
       allowedTypesAndExtensions: z.object({

@@ -1,14 +1,15 @@
-import type { InputVarType, MoreInfo, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import type { MoreInfo, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import type { PipelineInputVarType } from '@/models/pipeline'
 import type { TransferMethod } from '@/types/app'
 
 export type FormData = {
-  type: InputVarType
+  type: PipelineInputVarType
   label: string
   variable: string
   maxLength?: number
-  default?: string | number
+  default?: string
   required: boolean
-  hint?: string
+  tooltips?: string
   options?: string[]
   placeholder?: string
   unit?: string
@@ -20,7 +21,7 @@ export type FormData = {
 }
 
 export type InputFieldFormProps = {
-  initialData: FormData
+  initialData: Record<string, any>
   supportFile?: boolean
   onCancel: () => void
   onSubmit: (value: FormData, moreInfo?: MoreInfo) => void

@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
 import { ChangeType } from '@/app/components/workflow/types'
 import { useFileUploadConfig } from '@/service/use-common'
-import type { InputFieldFormProps } from './types'
+import type { FormData, InputFieldFormProps } from './types'
 import { useAppForm } from '@/app/components/base/form'
 import { createInputFieldSchema } from './schema'
 import Toast from '@/app/components/base/toast'
@@ -53,7 +53,7 @@ const InputFieldForm = ({
           type: ChangeType.changeVarName,
           payload: { beforeKey: initialData?.variable || '', afterKey: value.variable },
         }
-      onSubmit(value, moreInfo)
+      onSubmit(value as FormData, moreInfo)
     },
   })
 

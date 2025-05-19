@@ -1,6 +1,12 @@
-import type { InputVar } from '@/app/components/workflow/types'
+import type { InputVar } from '@/models/pipeline'
 import type { FormData } from './form/types'
-import { getNewVarInWorkflow } from '@/utils/var'
+import { VAR_ITEM_TEMPLATE_IN_PIPELINE } from '@/config'
+
+const getNewInputVarInRagPipeline = (): InputVar => {
+  return {
+    ...VAR_ITEM_TEMPLATE_IN_PIPELINE,
+  }
+}
 
 export const convertToInputFieldFormData = (data?: InputVar): FormData => {
   const {
@@ -10,23 +16,23 @@ export const convertToInputFieldFormData = (data?: InputVar): FormData => {
     max_length,
     'default': defaultValue,
     required,
-    hint,
+    tooltips,
     options,
     placeholder,
     unit,
     allowed_file_upload_methods,
     allowed_file_types,
     allowed_file_extensions,
-  } = data || getNewVarInWorkflow('')
+  } = data || getNewInputVarInRagPipeline()
 
   return {
     type,
-    label: label as string,
+    label,
     variable,
     maxLength: max_length,
     default: defaultValue,
     required,
-    hint,
+    tooltips,
     options,
     placeholder,
     unit,

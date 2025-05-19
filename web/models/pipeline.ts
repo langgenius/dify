@@ -1,9 +1,10 @@
-import type { Edge, InputVar, InputVarType, Node } from '@/app/components/workflow/types'
+import type { Edge, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { DSLImportMode, DSLImportStatus } from './app'
 import type { ChunkingMode, DatasetPermission, IconInfo } from './datasets'
 import type { Dependency } from '@/app/components/plugins/types'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Viewport } from 'reactflow'
+import type { TransferMethod } from '@/types/app'
 
 export type PipelineTemplateListParams = {
   type: 'built-in' | 'customized'
@@ -96,24 +97,37 @@ export type PipelineCheckDependenciesResponse = {
   leaked_dependencies: Dependency[]
 }
 
-export type Variables = {
-  type: InputVarType
-  label: string
-  description: string
-  variable: string
-  max_length: number
-  required: boolean
-  options?: string[]
-  default: string | number | boolean
+export enum PipelineInputVarType {
+  textInput = 'text-input',
+  paragraph = 'paragraph',
+  select = 'select',
+  number = 'number',
+  singleFile = 'file',
+  multiFiles = 'file-list',
+  checkbox = 'checkbox',
 }
+
+export type RAGPipelineVariable = {
+  belong_to_node_id: string // indicates belong to which node or 'shared'
+  type: PipelineInputVarType
+  label: string
+  variable: string
+  max_length?: number
+  default?: string
+  placeholder?: string
+  unit?: string
+  required: boolean
+  tooltips?: string
+  options?: string[]
+  allowed_file_upload_methods?: TransferMethod[]
+  allowed_file_types?: SupportUploadFileTypes[]
+  allowed_file_extensions?: string[]
+}
+
+export type InputVar = Omit<RAGPipelineVariable, 'belong_to_node_id'>
 
 export type PipelineProcessingParamsResponse = {
-  variables: Variables[]
+  variables: RAGPipelineVariable[]
 }
 
-export type RAGPipelineVariable = InputVar
-
-export type RAGPipelineVariables = Array<{
-  nodeId: string
-  variables: RAGPipelineVariable[]
-}>
+export type RAGPipelineVariables = RAGPipelineVariable[]

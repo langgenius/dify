@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { useStore } from '@/app/components/workflow/store'
 import { RiCloseLine } from '@remixicon/react'
-import { BlockEnum, type InputVar } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import DialogWrapper from './dialog-wrapper'
 import FieldList from './field-list'
 import FooterTip from './footer-tip'
@@ -15,6 +15,8 @@ import { useNodes } from 'reactflow'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
+import { useNodesSyncDraft } from '../../hooks'
+import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 
 type InputFieldDialogProps = {
   readonly?: boolean
@@ -29,6 +31,7 @@ const InputFieldDialog = ({
   const setShowInputFieldDialog = useStore(state => state.setShowInputFieldDialog)
   const ragPipelineVariables = useStore(state => state.ragPipelineVariables)
   const setRagPipelineVariables = useStore(state => state.setRagPipelineVariables)
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   const datasourceTitleMap = useMemo(() => {
     const datasourceNameMap: Record<string, string> = {}
@@ -44,11 +47,11 @@ const InputFieldDialog = ({
   const inputFieldsMap = useMemo(() => {
     const inputFieldsMap: Record<string, InputVar[]> = {}
     ragPipelineVariables?.forEach((variable) => {
-      const { nodeId, variables } = variable
-      if (nodeId)
-        inputFieldsMap[nodeId] = variables
+      const { belong_to_node_id: nodeId, ...varConfig } = variable
+      if (inputFieldsMap[nodeId])
+        inputFieldsMap[nodeId].push(varConfig)
       else
-        inputFieldsMap.shared = variables
+        inputFieldsMap[nodeId] = [varConfig]
     })
     return inputFieldsMap
   }, [ragPipelineVariables])
@@ -57,13 +60,23 @@ const InputFieldDialog = ({
     return Object.keys(inputFieldsMap).filter(key => key !== 'shared')
   }, [inputFieldsMap])
 
-  const updateInputFields = useCallback((key: string, value: InputVar[]) => {
-    const newRagPipelineVariables = produce(ragPipelineVariables!, (draft) => {
-      const index = draft.findIndex(variable => variable.nodeId === key)
-      draft[index].variables = value
+  const updateInputFields = useCallback(async (key: string, value: InputVar[]) => {
+    const NewInputFieldsMap = produce(inputFieldsMap, (draft) => {
+      draft[key] = value
+    })
+    const newRagPipelineVariables: RAGPipelineVariables = []
+    Object.keys(NewInputFieldsMap).forEach((key) => {
+      const inputFields = NewInputFieldsMap[key]
+      inputFields.forEach((inputField) => {
+        newRagPipelineVariables.push({
+          ...inputField,
+          belong_to_node_id: key,
+        })
+      })
     })
     setRagPipelineVariables?.(newRagPipelineVariables)
-  }, [ragPipelineVariables, setRagPipelineVariables])
+    await doSyncWorkflowDraft()
+  }, [doSyncWorkflowDraft, inputFieldsMap, setRagPipelineVariables])
 
   const closePanel = useCallback(() => {
     setShowInputFieldDialog?.(false)
@@ -99,6 +112,7 @@ const InputFieldDialog = ({
                 return null
               return (
                 <FieldList
+                  key={key}
                   LabelRightContent={<Datasource title={datasourceTitleMap[key]} />}
                   inputFields={inputFields}
                   readonly={readonly}
@@ -109,15 +123,13 @@ const InputFieldDialog = ({
             })
           }
           {/* Shared Inputs */}
-          {inputFieldsMap.shared?.length > 0 && (
-            <FieldList
-              LabelRightContent={<SharedInputs />}
-              inputFields={inputFieldsMap.shared}
-              readonly={readonly}
-              labelClassName='pt-1 pb-2'
-              handleInputFieldsChange={updateInputFields.bind(null, '')}
-            />
-          )}
+          <FieldList
+            LabelRightContent={<SharedInputs />}
+            inputFields={inputFieldsMap.shared || []}
+            readonly={readonly}
+            labelClassName='pt-1 pb-2'
+            handleInputFieldsChange={updateInputFields.bind(null, 'shared')}
+          />
         </div>
         <FooterTip />
       </div>
