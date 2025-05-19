@@ -4,13 +4,14 @@ SQLAlchemy implementation of the WorkflowNodeExecutionRepository.
 
 import json
 import logging
-from collections.abc import Sequence
-from typing import Optional, Union
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional, Union, cast
 
 from sqlalchemy import UnaryExpression, asc, delete, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.node_execution_entities import (
     NodeExecution,
     NodeExecutionStatus,
@@ -122,7 +123,12 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             status=status,
             error=db_model.error,
             elapsed_time=db_model.elapsed_time,
-            metadata=metadata,
+            # FIXME(QuantumGhost): a temporary workaround for the following type check failure in Python 3.11.
+            # However, this problem is not occurred in Python 3.12.
+            #
+            # A case of this error is:
+            # https://github.com/langgenius/dify/actions/runs/15112698604/job/42475659482?pr=19737#step:9:24
+            metadata=cast(Mapping[NodeRunMetadataKey, Any] | None, metadata),
             created_at=db_model.created_at,
             finished_at=db_model.finished_at,
         )
@@ -202,7 +208,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             # Only cache if we have a node_execution_id to use as the cache key
             if db_model.node_execution_id:
                 logger.debug(f"Updating cache for node_execution_id: {db_model.node_execution_id}")
-                self._node_execution_cache[db_model.node_execution_id] = db_model
+                self._node_execution_cache[db_model.node_execution_id] = execution
 
     def get_by_node_execution_id(self, node_execution_id: str) -> Optional[NodeExecution]:
         """

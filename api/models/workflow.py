@@ -1,29 +1,36 @@
 import json
+import logging
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Self, Union
 from uuid import uuid4
 
+from core.variables import utils as variable_utils
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from factories.variable_factory import build_segment
+
 if TYPE_CHECKING:
     from models.model import AppMode
 
 import sqlalchemy as sa
-from sqlalchemy import func
+from sqlalchemy import UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 import contexts
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
-from core.variables import SecretVariable, Variable
+from core.variables import SecretVariable, Segment, SegmentType, Variable
 from factories import variable_factory
 from libs import helper
 
 from .account import Account
 from .base import Base
 from .engine import db
-from .enums import CreatorUserRole
-from .types import StringUUID
+from .enums import CreatorUserRole, DraftVariableType
+from .types import EnumText, StringUUID
+
+_logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from models.model import AppMode
@@ -651,7 +658,7 @@ class WorkflowNodeExecution(Base):
         return json.loads(self.inputs) if self.inputs else None
 
     @property
-    def outputs_dict(self):
+    def outputs_dict(self) -> dict[str, Any] | None:
         return json.loads(self.outputs) if self.outputs else None
 
     @property
@@ -659,7 +666,7 @@ class WorkflowNodeExecution(Base):
         return json.loads(self.process_data) if self.process_data else None
 
     @property
-    def execution_metadata_dict(self):
+    def execution_metadata_dict(self) -> dict[str, Any] | None:
         return json.loads(self.execution_metadata) if self.execution_metadata else None
 
     @property
@@ -797,3 +804,202 @@ class ConversationVariable(Base):
     def to_variable(self) -> Variable:
         mapping = json.loads(self.data)
         return variable_factory.build_conversation_variable_from_mapping(mapping)
+
+
+# Only `sys.query` and `sys.files` could be modified.
+_EDITABLE_SYSTEM_VARIABLE = frozenset(["query", "files"])
+
+
+def _naive_utc_datetime():
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+class WorkflowDraftVariable(Base):
+    @staticmethod
+    def unique_columns() -> list[str]:
+        return [
+            "app_id",
+            "node_id",
+            "name",
+        ]
+
+    __tablename__ = "workflow_draft_variables"
+    __table_args__ = (UniqueConstraint(*unique_columns()),)
+
+    # id is the unique identifier of a draft variable.
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
+
+    created_at = mapped_column(
+        db.DateTime,
+        nullable=False,
+        default=_naive_utc_datetime,
+        server_default=func.current_timestamp(),
+    )
+
+    updated_at = mapped_column(
+        db.DateTime,
+        nullable=False,
+        default=_naive_utc_datetime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+    )
+
+    # "`app_id` maps to the `id` field in the `model.App` model."
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+
+    # `last_edited_at` records when the value of a given draft variable
+    # is edited.
+    #
+    # If it's not edited after creation, its value is `None`.
+    last_edited_at: Mapped[datetime | None] = mapped_column(
+        db.DateTime,
+        nullable=True,
+        default=None,
+    )
+
+    # The `node_id` field is special.
+    #
+    # If the variable is a conversation variable or a system variable, then the value of `node_id`
+    # is `conversation` or `sys`, respective.
+    #
+    # Otherwise, if the variable is a variable belonging to a specific node, the value of `_node_id` is
+    # the identity of correspond node in graph definition. An example of node id is `"1745769620734"`.
+    #
+    # However, there's one caveat. The id of the first "Answer" node in chatflow is "answer". (Other
+    # "Answer" node conform the rules above.)
+    node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="node_id")
+
+    # From `VARIABLE_PATTERN`, we may conclude that the length of a top level variable is less than
+    # 80 chars.
+    #
+    # ref: api/core/workflow/entities/variable_pool.py:18
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    description: Mapped[str] = mapped_column(
+        sa.String(255),
+        default="",
+        nullable=False,
+    )
+
+    selector: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="selector")
+
+    value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20))
+    # JSON string
+    value: Mapped[str] = mapped_column(sa.Text, nullable=False, name="value")
+
+    # visible
+    visible: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+
+    def get_selector(self) -> list[str]:
+        selector = json.loads(self.selector)
+        if not isinstance(selector, list):
+            _logger.error(
+                "invalid selector loaded from database, type=%s, value=%s",
+                type(selector),
+                self.selector,
+            )
+            raise ValueError("invalid selector.")
+        return selector
+
+    def _set_selector(self, value: list[str]):
+        self.selector = json.dumps(value)
+
+    def get_value(self) -> Segment | None:
+        return build_segment(json.loads(self.value))
+
+    def set_name(self, name: str):
+        self.name = name
+        self._set_selector([self.node_id, name])
+
+    def set_value(self, value: Segment):
+        self.value = json.dumps(value.value)
+        self.value_type = value.value_type
+
+    def get_node_id(self) -> str | None:
+        if self.get_variable_type() == DraftVariableType.NODE:
+            return self.node_id
+        else:
+            return None
+
+    def get_variable_type(self) -> DraftVariableType:
+        match self.node_id:
+            case DraftVariableType.CONVERSATION:
+                return DraftVariableType.CONVERSATION
+            case DraftVariableType.SYS:
+                return DraftVariableType.SYS
+            case _:
+                return DraftVariableType.NODE
+
+    @classmethod
+    def _new(
+        cls,
+        *,
+        app_id: str,
+        node_id: str,
+        name: str,
+        value: Segment,
+        description: str = "",
+    ) -> "WorkflowDraftVariable":
+        variable = WorkflowDraftVariable()
+        variable.created_at = _naive_utc_datetime()
+        variable.updated_at = _naive_utc_datetime()
+        variable.description = description
+        variable.app_id = app_id
+        variable.node_id = node_id
+        variable.name = name
+        variable.app_id = app_id
+        variable.set_value(value)
+        variable._set_selector(list(variable_utils.to_selector(node_id, name)))
+        return variable
+
+    @classmethod
+    def new_conversation_variable(
+        cls,
+        *,
+        app_id: str,
+        name: str,
+        value: Segment,
+    ) -> "WorkflowDraftVariable":
+        variable = cls._new(
+            app_id=app_id,
+            node_id=CONVERSATION_VARIABLE_NODE_ID,
+            name=name,
+            value=value,
+        )
+        return variable
+
+    @classmethod
+    def new_sys_variable(
+        cls,
+        *,
+        app_id: str,
+        name: str,
+        value: Segment,
+        editable: bool = False,
+    ) -> "WorkflowDraftVariable":
+        variable = cls._new(app_id=app_id, node_id=SYSTEM_VARIABLE_NODE_ID, name=name, value=value)
+        variable.editable = editable
+        return variable
+
+    @classmethod
+    def new_node_variable(
+        cls,
+        *,
+        app_id: str,
+        node_id: str,
+        name: str,
+        value: Segment,
+        visible: bool = True,
+    ) -> "WorkflowDraftVariable":
+        variable = cls._new(app_id=app_id, node_id=node_id, name=name, value=value)
+        variable.visible = visible
+        variable.editable = True
+        return variable
+
+    @property
+    def edited(self):
+        return self.last_edited_at is not None
+
+
+def is_system_variable_editable(name: str) -> bool:
+    return name in _EDITABLE_SYSTEM_VARIABLE
