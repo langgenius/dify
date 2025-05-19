@@ -13,9 +13,12 @@ from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.mcp_tool.provider import MCPToolProviderController
+from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from services.tools.mcp_tools_mange_service import MCPToolManageService
 
 if TYPE_CHECKING:
     from core.workflow.nodes.tool.entities import ToolEntity
@@ -49,7 +52,7 @@ from core.tools.utils.configuration import (
 )
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -156,7 +159,7 @@ class ToolManager:
         tenant_id: str,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
-    ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool]:
+    ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
         get the tool runtime
 
@@ -292,6 +295,8 @@ class ToolManager:
             raise NotImplementedError("app provider not implemented")
         elif provider_type == ToolProviderType.PLUGIN:
             return cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
+        elif provider_type == ToolProviderType.MCP:
+            return cls.get_mcp_provider_controller(tenant_id, provider_id).get_tool(tool_name)
         else:
             raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
 
@@ -425,6 +430,25 @@ class ToolManager:
         return tool_entity
 
     @classmethod
+    def get_tool_runtime_from_mcp(
+        cls,
+        tenant_id: str,
+        provider_id: str,
+        tool_name: str,
+    ) -> Tool:
+        """
+        get tool runtime from mcp
+        """
+        return cls.get_tool_runtime(
+            provider_type=ToolProviderType.MCP,
+            provider_id=provider_id,
+            tool_name=tool_name,
+            tenant_id=tenant_id,
+            invoke_from=InvokeFrom.SERVICE_API,
+            tool_invoke_from=ToolInvokeFrom.PLUGIN,
+        )
+
+    @classmethod
     def get_hardcoded_provider_icon(cls, provider: str) -> tuple[str, str]:
         """
         get the absolute path of the icon of the hardcoded provider
@@ -528,7 +552,7 @@ class ToolManager:
                     yield provider
 
                 except Exception:
-                    logger.exception(f"load builtin provider {provider}")
+                    logger.exception(f"load builtin provider {provider_path}")
                     continue
         # set builtin providers loaded
         cls._builtin_providers_loaded = True
@@ -569,7 +593,7 @@ class ToolManager:
 
         filters = []
         if not typ:
-            filters.extend(["builtin", "api", "workflow"])
+            filters.extend(["builtin", "api", "workflow", "mcp"])
         else:
             filters.append(typ)
 
@@ -663,6 +687,10 @@ class ToolManager:
                         labels=labels.get(provider_controller.provider_id, []),
                     )
                     result_providers[f"workflow_provider.{user_provider.name}"] = user_provider
+            if "mcp" in filters:
+                mcp_providers = MCPToolManageService.retrieve_mcp_tools(tenant_id)
+                for provider in mcp_providers:
+                    result_providers[f"mcp_provider.{provider.name}"] = provider
 
         return BuiltinToolProviderSort.sort(list(result_providers.values()))
 
@@ -697,6 +725,32 @@ class ToolManager:
         controller.load_bundled_tools(provider.tools)
 
         return controller, provider.credentials
+
+    @classmethod
+    def get_mcp_provider_controller(cls, tenant_id: str, provider_id: str) -> MCPToolProviderController:
+        """
+        get the api provider
+
+        :param tenant_id: the id of the tenant
+        :param provider_id: the id of the provider
+
+        :return: the provider controller, the credentials
+        """
+        provider: MCPToolProvider | None = (
+            db.session.query(MCPToolProvider)
+            .filter(
+                MCPToolProvider.id == provider_id,
+                MCPToolProvider.tenant_id == tenant_id,
+            )
+            .first()
+        )
+
+        if provider is None:
+            raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
+
+        controller = MCPToolProviderController._from_db(provider)
+
+        return controller
 
     @classmethod
     def user_get_api_provider(cls, provider: str, tenant_id: str) -> dict:
@@ -863,6 +917,8 @@ class ToolManager:
                 except Exception:
                     return {"background": "#252525", "content": "\ud83d\ude01"}
             raise ValueError(f"plugin provider {provider_id} not found")
+        elif provider_type == ToolProviderType.MCP:
+            return {"background": "#252525", "content": "\ud83d\ude01"}
         else:
             raise ValueError(f"provider type {provider_type} not found")
 

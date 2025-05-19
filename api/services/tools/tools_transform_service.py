@@ -5,6 +5,7 @@ from typing import Optional, Union, cast
 from yarl import URL
 
 from configs import dify_config
+from core.mcp.types import Tool as MCPTool
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -21,7 +22,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.configuration import ProviderConfigEncrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +188,38 @@ class ToolTransformService:
             labels=labels or [],
         )
 
+    @staticmethod
+    def mcp_provider_to_user_provider(db_provider: MCPToolProvider) -> ToolProviderApiEntity:
+        return ToolProviderApiEntity(
+            id=db_provider.id,
+            author=db_provider.user.name if db_provider.user else "Anonymous",
+            name=db_provider.name,
+            icon=db_provider.provider_icon,
+            type=ToolProviderType.MCP,
+            is_team_authorization=db_provider.authed,
+            server_url=db_provider.server_url,
+            tools=ToolTransformService.mcp_tool_to_user_tool(
+                db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
+            ),
+            updated_at=db_provider.updated_at,
+            label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
+            description=I18nObject(en_US="", zh_Hans=""),
+        )
+
+    @staticmethod
+    def mcp_tool_to_user_tool(mcp_provider: MCPToolProvider, tools: list[MCPTool]) -> list[ToolApiEntity]:
+        return [
+            ToolApiEntity(
+                author=mcp_provider.user.name if mcp_provider.user else "Anonymous",
+                name=tool.name,
+                label=I18nObject(en_US=tool.name, zh_Hans=tool.name),
+                description=I18nObject(en_US=tool.description, zh_Hans=tool.description),
+                parameters=ToolTransformService.convert_mcp_schema_to_parameter(tool.inputSchema),
+                labels=[],
+            )
+            for tool in tools
+        ]
+
     @classmethod
     def api_provider_to_user_provider(
         cls,
@@ -304,3 +337,59 @@ class ToolTransformService:
                 parameters=tool.parameters,
                 labels=labels or [],
             )
+
+    @staticmethod
+    def convert_mcp_schema_to_parameter(schema: dict) -> list["ToolParameter"]:
+        """
+        Convert MCP JSON schema to tool parameters
+
+        :param schema: JSON schema dictionary
+        :return: list of ToolParameter instances
+        """
+
+        def create_parameter(name: str, description: str, param_type: str, required: bool) -> ToolParameter:
+            """Create a ToolParameter instance with given attributes"""
+            return ToolParameter(
+                name=name,
+                llm_description=description,
+                label=I18nObject(en_US=name),
+                form=ToolParameter.ToolParameterForm.LLM,
+                required=required,
+                type=ToolParameter.ToolParameterType(param_type),
+                human_description=I18nObject(en_US=description),
+            )
+
+        def process_array(name: str, description: str, items: dict, required: bool) -> list[ToolParameter]:
+            """Process array type properties"""
+            item_type = items.get("type", "string")
+            if item_type == "object" and "properties" in items:
+                return process_properties(items["properties"], items.get("required", []), f"{name}[0]")
+
+            return [create_parameter(name, description, item_type, required)]
+
+        def process_properties(props: dict, required: list, prefix: str = "") -> list[ToolParameter]:
+            """Process properties recursively"""
+            parameters = []
+            for name, prop in props.items():
+                current_name = f"{prefix}.{name}" if prefix else name
+                current_description = prop.get("description", "")
+                prop_type = prop.get("type", "string")
+
+                if isinstance(prop_type, list):
+                    prop_type = prop_type[0]
+                if prop_type == "integer":
+                    prop_type = "number"
+                if prop_type == "array":
+                    parameters.extend(
+                        process_array(current_name, current_description, prop.get("items", {}), name in required)
+                    )
+                elif prop_type == "object" and "properties" in prop:
+                    parameters.extend(process_properties(prop["properties"], prop.get("required", []), current_name))
+                else:
+                    parameters.append(create_parameter(current_name, current_description, prop_type, name in required))
+
+            return parameters
+
+        if schema.get("type") == "object" and "properties" in schema:
+            return process_properties(schema["properties"], schema.get("required", []))
+        return []

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -18,7 +19,7 @@ class ToolApiEntity(BaseModel):
     output_schema: Optional[dict] = None
 
 
-ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow"]]
+ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow", "mcp"]]
 
 
 class ToolProviderApiEntity(BaseModel):
@@ -37,6 +38,9 @@ class ToolProviderApiEntity(BaseModel):
     plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the tool")
     tools: list[ToolApiEntity] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
+    # MCP
+    server_url: Optional[str] = Field(default="", description="The server url of the tool")
+    updated_at: datetime = Field(default_factory=datetime.now)
 
     @field_validator("tools", mode="before")
     @classmethod

@@ -7,6 +7,7 @@ from deprecated import deprecated
 from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.mcp.types import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
@@ -191,6 +192,66 @@ class WorkflowToolProvider(Base):
     @property
     def app(self) -> App | None:
         return db.session.query(App).filter(App.id == self.app_id).first()
+
+
+class MCPToolProvider(Base):
+    """
+    The table stores the mcp providers.
+    """
+
+    __tablename__ = "tool_mcp_providers"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tool_mcp_provider_pkey"),
+        db.UniqueConstraint("name", "tenant_id", name="unique_mcp_tool_provider"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    # name of the mcp provider
+    name: Mapped[str] = mapped_column(db.String(40), nullable=False)
+    # url of the mcp provider
+    server_url: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    # icon of the mcp provider
+    icon: Mapped[str] = mapped_column(db.String(255), nullable=True)
+    # tenant id
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # who created this tool
+    user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # encrypted credentials
+    encrypted_credentials: Mapped[str] = mapped_column(db.Text, nullable=False)
+    # authed
+    authed: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
+    # tools
+    tools: Mapped[str] = mapped_column(db.Text, nullable=False, default="[]")
+    created_at: Mapped[datetime] = mapped_column(
+        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+    )
+
+    @property
+    def user(self) -> Account | None:
+        return db.session.query(Account).filter(Account.id == self.user_id).first()
+
+    @property
+    def tenant(self) -> Tenant | None:
+        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+
+    @property
+    def credentials(self) -> dict:
+        try:
+            return cast(dict, json.loads(self.encrypted_credentials)) or {}
+        except Exception:
+            return {}
+
+    @property
+    def mcp_tools(self) -> list[Tool]:
+        return [Tool(**tool) for tool in json.loads(self.tools)]
+
+    @property
+    def provider_icon(self) -> str:
+        icon_dict = json.loads(self.icon)
+        return icon_dict
 
 
 class ToolModelInvoke(Base):

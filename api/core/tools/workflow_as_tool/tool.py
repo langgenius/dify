@@ -6,7 +6,12 @@ from typing import Any, Optional, Union, cast
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
-from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import (
+    ToolEntity,
+    ToolInvokeMessage,
+    ToolParameter,
+    ToolProviderType,
+)
 from core.tools.errors import ToolInvokeError
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
@@ -244,3 +249,84 @@ class WorkflowTool(Tool):
         elif transfer_method == FileTransferMethod.LOCAL_FILE:
             file_dict["upload_file_id"] = file_dict.get("related_id")
         return file_dict
+
+
+# class MCPTool(Tool):
+#     """
+#     MCP tool.
+#     """
+
+#     def __init__(self, entity: ToolEntity, runtime: ToolRuntime):
+#         super().__init__(entity=entity, runtime=runtime)
+
+#     def _invoke(
+#         self,
+#         user_id: str,
+#         tool_parameters: dict[str, Any],
+#         conversation_id: Optional[str] = None,
+#         app_id: Optional[str] = None,
+#         message_id: Optional[str] = None,
+#     ) -> Generator[ToolInvokeMessage, None, None]:
+#         """
+#         invoke the tool
+#         """
+#         # Retrieve staff duty schedule
+#         client = MCPClient()
+#         res = [
+#             client.invoke_tool_sync(
+#                 tool_name="NOTION_GET_ABOUT_ME",
+#                 parameters={"params": {}},
+#                 server_url="https://mcp.composio.dev/notion/attractive-fresh-egypt-zkfePp",
+#             )
+#         ]
+
+#         for r in res:
+#             for c in r.content:
+#                 if c.type == "text":
+#                     yield self.create_text_message(c.text)
+#                     try:
+#                         yield self.create_json_message(json.loads(c.text))
+#                     except Exception:
+#                         pass
+#                 elif c.type == "json":
+#                     yield self.create_json_message(c.json)
+
+#     def _get_tool_runtime(self) -> ToolRuntime:
+#         """
+#         get the tool runtime
+#         """
+#         return self.runtime
+
+#     def tool_provider_type(self) -> ToolProviderType:
+#         """
+#         get the tool provider type
+#         """
+#         return ToolProviderType.MCP
+
+#     @classmethod
+#     def get_tool_from_runtime(cls, runtime: ToolRuntime) -> "MCPTool":
+#         """
+#         get the tool from the runtime
+#         """
+#         if runtime.tool_id is None:
+#             raise ValueError("tool id is required")
+#         tool_name = MCPToolManageService.get_mcp_tool(runtime.tenant_id, runtime.tool_id)
+#         if tool_name is None:
+#             raise ValueError("tool not found")
+#         entity = ToolEntity(
+#             identity=ToolIdentity(
+#                 author="dify",
+#                 name=tool_name.name,
+#                 label=I18nObject(
+#                     en_US="MCP",
+#                     zh_Hans="MCP",
+#                 ),
+#                 provider="mcp",
+#                 icon=None,
+#             ),
+#             parameters=[],
+#             description=None,
+#             output_schema=None,
+#             has_runtime_parameters=False,
+#         )
+#         return cls(entity=entity, runtime=runtime)
