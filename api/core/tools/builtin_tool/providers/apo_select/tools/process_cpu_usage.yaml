@@ -1,0 +1,64 @@
+identity:
+  name: 查询进程CPU使用率
+  author: APO
+  label:
+    en_US: Query process CPU usage
+    zh_Hans: 查询进程CPU使用率
+description:
+  human:
+    en_US: Query process CPU usage
+    zh_Hans: 查询进程CPU使用率
+  llm: Query process CPU usage
+display:
+  type: metric
+  title: 查询进程CPU使用率
+  unit: "percentunit"
+parameters:
+  - name: groupName
+    type: string
+    required: False
+    label:
+      en_US: Process name(eg:name1|name2)
+      zh_Hans: 进程名（正则查询格式：name1|name2）
+    human_description:
+      en_US: Process name(eg:name1|name2)
+      zh_Hans: 进程名（正则查询格式：name1|name2）
+    llm_description: Process name(eg:name1|name2)
+    form: llm
+  - name: nodeName
+    type: string
+    required: true
+    label:
+      en_US: Node name
+      zh_Hans: 主机名
+    human_description:
+      en_US: Node name
+      zh_Hans: 主机名
+    llm_description: Node name
+    form: llm
+  - name: startTime
+    type: number
+    required: true
+    label:
+      en_US: startTime
+      zh_Hans: startTime
+      pt_BR: startTime
+    human_description:
+      en_US: Data query start time(Microsecond)
+      zh_Hans: 开始时间 (微秒)
+      pt_BR: Data query start time
+    llm_description: Data query start time(Microsecond)
+    form: llm
+  - name: endTime
+    type: number
+    required: true
+    label:
+      en_US: endTime
+      zh_Hans: endTime
+      pt_BR: endTime
+    human_description:
+      en_US: Data query end time(Microsecond)
+      zh_Hans: 结束时间 (微秒)
+      pt_BR: Data query end time(Microsecond)
+    llm_description: Data query end time(Microsecond)
+    form: llm
