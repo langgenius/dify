@@ -47,7 +47,7 @@ class PluginInstallationPermissionModel(BaseModel):
     #   PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY: allow only Dify official plugins
     #   PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS: allow official and specific partner plugins
     #   PLUGIN_INSTALLATION_SCOPE_ALL: allow installation of all plugins
-    pluign_installation_scope: str = "PLUGIN_INSTALLATION_SCOPE_ALL"
+    plugin_installation_scope: str = "PLUGIN_INSTALLATION_SCOPE_ALL"
 
     # If True, restrict plugin installation to the marketplace only
     restrict_to_marketplace_only: bool = False
@@ -92,7 +92,7 @@ class SystemFeatureModel(BaseModel):
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
-    pluign_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
+    plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
 
 
 class FeatureService:
@@ -229,9 +229,9 @@ class FeatureService:
 
         if "plugin_installation_permission" in enterprise_info:
             plugin_installation_info = enterprise_info["plugin_installation_permission"]
-            features.pluign_installation_permission.pluign_installation_scope = plugin_installation_info[
+            features.plugin_installation_permission.plugin_installation_scope = plugin_installation_info[
                 "pluign_installation_scope"
             ]
-            features.pluign_installation_permission.restrict_to_marketplace_only = plugin_installation_info[
+            features.plugin_installation_permission.restrict_to_marketplace_only = plugin_installation_info[
                 "restrict_to_marketplace_only"
             ]
