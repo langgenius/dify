@@ -66,7 +66,6 @@ const useInspectVarsCrud = () => {
   }
 
   const deleteNodeInspectorVars = async (nodeId: string) => {
-    console.log('delete node inspector vars', nodeId)
     if (hasNodeInspectVars(nodeId))
       await doDeleteNodeInspectorVars(nodeId)
 
