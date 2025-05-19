@@ -40,6 +40,16 @@ class LicenseModel(BaseModel):
     status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
 
+class PluginInstallationPermissionModel(BaseModel):
+    # Plugin installation scope – possible values:
+    #   PLUGIN_INSTALLATION_SCOPE_NONE: prohibit all plugin installations
+    #   PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY: allow only Dify official plugins
+    #   PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS: allow official and specific partner plugins
+    #   PLUGIN_INSTALLATION_SCOPE_ALL: allow installation of all plugins
+    pluign_installation_scope: str = "PLUGIN_INSTALLATION_SCOPE_ALL"
+
+    # If True, restrict plugin installation to the marketplace only
+    restrict_to_marketplace_only: bool = False
 
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
@@ -80,6 +90,7 @@ class SystemFeatureModel(BaseModel):
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
     license: LicenseModel = LicenseModel()
+    pluign_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
 
 
 class FeatureService:
@@ -213,3 +224,9 @@ class FeatureService:
 
             if "expired_at" in license_info:
                 features.license.expired_at = license_info["expired_at"]
+
+        if "plugin_installation_permission" in enterprise_info:
+            plugin_installation_info = enterprise_info["plugin_installation_permission"]
+            features.pluign_installation_permission.pluign_installation_scope = plugin_installation_info["pluign_installation_scope"]
+            features.pluign_installation_permission.specific_partner_marketplaces = plugin_installation_info["specific_partner_marketplaces"]
+            features.pluign_installation_permission.restrict_to_marketplace_only = plugin_installation_info["restrict_to_marketplace_only"]
