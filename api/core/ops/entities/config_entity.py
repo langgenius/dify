@@ -45,6 +45,9 @@ class ArizeConfig(BaseTracingConfig):
             v = "https://otlp.arize.com"
         if not v.startswith(("https://", "http://")):
             raise ValueError("endpoint must start with https:// or http://")
+        if "/" in v[8:]:
+            parts = v.split("/")
+            v = parts[0] + "//" + parts[2]
 
         return v
 
@@ -73,6 +76,9 @@ class PhoenixConfig(BaseTracingConfig):
             v = "https://app.phoenix.arize.com"
         if not v.startswith(("https://", "http://")):
             raise ValueError("endpoint must start with https:// or http://")
+        if "/" in v[8:]:
+            parts = v.split("/")
+            v = parts[0] + "//" + parts[2]
 
         return v
 
