@@ -228,5 +228,4 @@ class FeatureService:
         if "plugin_installation_permission" in enterprise_info:
             plugin_installation_info = enterprise_info["plugin_installation_permission"]
             features.pluign_installation_permission.pluign_installation_scope = plugin_installation_info["pluign_installation_scope"]
-            features.pluign_installation_permission.specific_partner_marketplaces = plugin_installation_info["specific_partner_marketplaces"]
             features.pluign_installation_permission.restrict_to_marketplace_only = plugin_installation_info["restrict_to_marketplace_only"]
