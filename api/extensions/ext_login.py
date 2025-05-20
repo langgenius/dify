@@ -21,6 +21,7 @@ login_manager = flask_login.LoginManager()
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
     auth_header = request.headers.get("Authorization", "")
+    auth_token: str | None = None
     if auth_header:
         if " " not in auth_header:
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
