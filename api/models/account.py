@@ -62,7 +62,8 @@ class Account(UserMixin, Base):
 
     @property
     def current_tenant_id(self) -> str | None:
-        return self._current_tenant.id if self._current_tenant else None
+        ta = db.session.query(TenantAccountJoin).filter_by(account_id=self.id, current=True).first()
+        return ta.tenant_id if ta else None
 
     def set_tenant_id(self, tenant_id: str):
         tenant_account_join = cast(
