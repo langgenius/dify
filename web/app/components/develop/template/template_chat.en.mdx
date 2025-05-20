@@ -598,33 +598,33 @@ Chat applications support session persistence, allowing previous chat history to
 
     ### Response
     - `data` (array[object]) Message list
-    - `id` (string) Message ID
-    - `conversation_id` (string) Conversation ID
-    - `inputs` (object) User input parameters.
-    - `query` (string) User input / question content.
-    - `message_files` (array[object]) Message files
-      - `id` (string) ID
-      - `type` (string) File type, image for images
-      - `url` (string) Preview image URL
-      - `belongs_to` (string) belongs to，user or assistant
-    - `agent_thoughts` (array[object]) Agent thought（Empty if it's a Basic Assistant）
-      - `id` (string) Agent thought ID, every iteration has a unique agent thought ID
-      - `message_id` (string) Unique message ID
-      - `position` (int) Position of current agent thought, each message may have multiple thoughts in order.
-      - `thought` (string) What LLM is thinking about
-      - `observation` (string) Response from tool calls
-      - `tool` (string) A list of tools represents which tools are called，split by ;
-      - `tool_input` (string) Input of tools in JSON format. Like: `{"dalle3": {"prompt": "a cute cat"}}`.
-      - `created_at` (int) Creation timestamp, e.g., 1705395332
-      - `message_files` (array[string])  Refer to message_file event
-        - `file_id` (string) File ID
-    - `answer` (string) Response message content
-    - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
-    - `feedback` (object) Feedback information
-      - `rating` (string) Upvote as `like` / Downvote as `dislike`
-    - `retriever_resources` (array[RetrieverResource]) Citation and Attribution List
-  - `has_more` (bool) Whether there is a next page
-  - `limit` (int) Number of returned items, if input exceeds system limit, returns system limit amount
+      - `id` (string) Message ID
+      - `conversation_id` (string) Conversation ID
+      - `inputs` (object) User input parameters.
+      - `query` (string) User input / question content.
+      - `message_files` (array[object]) Message files
+        - `id` (string) ID
+        - `type` (string) File type, image for images
+        - `url` (string) Preview image URL
+        - `belongs_to` (string) belongs to，user or assistant
+      - `agent_thoughts` (array[object]) Agent thought（Empty if it's a Basic Assistant）
+        - `id` (string) Agent thought ID, every iteration has a unique agent thought ID
+        - `message_id` (string) Unique message ID
+        - `position` (int) Position of current agent thought, each message may have multiple thoughts in order.
+        - `thought` (string) What LLM is thinking about
+        - `observation` (string) Response from tool calls
+        - `tool` (string) A list of tools represents which tools are called，split by ;
+        - `tool_input` (string) Input of tools in JSON format. Like: `{"dalle3": {"prompt": "a cute cat"}}`.
+        - `created_at` (int) Creation timestamp, e.g., 1705395332
+        - `message_files` (array[string])  Refer to message_file event
+          - `file_id` (string) File ID
+      - `answer` (string) Response message content
+      - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+      - `feedback` (object) Feedback information
+        - `rating` (string) Upvote as `like` / Downvote as `dislike`
+      - `retriever_resources` (array[RetrieverResource]) Citation and Attribution List
+    - `has_more` (bool) Whether there is a next page
+    - `limit` (int) Number of returned items, if input exceeds system limit, returns system limit amount
 
   </Col>
   <Col sticky>

@@ -29,6 +29,7 @@ import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vend
 import { Divider } from '@/app/components/base/icons/src/vender/knowledge'
 import NoLinkedAppsPanel from '@/app/components/datasets/no-linked-apps-panel'
 import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -141,10 +142,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return baseNavigation
   }, [datasetRes?.provider, datasetId, t])
 
-  useEffect(() => {
-    if (datasetRes)
-      document.title = `${datasetRes.name || 'Dataset'} - Dify`
-  }, [datasetRes])
+  useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 
   const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
 

@@ -636,22 +636,22 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
     ### 応答
     - `data` (array[object]) メッセージリスト
-    - `id` (string) メッセージID
-    - `conversation_id` (string) 会話ID
-    - `inputs` (object) ユーザー入力パラメータ。
-    - `query` (string) ユーザー入力/質問内容。
-    - `message_files` (array[object]) メッセージファイル
-      - `id` (string) ID
-      - `type` (string) ファイルタイプ、画像の場合はimage
-      - `url` (string) プレビュー画像URL
-      - `belongs_to` (string) 所属、userまたはassistant
-    - `answer` (string) 応答メッセージ内容
-    - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
-    - `feedback` (object) フィードバック情報
-      - `rating` (string) アップボートは`like` / ダウンボートは`dislike`
-    - `retriever_resources` (array[RetrieverResource]) 引用と帰属リスト
-  - `has_more` (bool) 次のページがあるかどうか
-  - `limit` (int) 返された項目数、入力がシステム制限を超える場合、システム制限数を返します
+      - `id` (string) メッセージID
+      - `conversation_id` (string) 会話ID
+      - `inputs` (object) ユーザー入力パラメータ。
+      - `query` (string) ユーザー入力/質問内容。
+      - `message_files` (array[object]) メッセージファイル
+        - `id` (string) ID
+        - `type` (string) ファイルタイプ、画像の場合はimage
+        - `url` (string) プレビュー画像URL
+        - `belongs_to` (string) 所属、userまたはassistant
+      - `answer` (string) 応答メッセージ内容
+      - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+      - `feedback` (object) フィードバック情報
+        - `rating` (string) アップボートは`like` / ダウンボートは`dislike`
+      - `retriever_resources` (array[RetrieverResource]) 引用と帰属リスト
+    - `has_more` (bool) 次のページがあるかどうか
+    - `limit` (int) 返された項目数、入力がシステム制限を超える場合、システム制限数を返します
 
   </Col>
   <Col sticky>
