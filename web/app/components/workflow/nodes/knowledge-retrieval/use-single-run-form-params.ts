@@ -46,7 +46,6 @@ const useSingleRunFormParams = ({
   }, [query, setQuery, t])
 
   const getDependentVars = () => {
-    console.log(payload.query_variable_selector)
     return [payload.query_variable_selector]
   }
   const getDependentVar = (variable: string) => {
