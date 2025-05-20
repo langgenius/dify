@@ -4,13 +4,14 @@ import { useStoreApi } from 'reactflow'
 import type { Node } from '@/app/components/workflow/types'
 import { fetchAllInspectVars } from '@/service/workflow'
 import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
-
+import { useNodesInteractionsWithoutSync } from '../../workflow/hooks/use-nodes-interactions-without-sync'
 const useSetWorkflowVarsWithValue = () => {
   const workflowStore = useWorkflowStore()
   const { setNodesWithInspectVars, appId } = workflowStore.getState()
   const store = useStoreApi()
   const invalidateConversationVarValues = useInvalidateConversationVarValues(appId)
   const invalidateSysVarValues = useInvalidateSysVarValues(appId)
+  const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
 
   const setInspectVarsToStore = (inspectVars: VarInInspect[]) => {
     const { getNodes } = store.getState()
@@ -56,6 +57,7 @@ const useSetWorkflowVarsWithValue = () => {
     invalidateSysVarValues()
     const data = await fetchAllInspectVars(appId)
     setInspectVarsToStore(data)
+    handleCancelAllNodeSuccessStatus() // to make sure clear node output show the unset status
   }
   return {
     fetchInspectVars,

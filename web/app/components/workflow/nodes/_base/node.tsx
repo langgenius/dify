@@ -90,7 +90,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     }
   }, [data.isInLoop, data.selected, id, handleNodeLoopChildSizeChange])
 
-  const { hasNodeInspectVars, nodesWithInspectVars } = useInspectVarsCrud()
+  const { hasNodeInspectVars } = useInspectVarsCrud()
   // window.nodesWithInspectVars = nodesWithInspectVars
   const hasVarValue = hasNodeInspectVars(id)
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
@@ -106,7 +106,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
       showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
     }
-  }, [data._runningStatus, showSelectedBorder])
+  }, [data._runningStatus, hasVarValue, showSelectedBorder])
 
   const LoopIndex = useMemo(() => {
     let text = ''

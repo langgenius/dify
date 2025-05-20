@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { isConversationVar, isENV, isSystemVar } from '../nodes/_base/components/variable/utils'
 import produce from 'immer'
 import type { Node } from '@/app/components/workflow/types'
+import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 
 const useInspectVarsCrud = () => {
   const workflowStore = useWorkflowStore()
@@ -43,6 +44,7 @@ const useInspectVarsCrud = () => {
   const { mutate: doDeleteInspectVar } = useDeleteInspectVar(appId)
 
   const { mutate: doEditInspectorVar } = useEditInspectorVar(appId)
+  const { handleCancelNodeSuccessStatus } = useNodesInteractionsWithoutSync()
 
   const getNodeInspectVars = useCallback((nodeId: string) => {
     const node = nodesWithInspectVars.find(node => node.nodeId === nodeId)
@@ -123,6 +125,7 @@ const useInspectVarsCrud = () => {
         }
     })
     setNodesWithInspectVars(nodes)
+    handleCancelNodeSuccessStatus(nodeId)
   }
 
   const deleteInspectVar = async (nodeId: string, varId: string) => {
@@ -146,7 +149,6 @@ const useInspectVarsCrud = () => {
 
   const editInspectVarValue = useCallback(async (nodeId: string, varId: string, value: any) => {
     if (nodeId === VarInInspectType.conversation) {
-      console.log('edit conversation var value', varId, value)
       invalidateConversationVarValues()
     }
     else if (nodeId === VarInInspectType.system) {
