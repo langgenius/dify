@@ -21,12 +21,12 @@ export const createApp: Fetcher<AppDetailResponse, { name: string; icon_type?: A
   return post<AppDetailResponse>('apps', { body: { name, icon_type, icon, icon_background, mode, description, model_config: config } })
 }
 
-export const updateAppInfo: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string; description: string; use_icon_as_answer_icon?: boolean }> = ({ appID, name, icon_type, icon, icon_background, description, use_icon_as_answer_icon }) => {
-  return put<AppDetailResponse>(`apps/${appID}`, { body: { name, icon_type, icon, icon_background, description, use_icon_as_answer_icon } })
+export const updateAppInfo: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string; icon_url?: string; description: string; use_icon_as_answer_icon?: boolean }> = ({ appID, name, icon_type, icon, icon_background, icon_url, description, use_icon_as_answer_icon }) => {
+  return put<AppDetailResponse>(`apps/${appID}`, { body: { name, icon_type, icon, icon_background, icon_url, description, use_icon_as_answer_icon } })
 }
 
-export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string | null; mode: AppMode; description?: string }> = ({ appID, name, icon_type, icon, icon_background, mode, description }) => {
-  return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon_type, icon, icon_background, mode, description } })
+export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string | null; icon_url?: string | null; mode: AppMode; description?: string }> = ({ appID, name, icon_type, icon, icon_background, icon_url, mode, description }) => {
+  return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon_type, icon, icon_background, icon_url, mode, description } })
 }
 
 export const exportAppConfig: Fetcher<{ data: string }, { appID: string; include?: boolean }> = ({ appID, include = false }) => {

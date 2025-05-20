@@ -192,6 +192,7 @@ class AppCopyApi(Resource):
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
+        parser.add_argument("icon_url", type=str, location="json")
         args = parser.parse_args()
 
         with Session(db.engine) as session:
@@ -206,6 +207,7 @@ class AppCopyApi(Resource):
                 description=args.get("description"),
                 icon_type=args.get("icon_type"),
                 icon=args.get("icon"),
+                icon_url=args.get("icon_url"),
                 icon_background=args.get("icon_background"),
             )
             session.commit()
