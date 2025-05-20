@@ -9,11 +9,22 @@ import {
   RiPlayCircleLine,
   RiTerminalBoxLine,
 } from '@remixicon/react'
+import { useKeyPress } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
+import {
+  useStore,
+  useWorkflowStore,
+} from '@/app/components/workflow/store'
 import Button from '@/app/components/base/button'
-import { useFormatTimeFromNow } from '@/app/components/workflow/hooks'
+import {
+  useChecklistBeforePublish,
+  useFormatTimeFromNow,
+} from '@/app/components/workflow/hooks'
 import Divider from '@/app/components/base/divider'
+import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
+import { usePublishWorkflow } from '@/service/use-workflow'
+import type { PublishWorkflowParams } from '@/types/workflow'
+import { useToastContext } from '@/app/components/base/toast'
 
 const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
 
@@ -22,16 +33,40 @@ const Popup = () => {
   const [published, setPublished] = useState(false)
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
+  const pipelineId = useStore(s => s.pipelineId)
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const { handleCheckBeforePublish } = useChecklistBeforePublish()
+  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
+  const { notify } = useToastContext()
+  const workflowStore = useWorkflowStore()
 
-  const handlePublish = useCallback(async () => {
-    try {
+  const handlePublish = useCallback(async (params?: PublishWorkflowParams) => {
+    if (await handleCheckBeforePublish()) {
+      const res = await publishWorkflow({
+        url: `/rag/pipelines/${pipelineId}/workflows/publish`,
+        title: params?.title || '',
+        releaseNotes: params?.releaseNotes || '',
+      })
       setPublished(true)
+
+      if (res) {
+        notify({ type: 'success', message: t('common.api.actionSuccess') })
+        workflowStore.getState().setPublishedAt(res.created_at)
+      }
     }
-    catch {
-      setPublished(false)
+    else {
+      throw new Error('Checklist failed')
     }
-  }, [])
+  }, [workflowStore, notify, t, publishWorkflow, pipelineId, handleCheckBeforePublish])
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
+    e.preventDefault()
+    if (published)
+      return
+    handlePublish()
+  },
+    { exactMatch: true, useCapture: true },
+  )
 
   return (
     <div className='w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>

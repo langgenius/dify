@@ -45,6 +45,7 @@ const translation = {
     setVarValuePlaceholder: '设置变量值',
     needConnectTip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
+    needAdd: '必须添加{{node}}节点',
     needEndNode: '必须添加结束节点',
     needAnswerNode: '必须添加直接回复节点',
     workflowProcess: '工作流',

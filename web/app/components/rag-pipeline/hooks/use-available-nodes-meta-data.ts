@@ -12,8 +12,21 @@ export const useAvailableNodesMetaData = () => {
 
   const mergedNodesMetaData = useMemo(() => [
     ...WORKFLOW_COMMON_NODES,
-    knowledgeBaseDefault,
-    dataSourceDefault,
+    {
+      ...dataSourceDefault,
+      metaData: {
+        ...dataSourceDefault.metaData,
+        isStart: true,
+      },
+    },
+    {
+      ...knowledgeBaseDefault,
+      metaData: {
+        ...knowledgeBaseDefault.metaData,
+        isRequired: true,
+        isUndeletable: true,
+      },
+    },
   ], [])
 
   const prefixLink = useMemo(() => {

@@ -549,7 +549,7 @@ export const useNodesInteractions = () => {
     if (!currentNode)
       return
 
-    if (currentNode.data.type === BlockEnum.Start)
+    if (nodesMetaDataMap?.[currentNode.data.type as BlockEnum].metaData.isUndeletable)
       return
 
     if (currentNode.data.type === BlockEnum.Iteration) {
@@ -656,7 +656,7 @@ export const useNodesInteractions = () => {
 
     else
       saveStateToHistory(WorkflowHistoryEvent.NodeDelete)
-  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, t])
+  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, t, nodesMetaDataMap])
 
   const handleNodeAdd = useCallback<OnNodeAdd>((
     {

@@ -78,7 +78,7 @@ const FeaturesTrigger = () => {
     setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
-  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory(appDetail!.id)
+  const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
 
   const updateAppDetail = useCallback(async () => {
     try {
@@ -89,10 +89,11 @@ const FeaturesTrigger = () => {
       console.error(error)
     }
   }, [appID, setAppDetail])
-  const { mutateAsync: publishWorkflow } = usePublishWorkflow(appID!)
+  const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
     if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
+        url: `/apps/${appID}/workflows/publish`,
         title: params?.title || '',
         releaseNotes: params?.releaseNotes || '',
       })
@@ -107,7 +108,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [handleCheckBeforePublish, notify, t, workflowStore, publishWorkflow, resetWorkflowVersionHistory, updateAppDetail])
+  }, [handleCheckBeforePublish, notify, appID, t, workflowStore, publishWorkflow, resetWorkflowVersionHistory, updateAppDetail])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)

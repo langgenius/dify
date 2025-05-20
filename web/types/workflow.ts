@@ -345,6 +345,7 @@ export type WorkflowConfigResponse = {
 }
 
 export type PublishWorkflowParams = {
+  url: string
   title: string
   releaseNotes: string
 }

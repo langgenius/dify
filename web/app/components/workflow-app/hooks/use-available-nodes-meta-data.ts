@@ -15,11 +15,35 @@ export const useAvailableNodesMetaData = () => {
 
   const mergedNodesMetaData = useMemo(() => [
     ...WORKFLOW_COMMON_NODES,
-    StartDefault,
+    {
+      ...StartDefault,
+      metaData: {
+        ...StartDefault.metaData,
+        isStart: true,
+        isRequired: true,
+        isUndeletable: true,
+      },
+    },
     ...(
       isChatMode
-        ? [AnswerDefault]
-        : [EndDefault]
+        ? [
+            {
+              ...AnswerDefault,
+              metaData: {
+                ...AnswerDefault.metaData,
+                isRequired: true,
+              },
+            },
+          ]
+        : [
+            {
+              ...EndDefault,
+              metaData: {
+                ...EndDefault.metaData,
+                isRequired: true,
+              },
+            },
+          ]
     ),
   ], [isChatMode])
 
