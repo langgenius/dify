@@ -947,7 +947,6 @@ class WorkflowDraftVariable(Base):
         variable.app_id = app_id
         variable.node_id = node_id
         variable.name = name
-        variable.app_id = app_id
         variable.set_value(value)
         variable._set_selector(list(variable_utils.to_selector(node_id, name)))
         return variable
