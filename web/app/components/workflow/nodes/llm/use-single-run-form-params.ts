@@ -167,8 +167,31 @@ const useSingleRunFormParams = ({
     return forms
   })()
 
+  const getDependentVars = () => {
+    const promptVars = varInputs.map(item => item.variable.slice(1, -1).split('.'))
+    const contextVar = payload.context.variable_selector
+    const vars = [...promptVars, contextVar]
+    if (isVisionModel && payload.vision?.enabled && payload.vision?.configs?.variable_selector) {
+      const visionVar = payload.vision.configs.variable_selector
+      vars.push(visionVar)
+    }
+    return vars
+  }
+
+  const getDependentVar = (variable: string) => {
+    if(variable === '#context#')
+      return payload.context.variable_selector
+
+    if(variable === '#files#')
+      return payload.vision.configs?.variable_selector
+
+    return false
+  }
+
   return {
     forms,
+    getDependentVars,
+    getDependentVar,
   }
 }
 

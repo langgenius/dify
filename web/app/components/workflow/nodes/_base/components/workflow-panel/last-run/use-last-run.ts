@@ -21,7 +21,7 @@ import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/
 import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
 
 // import
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
@@ -171,7 +171,10 @@ const useLastRun = <T>({
     const valuesArr = forms.map((form) => {
       const values: Record<string, boolean> = {}
       form.inputs.forEach(({ variable }) => {
-        const selector = variable.slice(1, -1).split('.')
+        if(!variable.includes('.') && !singleRunParams?.getDependentVar)
+          return
+
+        const selector = !variable.includes('.') ? singleRunParams?.getDependentVar(variable) : variable.slice(1, -1).split('.')
         const [nodeId, varName] = selector.slice(0, 2)
         const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
         if (inspectVarValue)
@@ -180,6 +183,16 @@ const useLastRun = <T>({
       return values
     })
     return valuesArr
+  }
+
+  const isAllVarsHasValue = (vars?: ValueSelector[]) => {
+    if(!vars || vars.length === 0)
+      return true
+    return vars.every((varItem) => {
+      const [nodeId, varName] = varItem.slice(0, 2)
+      const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
+      return inspectVarValue
+    })
   }
 
   const getFilteredExistVarForms = (forms: FormProps[]) => {
@@ -200,13 +213,13 @@ const useLastRun = <T>({
   }
 
   const handleSingleRun = () => {
-    const filteredExistVarForms = getFilteredExistVarForms(singleRunParams.forms)
-    if (filteredExistVarForms.length > 0) {
-      showSingleRun()
-    }
-    else { // no need to input params
+    // no need to input params
+    if (isAllVarsHasValue(singleRunParams?.getDependentVars?.())) {
       callRunApi({})
       setTabType(TabType.lastRun)
+    }
+    else {
+      showSingleRun()
     }
   }
 

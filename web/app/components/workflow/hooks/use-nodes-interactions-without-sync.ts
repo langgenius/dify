@@ -2,11 +2,9 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 import { NodeRunningStatus } from '../types'
-import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
 
 export const useNodesInteractionsWithoutSync = () => {
   const store = useStoreApi()
-    const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
 
   const handleNodeCancelRunningStatus = useCallback(() => {
     const {
@@ -38,8 +36,7 @@ export const useNodesInteractionsWithoutSync = () => {
       })
     })
     setNodes(newNodes)
-    handleEdgeCancelRunningStatus()
-  }, [handleEdgeCancelRunningStatus, store])
+  }, [store])
 
   const handleCancelNodeSuccessStatus = useCallback((nodeId: string) => {
     const {

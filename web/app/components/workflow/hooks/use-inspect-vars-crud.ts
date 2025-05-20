@@ -19,6 +19,7 @@ import { isConversationVar, isENV, isSystemVar } from '../nodes/_base/components
 import produce from 'immer'
 import type { Node } from '@/app/components/workflow/types'
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
+import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
 
 const useInspectVarsCrud = () => {
   const workflowStore = useWorkflowStore()
@@ -45,7 +46,7 @@ const useInspectVarsCrud = () => {
 
   const { mutate: doEditInspectorVar } = useEditInspectorVar(appId)
   const { handleCancelNodeSuccessStatus } = useNodesInteractionsWithoutSync()
-
+  const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
   const getNodeInspectVars = useCallback((nodeId: string) => {
     const node = nodesWithInspectVars.find(node => node.nodeId === nodeId)
     return node
@@ -61,15 +62,15 @@ const useInspectVarsCrud = () => {
       return varId
   }, [getNodeInspectVars])
 
-  const getInspectVar = useCallback((nodeId: string, name: string) => {
+  const getInspectVar = useCallback((nodeId: string, name: string): VarInInspect | undefined => {
     const node = getNodeInspectVars(nodeId)
-      if (!node)
-        return undefined
+    if (!node)
+      return undefined
 
-      const variable = node.vars.find((varItem) => {
-        return varItem.selector[1] === name
-      })?.value
-      return variable
+    const variable = node.vars.find((varItem) => {
+      return varItem.name === name
+    })
+    return variable
   }, [getNodeInspectVars])
 
   const hasSetInspectVar = useCallback((nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => {
@@ -145,6 +146,7 @@ const useInspectVarsCrud = () => {
     await invalidateConversationVarValues()
     await invalidateSysVarValues()
     deleteAllInspectVarsInStore()
+    handleEdgeCancelRunningStatus()
   }
 
   const editInspectVarValue = useCallback(async (nodeId: string, varId: string, value: any) => {
@@ -191,10 +193,10 @@ const useInspectVarsCrud = () => {
 
   const isInspectVarEdited = useCallback((nodeId: string, name: string) => {
     const inspectVar = getInspectVar(nodeId, name)
-      if (!inspectVar)
-        return false
+    if (!inspectVar)
+      return false
 
-      return inspectVar.edited
+    return inspectVar.edited
   }, [getInspectVar])
 
   const resetToLastRunVar = (nodeId: string, varId: string) => {
