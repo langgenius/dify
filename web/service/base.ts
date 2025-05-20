@@ -108,8 +108,12 @@ function unicodeToChar(text: string) {
   })
 }
 
-function requiredWebSSOLogin() {
-  globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
+function requiredWebSSOLogin(message?: string) {
+  const params = new URLSearchParams()
+  params.append('redirect_url', globalThis.location.pathname)
+  if (message)
+    params.append('message', message)
+  globalThis.location.href = `/webapp-signin?${params.toString()}`
 }
 
 export function format(text: string) {
@@ -397,6 +401,9 @@ export const ssePost = async (
           }).catch(() => {
             res.json().then((data: any) => {
               if (isPublicAPI) {
+                if (data.code === 'web_app_access_denied')
+                  requiredWebSSOLogin(data.message)
+
                 if (data.code === 'web_sso_auth_required')
                   requiredWebSSOLogin()
 
@@ -426,29 +433,29 @@ export const ssePost = async (
         }
         onData?.(str, isFirstMessage, moreInfo)
       },
-      onCompleted,
-      onThought,
-      onMessageEnd,
-      onMessageReplace,
-      onFile,
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onParallelBranchStarted,
-      onParallelBranchFinished,
-      onTextChunk,
-      onTTSChunk,
-      onTTSEnd,
-      onTextReplace,
-      onAgentLog,
+        onCompleted,
+        onThought,
+        onMessageEnd,
+        onMessageReplace,
+        onFile,
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onParallelBranchStarted,
+        onParallelBranchFinished,
+        onTextChunk,
+        onTTSChunk,
+        onTTSEnd,
+        onTextReplace,
+        onAgentLog,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
@@ -475,6 +482,10 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       // special code
       const { code, message } = errRespData
       // webapp sso
+      if (code === 'web_app_access_denied') {
+        requiredWebSSOLogin(message)
+        return Promise.reject(err)
+      }
       if (code === 'web_sso_auth_required') {
         requiredWebSSOLogin()
         return Promise.reject(err)

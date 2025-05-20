@@ -167,9 +167,9 @@ const translation = {
     },
   },
   answerIcon: {
-    descriptionInExplore: 'Gibt an, ob das WebApp-Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',
-    title: 'Verwenden Sie das WebApp-Symbol, um es zu ersetzen 🤖',
-    description: 'Gibt an, ob das WebApp-Symbol zum Ersetzen 🤖 in der freigegebenen Anwendung verwendet werden soll',
+    descriptionInExplore: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',
+    title: 'Verwenden Sie das web app Symbol, um es zu ersetzen 🤖',
+    description: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in der freigegebenen Anwendung verwendet werden soll',
   },
   importFromDSLUrlPlaceholder: 'DSL-Link hier einfügen',
   duplicate: 'Duplikat',

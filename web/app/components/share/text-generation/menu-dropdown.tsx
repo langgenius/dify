@@ -6,27 +6,32 @@ import type { Placement } from '@floating-ui/react'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
+import { useRouter } from 'next/navigation'
+import Divider from '../../base/divider'
+import { removeAccessToken } from '../utils'
+import InfoModal from './info-modal'
 import ActionButton from '@/app/components/base/action-button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Divider from '@/app/components/base/divider'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
-import InfoModal from './info-modal'
 import type { SiteInfo } from '@/models/share'
 import cn from '@/utils/classnames'
 
 type Props = {
   data?: SiteInfo
   placement?: Placement
+  hideLogout?: boolean
 }
 
 const MenuDropdown: FC<Props> = ({
   data,
   placement,
+  hideLogout,
 }) => {
+  const router = useRouter()
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
   const openRef = useRef(open)
@@ -38,6 +43,11 @@ const MenuDropdown: FC<Props> = ({
   const handleTrigger = useCallback(() => {
     setOpen(!openRef.current)
   }, [setOpen])
+
+  const handleLogout = useCallback(() => {
+    removeAccessToken()
+    router.replace(`/webapp-signin?redirect_url=${window.location.href}`)
+  }, [router])
 
   const [show, setShow] = useState(false)
 
@@ -64,7 +74,7 @@ const MenuDropdown: FC<Props> = ({
             <div className='p-1'>
               <div className={cn('system-md-regular flex cursor-pointer items-center rounded-lg py-1.5 pl-3 pr-2 text-text-secondary')}>
                 <div className='grow'>{t('common.theme.theme')}</div>
-                <ThemeSwitcher/>
+                <ThemeSwitcher />
               </div>
             </div>
             <Divider type='horizontal' className='my-0' />
