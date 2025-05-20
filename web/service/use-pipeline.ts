@@ -8,6 +8,8 @@ import type {
   ImportPipelineDSLRequest,
   ImportPipelineDSLResponse,
   PipelineCheckDependenciesResponse,
+  PipelineDatasourceNodeRunRequest,
+  PipelineProcessingParamsRequest,
   PipelineProcessingParamsResponse,
   PipelineTemplateByIdResponse,
   PipelineTemplateListParams,
@@ -95,7 +97,7 @@ export const useImportPipelineDSLConfirm = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-import-confirm'],
     mutationFn: (importId: string) => {
-      return post<ImportPipelineDSLConfirmResponse>(`/rag/pipeline/imports/${importId}/confirm`)
+      return post<ImportPipelineDSLConfirmResponse>(`/rag/pipelines/imports/${importId}/confirm`)
     },
     ...mutationOptions,
   })
@@ -113,12 +115,29 @@ export const useCheckPipelineDependencies = (
   })
 }
 
+export const useDatasourceNodeRun = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'datasource-node-run'],
+    mutationFn: (request: PipelineDatasourceNodeRunRequest) => {
+      const { pipeline_id, node_id, ...rest } = request
+      return post(`/rag/pipelines/${pipeline_id}/workflows/published/nodes/${node_id}/run`, {
+        body: rest,
+      })
+    },
+  })
+}
+
 // Get the config of shared input fields
-export const usePipelineProcessingParams = (pipelineId: string) => {
+export const usePipelineProcessingParams = (params: PipelineProcessingParamsRequest) => {
+  const { pipeline_id, node_id } = params
   return useQuery<PipelineProcessingParamsResponse>({
-    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipelineId],
+    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
     queryFn: () => {
-      return get<PipelineProcessingParamsResponse>(`/rag/pipeline/${pipelineId}/workflows/processing/parameters`)
+      return get<PipelineProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/processing/parameters`, {
+        params: {
+          node_id,
+        },
+      })
     },
   })
 }

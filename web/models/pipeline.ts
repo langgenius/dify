@@ -113,7 +113,7 @@ export type RAGPipelineVariable = {
   label: string
   variable: string
   max_length?: number
-  default?: string
+  default_value?: string
   placeholder?: string
   unit?: string
   required: boolean
@@ -125,9 +125,40 @@ export type RAGPipelineVariable = {
 }
 
 export type InputVar = Omit<RAGPipelineVariable, 'belong_to_node_id'>
+export type RAGPipelineVariables = RAGPipelineVariable[]
 
-export type PipelineProcessingParamsResponse = {
-  variables: RAGPipelineVariable[]
+export type PipelineProcessingParamsRequest = {
+  pipeline_id: string
+  node_id: string
 }
 
-export type RAGPipelineVariables = RAGPipelineVariable[]
+export type PipelineProcessingParamsResponse = {
+  variables: RAGPipelineVariables
+}
+
+export type PipelineDatasourceNodeRunRequest = {
+  pipeline_id: string
+  node_id: string
+  inputs: Record<string, any>
+}
+
+export type PipelineDatasourceNodeRunResponse = {
+  id: string
+  inputs: Record<string, any>
+  process_data: Record<string, any>
+  outputs: Record<string, any>
+  status: string
+  error?: string
+  elapsed_time: number
+  execution_metadata: {
+    total_tokens: number
+    total_price: number
+    currency?: string
+  }
+  extras: {
+    icon: string | object
+  }
+  created_at: string
+  created_by: string
+  finished_at: string
+}

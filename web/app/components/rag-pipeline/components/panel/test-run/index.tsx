@@ -26,11 +26,7 @@ const TestRunPanel = () => {
   const { t } = useTranslation()
   const setShowDebugAndPreviewPanel = useWorkflowStoreWithSelector(state => state.setShowDebugAndPreviewPanel)
   const [currentStep, setCurrentStep] = useState(1)
-  const [datasource, setDatasource] = useState<Datasource>({
-    nodeId: '1',
-    type: DataSourceType.FILE,
-    config: {},
-  })
+  const [datasource, setDatasource] = useState<Datasource>()
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
@@ -41,28 +37,6 @@ const TestRunPanel = () => {
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
 
   const steps = useTestRunSteps()
-  // TODO: replace with real data sources from API
-  const dataSources = useMemo(() => [{
-    nodeId: '1',
-    type: DataSourceType.FILE,
-    config: {},
-  }, {
-    nodeId: '2',
-    type: DataSourceType.NOTION,
-    config: {},
-  }, {
-    nodeId: '3',
-    type: DataSourceProvider.fireCrawl,
-    config: {},
-  }, {
-    nodeId: '4',
-    type: DataSourceProvider.jinaReader,
-    config: {},
-  }, {
-    nodeId: '5',
-    type: DataSourceProvider.waterCrawl,
-    config: {},
-  }], [])
 
   const allFileLoaded = (fileList.length > 0 && fileList.every(file => file.file.id))
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
@@ -77,6 +51,7 @@ const TestRunPanel = () => {
   }, [fileList, isShowVectorSpaceFull])
 
   const nextBtnDisabled = useMemo(() => {
+    if (!datasource) return false
     if (datasource.type === DataSourceType.FILE)
       return nextDisabled
     if (datasource.type === DataSourceType.NOTION)
@@ -91,13 +66,6 @@ const TestRunPanel = () => {
   const handleClose = () => {
     setShowDebugAndPreviewPanel(false)
   }
-
-  const handleDataSourceSelect = useCallback((option: string) => {
-    const dataSource = dataSources.find(dataSource => dataSource.nodeId === option)
-    if (!dataSource)
-      return
-    setDatasource(dataSource)
-  }, [dataSources])
 
   const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
     const newList = produce(list, (draft) => {
@@ -129,6 +97,8 @@ const TestRunPanel = () => {
   const { handleRun } = usePipelineRun()
 
   const handleProcess = useCallback((data: Record<string, any>) => {
+    if (!datasource)
+      return
     const datasourceInfo: Record<string, any> = {}
     if (datasource.type === DataSourceType.FILE)
       datasourceInfo.fileId = fileList.map(file => file.fileID)
@@ -176,11 +146,10 @@ const TestRunPanel = () => {
             <>
               <div className='flex flex-col gap-y-4 px-4 py-2'>
                 <DataSourceOptions
-                  dataSources={dataSources}
-                  dataSourceNodeId={datasource.nodeId}
-                  onSelect={handleDataSourceSelect}
+                  dataSourceNodeId={datasource?.nodeId || ''}
+                  onSelect={setDatasource}
                 />
-                {datasource.type === DataSourceType.FILE && (
+                {datasource?.type === DataSourceType.FILE && (
                   <LocalFile
                     files={fileList}
                     updateFile={updateFile}
@@ -188,13 +157,13 @@ const TestRunPanel = () => {
                     notSupportBatchUpload={notSupportBatchUpload}
                   />
                 )}
-                {datasource.type === DataSourceType.NOTION && (
+                {datasource?.type === DataSourceType.NOTION && (
                   <Notion
                     notionPages={notionPages}
                     updateNotionPages={updateNotionPages}
                   />
                 )}
-                {datasource.type === DataSourceProvider.fireCrawl && (
+                {datasource?.type === DataSourceProvider.fireCrawl && (
                   <Firecrawl
                     checkedCrawlResult={websitePages}
                     onCheckedCrawlResultChange={setWebsitePages}
@@ -203,7 +172,7 @@ const TestRunPanel = () => {
                     onCrawlOptionsChange={setCrawlOptions}
                   />
                 )}
-                {datasource.type === DataSourceProvider.jinaReader && (
+                {datasource?.type === DataSourceProvider.jinaReader && (
                   <JinaReader
                     checkedCrawlResult={websitePages}
                     onCheckedCrawlResultChange={setWebsitePages}
@@ -212,7 +181,7 @@ const TestRunPanel = () => {
                     onCrawlOptionsChange={setCrawlOptions}
                   />
                 )}
-                {datasource.type === DataSourceProvider.waterCrawl && (
+                {datasource?.type === DataSourceProvider.waterCrawl && (
                   <WaterCrawl
                     checkedCrawlResult={websitePages}
                     onCheckedCrawlResultChange={setWebsitePages}
@@ -232,6 +201,7 @@ const TestRunPanel = () => {
         {
           currentStep === 2 && (
             <DocumentProcessing
+              dataSourceNodeId={datasource?.nodeId || ''}
               onProcess={handleProcess}
               onBack={handleBackStep}
             />

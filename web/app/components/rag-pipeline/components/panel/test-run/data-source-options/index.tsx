@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useDataSourceOptions } from '../hooks'
 import OptionCard from './option-card'
 import { File, Watercrawl } from '@/app/components/base/icons/src/public/knowledge'
@@ -9,9 +9,8 @@ import { DataSourceProvider } from '@/models/common'
 import type { Datasource } from '../types'
 
 type DataSourceOptionsProps = {
-  dataSources: Datasource[]
   dataSourceNodeId: string
-  onSelect: (option: string) => void
+  onSelect: (option: Datasource) => void
 }
 
 const DATA_SOURCE_ICONS = {
@@ -23,15 +22,23 @@ const DATA_SOURCE_ICONS = {
 }
 
 const DataSourceOptions = ({
-  dataSources,
   dataSourceNodeId,
   onSelect,
 }: DataSourceOptionsProps) => {
-  const options = useDataSourceOptions(dataSources)
+  const { dataSources, options } = useDataSourceOptions()
 
   const handelSelect = useCallback((value: string) => {
-    onSelect(value)
-  }, [onSelect])
+    const selectedOption = dataSources.find(option => option.nodeId === value)
+    if (!selectedOption)
+      return
+    onSelect(selectedOption)
+  }, [dataSources, onSelect])
+
+  useEffect(() => {
+    if (options.length > 0)
+      handelSelect(options[0].value)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className='grid w-full grid-cols-4 gap-1'>

@@ -48,7 +48,7 @@ const InputFieldEditor = ({
       options,
       placeholder,
       unit,
-      default: defaultValue,
+      default_value: defaultValue,
       allowed_file_upload_methods: allowedFileUploadMethods,
       allowed_file_types: allowedTypesAndExtensions.allowedFileTypes,
       allowed_file_extensions: allowedTypesAndExtensions.allowedFileExtensions,

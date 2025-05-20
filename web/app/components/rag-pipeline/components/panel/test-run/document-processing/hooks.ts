@@ -1,21 +1,24 @@
 import { useMemo } from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import { useStore } from '@/app/components/workflow/store'
-import { InputVarType } from '@/app/components/workflow/types'
 import { usePipelineProcessingParams } from '@/service/use-pipeline'
+import { PipelineInputVarType } from '@/models/pipeline'
 
-type PartialInputVarType = InputVarType.textInput | InputVarType.number | InputVarType.select | InputVarType.checkbox
+type PartialInputVarType = PipelineInputVarType.textInput | PipelineInputVarType.number | PipelineInputVarType.select | PipelineInputVarType.checkbox
 
 const VAR_TYPE_MAP: Record<PartialInputVarType, BaseFieldType> = {
-  [InputVarType.textInput]: BaseFieldType.textInput,
-  [InputVarType.number]: BaseFieldType.numberInput,
-  [InputVarType.select]: BaseFieldType.select,
-  [InputVarType.checkbox]: BaseFieldType.checkbox,
+  [PipelineInputVarType.textInput]: BaseFieldType.textInput,
+  [PipelineInputVarType.number]: BaseFieldType.numberInput,
+  [PipelineInputVarType.select]: BaseFieldType.select,
+  [PipelineInputVarType.checkbox]: BaseFieldType.checkbox,
 }
 
-export const useConfigurations = () => {
+export const useConfigurations = (datasourceNodeId: string) => {
   const pipelineId = useStore(state => state.pipelineId)
-  const { data: paramsConfig } = usePipelineProcessingParams(pipelineId!)
+  const { data: paramsConfig } = usePipelineProcessingParams({
+    pipeline_id: pipelineId!,
+    node_id: datasourceNodeId,
+  })
 
   const initialData = useMemo(() => {
     const variables = paramsConfig?.variables || []
