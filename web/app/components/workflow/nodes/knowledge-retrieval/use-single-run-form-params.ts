@@ -3,11 +3,13 @@ import { useTranslation } from 'react-i18next'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
+import type { KnowledgeRetrievalNodeType } from './types'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
 type Params = {
   id: string,
+  payload: KnowledgeRetrievalNodeType
   runInputData: Record<string, any>
   runInputDataRef: MutableRefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -15,6 +17,7 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({
+  payload,
   runInputData,
   setRunInputData,
 }: Params) => {
@@ -42,8 +45,19 @@ const useSingleRunFormParams = ({
     ]
   }, [query, setQuery, t])
 
+  const getDependentVars = () => {
+    console.log(payload.query_variable_selector)
+    return [payload.query_variable_selector]
+  }
+  const getDependentVar = (variable: string) => {
+    if(variable === 'query')
+      return payload.query_variable_selector
+  }
+
   return {
     forms,
+    getDependentVars,
+    getDependentVar,
   }
 }
 
