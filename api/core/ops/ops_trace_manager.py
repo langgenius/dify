@@ -234,7 +234,11 @@ class OpsTraceManager:
             return None
 
         tracing_provider = app_ops_trace_config.get("tracing_provider")
-        if tracing_provider is None or tracing_provider not in provider_config_map:
+        if tracing_provider is None:
+            return None
+        try:
+            provider_config_map[tracing_provider]
+        except KeyError:
             return None
 
         # decrypt_token
