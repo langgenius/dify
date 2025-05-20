@@ -55,7 +55,7 @@ const useSingleRunFormParams = ({
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
     Object.keys(runInputData)
-      .filter(key => !['#context#', '#files#'].includes(key))
+      .filter(key => !['#files#'].includes(key))
       .forEach((key) => {
         vars[key] = runInputData[key]
       })
@@ -65,7 +65,6 @@ const useSingleRunFormParams = ({
   const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
     const newVars = {
       ...newPayload,
-      '#context#': runInputDataRef.current['#context#'],
       '#files#': runInputDataRef.current['#files#'],
     }
     setRunInputData?.(newVars)
@@ -118,8 +117,29 @@ const useSingleRunFormParams = ({
     return forms
   })()
 
+  const getDependentVars = () => {
+    const promptVars = varInputs.map(item => item.variable.slice(1, -1).split('.'))
+    const vars = [payload.query_variable_selector, ...promptVars]
+    if (isVisionModel && payload.vision?.enabled && payload.vision?.configs?.variable_selector) {
+      const visionVar = payload.vision.configs.variable_selector
+      vars.push(visionVar)
+    }
+    return vars
+  }
+
+  const getDependentVar = (variable: string) => {
+    if(variable === 'query')
+      return payload.query_variable_selector
+    if(variable === '#files#')
+      return payload.vision.configs?.variable_selector
+
+    return false
+  }
+
   return {
     forms,
+    getDependentVars,
+    getDependentVar,
   }
 }
 
