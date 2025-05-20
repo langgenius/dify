@@ -1,11 +1,15 @@
+import type { TransferMethod } from '@/types/app'
 import type { FormType } from '../..'
 import type { Option } from '../../../select/pure'
 
 export enum BaseFieldType {
   textInput = 'textInput',
+  paragraph = 'paragraph',
   numberInput = 'numberInput',
   checkbox = 'checkbox',
   select = 'select',
+  file = 'file',
+  fileList = 'fileList',
 }
 
 export type ShowCondition = {
@@ -28,6 +32,12 @@ export type SelectConfiguration = {
   }
 }
 
+export type FileConfiguration = {
+  allowedFileTypes: string[]
+  allowedFileExtensions: string[]
+  allowedFileUploadMethods: TransferMethod[]
+}
+
 export type BaseConfiguration = {
   label: string
   variable: string // Variable name
@@ -38,7 +48,9 @@ export type BaseConfiguration = {
   showConditions: ShowCondition[] // Show this field only when all conditions are met
   type: BaseFieldType
   tooltip?: string // Tooltip for this field
-} & NumberConfiguration & Partial<SelectConfiguration>
+} & NumberConfiguration
+  & Partial<SelectConfiguration>
+  & Partial<FileConfiguration>
 
 export type BaseFormProps = {
   initialData?: Record<string, any>

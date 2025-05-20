@@ -146,7 +146,7 @@ const TestRunPanel = () => {
             <>
               <div className='flex flex-col gap-y-4 px-4 py-2'>
                 <DataSourceOptions
-                  dataSourceNodeId={datasource?.nodeId || ''}
+                  datasourceNodeId={datasource?.nodeId || ''}
                   onSelect={setDatasource}
                 />
                 {datasource?.type === DataSourceType.FILE && (

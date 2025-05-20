@@ -29,6 +29,10 @@ const BaseField = ({
       required,
       showOptional,
       popupProps,
+      allowedFileExtensions,
+      allowedFileTypes,
+      allowedFileUploadMethods,
+      maxLength,
     } = config
 
     const isAllConditionsMet = useStore(form.store, (state) => {
@@ -50,6 +54,25 @@ const BaseField = ({
           name={variable}
           children={field => (
             <field.TextField
+              label={label}
+              labelOptions={{
+                tooltip,
+                isRequired: required,
+                showOptional,
+              }}
+              placeholder={placeholder}
+            />
+          )}
+        />
+      )
+    }
+
+    if (type === BaseFieldType.paragraph) {
+      return (
+        <form.AppField
+          name={variable}
+          children={field => (
+            <field.TextAreaField
               label={label}
               labelOptions={{
                 tooltip,
@@ -111,6 +134,53 @@ const BaseField = ({
               }}
               options={options!}
               popupProps={popupProps}
+            />
+          )}
+        />
+      )
+    }
+
+    if (type === BaseFieldType.file) {
+      return (
+        <form.AppField
+          name={variable}
+          children={field => (
+            <field.FileUploaderField
+              label={label}
+              labelOptions={{
+                tooltip,
+                isRequired: required,
+                showOptional,
+              }}
+              fileConfig={{
+                allowed_file_extensions: allowedFileExtensions,
+                allowed_file_types: allowedFileTypes,
+                allowed_file_upload_methods: allowedFileUploadMethods,
+              }}
+            />
+          )}
+        />
+      )
+    }
+
+    if (type === BaseFieldType.fileList) {
+      return (
+        <form.AppField
+          name={variable}
+          children={field => (
+            <field.FileUploaderField
+              label={label}
+              labelOptions={{
+                tooltip,
+                isRequired: required,
+                showOptional,
+              }}
+              fileConfig={{
+                allowed_file_extensions: allowedFileExtensions,
+                allowed_file_types: allowedFileTypes,
+                allowed_file_upload_methods: allowedFileUploadMethods,
+                number_limits: maxLength,
+              }}
             />
           )}
         />

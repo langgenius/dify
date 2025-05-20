@@ -11,6 +11,8 @@ import FileTypesField from './components/field/file-types'
 import UploadMethodField from './components/field/upload-method'
 import NumberSliderField from './components/field/number-slider'
 import VariableOrConstantInputField from './components/field/variable-selector'
+import TextAreaField from './components/field/text-area'
+import FileUploaderField from './components/field/file-uploader'
 
 export const { fieldContext, useFieldContext, formContext, useFormContext }
   = createFormHookContexts()
@@ -18,6 +20,7 @@ export const { fieldContext, useFieldContext, formContext, useFormContext }
 export const { useAppForm, withForm } = createFormHook({
   fieldComponents: {
     TextField,
+    TextAreaField,
     NumberInputField,
     CheckboxField,
     SelectField,
@@ -28,6 +31,7 @@ export const { useAppForm, withForm } = createFormHook({
     UploadMethodField,
     NumberSliderField,
     VariableOrConstantInputField,
+    FileUploaderField,
   },
   formComponents: {
     Actions,

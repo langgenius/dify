@@ -110,7 +110,7 @@ const FileUploaderInAttachment = ({
   )
 }
 
-type FileUploaderInAttachmentWrapperProps = {
+export type FileUploaderInAttachmentWrapperProps = {
   value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
   fileConfig: FileUpload

@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react'
-import { useDataSourceOptions } from '../hooks'
+import { useDatasourceOptions } from '../hooks'
 import OptionCard from './option-card'
 import { File, Watercrawl } from '@/app/components/base/icons/src/public/knowledge'
 import { Notion } from '@/app/components/base/icons/src/public/common'
@@ -9,7 +9,7 @@ import { DataSourceProvider } from '@/models/common'
 import type { Datasource } from '../types'
 
 type DataSourceOptionsProps = {
-  dataSourceNodeId: string
+  datasourceNodeId: string
   onSelect: (option: Datasource) => void
 }
 
@@ -22,17 +22,17 @@ const DATA_SOURCE_ICONS = {
 }
 
 const DataSourceOptions = ({
-  dataSourceNodeId,
+  datasourceNodeId,
   onSelect,
 }: DataSourceOptionsProps) => {
-  const { dataSources, options } = useDataSourceOptions()
+  const { datasources, options } = useDatasourceOptions()
 
   const handelSelect = useCallback((value: string) => {
-    const selectedOption = dataSources.find(option => option.nodeId === value)
+    const selectedOption = datasources.find(option => option.nodeId === value)
     if (!selectedOption)
       return
     onSelect(selectedOption)
-  }, [dataSources, onSelect])
+  }, [datasources, onSelect])
 
   useEffect(() => {
     if (options.length > 0)
@@ -46,7 +46,7 @@ const DataSourceOptions = ({
         <OptionCard
           key={option.value}
           label={option.label}
-          selected={dataSourceNodeId === option.value}
+          selected={datasourceNodeId === option.value}
           Icon={DATA_SOURCE_ICONS[option.type as keyof typeof DATA_SOURCE_ICONS]}
           onClick={handelSelect.bind(null, option.value)}
         />

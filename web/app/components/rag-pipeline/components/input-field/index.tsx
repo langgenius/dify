@@ -108,8 +108,6 @@ const InputFieldDialog = ({
           {
             datasourceKeys.map((key) => {
               const inputFields = inputFieldsMap[key] || []
-              if (!inputFields.length)
-                return null
               return (
                 <FieldList
                   key={key}

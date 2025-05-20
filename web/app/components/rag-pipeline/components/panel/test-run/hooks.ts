@@ -23,12 +23,12 @@ export const useTestRunSteps = () => {
   return steps
 }
 
-export const useDataSourceOptions = () => {
+export const useDatasourceOptions = () => {
   const { t } = useTranslation()
   const nodes = useNodes<DataSourceNodeType>()
-  const dataSources: Datasource[] = useMemo(() => {
-    const dataSourceNodes = nodes.filter(node => node.data.type === BlockEnum.DataSource)
-    return dataSourceNodes.map((node) => {
+  const datasources: Datasource[] = useMemo(() => {
+    const datasourceNodes = nodes.filter(node => node.data.type === BlockEnum.DataSource)
+    return datasourceNodes.map((node) => {
       let type: DataSourceType | DataSourceProvider = DataSourceType.FILE
       switch (node.data.tool_name) {
         case 'file_upload':
@@ -57,7 +57,7 @@ export const useDataSourceOptions = () => {
 
   const options = useMemo(() => {
     const options: DataSourceOption[] = []
-    dataSources.forEach((source) => {
+    datasources.forEach((source) => {
       if (source.type === DataSourceType.FILE) {
         options.push({
           label: t('datasetPipeline.testRun.dataSource.localFiles'),
@@ -95,6 +95,6 @@ export const useDataSourceOptions = () => {
       }
     })
     return options
-  }, [dataSources, t])
-  return { dataSources, options }
+  }, [datasources, t])
+  return { datasources, options }
 }
