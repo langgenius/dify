@@ -4,6 +4,7 @@ import type { RefObject } from 'react'
 import { createContext, useContext } from 'use-context-selector'
 import type {
   ChatConfig,
+  ChatEventMap,
   ChatItem,
   Feedback,
 } from '../types'
@@ -15,6 +16,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'lodash-es'
+import type { UseMittReturn } from '@/hooks/use-mitt'
 
 export type EmbeddedChatbotContextValue = {
   appInfoError?: any
@@ -33,7 +35,6 @@ export type EmbeddedChatbotContextValue = {
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
-  handleStartChat: (callback?: any) => void
   handleChangeConversation: (conversationId: string) => void
   handleNewConversationCompleted: (newConversationId: string) => void
   chatShouldReloadKey: string
@@ -50,6 +51,7 @@ export type EmbeddedChatbotContextValue = {
   setIsResponding: (state: boolean) => void,
   currentConversationInputs: Record<string, any> | null,
   setCurrentConversationInputs: (v: Record<string, any>) => void,
+  eventEmitter?: UseMittReturn<ChatEventMap>
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
@@ -62,7 +64,6 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   handleNewConversationInputsChange: noop,
   inputsForms: [],
   handleNewConversation: noop,
-  handleStartChat: noop,
   handleChangeConversation: noop,
   handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',

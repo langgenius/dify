@@ -12,10 +12,11 @@ import produce from 'immer'
 import type {
   Callback,
   ChatConfig,
+  ChatEventMap,
   ChatItem,
   Feedback,
 } from '../types'
-import { CONVERSATION_ID_INFO } from '../constants'
+import { CHAT_FORM_VALIDATE, CHAT_START_EVENT, CONVERSATION_ID_INFO } from '../constants'
 import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams } from '../utils'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
@@ -43,6 +44,7 @@ import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { noop } from 'lodash-es'
+import { useMitt } from '@/hooks/use-mitt'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -70,9 +72,14 @@ function getFormattedChatList(messages: any[]) {
   return newChatList
 }
 
+/**
+ * only use init context provider
+ * @returns
+ */
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR(installedAppInfo ? null : 'appInfo', fetchAppInfo)
+  const eventEmitter = useMitt<ChatEventMap>()
 
   useAppFavicon({
     enable: !installedAppInfo,
@@ -326,12 +333,15 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
     return true
   }, [inputsForms, notify, t])
-  const handleStartChat = useCallback((callback: any) => {
-    if (checkInputsRequired()) {
-      setShowNewConversationItemInList(true)
-      callback?.()
-    }
-  }, [setShowNewConversationItemInList, checkInputsRequired])
+  useEffect(() => {
+    eventEmitter.useSubscribe(CHAT_FORM_VALIDATE, () => {
+      if (checkInputsRequired()) {
+        setShowNewConversationItemInList(true)
+        eventEmitter.emit(CHAT_START_EVENT)
+      }
+    })
+  }, [eventEmitter, checkInputsRequired])
+
   const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: noop })
   const handleChangeConversation = useCallback((conversationId: string) => {
     currentChatInstanceRef.current.handleStop()
@@ -470,7 +480,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,
-    handleStartChat,
     handleChangeConversation,
     handlePinConversation,
     handleUnpinConversation,
@@ -491,5 +500,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    eventEmitter,
   }
 }

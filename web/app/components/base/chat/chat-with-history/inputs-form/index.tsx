@@ -6,6 +6,7 @@ import Divider from '@/app/components/base/divider'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import { useChatWithHistoryContext } from '../context'
 import cn from '@/utils/classnames'
+import { CHAT_FORM_VALIDATE, CHAT_START_EVENT } from '../../constants'
 
 type Props = {
   collapsed: boolean
@@ -20,10 +21,12 @@ const InputsFormNode = ({
   const {
     isMobile,
     currentConversationId,
-    handleStartChat,
     themeBuilder,
+    eventEmitter,
   } = useChatWithHistoryContext()
-
+  eventEmitter?.useSubscribe(CHAT_START_EVENT, () => {
+    setCollapsed(true)
+  })
   return (
     <div className={cn('flex flex-col items-center px-4 pt-6', isMobile && 'pt-4')}>
       <div className={cn(
@@ -54,7 +57,7 @@ const InputsFormNode = ({
             <Button
               variant='primary'
               className='w-full'
-              onClick={() => handleStartChat(() => setCollapsed(true))}
+              onClick={() => eventEmitter?.emit(CHAT_FORM_VALIDATE)}
               style={
                 themeBuilder?.theme
                   ? {

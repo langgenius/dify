@@ -7,6 +7,8 @@ import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/input
 import { useEmbeddedChatbotContext } from '../context'
 import cn from '@/utils/classnames'
 
+import { CHAT_FORM_VALIDATE, CHAT_START_EVENT } from '../../constants'
+
 type Props = {
   collapsed: boolean
   setCollapsed: (collapsed: boolean) => void
@@ -21,9 +23,11 @@ const InputsFormNode = ({
     isMobile,
     currentConversationId,
     themeBuilder,
-    handleStartChat,
+    eventEmitter,
   } = useEmbeddedChatbotContext()
-
+  eventEmitter?.useSubscribe(CHAT_START_EVENT, () => {
+    setCollapsed(false)
+  })
   return (
     <div className={cn('mb-6 flex flex-col items-center px-4 pt-6', isMobile && 'mb-4 pt-4')}>
       <div className={cn(
@@ -54,7 +58,7 @@ const InputsFormNode = ({
             <Button
               variant='primary'
               className='w-full'
-              onClick={() => handleStartChat(() => setCollapsed(true))}
+              onClick={() => eventEmitter?.emit(CHAT_FORM_VALIDATE)}
               style={
                 themeBuilder?.theme
                   ? {
