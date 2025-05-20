@@ -45,8 +45,20 @@ const useSingleRunFormParams = ({
     ]
   }, [inputVarValues, setInputVarValues, varInputs])
 
+  const getDependentVars = () => {
+    return payload.variables.map(v => v.value_selector)
+  }
+
+  const getDependentVar = (variable: string) => {
+    const varItem = payload.variables.find(v => v.variable === variable)
+    if (varItem)
+      return varItem.value_selector
+  }
+
   return {
     forms,
+    getDependentVars,
+    getDependentVar,
   }
 }
 
