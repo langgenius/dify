@@ -4,8 +4,8 @@ Unit tests for the SQLAlchemy implementation of WorkflowNodeExecutionRepository.
 
 import json
 from datetime import datetime
-from unittest.mock import MagicMock, PropertyMock
 from decimal import Decimal
+from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from pytest_mock import MockerFixture
