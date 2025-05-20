@@ -1,3 +1,4 @@
+import abc
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Optional, Protocol
@@ -26,6 +27,7 @@ class WorkflowNodeExecutionRepository(Protocol):
     application domains or deployment scenarios.
     """
 
+    @abc.abstractmethod
     def save(self, execution: NodeExecution) -> None:
         """
         Save or update a NodeExecution instance.
@@ -39,6 +41,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
+    @abc.abstractmethod
     def get_by_node_execution_id(self, node_execution_id: str) -> Optional[NodeExecution]:
         """
         Retrieve a NodeExecution by its node_execution_id.
@@ -51,6 +54,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
+    @abc.abstractmethod
     def get_by_workflow_run(
         self,
         workflow_run_id: str,
@@ -70,6 +74,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
+    @abc.abstractmethod
     def get_running_executions(self, workflow_run_id: str) -> Sequence[NodeExecution]:
         """
         Retrieve all running NodeExecution instances for a specific workflow run.
@@ -82,6 +87,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
+    @abc.abstractmethod
     def clear(self) -> None:
         """
         Clear all NodeExecution records based on implementation-specific criteria.
