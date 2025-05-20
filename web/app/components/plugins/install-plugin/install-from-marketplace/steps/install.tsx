@@ -124,7 +124,7 @@ const Installed: FC<Props> = ({
   const isDifyVersionCompatible = useMemo(() => {
     if (!pluginDeclaration || !langeniusVersionInfo.current_version) return true
     return gte(langeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
-  }, [langeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version])
+  }, [langeniusVersionInfo.current_version, pluginDeclaration])
 
   return (
     <>
@@ -132,7 +132,7 @@ const Installed: FC<Props> = ({
         <div className='system-md-regular text-text-secondary'>
           <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
           {!isDifyVersionCompatible && (
-            <p className='system-md-regular text-text-secondary text-text-warning'>
+            <p className='system-md-regular text-text-warning'>
               {t('plugin.difyVersionNotCompatible', { minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
             </p>
           )}
