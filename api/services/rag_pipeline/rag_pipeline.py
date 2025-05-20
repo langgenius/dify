@@ -201,7 +201,7 @@ class RagPipelineService:
         account: Account,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
-        rag_pipeline_variables: Sequence[Variable],
+        rag_pipeline_variables: list,
     ) -> Workflow:
         """
         Sync draft workflow

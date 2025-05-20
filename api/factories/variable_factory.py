@@ -82,7 +82,7 @@ def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> Va
 def build_pipeline_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
     if not mapping.get("variable"):
         raise VariableError("missing variable")
-    return _build_variable_from_mapping(mapping=mapping, selector=[PIPELINE_VARIABLE_NODE_ID, mapping["variable"]])
+    return mapping["variable"]
 
 
 def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> Variable:
@@ -117,44 +117,6 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
             result = ArrayObjectVariable.model_validate(mapping)
         case _:
             raise VariableError(f"not supported value type {value_type}")
-    if result.size > dify_config.MAX_VARIABLE_SIZE:
-        raise VariableError(f"variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}")
-    if not result.selector:
-        result = result.model_copy(update={"selector": selector})
-    return cast(Variable, result)
-
-def _build_rag_pipeline_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> Variable:
-    """
-    This factory function is used to create the rag pipeline variable,
-    not support the File type.
-    """
-    if (type := mapping.get("type")) is None:
-        raise VariableError("missing type")
-    if (value := mapping.get("value")) is None:
-        raise VariableError("missing value")
-    # FIXME: using Any here, fix it later
-    result: Any
-    match type:
-        case SegmentType.STRING:
-            result = StringVariable.model_validate(mapping)
-        case SegmentType.SECRET:
-            result = SecretVariable.model_validate(mapping)
-        case SegmentType.NUMBER if isinstance(value, int):
-            result = IntegerVariable.model_validate(mapping)
-        case SegmentType.NUMBER if isinstance(value, float):
-            result = FloatVariable.model_validate(mapping)
-        case SegmentType.NUMBER if not isinstance(value, float | int):
-            raise VariableError(f"invalid number value {value}")
-        case SegmentType.OBJECT if isinstance(value, dict):
-            result = ObjectVariable.model_validate(mapping)
-        case SegmentType.ARRAY_STRING if isinstance(value, list):
-            result = ArrayStringVariable.model_validate(mapping)
-        case SegmentType.ARRAY_NUMBER if isinstance(value, list):
-            result = ArrayNumberVariable.model_validate(mapping)
-        case SegmentType.ARRAY_OBJECT if isinstance(value, list):
-            result = ArrayObjectVariable.model_validate(mapping)
-        case _:
-            raise VariableError(f"not supported type {type}")
     if result.size > dify_config.MAX_VARIABLE_SIZE:
         raise VariableError(f"variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}")
     if not result.selector:

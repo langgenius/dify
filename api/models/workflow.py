@@ -2,7 +2,7 @@ import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Any, Optional, Self, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Self, Union
 from uuid import uuid4
 
 if TYPE_CHECKING:
@@ -331,6 +331,7 @@ class Workflow(Base):
             "features": self.features_dict,
             "environment_variables": [var.model_dump(mode="json") for var in environment_variables],
             "conversation_variables": [var.model_dump(mode="json") for var in self.conversation_variables],
+            "rag_pipeline_variables": [var.model_dump(mode="json") for var in self.rag_pipeline_variables],
         }
         return result
 
@@ -358,13 +359,13 @@ class Workflow(Base):
             self._rag_pipeline_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._rag_pipeline_variables)
-        results = [variable_factory.build_pipeline_variable_from_mapping(v) for v in variables_dict.values()]
+        results = [v for v in variables_dict.values()]
         return results
 
     @rag_pipeline_variables.setter
-    def rag_pipeline_variables(self, values: Sequence[Variable]) -> None:
+    def rag_pipeline_variables(self, values: List[dict]) -> None:
         self._rag_pipeline_variables = json.dumps(
-            {item.name: item.model_dump() for item in values},
+            {item["variable"]: item for item in values},
             ensure_ascii=False,
         )
 

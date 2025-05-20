@@ -129,9 +129,6 @@ class DraftRagPipelineApi(Resource):
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
-            rag_pipeline_variables_list = args.get("rag_pipeline_variables") or []
-            rag_pipeline_variables = [variable_factory.build_pipeline_variable_from_mapping(obj) for obj in rag_pipeline_variables_list]
-
             rag_pipeline_service = RagPipelineService()
             workflow = rag_pipeline_service.sync_draft_workflow(
                 pipeline=pipeline,
@@ -140,7 +137,7 @@ class DraftRagPipelineApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
-                rag_pipeline_variables=rag_pipeline_variables,
+                rag_pipeline_variables=args.get("rag_pipeline_variables") or [],
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()

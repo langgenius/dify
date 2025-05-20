@@ -578,9 +578,6 @@ class RagPipelineDslService:
             variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
         ]
         rag_pipeline_variables_list = workflow_data.get("rag_pipeline_variables", [])
-        rag_pipeline_variables = [
-            variable_factory.build_pipeline_variable_from_mapping(obj) for obj in rag_pipeline_variables_list
-        ]
 
         rag_pipeline_service = RagPipelineService()
         current_draft_workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)
@@ -610,6 +607,7 @@ class RagPipelineDslService:
             account=account,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
+            rag_pipeline_variables=rag_pipeline_variables_list,
         )
 
         return pipeline
