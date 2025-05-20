@@ -57,7 +57,7 @@ def load_user_from_request(request_from_flask_login):
 @user_loaded_from_request.connect
 def on_user_logged_in(_sender, user):
     """Called when a user logged in.
-    
+
     Note: AccountService.load_logged_in_account will populate user.current_tenant_id
     through the load_user method, which calls account.set_tenant_id().
     """
