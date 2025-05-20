@@ -174,7 +174,9 @@ const useLastRun = <T>({
         if(!variable.includes('.') && !singleRunParams?.getDependentVar)
           return
 
-        const selector = !variable.includes('.') ? singleRunParams?.getDependentVar(variable) : variable.slice(1, -1).split('.')
+        const selector = !variable.includes('.') ? (singleRunParams?.getDependentVar(variable) || []) : variable.slice(1, -1).split('.')
+        if(!selector || selector.length === 0)
+          return
         const [nodeId, varName] = selector.slice(0, 2)
         const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
         if (inspectVarValue)
