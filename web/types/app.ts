@@ -315,6 +315,8 @@ export type App = {
   name: string
   /** Description */
   description: string
+  /** Author Name */
+  author_name: string;
 
   /**
    * Icon Type
@@ -347,6 +349,8 @@ export type App = {
   app_model_config: ModelConfig
   /** Timestamp of creation */
   created_at: number
+  /** Timestamp of update */
+  updated_at: number
   /** Web Application Configuration */
   site: SiteConfig
   /** api site url */
