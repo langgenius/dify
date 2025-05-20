@@ -17,6 +17,7 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({
+  payload,
   runInputData,
   setRunInputData,
 }: Params) => {
@@ -44,8 +45,19 @@ const useSingleRunFormParams = ({
     ]
   }, [files, setFiles, t])
 
+  const getDependentVars = () => {
+    return [payload.variable_selector]
+  }
+
+  const getDependentVar = (variable: string) => {
+    if(variable === 'files')
+      return payload.variable_selector
+  }
+
   return {
     forms,
+    getDependentVars,
+    getDependentVar,
   }
 }
 
