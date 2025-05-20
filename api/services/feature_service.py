@@ -43,11 +43,11 @@ class LicenseModel(BaseModel):
 
 class PluginInstallationPermissionModel(BaseModel):
     # Plugin installation scope – possible values:
-    #   PLUGIN_INSTALLATION_SCOPE_NONE: prohibit all plugin installations
-    #   PLUGIN_INSTALLATION_SCOPE_OFFICIAL_ONLY: allow only Dify official plugins
-    #   PLUGIN_INSTALLATION_SCOPE_OFFICIAL_AND_SPECIFIC_PARTNERS: allow official and specific partner plugins
-    #   PLUGIN_INSTALLATION_SCOPE_ALL: allow installation of all plugins
-    plugin_installation_scope: str = "PLUGIN_INSTALLATION_SCOPE_ALL"
+    #   none: prohibit all plugin installations
+    #   official_only: allow only Dify official plugins
+    #   official_and_specific_partners: allow official and specific partner plugins
+    #   all: allow installation of all plugins
+    plugin_installation_scope: str = "all"
 
     # If True, restrict plugin installation to the marketplace only
     restrict_to_marketplace_only: bool = False
