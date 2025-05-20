@@ -528,7 +528,7 @@ class ToolManager:
                     yield provider
 
                 except Exception:
-                    logger.exception(f"load builtin provider {provider}")
+                    logger.exception(f"load builtin provider {provider_path}")
                     continue
         # set builtin providers loaded
         cls._builtin_providers_loaded = True
@@ -644,10 +644,10 @@ class ToolManager:
                 )
 
                 workflow_provider_controllers: list[WorkflowToolProviderController] = []
-                for provider in workflow_providers:
+                for workflow_provider in workflow_providers:
                     try:
                         workflow_provider_controllers.append(
-                            ToolTransformService.workflow_provider_to_controller(db_provider=provider)
+                            ToolTransformService.workflow_provider_to_controller(db_provider=workflow_provider)
                         )
                     except Exception:
                         # app has been deleted

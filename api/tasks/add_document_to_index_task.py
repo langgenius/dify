@@ -111,7 +111,7 @@ def add_document_to_index_task(dataset_document_id: str):
         logging.exception("add document to index failed")
         dataset_document.enabled = False
         dataset_document.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-        dataset_document.status = "error"
+        dataset_document.indexing_status = "error"
         dataset_document.error = str(e)
         db.session.commit()
     finally:
