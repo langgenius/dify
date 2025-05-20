@@ -25,16 +25,27 @@ parameters:
       zh_Hans: Pod名称
     llm_description: Pod name
     form: llm
-  - name: node
+  - name: nodeName
     type: string
     required: False
-    label: 
-      en_US: Node name
-      zh_Hans: 主机名
+    label:
+      en_US: Node hostname
+      zh_Hans: 主机节点名称
     human_description:
-      en_US: Node name
-      zh_Hans: 主机名
-    llm_description: Node name
+      en_US: Node hostname
+      zh_Hans: 主机节点名称
+    llm_description: Node hostname
+    form: llm
+  - name: pid
+    type: string
+    required: False
+    label:
+      en_US: PID
+      zh_Hans: 进程id
+    human_description:
+      en_US: PID
+      zh_Hans: 进程id
+    llm_description: pid
     form: llm
   - name: startTime
     type: number

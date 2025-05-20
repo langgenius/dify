@@ -19,19 +19,29 @@ class ThreadPolarisFileTimeTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = tool_parameters.get('pod', '.*')
-        node = tool_parameters.get('node', '.*')
+        pod = tool_parameters.get('pod', '')
+        node_name = tool_parameters.get('nodeName', '')
+        pid = tool_parameters.get('pid', '')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
 
-        if not node:
-            node = '.*'
+        if node_name == '':
+            node_name = '.*'
+        if pid == '':
+            pid = '.*'
+
+        metric_params = {
+            'node_name': node_name,
+            'pid': pid,
+        }
+        if pod != '':
+            metric_params['pod'] = pod
+        else:
+            metric_params['container_id'] = '.*'
+
         params = {
             'metricName': 'Thread Polaris Metrics - 北极星指标（线程） - 各类型耗时折线图 - File',
-            'params': {
-                'pod': pod,
-                'node_name': node
-            },
+            'params': metric_params,
             'startTime': start_time,
             'endTime': end_time,
             'step': APOUtils.get_step(start_time, end_time),

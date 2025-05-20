@@ -19,11 +19,23 @@ class ThreadPolarisP90(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = tool_parameters.get('pod', '.*')
+        pod = tool_parameters.get('pod', '')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         type = tool_parameters.get('type')
-        metrics = self.get_metrics(type, pod, start_time, end_time)
+        node_name = tool_parameters.get('nodeName', '')
+        pid = tool_parameters.get('pid', '')
+
+        if pod == '':
+            pod = '.*'
+        
+        if node_name == '':
+            node_name = '.*'
+        
+        if pid == '':
+            pid = '.*'
+
+        metrics = self.get_metrics(type, pod, node_name, pid, start_time, end_time)
         res = self.get_max_min(metrics)
         list = json.dumps({
             'type': 'p90',
@@ -46,7 +58,7 @@ class ThreadPolarisP90(BuiltinTool):
 
         return json.dumps(stats)
 
-    def get_metrics(self, type: str, pod: str, start: int, end: int) -> dict:
+    def get_metrics(self, type: str, pod: str, node: str, pid: str, start: int, end: int) -> dict:
         query = 'increase(originx_thread_polaris_nanoseconds_sum{pod="' + pod + '", type="' + type + '"}[1m])'
         step = '10m'
         hour = 3600 * 1000

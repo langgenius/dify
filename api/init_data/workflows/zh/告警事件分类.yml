@@ -3,7 +3,7 @@ app:
   icon: 🤖
   icon_background: '#FFEAD5'
   mode: workflow
-  name: alert event classify
+  name: 告警事件分类
   use_icon_as_answer_icon: false
 dependencies:
 - current_identifier: null
