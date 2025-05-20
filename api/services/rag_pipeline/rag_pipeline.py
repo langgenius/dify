@@ -201,7 +201,7 @@ class RagPipelineService:
         account: Account,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
-        rag_pipeline_variables: dict[str, Sequence[Variable]],
+        rag_pipeline_variables: Sequence[Variable],
     ) -> Workflow:
         """
         Sync draft workflow
@@ -552,7 +552,7 @@ class RagPipelineService:
 
         return workflow
 
-    def get_second_step_parameters(self, pipeline: Pipeline, datasource_provider: str) -> dict:
+    def get_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> dict:
         """
         Get second step parameters of rag pipeline
         """
@@ -562,13 +562,15 @@ class RagPipelineService:
             raise ValueError("Workflow not initialized")
 
         # get second step node
-        pipeline_variables = workflow.pipeline_variables
-        if not pipeline_variables:
+        rag_pipeline_variables = workflow.rag_pipeline_variables
+        if not rag_pipeline_variables:
             return {}
+
         # get datasource provider
-        datasource_provider_variables = pipeline_variables.get(datasource_provider, [])
-        shared_variables = pipeline_variables.get("shared", [])
-        return datasource_provider_variables + shared_variables
+        datasource_provider_variables = [item for item in rag_pipeline_variables
+                                         if item.get("belong_to_node_id") == node_id
+                                         or item.get("belong_to_node_id") == "shared"]
+        return datasource_provider_variables
 
     def get_rag_pipeline_paginate_workflow_runs(self, pipeline: Pipeline, args: dict) -> InfiniteScrollPagination:
         """

@@ -4,7 +4,6 @@ from typing import Any, Optional, TextIO, Union
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.datasource.entities.datasource_entities import DatasourceInvokeMessage
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -112,35 +111,6 @@ class DifyAgentCallbackHandler(BaseModel):
             print_text(
                 "\n[on_datasource_start] DatasourceCall:" + datasource_name + "\n" + str(datasource_inputs) + "\n",
                 color=self.color,
-            )
-
-    def on_datasource_end(
-        self,
-        datasource_name: str,
-        datasource_inputs: Mapping[str, Any],
-        datasource_outputs: Iterable[DatasourceInvokeMessage] | str,
-        message_id: Optional[str] = None,
-        timer: Optional[Any] = None,
-        trace_manager: Optional[TraceQueueManager] = None,
-    ) -> None:
-        """Run on datasource end."""
-        if dify_config.DEBUG:
-            print_text("\n[on_datasource_end]\n", color=self.color)
-            print_text("Datasource: " + datasource_name + "\n", color=self.color)
-            print_text("Inputs: " + str(datasource_inputs) + "\n", color=self.color)
-            print_text("Outputs: " + str(datasource_outputs)[:1000] + "\n", color=self.color)
-            print_text("\n")
-
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.DATASOURCE_TRACE,
-                    message_id=message_id,
-                    datasource_name=datasource_name,
-                    datasource_inputs=datasource_inputs,
-                    datasource_outputs=datasource_outputs,
-                    timer=timer,
-                )
             )
 
     @property

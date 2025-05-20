@@ -127,7 +127,7 @@ class GeneralStructureChunk(BaseModel):
     General Structure Chunk.
     """
 
-    general_chunk: list[str]
+    general_chunks: list[str]
     data_source_info: Union[FileInfo, OnlineDocumentInfo, WebsiteInfo]
 
 

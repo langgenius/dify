@@ -145,7 +145,7 @@ class DatasourceProviderEntity(ToolProviderEntity):
 
 
 class DatasourceProviderEntityWithPlugin(DatasourceProviderEntity):
-    datasources: list[DatasourceEntity] = Field(default_factory=list)
+        datasources: list[DatasourceEntity] = Field(default_factory=list)
 
 
 class DatasourceInvokeMeta(BaseModel):

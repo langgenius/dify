@@ -93,7 +93,7 @@ class DraftRagPipelineApi(Resource):
             parser.add_argument("hash", type=str, required=False, location="json")
             parser.add_argument("environment_variables", type=list, required=False, location="json")
             parser.add_argument("conversation_variables", type=list, required=False, location="json")
-            parser.add_argument("rag_pipeline_variables", type=dict, required=False, location="json")
+            parser.add_argument("rag_pipeline_variables", type=list, required=False, location="json")
             args = parser.parse_args()
         elif "text/plain" in content_type:
             try:
@@ -101,8 +101,8 @@ class DraftRagPipelineApi(Resource):
                 if "graph" not in data or "features" not in data:
                     raise ValueError("graph or features not found in data")
 
-                if not isinstance(data.get("graph"), dict) or not isinstance(data.get("features"), dict):
-                    raise ValueError("graph or features is not a dict")
+                if not isinstance(data.get("graph"), dict):
+                    raise ValueError("graph is not a dict")
 
                 args = {
                     "graph": data.get("graph"),
@@ -129,11 +129,9 @@ class DraftRagPipelineApi(Resource):
             conversation_variables = [
                 variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
-            rag_pipeline_variables_list = args.get("rag_pipeline_variables") or {}
-            rag_pipeline_variables = {
-                k: [variable_factory.build_pipeline_variable_from_mapping(obj) for obj in v]
-                for k, v in rag_pipeline_variables_list.items()
-            }
+            rag_pipeline_variables_list = args.get("rag_pipeline_variables") or []
+            rag_pipeline_variables = [variable_factory.build_pipeline_variable_from_mapping(obj) for obj in rag_pipeline_variables_list]
+
             rag_pipeline_service = RagPipelineService()
             workflow = rag_pipeline_service.sync_draft_workflow(
                 pipeline=pipeline,
@@ -634,12 +632,15 @@ class RagPipelineSecondStepApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        datasource_provider = request.args.get("datasource_provider", required=True, type=str)
+        node_id = request.args.get("node_id", required=True, type=str)
 
         rag_pipeline_service = RagPipelineService()
-        return rag_pipeline_service.get_second_step_parameters(
-            pipeline=pipeline, datasource_provider=datasource_provider
+        variables = rag_pipeline_service.get_second_step_parameters(
+            pipeline=pipeline, node_id=node_id
         )
+        return {
+            "variables": variables,
+        }
 
 
 class RagPipelineWorkflowRunListApi(Resource):
@@ -784,4 +785,8 @@ api.add_resource(
 api.add_resource(
     DatasourceListApi,
     "/rag/pipelines/datasource-plugins",
+)
+api.add_resource(
+    RagPipelineSecondStepApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/processing/paramters",
 )
