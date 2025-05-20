@@ -154,8 +154,8 @@ const useOneStepRun = <T>({
     runInputDataRef.current = data
     setRunInputData(data)
   }, [])
-  const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey].length : 0
-  const loopTimes = loopInputKey ? runInputData[loopInputKey].length : 0
+  const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey]?.length : 0
+  const loopTimes = loopInputKey ? runInputData[loopInputKey]?.length : 0
 
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()

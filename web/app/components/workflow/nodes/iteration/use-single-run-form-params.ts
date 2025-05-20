@@ -24,6 +24,7 @@ type Params = {
 }
 const useSingleRunFormParams = ({
   id,
+  payload,
   runInputData,
   toVarInputs,
   setRunInputData,
@@ -121,6 +122,7 @@ const useSingleRunFormParams = ({
           variable: iteratorInputKey,
           type: InputVarType.iterator,
           required: false,
+          getVarValueFromDependent: true,
         }],
         values: { [iteratorInputKey]: iterator },
         onChange: (keyValue: Record<string, any>) => setIterator(keyValue[iteratorInputKey]),
@@ -129,9 +131,20 @@ const useSingleRunFormParams = ({
   }, [inputVarValues, iterator, iteratorInputKey, setInputVarValues, setIterator, t, usedOutVars])
 
   const nodeInfo = formatTracing(iterationRunResult, t)[0]
+
+  const getDependentVars = () => {
+    return [payload.iterator_selector]
+  }
+  const getDependentVar = (variable: string) => {
+    if(variable === iteratorInputKey)
+      return payload.iterator_selector
+  }
+
   return {
     forms,
     nodeInfo,
+    getDependentVars,
+    getDependentVar,
   }
 }
 

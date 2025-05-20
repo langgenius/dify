@@ -170,11 +170,12 @@ const useLastRun = <T>({
 
     const valuesArr = forms.map((form) => {
       const values: Record<string, boolean> = {}
-      form.inputs.forEach(({ variable }) => {
-        if(!variable.includes('.') && !singleRunParams?.getDependentVar)
+      form.inputs.forEach(({ variable, getVarValueFromDependent }) => {
+        const isGetValueFromDependent = getVarValueFromDependent || !variable.includes('.')
+        if(isGetValueFromDependent && !singleRunParams?.getDependentVar)
           return
 
-        const selector = !variable.includes('.') ? (singleRunParams?.getDependentVar(variable) || []) : variable.slice(1, -1).split('.')
+        const selector = isGetValueFromDependent ? (singleRunParams?.getDependentVar(variable) || []) : variable.slice(1, -1).split('.')
         if(!selector || selector.length === 0)
           return
         const [nodeId, varName] = selector.slice(0, 2)

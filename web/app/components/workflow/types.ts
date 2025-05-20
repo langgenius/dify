@@ -197,6 +197,7 @@ export type InputVar = {
   hint?: string
   options?: string[]
   value_selector?: ValueSelector
+  getVarValueFromDependent?: boolean
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
