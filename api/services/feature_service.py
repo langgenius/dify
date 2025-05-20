@@ -88,6 +88,18 @@ class WebAppAuthModel(BaseModel):
     allow_email_password_login: bool = False
 
 
+class PluginInstallationPermissionModel(BaseModel):
+    # Plugin installation scope – possible values:
+    #   none: prohibit all plugin installations
+    #   official_only: allow only Dify official plugins
+    #   official_and_specific_partners: allow official and specific partner plugins
+    #   all: allow installation of all plugins
+    plugin_installation_scope: str = "all"
+
+    # If True, restrict plugin installation to the marketplace only
+    restrict_to_marketplace_only: bool = False
+
+
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
     education: EducationModel = EducationModel()
@@ -128,6 +140,7 @@ class SystemFeatureModel(BaseModel):
     license: LicenseModel = LicenseModel()
     branding: BrandingModel = BrandingModel()
     webapp_auth: WebAppAuthModel = WebAppAuthModel()
+    plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
 
 
 class FeatureService:
@@ -291,3 +304,12 @@ class FeatureService:
                 features.license.workspaces.enabled = license_info["workspaces"]["enabled"]
                 features.license.workspaces.limit = license_info["workspaces"]["limit"]
                 features.license.workspaces.size = license_info["workspaces"]["used"]
+
+        if "PluginInstallationPermission" in enterprise_info:
+            plugin_installation_info = enterprise_info["PluginInstallationPermission"]
+            features.plugin_installation_permission.plugin_installation_scope = plugin_installation_info[
+                "pluginInstallationScope"
+            ]
+            features.plugin_installation_permission.restrict_to_marketplace_only = plugin_installation_info[
+                "restrictToMarketplaceOnly"
+            ]
