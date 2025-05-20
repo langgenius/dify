@@ -29,7 +29,7 @@ from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
 from models.dataset import Pipeline, PipelineBuiltInTemplate, PipelineCustomizedTemplate  # type: ignore
-from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import (
     Workflow,
     WorkflowNodeExecution,
@@ -491,7 +491,7 @@ class RagPipelineService:
         workflow_node_execution.node_type = node_instance.node_type
         workflow_node_execution.title = node_instance.node_data.title
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
-        workflow_node_execution.created_by_role = CreatedByRole.ACCOUNT.value
+        workflow_node_execution.created_by_role = CreatorUserRole.ACCOUNT.value
         workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
         workflow_node_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
         if run_succeeded and node_run_result:
