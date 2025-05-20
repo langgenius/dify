@@ -300,8 +300,7 @@ def test_to_db_model(repository):
         status=NodeExecutionStatus.RUNNING,
         error=None,
         elapsed_time=1.5,
-        metadata={NodeRunMetadataKey.TOTAL_TOKENS: 100, 
-                  NodeRunMetadataKey.TOTAL_PRICE: Decimal("0.0")},
+        metadata={NodeRunMetadataKey.TOTAL_TOKENS: 100, NodeRunMetadataKey.TOTAL_PRICE: Decimal("0.0")},
         created_at=datetime.now(),
         finished_at=None,
     )

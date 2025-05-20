@@ -172,7 +172,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_model.status = domain_model.status
         db_model.error = domain_model.error
         db_model.elapsed_time = domain_model.elapsed_time
-        db_model.execution_metadata = json.dumps(jsonable_encoder(domain_model.metadata)) if domain_model.metadata else None
+        db_model.execution_metadata = (
+            json.dumps(jsonable_encoder(domain_model.metadata)) if domain_model.metadata else None
+        )
         db_model.created_at = domain_model.created_at
         db_model.created_by_role = self._creator_user_role
         db_model.created_by = self._creator_user_id
