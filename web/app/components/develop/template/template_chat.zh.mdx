@@ -612,34 +612,34 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     ### Response
     - `data` (array[object])  消息列表
-    - `id`  (string) 消息 ID
-    - `conversation_id` (string)  会话 ID
-    - `inputs` (object) 用户输入参数。
-    - `query`  (string) 用户输入 / 提问内容。
-    - `message_files` (array[object]) 消息文件
-      - `id` (string) ID
-      - `type` (string) 文件类型，image 图片
-      - `url` (string) 预览图片地址
-      - `belongs_to` (string) 文件归属方，user 或 assistant
-      - `agent_thoughts` (array[object]) Agent思考内容（仅Agent模式下不为空）
-        - `id` (string) agent_thought ID，每一轮Agent迭代都会有一个唯一的id
-        - `message_id` (string) 消息唯一ID
-        - `position` (int) agent_thought在消息中的位置，如第一轮迭代position为1
-        - `thought` (string) agent的思考内容
-        - `observation` (string) 工具调用的返回结果
-        - `tool` (string) 使用的工具列表，以 ; 分割多个工具
-        - `tool_input` (string) 工具的输入，JSON格式的字符串(object)。如：`{"dalle3": {"prompt": "a cute cat"}}`
-        - `created_at` (int) 创建时间戳，如：1705395332
-        - `message_files` (array[string])  当前agent_thought 关联的文件ID
-          - `file_id` (string) 文件ID
-        - `conversation_id` (string) 会话ID
-    - `answer` (string)  回答消息内容
-    - `created_at`  (timestamp) 创建时间
-    - `feedback` (object) 反馈信息
-      - `rating` (string) 点赞 like / 点踩 dislike
-    - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
-  - `has_more` (bool) 是否存在下一页
-  - `limit` (int) 返回条数，若传入超过系统限制，返回系统限制数量
+      - `id`  (string) 消息 ID
+      - `conversation_id` (string)  会话 ID
+      - `inputs` (object) 用户输入参数。
+      - `query`  (string) 用户输入 / 提问内容。
+      - `message_files` (array[object]) 消息文件
+        - `id` (string) ID
+        - `type` (string) 文件类型，image 图片
+        - `url` (string) 预览图片地址
+        - `belongs_to` (string) 文件归属方，user 或 assistant
+        - `agent_thoughts` (array[object]) Agent思考内容（仅Agent模式下不为空）
+          - `id` (string) agent_thought ID，每一轮Agent迭代都会有一个唯一的id
+          - `message_id` (string) 消息唯一ID
+          - `position` (int) agent_thought在消息中的位置，如第一轮迭代position为1
+          - `thought` (string) agent的思考内容
+          - `observation` (string) 工具调用的返回结果
+          - `tool` (string) 使用的工具列表，以 ; 分割多个工具
+          - `tool_input` (string) 工具的输入，JSON格式的字符串(object)。如：`{"dalle3": {"prompt": "a cute cat"}}`
+          - `created_at` (int) 创建时间戳，如：1705395332
+          - `message_files` (array[string])  当前agent_thought 关联的文件ID
+            - `file_id` (string) 文件ID
+          - `conversation_id` (string) 会话ID
+      - `answer` (string)  回答消息内容
+      - `created_at`  (timestamp) 创建时间
+      - `feedback` (object) 反馈信息
+        - `rating` (string) 点赞 like / 点踩 dislike
+      - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
+    - `has_more` (bool) 是否存在下一页
+    - `limit` (int) 返回条数，若传入超过系统限制，返回系统限制数量
   </Col>
   <Col sticky>
     ### Request Example

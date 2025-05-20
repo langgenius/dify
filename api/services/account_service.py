@@ -49,7 +49,7 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
     TenantNotFoundError,
 )
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -628,6 +628,10 @@ class TenantService:
         if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
             raise WorkSpaceNotAllowedCreateError()
 
+        workspaces = FeatureService.get_system_features().license.workspaces
+        if not workspaces.is_available():
+            raise WorkspacesLimitExceededError()
+
         if name:
             tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
         else:
@@ -928,7 +932,11 @@ class RegisterService:
             if open_id is not None and provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if FeatureService.get_system_features().is_allow_create_workspace and create_workspace_required:
+            if (
+                FeatureService.get_system_features().is_allow_create_workspace
+                and create_workspace_required
+                and FeatureService.get_system_features().license.workspaces.is_available()
+            ):
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant

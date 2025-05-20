@@ -161,9 +161,9 @@ const translation = {
     },
   },
   answerIcon: {
-    description: 'WebApp 아이콘을 사용하여 공유 응용 프로그램에서 바꿀🤖지 여부',
-    title: 'WebApp 아이콘을 사용하여 🤖',
-    descriptionInExplore: 'Explore에서 WebApp 아이콘을 사용하여 바꿀🤖지 여부',
+    description: 'web app 아이콘을 사용하여 공유 응용 프로그램에서 바꿀🤖지 여부',
+    title: 'web app 아이콘을 사용하여 🤖',
+    descriptionInExplore: 'Explore에서 web app 아이콘을 사용하여 바꿀🤖지 여부',
   },
   importFromDSL: 'DSL에서 가져오기',
   importFromDSLFile: 'DSL 파일에서',

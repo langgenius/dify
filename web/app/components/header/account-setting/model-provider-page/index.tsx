@@ -23,7 +23,7 @@ import {
 import InstallFromMarketplace from './install-from-marketplace'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   searchText: string
@@ -40,7 +40,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
   const [configuredProviders, notConfiguredProviders] = useMemo(() => {
     const configuredProviders: ModelProvider[] = []

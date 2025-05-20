@@ -16,7 +16,7 @@ export type IAppDetailNavProps = {
   desc: string
   isExternal?: boolean
   icon: string
-  icon_background: string
+  icon_background: string | null
   navigation: Array<{
     name: string
     href: string

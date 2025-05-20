@@ -177,9 +177,9 @@ const translation = {
     },
   },
   answerIcon: {
-    description: 'Se utilizzare l\'icona WebApp per la sostituzione 🤖 nell\'applicazione condivisa',
-    title: 'Usa l\'icona WebApp per sostituire 🤖',
-    descriptionInExplore: 'Se utilizzare l\'icona WebApp per sostituirla 🤖 in Esplora',
+    description: 'Se utilizzare l\'icona web app per la sostituzione 🤖 nell\'applicazione condivisa',
+    title: 'Usa l\'icona web app per sostituire 🤖',
+    descriptionInExplore: 'Se utilizzare l\'icona web app per sostituirla 🤖 in Esplora',
   },
   importFromDSLUrl: 'Dall\'URL',
   importFromDSLFile: 'Da file DSL',

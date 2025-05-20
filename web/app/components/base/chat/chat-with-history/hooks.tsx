@@ -43,6 +43,9 @@ import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { noop } from 'lodash-es'
+import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { AccessMode } from '@/models/access-control'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -72,7 +75,18 @@ function getFormattedChatList(messages: any[]) {
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR(installedAppInfo ? null : 'appInfo', fetchAppInfo)
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({
+    appId: installedAppInfo?.app.id || appInfo?.app_id,
+    isInstalledApp,
+    enabled: systemFeatures.webapp_auth.enabled,
+  })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({
+    appId: installedAppInfo?.app.id || appInfo?.app_id,
+    isInstalledApp,
+    enabled: systemFeatures.webapp_auth.enabled,
+  })
 
   useAppFavicon({
     enable: !installedAppInfo,
@@ -447,7 +461,9 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   return {
     appInfoError,
-    appInfoLoading,
+    appInfoLoading: appInfoLoading || (systemFeatures.webapp_auth.enabled && (isGettingAccessMode || isCheckingPermission)),
+    accessMode: systemFeatures.webapp_auth.enabled ? appAccessMode?.accessMode : AccessMode.PUBLIC,
+    userCanAccess: systemFeatures.webapp_auth.enabled ? userCanAccessResult?.result : true,
     isInstalledApp,
     appId,
     currentConversationId,
