@@ -21,7 +21,6 @@ login_manager = flask_login.LoginManager()
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
     auth_header = request.headers.get("Authorization", "")
-    # Check if the user_id contains a dot, indicating the old format
     if not auth_header:
         auth_token = request.args.get("_token")
         if not auth_token:
