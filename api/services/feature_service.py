@@ -104,6 +104,7 @@ class PluginInstallationPermissionModel(BaseModel):
     plugin_installation_scope: PluginInstallationScope = PluginInstallationScope.ALL
 
     # If True, restrict plugin installation to the marketplace only
+    # Equivalent to ForceEnablePluginVerification
     restrict_to_marketplace_only: bool = False
 
 
