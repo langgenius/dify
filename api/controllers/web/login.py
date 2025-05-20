@@ -7,7 +7,6 @@ import services
 from controllers.console.auth.error import EmailCodeError, EmailOrPasswordMismatchError, InvalidEmailError
 from controllers.console.error import AccountBannedError, AccountNotFound
 from controllers.console.wraps import setup_required
-from controllers.web import api
 from libs.helper import email
 from libs.password import valid_password
 from services.account_service import AccountService
@@ -115,7 +114,7 @@ class EmailCodeLoginApi(Resource):
         return {"result": "success", "token": token}
 
 
-api.add_resource(LoginApi, "/login")
+# api.add_resource(LoginApi, "/login")
 # api.add_resource(LogoutApi, "/logout")
-api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
-api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
+# api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
+# api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
