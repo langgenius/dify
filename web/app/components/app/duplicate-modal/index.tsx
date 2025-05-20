@@ -24,7 +24,6 @@ export type DuplicateAppModalProps = {
   onConfirm: (info: {
     name: string
     icon_type: AppIconType
-    icon_url?: string | null
     icon: string
     icon_background?: string | null
   }) => Promise<void>
@@ -64,7 +63,6 @@ const DuplicateAppModal = ({
       name,
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
-      icon_url: appIcon.type === 'image' ? appIcon.url : undefined,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
     })
     onHide()
