@@ -102,7 +102,7 @@ def init_app(app: DifyApp) -> Celery:
         # every 15 minutes
         "check_upgradable_plugin_task": {
             "task": "schedule.check_upgradable_plugin_task.check_upgradable_plugin_task",
-            "schedule": timedelta(minutes=15),
+            "schedule": crontab(minute="*/15"),
         },
     }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
