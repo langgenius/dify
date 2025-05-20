@@ -27,7 +27,7 @@ services:
 
   # The redis cache.
   redis:
-    image: redis:6-alpine
+    image: redis:7-alpine
     restart: always
     env_file:
       - ./middleware.env
