@@ -296,6 +296,7 @@ const translation = {
     addNextStep: 'Adăugați următorul bloc în acest flux de lucru',
     selectNextStep: 'Selectați următorul bloc',
     runThisStep: 'Rulează acest pas',
+    moveToThisNode: '定位至该节点',
     checklist: 'Lista de verificare',
     checklistTip: 'Asigurați-vă că toate problemele sunt rezolvate înainte de publicare',
     checklistResolved: 'Toate problemele au fost rezolvate',

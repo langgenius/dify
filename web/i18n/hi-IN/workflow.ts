@@ -307,6 +307,7 @@ const translation = {
     addNextStep: 'इस वर्कफ़्लो में अगला ब्लॉक जोड़ें',
     selectNextStep: 'अगला ब्लॉक चुनें',
     runThisStep: 'इस कदम को चलाएं',
+    moveToThisNode: '定位至该节点',
     checklist: 'चेकलिस्ट',
     checklistTip:
       'प्रकाशित करने से पहले सुनिश्चित करें कि सभी समस्याएं हल हो गई हैं',

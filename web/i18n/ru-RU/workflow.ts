@@ -296,6 +296,7 @@ const translation = {
     addNextStep: 'Добавить следующий блок в этот рабочий процесс',
     selectNextStep: 'Выбрать следующий блок',
     runThisStep: 'Выполнить этот шаг',
+    moveToThisNode: '定位至该节点',
     checklist: 'Контрольный список',
     checklistTip: 'Убедитесь, что все проблемы решены перед публикацией',
     checklistResolved: 'Все проблемы решены',

@@ -278,6 +278,7 @@ const translation = {
       addNextStep: 'Dodaj naslednji blok v tem delovnem toku',
       selectNextStep: 'Izberi naslednji blok',
       runThisStep: 'Zaženi ta korak',
+      moveToThisNode: '定位至该节点',
       checklist: 'Kontrolni seznam',
       checklistTip: 'Poskrbite, da so vsi problemi rešeni pred objavo',
       checklistResolved: 'Vsi problemi so rešeni',
@@ -739,6 +740,7 @@ const translation = {
     checklistResolved: 'Vse težave so odpravljene',
     addNextStep: 'Dodajanje naslednjega bloka v ta potek dela',
     change: 'Spremeniti',
+    moveToThisNode: 'Premakni se na to vozlišče',
   },
   nodes: {
     common: {

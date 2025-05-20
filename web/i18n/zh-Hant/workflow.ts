@@ -296,6 +296,7 @@ const translation = {
     addNextStep: '添加此工作流程中的下一個節點',
     selectNextStep: '選擇下一個節點',
     runThisStep: '運行此步驟',
+    moveToThisNode: '定位至此節點',
     checklist: '檢查清單',
     checklistTip: '發佈前確保所有問題均已解決',
     checklistResolved: '所有問題均已解決',

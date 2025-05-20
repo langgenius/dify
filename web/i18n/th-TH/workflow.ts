@@ -296,6 +296,7 @@ const translation = {
     addNextStep: 'เพิ่มบล็อกถัดไปในเวิร์กโฟลว์นี้',
     selectNextStep: 'เลือกบล็อกถัดไป',
     runThisStep: 'เรียกใช้ขั้นตอนนี้',
+    moveToThisNode: '定位至该节点',
     checklist: 'ตรวจ สอบ',
     checklistTip: 'ตรวจสอบให้แน่ใจว่าปัญหาทั้งหมดได้รับการแก้ไขแล้วก่อนที่จะเผยแพร่',
     checklistResolved: 'ปัญหาทั้งหมดได้รับการแก้ไขแล้ว',

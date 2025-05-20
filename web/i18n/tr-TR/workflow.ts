@@ -296,6 +296,7 @@ const translation = {
     addNextStep: 'Bu iş akışında sonraki bloğu ekleyin',
     selectNextStep: 'Sonraki Bloğu Seç',
     runThisStep: 'Bu adımı çalıştır',
+    moveToThisNode: '定位至该节点',
     checklist: 'Kontrol Listesi',
     checklistTip: 'Yayınlamadan önce tüm sorunların çözüldüğünden emin olun',
     checklistResolved: 'Tüm sorunlar çözüldü',

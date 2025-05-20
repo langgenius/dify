@@ -296,6 +296,7 @@ const translation = {
     addNextStep: 'Fügen Sie den nächsten Block in diesem Workflow hinzu',
     selectNextStep: 'Nächsten Block auswählen',
     runThisStep: 'Diesen Schritt ausführen',
+    moveToThisNode: '定位至此节点',
     checklist: 'Checkliste',
     checklistTip: 'Stellen Sie sicher, dass alle Probleme vor der Veröffentlichung gelöst sind',
     checklistResolved: 'Alle Probleme wurden gelöst',
