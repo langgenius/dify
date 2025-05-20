@@ -88,13 +88,20 @@ class WebAppAuthModel(BaseModel):
     allow_email_password_login: bool = False
 
 
+class PluginInstallationScope(StrEnum):
+    NONE = "none"
+    OFFICIAL_ONLY = "official_only"
+    OFFICIAL_AND_SPECIFIC_PARTNERS = "official_and_specific_partners"
+    ALL = "all"
+
+
 class PluginInstallationPermissionModel(BaseModel):
     # Plugin installation scope – possible values:
     #   none: prohibit all plugin installations
     #   official_only: allow only Dify official plugins
     #   official_and_specific_partners: allow official and specific partner plugins
     #   all: allow installation of all plugins
-    plugin_installation_scope: str = "all"
+    plugin_installation_scope: PluginInstallationScope = PluginInstallationScope.ALL
 
     # If True, restrict plugin installation to the marketplace only
     restrict_to_marketplace_only: bool = False
