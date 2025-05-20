@@ -301,13 +301,13 @@ const translation = {
     addNextStep: '添加此工作流程中的下一个节点',
     selectNextStep: '选择下一个节点',
     runThisStep: '运行此步骤',
-    moveToThisNode: '定位至此节点',
     checklist: '检查清单',
     checklistTip: '发布前确保所有问题均已解决',
     checklistResolved: '所有问题均已解决',
     organizeBlocks: '整理节点',
     change: '更改',
     optional: '（选填）',
+    moveToThisNode: '定位至此节点',
   },
   nodes: {
     common: {

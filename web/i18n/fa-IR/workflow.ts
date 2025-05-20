@@ -296,13 +296,13 @@ const translation = {
     addNextStep: 'افزودن بلوک بعدی به این جریان کار',
     selectNextStep: 'انتخاب بلوک بعدی',
     runThisStep: 'اجرا کردن این مرحله',
-    moveToThisNode: '定位至该节点',
     checklist: 'چک‌لیست',
     checklistTip: 'اطمینان حاصل کنید که همه مسائل قبل از انتشار حل شده‌اند',
     checklistResolved: 'تمام مسائل حل شده‌اند',
     organizeBlocks: 'سازماندهی بلوک‌ها',
     change: 'تغییر',
     optional: '(اختیاری)',
+    moveToThisNode: 'به این گره بروید',
   },
   nodes: {
     common: {

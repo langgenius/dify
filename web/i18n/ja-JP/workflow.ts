@@ -301,13 +301,13 @@ const translation = {
     addNextStep: 'このワークフローで次ノードを追加',
     selectNextStep: '次ノード選択',
     runThisStep: 'このステップ実行',
-    moveToThisNode: '定位至该节点',
     checklist: 'チェックリスト',
     checklistTip: '公開前に全ての項目を確認してください',
     checklistResolved: '全てのチェックが完了しました',
     organizeBlocks: 'ノード整理',
     change: '変更',
     optional: '（任意）',
+    moveToThisNode: 'このノードに移動する',
   },
   nodes: {
     common: {

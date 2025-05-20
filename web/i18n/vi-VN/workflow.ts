@@ -296,13 +296,13 @@ const translation = {
     addNextStep: 'Thêm khối tiếp theo trong quy trình làm việc này',
     selectNextStep: 'Chọn khối tiếp theo',
     runThisStep: 'Chạy bước này',
-    moveToThisNode: '定位至此节点',
     checklist: 'Danh sách kiểm tra',
     checklistTip: 'Đảm bảo rằng tất cả các vấn đề đã được giải quyết trước khi xuất bản',
     checklistResolved: 'Tất cả các vấn đề đã được giải quyết',
     organizeBlocks: 'Tổ chức các khối',
     change: 'Thay đổi',
     optional: '(tùy chọn)',
+    moveToThisNode: 'Di chuyển đến nút này',
   },
   nodes: {
     common: {

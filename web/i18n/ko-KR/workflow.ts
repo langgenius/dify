@@ -296,13 +296,13 @@ const translation = {
     addNextStep: '이 워크플로우의 다음 블록 추가',
     selectNextStep: '다음 블록 선택',
     runThisStep: '이 단계 실행',
-    moveToThisNode: '定位至该节点',
     checklist: '체크리스트',
     checklistTip: '게시하기 전에 모든 문제가 해결되었는지 확인하세요',
     checklistResolved: '모든 문제가 해결되었습니다',
     organizeBlocks: '블록 정리',
     change: '변경',
     optional: '(선택사항)',
+    moveToThisNode: '이 노드로 이동',
   },
   nodes: {
     common: {

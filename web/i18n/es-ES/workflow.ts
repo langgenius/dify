@@ -296,13 +296,13 @@ const translation = {
     addNextStep: 'Agregar el siguiente bloque en este flujo de trabajo',
     selectNextStep: 'Seleccionar siguiente bloque',
     runThisStep: 'Ejecutar este paso',
-    moveToThisNode: '定位至该节点',
     checklist: 'Lista de verificación',
     checklistTip: 'Asegúrate de resolver todos los problemas antes de publicar',
     checklistResolved: 'Se resolvieron todos los problemas',
     organizeBlocks: 'Organizar bloques',
     change: 'Cambiar',
     optional: '(opcional)',
+    moveToThisNode: 'Mueve a este nodo',
   },
   nodes: {
     common: {

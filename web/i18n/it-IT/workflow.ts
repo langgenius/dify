@@ -310,7 +310,6 @@ const translation = {
     addNextStep: 'Aggiungi il prossimo blocco in questo flusso di lavoro',
     selectNextStep: 'Seleziona Prossimo Blocco',
     runThisStep: 'Esegui questo passo',
-    moveToThisNode: '定位至该节点',
     checklist: 'Checklist',
     checklistTip:
       'Assicurati che tutti i problemi siano risolti prima di pubblicare',
@@ -318,6 +317,7 @@ const translation = {
     organizeBlocks: 'Organizza blocchi',
     change: 'Cambia',
     optional: '(opzionale)',
+    moveToThisNode: 'Sposta a questo nodo',
   },
   nodes: {
     common: {
