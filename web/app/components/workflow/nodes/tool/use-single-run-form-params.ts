@@ -79,10 +79,15 @@ const useSingleRunFormParams = ({
 
   const toolIcon = useToolIcon(payload)
 
+  const getDependentVars = () => {
+    return varInputs.map(item => item.variable.slice(1, -1).split('.'))
+  }
+
   return {
     forms,
     nodeInfo,
     toolIcon,
+    getDependentVars,
   }
 }
 
