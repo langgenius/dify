@@ -3,6 +3,8 @@ import logging
 from collections.abc import Generator
 from typing import Any, Optional, Union, cast
 
+from sqlalchemy.orm import Session
+
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -111,19 +113,32 @@ class WorkflowTool(Tool):
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
         yield self.create_json_message(outputs)
 
+    def _get_end_user(self, session: Session, user_id: str) -> EndUser | None:
+        return session.query(EndUser).filter(EndUser.id == user_id).first()
+
+    def _get_account_user(self, session: Session, user_id: str) -> Account | None:
+        account = session.query(Account).filter(Account.id == user_id).first()
+        if account:
+            account.load_and_populate_tenant(session=session, tenant_id=self.runtime.tenant_id)
+        return account
+
     def _get_user(self, user_id: str) -> Union[EndUser, Account]:
         """
         get the user by user id
         """
+        with Session(bind=db.engine, expire_on_commit=False) as session:
+            user: Account | EndUser | None = self._get_end_user(session=session, user_id=user_id)
+            # FIXME(QuantumGhost): It seems that for `EndUser`, workflow-as-tool may
+            # still work incorrectly.
+            if user:
+                return user
 
-        user = db.session.query(EndUser).filter(EndUser.id == user_id).first()
-        if not user:
-            user = db.session.query(Account).filter(Account.id == user_id).first()
-
-        if not user:
+            user = self._get_account_user(session=session, user_id=user_id)
+            if user:
+                user.load_and_populate_tenant(session=session, tenant_id=self.runtime.tenant_id)
+                return user
+            # Neither Account nor EndUser is found. This should not happen.
             raise ValueError("user not found")
-
-        return user
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
         """

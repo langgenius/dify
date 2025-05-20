@@ -4,10 +4,9 @@ from typing import cast
 
 from flask_login import UserMixin  # type: ignore
 from sqlalchemy import func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from models.base import Base
-
 from .engine import db
 from .types import StringUUID
 
@@ -59,6 +58,14 @@ class Account(UserMixin, Base):
             tenant = None  # type: ignore
 
         self._current_tenant = tenant
+
+    def load_and_populate_tenant(self, session: Session, tenant_id: str):
+        tenant = session.query(Tenant).where(Tenant.id == tenant_id).one()
+        ta = session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=self.id).first()
+        if ta:
+            tenant.current_role = ta.role
+            # FIXME(QuantumGhost): A temporary around for workflow-as-tool.
+            self._current_tenant = tenant
 
     @property
     def current_tenant_id(self) -> str | None:
