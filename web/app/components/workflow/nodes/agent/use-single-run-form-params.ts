@@ -9,8 +9,6 @@ import { useStrategyInfo } from './use-config'
 import type { NodeTracing } from '@/types/workflow'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 
-const i18nPrefix = 'workflow.nodes.agent'
-
 type Params = {
   id: string,
   payload: AgentNodeType,
@@ -62,7 +60,7 @@ const useSingleRunFormParams = ({
     if (varInputs!.length > 0) {
       forms.push(
         {
-          label: t(`${i18nPrefix}.singleRun.variable`)!,
+          label: t('workflow.nodes.llm.singleRun.variable')!,
           inputs: varInputs!,
           values: runInputData,
           onChange: setRunInputData,
@@ -78,9 +76,14 @@ const useSingleRunFormParams = ({
     return formatTracing([runResult], t)[0]
   }, [runResult, t])
 
+    const getDependentVars = () => {
+    return varInputs.map(item => item.variable.slice(1, -1).split('.'))
+  }
+
   return {
     forms,
     nodeInfo,
+    getDependentVars,
   }
 }
 
