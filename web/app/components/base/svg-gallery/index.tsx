@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SVG } from '@svgdotjs/svg.js'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import DOMPurify from 'dompurify'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 export const SVGRenderer = ({ content }: { content: string }) => {
   const svgRef = useRef<HTMLDivElement>(null)

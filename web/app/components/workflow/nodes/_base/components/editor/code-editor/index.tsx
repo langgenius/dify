@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Base from '../base'
-import { WEB_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import {
@@ -13,9 +12,10 @@ import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import './style.css'
 import { noop } from 'lodash-es'
+import { basePath } from '@/utils/var'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
-loader.config({ paths: { vs: `${WEB_PREFIX}/vs` } })
+loader.config({ paths: { vs: `${basePath}/vs` } })
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 

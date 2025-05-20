@@ -105,6 +105,11 @@ const translation = {
   licenseInactiveTip: 'ワークスペースの Dify Enterprise ライセンスが非アクティブです。Difyを引き続き使用するには、管理者に連絡してください。',
   licenseExpired: 'ライセンスの有効期限が切れています',
   licenseLostTip: 'Difyライセンスサーバーへの接続に失敗しました。続けてDifyを使用するために管理者に連絡してください。',
+  webapp: {
+    noLoginMethod: 'Webアプリに対して認証方法が構成されていません',
+    noLoginMethodTip: 'システム管理者に連絡して、認証方法を追加してください。',
+    disabled: 'Webアプリの認証が無効になっています。システム管理者に連絡して有効にしてください。直接アプリを使用してみてください。',
+  },
 }
 
 export default translation

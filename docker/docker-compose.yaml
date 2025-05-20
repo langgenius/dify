@@ -19,6 +19,7 @@ x-shared-env: &shared-api-worker-env
   LOG_TZ: ${LOG_TZ:-UTC}
   DEBUG: ${DEBUG:-false}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
+  ENABLE_REQUEST_LOGGING: ${ENABLE_REQUEST_LOGGING:-False}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
   INIT_PASSWORD: ${INIT_PASSWORD:-}
   DEPLOY_ENV: ${DEPLOY_ENV:-PRODUCTION}
@@ -492,7 +493,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.3.1
+    image: langgenius/dify-api:1.4.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -521,7 +522,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.3.1
+    image: langgenius/dify-api:1.4.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -547,7 +548,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.3.1
+    image: langgenius/dify-web:1.4.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -608,7 +609,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.11
+    image: langgenius/dify-sandbox:0.2.12
     restart: always
     environment:
       # The DifySandbox configurations
@@ -632,7 +633,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.9-local
+    image: langgenius/dify-plugin-daemon:0.0.10-local
     restart: always
     environment:
       # Use the shared environment variables.

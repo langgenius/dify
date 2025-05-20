@@ -72,7 +72,7 @@ dependencies = [
     "python-dotenv==1.0.1",
     "pyyaml~=6.0.1",
     "readabilipy~=0.3.0",
-    "redis[hiredis]~=6.0.0",
+    "redis[hiredis]~=6.1.0",
     "resend~=2.9.0",
     "sentry-sdk[flask]~=2.28.0",
     "sqlalchemy~=2.0.29",

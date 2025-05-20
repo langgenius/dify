@@ -26,7 +26,7 @@ const translation = {
   appDeleteFailed: 'アプリの削除に失敗しました',
   join: 'コミュニティに参加する',
   communityIntro:
-  'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
+    'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
   roadmap: 'ロードマップを見る',
   newApp: {
     startFromBlank: '最初から作成',
@@ -209,6 +209,41 @@ const translation = {
     modelNotSupported: 'モデルが対応していません',
     modelNotSupportedTip: '現在のモデルはこの機能に対応しておらず、自動的にプロンプトインジェクションに切り替わります。',
   },
+  accessControl: 'Webアプリアクセス制御',
+  accessItemsDescription: {
+    anyone: '誰でも Web アプリにアクセス可能',
+    specific: '特定のグループまたはメンバーのみが Web アプリにアクセス可能',
+    organization: '組織内の誰でも Web アプリにアクセス可能',
+  },
+  accessControlDialog: {
+    title: 'アクセス権限',
+    description: 'Webアプリのアクセス権限を設定します',
+    accessLabel: '誰がアクセスできますか',
+    accessItems: {
+      anyone: 'すべてのユーザー',
+      specific: '特定のグループメンバー',
+      organization: 'グループ内の全員',
+    },
+    groups_one: '{{count}} グループ',
+    groups_other: '{{count}} グループ',
+    members_one: '{{count}} メンバー',
+    members_other: '{{count}} メンバー',
+    noGroupsOrMembers: 'グループまたはメンバーが選択されていません',
+    webAppSSONotEnabledTip: 'Webアプリの認証方式設定については、企業管理者へご連絡ください。',
+    operateGroupAndMember: {
+      searchPlaceholder: 'グループやメンバーを検索',
+      allMembers: 'すべてのメンバー',
+      expand: '展開',
+      noResult: '結果がありません',
+    },
+    updateSuccess: '更新が成功しました',
+  },
+  publishApp: {
+    title: 'Webアプリへのアクセス権',
+    notSet: '未設定',
+    notSetDesc: '現在このWebアプリには誰もアクセスできません。権限を設定してください。',
+  },
+  noAccessPermission: 'Webアプリにアクセス権限がありません',
 }
 
 export default translation

@@ -3,23 +3,14 @@ import { AgentStrategy } from '@/types/app'
 import { PromptRole } from '@/models/debug'
 
 export let apiPrefix = ''
-export let webPrefix = ''
 export let publicApiPrefix = ''
-export let publicWebPrefix = ''
 export let marketplaceApiPrefix = ''
 export let marketplaceUrlPrefix = ''
 
 // NEXT_PUBLIC_API_PREFIX=/console/api NEXT_PUBLIC_PUBLIC_API_PREFIX=/api npm run start
-if (
-  process.env.NEXT_PUBLIC_API_PREFIX
-  && process.env.NEXT_PUBLIC_WEB_PREFIX
-  && process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX
-  && process.env.NEXT_PUBLIC_PUBLIC_WEB_PREFIX
-) {
+if (process.env.NEXT_PUBLIC_API_PREFIX && process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX) {
   apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX
-  webPrefix = process.env.NEXT_PUBLIC_WEB_PREFIX
   publicApiPrefix = process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX
-  publicWebPrefix = process.env.NEXT_PUBLIC_PUBLIC_WEB_PREFIX
 }
 else if (
   globalThis.document?.body?.getAttribute('data-api-prefix')
@@ -27,18 +18,14 @@ else if (
 ) {
   // Not build can not get env from process.env.NEXT_PUBLIC_ in browser https://nextjs.org/docs/basic-features/environment-variables#exposing-environment-variables-to-the-browser
   apiPrefix = globalThis.document.body.getAttribute('data-api-prefix') as string
-  webPrefix = (globalThis.document.body.getAttribute('data-web-prefix') as string || globalThis.location.origin)
   publicApiPrefix = globalThis.document.body.getAttribute('data-pubic-api-prefix') as string
-  publicWebPrefix = (globalThis.document.body.getAttribute('data-pubic-web-prefix') as string || globalThis.location.origin)
 }
 else {
   // const domainParts = globalThis.location?.host?.split('.');
   // in production env, the host is dify.app . In other env, the host is [dev].dify.app
   // const env = domainParts.length === 2 ? 'ai' : domainParts?.[0];
   apiPrefix = 'http://localhost:5001/console/api'
-  webPrefix = 'http://localhost:3000'
   publicApiPrefix = 'http://localhost:5001/api' // avoid browser private mode api cross origin
-  publicWebPrefix = 'http://localhost:3000'
   marketplaceApiPrefix = 'http://localhost:5002/api'
 }
 
@@ -52,9 +39,7 @@ else {
 }
 
 export const API_PREFIX: string = apiPrefix
-export const WEB_PREFIX: string = webPrefix
 export const PUBLIC_API_PREFIX: string = publicApiPrefix
-export const PUBLIC_WEB_PREFIX: string = publicWebPrefix
 export const MARKETPLACE_API_PREFIX: string = marketplaceApiPrefix
 export const MARKETPLACE_URL_PREFIX: string = marketplaceUrlPrefix
 
@@ -281,8 +266,6 @@ Thought: {{agent_scratchpad}}
 }
 
 export const VAR_REGEX = /\{\{(#[a-zA-Z0-9_-]{1,50}(\.[a-zA-Z_]\w{0,29}){1,10}#)\}\}/gi
-
-export const VAR_REGEX_TEXT = /\{\{#([a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*)#\}\}/gi
 
 export const resetReg = () => VAR_REGEX.lastIndex = 0
 

@@ -29,16 +29,18 @@ import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { useAppContext } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const Container = () => {
   const { t } = useTranslation()
+  const { systemFeatures } = useGlobalPublicStore()
   const router = useRouter()
   const { currentWorkspace, isCurrentWorkspaceOwner } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
-
-  document.title = `${t('dataset.knowledge')} - Dify`
+  useDocumentTitle(t('dataset.knowledge'))
 
   const options = useMemo(() => {
     return [
@@ -125,7 +127,7 @@ const Container = () => {
       {activeTab === 'dataset' && (
         <>
           <Datasets containerRef={containerRef} tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
-          <DatasetFooter />
+          {!systemFeatures.branding.enabled && <DatasetFooter />}
           {showTagManagementModal && (
             <TagManagementModal type='knowledge' show={showTagManagementModal} />
           )}

@@ -55,7 +55,7 @@ const DatasetItem: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-xl
+    <div className={`group/dataset-item flex h-10 cursor-pointer items-center justify-between rounded-lg
       border-[0.5px] border-components-panel-border-subtle px-2
       ${isDeleteHovered
       ? 'border-state-destructive-border bg-state-destructive-hover'

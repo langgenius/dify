@@ -287,7 +287,9 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if tracing_provider not in provider_config_map and tracing_provider is not None:
+        try:
+            provider_config_map[tracing_provider]
+        except KeyError:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
