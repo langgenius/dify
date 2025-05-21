@@ -504,6 +504,13 @@ class WorkflowCycleManager:
         else:
             raise NotImplementedError(f"unknown created_by_role: {workflow_run.created_by_role}")
 
+        # Handle the case where finished_at is None by using current time as default
+        finished_at_timestamp = (
+            int(workflow_run.finished_at.timestamp())
+            if workflow_run.finished_at
+            else int(datetime.now(UTC).timestamp())
+        )
+
         return WorkflowFinishStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
@@ -519,7 +526,7 @@ class WorkflowCycleManager:
                 total_steps=workflow_run.total_steps,
                 created_by=created_by,
                 created_at=int(workflow_run.created_at.timestamp()),
-                finished_at=int(workflow_run.finished_at.timestamp()),
+                finished_at=finished_at_timestamp,
                 files=self._fetch_files_from_node_outputs(dict(workflow_run.outputs_dict)),
                 exceptions_count=workflow_run.exceptions_count,
             ),
