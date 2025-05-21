@@ -904,6 +904,12 @@ class WorkflowCycleManager:
 
         return None
 
+    def _get_workflow_execution(self, id: str, /) -> WorkflowExecution:
+        execution = self._workflow_execution_repository.get(id)
+        if not execution:
+            raise WorkflowRunNotFoundError(id)
+        return execution
+
     def _get_workflow_run(self, *, session: Session, workflow_run_id: str) -> WorkflowRun:
         if self._workflow_run and self._workflow_run.id == workflow_run_id:
             cached_workflow_run = self._workflow_run
