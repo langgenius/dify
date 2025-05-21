@@ -725,12 +725,15 @@ class WorkflowCycleManager:
         )
 
     def _workflow_iteration_completed_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationCompletedEvent
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueIterationCompletedEvent,
     ) -> IterationNodeCompletedStreamResponse:
-        _ = session
         return IterationNodeCompletedStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=IterationNodeCompletedStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
