@@ -34,7 +34,7 @@ class S3StorageConfig(BaseSettings):
         default=None,
     )
 
-    S3_ADDRESS_STYLE: Literal['auto', 'virtual', 'path'] = Field(
+    S3_ADDRESS_STYLE: Literal["auto", "virtual", "path"] = Field(
         description="S3 addressing style: 'auto', 'path', or 'virtual'",
         default="auto",
     )
