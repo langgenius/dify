@@ -173,10 +173,6 @@ class WorkflowToolProvider(Base):
     )
 
     @property
-    def schema_type(self) -> ApiProviderSchemaType:
-        return ApiProviderSchemaType.value_of(self.schema_type_str)
-
-    @property
     def user(self) -> Account | None:
         return db.session.query(Account).filter(Account.id == self.user_id).first()
 

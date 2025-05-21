@@ -68,16 +68,24 @@ class TenantListApi(Resource):
     @account_initialization_required
     def get(self):
         tenants = TenantService.get_join_tenants(current_user)
+        tenant_dicts = []
 
         for tenant in tenants:
             features = FeatureService.get_features(tenant.id)
-            if features.billing.enabled:
-                tenant.plan = features.billing.subscription.plan
-            else:
-                tenant.plan = "sandbox"
-            if tenant.id == current_user.current_tenant_id:
-                tenant.current = True  # Set current=True for current tenant
-        return {"workspaces": marshal(tenants, tenants_fields)}, 200
+
+            # Create a dictionary with tenant attributes
+            tenant_dict = {
+                "id": tenant.id,
+                "name": tenant.name,
+                "status": tenant.status,
+                "created_at": tenant.created_at,
+                "plan": features.billing.subscription.plan if features.billing.enabled else "sandbox",
+                "current": tenant.id == current_user.current_tenant_id,
+            }
+
+            tenant_dicts.append(tenant_dict)
+
+        return {"workspaces": marshal(tenant_dicts, tenants_fields)}, 200
 
 
 class WorkspaceListApi(Resource):
