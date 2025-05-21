@@ -554,6 +554,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/57/69/cfc45dfce3b4ea417f9aec708ade1eda7f280fe8ae7feca796b036619587/boto3_stubs-1.38.20-py3-none-any.whl", hash = "sha256:5406da868980a3854cc9b57db150c6f2e39a4fe4a58f2872e61ac5a3d46f734e", size = 68667, upload-time = "2025-05-20T23:30:12.393Z" },
 ]
 
+[package.optional-dependencies]
+bedrock-runtime = [
+    { name = "mypy-boto3-bedrock-runtime" },
+]
+
 [[package]]
 name = "botocore"
 version = "1.35.99"
@@ -1426,7 +1431,7 @@ requires-dist = [
     { name = "opentelemetry-sdk", specifier = "==1.27.0" },
     { name = "opentelemetry-semantic-conventions", specifier = "==0.48b0" },
     { name = "opentelemetry-util-http", specifier = "==0.48b0" },
-    { name = "opik", specifier = "~=1.3.4" },
+    { name = "opik", specifier = "~=1.7.25" },
     { name = "pandas", extras = ["excel", "output-formatting", "performance"], specifier = "~=2.2.2" },
     { name = "pandas-stubs", specifier = "~=2.2.3.241009" },
     { name = "pandoc", specifier = "~=2.4" },
@@ -3230,6 +3235,18 @@ wheels = [
 ]
 
 [[package]]
+name = "mypy-boto3-bedrock-runtime"
+version = "1.38.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7d/55/56ce6f23d7fb98ce5b8a4261f089890bc94250666ea7089539dab55f6c25/mypy_boto3_bedrock_runtime-1.38.4.tar.gz", hash = "sha256:315a5f84c014c54e5406fdb80b030aba5cc79eb27982aff3d09ef331fb2cdd4d", size = 26169, upload-time = "2025-04-28T19:26:13.437Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/eb/3015c6504540ca4888789ee14f47590c0340b748a33b059eeb6a48b406bb/mypy_boto3_bedrock_runtime-1.38.4-py3-none-any.whl", hash = "sha256:af14320532e9b798095129a3307f4b186ba80258917bb31410cda7f423592d72", size = 31858, upload-time = "2025-04-28T19:26:09.667Z" },
+]
+
+[[package]]
 name = "mypy-extensions"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3720,11 +3737,13 @@ wheels = [
 
 [[package]]
 name = "opik"
-version = "1.3.6"
+version = "1.7.25"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "boto3-stubs", extra = ["bedrock-runtime"] },
     { name = "click" },
     { name = "httpx" },
+    { name = "jinja2" },
     { name = "levenshtein" },
     { name = "litellm" },
     { name = "openai" },
@@ -3737,9 +3756,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "uuid6" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/16/b37208d6a77f3cc74750cff4e0970e6f596aef0f491a675a40aa879157e6/opik-1.3.6.tar.gz", hash = "sha256:25d6fa8b7aa1ef23d10d598040e539440912c12b765eabfc75c8780bbbfc8ad3", size = 177174, upload-time = "2025-01-15T17:20:48.71Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5c/dd/313895410761ee3eb36c1141fa339254c093b3cdfceb79b111c80eb396be/opik-1.7.25.tar.gz", hash = "sha256:5fcdb05bbc98e995f3eea2f94096f98c5ff7a2aca2c895d50636c44d00a07d4b", size = 286950, upload-time = "2025-05-20T13:51:16.6Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d4/3f/e9d14a97f85d34505770b7c7715bd72bbfc40a778163818f0d3e871264bb/opik-1.3.6-py3-none-any.whl", hash = "sha256:888973c2a1276d68c9b3cf26d8078db8aa675d2c907edda328cdab4995a8e29b", size = 341630, upload-time = "2025-01-15T17:20:45.983Z" },
+    { url = "https://files.pythonhosted.org/packages/63/0a/daee58db3cdd56681672dbc62e5a71200af6d41f34bac2425d1556d3e004/opik-1.7.25-py3-none-any.whl", hash = "sha256:595fc2e6794e35d87449f64dc5d6092705645575d2c34469d04dc2bbe44dd32f", size = 547198, upload-time = "2025-05-20T13:51:14.964Z" },
 ]
 
 [[package]]
