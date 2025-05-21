@@ -473,7 +473,7 @@ const translation = {
       title: 'マルチパスリトリーバル',
       description: 'ユーザーの意図に基づいて、すべてのナレッジをクエリし、複数のソースから関連するテキストを取得し、再順位付け後、ユーザークエリに最適な結果を選択します。再順位付けモデル API の構成が必要です。',
     },
-    embeddingModelRequired: '未配置 Embedding 模型',
+    embeddingModelRequired: 'Embeddingモデルが設定されていない',
     rerankModelRequired: '再順位付けモデルが必要です',
     params: 'パラメータ',
     top_k: 'トップK',
