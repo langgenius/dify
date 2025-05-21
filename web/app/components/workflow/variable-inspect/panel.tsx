@@ -11,6 +11,8 @@ import Left from './left'
 import Right from './right'
 import ActionButton from '@/app/components/base/action-button'
 import type { VarInInspect } from '@/types/workflow'
+import { VarInInspectType } from '@/types/workflow'
+
 import cn from '@/utils/classnames'
 
 export type currentVarType = {
@@ -27,9 +29,12 @@ const Panel: FC = () => {
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const [showLeftPanel, setShowLeftPanel] = useState(true)
-  const [currentNodeVar, setCurrentNodeVar] = useState<currentVarType>()
 
   const environmentVariables = useStore(s => s.environmentVariables)
+  const currentFocusNodeId = useStore(s => s.currentFocusNodeId)
+  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+  const [currentVarId, setCurrentVarId] = useState('')
+
   const {
     conversationVars,
     systemVars,
@@ -42,15 +47,86 @@ const Panel: FC = () => {
     return allVars.length === 0
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
+  const currentNodeInfo = useMemo(() => {
+    if (!currentFocusNodeId) return
+    if (currentFocusNodeId === VarInInspectType.environment) {
+      const currentVar = environmentVariables.find(v => v.id === currentVarId)
+      const res = {
+        nodeId: VarInInspectType.environment,
+        title: VarInInspectType.environment,
+        nodeType: VarInInspectType.environment,
+      }
+      if (currentVar) {
+        return {
+          ...res,
+          var: {
+            ...currentVar,
+            type: VarInInspectType.environment,
+            ...(currentVar.value_type === 'secret' ? { value: '******************' } : {}),
+          },
+        }
+      }
+      return res
+    }
+    if (currentFocusNodeId === VarInInspectType.conversation) {
+      const currentVar = conversationVars.find(v => v.id === currentVarId)
+      const res = {
+        nodeId: VarInInspectType.conversation,
+        title: VarInInspectType.conversation,
+        nodeType: VarInInspectType.conversation,
+      }
+      if (currentVar) {
+        return {
+          ...res,
+          var: {
+            ...currentVar,
+            type: VarInInspectType.conversation,
+          },
+        }
+      }
+      return res
+    }
+    if (currentFocusNodeId === VarInInspectType.system) {
+      const currentVar = conversationVars.find(v => v.id === currentVarId)
+      const res = {
+        nodeId: VarInInspectType.system,
+        title: VarInInspectType.system,
+        nodeType: VarInInspectType.system,
+      }
+      if (currentVar) {
+        return {
+          ...res,
+          var: {
+            ...currentVar,
+            type: VarInInspectType.system,
+          },
+        }
+      }
+      return res
+    }
+    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
+    if (!targetNode) return
+    const currentVar = targetNode.vars.find(v => v.id === currentVarId)
+    return {
+      nodeId: targetNode.nodeId,
+      nodeType: targetNode.nodeType,
+      title: targetNode.title,
+      isSingRunRunning: targetNode.isSingRunRunning,
+      isValueFetched: targetNode.isValueFetched,
+      ...(currentVar ? { var: currentVar } : {}),
+    }
+  }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
+
   const isCurrentNodeVarValueFetching = useMemo(() => {
-    if (!currentNodeVar) return false
-    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentNodeVar.nodeId)
+    if (!currentNodeInfo) return false
+    const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentNodeInfo.nodeId)
     if (!targetNode) return false
     return !targetNode.isValueFetched
-  }, [currentNodeVar, nodesWithInspectVars])
+  }, [currentNodeInfo, nodesWithInspectVars])
 
   const handleNodeVarSelect = useCallback((node: currentVarType) => {
-    setCurrentNodeVar(node)
+    setCurrentFocusNodeId(node.nodeId)
+    setCurrentVarId(node.var.id)
     const targetNode = nodesWithInspectVars.find(n => n.nodeId === node.nodeId)
     if (targetNode && !targetNode.isValueFetched)
       fetchInspectVarValue([node.nodeId])
@@ -87,7 +163,7 @@ const Panel: FC = () => {
         )}
       >
         <Left
-          currentNodeVar={currentNodeVar}
+          currentNodeVar={currentNodeInfo as currentVarType}
           handleVarSelect={handleNodeVarSelect}
         />
       </div>
@@ -95,7 +171,7 @@ const Panel: FC = () => {
       <div className='w-0 grow'>
         <Right
           isValueFetching={isCurrentNodeVarValueFetching}
-          currentNodeVar={currentNodeVar}
+          currentNodeVar={currentNodeInfo as currentVarType}
           handleOpenMenu={() => setShowLeftPanel(true)}
         />
       </div>
