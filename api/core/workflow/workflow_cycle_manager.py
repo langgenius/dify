@@ -899,19 +899,6 @@ class WorkflowCycleManager:
             raise WorkflowRunNotFoundError(id)
         return execution
 
-    def _get_workflow_run(self, *, session: Session, workflow_run_id: str) -> WorkflowRun:
-        if self._workflow_run and self._workflow_run.id == workflow_run_id:
-            cached_workflow_run = self._workflow_run
-            cached_workflow_run = session.merge(cached_workflow_run)
-            return cached_workflow_run
-        stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
-        workflow_run = session.scalar(stmt)
-        if not workflow_run:
-            raise WorkflowRunNotFoundError(workflow_run_id)
-        self._workflow_run = workflow_run
-
-        return workflow_run
-
     def _handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
         """
         Handle agent log
