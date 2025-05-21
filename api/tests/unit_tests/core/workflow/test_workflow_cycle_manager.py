@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
+from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueNodeFailedEvent,
@@ -12,14 +13,15 @@ from core.app.entities.queue_entities import (
     QueueNodeSucceededEvent,
 )
 from core.workflow.entities.node_entities import NodeRunMetadataKey
-from core.workflow.entities.node_execution_entities import NodeExecutionStatus
-from core.workflow.entities.workflow_execution_entities import WorkflowExecutionStatus
+from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
+from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_cycle_manager import WorkflowCycleManager
 from models.enums import CreatorUserRole
+from models.model import AppMode
 from models.workflow import (
     Workflow,
     WorkflowRun,
@@ -29,9 +31,6 @@ from models.workflow import (
 
 @pytest.fixture
 def real_app_generate_entity():
-    from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
-    from models.model import AppMode
-
     additional_features = AppAdditionalFeatures(
         file_upload=None,
         opening_statement=None,
@@ -194,9 +193,6 @@ def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, real_wo
 def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execution_repository):
     """Test _handle_workflow_run_success method"""
     # Create a real WorkflowExecution
-    from datetime import UTC, datetime
-
-    from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowType
 
     workflow_execution = WorkflowExecution(
         id="test-workflow-run-id",
@@ -232,9 +228,6 @@ def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execu
 def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execution_repository):
     """Test _handle_workflow_run_failed method"""
     # Create a real WorkflowExecution
-    from datetime import UTC, datetime
-
-    from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowType
 
     workflow_execution = WorkflowExecution(
         id="test-workflow-run-id",
@@ -274,9 +267,6 @@ def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execut
 def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execution_repository):
     """Test _handle_node_execution_start method"""
     # Create a real WorkflowExecution
-    from datetime import UTC, datetime
-
-    from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowType
 
     workflow_execution = WorkflowExecution(
         id="test-workflow-execution-id",
@@ -331,9 +321,6 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
 def test_get_workflow_execution_or_raise_error(workflow_cycle_manager, mock_workflow_execution_repository):
     """Test _get_workflow_execution_or_raise_error method"""
     # Create a real WorkflowExecution
-    from datetime import UTC, datetime
-
-    from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowType
 
     workflow_execution = WorkflowExecution(
         id="test-workflow-run-id",
@@ -375,7 +362,6 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
     event.start_at = datetime.now(UTC).replace(tzinfo=None)
 
     # Create a real node execution
-    from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
 
     node_execution = NodeExecution(
         id="test-node-execution-record-id",
@@ -408,9 +394,6 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
 def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_workflow_execution_repository):
     """Test _handle_workflow_run_partial_success method"""
     # Create a real WorkflowExecution
-    from datetime import UTC, datetime
-
-    from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowType
 
     workflow_execution = WorkflowExecution(
         id="test-workflow-run-id",
@@ -458,7 +441,6 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
     event.error = "Test error message"
 
     # Create a real node execution
-    from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
 
     node_execution = NodeExecution(
         id="test-node-execution-record-id",
