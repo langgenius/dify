@@ -804,12 +804,15 @@ class WorkflowCycleManager:
         )
 
     def _workflow_loop_completed_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopCompletedEvent
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueLoopCompletedEvent,
     ) -> LoopNodeCompletedStreamResponse:
-        _ = session
         return LoopNodeCompletedStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=LoopNodeCompletedStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
