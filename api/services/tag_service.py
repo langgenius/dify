@@ -45,7 +45,7 @@ class TagService:
         return results
 
     @staticmethod
-    def get_tag_by_tag_name(tag_type: str, current_tenant_id: str, tag_name: list) -> list:
+    def get_tag_by_tag_name(tag_type: str, current_tenant_id: str, tag_name: str) -> list:
         tags = (
             db.session.query(Tag)
             .filter(Tag.name == tag_name, Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
