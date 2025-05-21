@@ -302,6 +302,7 @@ const translation = {
     organizeBlocks: 'Організувати блоки',
     change: 'Змінити',
     optional: '(необов\'язково)',
+    moveToThisNode: 'Перемістіть до цього вузла',
   },
   nodes: {
     common: {
