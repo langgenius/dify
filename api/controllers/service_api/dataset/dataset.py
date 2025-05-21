@@ -340,7 +340,7 @@ class DatasetTagsApi(DatasetApiResource):
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.",
-            type=_validate_name
+            type=DatasetTagsApi._validate_tag_name
         )
 
         args = parser.parse_args()
@@ -355,15 +355,11 @@ class DatasetTagsApi(DatasetApiResource):
     def patch(self, _, dataset_id):
         if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
-        def _validate_tag_name(name):
-            if not name or len(name) < 1 or len(name) > 50:
-                raise ValueError("Name must be between 1 to 50 characters.")
-            return name
 
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.",
-            type=_validate_tag_name
+            type=DatasetTagsApi._validate_tag_name
         )
         parser.add_argument(
             "tag_id", nullable=False, required=True, help="Id of a tag.", type=str
@@ -390,6 +386,12 @@ class DatasetTagsApi(DatasetApiResource):
         TagService.delete_tag(args.get("tag_id"))
 
         return {"result": "success"}, 200
+
+    @staticmethod
+    def _validate_tag_name(name):
+        if not name or len(name) < 1 or len(name) > 50:
+            raise ValueError("Name must be between 1 to 50 characters.")
+        return name
 
 
 class DatasetTagBindingApi(DatasetApiResource):
