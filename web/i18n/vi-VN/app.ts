@@ -173,9 +173,9 @@ const translation = {
     },
   },
   answerIcon: {
-    description: 'Có nên sử dụng biểu tượng WebApp để thay thế 🤖 trong ứng dụng được chia sẻ hay không',
-    descriptionInExplore: 'Có nên sử dụng biểu tượng WebApp để thay thế 🤖 trong Khám phá hay không',
-    title: 'Sử dụng biểu tượng WebApp để thay thế 🤖',
+    description: 'Có nên sử dụng biểu tượng web app để thay thế 🤖 trong ứng dụng được chia sẻ hay không',
+    descriptionInExplore: 'Có nên sử dụng biểu tượng web app để thay thế 🤖 trong Khám phá hay không',
+    title: 'Sử dụng biểu tượng web app để thay thế 🤖',
   },
   importFromDSLFile: 'Từ tệp DSL',
   importFromDSL: 'Nhập từ DSL',

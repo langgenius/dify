@@ -10,11 +10,11 @@ import {
   createContext,
   useContextSelector,
 } from 'use-context-selector'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import type { FilterState } from './filter-management'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { noop } from 'lodash-es'
 import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type PluginPageContextValue = {
   containerRef: React.RefObject<HTMLDivElement>
@@ -61,7 +61,7 @@ export const PluginPageContextProvider = ({
   })
   const [currentPluginID, setCurrentPluginID] = useState<string | undefined>()
 
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const tabs = usePluginPageTabs()
   const options = useMemo(() => {
     return enable_marketplace ? tabs : tabs.filter(tab => tab.value !== PLUGIN_PAGE_TABS_MAP.marketplace)

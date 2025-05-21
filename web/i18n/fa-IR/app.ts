@@ -177,9 +177,9 @@ const translation = {
     },
   },
   answerIcon: {
-    descriptionInExplore: 'آیا از نماد WebApp برای جایگزینی 🤖 در Explore استفاده کنیم یا خیر',
-    description: 'آیا از نماد WebApp برای جایگزینی 🤖 در برنامه مشترک استفاده کنیم یا خیر',
-    title: 'از نماد WebApp برای جایگزینی 🤖 استفاده کنید',
+    descriptionInExplore: 'آیا از نماد web app برای جایگزینی 🤖 در Explore استفاده کنیم یا خیر',
+    description: 'آیا از نماد web app برای جایگزینی 🤖 در برنامه مشترک استفاده کنیم یا خیر',
+    title: 'از نماد web app برای جایگزینی 🤖 استفاده کنید',
   },
   mermaid: {
     handDrawn: 'دست کشیده شده',

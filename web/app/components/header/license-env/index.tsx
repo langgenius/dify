@@ -1,16 +1,15 @@
 'use client'
 
-import AppContext from '@/context/app-context'
 import { LicenseStatus } from '@/types/feature'
 import { useTranslation } from 'react-i18next'
-import { useContextSelector } from 'use-context-selector'
 import dayjs from 'dayjs'
 import PremiumBadge from '../../base/premium-badge'
 import { RiHourglass2Fill } from '@remixicon/react'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const LicenseNav = () => {
   const { t } = useTranslation()
-  const systemFeatures = useContextSelector(AppContext, s => s.systemFeatures)
+  const { systemFeatures } = useGlobalPublicStore()
 
   if (systemFeatures.license?.status === LicenseStatus.EXPIRING) {
     const expiredAt = systemFeatures.license?.expired_at

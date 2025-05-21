@@ -15,7 +15,7 @@ export default function Group({ children, value, onChange, className = '' }: TRa
     onChange?.(value)
   }
   return (
-    <div className={cn('flex items-center bg-gray-50', s.container, className)}>
+    <div className={cn('flex items-center bg-workflow-block-parma-bg text-text-secondary', s.container, className)}>
       <RadioGroupContext.Provider value={{ value, onChange: onRadioChange }}>
         {children}
       </RadioGroupContext.Provider>

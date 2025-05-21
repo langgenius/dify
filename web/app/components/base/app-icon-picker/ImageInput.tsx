@@ -94,7 +94,7 @@ const ImageInput: FC<UploaderProps> = ({
       <div
         className={classNames(
           isDragActive && 'border-primary-600',
-          'relative aspect-square bg-gray-50 border-[1.5px] border-gray-200 border-dashed rounded-lg flex flex-col justify-center items-center text-gray-500')}
+          'relative aspect-square border-[1.5px] border-dashed rounded-lg flex flex-col justify-center items-center text-gray-500')}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

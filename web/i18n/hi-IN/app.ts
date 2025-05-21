@@ -173,9 +173,9 @@ const translation = {
     },
   },
   answerIcon: {
-    title: 'बदलने 🤖 के लिए WebApp चिह्न का उपयोग करें',
+    title: 'बदलने 🤖 के लिए web app चिह्न का उपयोग करें',
     descriptionInExplore: 'एक्सप्लोर में बदलने 🤖 के लिए वेबऐप आइकन का उपयोग करना है या नहीं',
-    description: 'साझा अनुप्रयोग में प्रतिस्थापित 🤖 करने के लिए WebApp चिह्न का उपयोग करना है या नहीं',
+    description: 'साझा अनुप्रयोग में प्रतिस्थापित 🤖 करने के लिए web app चिह्न का उपयोग करना है या नहीं',
   },
   importFromDSLFile: 'डीएसएल फ़ाइल से',
   importFromDSLUrl: 'यूआरएल से',

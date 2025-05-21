@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Difyによるアプリの探索',
+    title: 'アプリを探索',
     description: 'これらのテンプレートアプリを即座に使用するか、テンプレートに基づいて独自のアプリをカスタマイズしてください。',
     allCategories: '推奨',
   },

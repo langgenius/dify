@@ -10,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import Loading from '../components/base/loading'
 import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
-import { WEB_PREFIX } from '@/config'
+import { basePath } from '@/utils/var'
 
 import {
   fetchInitValidateStatus,
@@ -71,7 +71,7 @@ const ForgotPasswordForm = () => {
     fetchSetupStatus().then(() => {
       fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
         if (res.status === 'not_started')
-          window.location.href = `${WEB_PREFIX}/init`
+          window.location.href = `${basePath}/init`
       })
 
       setLoading(false)

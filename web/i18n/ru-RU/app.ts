@@ -177,9 +177,9 @@ const translation = {
     },
   },
   answerIcon: {
-    title: 'Использование значка WebApp для замены 🤖',
-    description: 'Следует ли использовать значок WebApp для замены 🤖 в общем приложении',
-    descriptionInExplore: 'Следует ли использовать значок WebApp для замены 🤖 в разделе "Обзор"',
+    title: 'Использование значка web app для замены 🤖',
+    description: 'Следует ли использовать значок web app для замены 🤖 в общем приложении',
+    descriptionInExplore: 'Следует ли использовать значок web app для замены 🤖 в разделе "Обзор"',
   },
   mermaid: {
     handDrawn: 'Рисованный',

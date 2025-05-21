@@ -307,6 +307,7 @@ const translation = {
     organizeBlocks: '整理节点',
     change: '更改',
     optional: '（选填）',
+    moveToThisNode: '定位至此节点',
   },
   nodes: {
     common: {

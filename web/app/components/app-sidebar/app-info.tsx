@@ -34,6 +34,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import ContentDialog from '@/app/components/base/content-dialog'
 import Button from '@/app/components/base/button'
 import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/cardView'
+import Divider from '../base/divider'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../base/portal-to-follow-elem'
 
 export type IAppInfoProps = {
@@ -270,8 +271,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               onClick={() => {
                 setOpen(false)
                 setShowDuplicateModal(true)
-              }}
-            >
+              }}>
               <RiFileCopy2Line className='h-3.5 w-3.5 text-components-button-secondary-text' />
               <span className='system-xs-medium text-components-button-secondary-text'>{t('app.duplicate')}</span>
             </Button>
@@ -337,6 +337,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             className='flex grow flex-col gap-2 overflow-auto px-2 py-1'
           />
         </div>
+        <Divider />
         <div className='flex min-h-fit shrink-0 flex-col items-start justify-center gap-3 self-stretch border-t-[0.5px] border-divider-subtle p-2'>
           <Button
             size={'medium'}

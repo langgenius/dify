@@ -173,9 +173,9 @@ const translation = {
     },
   },
   answerIcon: {
-    descriptionInExplore: 'Dacă să utilizați pictograma WebApp pentru a înlocui 🤖 în Explore',
-    description: 'Dacă se utilizează pictograma WebApp pentru a înlocui 🤖 în aplicația partajată',
-    title: 'Utilizați pictograma WebApp pentru a înlocui 🤖',
+    descriptionInExplore: 'Dacă să utilizați pictograma web app pentru a înlocui 🤖 în Explore',
+    description: 'Dacă se utilizează pictograma web app pentru a înlocui 🤖 în aplicația partajată',
+    title: 'Utilizați pictograma web app pentru a înlocui 🤖',
   },
   importFromDSL: 'Import din DSL',
   importFromDSLUrl: 'De la URL',

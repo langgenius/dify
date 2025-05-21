@@ -2,7 +2,7 @@ import type { AfterResponseHook, BeforeErrorHook, BeforeRequestHook, Hooks } fro
 import ky from 'ky'
 import type { IOtherOptions } from './base'
 import Toast from '@/app/components/base/toast'
-import { API_PREFIX, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX, WEB_PREFIX } from '@/config'
+import { API_PREFIX, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
 import { getInitialTokenV2, isTokenV1 } from '@/app/components/share/utils'
 import { getProcessedSystemVariablesFromUrlParams } from '@/app/components/base/chat/utils'
 
@@ -44,7 +44,7 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
             if (!otherOptions.silent)
               Toast.notify({ type: 'error', message: data.message })
             if (data.code === 'already_setup')
-              globalThis.location.href = `${WEB_PREFIX}/signin`
+              globalThis.location.href = `${globalThis.location.origin}/signin`
           })
           break
         case 401:
@@ -135,9 +135,9 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   let base: string
   if (isMarketplaceAPI)
     base = MARKETPLACE_API_PREFIX
-   else if (isPublicAPI)
+  else if (isPublicAPI)
     base = PUBLIC_API_PREFIX
-   else
+  else
     base = API_PREFIX
 
   if (getAbortController) {

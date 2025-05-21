@@ -7,7 +7,7 @@ const translation = {
     title: '升級您的計劃',
   },
   webapp: {
-    title: '定製 WebApp 品牌',
+    title: '定製 web app 品牌',
     removeBrand: '移除 Powered by Dify',
     changeLogo: '更改 Powered by Brand 圖片',
     changeLogoTip: 'SVG 或 PNG 格式，最小尺寸為 40x40px',

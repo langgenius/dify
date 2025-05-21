@@ -10,6 +10,10 @@ const translation = {
     advanced: 'チャットフロー',
   },
   duplicate: '複製',
+  mermaid: {
+    handDrawn: '手描き',
+    classic: 'クラシック',
+  },
   duplicateTitle: 'アプリを複製する',
   export: 'DSL をエクスポート',
   exportFailed: 'DSL のエクスポートに失敗しました。',
@@ -21,12 +25,11 @@ const translation = {
   importFromDSLUrlPlaceholder: 'DSLリンクをここに貼り付けます',
   deleteAppConfirmTitle: 'このアプリを削除しますか？',
   deleteAppConfirmContent:
-    'アプリを削除すると、元に戻すことはできません。ユーザーはもはやあなた様のアプリにアクセスできず、すべてのプロンプトの設定とログが永久に削除されます。',
+    'アプリを削除すると、元に戻すことはできません。他のユーザーはもはやこのアプリにアクセスできず、すべてのプロンプトの設定とログが永久に削除されます。',
   appDeleted: 'アプリが削除されました',
   appDeleteFailed: 'アプリの削除に失敗しました',
   join: 'コミュニティに参加する',
-  communityIntro:
-  'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
+  communityIntro: 'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
   roadmap: 'ロードマップを見る',
   newApp: {
     startFromBlank: '最初から作成',
@@ -128,6 +131,7 @@ const translation = {
     title: 'アプリのパフォーマンスの追跡',
     description: 'サードパーティのLLMOpsサービスとトレースアプリケーションのパフォーマンス設定を行います。',
     config: '設定',
+    view: '見る',
     collapse: '折りたたむ',
     expand: '展開',
     tracing: '追跡',
@@ -156,35 +160,30 @@ const translation = {
       title: 'Langfuse',
       description: 'トレース、評価、プロンプトの管理、そしてメトリクスを駆使して、LLMアプリケーションのデバッグや改善に役立てます。',
     },
-    inUse: '使用中',
-    configProvider: {
-      title: '配置 ',
-      placeholder: 'あなた様の{{key}}を入力してください',
-      project: 'プロジェクト',
-      publicKey: '公開キー',
-      secretKey: '秘密キー',
-      viewDocsLink: '{{key}}のドキュメントを見る',
-      removeConfirmTitle: '{{key}}の設定を削除しますか？',
-      removeConfirmContent: '現在の設定は使用中です。これを削除すると、トレース機能が無効になります。',
-    },
-    view: '見る',
     opik: {
       title: 'オピック',
       description: 'Opik は、LLM アプリケーションを評価、テスト、監視するためのオープンソース プラットフォームです。',
     },
+    inUse: '使用中',
+    configProvider: {
+      title: '配置 ',
+      placeholder: '{{key}}を入力してください',
+      project: 'プロジェクト',
+      publicKey: '公開キー',
+      secretKey: '秘密キー',
+      viewDocsLink: '{{key}}に関するドキュメントを見る',
+      removeConfirmTitle: '{{key}}の設定を削除しますか？',
+      removeConfirmContent: '現在の設定は使用中です。これを削除すると、トレース機能が無効になります。',
+    },
     weave: {
-      description: 'Weaveは、LLMアプリケーションを評価、テスト、および監視するためのオープンソースプラットフォームです。',
       title: '織る',
+      description: 'Weaveは、LLMアプリケーションを評価、テスト、および監視するためのオープンソースプラットフォームです。',
     },
   },
   answerIcon: {
     title: 'Webアプリアイコンを使用して🤖を置き換える',
     description: '共有アプリケーションの中で Webアプリアイコンを使用して🤖を置き換えるかどうか',
     descriptionInExplore: 'ExploreでWebアプリアイコンを使用して🤖を置き換えるかどうか',
-  },
-  mermaid: {
-    handDrawn: '手描き',
-    classic: 'クラシック',
   },
   newAppFromTemplate: {
     sidebar: {
@@ -217,6 +216,46 @@ const translation = {
     modelNotSupported: 'モデルが対応していません',
     modelNotSupportedTip: '現在のモデルはこの機能に対応しておらず、自動的にプロンプトインジェクションに切り替わります。',
   },
+  accessControl: 'Webアプリアクセス制御',
+  accessItemsDescription: {
+    anyone: '誰でも Web アプリにアクセス可能',
+    specific: '特定のグループまたはメンバーのみが Web アプリにアクセス可能',
+    organization: '組織内の誰でも Web アプリにアクセス可能',
+  },
+  accessControlDialog: {
+    title: 'アクセス権限',
+    description: 'Webアプリのアクセス権限を設定します',
+    accessLabel: '誰がアクセスできますか',
+    accessItemsDescription: {
+      anyone: '誰でもWebアプリにアクセス可能です',
+      specific: '特定のグループやメンバーがWebアプリにアクセス可能です',
+      organization: '組織内の誰でもWebアプリにアクセス可能です',
+    },
+    accessItems: {
+      anyone: 'すべてのユーザー',
+      specific: '特定のグループメンバー',
+      organization: 'グループ内の全員',
+    },
+    groups_one: '{{count}} グループ',
+    groups_other: '{{count}} グループ',
+    members_one: '{{count}} メンバー',
+    members_other: '{{count}} メンバー',
+    noGroupsOrMembers: 'グループまたはメンバーが選択されていません',
+    webAppSSONotEnabledTip: 'Webアプリの認証方式設定については、企業管理者へご連絡ください。',
+    operateGroupAndMember: {
+      searchPlaceholder: 'グループやメンバーを検索',
+      allMembers: 'すべてのメンバー',
+      expand: '展開',
+      noResult: '結果がありません',
+    },
+    updateSuccess: '更新が成功しました',
+  },
+  publishApp: {
+    title: 'Webアプリへのアクセス権',
+    notSet: '未設定',
+    notSetDesc: '現在このWebアプリには誰もアクセスできません。権限を設定してください。',
+  },
+  noAccessPermission: 'Webアプリにアクセス権限がありません',
 }
 
 export default translation

@@ -21,7 +21,7 @@ import ActionButton from '../../base/action-button'
 import { RiAddLine } from '@remixicon/react'
 import { PluginType } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type AllToolsProps = {
   className?: string
@@ -87,7 +87,7 @@ const AllTools = ({
     plugins: notInstalledPlugins = [],
   } = useMarketplacePlugins()
 
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   useEffect(() => {
     if (enable_marketplace) return

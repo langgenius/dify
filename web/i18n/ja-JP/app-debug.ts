@@ -218,6 +218,10 @@ const translation = {
       enableText: '有効な機能',
       manage: '管理',
     },
+    documentUpload: {
+      title: 'ドキュメント',
+      description: 'ドキュメント機能を有効にすると、AIモデルがファイルを処理し、その内容に基づいて質問に回答できるようになります。',
+    },
   },
   codegen: {
     title: 'コードジェネレーター',
@@ -246,6 +250,7 @@ const translation = {
     noDataLine1: '左側に使用例を記入してください,',
     noDataLine2: 'オーケストレーションのプレビューがこちらに表示されます。',
     apply: '適用',
+    noData: '左側にユースケースを入力すると、こちらでプレビューができます。',
     loading: 'アプリケーションを処理中です',
     overwriteTitle: '既存の設定を上書きしますか？',
     overwriteMessage: 'このプロンプトを適用すると、既存の設定が上書きされます。',
@@ -302,10 +307,7 @@ const translation = {
     waitForImgUpload: '画像のアップロードが完了するまでお待ちください',
     waitForFileUpload: 'ファイルのアップロードが完了するまでお待ちください',
   },
-  warningMessage: {
-    timeoutExceeded: 'タイムアウトのため結果が表示されません。完全な結果を手にいれるためには、ログを参照してください。',
-  },
-  chatSubTitle: '手順',
+  chatSubTitle: 'プロンプト',
   completionSubTitle: '接頭辞プロンプト',
   promptTip: 'プロンプトは、AIの応答を指示と制約で誘導します。 {{input}} のような変数を挿入します。このプロンプトはユーザーには表示されません。',
   formattingChangedTitle: '書式が変更されました',
@@ -356,7 +358,6 @@ const translation = {
     'varName': '変数名',
     'labelName': 'ラベル名',
     'inputPlaceholder': '入力してください',
-    'content': 'コンテンツ',
     'required': '必須',
     'file': {
       supportFileTypes: 'サポートされたファイルタイプ',
@@ -452,10 +453,8 @@ const translation = {
     noPrompt: 'プレプロンプト入力にいくつかのプロンプトを記入してみてください',
     userInputField: 'ユーザー入力フィールド',
     noVar: '変数の値を入力してください。新しいセッションが開始されるたびにプロンプトの単語が自動的に置換されます。',
-    chatVarTip:
-      '変数の値を入力してください。新しいセッションが開始されるたびにプロンプトの単語が自動的に置換されます。',
-    completionVarTip:
-      '変数の値を入力してください。質問が送信されるたびにプロンプトの単語が自動的に置換されます。',
+    chatVarTip: '変数の値を入力してください。新しいセッションが開始されるたびにプロンプトの単語が自動的に置換されます。',
+    completionVarTip: '変数の値を入力してください。質問が送信されるたびにプロンプトの単語が自動的に置換されます。',
     previewTitle: 'プロンプトのプレビュー',
     queryTitle: 'クエリ内容',
     queryPlaceholder: 'リクエストテキストを入力してください。',
@@ -474,6 +473,7 @@ const translation = {
       title: 'マルチパスリトリーバル',
       description: 'ユーザーの意図に基づいて、すべてのナレッジをクエリし、複数のソースから関連するテキストを取得し、再順位付け後、ユーザークエリに最適な結果を選択します。再順位付けモデル API の構成が必要です。',
     },
+    embeddingModelRequired: 'Embeddingモデルが設定されていない',
     rerankModelRequired: '再順位付けモデルが必要です',
     params: 'パラメータ',
     top_k: 'トップK',
