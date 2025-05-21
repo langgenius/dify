@@ -38,6 +38,8 @@ function useOutputVarList<T>({
   const {
     deleteNodeInspectorVars,
     renameInspectVarName,
+    deleteInspectVar,
+    nodesWithInspectVars,
   } = useInspectVarsCrud()
 
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
@@ -104,8 +106,7 @@ function useOutputVarList<T>({
     })
     setInputs(newInputs)
     onOutputKeyOrdersChange([...outputKeyOrders, newKey])
-    deleteNodeInspectorVars(id!)
-  }, [generateNewKey, inputs, setInputs, onOutputKeyOrdersChange, outputKeyOrders, deleteNodeInspectorVars, id, varKey])
+  }, [generateNewKey, inputs, setInputs, onOutputKeyOrdersChange, outputKeyOrders, varKey])
 
   const [isShowRemoveVarConfirm, {
     setTrue: showRemoveVarConfirm,
@@ -114,8 +115,14 @@ function useOutputVarList<T>({
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
   const removeVarInNode = useCallback(() => {
     removeUsedVarInNodes(removedVar)
+    const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
+        return varItem.name === removedVar[1]
+      })?.id
+      if(varId)
+        deleteInspectVar(id, varId)
+
     hideRemoveVarConfirm()
-  }, [hideRemoveVarConfirm, removeUsedVarInNodes, removedVar])
+  }, [deleteInspectVar, hideRemoveVarConfirm, id, nodesWithInspectVars, removeUsedVarInNodes, removedVar])
   const handleRemoveVariable = useCallback((index: number) => {
     const key = outputKeyOrders[index]
 
