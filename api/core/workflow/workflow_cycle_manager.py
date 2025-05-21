@@ -57,6 +57,7 @@ from core.workflow.entities.node_execution_entities import (
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
 from models import (
@@ -77,11 +78,13 @@ class WorkflowCycleManager:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         workflow_system_variables: dict[SystemVariableKey, Any],
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         self._workflow_run: WorkflowRun | None = None
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
+        self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
 
     def _handle_workflow_run_start(

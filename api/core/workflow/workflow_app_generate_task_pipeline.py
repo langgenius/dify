@@ -54,6 +54,7 @@ from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTas
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
+from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_cycle_manager import WorkflowCycleManager
 from extensions.ext_database import db
@@ -83,6 +84,7 @@ class WorkflowAppGenerateTaskPipeline:
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
         stream: bool,
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         self._base_task_pipeline = BasedGenerateTaskPipeline(
@@ -111,6 +113,7 @@ class WorkflowAppGenerateTaskPipeline:
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
                 SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
             },
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
         )
 
