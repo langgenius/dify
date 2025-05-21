@@ -129,16 +129,25 @@ const useInspectVarsCrud = () => {
     handleCancelNodeSuccessStatus(nodeId)
   }
 
+  const hasNodeInspectVar = (nodeId: string, varId: string) => {
+    const targetNode = nodesWithInspectVars.find(item => item.nodeId === nodeId)
+    if(!targetNode || !targetNode.vars)
+      return false
+    return targetNode.vars.some(item => item.id === varId)
+  }
+
   const deleteInspectVar = async (nodeId: string, varId: string) => {
-    await doDeleteInspectVar(varId)
-    deleteInspectVarInStore(nodeId, varId)
+    if(hasNodeInspectVar(nodeId, varId)) {
+      await doDeleteInspectVar(varId)
+      deleteInspectVarInStore(nodeId, varId)
+    }
   }
 
   const deleteNodeInspectorVars = async (nodeId: string) => {
-    if (hasNodeInspectVars(nodeId))
+    if (hasNodeInspectVars(nodeId)) {
       await doDeleteNodeInspectorVars(nodeId)
-
-    deleteNodeInspectVarsInStore(nodeId)
+      deleteNodeInspectVarsInStore(nodeId)
+    }
   }
 
   const deleteAllInspectorVars = async () => {
