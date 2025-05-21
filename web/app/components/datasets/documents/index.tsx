@@ -15,7 +15,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { get } from '@/service/base'
 import { createDocument } from '@/service/datasets'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
 import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
@@ -93,7 +93,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [limit, setLimit] = useState<number>(DEFAULT_LIMIT)
   const router = useRouter()
-  const { dataset } = useDatasetDetailContext()
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
   const [timerCanRun, setTimerCanRun] = useState(true)
   const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
@@ -172,6 +172,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const total = documentsRes?.total || 0
 
   const routeToDocCreate = () => {
+    // if dataset is create from pipeline, redirect to create from pipeline page
+    if (dataset?.pipeline_id) {
+      router.push(`/datasets/${datasetId}/documents/create-from-pipeline`)
+      return
+    }
     if (isDataSourceNotion) {
       setNotionPageSelectorModalVisible(true)
       return
@@ -267,7 +272,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
                 ? 'https://docs.dify.ai/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
                 : 'https://docs.dify.ai/en/guides/knowledge-base/integrate-knowledge-within-application'
             }
-            >
+          >
             <span>{t('datasetDocuments.list.learnMore')}</span>
             <RiExternalLinkLine className='h-3 w-3' />
           </a>

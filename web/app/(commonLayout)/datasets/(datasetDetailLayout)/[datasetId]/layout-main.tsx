@@ -109,7 +109,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     params: { datasetId },
   } = props
   const pathname = usePathname()
-  const hideSideBar = /documents\/create$/.test(pathname)
+  const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
   const { t } = useTranslation()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 

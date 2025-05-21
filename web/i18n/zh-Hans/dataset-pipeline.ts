@@ -70,6 +70,15 @@ const translation = {
     addInputField: '添加输入字段',
     editInputField: '编辑输入字段',
   },
+  addDocuments: {
+    title: '添加文档',
+    steps: {
+      chooseDatasource: '选择数据源',
+      processDocuments: '处理文档',
+      processingDocuments: '正在处理文档',
+    },
+    backToDataSource: '数据源',
+  },
 }
 
 export default translation

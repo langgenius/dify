@@ -1,4 +1,4 @@
-import type { Edge, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import type { Edge, EnvironmentVariable, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { DSLImportMode, DSLImportStatus } from './app'
 import type { ChunkingMode, DatasetPermission, IconInfo } from './datasets'
 import type { Dependency } from '@/app/components/plugins/types'
@@ -143,3 +143,30 @@ export type PipelineDatasourceNodeRunRequest = {
 }
 
 export type PipelineDatasourceNodeRunResponse = Record<string, any>
+
+export type PublishedPipelineInfoResponse = {
+  id: string
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport: Viewport
+  }
+  created_at: number
+  created_by: {
+    id: string
+    name: string
+    email: string
+  }
+  hash: string
+  updated_at: number
+  updated_by: {
+    id: string
+    name: string
+    email: string
+  },
+  environment_variables?: EnvironmentVariable[]
+  rag_pipeline_variables?: RAGPipelineVariables
+  version: string
+  marked_name: string
+  marked_comment: string
+}

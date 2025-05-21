@@ -70,6 +70,15 @@ const translation = {
     addInputField: 'Add Input Field',
     editInputField: 'Edit Input Field',
   },
+  addDocuments: {
+    title: 'Add Documents',
+    steps: {
+      chooseDatasource: 'Choose a Data Source',
+      processDocuments: 'Process Documents',
+      processingDocuments: 'Processing Documents',
+    },
+    backToDataSource: 'Data Source',
+  },
 }
 
 export default translation

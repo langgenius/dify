@@ -5,7 +5,8 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
-import { OperationAction, StatusItem } from '../list'
+import Operations from '../operations'
+import StatusItem from '../status-item'
 import DocumentPicker from '../../common/document-picker'
 import Completed from './completed'
 import Embedding from './embedding'
@@ -228,7 +229,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               datasetId={datasetId}
               onUpdate={handleOperate}
             />
-            <OperationAction
+            <Operations
               scene='detail'
               embeddingAvailable={embeddingAvailable}
               detail={{

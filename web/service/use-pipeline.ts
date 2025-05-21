@@ -15,6 +15,7 @@ import type {
   PipelineTemplateByIdResponse,
   PipelineTemplateListParams,
   PipelineTemplateListResponse,
+  PublishedPipelineInfoResponse,
   UpdateTemplateInfoRequest,
   UpdateTemplateInfoResponse,
 } from '@/models/pipeline'
@@ -154,5 +155,14 @@ export const useDataSourceList = (enabled?: boolean) => {
       return get('/rag/pipelines/datasource-plugins')
     },
     retry: false,
+  })
+}
+
+export const usePublishedPipelineInfo = (pipelineId: string) => {
+  return useQuery<PublishedPipelineInfoResponse>({
+    queryKey: [NAME_SPACE, 'published-pipeline', pipelineId],
+    queryFn: () => {
+      return get<PublishedPipelineInfoResponse>(`/rag/pipelines/${pipelineId}/workflows/publish`)
+    },
   })
 }
