@@ -80,7 +80,6 @@ class WorkflowCycleManager:
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
-        self._workflow_run: WorkflowRun | None = None
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
         self._workflow_execution_repository = workflow_execution_repository
