@@ -18,15 +18,19 @@ class ContainerRTTTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = tool_parameters.get("pod")
-        namespace = tool_parameters.get("namespace")
+        pod = tool_parameters.get("pod") or ".*"
+        namespace = tool_parameters.get("namespace") or ".*"
+        node = tool_parameters.get("node") or ".*"
+        pid = tool_parameters.get("pid") or ".*"
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {
           'metricName': '基础设施情况 - 容器网络 - 与下游服务RTT',
           'params': {
             "pod": pod,
-            "namespace": namespace
+            "namespace": namespace,
+            "node": node,
+            "pid": pid,
           },
           'startTime': start_time,
           'endTime': end_time,

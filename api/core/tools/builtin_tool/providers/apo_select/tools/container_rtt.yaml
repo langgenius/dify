@@ -55,6 +55,32 @@ parameters:
       pt_BR: Data query start time(Microsecond)
     llm_description: Data query start time(Microsecond)
     form: llm
+  - name: pid
+    type: string
+    required: false
+    label:
+      en_US: pid
+      zh_Hans: pid
+      pt_BR: pid
+    human_description:
+      en_US: Specified pid
+      zh_Hans: 指定的PID
+      pt_BR: Specified pid
+    llm_description: Specified pid
+    form: llm
+  - name: node
+    type: string
+    required: false
+    label:
+      en_US: node
+      zh_Hans: node
+      pt_BR: node
+    human_description:
+      en_US: Specified node
+      zh_Hans: 指定的节点名称
+      pt_BR: Specified node
+    llm_description: Specified node
+    form: llm
   - name: endTime
     type: number
     required: true
