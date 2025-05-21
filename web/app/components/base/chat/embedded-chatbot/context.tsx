@@ -53,6 +53,7 @@ export type EmbeddedChatbotContextValue = {
   setIsResponding: (state: boolean) => void,
   currentConversationInputs: Record<string, any> | null,
   setCurrentConversationInputs: (v: Record<string, any>) => void,
+  allInputsHidden: boolean
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
@@ -82,5 +83,6 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   setIsResponding: noop,
   currentConversationInputs: {},
   setCurrentConversationInputs: noop,
+  allInputsHidden: false,
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)
