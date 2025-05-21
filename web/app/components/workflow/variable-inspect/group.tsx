@@ -47,6 +47,8 @@ const Group = ({
   const isChatVar = varType === VarInInspectType.conversation
   const isSystem = varType === VarInInspectType.system
 
+  const visibleVarList = varList.filter(v => v.visible)
+
   const handleSelectVar = (varItem: any, type?: string) => {
     if (type === VarInInspectType.environment) {
       handleSelect({
@@ -101,7 +103,7 @@ const Group = ({
         {nodeData?.isSingRunRunning && (
           <RiLoader2Line className='h-3 w-3 animate-spin text-text-accent' />
         )}
-        {(!nodeData || !nodeData.isSingRunRunning) && (
+        {(!nodeData || !nodeData.isSingRunRunning || visibleVarList.length > 0) && (
           <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} onClick={() => setIsCollapsed(!isCollapsed)} />
         )}
         <div className='flex grow cursor-pointer items-center gap-1' onClick={() => setIsCollapsed(!isCollapsed)}>
@@ -141,7 +143,7 @@ const Group = ({
       {/* var item list */}
       {!isCollapsed && !nodeData?.isSingRunRunning && (
         <div className='px-0.5'>
-          {varList.length > 0 && varList.map(varItem => (
+          {visibleVarList.length > 0 && visibleVarList.map(varItem => (
             <div
               key={varItem.id}
               className={cn(
