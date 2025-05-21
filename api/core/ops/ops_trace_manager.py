@@ -291,7 +291,7 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if tracing_provider is not None:    # None
+        if tracing_provider is not None:
             try:
                 provider_config_map[tracing_provider]
             except KeyError:
