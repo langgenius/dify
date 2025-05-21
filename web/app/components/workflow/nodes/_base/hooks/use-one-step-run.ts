@@ -169,11 +169,13 @@ const useOneStepRun = <T>({
   } = useInspectVarsCrud()
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
     doSetRunResult(data)
-    invalidLastRun()
-    const vars = await fetchNodeInspectVars(appId!, id)
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-    appendNodeInspectVars(id, vars, nodes)
+    if(data?.status === NodeRunningStatus.Succeeded) {
+      invalidLastRun()
+      const vars = await fetchNodeInspectVars(appId!, id)
+      const { getNodes } = store.getState()
+      const nodes = getNodes()
+      appendNodeInspectVars(id, vars, nodes)
+    }
   }, [invalidLastRun, appId, store, appendNodeInspectVars, id])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
