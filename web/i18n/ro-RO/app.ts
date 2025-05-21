@@ -159,11 +159,15 @@ const translation = {
       description: 'Opik este o platformă open-source pentru evaluarea, testarea și monitorizarea aplicațiilor LLM.',
       title: 'Opik',
     },
+    weave: {
+      title: 'Împletește',
+      description: 'Weave este o platformă open-source pentru evaluarea, testarea și monitorizarea aplicațiilor LLM.',
+    },
   },
   answerIcon: {
-    descriptionInExplore: 'Dacă să utilizați pictograma WebApp pentru a înlocui 🤖 în Explore',
-    description: 'Dacă se utilizează pictograma WebApp pentru a înlocui 🤖 în aplicația partajată',
-    title: 'Utilizați pictograma WebApp pentru a înlocui 🤖',
+    descriptionInExplore: 'Dacă să utilizați pictograma web app pentru a înlocui 🤖 în Explore',
+    description: 'Dacă se utilizează pictograma web app pentru a înlocui 🤖 în aplicația partajată',
+    title: 'Utilizați pictograma web app pentru a înlocui 🤖',
   },
   importFromDSL: 'Import din DSL',
   importFromDSLUrl: 'De la URL',
@@ -193,6 +197,17 @@ const translation = {
     params: 'PARAMETRII APLICAȚIEI',
     noParams: 'Nu sunt necesari parametri',
     placeholder: 'Selectați o aplicație...',
+  },
+  structOutput: {
+    notConfiguredTip: 'Ieșirea structurată nu a fost configurată încă',
+    LLMResponse: 'Răspuns LLM',
+    required: 'Necesar',
+    moreFillTip: 'Afișând maxim 10 niveluri de imbricare',
+    structured: 'Structurat',
+    modelNotSupported: 'Modelul nu este suportat',
+    structuredTip: 'Ieșirile structurate sunt o caracteristică care asigură că modelul va genera întotdeauna răspunsuri care respectă schema JSON furnizată.',
+    configure: 'Configurează',
+    modelNotSupportedTip: 'Modelul actual nu suportă această funcție și este downgradat automat la injecția de prompt.',
   },
 }
 

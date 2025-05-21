@@ -171,11 +171,15 @@ const translation = {
       description: 'Opik è una piattaforma open source per la valutazione, il test e il monitoraggio delle applicazioni LLM.',
       title: 'Opik',
     },
+    weave: {
+      title: 'Intrecciare',
+      description: 'Weave è una piattaforma open-source per valutare, testare e monitorare le applicazioni LLM.',
+    },
   },
   answerIcon: {
-    description: 'Se utilizzare l\'icona WebApp per la sostituzione 🤖 nell\'applicazione condivisa',
-    title: 'Usa l\'icona WebApp per sostituire 🤖',
-    descriptionInExplore: 'Se utilizzare l\'icona WebApp per sostituirla 🤖 in Esplora',
+    description: 'Se utilizzare l\'icona web app per la sostituzione 🤖 nell\'applicazione condivisa',
+    title: 'Usa l\'icona web app per sostituire 🤖',
+    descriptionInExplore: 'Se utilizzare l\'icona web app per sostituirla 🤖 in Esplora',
   },
   importFromDSLUrl: 'Dall\'URL',
   importFromDSLFile: 'Da file DSL',
@@ -205,6 +209,16 @@ const translation = {
     noParams: 'Non sono necessari parametri',
     placeholder: 'Seleziona un\'app...',
     label: 'APP',
+  },
+  structOutput: {
+    modelNotSupported: 'Modello non supportato',
+    configure: 'Configura',
+    LLMResponse: 'LLM Risposta',
+    structured: 'Strutturato',
+    moreFillTip: 'Mostrando un massimo di 10 livelli di annidamento',
+    structuredTip: 'Le Uscite Strutturate sono una funzione che garantisce che il modello generi sempre risposte che aderiscano al tuo Schema JSON fornito.',
+    notConfiguredTip: 'L\'output strutturato non è stato ancora configurato.',
+    modelNotSupportedTip: 'Il modello attuale non supporta questa funzione e viene automaticamente downgradato a iniezione di prompt.',
   },
 }
 

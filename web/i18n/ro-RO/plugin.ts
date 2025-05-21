@@ -180,6 +180,8 @@ const translation = {
     moreFrom: 'Mai multe din Marketplace',
     and: 'și',
     viewMore: 'Vezi mai mult',
+    partnerTip: 'Verificat de un partener Dify',
+    verifiedTip: 'Verificat de Dify',
   },
   task: {
     installError: '{{errorLength}} plugin-urile nu s-au instalat, faceți clic pentru a vizualiza',
@@ -204,6 +206,10 @@ const translation = {
   installAction: 'Instala',
   endpointsEnabled: '{{num}} seturi de puncte finale activate',
   searchCategories: 'Categorii de căutare',
+  metadata: {
+    title: 'Pluginuri',
+  },
+  difyVersionNotCompatible: 'Versiunea curentă Dify nu este compatibilă cu acest plugin, vă rugăm să faceți upgrade la versiunea minimă necesară: {{minimalDifyVersion}}',
 }
 
 export default translation

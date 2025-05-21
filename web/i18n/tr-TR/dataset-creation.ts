@@ -87,6 +87,14 @@ const translation = {
       jinaReaderDoc: 'Jina Reader hakkında daha fazla bilgi edinin',
       jinaReaderNotConfigured: 'Jina Reader yapılandırılmadı',
       jinaReaderDocLink: 'https://jina.ai/reader',
+      waterCrawlNotConfiguredDescription: 'Watercrawl\'ı kullanmak için API anahtarı ile yapılandırın.',
+      configureFirecrawl: 'Firecrawl\'ı yapılandır',
+      watercrawlDoc: 'Watercrawl belgeleri',
+      waterCrawlNotConfigured: 'Watercrawl yapılandırılmamış',
+      watercrawlTitle: 'Watercrawl ile web içeriğini çıkar',
+      configureJinaReader: 'Jina Okuyucusunu Yapılandır',
+      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      configureWatercrawl: 'Watercrawl\'ı yapılandır',
     },
     cancel: 'İptal',
   },
@@ -199,6 +207,11 @@ const translation = {
     learnMore: 'Daha fazla bilgi edinin',
     description: 'Şu anda, Dify\'ın bilgi tabanı yalnızca sınırlı veri kaynaklarına sahiptir. Dify bilgi tabanına bir veri kaynağına katkıda bulunmak, tüm kullanıcılar için platformun esnekliğini ve gücünü artırmaya yardımcı olmanın harika bir yoludur. Katkı kılavuzumuz, başlamanızı kolaylaştırır. Daha fazla bilgi edinmek için lütfen aşağıdaki bağlantıya tıklayın.',
     title: 'Diğer veri kaynaklarına bağlanılıyor mu?',
+  },
+  watercrawl: {
+    configWatercrawl: 'Su Tarayıcısını Yapılandır',
+    apiKeyPlaceholder: 'watercrawl.dev\'den API anahtarı',
+    getApiKeyLinkText: 'API anahtarınızı watercrawl.dev\'den alın',
   },
 }
 

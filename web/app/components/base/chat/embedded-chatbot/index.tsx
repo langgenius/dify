@@ -19,11 +19,13 @@ import Loading from '@/app/components/base/loading'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const Chatbot = () => {
   const {
+    userCanAccess,
     isMobile,
     allowResetChat,
     appInfoError,
@@ -43,13 +45,9 @@ const Chatbot = () => {
 
   useEffect(() => {
     themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
-    if (site) {
-      if (customConfig)
-        document.title = `${site.title}`
-      else
-        document.title = `${site.title} - Powered by Dify`
-    }
   }, [site, customConfig, themeBuilder])
+
+  useDocumentTitle(site?.title || 'Chat')
 
   if (appInfoLoading) {
     return (
@@ -65,6 +63,9 @@ const Chatbot = () => {
       </>
     )
   }
+
+  if (!userCanAccess)
+    return <AppUnavailable code={403} unknownReason='no permission.' />
 
   if (appInfoError) {
     return (
@@ -118,7 +119,7 @@ const Chatbot = () => {
                 <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
               )}
               {!appData?.custom_config?.replace_webapp_logo && (
-                <LogoSite className='!h-5' />
+                <DifyLogo size='small' />
               )}
             </div>
           )}
@@ -137,6 +138,8 @@ const EmbeddedChatbotWrapper = () => {
     appInfoError,
     appInfoLoading,
     appData,
+    accessMode,
+    userCanAccess,
     appParams,
     appMeta,
     appChatListDataLoading,
@@ -168,6 +171,8 @@ const EmbeddedChatbotWrapper = () => {
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
+    userCanAccess,
+    accessMode,
     appInfoError,
     appInfoLoading,
     appData,

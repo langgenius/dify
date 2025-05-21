@@ -21,6 +21,7 @@ import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import classNames from '@/utils/classnames'
 import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
+
 type IStepOneProps = {
   datasetId?: string
   dataSourceType?: DataSourceType
@@ -45,7 +46,8 @@ type IStepOneProps = {
 type NotionConnectorProps = {
   onSetting: () => void
 }
-export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
+export const NotionConnector = (props: NotionConnectorProps) => {
+  const { onSetting } = props
   const { t } = useTranslation()
 
   return (
@@ -162,7 +164,7 @@ const StepOne = ({
                     >
                       <span className={cn(s.datasetIcon)} />
                       <span
-                        title={t('datasetCreation.stepOne.dataSourceType.file')}
+                        title={t('datasetCreation.stepOne.dataSourceType.file')!}
                         className='truncate'
                       >
                         {t('datasetCreation.stepOne.dataSourceType.file')}
@@ -185,7 +187,7 @@ const StepOne = ({
                     >
                       <span className={cn(s.datasetIcon, s.notion)} />
                       <span
-                        title={t('datasetCreation.stepOne.dataSourceType.notion')}
+                        title={t('datasetCreation.stepOne.dataSourceType.notion')!}
                         className='truncate'
                       >
                         {t('datasetCreation.stepOne.dataSourceType.notion')}
@@ -193,21 +195,21 @@ const StepOne = ({
                     </div>
                     {(ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL) && (
                       <div
-                      className={cn(
-                        s.dataSourceItem,
-                        'system-sm-medium',
-                        dataSourceType === DataSourceType.WEB && s.active,
-                        dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
-                      )}
-                      onClick={() => changeType(DataSourceType.WEB)}
+                        className={cn(
+                          s.dataSourceItem,
+                          'system-sm-medium',
+                          dataSourceType === DataSourceType.WEB && s.active,
+                          dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
+                        )}
+                        onClick={() => changeType(DataSourceType.WEB)}
                       >
-                      <span className={cn(s.datasetIcon, s.web)} />
-                      <span
-                        title={t('datasetCreation.stepOne.dataSourceType.web')}
-                        className='truncate'
-                      >
-                        {t('datasetCreation.stepOne.dataSourceType.web')}
-                      </span>
+                        <span className={cn(s.datasetIcon, s.web)} />
+                        <span
+                          title={t('datasetCreation.stepOne.dataSourceType.web')!}
+                          className='truncate'
+                        >
+                          {t('datasetCreation.stepOne.dataSourceType.web')}
+                        </span>
                       </div>
                     )}
                   </div>

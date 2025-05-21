@@ -161,11 +161,15 @@ const translation = {
       description: 'Opik ist eine Open-Source-Plattform zum Bewerten, Testen und Überwachen von LLM-Anwendungen.',
       title: 'Opik',
     },
+    weave: {
+      title: 'Weben',
+      description: 'Weave ist eine Open-Source-Plattform zur Bewertung, Testung und Überwachung von LLM-Anwendungen.',
+    },
   },
   answerIcon: {
-    descriptionInExplore: 'Gibt an, ob das WebApp-Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',
-    title: 'Verwenden Sie das WebApp-Symbol, um es zu ersetzen 🤖',
-    description: 'Gibt an, ob das WebApp-Symbol zum Ersetzen 🤖 in der freigegebenen Anwendung verwendet werden soll',
+    descriptionInExplore: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in Explore verwendet werden soll',
+    title: 'Verwenden Sie das web app Symbol, um es zu ersetzen 🤖',
+    description: 'Gibt an, ob das web app Symbol zum Ersetzen 🤖 in der freigegebenen Anwendung verwendet werden soll',
   },
   importFromDSLUrlPlaceholder: 'DSL-Link hier einfügen',
   duplicate: 'Duplikat',
@@ -200,6 +204,17 @@ const translation = {
     params: 'APP-PARAMETER',
     label: 'APP',
     noParams: 'Keine Parameter erforderlich',
+  },
+  structOutput: {
+    required: 'Erforderlich',
+    structured: 'Strukturiert',
+    structuredTip: 'Strukturierte Ausgaben ist eine Funktion, die sicherstellt, dass das Modell immer Antworten generiert, die Ihrem bereitgestellten JSON-Schema entsprechen.',
+    modelNotSupportedTip: 'Das aktuelle Modell unterstützt diese Funktion nicht und wird automatisch auf Eingabeinjektion heruntergestuft.',
+    modelNotSupported: 'Modell nicht unterstützt',
+    configure: 'Konfigurieren',
+    notConfiguredTip: 'Die strukturierte Ausgabe wurde bisher nicht konfiguriert.',
+    moreFillTip: 'Maximal 10 Ebenen der Verschachtelung anzeigen',
+    LLMResponse: 'LLM-Antwort',
   },
 }
 

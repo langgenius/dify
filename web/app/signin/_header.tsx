@@ -2,19 +2,28 @@
 import React from 'react'
 import { useContext } from 'use-context-selector'
 import Select from '@/app/components/base/select/locale'
-import ThemeSelector from '@/app/components/base/theme-selector'
 import Divider from '@/app/components/base/divider'
 import { languages } from '@/i18n/language'
 import type { Locale } from '@/i18n'
 import I18n from '@/context/i18n'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import dynamic from 'next/dynamic'
+
+// Avoid rendering the logo and theme selector on the server
+const DifyLogo = dynamic(() => import('@/app/components/base/logo/dify-logo'), {
+  ssr: false,
+  loading: () => <div className='h-7 w-16 bg-transparent' />,
+})
+const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector'), {
+  ssr: false,
+  loading: () => <div className='size-8 bg-transparent' />,
+})
 
 const Header = () => {
   const { locale, setLocaleOnClient } = useContext(I18n)
 
   return (
     <div className='flex w-full items-center justify-between p-6'>
-      <LogoSite />
+      <DifyLogo size='large' />
       <div className='flex items-center gap-1'>
         <Select
           value={locale}

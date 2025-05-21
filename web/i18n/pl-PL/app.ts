@@ -166,10 +166,14 @@ const translation = {
       description: 'Opik to platforma typu open source do oceny, testowania i monitorowania aplikacji LLM.',
       title: 'Opik',
     },
+    weave: {
+      title: 'Tkaj',
+      description: 'Weave to platforma open-source do oceny, testowania i monitorowania aplikacji LLM.',
+    },
   },
   answerIcon: {
     description: 'Czy w aplikacji udostępnionej ma być używana ikona aplikacji internetowej do zamiany 🤖.',
-    title: 'Użyj ikony WebApp, aby zastąpić 🤖',
+    title: 'Użyj ikony web app, aby zastąpić 🤖',
     descriptionInExplore: 'Czy używać ikony aplikacji internetowej do zastępowania 🤖 w Eksploruj',
   },
   importFromDSL: 'Importowanie z DSL',
@@ -200,6 +204,17 @@ const translation = {
     noParams: 'Nie są potrzebne żadne parametry',
     placeholder: 'Wybierz aplikację...',
     label: 'Aplikacja',
+  },
+  structOutput: {
+    structured: 'Ustrukturyzowany',
+    LLMResponse: 'Odpowiedź LLM',
+    notConfiguredTip: 'Strukturalne wyjście nie zostało jeszcze skonfigurowane',
+    structuredTip: 'Strukturalne wyniki to funkcja, która zapewnia, że model zawsze generuje odpowiedzi zgodne z dostarczonym schematem JSON.',
+    moreFillTip: 'Pokazując maksymalnie 10 poziomów zagnieżdżenia',
+    configure: 'Konfiguruj',
+    required: 'Wymagane',
+    modelNotSupported: 'Model nie jest obsługiwany',
+    modelNotSupportedTip: 'Aktualny model nie obsługuje tej funkcji i zostaje automatycznie obniżony do wstrzyknięcia zapytania.',
   },
 }
 

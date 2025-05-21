@@ -313,7 +313,7 @@ class DatasetApi(DatasetApiResource):
         try:
             if DatasetService.delete_dataset(dataset_id_str, current_user):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
-                return {"result": "success"}, 204
+                return 204
             else:
                 raise NotFound("Dataset not found.")
         except services.errors.dataset.DatasetInUseError:
