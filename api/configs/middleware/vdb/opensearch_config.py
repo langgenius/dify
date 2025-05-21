@@ -33,6 +33,11 @@ class OpenSearchConfig(BaseSettings):
         default=False,
     )
 
+    OPENSEARCH_VERIFY_CERTS: bool = Field(
+        description="Whether to verify SSL certificates for HTTPS connections (recommended to set True in production)",
+        default=True,
+    )
+
     OPENSEARCH_AUTH_METHOD: AuthMethod = Field(
         description="Authentication method for OpenSearch connection (default is 'basic')",
         default=AuthMethod.BASIC,
