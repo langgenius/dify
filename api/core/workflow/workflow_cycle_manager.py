@@ -360,14 +360,9 @@ class WorkflowCycleManager:
         return domain_execution
 
     def _handle_workflow_node_execution_retried(
-        self, *, workflow_run: WorkflowRun, event: QueueNodeRetryEvent
+        self, *, workflow_execution_id: str, event: QueueNodeRetryEvent
     ) -> NodeExecution:
-        """
-        Workflow node execution failed
-        :param workflow_run: workflow run
-        :param event: queue node failed event
-        :return:
-        """
+        workflow_execution = self._get_workflow_execution(workflow_execution_id)
         created_at = event.start_at
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - created_at).total_seconds()
@@ -392,8 +387,8 @@ class WorkflowCycleManager:
         # Create a domain model
         domain_execution = NodeExecution(
             id=str(uuid4()),
-            workflow_id=workflow_run.workflow_id,
-            workflow_run_id=workflow_run.id,
+            workflow_id=workflow_execution.workflow_id,
+            workflow_run_id=workflow_execution.id,
             predecessor_node_id=event.predecessor_node_id,
             node_execution_id=event.node_execution_id,
             node_id=event.node_id,
