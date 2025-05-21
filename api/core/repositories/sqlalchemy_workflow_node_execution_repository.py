@@ -11,6 +11,7 @@ from sqlalchemy import UnaryExpression, asc, delete, desc, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.node_execution_entities import (
     NodeExecution,
@@ -171,7 +172,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_model.status = domain_model.status
         db_model.error = domain_model.error
         db_model.elapsed_time = domain_model.elapsed_time
-        db_model.execution_metadata = json.dumps(domain_model.metadata) if domain_model.metadata else None
+        db_model.execution_metadata = (
+            json.dumps(jsonable_encoder(domain_model.metadata)) if domain_model.metadata else None
+        )
         db_model.created_at = domain_model.created_at
         db_model.created_by_role = self._creator_user_role
         db_model.created_by = self._creator_user_id
