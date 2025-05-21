@@ -654,15 +654,13 @@ class WorkflowCycleManager:
     def _workflow_parallel_branch_finished_to_stream_response(
         self,
         *,
-        session: Session,
         task_id: str,
-        workflow_run: WorkflowRun,
+        workflow_execution_id: str,
         event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent,
     ) -> ParallelBranchFinishedStreamResponse:
-        _ = session
         return ParallelBranchFinishedStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=ParallelBranchFinishedStreamResponse.Data(
                 parallel_id=event.parallel_id,
                 parallel_branch_id=event.parallel_start_node_id,
