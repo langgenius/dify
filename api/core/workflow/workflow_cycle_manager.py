@@ -141,7 +141,7 @@ class WorkflowCycleManager:
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
     ) -> WorkflowExecution:
-        workflow_execution = self._get_workflow_execution(workflow_run_id)
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
         outputs = WorkflowEntry.handle_special_values(outputs)
 
@@ -174,7 +174,7 @@ class WorkflowCycleManager:
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
     ) -> WorkflowExecution:
-        execution = self._get_workflow_execution(workflow_run_id)
+        execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
         outputs = WorkflowEntry.handle_special_values(dict(outputs) if outputs else None)
 
         execution.status = WorkflowExecutionStatus.PARTIAL_SUCCEEDED
@@ -208,7 +208,7 @@ class WorkflowCycleManager:
         trace_manager: Optional[TraceQueueManager] = None,
         exceptions_count: int = 0,
     ) -> WorkflowExecution:
-        execution = self._get_workflow_execution(workflow_run_id)
+        execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
         execution.status = WorkflowExecutionStatus(status.value)
         execution.error_message = error_message
@@ -253,7 +253,7 @@ class WorkflowCycleManager:
         workflow_execution_id: str,
         event: QueueNodeStartedEvent,
     ) -> NodeExecution:
-        workflow_execution = self._get_workflow_execution(workflow_execution_id)
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_execution_id)
 
         # Create a domain model
         created_at = datetime.now(UTC).replace(tzinfo=None)
@@ -369,7 +369,7 @@ class WorkflowCycleManager:
     def _handle_workflow_node_execution_retried(
         self, *, workflow_execution_id: str, event: QueueNodeRetryEvent
     ) -> NodeExecution:
-        workflow_execution = self._get_workflow_execution(workflow_execution_id)
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_execution_id)
         created_at = event.start_at
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - created_at).total_seconds()
@@ -893,7 +893,7 @@ class WorkflowCycleManager:
 
         return None
 
-    def _get_workflow_execution(self, id: str, /) -> WorkflowExecution:
+    def _get_workflow_execution_or_raise_error(self, id: str, /) -> WorkflowExecution:
         execution = self._workflow_execution_repository.get(id)
         if not execution:
             raise WorkflowRunNotFoundError(id)
