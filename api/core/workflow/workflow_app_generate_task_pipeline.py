@@ -298,19 +298,14 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    workflow_node_execution = self._workflow_cycle_manager._handle_node_execution_start(
-                        workflow_run=workflow_run, event=event
-                    )
-                    node_start_response = self._workflow_cycle_manager._workflow_node_start_to_stream_response(
-                        event=event,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_node_execution=workflow_node_execution,
-                    )
-                    session.commit()
+                workflow_node_execution = self._workflow_cycle_manager._handle_node_execution_start(
+                    workflow_execution_id=self._workflow_run_id, event=event
+                )
+                node_start_response = self._workflow_cycle_manager._workflow_node_start_to_stream_response(
+                    event=event,
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_node_execution=workflow_node_execution,
+                )
 
                 if node_start_response:
                     yield node_start_response

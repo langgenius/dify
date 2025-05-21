@@ -247,7 +247,14 @@ class WorkflowCycleManager:
 
         return execution
 
-    def _handle_node_execution_start(self, *, workflow_run: WorkflowRun, event: QueueNodeStartedEvent) -> NodeExecution:
+    def _handle_node_execution_start(
+        self,
+        *,
+        workflow_execution_id: str,
+        event: QueueNodeStartedEvent,
+    ) -> NodeExecution:
+        workflow_execution = self._get_workflow_execution(workflow_execution_id)
+
         # Create a domain model
         created_at = datetime.now(UTC).replace(tzinfo=None)
         metadata = {
@@ -258,8 +265,8 @@ class WorkflowCycleManager:
 
         domain_execution = NodeExecution(
             id=str(uuid4()),
-            workflow_id=workflow_run.workflow_id,
-            workflow_run_id=workflow_run.id,
+            workflow_id=workflow_execution.workflow_id,
+            workflow_run_id=workflow_execution.id,
             predecessor_node_id=event.predecessor_node_id,
             index=event.node_run_index,
             node_execution_id=event.node_execution_id,
