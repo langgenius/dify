@@ -758,12 +758,11 @@ class WorkflowCycleManager:
         )
 
     def _workflow_loop_start_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopStartEvent
+        self, *, task_id: str, workflow_execution_id: str, event: QueueLoopStartEvent
     ) -> LoopNodeStartStreamResponse:
-        _ = session
         return LoopNodeStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=LoopNodeStartStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
