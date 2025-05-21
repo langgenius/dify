@@ -1,10 +1,11 @@
+import json
 from unittest import mock
 from uuid import uuid4
 
 import contexts
 from constants import HIDDEN_VALUE
 from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from models.workflow import Workflow
+from models.workflow import Workflow, WorkflowNodeExecution
 
 
 def test_environment_variables():
@@ -137,3 +138,14 @@ def test_to_dict():
         workflow_dict = workflow.to_dict(include_secret=True)
         assert workflow_dict["environment_variables"][0]["value"] == "secret"
         assert workflow_dict["environment_variables"][1]["value"] == "text"
+
+
+class TestWorkflowNodeExecution:
+    def test_execution_metadata_dict(self):
+        node_exec = WorkflowNodeExecution()
+        node_exec.execution_metadata = None
+        assert node_exec.execution_metadata_dict == {}
+
+        original = {"a": 1, "b": ["2"]}
+        node_exec.execution_metadata = json.dumps(original)
+        assert node_exec.execution_metadata_dict == original
