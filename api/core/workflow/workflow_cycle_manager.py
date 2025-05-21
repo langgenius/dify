@@ -8,7 +8,7 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueIterationCompletedEvent,
@@ -54,6 +54,7 @@ from core.workflow.entities.node_execution_entities import (
     NodeExecution,
     NodeExecutionStatus,
 )
+from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
@@ -68,7 +69,6 @@ from models import (
     WorkflowNodeExecutionStatus,
     WorkflowRun,
     WorkflowRunStatus,
-    WorkflowRunTriggeredFrom,
 )
 
 
@@ -92,9 +92,7 @@ class WorkflowCycleManager:
         *,
         session: Session,
         workflow_id: str,
-        user_id: str,
-        created_by_role: CreatorUserRole,
-    ) -> WorkflowRun:
+    ) -> WorkflowExecution:
         workflow_stmt = select(Workflow).where(Workflow.id == workflow_id)
         workflow = session.scalar(workflow_stmt)
         if not workflow:
@@ -113,38 +111,26 @@ class WorkflowCycleManager:
                 continue
             inputs[f"sys.{key.value}"] = value
 
-        triggered_from = (
-            WorkflowRunTriggeredFrom.DEBUGGING
-            if self._application_generate_entity.invoke_from == InvokeFrom.DEBUGGER
-            else WorkflowRunTriggeredFrom.APP_RUN
-        )
-
         # handle special values
         inputs = dict(WorkflowEntry.handle_special_values(inputs) or {})
 
         # init workflow run
         # TODO: This workflow_run_id should always not be None, maybe we can use a more elegant way to handle this
-        workflow_run_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
+        execution_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
+        execution = WorkflowExecution.new(
+            id=execution_id,
+            workflow_id=workflow.id,
+            sequence_number=new_sequence_number,
+            type=WorkflowType(workflow.type),
+            workflow_version=workflow.version,
+            graph=workflow.graph_dict,
+            inputs=inputs,
+            started_at=datetime.now(UTC).replace(tzinfo=None),
+        )
 
-        workflow_run = WorkflowRun()
-        workflow_run.id = workflow_run_id
-        workflow_run.tenant_id = workflow.tenant_id
-        workflow_run.app_id = workflow.app_id
-        workflow_run.sequence_number = new_sequence_number
-        workflow_run.workflow_id = workflow.id
-        workflow_run.type = workflow.type
-        workflow_run.triggered_from = triggered_from.value
-        workflow_run.version = workflow.version
-        workflow_run.graph = workflow.graph
-        workflow_run.inputs = json.dumps(inputs)
-        workflow_run.status = WorkflowRunStatus.RUNNING
-        workflow_run.created_by_role = created_by_role
-        workflow_run.created_by = user_id
-        workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
+        self._workflow_execution_repository.save(execution)
 
-        session.add(workflow_run)
-
-        return workflow_run
+        return execution
 
     def _handle_workflow_run_success(
         self,
@@ -462,20 +448,18 @@ class WorkflowCycleManager:
     def _workflow_start_to_stream_response(
         self,
         *,
-        session: Session,
         task_id: str,
-        workflow_run: WorkflowRun,
+        workflow_execution: WorkflowExecution,
     ) -> WorkflowStartStreamResponse:
-        _ = session
         return WorkflowStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution.id,
             data=WorkflowStartStreamResponse.Data(
-                id=workflow_run.id,
-                workflow_id=workflow_run.workflow_id,
-                sequence_number=workflow_run.sequence_number,
-                inputs=dict(workflow_run.inputs_dict or {}),
-                created_at=int(workflow_run.created_at.timestamp()),
+                id=workflow_execution.id,
+                workflow_id=workflow_execution.workflow_id,
+                sequence_number=workflow_execution.sequence_number,
+                inputs=workflow_execution.inputs,
+                created_at=int(workflow_execution.started_at.timestamp()),
             ),
         )
 

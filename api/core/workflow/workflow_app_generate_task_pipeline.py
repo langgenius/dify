@@ -261,17 +261,15 @@ class WorkflowAppGenerateTaskPipeline:
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     # init workflow run
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_start(
+                    workflow_execution = self._workflow_cycle_manager._handle_workflow_run_start(
                         session=session,
                         workflow_id=self._workflow_id,
-                        user_id=self._user_id,
-                        created_by_role=self._created_by_role,
                     )
-                    self._workflow_run_id = workflow_run.id
+                    self._workflow_run_id = workflow_execution.id
                     start_resp = self._workflow_cycle_manager._workflow_start_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
-                    session.commit()
 
                 yield start_resp
             elif isinstance(
