@@ -62,6 +62,7 @@ const Panel: FC = () => {
           var: {
             ...currentVar,
             type: VarInInspectType.environment,
+            visible: true,
             ...(currentVar.value_type === 'secret' ? { value: '******************' } : {}),
           },
         }

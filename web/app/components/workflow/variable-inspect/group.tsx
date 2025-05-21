@@ -47,7 +47,7 @@ const Group = ({
   const isChatVar = varType === VarInInspectType.conversation
   const isSystem = varType === VarInInspectType.system
 
-  const visibleVarList = varList.filter(v => v.visible)
+  const visibleVarList = isEnv ? varList : varList.filter(v => v.visible)
 
   const handleSelectVar = (varItem: any, type?: string) => {
     if (type === VarInInspectType.environment) {
