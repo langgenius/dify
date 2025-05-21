@@ -4,22 +4,24 @@ import { RiCrosshairLine } from '@remixicon/react'
 import type { XYPosition } from 'reactflow'
 import { useReactFlow, useStoreApi } from 'reactflow'
 import TooltipPlus from '@/app/components/base/tooltip'
+import { useNodesSyncDraft } from '@/app/components/workflow-app/hooks'
 
 type NodePositionProps = {
-  position: XYPosition,
-  width?: number | null,
-  height?: number | null,
+  nodePosition: XYPosition,
+  nodeWidth?: number | null,
+  nodeHeight?: number | null,
 }
 const NodePosition = ({
-  position,
-  width,
-  height,
+  nodePosition,
+  nodeWidth,
+  nodeHeight,
 }: NodePositionProps) => {
   const { t } = useTranslation()
   const reactflow = useReactFlow()
   const store = useStoreApi()
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
-  if (!position || !width || !height) return null
+  if (!nodePosition || !nodeWidth || !nodeHeight) return null
 
   const workflowContainer = document.getElementById('workflow-container')
   const { transform } = store.getState()
@@ -36,10 +38,11 @@ const NodePosition = ({
         className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
         onClick={() => {
           setViewport({
-            x: (clientWidth - 400 - width * zoom) / 2 - position.x * zoom,
-            y: (clientHeight - height * zoom) / 2 - position.y * zoom,
+            x: (clientWidth - 400 - nodeWidth * zoom) / 2 - nodePosition.x * zoom,
+            y: (clientHeight - nodeHeight * zoom) / 2 - nodePosition.y * zoom,
             zoom: transform[2],
           })
+          doSyncWorkflowDraft()
         }}
       >
         <RiCrosshairLine className='h-4 w-4 text-text-tertiary' />
