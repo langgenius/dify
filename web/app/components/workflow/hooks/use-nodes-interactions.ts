@@ -414,7 +414,7 @@ export const useNodesInteractions = () => {
       draft.push(newEdge)
     })
 
-    if (checkNestedParallelLimit(newNodes, newEdges, targetNode?.parentId)) {
+    if (checkNestedParallelLimit(newNodes, newEdges, targetNode)) {
       setNodes(newNodes)
       setEdges(newEdges)
 
@@ -819,7 +819,7 @@ export const useNodesInteractions = () => {
         draft.push(newEdge)
       })
 
-      if (checkNestedParallelLimit(newNodes, newEdges, prevNode.parentId)) {
+      if (checkNestedParallelLimit(newNodes, newEdges, prevNode)) {
         setNodes(newNodes)
         setEdges(newEdges)
       }
@@ -939,7 +939,7 @@ export const useNodesInteractions = () => {
           draft.push(newEdge)
         })
 
-        if (checkNestedParallelLimit(newNodes, newEdges, nextNode.parentId)) {
+        if (checkNestedParallelLimit(newNodes, newEdges, nextNode)) {
           setNodes(newNodes)
           setEdges(newEdges)
         }

@@ -24,11 +24,14 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
-
+import { getParallelInfo } from '../utils'
 import {
+  PARALLEL_DEPTH_LIMIT,
   PARALLEL_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useAvailableBlocks } from './use-available-blocks'
@@ -297,28 +300,96 @@ export const useWorkflow = () => {
     return true
   }, [store, workflowStore, t])
 
-  const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], parentNodeId?: string) => {
-    // const {
-    //   parallelList,
-    //   hasAbnormalEdges,
-    // } = getParallelInfo(nodes, edges, parentNodeId)
-    // const { workflowConfig } = workflowStore.getState()
+  const getRootNodesById = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+      edges,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)
 
-    // if (hasAbnormalEdges)
-    //   return false
+    const rootNodes: Node[] = []
 
-    // for (let i = 0; i < parallelList.length; i++) {
-    //   const parallel = parallelList[i]
+    if (!currentNode)
+      return rootNodes
 
-    //   if (parallel.depth > (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT)) {
-    //     const { setShowTips } = workflowStore.getState()
-    //     setShowTips(t('workflow.common.parallelTip.depthLimit', { num: (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT) }))
-    //     return false
-    //   }
-    // }
+    if (currentNode.parentId) {
+      const parentNode = nodes.find(node => node.id === currentNode.parentId)
+      if (parentNode) {
+        const parentList = getRootNodesById(parentNode.id)
+
+        rootNodes.push(...parentList)
+      }
+    }
+
+    const traverse = (root: Node, callback: (node: Node) => void) => {
+      if (root) {
+        const incomers = getIncomers(root, nodes, edges)
+
+        if (incomers.length) {
+          incomers.forEach((node) => {
+            traverse(node, callback)
+          })
+        }
+        else {
+          callback(root)
+        }
+      }
+    }
+    traverse(currentNode, (node) => {
+      rootNodes.push(node)
+    })
+
+    const length = rootNodes.length
+    if (length)
+      return uniqBy(rootNodes, 'id')
+
+    return []
+  }, [store])
+
+  const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], targetNode?: Node) => {
+    const { id, parentId } = targetNode || {}
+    let startNodes: Node[] = []
+
+    if (parentId) {
+      const parentNode = nodes.find(node => node.id === parentId)
+      if (!parentNode)
+        throw new Error('Parent node not found')
+
+      const startNode = nodes.find(node => node.id === (parentNode.data as (IterationNodeType | LoopNodeType)).start_node_id)
+      if (startNode)
+        startNodes = [startNode]
+    }
+    else {
+      startNodes = nodes.filter(node => nodesMap?.[node.data.type as BlockEnum]?.metaData.isStart) || []
+    }
+
+    if (!startNodes.length)
+      startNodes = getRootNodesById(id || '')
+
+    for (let i = 0; i < startNodes.length; i++) {
+      const {
+        parallelList,
+        hasAbnormalEdges,
+      } = getParallelInfo(startNodes[i], nodes, edges)
+      const { workflowConfig } = workflowStore.getState()
+
+      if (hasAbnormalEdges)
+        return false
+
+      for (let i = 0; i < parallelList.length; i++) {
+        const parallel = parallelList[i]
+
+        if (parallel.depth > (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT)) {
+          const { setShowTips } = workflowStore.getState()
+          setShowTips(t('workflow.common.parallelTip.depthLimit', { num: (workflowConfig?.parallel_depth_limit || PARALLEL_DEPTH_LIMIT) }))
+          return false
+        }
+      }
+    }
 
     return true
-  }, [t, workflowStore])
+  }, [t, workflowStore, nodesMap, getRootNodesById])
 
   const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
     const {
@@ -382,6 +453,7 @@ export const useWorkflow = () => {
     getBeforeNodeById,
     getIterationNodeChildren,
     getLoopNodeChildren,
+    getRootNodesById,
   }
 }
 
