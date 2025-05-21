@@ -243,6 +243,7 @@ const useOneStepRun = <T>({
       },
     })
     let res: any
+    let hasError = false
     try {
       if (!isIteration && !isLoop) {
         res = await singleNodeRun(appId!, id, { inputs: submitData }) as any
@@ -451,6 +452,13 @@ const useOneStepRun = <T>({
     }
     catch (e: any) {
       console.error(e)
+      hasError = true
+      const result = res || {}
+      setRunResult({
+        ...result,
+        error: e.message,
+        status: NodeRunningStatus.Failed,
+      })
       if (!isIteration && !isLoop) {
         handleNodeDataUpdate({
           id,
@@ -464,7 +472,7 @@ const useOneStepRun = <T>({
       }
     }
     finally {
-      if (!isIteration && !isLoop) {
+      if (!isIteration && !isLoop && res) {
         setRunResult({
           ...res,
           total_tokens: res.execution_metadata?.total_tokens || 0,
@@ -472,7 +480,7 @@ const useOneStepRun = <T>({
         })
       }
     }
-    if (!isIteration && !isLoop) {
+    if (!isIteration && !isLoop && !hasError) {
       handleNodeDataUpdate({
         id,
         data: {

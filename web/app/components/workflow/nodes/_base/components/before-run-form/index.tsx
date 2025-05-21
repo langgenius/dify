@@ -40,6 +40,8 @@ export type BeforeRunFormProps = {
 } & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
+  if(value === undefined || value === null)
+    return value
   if (type === InputVarType.number)
     return Number.parseFloat(value)
   if (type === InputVarType.json)

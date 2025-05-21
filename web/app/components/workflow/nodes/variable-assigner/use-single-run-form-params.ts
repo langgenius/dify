@@ -66,8 +66,21 @@ const useSingleRunFormParams = ({
     ]
   })()
 
+  const getDependentVars = () => {
+    if(payload.advanced_settings?.group_enabled) {
+      const vars: ValueSelector[] = []
+      payload.advanced_settings.groups.forEach((group) => {
+        if(group.variables)
+          vars.push(...group.variables)
+      })
+      return vars
+    }
+    return payload.variables
+  }
+
   return {
     forms,
+    getDependentVars,
   }
 }
 

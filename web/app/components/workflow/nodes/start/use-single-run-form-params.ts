@@ -1,6 +1,7 @@
 import type { MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
+import type { ValueSelector } from '@/app/components/workflow/types'
 import { type InputVar, InputVarType, type Variable } from '@/app/components/workflow/types'
 import type { StartNodeType } from './types'
 import { useIsChatMode } from '../../hooks'
@@ -15,6 +16,7 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({
+  id,
   payload,
   runInputData,
   setRunInputData,
@@ -24,12 +26,12 @@ const useSingleRunFormParams = ({
 
   const forms = (() => {
     const forms: FormProps[] = []
-    const inputs = payload.variables.map((item: InputVar) => ({
-      label: item.variable,
-      variable: item.variable,
-      type: item.type,
-      required: item.required,
-    }))
+    const inputs: InputVar[] = payload.variables.map((item) => {
+      return {
+        ...item,
+        getVarValueFromDependent: true,
+      }
+    })
 
     if (isChatMode) {
       inputs.push({
@@ -46,6 +48,7 @@ const useSingleRunFormParams = ({
       type: InputVarType.multiFiles,
       required: false,
     })
+
     forms.push(
       {
         label: t('workflow.nodes.llm.singleRun.variable')!,
@@ -58,8 +61,26 @@ const useSingleRunFormParams = ({
     return forms
   })()
 
+  const getDependentVars = () => {
+    const inputVars = payload.variables.map((item) => {
+      return [id, item.variable]
+    })
+    const vars: ValueSelector[] = [...inputVars, ['sys', 'files']]
+
+    if (isChatMode)
+      vars.push(['sys', 'query'])
+
+    return vars
+  }
+
+  const getDependentVar = (variable: string) => {
+    return [id, variable]
+  }
+
   return {
     forms,
+    getDependentVars,
+    getDependentVar,
   }
 }
 

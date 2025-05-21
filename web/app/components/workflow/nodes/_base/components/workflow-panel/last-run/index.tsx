@@ -16,6 +16,7 @@ type Props = {
   nodeInfo?: NodeTracing
   runningStatus?: NodeRunningStatus
   onSingleRunClicked: () => void
+  singleRunResult?: NodeTracing
 } & Partial<ResultPanelProps>
 
 const LastRun: FC<Props> = ({
@@ -23,12 +24,16 @@ const LastRun: FC<Props> = ({
   nodeId,
   canSingleRun,
   nodeInfo,
-  runningStatus,
+  runningStatus: oneStepRunRunningStatus,
   onSingleRunClicked,
+  singleRunResult,
   ...otherResultPanelProps
 }) => {
-  const isRunning = runningStatus === NodeRunningStatus.Running
-  const { data: runResult, isFetching } = useLastRun(appId, nodeId, !isRunning)
+  const isRunning = oneStepRunRunningStatus === NodeRunningStatus.Running
+  const isOneStepRunSuccess = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
+  const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
+  const { data: lastRunResult, isFetching } = useLastRun(appId, nodeId, isOneStepRunSuccess)
+  const runResult = (isOneStepRunFailed ? singleRunResult : lastRunResult) || {}
 
   if (isFetching) {
     return (

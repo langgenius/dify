@@ -329,6 +329,7 @@ const BasePanel: FC<BasePanelProps> = ({
             runningStatus={runningStatus}
             onSingleRunClicked={handleSingleRun}
             nodeInfo={nodeInfo}
+            singleRunResult={runResult!}
             {...passedLogParams}
           />
         )}
