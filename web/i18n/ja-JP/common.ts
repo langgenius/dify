@@ -171,7 +171,7 @@ const translation = {
     community: 'コミュニティ',
     about: 'Difyについて',
     logout: 'ログアウト',
-    github: 'ギットハブ',
+    github: 'GitHub',
   },
   compliance: {
     soc2Type1: 'SOC 2 Type I 報告書',
@@ -448,8 +448,8 @@ const translation = {
     connect: '接続',
     configure: '設定',
     notion: {
-      title: 'ノーション',
-      description: 'ナレッジデータソースとしてノーションを使用します。',
+      title: 'Notion',
+      description: 'ナレッジデータソースとしてNotionを使用します。',
       connectedWorkspace: '接続済みワークスペース',
       addWorkspace: 'ワークスペースの追加',
       connected: '接続済み',
