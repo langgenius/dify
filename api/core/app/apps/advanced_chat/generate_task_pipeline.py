@@ -306,7 +306,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     if not message:
                         raise ValueError(f"Message not found: {self._message_id}")
                     message.workflow_run_id = workflow_execution.id
-                    workflow_start_resp = self._workflow_cycle_manager._workflow_start_to_stream_response(
+                    workflow_start_resp = self._workflow_cycle_manager.workflow_start_to_stream_response(
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
                     )
@@ -323,7 +323,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_retried(
                         workflow_execution_id=self._workflow_run_id, event=event
                     )
-                    node_retry_resp = self._workflow_cycle_manager._workflow_node_retry_to_stream_response(
+                    node_retry_resp = self._workflow_cycle_manager.workflow_node_retry_to_stream_response(
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -340,7 +340,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     workflow_execution_id=self._workflow_run_id, event=event
                 )
 
-                node_start_resp = self._workflow_cycle_manager._workflow_node_start_to_stream_response(
+                node_start_resp = self._workflow_cycle_manager.workflow_node_start_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
@@ -352,7 +352,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 # Record files if it's an answer node or end node
                 if event.node_type in [NodeType.ANSWER, NodeType.END]:
                     self._recorded_files.extend(
-                        self._workflow_cycle_manager._fetch_files_from_node_outputs(event.outputs or {})
+                        self._workflow_cycle_manager.fetch_files_from_node_outputs(event.outputs or {})
                     )
 
                 with Session(db.engine, expire_on_commit=False) as session:
@@ -360,7 +360,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         event=event
                     )
 
-                    node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                    node_finish_resp = self._workflow_cycle_manager.workflow_node_finish_to_stream_response(
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -380,7 +380,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     event=event
                 )
 
-                node_finish_resp = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                node_finish_resp = self._workflow_cycle_manager.workflow_node_finish_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
@@ -392,7 +392,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                parallel_start_resp = self._workflow_cycle_manager._workflow_parallel_branch_start_to_stream_response(
+                parallel_start_resp = self._workflow_cycle_manager.workflow_parallel_branch_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_execution_id=self._workflow_run_id,
                     event=event,
@@ -404,7 +404,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     raise ValueError("workflow run not initialized.")
 
                 parallel_finish_resp = (
-                    self._workflow_cycle_manager._workflow_parallel_branch_finished_to_stream_response(
+                    self._workflow_cycle_manager.workflow_parallel_branch_finished_to_stream_response(
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution_id=self._workflow_run_id,
                         event=event,
@@ -416,7 +416,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                iter_start_resp = self._workflow_cycle_manager._workflow_iteration_start_to_stream_response(
+                iter_start_resp = self._workflow_cycle_manager.workflow_iteration_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_execution_id=self._workflow_run_id,
                     event=event,
@@ -427,7 +427,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                iter_next_resp = self._workflow_cycle_manager._workflow_iteration_next_to_stream_response(
+                iter_next_resp = self._workflow_cycle_manager.workflow_iteration_next_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_execution_id=self._workflow_run_id,
                     event=event,
@@ -438,7 +438,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                iter_finish_resp = self._workflow_cycle_manager._workflow_iteration_completed_to_stream_response(
+                iter_finish_resp = self._workflow_cycle_manager.workflow_iteration_completed_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_execution_id=self._workflow_run_id,
                     event=event,
@@ -449,7 +449,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                loop_start_resp = self._workflow_cycle_manager._workflow_loop_start_to_stream_response(
+                loop_start_resp = self._workflow_cycle_manager.workflow_loop_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_execution_id=self._workflow_run_id,
                     event=event,
@@ -460,7 +460,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                loop_next_resp = self._workflow_cycle_manager._workflow_loop_next_to_stream_response(
+                loop_next_resp = self._workflow_cycle_manager.workflow_loop_next_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_execution_id=self._workflow_run_id,
                     event=event,
@@ -471,7 +471,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                loop_finish_resp = self._workflow_cycle_manager._workflow_loop_completed_to_stream_response(
+                loop_finish_resp = self._workflow_cycle_manager.workflow_loop_completed_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_execution_id=self._workflow_run_id,
                     event=event,
@@ -495,7 +495,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         trace_manager=trace_manager,
                     )
 
-                    workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
+                    workflow_finish_resp = self._workflow_cycle_manager.workflow_finish_to_stream_response(
                         session=session,
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
@@ -521,7 +521,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         conversation_id=None,
                         trace_manager=trace_manager,
                     )
-                    workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
+                    workflow_finish_resp = self._workflow_cycle_manager.workflow_finish_to_stream_response(
                         session=session,
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
@@ -548,7 +548,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         trace_manager=trace_manager,
                         exceptions_count=event.exceptions_count,
                     )
-                    workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
+                    workflow_finish_resp = self._workflow_cycle_manager.workflow_finish_to_stream_response(
                         session=session,
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
@@ -573,7 +573,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                             conversation_id=self._conversation_id,
                             trace_manager=trace_manager,
                         )
-                        workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
+                        workflow_finish_resp = self._workflow_cycle_manager.workflow_finish_to_stream_response(
                             session=session,
                             task_id=self._application_generate_entity.task_id,
                             workflow_execution=workflow_execution,
@@ -657,7 +657,7 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 yield self._message_end_to_stream_response()
             elif isinstance(event, QueueAgentLogEvent):
-                yield self._workflow_cycle_manager._handle_agent_log(
+                yield self._workflow_cycle_manager.handle_agent_log(
                     task_id=self._application_generate_entity.task_id, event=event
                 )
             else:

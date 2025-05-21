@@ -416,7 +416,7 @@ class WorkflowCycleManager:
 
         return domain_execution
 
-    def _workflow_start_to_stream_response(
+    def workflow_start_to_stream_response(
         self,
         *,
         task_id: str,
@@ -434,7 +434,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_finish_to_stream_response(
+    def workflow_finish_to_stream_response(
         self,
         *,
         session: Session,
@@ -487,12 +487,12 @@ class WorkflowCycleManager:
                 created_by=created_by,
                 created_at=int(workflow_execution.started_at.timestamp()),
                 finished_at=finished_at_timestamp,
-                files=self._fetch_files_from_node_outputs(workflow_execution.outputs),
+                files=self.fetch_files_from_node_outputs(workflow_execution.outputs),
                 exceptions_count=workflow_execution.exceptions_count,
             ),
         )
 
-    def _workflow_node_start_to_stream_response(
+    def workflow_node_start_to_stream_response(
         self,
         *,
         event: QueueNodeStartedEvent,
@@ -538,7 +538,7 @@ class WorkflowCycleManager:
 
         return response
 
-    def _workflow_node_finish_to_stream_response(
+    def workflow_node_finish_to_stream_response(
         self,
         *,
         event: QueueNodeSucceededEvent
@@ -575,7 +575,7 @@ class WorkflowCycleManager:
                 execution_metadata=workflow_node_execution.metadata,
                 created_at=int(workflow_node_execution.created_at.timestamp()),
                 finished_at=int(workflow_node_execution.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs or {}),
+                files=self.fetch_files_from_node_outputs(workflow_node_execution.outputs or {}),
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
                 parent_parallel_id=event.parent_parallel_id,
@@ -585,7 +585,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_node_retry_to_stream_response(
+    def workflow_node_retry_to_stream_response(
         self,
         *,
         event: QueueNodeRetryEvent,
@@ -618,7 +618,7 @@ class WorkflowCycleManager:
                 execution_metadata=workflow_node_execution.metadata,
                 created_at=int(workflow_node_execution.created_at.timestamp()),
                 finished_at=int(workflow_node_execution.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs or {}),
+                files=self.fetch_files_from_node_outputs(workflow_node_execution.outputs or {}),
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
                 parent_parallel_id=event.parent_parallel_id,
@@ -629,7 +629,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_parallel_branch_start_to_stream_response(
+    def workflow_parallel_branch_start_to_stream_response(
         self,
         *,
         task_id: str,
@@ -650,7 +650,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_parallel_branch_finished_to_stream_response(
+    def workflow_parallel_branch_finished_to_stream_response(
         self,
         *,
         task_id: str,
@@ -673,7 +673,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_iteration_start_to_stream_response(
+    def workflow_iteration_start_to_stream_response(
         self,
         *,
         task_id: str,
@@ -697,7 +697,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_iteration_next_to_stream_response(
+    def workflow_iteration_next_to_stream_response(
         self,
         *,
         task_id: str,
@@ -723,7 +723,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_iteration_completed_to_stream_response(
+    def workflow_iteration_completed_to_stream_response(
         self,
         *,
         task_id: str,
@@ -756,7 +756,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_loop_start_to_stream_response(
+    def workflow_loop_start_to_stream_response(
         self, *, task_id: str, workflow_execution_id: str, event: QueueLoopStartEvent
     ) -> LoopNodeStartStreamResponse:
         return LoopNodeStartStreamResponse(
@@ -776,7 +776,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_loop_next_to_stream_response(
+    def workflow_loop_next_to_stream_response(
         self,
         *,
         task_id: str,
@@ -802,7 +802,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_loop_completed_to_stream_response(
+    def workflow_loop_completed_to_stream_response(
         self,
         *,
         task_id: str,
@@ -835,7 +835,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _fetch_files_from_node_outputs(self, outputs_dict: Mapping[str, Any] | None) -> Sequence[Mapping[str, Any]]:
+    def fetch_files_from_node_outputs(self, outputs_dict: Mapping[str, Any] | None) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from node outputs
         :param outputs_dict: node outputs dict
@@ -898,7 +898,7 @@ class WorkflowCycleManager:
             raise WorkflowRunNotFoundError(id)
         return execution
 
-    def _handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
+    def handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
         """
         Handle agent log
         :param task_id: task id
