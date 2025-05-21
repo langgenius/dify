@@ -86,8 +86,8 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
     },
     renameInspectVarName: (nodeId, varId, selector) => {
       set((state: InspectVarsSliceShape) => {
-        const newData = produce(state, (draft) => {
-          const targetNode = draft.nodesWithInspectVars.find(node => node.nodeId === nodeId)
+        const nodes = produce(state.nodesWithInspectVars, (draft) => {
+          const targetNode = draft.find(node => node.nodeId === nodeId)
           if (!targetNode)
             return
           const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
@@ -98,7 +98,7 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
           },
         )
         return {
-          nodesWithInspectVars: newData.nodesWithInspectVars,
+          nodesWithInspectVars: nodes,
         }
       })
     },
