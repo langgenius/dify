@@ -675,12 +675,15 @@ class WorkflowCycleManager:
         )
 
     def _workflow_iteration_start_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationStartEvent
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueIterationStartEvent,
     ) -> IterationNodeStartStreamResponse:
-        _ = session
         return IterationNodeStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=IterationNodeStartStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
