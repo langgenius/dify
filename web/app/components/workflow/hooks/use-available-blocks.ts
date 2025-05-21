@@ -6,7 +6,7 @@ import { BlockEnum } from '../types'
 import { useNodesMetaData } from './use-nodes-meta-data'
 
 const availableBlocksFilter = (nodeType: BlockEnum, inContainer?: boolean) => {
-  if (inContainer && (nodeType === BlockEnum.Iteration || nodeType === BlockEnum.Loop || nodeType === BlockEnum.End))
+  if (inContainer && (nodeType === BlockEnum.Iteration || nodeType === BlockEnum.Loop || nodeType === BlockEnum.End || nodeType === BlockEnum.DataSource || nodeType === BlockEnum.KnowledgeBase))
     return false
 
   if (!inContainer && nodeType === BlockEnum.LoopEnd)

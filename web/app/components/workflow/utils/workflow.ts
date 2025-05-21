@@ -16,8 +16,6 @@ import type {
 import {
   BlockEnum,
 } from '../types'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
 
 export const canRunBySingle = (nodeType: BlockEnum) => {
   return nodeType === BlockEnum.LLM
@@ -178,19 +176,7 @@ type NodeStreamInfo = {
   upstreamNodes: Set<string>
   downstreamEdges: Set<string>
 }
-export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: string) => {
-  let startNode
-
-  if (parentNodeId) {
-    const parentNode = nodes.find(node => node.id === parentNodeId)
-    if (!parentNode)
-      throw new Error('Parent node not found')
-
-    startNode = nodes.find(node => node.id === (parentNode.data as (IterationNodeType | LoopNodeType)).start_node_id)
-  }
-  else {
-    startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-  }
+export const getParallelInfo = (startNode: Node, nodes: Node[], edges: Edge[]) => {
   if (!startNode)
     throw new Error('Start node not found')
 
