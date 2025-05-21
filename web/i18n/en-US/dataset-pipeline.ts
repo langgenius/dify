@@ -54,6 +54,10 @@ const translation = {
     dataSource: {
       localFiles: 'Local Files',
     },
+    notion: {
+      title: 'Choose Notion Pages',
+      docTitle: 'Notion docs',
+    },
   },
   inputField: 'Input Field',
   inputFieldPanel: {

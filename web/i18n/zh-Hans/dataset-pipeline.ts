@@ -54,17 +54,21 @@ const translation = {
     dataSource: {
       localFiles: '本地文件',
     },
-    inputField: '输入字段',
-    inputFieldPanel: {
-      title: '用户输入字段',
-      description: '用户输入字段用于定义和收集流水线执行过程中所需的变量，用户可以自定义字段类型，并灵活配置输入，以满足不同数据源或文档处理的需求。',
-      sharedInputs: {
-        title: '共享输入',
-        tooltip: '共享输入可被数据源中的所有下游节点使用。例如，在处理来自多个来源的文档时，delimiter（分隔符）和 maximum chunk length（最大分块长度）等变量可以统一应用。',
-      },
-      addInputField: '添加输入字段',
-      editInputField: '编辑输入字段',
+    notion: {
+      title: '选择 Notion 页面',
+      docTitle: 'Notion 文档',
     },
+  },
+  inputField: '输入字段',
+  inputFieldPanel: {
+    title: '用户输入字段',
+    description: '用户输入字段用于定义和收集流水线执行过程中所需的变量，用户可以自定义字段类型，并灵活配置输入，以满足不同数据源或文档处理的需求。',
+    sharedInputs: {
+      title: '共享输入',
+      tooltip: '共享输入可被数据源中的所有下游节点使用。例如，在处理来自多个来源的文档时，delimiter（分隔符）和 maximum chunk length（最大分块长度）等变量可以统一应用。',
+    },
+    addInputField: '添加输入字段',
+    editInputField: '编辑输入字段',
   },
 }
 

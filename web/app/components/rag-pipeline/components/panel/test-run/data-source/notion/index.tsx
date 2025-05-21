@@ -1,43 +1,25 @@
-import { useDataSources } from '@/service/use-common'
-import { useCallback, useMemo } from 'react'
-import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import type { NotionPage } from '@/models/common'
-import NotionConnector from '@/app/components/base/notion-connector'
-import { useModalContextSelector } from '@/context/modal-context'
+import NotionPageSelector from './notion-page-selector'
 
 type NotionProps = {
+  nodeId: string
   notionPages: NotionPage[]
   updateNotionPages: (value: NotionPage[]) => void
 }
 
 const Notion = ({
+  nodeId,
   notionPages,
   updateNotionPages,
 }: NotionProps) => {
-  const { data: dataSources } = useDataSources()
-  const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
-
-  const hasConnection = useMemo(() => {
-    const notionDataSources = dataSources?.data.filter(item => item.provider === 'notion') || []
-    return notionDataSources.length > 0
-  }, [dataSources])
-
-  const handleConnect = useCallback(() => {
-    setShowAccountSettingModal({ payload: 'data-source' })
-  }, [setShowAccountSettingModal])
-
   return (
-    <>
-      {!hasConnection && <NotionConnector onSetting={handleConnect} />}
-      {hasConnection && (
-        <NotionPageSelector
-          value={notionPages.map(page => page.page_id)}
-          onSelect={updateNotionPages}
-          canPreview={false}
-          isInPipeline
-        />
-      )}
-    </>
+    <NotionPageSelector
+      nodeId={nodeId}
+      value={notionPages.map(page => page.page_id)}
+      onSelect={updateNotionPages}
+      canPreview={false}
+      isInPipeline
+    />
   )
 }
 

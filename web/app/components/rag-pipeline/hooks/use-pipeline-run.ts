@@ -128,7 +128,7 @@ export const usePipelineRun = () => {
       clientHeight,
     } = workflowContainer!
 
-    const url = `/rag/pipeline/${pipelineId}/workflows/draft/run`
+    const url = `/rag/pipelines/${pipelineId}/workflows/draft/run`
 
     const {
       setWorkflowRunningData,
@@ -253,25 +253,25 @@ export const usePipelineRun = () => {
       },
     )
   }, [
-      store,
-      workflowStore,
-      doSyncWorkflowDraft,
-      handleWorkflowStarted,
-      handleWorkflowFinished,
-      handleWorkflowFailed,
-      handleWorkflowNodeStarted,
-      handleWorkflowNodeFinished,
-      handleWorkflowNodeIterationStarted,
-      handleWorkflowNodeIterationNext,
-      handleWorkflowNodeIterationFinished,
-      handleWorkflowNodeLoopStarted,
-      handleWorkflowNodeLoopNext,
-      handleWorkflowNodeLoopFinished,
-      handleWorkflowNodeRetry,
-      handleWorkflowTextChunk,
-      handleWorkflowTextReplace,
-      handleWorkflowAgentLog,
-    ],
+    store,
+    workflowStore,
+    doSyncWorkflowDraft,
+    handleWorkflowStarted,
+    handleWorkflowFinished,
+    handleWorkflowFailed,
+    handleWorkflowNodeStarted,
+    handleWorkflowNodeFinished,
+    handleWorkflowNodeIterationStarted,
+    handleWorkflowNodeIterationNext,
+    handleWorkflowNodeIterationFinished,
+    handleWorkflowNodeLoopStarted,
+    handleWorkflowNodeLoopNext,
+    handleWorkflowNodeLoopFinished,
+    handleWorkflowNodeRetry,
+    handleWorkflowTextChunk,
+    handleWorkflowTextReplace,
+    handleWorkflowAgentLog,
+  ],
   )
 
   const handleStopRun = useCallback((taskId: string) => {

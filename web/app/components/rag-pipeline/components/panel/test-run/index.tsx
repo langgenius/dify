@@ -49,7 +49,7 @@ const TestRunPanel = () => {
   }, [fileList, isShowVectorSpaceFull])
 
   const nextBtnDisabled = useMemo(() => {
-    if (!datasource) return false
+    if (!datasource) return true
     if (datasource.type === DataSourceType.FILE)
       return nextDisabled
     if (datasource.type === DataSourceType.NOTION)
@@ -98,9 +98,13 @@ const TestRunPanel = () => {
     if (!datasource)
       return
     const datasourceInfo: Record<string, any> = {}
-    if (datasource.type === DataSourceType.FILE)
+    let datasource_type = ''
+    if (datasource.type === DataSourceType.FILE) {
+      datasource_type = 'local_file'
       datasourceInfo.fileId = fileList.map(file => file.fileID)
+    }
     if (datasource.type === DataSourceType.NOTION) {
+      datasource_type = 'online_document'
       datasourceInfo.workspaceId = notionPages[0].workspace_id
       datasourceInfo.page = notionPages.map((page) => {
         const { workspace_id, ...rest } = page
@@ -110,13 +114,13 @@ const TestRunPanel = () => {
     if (datasource.type === DataSourceProvider.fireCrawl
       || datasource.type === DataSourceProvider.jinaReader
       || datasource.type === DataSourceProvider.waterCrawl) {
+      datasource_type = 'website_crawl'
       datasourceInfo.jobId = websiteCrawlJobId
       datasourceInfo.result = websitePages
     }
-    // todo: TBD
     handleRun({
       inputs: data,
-      datasource_type: datasource,
+      datasource_type,
       datasource_info: datasourceInfo,
     })
   }, [datasource, fileList, handleRun, notionPages, websiteCrawlJobId, websitePages])
