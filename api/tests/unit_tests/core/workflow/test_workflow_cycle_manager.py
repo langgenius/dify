@@ -172,12 +172,12 @@ def test_init(
 
 
 def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, real_workflow):
-    """Test _handle_workflow_run_start method"""
+    """Test handle_workflow_run_start method"""
     # Mock session.scalar to return the workflow and max sequence
     mock_session.scalar.side_effect = [real_workflow, 5]
 
     # Call the method
-    workflow_execution = workflow_cycle_manager._handle_workflow_run_start(
+    workflow_execution = workflow_cycle_manager.handle_workflow_run_start(
         session=mock_session,
         workflow_id="test-workflow-id",
     )
@@ -191,7 +191,7 @@ def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, real_wo
 
 
 def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execution_repository):
-    """Test _handle_workflow_run_success method"""
+    """Test handle_workflow_run_success method"""
     # Create a real WorkflowExecution
 
     workflow_execution = WorkflowExecution(
@@ -209,7 +209,7 @@ def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execu
     workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
 
     # Call the method
-    result = workflow_cycle_manager._handle_workflow_run_success(
+    result = workflow_cycle_manager.handle_workflow_run_success(
         workflow_run_id="test-workflow-run-id",
         total_tokens=100,
         total_steps=5,
@@ -226,7 +226,7 @@ def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execu
 
 
 def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execution_repository):
-    """Test _handle_workflow_run_failed method"""
+    """Test handle_workflow_run_failed method"""
     # Create a real WorkflowExecution
 
     workflow_execution = WorkflowExecution(
@@ -247,7 +247,7 @@ def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execut
     workflow_cycle_manager._workflow_node_execution_repository.get_running_executions.return_value = []
 
     # Call the method
-    result = workflow_cycle_manager._handle_workflow_run_failed(
+    result = workflow_cycle_manager.handle_workflow_run_failed(
         workflow_run_id="test-workflow-run-id",
         total_tokens=50,
         total_steps=3,
@@ -265,7 +265,7 @@ def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execut
 
 
 def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execution_repository):
-    """Test _handle_node_execution_start method"""
+    """Test handle_node_execution_start method"""
     # Create a real WorkflowExecution
 
     workflow_execution = WorkflowExecution(
@@ -300,7 +300,7 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
     event.in_loop_id = "test-loop-id"
 
     # Call the method
-    result = workflow_cycle_manager._handle_node_execution_start(
+    result = workflow_cycle_manager.handle_node_execution_start(
         workflow_execution_id=workflow_execution.id,
         event=event,
     )
@@ -351,7 +351,7 @@ def test_get_workflow_execution_or_raise_error(workflow_cycle_manager, mock_work
 
 
 def test_handle_workflow_node_execution_success(workflow_cycle_manager):
-    """Test _handle_workflow_node_execution_success method"""
+    """Test handle_workflow_node_execution_success method"""
     # Create a mock event
     event = MagicMock(spec=QueueNodeSucceededEvent)
     event.node_execution_id = "test-node-execution-id"
@@ -379,7 +379,7 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
     workflow_cycle_manager._workflow_node_execution_repository.get_by_node_execution_id.return_value = node_execution
 
     # Call the method
-    result = workflow_cycle_manager._handle_workflow_node_execution_success(
+    result = workflow_cycle_manager.handle_workflow_node_execution_success(
         event=event,
     )
 
@@ -392,7 +392,7 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
 
 
 def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_workflow_execution_repository):
-    """Test _handle_workflow_run_partial_success method"""
+    """Test handle_workflow_run_partial_success method"""
     # Create a real WorkflowExecution
 
     workflow_execution = WorkflowExecution(
@@ -410,7 +410,7 @@ def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_workfl
     workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
 
     # Call the method
-    result = workflow_cycle_manager._handle_workflow_run_partial_success(
+    result = workflow_cycle_manager.handle_workflow_run_partial_success(
         workflow_run_id="test-workflow-run-id",
         total_tokens=75,
         total_steps=4,
@@ -429,7 +429,7 @@ def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_workfl
 
 
 def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
-    """Test _handle_workflow_node_execution_failed method"""
+    """Test handle_workflow_node_execution_failed method"""
     # Create a mock event
     event = MagicMock(spec=QueueNodeFailedEvent)
     event.node_execution_id = "test-node-execution-id"
@@ -458,7 +458,7 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
     workflow_cycle_manager._workflow_node_execution_repository.get_by_node_execution_id.return_value = node_execution
 
     # Call the method
-    result = workflow_cycle_manager._handle_workflow_node_execution_failed(
+    result = workflow_cycle_manager.handle_workflow_node_execution_failed(
         event=event,
     )
 

@@ -263,7 +263,7 @@ class WorkflowAppGenerateTaskPipeline:
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     # init workflow run
-                    workflow_execution = self._workflow_cycle_manager._handle_workflow_run_start(
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_start(
                         session=session,
                         workflow_id=self._workflow_id,
                     )
@@ -281,7 +281,7 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_retried(
+                    workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
                         workflow_execution_id=self._workflow_run_id,
                         event=event,
                     )
@@ -298,7 +298,7 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                workflow_node_execution = self._workflow_cycle_manager._handle_node_execution_start(
+                workflow_node_execution = self._workflow_cycle_manager.handle_node_execution_start(
                     workflow_execution_id=self._workflow_run_id, event=event
                 )
                 node_start_response = self._workflow_cycle_manager.workflow_node_start_to_stream_response(
@@ -310,7 +310,7 @@ class WorkflowAppGenerateTaskPipeline:
                 if node_start_response:
                     yield node_start_response
             elif isinstance(event, QueueNodeSucceededEvent):
-                workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_success(
+                workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_success(
                     event=event
                 )
                 node_success_response = self._workflow_cycle_manager.workflow_node_finish_to_stream_response(
@@ -328,7 +328,7 @@ class WorkflowAppGenerateTaskPipeline:
                 | QueueNodeInLoopFailedEvent
                 | QueueNodeExceptionEvent,
             ):
-                workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
+                workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_failed(
                     event=event,
                 )
                 node_failed_response = self._workflow_cycle_manager.workflow_node_finish_to_stream_response(
@@ -445,7 +445,7 @@ class WorkflowAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_execution = self._workflow_cycle_manager._handle_workflow_run_success(
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_success(
                         workflow_run_id=self._workflow_run_id,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
@@ -472,7 +472,7 @@ class WorkflowAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_execution = self._workflow_cycle_manager._handle_workflow_run_partial_success(
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_partial_success(
                         workflow_run_id=self._workflow_run_id,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
@@ -500,7 +500,7 @@ class WorkflowAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_execution = self._workflow_cycle_manager._handle_workflow_run_failed(
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_failed(
                         workflow_run_id=self._workflow_run_id,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,

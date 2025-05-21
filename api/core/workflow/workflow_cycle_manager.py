@@ -85,7 +85,7 @@ class WorkflowCycleManager:
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
 
-    def _handle_workflow_run_start(
+    def handle_workflow_run_start(
         self,
         *,
         session: Session,
@@ -130,7 +130,7 @@ class WorkflowCycleManager:
 
         return execution
 
-    def _handle_workflow_run_success(
+    def handle_workflow_run_success(
         self,
         *,
         workflow_run_id: str,
@@ -162,7 +162,7 @@ class WorkflowCycleManager:
 
         return workflow_execution
 
-    def _handle_workflow_run_partial_success(
+    def handle_workflow_run_partial_success(
         self,
         *,
         workflow_run_id: str,
@@ -195,7 +195,7 @@ class WorkflowCycleManager:
 
         return execution
 
-    def _handle_workflow_run_failed(
+    def handle_workflow_run_failed(
         self,
         *,
         workflow_run_id: str,
@@ -246,7 +246,7 @@ class WorkflowCycleManager:
 
         return execution
 
-    def _handle_node_execution_start(
+    def handle_node_execution_start(
         self,
         *,
         workflow_execution_id: str,
@@ -282,7 +282,7 @@ class WorkflowCycleManager:
 
         return domain_execution
 
-    def _handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> NodeExecution:
+    def handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> NodeExecution:
         # Get the domain model from repository
         domain_execution = self._workflow_node_execution_repository.get_by_node_execution_id(event.node_execution_id)
         if not domain_execution:
@@ -315,7 +315,7 @@ class WorkflowCycleManager:
 
         return domain_execution
 
-    def _handle_workflow_node_execution_failed(
+    def handle_workflow_node_execution_failed(
         self,
         *,
         event: QueueNodeFailedEvent
@@ -365,7 +365,7 @@ class WorkflowCycleManager:
 
         return domain_execution
 
-    def _handle_workflow_node_execution_retried(
+    def handle_workflow_node_execution_retried(
         self, *, workflow_execution_id: str, event: QueueNodeRetryEvent
     ) -> NodeExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_execution_id)
