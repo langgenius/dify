@@ -3,7 +3,7 @@ import logging
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Any, List, Optional, Self, Union
+from typing import TYPE_CHECKING, Any, Optional, Self, Union
 from uuid import uuid4
 
 from core.variables import utils as variable_utils
@@ -366,11 +366,11 @@ class Workflow(Base):
             self._rag_pipeline_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._rag_pipeline_variables)
-        results = [v for v in variables_dict.values()]
+        results = list(variables_dict.values())
         return results
 
     @rag_pipeline_variables.setter
-    def rag_pipeline_variables(self, values: List[dict]) -> None:
+    def rag_pipeline_variables(self, values: list[dict]) -> None:
         self._rag_pipeline_variables = json.dumps(
             {item["variable"]: item for item in values},
             ensure_ascii=False,

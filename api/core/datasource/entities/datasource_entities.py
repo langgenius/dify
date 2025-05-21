@@ -22,8 +22,8 @@ class DatasourceProviderType(enum.StrEnum):
     """
 
     ONLINE_DOCUMENT = "online_document"
-    LOCAL_FILE = "local_file"
     WEBSITE = "website"
+    ONLINE_DRIVE = "online_drive"
 
     @classmethod
     def value_of(cls, value: str) -> "DatasourceProviderType":
@@ -125,14 +125,21 @@ class DatasourceDescription(BaseModel):
 
 class DatasourceEntity(BaseModel):
     identity: DatasourceIdentity
-    parameters: list[DatasourceParameter] = Field(default_factory=list)
     description: Optional[DatasourceDescription] = None
-    output_schema: Optional[dict] = None
+    first_step_parameters: list[DatasourceParameter] = Field(default_factory=list)
+    second_step_parameters: list[DatasourceParameter] = Field(default_factory=list)
+    first_step_output_schema: Optional[dict] = None
+    second_step_output_schema: Optional[dict] = None
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
-    @field_validator("parameters", mode="before")
+    @field_validator("first_step_parameters", mode="before")
     @classmethod
-    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[DatasourceParameter]:
+    def set_first_step_parameters(cls, v, validation_info: ValidationInfo) -> list[DatasourceParameter]:
+        return v or []
+
+    @field_validator("second_step_parameters", mode="before")
+    @classmethod
+    def set_second_step_parameters(cls, v, validation_info: ValidationInfo) -> list[DatasourceParameter]:
         return v or []
 
 
@@ -145,7 +152,7 @@ class DatasourceProviderEntity(ToolProviderEntity):
 
 
 class DatasourceProviderEntityWithPlugin(DatasourceProviderEntity):
-        datasources: list[DatasourceEntity] = Field(default_factory=list)
+    datasources: list[DatasourceEntity] = Field(default_factory=list)
 
 
 class DatasourceInvokeMeta(BaseModel):
