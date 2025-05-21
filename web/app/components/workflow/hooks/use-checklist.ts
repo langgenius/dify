@@ -21,7 +21,6 @@ import {
   MAX_TREE_DEPTH,
 } from '../constants'
 import type { ToolNodeType } from '../nodes/tool/types'
-import { useIsChatMode } from './use-workflow'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useToastContext } from '@/app/components/base/toast'
 import { CollectionType } from '@/app/components/tools/types'
@@ -38,7 +37,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
-  const isChatMode = useIsChatMode()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
@@ -101,7 +99,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
         const { errorMessage } = nodesExtraData![node.data.type].checkValid(checkData, t, moreDataForCheckValid)
-
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {
           list.push({
             id: node.id,
@@ -115,26 +112,21 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       }
     }
 
-    if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
-      list.push({
-        id: 'answer-need-added',
-        type: BlockEnum.Answer,
-        title: t('workflow.blocks.answer'),
-        errorMessage: t('workflow.common.needAnswerNode'),
-      })
-    }
+    const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
 
-    if (!isChatMode && !nodes.find(node => node.data.type === BlockEnum.End)) {
-      list.push({
-        id: 'end-need-added',
-        type: BlockEnum.End,
-        title: t('workflow.blocks.end'),
-        errorMessage: t('workflow.common.needEndNode'),
-      })
-    }
+    isRequiredNodesType.forEach((type: string) => {
+      if (!nodes.find(node => node.data.type === type)) {
+        list.push({
+          id: `${type}-need-added`,
+          type,
+          title: t(`workflow.blocks.${type}`),
+          errorMessage: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }),
+        })
+      }
+    })
 
     return list
-  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData])
+  }, [nodes, edges, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData])
 
   return needWarningNodes
 }
@@ -146,7 +138,6 @@ export const useChecklistBeforePublish = () => {
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
   const { notify } = useToastContext()
-  const isChatMode = useIsChatMode()
   const store = useStoreApi()
   const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: strategyProviders } = useStrategyProviders()
@@ -241,18 +232,18 @@ export const useChecklistBeforePublish = () => {
       }
     }
 
-    if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
-      notify({ type: 'error', message: t('workflow.common.needAnswerNode') })
-      return false
-    }
+    const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
 
-    if (!isChatMode && !nodes.find(node => node.data.type === BlockEnum.End)) {
-      notify({ type: 'error', message: t('workflow.common.needEndNode') })
-      return false
+    for(let i = 0; i < isRequiredNodesType.length; i++) {
+      const type = isRequiredNodesType[i]
+      if (!nodes.find(node => node.data.type === type)) {
+        notify({ type: 'error', message: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }) })
+        return false
+      }
     }
 
     return true
-  }, [store, isChatMode, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData])
+  }, [store, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData])
 
   return {
     handleCheckBeforePublish,

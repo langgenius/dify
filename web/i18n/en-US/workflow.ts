@@ -46,6 +46,7 @@ const translation = {
     setVarValuePlaceholder: 'Set variable',
     needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
+    needAdd: '{{node}} block must be added',
     needEndNode: 'The End block must be added',
     needAnswerNode: 'The Answer block must be added',
     workflowProcess: 'Workflow Process',

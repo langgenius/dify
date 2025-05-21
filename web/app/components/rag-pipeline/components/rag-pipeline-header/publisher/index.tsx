@@ -1,4 +1,8 @@
-import { memo } from 'react'
+import {
+  memo,
+  useCallback,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
@@ -7,20 +11,31 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import Popup from './popup'
 
 const Publisher = () => {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (newOpen)
+      handleSyncWorkflowDraft()
+    setOpen(newOpen)
+  }, [handleSyncWorkflowDraft])
 
   return (
     <PortalToFollowElem
+      open={open}
+      onOpenChange={setOpen}
       placement='bottom-end'
       offset={{
         mainAxis: 4,
         crossAxis: 40,
       }}
     >
-      <PortalToFollowElemTrigger>
+      <PortalToFollowElemTrigger onClick={() => handleOpenChange(!open)}>
         <Button variant='primary'>
           {t('workflow.common.publish')}
           <RiArrowDownSLine className='h-4 w-4' />

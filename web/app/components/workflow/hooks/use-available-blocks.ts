@@ -21,13 +21,13 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, inContainer?: boolean) 
   } = useNodesMetaData()
   const availableNodesType = useMemo(() => availableNodes.map(node => node.metaData.type), [availableNodes])
   const availablePrevBlocks = useMemo(() => {
-    if (!nodeType || nodeType === BlockEnum.Start)
+    if (!nodeType || nodeType === BlockEnum.Start || nodeType === BlockEnum.DataSource)
       return []
 
     return availableNodesType
   }, [availableNodesType, nodeType])
   const availableNextBlocks = useMemo(() => {
-    if (!nodeType || nodeType === BlockEnum.End || nodeType === BlockEnum.LoopEnd)
+    if (!nodeType || nodeType === BlockEnum.End || nodeType === BlockEnum.LoopEnd || nodeType === BlockEnum.KnowledgeBase)
       return []
 
     return availableNodesType
@@ -35,11 +35,11 @@ export const useAvailableBlocks = (nodeType?: BlockEnum, inContainer?: boolean) 
 
   const getAvailableBlocks = useCallback((nodeType?: BlockEnum, inContainer?: boolean) => {
     let availablePrevBlocks = availableNodesType
-    if (!nodeType || nodeType === BlockEnum.Start)
+    if (!nodeType || nodeType === BlockEnum.Start || nodeType === BlockEnum.DataSource)
       availablePrevBlocks = []
 
     let availableNextBlocks = availableNodesType
-    if (!nodeType || nodeType === BlockEnum.End || nodeType === BlockEnum.LoopEnd)
+    if (!nodeType || nodeType === BlockEnum.End || nodeType === BlockEnum.LoopEnd || nodeType === BlockEnum.KnowledgeBase)
       availableNextBlocks = []
 
     return {

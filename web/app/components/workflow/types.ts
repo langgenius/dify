@@ -302,6 +302,9 @@ export type NodeDefault<T = {}> = {
     author: string
     description?: string
     helpLinkUri?: string
+    isRequired?: boolean
+    isUndeletable?: boolean
+    isStart?: boolean
   }
   defaultValue: Partial<T>
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }

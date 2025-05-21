@@ -76,10 +76,10 @@ export const useDeleteWorkflow = () => {
   })
 }
 
-export const usePublishWorkflow = (appId: string) => {
+export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
-    mutationFn: (params: PublishWorkflowParams) => post<CommonResponse & { created_at: number }>(`/apps/${appId}/workflows/publish`, {
+    mutationFn: (params: PublishWorkflowParams) => post<CommonResponse & { created_at: number }>(params.url, {
       body: {
         marked_name: params.title,
         marked_comment: params.releaseNotes,

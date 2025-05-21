@@ -21,6 +21,9 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
       if (block.metaData.type === BlockEnum.DataSource)
         return false
 
+      if (block.metaData.type === BlockEnum.Tool)
+        return false
+
       if (block.metaData.type === BlockEnum.IterationStart)
         return false
 
