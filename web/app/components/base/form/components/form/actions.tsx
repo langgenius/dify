@@ -23,16 +23,14 @@ const Actions = ({
     return CustomActions(form)
 
   return (
-    <div className='flex items-center justify-end p-4 pt-2'>
-      <Button
-        variant='primary'
-        disabled = {isSubmitting || !canSubmit}
-        loading={isSubmitting}
-        onClick={() => form.handleSubmit()}
-      >
-        {t('common.operation.submit')}
-      </Button>
-    </div>
+    <Button
+      variant='primary'
+      disabled={isSubmitting || !canSubmit}
+      loading={isSubmitting}
+      onClick={() => form.handleSubmit()}
+    >
+      {t('common.operation.submit')}
+    </Button>
   )
 }
 

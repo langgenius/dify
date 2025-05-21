@@ -50,7 +50,7 @@ export const useDatasourceOptions = () => {
       return {
         nodeId: node.id,
         type,
-        config: {},
+        variables: node.data.variables,
       }
     })
   }, [nodes])
@@ -97,4 +97,32 @@ export const useDatasourceOptions = () => {
     return options
   }, [datasources, t])
   return { datasources, options }
+}
+
+export const useWebCrawlerHeaderInfo = () => {
+  const { t } = useTranslation()
+  const I18N_PREFIX = 'datasetCreation.stepOne.website'
+
+  const headerInfoMap: Record<DataSourceProvider, {
+    title: string
+    docTitle: string
+    docLink: string
+  }> = {
+    [DataSourceProvider.fireCrawl]: {
+      title: t(`${I18N_PREFIX}.firecrawlTitle`),
+      docTitle: t(`${I18N_PREFIX}.firecrawlDoc`),
+      docLink: 'https://docs.firecrawl.dev/introduction',
+    },
+    [DataSourceProvider.jinaReader]: {
+      title: t(`${I18N_PREFIX}.jinaReaderTitle`),
+      docTitle: t(`${I18N_PREFIX}.jinaReaderDoc`),
+      docLink: 'https://jina.ai/reader',
+    },
+    [DataSourceProvider.waterCrawl]: {
+      title: t(`${I18N_PREFIX}.watercrawlTitle`),
+      docTitle: t(`${I18N_PREFIX}.watercrawlDoc`),
+      docLink: 'https://docs.watercrawl.dev/',
+    },
+  }
+  return headerInfoMap
 }

@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import StepIndicator from './step-indicator'
 import { useTestRunSteps } from './hooks'
 import DataSourceOptions from './data-source-options'
-import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
+import type { CrawlResultItem, FileItem } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 import LocalFile from './data-source/local-file'
 import produce from 'immer'
@@ -12,7 +12,6 @@ import { useProviderContextSelector } from '@/context/provider-context'
 import { DataSourceProvider, type NotionPage } from '@/models/common'
 import Notion from './data-source/notion'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import { DEFAULT_CRAWL_OPTIONS } from './consts'
 import Firecrawl from './data-source/website/firecrawl'
 import JinaReader from './data-source/website/jina-reader'
 import WaterCrawl from './data-source/website/water-crawl'
@@ -31,7 +30,6 @@ const TestRunPanel = () => {
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
   const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
-  const [crawlOptions, setCrawlOptions] = useState<CrawlOptions>(DEFAULT_CRAWL_OPTIONS)
 
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
@@ -159,35 +157,36 @@ const TestRunPanel = () => {
                 )}
                 {datasource?.type === DataSourceType.NOTION && (
                   <Notion
+                    nodeId={datasource?.nodeId || ''}
                     notionPages={notionPages}
                     updateNotionPages={updateNotionPages}
                   />
                 )}
                 {datasource?.type === DataSourceProvider.fireCrawl && (
                   <Firecrawl
+                    nodeId={datasource?.nodeId || ''}
+                    variables={datasource?.variables}
                     checkedCrawlResult={websitePages}
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
-                    crawlOptions={crawlOptions}
-                    onCrawlOptionsChange={setCrawlOptions}
                   />
                 )}
                 {datasource?.type === DataSourceProvider.jinaReader && (
                   <JinaReader
+                    nodeId={datasource?.nodeId || ''}
+                    variables={datasource?.variables}
                     checkedCrawlResult={websitePages}
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
-                    crawlOptions={crawlOptions}
-                    onCrawlOptionsChange={setCrawlOptions}
                   />
                 )}
                 {datasource?.type === DataSourceProvider.waterCrawl && (
                   <WaterCrawl
+                    nodeId={datasource?.nodeId || ''}
+                    variables={datasource?.variables}
                     checkedCrawlResult={websitePages}
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
-                    crawlOptions={crawlOptions}
-                    onCrawlOptionsChange={setCrawlOptions}
                   />
                 )}
                 {isShowVectorSpaceFull && (

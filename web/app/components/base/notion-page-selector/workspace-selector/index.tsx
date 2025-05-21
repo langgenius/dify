@@ -45,7 +45,7 @@ export default function WorkspaceSelector({
               <MenuItems
                 className='absolute left-0 top-8 z-10 w-80
                   origin-top-right rounded-lg border-[0.5px]
-                  border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'
+                  border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5'
               >
                 <div className="max-h-50 overflow-auto p-1">
                   {

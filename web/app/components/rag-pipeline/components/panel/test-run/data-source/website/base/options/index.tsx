@@ -1,35 +1,39 @@
 import Button from '@/app/components/base/button'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
-import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import cn from '@/utils/classnames'
 import { RiPlayLargeLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import type { ZodSchema } from 'zod'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import { useConfigurations, useInitialData } from './hooks'
+import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type OptionsProps = {
-  initialData: Record<string, any>
-  configurations: BaseConfiguration[]
+  variables: RAGPipelineVariables
   isRunning: boolean
   controlFoldOptions?: number
-  schema: ZodSchema
   onSubmit: (data: Record<string, any>) => void
 }
 
 const Options = ({
-  initialData,
-  configurations,
+  variables,
   isRunning,
   controlFoldOptions,
-  schema,
   onSubmit,
 }: OptionsProps) => {
+  const { t } = useTranslation()
+  const initialData = useInitialData(variables)
+  const configurations = useConfigurations(variables)
+  const schema = useMemo(() => {
+    return generateZodSchema(configurations)
+  }, [configurations])
+
   const form = useAppForm({
     defaultValues: initialData,
     validators: {
@@ -52,8 +56,6 @@ const Options = ({
       onSubmit(value)
     },
   })
-
-  const { t } = useTranslation()
 
   const [fold, {
     toggle: foldToggle,

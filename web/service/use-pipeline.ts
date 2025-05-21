@@ -9,6 +9,7 @@ import type {
   ImportPipelineDSLResponse,
   PipelineCheckDependenciesResponse,
   PipelineDatasourceNodeRunRequest,
+  PipelineDatasourceNodeRunResponse,
   PipelineProcessingParamsRequest,
   PipelineProcessingParamsResponse,
   PipelineTemplateByIdResponse,
@@ -115,15 +116,18 @@ export const useCheckPipelineDependencies = (
   })
 }
 
-export const useDatasourceNodeRun = () => {
+export const useDatasourceNodeRun = (
+  mutationOptions: MutationOptions<PipelineDatasourceNodeRunResponse, Error, PipelineDatasourceNodeRunRequest> = {},
+) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'datasource-node-run'],
     mutationFn: (request: PipelineDatasourceNodeRunRequest) => {
       const { pipeline_id, node_id, ...rest } = request
-      return post(`/rag/pipelines/${pipeline_id}/workflows/published/nodes/${node_id}/run`, {
+      return post<PipelineDatasourceNodeRunResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/nodes/${node_id}/run`, {
         body: rest,
       })
     },
+    ...mutationOptions,
   })
 }
 

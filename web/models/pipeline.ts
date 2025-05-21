@@ -98,12 +98,12 @@ export type PipelineCheckDependenciesResponse = {
 }
 
 export enum PipelineInputVarType {
-  textInput = 'text-input',
+  textInput = 'textInput',
   paragraph = 'paragraph',
   select = 'select',
-  number = 'number',
+  number = 'numberInput',
   singleFile = 'file',
-  multiFiles = 'file-list',
+  multiFiles = 'fileList',
   checkbox = 'checkbox',
 }
 
@@ -142,23 +142,4 @@ export type PipelineDatasourceNodeRunRequest = {
   inputs: Record<string, any>
 }
 
-export type PipelineDatasourceNodeRunResponse = {
-  id: string
-  inputs: Record<string, any>
-  process_data: Record<string, any>
-  outputs: Record<string, any>
-  status: string
-  error?: string
-  elapsed_time: number
-  execution_metadata: {
-    total_tokens: number
-    total_price: number
-    currency?: string
-  }
-  extras: {
-    icon: string | object
-  }
-  created_at: string
-  created_by: string
-  finished_at: string
-}
+export type PipelineDatasourceNodeRunResponse = Record<string, any>

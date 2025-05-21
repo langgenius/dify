@@ -49,7 +49,7 @@ export const useConfigurations = (datasourceNodeId: string) => {
         value: option,
       })),
       showConditions: [],
-      default: item.default,
+      default: item.default_value,
     }))
     return configs
   }, [paramsConfig])

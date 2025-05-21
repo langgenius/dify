@@ -6,9 +6,9 @@ import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 
 type HeaderProps = {
   isInPipeline?: boolean
-  onClickConfiguration: () => void
+  onClickConfiguration?: () => void
   title: string
-  buttonText: string
+  buttonText?: string
   docTitle: string
   docLink: string
 }
@@ -31,21 +31,21 @@ const Header = ({
           {title}
         </div>
         <Divider type='vertical' className='mx-1 h-3.5' />
-        <Button
-          variant='secondary'
-          size='small'
-          className={cn(isInPipeline ? 'px-1' : 'px-1.5')}
-        >
-          <RiEqualizer2Line
-            className='h-4 w-4'
-            onClick={onClickConfiguration}
-          />
-          {!isInPipeline && (
+        {!isInPipeline && (
+          <Button
+            variant='secondary'
+            size='small'
+            className='px-1.5'
+          >
+            <RiEqualizer2Line
+              className='h-4 w-4'
+              onClick={onClickConfiguration}
+            />
             <span className='system-xs-medium'>
               {buttonText}
             </span>
-          )}
-        </Button>
+          </Button>
+        )}
       </div>
       <a
         className='system-xs-medium flex items-center gap-x-1 overflow-hidden text-text-accent'

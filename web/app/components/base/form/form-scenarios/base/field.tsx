@@ -156,6 +156,7 @@ const BaseField = ({
                 allowed_file_extensions: allowedFileExtensions,
                 allowed_file_types: allowedFileTypes,
                 allowed_file_upload_methods: allowedFileUploadMethods,
+                number_limits: 1,
               }}
             />
           )}
