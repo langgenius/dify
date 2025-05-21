@@ -1,4 +1,3 @@
-import json
 import time
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
@@ -8,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueIterationCompletedEvent,
@@ -54,9 +53,11 @@ from core.workflow.entities.node_execution_entities import (
     NodeExecution,
     NodeExecutionStatus,
 )
+from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
 from models import (
@@ -67,7 +68,6 @@ from models import (
     WorkflowNodeExecutionStatus,
     WorkflowRun,
     WorkflowRunStatus,
-    WorkflowRunTriggeredFrom,
 )
 
 
@@ -77,21 +77,20 @@ class WorkflowCycleManager:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         workflow_system_variables: dict[SystemVariableKey, Any],
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
-        self._workflow_run: WorkflowRun | None = None
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
+        self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
 
-    def _handle_workflow_run_start(
+    def handle_workflow_run_start(
         self,
         *,
         session: Session,
         workflow_id: str,
-        user_id: str,
-        created_by_role: CreatorUserRole,
-    ) -> WorkflowRun:
+    ) -> WorkflowExecution:
         workflow_stmt = select(Workflow).where(Workflow.id == workflow_id)
         workflow = session.scalar(workflow_stmt)
         if not workflow:
@@ -110,157 +109,116 @@ class WorkflowCycleManager:
                 continue
             inputs[f"sys.{key.value}"] = value
 
-        triggered_from = (
-            WorkflowRunTriggeredFrom.DEBUGGING
-            if self._application_generate_entity.invoke_from == InvokeFrom.DEBUGGER
-            else WorkflowRunTriggeredFrom.APP_RUN
-        )
-
         # handle special values
         inputs = dict(WorkflowEntry.handle_special_values(inputs) or {})
 
         # init workflow run
         # TODO: This workflow_run_id should always not be None, maybe we can use a more elegant way to handle this
-        workflow_run_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
+        execution_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
+        execution = WorkflowExecution.new(
+            id=execution_id,
+            workflow_id=workflow.id,
+            sequence_number=new_sequence_number,
+            type=WorkflowType(workflow.type),
+            workflow_version=workflow.version,
+            graph=workflow.graph_dict,
+            inputs=inputs,
+            started_at=datetime.now(UTC).replace(tzinfo=None),
+        )
 
-        workflow_run = WorkflowRun()
-        workflow_run.id = workflow_run_id
-        workflow_run.tenant_id = workflow.tenant_id
-        workflow_run.app_id = workflow.app_id
-        workflow_run.sequence_number = new_sequence_number
-        workflow_run.workflow_id = workflow.id
-        workflow_run.type = workflow.type
-        workflow_run.triggered_from = triggered_from.value
-        workflow_run.version = workflow.version
-        workflow_run.graph = workflow.graph
-        workflow_run.inputs = json.dumps(inputs)
-        workflow_run.status = WorkflowRunStatus.RUNNING
-        workflow_run.created_by_role = created_by_role
-        workflow_run.created_by = user_id
-        workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
+        self._workflow_execution_repository.save(execution)
 
-        session.add(workflow_run)
+        return execution
 
-        return workflow_run
-
-    def _handle_workflow_run_success(
+    def handle_workflow_run_success(
         self,
         *,
-        session: Session,
         workflow_run_id: str,
-        start_at: float,
         total_tokens: int,
         total_steps: int,
         outputs: Mapping[str, Any] | None = None,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
-    ) -> WorkflowRun:
-        """
-        Workflow run success
-        :param workflow_run_id: workflow run id
-        :param start_at: start time
-        :param total_tokens: total tokens
-        :param total_steps: total steps
-        :param outputs: outputs
-        :param conversation_id: conversation id
-        :return:
-        """
-        workflow_run = self._get_workflow_run(session=session, workflow_run_id=workflow_run_id)
+    ) -> WorkflowExecution:
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
         outputs = WorkflowEntry.handle_special_values(outputs)
 
-        workflow_run.status = WorkflowRunStatus.SUCCEEDED
-        workflow_run.outputs = json.dumps(outputs or {})
-        workflow_run.elapsed_time = time.perf_counter() - start_at
-        workflow_run.total_tokens = total_tokens
-        workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow_execution.status = WorkflowExecutionStatus.SUCCEEDED
+        workflow_execution.outputs = outputs or {}
+        workflow_execution.total_tokens = total_tokens
+        workflow_execution.total_steps = total_steps
+        workflow_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
 
         if trace_manager:
             trace_manager.add_trace_task(
                 TraceTask(
                     TraceTaskName.WORKFLOW_TRACE,
-                    workflow_run=workflow_run,
+                    workflow_execution=workflow_execution,
                     conversation_id=conversation_id,
                     user_id=trace_manager.user_id,
                 )
             )
 
-        return workflow_run
+        return workflow_execution
 
-    def _handle_workflow_run_partial_success(
+    def handle_workflow_run_partial_success(
         self,
         *,
-        session: Session,
         workflow_run_id: str,
-        start_at: float,
         total_tokens: int,
         total_steps: int,
         outputs: Mapping[str, Any] | None = None,
         exceptions_count: int = 0,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
-    ) -> WorkflowRun:
-        workflow_run = self._get_workflow_run(session=session, workflow_run_id=workflow_run_id)
+    ) -> WorkflowExecution:
+        execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
         outputs = WorkflowEntry.handle_special_values(dict(outputs) if outputs else None)
 
-        workflow_run.status = WorkflowRunStatus.PARTIAL_SUCCEEDED.value
-        workflow_run.outputs = json.dumps(outputs or {})
-        workflow_run.elapsed_time = time.perf_counter() - start_at
-        workflow_run.total_tokens = total_tokens
-        workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
-        workflow_run.exceptions_count = exceptions_count
+        execution.status = WorkflowExecutionStatus.PARTIAL_SUCCEEDED
+        execution.outputs = outputs or {}
+        execution.total_tokens = total_tokens
+        execution.total_steps = total_steps
+        execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        execution.exceptions_count = exceptions_count
 
         if trace_manager:
             trace_manager.add_trace_task(
                 TraceTask(
                     TraceTaskName.WORKFLOW_TRACE,
-                    workflow_run=workflow_run,
+                    workflow_execution=execution,
                     conversation_id=conversation_id,
                     user_id=trace_manager.user_id,
                 )
             )
 
-        return workflow_run
+        return execution
 
-    def _handle_workflow_run_failed(
+    def handle_workflow_run_failed(
         self,
         *,
-        session: Session,
         workflow_run_id: str,
-        start_at: float,
         total_tokens: int,
         total_steps: int,
         status: WorkflowRunStatus,
-        error: str,
+        error_message: str,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
         exceptions_count: int = 0,
-    ) -> WorkflowRun:
-        """
-        Workflow run failed
-        :param workflow_run_id: workflow run id
-        :param start_at: start time
-        :param total_tokens: total tokens
-        :param total_steps: total steps
-        :param status: status
-        :param error: error message
-        :return:
-        """
-        workflow_run = self._get_workflow_run(session=session, workflow_run_id=workflow_run_id)
+    ) -> WorkflowExecution:
+        execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
 
-        workflow_run.status = status.value
-        workflow_run.error = error
-        workflow_run.elapsed_time = time.perf_counter() - start_at
-        workflow_run.total_tokens = total_tokens
-        workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
-        workflow_run.exceptions_count = exceptions_count
+        execution.status = WorkflowExecutionStatus(status.value)
+        execution.error_message = error_message
+        execution.total_tokens = total_tokens
+        execution.total_steps = total_steps
+        execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        execution.exceptions_count = exceptions_count
 
         # Use the instance repository to find running executions for a workflow run
         running_domain_executions = self._workflow_node_execution_repository.get_running_executions(
-            workflow_run_id=workflow_run.id
+            workflow_run_id=execution.id
         )
 
         # Update the domain models
@@ -269,7 +227,7 @@ class WorkflowCycleManager:
             if domain_execution.node_execution_id:
                 # Update the domain model
                 domain_execution.status = NodeExecutionStatus.FAILED
-                domain_execution.error = error
+                domain_execution.error = error_message
                 domain_execution.finished_at = now
                 domain_execution.elapsed_time = (now - domain_execution.created_at).total_seconds()
 
@@ -280,15 +238,22 @@ class WorkflowCycleManager:
             trace_manager.add_trace_task(
                 TraceTask(
                     TraceTaskName.WORKFLOW_TRACE,
-                    workflow_run=workflow_run,
+                    workflow_execution=execution,
                     conversation_id=conversation_id,
                     user_id=trace_manager.user_id,
                 )
             )
 
-        return workflow_run
+        return execution
 
-    def _handle_node_execution_start(self, *, workflow_run: WorkflowRun, event: QueueNodeStartedEvent) -> NodeExecution:
+    def handle_node_execution_start(
+        self,
+        *,
+        workflow_execution_id: str,
+        event: QueueNodeStartedEvent,
+    ) -> NodeExecution:
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_execution_id)
+
         # Create a domain model
         created_at = datetime.now(UTC).replace(tzinfo=None)
         metadata = {
@@ -299,8 +264,8 @@ class WorkflowCycleManager:
 
         domain_execution = NodeExecution(
             id=str(uuid4()),
-            workflow_id=workflow_run.workflow_id,
-            workflow_run_id=workflow_run.id,
+            workflow_id=workflow_execution.workflow_id,
+            workflow_run_id=workflow_execution.id,
             predecessor_node_id=event.predecessor_node_id,
             index=event.node_run_index,
             node_execution_id=event.node_execution_id,
@@ -317,7 +282,7 @@ class WorkflowCycleManager:
 
         return domain_execution
 
-    def _handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> NodeExecution:
+    def handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> NodeExecution:
         # Get the domain model from repository
         domain_execution = self._workflow_node_execution_repository.get_by_node_execution_id(event.node_execution_id)
         if not domain_execution:
@@ -350,7 +315,7 @@ class WorkflowCycleManager:
 
         return domain_execution
 
-    def _handle_workflow_node_execution_failed(
+    def handle_workflow_node_execution_failed(
         self,
         *,
         event: QueueNodeFailedEvent
@@ -400,15 +365,10 @@ class WorkflowCycleManager:
 
         return domain_execution
 
-    def _handle_workflow_node_execution_retried(
-        self, *, workflow_run: WorkflowRun, event: QueueNodeRetryEvent
+    def handle_workflow_node_execution_retried(
+        self, *, workflow_execution_id: str, event: QueueNodeRetryEvent
     ) -> NodeExecution:
-        """
-        Workflow node execution failed
-        :param workflow_run: workflow run
-        :param event: queue node failed event
-        :return:
-        """
+        workflow_execution = self._get_workflow_execution_or_raise_error(workflow_execution_id)
         created_at = event.start_at
         finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - created_at).total_seconds()
@@ -433,8 +393,8 @@ class WorkflowCycleManager:
         # Create a domain model
         domain_execution = NodeExecution(
             id=str(uuid4()),
-            workflow_id=workflow_run.workflow_id,
-            workflow_run_id=workflow_run.id,
+            workflow_id=workflow_execution.workflow_id,
+            workflow_run_id=workflow_execution.id,
             predecessor_node_id=event.predecessor_node_id,
             node_execution_id=event.node_execution_id,
             node_id=event.node_id,
@@ -456,34 +416,34 @@ class WorkflowCycleManager:
 
         return domain_execution
 
-    def _workflow_start_to_stream_response(
+    def workflow_start_to_stream_response(
         self,
         *,
-        session: Session,
         task_id: str,
-        workflow_run: WorkflowRun,
+        workflow_execution: WorkflowExecution,
     ) -> WorkflowStartStreamResponse:
-        _ = session
         return WorkflowStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution.id,
             data=WorkflowStartStreamResponse.Data(
-                id=workflow_run.id,
-                workflow_id=workflow_run.workflow_id,
-                sequence_number=workflow_run.sequence_number,
-                inputs=dict(workflow_run.inputs_dict or {}),
-                created_at=int(workflow_run.created_at.timestamp()),
+                id=workflow_execution.id,
+                workflow_id=workflow_execution.workflow_id,
+                sequence_number=workflow_execution.sequence_number,
+                inputs=workflow_execution.inputs,
+                created_at=int(workflow_execution.started_at.timestamp()),
             ),
         )
 
-    def _workflow_finish_to_stream_response(
+    def workflow_finish_to_stream_response(
         self,
         *,
         session: Session,
         task_id: str,
-        workflow_run: WorkflowRun,
+        workflow_execution: WorkflowExecution,
     ) -> WorkflowFinishStreamResponse:
         created_by = None
+        workflow_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == workflow_execution.id))
+        assert workflow_run is not None
         if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
             stmt = select(Account).where(Account.id == workflow_run.created_by)
             account = session.scalar(stmt)
@@ -504,28 +464,35 @@ class WorkflowCycleManager:
         else:
             raise NotImplementedError(f"unknown created_by_role: {workflow_run.created_by_role}")
 
+        # Handle the case where finished_at is None by using current time as default
+        finished_at_timestamp = (
+            int(workflow_execution.finished_at.timestamp())
+            if workflow_execution.finished_at
+            else int(datetime.now(UTC).timestamp())
+        )
+
         return WorkflowFinishStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution.id,
             data=WorkflowFinishStreamResponse.Data(
-                id=workflow_run.id,
-                workflow_id=workflow_run.workflow_id,
-                sequence_number=workflow_run.sequence_number,
-                status=workflow_run.status,
-                outputs=dict(workflow_run.outputs_dict) if workflow_run.outputs_dict else None,
-                error=workflow_run.error,
-                elapsed_time=workflow_run.elapsed_time,
-                total_tokens=workflow_run.total_tokens,
-                total_steps=workflow_run.total_steps,
+                id=workflow_execution.id,
+                workflow_id=workflow_execution.workflow_id,
+                sequence_number=workflow_execution.sequence_number,
+                status=workflow_execution.status,
+                outputs=workflow_execution.outputs,
+                error=workflow_execution.error_message,
+                elapsed_time=workflow_execution.elapsed_time,
+                total_tokens=workflow_execution.total_tokens,
+                total_steps=workflow_execution.total_steps,
                 created_by=created_by,
-                created_at=int(workflow_run.created_at.timestamp()),
-                finished_at=int(workflow_run.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(dict(workflow_run.outputs_dict)),
-                exceptions_count=workflow_run.exceptions_count,
+                created_at=int(workflow_execution.started_at.timestamp()),
+                finished_at=finished_at_timestamp,
+                files=self.fetch_files_from_node_outputs(workflow_execution.outputs),
+                exceptions_count=workflow_execution.exceptions_count,
             ),
         )
 
-    def _workflow_node_start_to_stream_response(
+    def workflow_node_start_to_stream_response(
         self,
         *,
         event: QueueNodeStartedEvent,
@@ -571,7 +538,7 @@ class WorkflowCycleManager:
 
         return response
 
-    def _workflow_node_finish_to_stream_response(
+    def workflow_node_finish_to_stream_response(
         self,
         *,
         event: QueueNodeSucceededEvent
@@ -608,7 +575,7 @@ class WorkflowCycleManager:
                 execution_metadata=workflow_node_execution.metadata,
                 created_at=int(workflow_node_execution.created_at.timestamp()),
                 finished_at=int(workflow_node_execution.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs or {}),
+                files=self.fetch_files_from_node_outputs(workflow_node_execution.outputs or {}),
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
                 parent_parallel_id=event.parent_parallel_id,
@@ -618,7 +585,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_node_retry_to_stream_response(
+    def workflow_node_retry_to_stream_response(
         self,
         *,
         event: QueueNodeRetryEvent,
@@ -651,7 +618,7 @@ class WorkflowCycleManager:
                 execution_metadata=workflow_node_execution.metadata,
                 created_at=int(workflow_node_execution.created_at.timestamp()),
                 finished_at=int(workflow_node_execution.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs or {}),
+                files=self.fetch_files_from_node_outputs(workflow_node_execution.outputs or {}),
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
                 parent_parallel_id=event.parent_parallel_id,
@@ -662,13 +629,16 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_parallel_branch_start_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueParallelBranchRunStartedEvent
+    def workflow_parallel_branch_start_to_stream_response(
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueParallelBranchRunStartedEvent,
     ) -> ParallelBranchStartStreamResponse:
-        _ = session
         return ParallelBranchStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=ParallelBranchStartStreamResponse.Data(
                 parallel_id=event.parallel_id,
                 parallel_branch_id=event.parallel_start_node_id,
@@ -680,18 +650,16 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_parallel_branch_finished_to_stream_response(
+    def workflow_parallel_branch_finished_to_stream_response(
         self,
         *,
-        session: Session,
         task_id: str,
-        workflow_run: WorkflowRun,
+        workflow_execution_id: str,
         event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent,
     ) -> ParallelBranchFinishedStreamResponse:
-        _ = session
         return ParallelBranchFinishedStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=ParallelBranchFinishedStreamResponse.Data(
                 parallel_id=event.parallel_id,
                 parallel_branch_id=event.parallel_start_node_id,
@@ -705,13 +673,16 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_iteration_start_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationStartEvent
+    def workflow_iteration_start_to_stream_response(
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueIterationStartEvent,
     ) -> IterationNodeStartStreamResponse:
-        _ = session
         return IterationNodeStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=IterationNodeStartStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
@@ -726,13 +697,16 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_iteration_next_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationNextEvent
+    def workflow_iteration_next_to_stream_response(
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueIterationNextEvent,
     ) -> IterationNodeNextStreamResponse:
-        _ = session
         return IterationNodeNextStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=IterationNodeNextStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
@@ -749,13 +723,16 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_iteration_completed_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueIterationCompletedEvent
+    def workflow_iteration_completed_to_stream_response(
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueIterationCompletedEvent,
     ) -> IterationNodeCompletedStreamResponse:
-        _ = session
         return IterationNodeCompletedStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=IterationNodeCompletedStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
@@ -779,13 +756,12 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_loop_start_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopStartEvent
+    def workflow_loop_start_to_stream_response(
+        self, *, task_id: str, workflow_execution_id: str, event: QueueLoopStartEvent
     ) -> LoopNodeStartStreamResponse:
-        _ = session
         return LoopNodeStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=LoopNodeStartStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
@@ -800,13 +776,16 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_loop_next_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopNextEvent
+    def workflow_loop_next_to_stream_response(
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueLoopNextEvent,
     ) -> LoopNodeNextStreamResponse:
-        _ = session
         return LoopNodeNextStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=LoopNodeNextStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
@@ -823,13 +802,16 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _workflow_loop_completed_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueLoopCompletedEvent
+    def workflow_loop_completed_to_stream_response(
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueLoopCompletedEvent,
     ) -> LoopNodeCompletedStreamResponse:
-        _ = session
         return LoopNodeCompletedStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=LoopNodeCompletedStreamResponse.Data(
                 id=event.node_id,
                 node_id=event.node_id,
@@ -853,7 +835,7 @@ class WorkflowCycleManager:
             ),
         )
 
-    def _fetch_files_from_node_outputs(self, outputs_dict: Mapping[str, Any]) -> Sequence[Mapping[str, Any]]:
+    def fetch_files_from_node_outputs(self, outputs_dict: Mapping[str, Any] | None) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from node outputs
         :param outputs_dict: node outputs dict
@@ -910,20 +892,13 @@ class WorkflowCycleManager:
 
         return None
 
-    def _get_workflow_run(self, *, session: Session, workflow_run_id: str) -> WorkflowRun:
-        if self._workflow_run and self._workflow_run.id == workflow_run_id:
-            cached_workflow_run = self._workflow_run
-            cached_workflow_run = session.merge(cached_workflow_run)
-            return cached_workflow_run
-        stmt = select(WorkflowRun).where(WorkflowRun.id == workflow_run_id)
-        workflow_run = session.scalar(stmt)
-        if not workflow_run:
-            raise WorkflowRunNotFoundError(workflow_run_id)
-        self._workflow_run = workflow_run
+    def _get_workflow_execution_or_raise_error(self, id: str, /) -> WorkflowExecution:
+        execution = self._workflow_execution_repository.get(id)
+        if not execution:
+            raise WorkflowRunNotFoundError(id)
+        return execution
 
-        return workflow_run
-
-    def _handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
+    def handle_agent_log(self, task_id: str, event: QueueAgentLogEvent) -> AgentLogStreamResponse:
         """
         Handle agent log
         :param task_id: task id
