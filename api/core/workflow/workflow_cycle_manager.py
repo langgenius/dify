@@ -631,12 +631,15 @@ class WorkflowCycleManager:
         )
 
     def _workflow_parallel_branch_start_to_stream_response(
-        self, *, session: Session, task_id: str, workflow_run: WorkflowRun, event: QueueParallelBranchRunStartedEvent
+        self,
+        *,
+        task_id: str,
+        workflow_execution_id: str,
+        event: QueueParallelBranchRunStartedEvent,
     ) -> ParallelBranchStartStreamResponse:
-        _ = session
         return ParallelBranchStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run.id,
+            workflow_run_id=workflow_execution_id,
             data=ParallelBranchStartStreamResponse.Data(
                 parallel_id=event.parallel_id,
                 parallel_branch_id=event.parallel_start_node_id,
