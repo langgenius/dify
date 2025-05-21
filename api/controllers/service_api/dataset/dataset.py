@@ -339,8 +339,11 @@ class DatasetTagsApi(DatasetApiResource):
 
         parser = reqparse.RequestParser()
         parser.add_argument(
-            "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.",
-            type=DatasetTagsApi._validate_tag_name
+            "name",
+            nullable=False,
+            required=True,
+            help="Name must be between 1 to 50 characters.",
+            type=DatasetTagsApi._validate_tag_name,
         )
 
         args = parser.parse_args()
@@ -358,12 +361,13 @@ class DatasetTagsApi(DatasetApiResource):
 
         parser = reqparse.RequestParser()
         parser.add_argument(
-            "name", nullable=False, required=True, help="Name must be between 1 to 50 characters.",
-            type=DatasetTagsApi._validate_tag_name
+            "name",
+            nullable=False,
+            required=True,
+            help="Name must be between 1 to 50 characters.",
+            type=DatasetTagsApi._validate_tag_name,
         )
-        parser.add_argument(
-            "tag_id", nullable=False, required=True, help="Id of a tag.", type=str
-        )
+        parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
         args = parser.parse_args()
         tag = TagService.update_tags(args, args.get("tag_id"))
 
@@ -379,9 +383,7 @@ class DatasetTagsApi(DatasetApiResource):
         if not current_user.is_editor:
             raise Forbidden()
         parser = reqparse.RequestParser()
-        parser.add_argument(
-            "tag_id", nullable=False, required=True, help="Id of a tag.", type=str
-        )
+        parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
         args = parser.parse_args()
         TagService.delete_tag(args.get("tag_id"))
 
@@ -395,7 +397,6 @@ class DatasetTagsApi(DatasetApiResource):
 
 
 class DatasetTagBindingApi(DatasetApiResource):
-
     @validate_dataset_token
     def post(self, _, dataset_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
@@ -407,8 +408,7 @@ class DatasetTagBindingApi(DatasetApiResource):
             "tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required."
         )
         parser.add_argument(
-            "target_id", type=str, nullable=False, required=True, location="json",
-            help="Target Dataset ID is required."
+            "target_id", type=str, nullable=False, required=True, location="json", help="Target Dataset ID is required."
         )
 
         args = parser.parse_args()
@@ -419,7 +419,6 @@ class DatasetTagBindingApi(DatasetApiResource):
 
 
 class DatasetTagUnbindingApi(DatasetApiResource):
-
     @validate_dataset_token
     def post(self, _, dataset_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
@@ -438,7 +437,6 @@ class DatasetTagUnbindingApi(DatasetApiResource):
 
 
 class DatasetTagsBindingStatusApi(DatasetApiResource):
-
     @validate_dataset_token
     def get(self, _, *args, **kwargs):
         """Get all knowledge type tags."""
@@ -447,6 +445,7 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
         tags_list = [{"id": tag.id, "name": tag.name} for tag in tags]
         response = {"data": tags_list, "total": len(tags)}
         return response, 200
+
 
 api.add_resource(DatasetListApi, "/datasets")
 api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
