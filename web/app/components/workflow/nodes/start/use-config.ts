@@ -22,6 +22,8 @@ const useConfig = (id: string, payload: StartNodeType) => {
   const {
     deleteNodeInspectorVars,
     renameInspectVarName,
+    nodesWithInspectVars,
+    deleteInspectVar,
   } = useInspectVarsCrud()
 
   const [isShowAddVarModal, {
@@ -37,6 +39,12 @@ const useConfig = (id: string, payload: StartNodeType) => {
   const [removedIndex, setRemoveIndex] = useState(0)
   const handleVarListChange = useCallback((newList: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => {
     if (moreInfo?.payload?.type === ChangeType.remove) {
+      const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
+        return varItem.name === moreInfo?.payload?.payload?.beforeKey
+      })?.id
+      if(varId)
+        deleteInspectVar(id, varId)
+
       if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
         showRemoveVarConfirm()
         setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
@@ -54,10 +62,10 @@ const useConfig = (id: string, payload: StartNodeType) => {
       handleOutVarRenameChange(id, [id, inputs.variables[moreInfo.index].variable], [id, changedVar.variable])
       renameInspectVarName(id, inputs.variables[moreInfo.index].variable, changedVar.variable)
     }
-    else { // edit var type
+    else if(moreInfo?.payload?.type !== ChangeType.remove) { // edit var type
       deleteNodeInspectorVars(id)
     }
-  }, [deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, isVarUsedInNodes, renameInspectVarName, setInputs, showRemoveVarConfirm])
+  }, [deleteInspectVar, deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, isVarUsedInNodes, nodesWithInspectVars, renameInspectVarName, setInputs, showRemoveVarConfirm])
 
   const removeVarInNode = useCallback(() => {
     const newInputs = produce(inputs, (draft) => {
@@ -73,8 +81,7 @@ const useConfig = (id: string, payload: StartNodeType) => {
       draft.variables.push(payload)
     })
     setInputs(newInputs)
-    deleteNodeInspectorVars(id)
-  }, [deleteNodeInspectorVars, id, inputs, setInputs])
+  }, [inputs, setInputs])
   return {
     readOnly,
     isChatMode,

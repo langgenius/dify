@@ -161,7 +161,7 @@ export const useDeleteInspectVar = (appId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete inspector var', appId],
     mutationFn: async (varId: string) => {
-      return del(`workflows/draft/variables/${varId}`)
+      return del(`apps/${appId}/workflows/draft/variables/${varId}`)
     },
   })
 }

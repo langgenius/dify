@@ -148,7 +148,7 @@ const Group = ({
               key={varItem.id}
               className={cn(
                 'relative flex cursor-pointer items-center gap-1 rounded-md px-3 py-1 hover:bg-state-base-hover',
-                varItem.id === currentVar?.var.id && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
+                varItem.id === currentVar?.var?.id && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
               )}
               onClick={() => handleSelectVar(varItem, varType)}
             >

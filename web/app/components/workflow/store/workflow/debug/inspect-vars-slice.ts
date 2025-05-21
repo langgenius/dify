@@ -104,21 +104,20 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
       })
     },
     deleteInspectVar: (nodeId, varId) => {
-      set(produce((state: InspectVarsSliceShape) => {
-        const nodes = state.nodesWithInspectVars.map((node) => {
-          if (node.nodeId === nodeId) {
-            return produce(node, (draft) => {
-              const needChangeVarIndex = draft.vars.findIndex((varItem) => {
-                return varItem.id === varId
-              })
-              if (needChangeVarIndex !== -1)
-                draft.vars.splice(needChangeVarIndex, 1)
-            })
-          }
-          return node
-        })
-        state.nodesWithInspectVars = nodes
-      }))
+      set((state: InspectVarsSliceShape) => {
+        const nodes = produce(state.nodesWithInspectVars, (draft) => {
+          const targetNode = draft.find(node => node.nodeId === nodeId)
+          if (!targetNode)
+            return
+          const needChangeVarIndex = targetNode.vars.findIndex(varItem => varItem.id === varId)
+          if (needChangeVarIndex !== -1)
+            targetNode.vars.splice(needChangeVarIndex, 1)
+          },
+        )
+        return {
+          nodesWithInspectVars: nodes,
+        }
+      })
     },
   })
 }
