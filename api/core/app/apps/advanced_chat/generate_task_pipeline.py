@@ -536,10 +536,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                     raise ValueError("workflow run not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_success(
-                        session=session,
+                    workflow_execution = self._workflow_cycle_manager._handle_workflow_run_success(
                         workflow_run_id=self._workflow_run_id,
-                        start_at=graph_runtime_state.start_at,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
                         outputs=event.outputs,
@@ -548,9 +546,10 @@ class AdvancedChatAppGenerateTaskPipeline:
                     )
 
                     workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
-                    session.commit()
 
                 yield workflow_finish_resp
                 self._base_task_pipeline._queue_manager.publish(
@@ -563,10 +562,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_partial_success(
-                        session=session,
+                    workflow_execution = self._workflow_cycle_manager._handle_workflow_run_partial_success(
                         workflow_run_id=self._workflow_run_id,
-                        start_at=graph_runtime_state.start_at,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
                         outputs=event.outputs,
@@ -575,9 +572,10 @@ class AdvancedChatAppGenerateTaskPipeline:
                         trace_manager=trace_manager,
                     )
                     workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
-                    session.commit()
 
                 yield workflow_finish_resp
                 self._base_task_pipeline._queue_manager.publish(
@@ -590,26 +588,25 @@ class AdvancedChatAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_failed(
-                        session=session,
+                    workflow_execution = self._workflow_cycle_manager._handle_workflow_run_failed(
                         workflow_run_id=self._workflow_run_id,
-                        start_at=graph_runtime_state.start_at,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
                         status=WorkflowRunStatus.FAILED,
-                        error=event.error,
+                        error_message=event.error,
                         conversation_id=self._conversation_id,
                         trace_manager=trace_manager,
                         exceptions_count=event.exceptions_count,
                     )
                     workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
-                    err_event = QueueErrorEvent(error=ValueError(f"Run failed: {workflow_run.error}"))
+                    err_event = QueueErrorEvent(error=ValueError(f"Run failed: {workflow_execution.error_message}"))
                     err = self._base_task_pipeline._handle_error(
                         event=err_event, session=session, message_id=self._message_id
                     )
-                    session.commit()
 
                 yield workflow_finish_resp
                 yield self._base_task_pipeline._error_to_stream_response(err)
@@ -617,21 +614,19 @@ class AdvancedChatAppGenerateTaskPipeline:
             elif isinstance(event, QueueStopEvent):
                 if self._workflow_run_id and graph_runtime_state:
                     with Session(db.engine, expire_on_commit=False) as session:
-                        workflow_run = self._workflow_cycle_manager._handle_workflow_run_failed(
-                            session=session,
+                        workflow_execution = self._workflow_cycle_manager._handle_workflow_run_failed(
                             workflow_run_id=self._workflow_run_id,
-                            start_at=graph_runtime_state.start_at,
                             total_tokens=graph_runtime_state.total_tokens,
                             total_steps=graph_runtime_state.node_run_steps,
                             status=WorkflowRunStatus.STOPPED,
-                            error=event.get_stop_reason(),
+                            error_message=event.get_stop_reason(),
                             conversation_id=self._conversation_id,
                             trace_manager=trace_manager,
                         )
                         workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
                             session=session,
                             task_id=self._application_generate_entity.task_id,
-                            workflow_run=workflow_run,
+                            workflow_execution=workflow_execution,
                         )
                         # Save message
                         self._save_message(session=session, graph_runtime_state=graph_runtime_state)

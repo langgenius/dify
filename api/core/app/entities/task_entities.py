@@ -212,7 +212,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         workflow_id: str
         sequence_number: int
         status: str
-        outputs: Optional[dict] = None
+        outputs: Optional[Mapping[str, Any]] = None
         error: Optional[str] = None
         elapsed_time: float
         total_tokens: int
@@ -788,7 +788,7 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         id: str
         workflow_id: str
         status: str
-        outputs: Optional[dict] = None
+        outputs: Optional[Mapping[str, Any]] = None
         error: Optional[str] = None
         elapsed_time: float
         total_tokens: int
