@@ -103,10 +103,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         inputs = db_model.inputs_dict
         process_data = db_model.process_data_dict
         outputs = db_model.outputs_dict
-        if db_model.execution_metadata_dict:
-            metadata = {NodeRunMetadataKey(k): v for k, v in db_model.execution_metadata_dict.items()}
-        else:
-            metadata = {}
+        metadata = {NodeRunMetadataKey(k): v for k, v in db_model.execution_metadata_dict.items()}
 
         # Convert status to domain enum
         status = NodeExecutionStatus(db_model.status)

@@ -666,8 +666,11 @@ class WorkflowNodeExecution(Base):
         return json.loads(self.process_data) if self.process_data else None
 
     @property
-    def execution_metadata_dict(self) -> dict[str, Any] | None:
-        return json.loads(self.execution_metadata) if self.execution_metadata else None
+    def execution_metadata_dict(self) -> dict[str, Any]:
+        # When the metadata is unset, we return an empty dictionary instead of `None`.
+        # This approach streamlines the logic for the caller, making it easier to handle
+        # cases where metadata is absent.
+        return json.loads(self.execution_metadata) if self.execution_metadata else {}
 
     @property
     def extras(self):
