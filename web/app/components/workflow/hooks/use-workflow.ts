@@ -12,12 +12,12 @@ import type {
   Connection,
 } from 'reactflow'
 import type {
+  BlockEnum,
   Edge,
   Node,
   ValueSelector,
 } from '../types'
 import {
-  BlockEnum,
   WorkflowRunningStatus,
 } from '../types'
 import {
@@ -41,6 +41,7 @@ import {
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
 import { basePath } from '@/utils/var'
+import { useNodesMetaData } from '.'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -53,6 +54,7 @@ export const useWorkflow = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const { getAvailableBlocks } = useAvailableBlocks()
+  const { nodesMap } = useNodesMetaData()
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
     workflowStore.setState({ panelWidth: width })
@@ -64,13 +66,17 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const nodes = getNodes()
-    let startNode = nodes.find(node => node.data.type === BlockEnum.Start)
     const currentNode = nodes.find(node => node.id === nodeId)
 
-    if (currentNode?.parentId)
-      startNode = nodes.find(node => node.parentId === currentNode.parentId && (node.type === CUSTOM_ITERATION_START_NODE || node.type === CUSTOM_LOOP_START_NODE))
+    let startNodes = nodes.filter(node => nodesMap?.[node.data.type as BlockEnum]?.metaData.isStart) || []
 
-    if (!startNode)
+    if (currentNode?.parentId) {
+      const startNode = nodes.find(node => node.parentId === currentNode.parentId && (node.type === CUSTOM_ITERATION_START_NODE || node.type === CUSTOM_LOOP_START_NODE))
+      if (startNode)
+        startNodes = [startNode]
+    }
+
+    if (!startNodes.length)
       return []
 
     const list: Node[] = []
@@ -89,8 +95,10 @@ export const useWorkflow = () => {
           callback(root)
       }
     }
-    preOrder(startNode, (node) => {
-      list.push(node)
+    startNodes.forEach((startNode) => {
+      preOrder(startNode, (node) => {
+        list.push(node)
+      })
     })
 
     const incomers = getIncomers({ id: nodeId } as Node, nodes, edges)
@@ -100,7 +108,7 @@ export const useWorkflow = () => {
     return uniqBy(list, 'id').filter((item: Node) => {
       return SUPPORT_OUTPUT_VARS_NODE.includes(item.data.type)
     })
-  }, [store])
+  }, [store, nodesMap])
 
   const getBeforeNodesInSameBranch = useCallback((nodeId: string, newNodes?: Node[], newEdges?: Edge[]) => {
     const {
@@ -226,33 +234,6 @@ export const useWorkflow = () => {
 
     return nodes.filter(node => node.parentId === nodeId)
   }, [store])
-
-  const isFromStartNode = useCallback((nodeId: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-    const currentNode = nodes.find(node => node.id === nodeId)
-
-    if (!currentNode)
-      return false
-
-    if (currentNode.data.type === BlockEnum.Start)
-      return true
-
-    const checkPreviousNodes = (node: Node) => {
-      const previousNodes = getBeforeNodeById(node.id)
-
-      for (const prevNode of previousNodes) {
-        if (prevNode.data.type === BlockEnum.Start)
-          return true
-        if (checkPreviousNodes(prevNode))
-          return true
-      }
-
-      return false
-    }
-
-    return checkPreviousNodes(currentNode)
-  }, [store, getBeforeNodeById])
 
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
@@ -385,13 +366,6 @@ export const useWorkflow = () => {
     return !hasCycle(targetNode)
   }, [store, checkParallelLimit, getAvailableBlocks])
 
-  const getNode = useCallback((nodeId?: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-
-    return nodes.find(node => node.id === nodeId) || nodes.find(node => node.data.type === BlockEnum.Start)
-  }, [store])
-
   return {
     setPanelWidth,
     getTreeLeafNodes,
@@ -405,8 +379,6 @@ export const useWorkflow = () => {
     checkParallelLimit,
     checkNestedParallelLimit,
     isValidConnection,
-    isFromStartNode,
-    getNode,
     getBeforeNodeById,
     getIterationNodeChildren,
     getLoopNodeChildren,

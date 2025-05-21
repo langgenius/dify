@@ -1234,13 +1234,13 @@ export const useNodesInteractions = () => {
     if (nodeId) {
       // If nodeId is provided, copy that specific node
       const nodeToCopy = nodes.find(node => node.id === nodeId && node.data.type !== BlockEnum.Start
-        && node.type !== CUSTOM_ITERATION_START_NODE && node.type !== CUSTOM_LOOP_START_NODE && node.data.type !== BlockEnum.LoopEnd)
+        && node.type !== CUSTOM_ITERATION_START_NODE && node.type !== CUSTOM_LOOP_START_NODE && node.data.type !== BlockEnum.LoopEnd && node.data.type !== BlockEnum.KnowledgeBase)
       if (nodeToCopy)
         setClipboardElements([nodeToCopy])
     }
     else {
       // If no nodeId is provided, fall back to the current behavior
-      const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start
+      const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.DataSource
         && !node.data.isInIteration && !node.data.isInLoop)
 
       if (bundledNodes.length) {
@@ -1248,7 +1248,7 @@ export const useNodesInteractions = () => {
         return
       }
 
-      const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.LoopEnd)
+      const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.LoopEnd && node.data.type !== BlockEnum.DataSource)
 
       if (selectedNode)
         setClipboardElements([selectedNode])
