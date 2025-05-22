@@ -117,8 +117,47 @@ const useSingleRunFormParams = ({
     ]
   })()
 
+  const getVarFromCaseItem = (caseItem: CaseItem): ValueSelector[] => {
+    const vars: ValueSelector[] = []
+    if (caseItem.conditions && caseItem.conditions.length) {
+      caseItem.conditions.forEach((condition) => {
+        // eslint-disable-next-line ts/no-use-before-define
+        const conditionVars = getVarFromCondition(condition)
+        vars.push(...conditionVars)
+      })
+    }
+    return vars
+  }
+  const getVarFromCondition = (condition: Condition): ValueSelector[] => {
+    const vars: ValueSelector[] = []
+    if (condition.variable_selector)
+      vars.push(condition.variable_selector)
+
+    if(condition.sub_variable_condition && condition.sub_variable_condition.conditions?.length)
+      vars.push(...getVarFromCaseItem(condition.sub_variable_condition))
+    return vars
+  }
+
+  const getDependentVars = () => {
+    const vars: ValueSelector[] = []
+    if (payload.cases && payload.cases.length) {
+      payload.cases.forEach((caseItem) => {
+        const caseVars = getVarFromCaseItem(caseItem)
+        vars.push(...caseVars)
+      })
+    }
+
+    if (payload.conditions && payload.conditions.length) {
+      payload.conditions.forEach((condition) => {
+        const conditionVars = getVarFromCondition(condition)
+        vars.push(...conditionVars)
+      })
+    }
+    return vars
+  }
   return {
     forms,
+    getDependentVars,
   }
 }
 
