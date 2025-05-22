@@ -271,12 +271,15 @@ class TencentVector(BaseVector):
 
         for result in res[0]:
             meta = result.get(self.field_metadata)
+            if isinstance(meta, str):
+                # Compatible with version 1.1.3 and below.
+                meta = json.loads(meta)
+                score = 1 - result.get("score", 0.0)
             score = result.get("score", 0.0)
             if score > score_threshold:
                 meta["score"] = score
                 doc = Document(page_content=result.get(self.field_text), metadata=meta)
                 docs.append(doc)
-
         return docs
 
     def delete(self) -> None:

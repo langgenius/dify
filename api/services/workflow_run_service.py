@@ -15,6 +15,7 @@ from models import (
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
+from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 
 class WorkflowRunService:
@@ -140,14 +141,13 @@ class WorkflowRunService:
             session_factory=db.engine,
             user=user,
             app_id=app_model.id,
-            triggered_from=None,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
-        # Use the repository to get the node executions with ordering
+        # Use the repository to get the database models directly
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id, order_config=order_config)
-
-        # Convert domain models to database models
-        workflow_node_executions = [repository.to_db_model(node_execution) for node_execution in node_executions]
+        workflow_node_executions = repository.get_db_models_by_workflow_run(
+            workflow_run_id=run_id, order_config=order_config
+        )
 
         return workflow_node_executions
