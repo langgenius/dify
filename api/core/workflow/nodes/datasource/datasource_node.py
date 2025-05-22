@@ -68,7 +68,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
             return
 
         # get parameters
-        datasource_parameters = datasource_runtime.entity.parameters
+        datasource_parameters = datasource_runtime.entity.first_step_parameters
         parameters = self._generate_parameters(
             datasource_parameters=datasource_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,

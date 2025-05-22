@@ -366,7 +366,7 @@ class Workflow(Base):
             self._rag_pipeline_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._rag_pipeline_variables)
-        results = [v for v in variables_dict.values()]
+        results = list(variables_dict.values())
         return results
 
     @rag_pipeline_variables.setter
