@@ -154,13 +154,16 @@ const useLastRun = <T>({
   }
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
+  const [isRunAfterSingleRun, setIsRunAfterSingleRun] = useState(false)
   const handleRunWithParams = async (data: Record<string, any>) => {
+    setIsRunAfterSingleRun(true)
     setTabType(TabType.lastRun)
     callRunApi(data)
     hideSingleRun()
   }
 
   const handleTabClicked = useCallback((type: TabType) => {
+    setIsRunAfterSingleRun(false)
     setTabType(type)
   }, [])
 
@@ -219,6 +222,7 @@ const useLastRun = <T>({
     // no need to input params
     if (isAllVarsHasValue(singleRunParams?.getDependentVars?.())) {
       callRunApi({})
+      setIsRunAfterSingleRun(true)
       setTabType(TabType.lastRun)
     }
     else {
@@ -229,6 +233,7 @@ const useLastRun = <T>({
   return {
     ...oneStepRunRes,
     tabType,
+    isRunAfterSingleRun,
     setTabType: handleTabClicked,
     singleRunParams,
     nodeInfo,

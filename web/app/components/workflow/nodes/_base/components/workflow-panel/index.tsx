@@ -148,6 +148,7 @@ const BasePanel: FC<BasePanelProps> = ({
     getInputVars,
     toVarInputs,
     tabType,
+    isRunAfterSingleRun,
     setTabType,
     singleRunParams,
     nodeInfo,
@@ -326,6 +327,7 @@ const BasePanel: FC<BasePanelProps> = ({
             nodeId={id}
             canSingleRun={isSupportSingleRun}
             runningStatus={runningStatus}
+            isRunAfterSingleRun={isRunAfterSingleRun}
             onSingleRunClicked={handleSingleRun}
             nodeInfo={nodeInfo}
             singleRunResult={runResult!}
