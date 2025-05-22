@@ -91,9 +91,9 @@ const translation = {
     member: 'メンバー',
     memberAfter: 'メンバー',
     messageRequest: {
-      title: '{{count,number}}メッセージ',
-      titlePerMonth: '{{count,number}}メッセージ/月',
-      tooltip: 'Open Alモデルを使用するさまざまなプランのメッセージ呼び出しクォータ。上限を超えるメッセージは、Open AI APIキーを使用します。',
+      title: '{{count,number}}メッセージクレジット',
+      titlePerMonth: '{{count,number}}メッセージクレジット/月',
+      tooltip: 'メッセージクレジットは、DifyでさまざまなOpenAIモデルを簡単にお試しいただくためのものです。モデルタイプに応じてクレジットが消費され、使い切った後はご自身のOpenAI APIキーに切り替えていただけます。',
     },
     annotatedResponse: {
       title: '{{count,number}}の注釈クォータ制限',
