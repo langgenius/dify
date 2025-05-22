@@ -1,0 +1,83 @@
+import json
+from enum import Enum
+
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
+from werkzeug.exceptions import Forbidden
+
+from controllers.console import api
+from controllers.console.app.wraps import get_app_model
+from controllers.console.wraps import account_initialization_required, setup_required
+from extensions.ext_database import db
+from fields.app_fields import app_server_fields
+from libs.login import login_required
+from models.model import AppMCPServer
+
+
+class AppMCPServerStatus(str, Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class AppMCPServerController(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model
+    @marshal_with(app_server_fields)
+    def get(self, app_model):
+        server = db.session.query(AppMCPServer).filter(AppMCPServer.app_id == app_model.id).first()
+        return server
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model
+    @marshal_with(app_server_fields)
+    def post(self, app_model):
+        # The role of the current user in the ta table must be editor, admin, or owner
+        if not current_user.is_editor:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("description", type=str, required=True, location="json")
+        parser.add_argument("parameters", type=dict, required=True, location="json")
+        args = parser.parse_args()
+        server = AppMCPServer(
+            name=app_model.name,
+            description=args["description"],
+            parameters=json.dumps(args["parameters"], ensure_ascii=False),
+            status=AppMCPServerStatus.ACTIVE,
+            app_id=app_model.id,
+            tenant_id=current_user.current_tenant_id,
+            server_code=AppMCPServer.generate_server_code(16),
+        )
+        db.session.add(server)
+        db.session.commit()
+
+        return server
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model
+    @marshal_with(app_server_fields)
+    def put(self, app_model):
+        if not current_user.is_editor:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("id", type=str, required=True, location="json")
+        parser.add_argument("description", type=str, required=True, location="json")
+        parser.add_argument("parameters", type=dict, required=True, location="json")
+        parser.add_argument("status", type=str, required=True, location="json")
+        args = parser.parse_args()
+        server = db.session.query(AppMCPServer).filter(AppMCPServer.id == args["id"]).first()
+        if not server:
+            raise Forbidden()
+        server.description = args["description"]
+        server.parameters = json.dumps(args["parameters"], ensure_ascii=False)
+        server.status = AppMCPServerStatus(args["status"])
+        db.session.commit()
+        return server
+
+
+api.add_resource(AppMCPServerController, "/apps/<uuid:app_id>/server")

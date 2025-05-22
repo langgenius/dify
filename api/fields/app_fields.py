@@ -213,3 +213,14 @@ app_import_fields = {
 app_import_check_dependencies_fields = {
     "leaked_dependencies": fields.List(fields.Nested(leaked_dependency_fields)),
 }
+
+app_server_fields = {
+    "id": fields.String,
+    "name": fields.String,
+    "server_code": fields.String,
+    "description": fields.String,
+    "status": fields.String,
+    "parameters": fields.Raw,
+    "created_at": TimestampField,
+    "updated_at": TimestampField,
+}

@@ -14,6 +14,7 @@ from models.model import (
     ApiToken,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
+    AppMCPServer,
     AppModelConfig,
     Conversation,
     EndUser,
@@ -42,6 +43,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         # Delete related data
         _delete_app_model_configs(tenant_id, app_id)
         _delete_app_site(tenant_id, app_id)
+        _delete_app_mcp_servers(tenant_id, app_id)
         _delete_app_api_tokens(tenant_id, app_id)
         _delete_installed_apps(tenant_id, app_id)
         _delete_recommended_apps(tenant_id, app_id)
@@ -88,6 +90,18 @@ def _delete_app_site(tenant_id: str, app_id: str):
         db.session.query(Site).filter(Site.id == site_id).delete(synchronize_session=False)
 
     _delete_records("""select id from sites where app_id=:app_id limit 1000""", {"app_id": app_id}, del_site, "site")
+
+
+def _delete_app_mcp_servers(tenant_id: str, app_id: str):
+    def del_mcp_server(mcp_server_id: str):
+        db.session.query(AppMCPServer).filter(AppMCPServer.id == mcp_server_id).delete(synchronize_session=False)
+
+    _delete_records(
+        """select id from app_mcp_servers where app_id=:app_id limit 1000""",
+        {"app_id": app_id},
+        del_mcp_server,
+        "app mcp server",
+    )
 
 
 def _delete_app_api_tokens(tenant_id: str, app_id: str):

@@ -217,7 +217,7 @@ class MCPToolProvider(Base):
     # who created this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # encrypted credentials
-    encrypted_credentials: Mapped[str] = mapped_column(db.Text, nullable=False)
+    encrypted_credentials: Mapped[str] = mapped_column(db.Text, nullable=True)
     # authed
     authed: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
     # tools
