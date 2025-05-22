@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -14,6 +15,8 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_V
 from core.workflow.nodes import NodeType
 from factories import variable_factory
 from models.workflow import WorkflowDraftVariable, is_system_variable_editable
+
+_logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -297,6 +300,24 @@ class _DraftVariableBuilder:
                         editable=self._should_variable_be_editable(node_id, name),
                     )
                 )
+
+    @staticmethod
+    def _normalize_variable_for_start_node(node_type: NodeType, node_id: str, name: str):
+        if node_type != NodeType.START:
+            return node_id, name
+
+            # TODO(QuantumGhost): need special handling for dummy output variable in
+            # `Start` node.
+        if not name.startswith(f"{SYSTEM_VARIABLE_NODE_ID}."):
+            return node_id, name
+        _logger.debug(
+            "Normalizing variable: node_type=%s, node_id=%s, name=%s",
+            node_type,
+            node_id,
+            name,
+        )
+        node_id, name_ = name.split(".", maxsplit=1)
+        return node_id, name_
 
     def _build_variables_from_mapping(
         self,
