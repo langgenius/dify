@@ -191,6 +191,7 @@ const translation = {
     clearAll: '全部清除',
     installing: '安裝 {{installingLength}} 個外掛程式，0 個完成。',
   },
+  requestAPlugin: '申请外掛程式',
   submitPlugin: '提交外掛程式',
   findMoreInMarketplace: '在 Marketplace 中查找更多內容',
   installPlugin: '安裝外掛程式',

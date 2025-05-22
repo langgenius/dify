@@ -3,10 +3,12 @@ import time
 from collections.abc import Generator
 from typing import Optional, Union
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     WorkflowAppGenerateEntity,
@@ -53,7 +55,9 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow.entities.workflow_execution_entities import WorkflowExecution
 from core.workflow.enums import SystemVariableKey
+from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_cycle_manager import WorkflowCycleManager
 from extensions.ext_database import db
@@ -83,6 +87,7 @@ class WorkflowAppGenerateTaskPipeline:
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
         stream: bool,
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         self._base_task_pipeline = BasedGenerateTaskPipeline(
@@ -111,7 +116,12 @@ class WorkflowAppGenerateTaskPipeline:
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
                 SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
             },
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
+        )
+
+        self._workflow_response_converter = WorkflowResponseConverter(
+            application_generate_entity=application_generate_entity,
         )
 
         self._application_generate_entity = application_generate_entity
@@ -258,17 +268,15 @@ class WorkflowAppGenerateTaskPipeline:
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     # init workflow run
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_start(
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_start(
                         session=session,
                         workflow_id=self._workflow_id,
-                        user_id=self._user_id,
-                        created_by_role=self._created_by_role,
                     )
-                    self._workflow_run_id = workflow_run.id
-                    start_resp = self._workflow_cycle_manager._workflow_start_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                    self._workflow_run_id = workflow_execution.id
+                    start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
-                    session.commit()
 
                 yield start_resp
             elif isinstance(
@@ -278,13 +286,11 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
+                    workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
+                        workflow_execution_id=self._workflow_run_id,
+                        event=event,
                     )
-                    workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_retried(
-                        workflow_run=workflow_run, event=event
-                    )
-                    response = self._workflow_cycle_manager._workflow_node_retry_to_stream_response(
+                    response = self._workflow_response_converter.workflow_node_retry_to_stream_response(
                         event=event,
                         task_id=self._application_generate_entity.task_id,
                         workflow_node_execution=workflow_node_execution,
@@ -297,27 +303,22 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    workflow_node_execution = self._workflow_cycle_manager._handle_node_execution_start(
-                        workflow_run=workflow_run, event=event
-                    )
-                    node_start_response = self._workflow_cycle_manager._workflow_node_start_to_stream_response(
-                        event=event,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_node_execution=workflow_node_execution,
-                    )
-                    session.commit()
+                workflow_node_execution = self._workflow_cycle_manager.handle_node_execution_start(
+                    workflow_execution_id=self._workflow_run_id, event=event
+                )
+                node_start_response = self._workflow_response_converter.workflow_node_start_to_stream_response(
+                    event=event,
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_node_execution=workflow_node_execution,
+                )
 
                 if node_start_response:
                     yield node_start_response
             elif isinstance(event, QueueNodeSucceededEvent):
-                workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_success(
+                workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_success(
                     event=event
                 )
-                node_success_response = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                node_success_response = self._workflow_response_converter.workflow_node_finish_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
@@ -332,10 +333,10 @@ class WorkflowAppGenerateTaskPipeline:
                 | QueueNodeInLoopFailedEvent
                 | QueueNodeExceptionEvent,
             ):
-                workflow_node_execution = self._workflow_cycle_manager._handle_workflow_node_execution_failed(
+                workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_failed(
                     event=event,
                 )
-                node_failed_response = self._workflow_cycle_manager._workflow_node_finish_to_stream_response(
+                node_failed_response = self._workflow_response_converter.workflow_node_finish_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
@@ -348,18 +349,13 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
+                parallel_start_resp = (
+                    self._workflow_response_converter.workflow_parallel_branch_start_to_stream_response(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution_id=self._workflow_run_id,
+                        event=event,
                     )
-                    parallel_start_resp = (
-                        self._workflow_cycle_manager._workflow_parallel_branch_start_to_stream_response(
-                            session=session,
-                            task_id=self._application_generate_entity.task_id,
-                            workflow_run=workflow_run,
-                            event=event,
-                        )
-                    )
+                )
 
                 yield parallel_start_resp
 
@@ -367,18 +363,13 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
+                parallel_finish_resp = (
+                    self._workflow_response_converter.workflow_parallel_branch_finished_to_stream_response(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution_id=self._workflow_run_id,
+                        event=event,
                     )
-                    parallel_finish_resp = (
-                        self._workflow_cycle_manager._workflow_parallel_branch_finished_to_stream_response(
-                            session=session,
-                            task_id=self._application_generate_entity.task_id,
-                            workflow_run=workflow_run,
-                            event=event,
-                        )
-                    )
+                )
 
                 yield parallel_finish_resp
 
@@ -386,16 +377,11 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    iter_start_resp = self._workflow_cycle_manager._workflow_iteration_start_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                iter_start_resp = self._workflow_response_converter.workflow_iteration_start_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield iter_start_resp
 
@@ -403,16 +389,11 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    iter_next_resp = self._workflow_cycle_manager._workflow_iteration_next_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                iter_next_resp = self._workflow_response_converter.workflow_iteration_next_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield iter_next_resp
 
@@ -420,16 +401,11 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    iter_finish_resp = self._workflow_cycle_manager._workflow_iteration_completed_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                iter_finish_resp = self._workflow_response_converter.workflow_iteration_completed_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield iter_finish_resp
 
@@ -437,16 +413,11 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    loop_start_resp = self._workflow_cycle_manager._workflow_loop_start_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                loop_start_resp = self._workflow_response_converter.workflow_loop_start_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield loop_start_resp
 
@@ -454,16 +425,11 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    loop_next_resp = self._workflow_cycle_manager._workflow_loop_next_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                loop_next_resp = self._workflow_response_converter.workflow_loop_next_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield loop_next_resp
 
@@ -471,16 +437,11 @@ class WorkflowAppGenerateTaskPipeline:
                 if not self._workflow_run_id:
                     raise ValueError("workflow run not initialized.")
 
-                with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._get_workflow_run(
-                        session=session, workflow_run_id=self._workflow_run_id
-                    )
-                    loop_finish_resp = self._workflow_cycle_manager._workflow_loop_completed_to_stream_response(
-                        session=session,
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
-                        event=event,
-                    )
+                loop_finish_resp = self._workflow_response_converter.workflow_loop_completed_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_execution_id=self._workflow_run_id,
+                    event=event,
+                )
 
                 yield loop_finish_resp
 
@@ -491,10 +452,8 @@ class WorkflowAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_success(
-                        session=session,
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_success(
                         workflow_run_id=self._workflow_run_id,
-                        start_at=graph_runtime_state.start_at,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
                         outputs=event.outputs,
@@ -503,12 +462,12 @@ class WorkflowAppGenerateTaskPipeline:
                     )
 
                     # save workflow app log
-                    self._save_workflow_app_log(session=session, workflow_run=workflow_run)
+                    self._save_workflow_app_log(session=session, workflow_execution=workflow_execution)
 
-                    workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
+                    workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                         session=session,
                         task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run,
+                        workflow_execution=workflow_execution,
                     )
                     session.commit()
 
@@ -520,10 +479,8 @@ class WorkflowAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_partial_success(
-                        session=session,
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_partial_success(
                         workflow_run_id=self._workflow_run_id,
-                        start_at=graph_runtime_state.start_at,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
                         outputs=event.outputs,
@@ -533,10 +490,12 @@ class WorkflowAppGenerateTaskPipeline:
                     )
 
                     # save workflow app log
-                    self._save_workflow_app_log(session=session, workflow_run=workflow_run)
+                    self._save_workflow_app_log(session=session, workflow_execution=workflow_execution)
 
-                    workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                    workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
                     session.commit()
 
@@ -548,26 +507,28 @@ class WorkflowAppGenerateTaskPipeline:
                     raise ValueError("graph runtime state not initialized.")
 
                 with Session(db.engine, expire_on_commit=False) as session:
-                    workflow_run = self._workflow_cycle_manager._handle_workflow_run_failed(
-                        session=session,
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_failed(
                         workflow_run_id=self._workflow_run_id,
-                        start_at=graph_runtime_state.start_at,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
                         status=WorkflowRunStatus.FAILED
                         if isinstance(event, QueueWorkflowFailedEvent)
                         else WorkflowRunStatus.STOPPED,
-                        error=event.error if isinstance(event, QueueWorkflowFailedEvent) else event.get_stop_reason(),
+                        error_message=event.error
+                        if isinstance(event, QueueWorkflowFailedEvent)
+                        else event.get_stop_reason(),
                         conversation_id=None,
                         trace_manager=trace_manager,
                         exceptions_count=event.exceptions_count if isinstance(event, QueueWorkflowFailedEvent) else 0,
                     )
 
                     # save workflow app log
-                    self._save_workflow_app_log(session=session, workflow_run=workflow_run)
+                    self._save_workflow_app_log(session=session, workflow_execution=workflow_execution)
 
-                    workflow_finish_resp = self._workflow_cycle_manager._workflow_finish_to_stream_response(
-                        session=session, task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                    workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
+                        session=session,
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_execution=workflow_execution,
                     )
                     session.commit()
 
@@ -586,7 +547,7 @@ class WorkflowAppGenerateTaskPipeline:
                     delta_text, from_variable_selector=event.from_variable_selector
                 )
             elif isinstance(event, QueueAgentLogEvent):
-                yield self._workflow_cycle_manager._handle_agent_log(
+                yield self._workflow_response_converter.handle_agent_log(
                     task_id=self._application_generate_entity.task_id, event=event
                 )
             else:
@@ -595,11 +556,9 @@ class WorkflowAppGenerateTaskPipeline:
         if tts_publisher:
             tts_publisher.publish(None)
 
-    def _save_workflow_app_log(self, *, session: Session, workflow_run: WorkflowRun) -> None:
-        """
-        Save workflow app log.
-        :return:
-        """
+    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution) -> None:
+        workflow_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == workflow_execution.id))
+        assert workflow_run is not None
         invoke_from = self._application_generate_entity.invoke_from
         if invoke_from == InvokeFrom.SERVICE_API:
             created_from = WorkflowAppLogCreatedFrom.SERVICE_API

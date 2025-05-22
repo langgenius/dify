@@ -235,6 +235,10 @@ export const useEmbeddedChatbot = () => {
     })
   }, [initInputs, appParams])
 
+  const allInputsHidden = useMemo(() => {
+    return inputsForms.length > 0 && inputsForms.every(item => item.hide === true)
+  }, [inputsForms])
+
   useEffect(() => {
     // init inputs from url params
     (async () => {
@@ -306,6 +310,9 @@ export const useEmbeddedChatbot = () => {
 
   const { notify } = useToastContext()
   const checkInputsRequired = useCallback((silent?: boolean) => {
+    if (allInputsHidden)
+      return true
+
     let hasEmptyInput = ''
     let fileIsUploading = false
     const requiredVars = inputsForms.filter(({ required }) => required)
@@ -341,7 +348,7 @@ export const useEmbeddedChatbot = () => {
     }
 
     return true
-  }, [inputsForms, notify, t])
+  }, [inputsForms, notify, t, allInputsHidden])
   const handleStartChat = useCallback((callback?: any) => {
     if (checkInputsRequired()) {
       setShowNewConversationItemInList(true)
@@ -417,5 +424,6 @@ export const useEmbeddedChatbot = () => {
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    allInputsHidden,
   }
 }

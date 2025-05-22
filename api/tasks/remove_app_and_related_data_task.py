@@ -193,7 +193,7 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
     # Get app's owner
     with Session(db.engine, expire_on_commit=False) as session:
-        stmt = select(Account).where(Account.id == App.owner_id).where(App.id == app_id)
+        stmt = select(Account).where(Account.id == App.created_by).where(App.id == app_id)
         user = session.scalar(stmt)
 
     if user is None:

@@ -204,6 +204,7 @@ export type InputVar = {
   value_selector?: ValueSelector
   placeholder?: string
   unit?: string
+  hide: boolean
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {

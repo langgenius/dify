@@ -380,6 +380,7 @@ const translation = {
     'checkbox': 'Checkbox',
     'startSelectedOption': 'Start selected option',
     'noDefaultSelected': 'Don\'t select',
+    'hide': 'Hide',
     'file': {
       supportFileTypes: 'Support File Types',
       image: {
