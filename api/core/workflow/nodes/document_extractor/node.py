@@ -183,6 +183,7 @@ def _extract_text_from_plain_text(file_content: bytes) -> str:
         return file_content.decode("utf-8")
     except UnicodeDecodeError as e:
         try:
+            # handle Japanese symbols
             return file_content.decode('shift_jis')
         except UnicodeDecodeError as e:
             raise TextExtractionError("Failed to decode plain text file") from e
@@ -193,6 +194,7 @@ def _extract_text_from_json(file_content: bytes) -> str:
         json_data = json.loads(file_content.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
         try:
+            # handle Japanese symbols
             json_data = json.loads(file_content.decode('shift_jis'))
         except (UnicodeDecodeError, json.JSONDecodeError) as e:
             raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
@@ -206,6 +208,7 @@ def _extract_text_from_yaml(file_content: bytes) -> str:
         yaml_data = yaml.safe_load_all(file_content.decode("utf-8"))
     except (UnicodeDecodeError, yaml.YAMLError):
         try: 
+            # handle Japanese symbols
             yaml_data = yaml.safe_load_all(file_content.decode('shift_jis'))
         except (UnicodeDecodeError, yaml.YAMLError) as e:
             raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
@@ -352,6 +355,7 @@ def _extract_text_from_csv(file_content: bytes) -> str:
         csv_file = io.StringIO(file_content.decode("utf-8"))
     except Exception as e:
         try:
+            # handle Japanese symbols
             csv_file = io.StringIO(file_content.decode('shift_jis'))
         except Exception as e:
             raise TextExtractionError(f"Failed to extract text from CSV: {str(e)}") from e
