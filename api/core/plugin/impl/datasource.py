@@ -1,6 +1,14 @@
-from collections.abc import Mapping
 from typing import Any
 
+from core.datasource.entities.api_entities import DatasourceProviderApiEntity
+from core.datasource.entities.datasource_entities import (
+    GetOnlineDocumentPageContentRequest,
+    GetOnlineDocumentPageContentResponse,
+    GetOnlineDocumentPagesRequest,
+    GetOnlineDocumentPagesResponse,
+    GetWebsiteCrawlRequest,
+    GetWebsiteCrawlResponse,
+)
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
@@ -10,7 +18,7 @@ from core.plugin.impl.base import BasePluginClient
 
 
 class PluginDatasourceManager(BasePluginClient):
-    def fetch_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
+    def fetch_datasource_providers(self, tenant_id: str) -> list[DatasourceProviderApiEntity]:
         """
         Fetch datasource providers for the given tenant.
         """
@@ -19,27 +27,27 @@ class PluginDatasourceManager(BasePluginClient):
             for provider in json_response.get("data", []):
                 declaration = provider.get("declaration", {}) or {}
                 provider_name = declaration.get("identity", {}).get("name")
-                for tool in declaration.get("tools", []):
-                    tool["identity"]["provider"] = provider_name
+                for datasource in declaration.get("datasources", []):
+                    datasource["identity"]["provider"] = provider_name
 
             return json_response
 
-        response = self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/management/datasources",
-            list[PluginDatasourceProviderEntity],
-            params={"page": 1, "page_size": 256},
-            transformer=transformer,
-        )
+        # response = self._request_with_plugin_daemon_response(
+        #     "GET",
+        #     f"plugin/{tenant_id}/management/datasources",
+        #     list[PluginDatasourceProviderEntity],
+        #     params={"page": 1, "page_size": 256},
+        #     transformer=transformer,
+        # )
 
-        for provider in response:
-            provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"
+        # for provider in response:
+        #     provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"
 
-            # override the provider name for each tool to plugin_id/provider_name
-            for datasource in provider.declaration.datasources:
-                datasource.identity.provider = provider.declaration.identity.name
+        #     # override the provider name for each tool to plugin_id/provider_name
+        #     for datasource in provider.declaration.datasources:
+        #         datasource.identity.provider = provider.declaration.identity.name
 
-        return response
+        return [DatasourceProviderApiEntity(**self._get_local_file_datasource_provider())]
 
     def fetch_datasource_provider(self, tenant_id: str, provider: str) -> PluginDatasourceProviderEntity:
         """
@@ -71,15 +79,16 @@ class PluginDatasourceManager(BasePluginClient):
 
         return response
 
-    def invoke_first_step(
+    def get_website_crawl(
         self,
         tenant_id: str,
         user_id: str,
         datasource_provider: str,
         datasource_name: str,
         credentials: dict[str, Any],
-        datasource_parameters: dict[str, Any],
-    ) -> Mapping[str, Any]:
+        datasource_parameters: GetWebsiteCrawlRequest,
+        provider_type: str,
+    ) -> GetWebsiteCrawlResponse:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -88,8 +97,8 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/first_step",
-            dict,
+            f"plugin/{tenant_id}/dispatch/datasource/{provider_type}/get_website_crawl",
+            GetWebsiteCrawlResponse,
             data={
                 "user_id": user_id,
                 "data": {
@@ -109,15 +118,16 @@ class PluginDatasourceManager(BasePluginClient):
 
         raise Exception("No response from plugin daemon")
 
-    def invoke_second_step(
+    def get_online_document_pages(
         self,
         tenant_id: str,
         user_id: str,
         datasource_provider: str,
         datasource_name: str,
         credentials: dict[str, Any],
-        datasource_parameters: dict[str, Any],
-    ) -> Mapping[str, Any]:
+        datasource_parameters: GetOnlineDocumentPagesRequest,
+        provider_type: str,
+    ) -> GetOnlineDocumentPagesResponse:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -126,8 +136,47 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/second_step",
-            dict,
+            f"plugin/{tenant_id}/dispatch/datasource/{provider_type}/get_online_document_pages",
+            GetOnlineDocumentPagesResponse,
+            data={
+                "user_id": user_id,
+                "data": {
+                    "provider": datasource_provider_id.provider_name,
+                    "datasource": datasource_name,
+                    "credentials": credentials,
+                    "datasource_parameters": datasource_parameters,
+                },
+            },
+            headers={
+                "X-Plugin-ID": datasource_provider_id.plugin_id,
+                "Content-Type": "application/json",
+            },
+        )
+        for resp in response:
+            return resp
+
+        raise Exception("No response from plugin daemon")
+
+    def get_online_document_page_content(
+        self,
+        tenant_id: str,
+        user_id: str,
+        datasource_provider: str,
+        datasource_name: str,
+        credentials: dict[str, Any],
+        datasource_parameters: GetOnlineDocumentPageContentRequest,
+        provider_type: str,
+    ) -> GetOnlineDocumentPageContentResponse:
+        """
+        Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
+        """
+
+        datasource_provider_id = GenericProviderID(datasource_provider)
+
+        response = self._request_with_plugin_daemon_response_stream(
+            "POST",
+            f"plugin/{tenant_id}/dispatch/datasource/{provider_type}/get_online_document_page_content",
+            GetOnlineDocumentPageContentResponse,
             data={
                 "user_id": user_id,
                 "data": {
@@ -176,3 +225,53 @@ class PluginDatasourceManager(BasePluginClient):
             return resp.result
 
         return False
+
+    def _get_local_file_datasource_provider(self) -> dict[str, Any]:
+        return {
+            "id": "langgenius/file/file",
+            "author": "langgenius",
+            "name": "langgenius/file/file",
+            "plugin_id": "langgenius/file",
+            "plugin_unique_identifier": "langgenius/file:0.0.1@dify",
+            "description": {
+                "zh_Hans": "File",
+                "en_US": "File",
+                "pt_BR": "File",
+                "ja_JP": "File"
+            },
+            "icon": "https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=945b4365-9d99-48c1-8c47-90593fe8b9c9&filename=13d9312f6b1352d3939b90a5257de58ff3cd619d5be4f5b266ff0298935ac328.svg",
+            "label": {
+                "zh_Hans": "File",
+                "en_US": "File",
+                "pt_BR": "File",
+                "ja_JP": "File"
+            },
+            "type": "datasource",
+            "team_credentials": {},
+            "is_team_authorization": False,
+            "allow_delete": True,
+            "datasources": [{
+                "author": "langgenius",
+                "name": "upload_file",
+                "label": {
+                    "en_US": "File",
+                    "zh_Hans": "File",
+                    "pt_BR": "File",
+                    "ja_JP": "File"
+                },
+                "description": {
+                    "en_US": "File",
+                    "zh_Hans": "File",
+                    "pt_BR": "File",
+                    "ja_JP": "File."
+                },
+                "parameters": [],
+                "labels": [
+                    "search"
+                ],
+                "output_schema": None
+            }],
+            "labels": [
+                "search"
+            ]
+        }

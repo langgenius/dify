@@ -52,6 +52,7 @@ class PluginDatasourceProviderEntity(BaseModel):
     provider: str
     plugin_unique_identifier: str
     plugin_id: str
+    author: str
     declaration: DatasourceProviderEntityWithPlugin
 
 

@@ -1550,7 +1550,7 @@ class DocumentService:
     @staticmethod
     def build_document(
         dataset: Dataset,
-        process_rule_id: str,
+        process_rule_id: str | None,
         data_source_type: str,
         document_form: str,
         document_language: str,

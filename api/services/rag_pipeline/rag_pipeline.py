@@ -3,7 +3,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Sequence
 from datetime import UTC, datetime
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 from uuid import uuid4
 
 from flask_login import current_user
@@ -46,7 +46,7 @@ from services.rag_pipeline.pipeline_template.pipeline_template_factory import Pi
 class RagPipelineService:
     @staticmethod
     def get_pipeline_templates(
-        type: Literal["built-in", "customized"] = "built-in", language: str = "en-US"
+        type: str = "built-in", language: str = "en-US"
     ) -> list[PipelineBuiltInTemplate | PipelineCustomizedTemplate]:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
@@ -358,11 +358,11 @@ class RagPipelineService:
 
         return workflow_node_execution
 
-    def run_datasource_workflow_node(
+    def run_published_workflow_node(
         self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account
     ) -> WorkflowNodeExecution:
         """
-        Run published workflow datasource
+        Run published workflow node
         """
         # fetch published workflow by app_model
         published_workflow = self.get_published_workflow(pipeline=pipeline)
@@ -392,6 +392,41 @@ class RagPipelineService:
         db.session.commit()
 
         return workflow_node_execution
+
+    def run_datasource_workflow_node(
+        self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account
+    ) -> WorkflowNodeExecution:
+        """
+        Run published workflow datasource
+        """
+        # fetch published workflow by app_model
+        published_workflow = self.get_published_workflow(pipeline=pipeline)
+        if not published_workflow:
+            raise ValueError("Workflow not initialized")
+
+        # run draft workflow node
+        start_at = time.perf_counter()
+
+        datasource_node_data = published_workflow.graph_dict.get("nodes", {}).get(node_id, {}).get("data", {})
+        if not datasource_node_data:
+            raise ValueError("Datasource node data not found")
+        from core.datasource.datasource_manager import DatasourceManager
+
+        datasource_runtime = DatasourceManager.get_datasource_runtime(
+            provider_id=datasource_node_data.get("provider_id"),
+            datasource_name=datasource_node_data.get("datasource_name"),
+            tenant_id=pipeline.tenant_id,
+        )
+        result = datasource_runtime._invoke_first_step(
+            inputs=user_inputs,
+            provider_type=datasource_node_data.get("provider_type"),
+            user_id=account.id,
+        )
+
+        return {
+            "result": result,
+            "provider_type": datasource_node_data.get("provider_type"),
+        }
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
@@ -552,7 +587,7 @@ class RagPipelineService:
 
         return workflow
 
-    def get_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> dict:
+    def get_published_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> dict:
         """
         Get second step parameters of rag pipeline
         """
@@ -567,9 +602,33 @@ class RagPipelineService:
             return {}
 
         # get datasource provider
-        datasource_provider_variables = [item for item in rag_pipeline_variables
-                                         if item.get("belong_to_node_id") == node_id
-                                         or item.get("belong_to_node_id") == "shared"]
+        datasource_provider_variables = [
+            item
+            for item in rag_pipeline_variables
+            if item.get("belong_to_node_id") == node_id or item.get("belong_to_node_id") == "shared"
+        ]
+        return datasource_provider_variables
+
+    def get_draft_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> dict:
+        """
+        Get second step parameters of rag pipeline
+        """
+
+        workflow = self.get_draft_workflow(pipeline=pipeline)
+        if not workflow:
+            raise ValueError("Workflow not initialized")
+
+        # get second step node
+        rag_pipeline_variables = workflow.rag_pipeline_variables
+        if not rag_pipeline_variables:
+            return {}
+
+        # get datasource provider
+        datasource_provider_variables = [
+            item
+            for item in rag_pipeline_variables
+            if item.get("belong_to_node_id") == node_id or item.get("belong_to_node_id") == "shared"
+        ]
         return datasource_provider_variables
 
     def get_rag_pipeline_paginate_workflow_runs(self, pipeline: Pipeline, args: dict) -> InfiniteScrollPagination:

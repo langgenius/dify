@@ -39,7 +39,6 @@ from core.variables.variables import (
 from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     ENVIRONMENT_VARIABLE_NODE_ID,
-    PIPELINE_VARIABLE_NODE_ID,
 )
 
 
@@ -122,6 +121,7 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
     if not result.selector:
         result = result.model_copy(update={"selector": selector})
     return cast(Variable, result)
+
 
 def build_segment(value: Any, /) -> Segment:
     if value is None:

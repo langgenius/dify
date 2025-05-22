@@ -155,9 +155,4 @@ class KnowledgeIndexNodeData(BaseNodeData):
     """
 
     type: str = "knowledge-index"
-    dataset_id: str
-    document_id: str
     index_chunk_variable_selector: list[str]
-    chunk_structure: Literal["general", "parent-child"]
-    index_method: IndexMethod
-    retrieval_setting: RetrievalSetting

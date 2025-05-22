@@ -1170,6 +1170,7 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     def pipeline(self):
         return db.session.query(Pipeline).filter(Pipeline.id == self.pipeline_id).first()
 
+
 class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
     __tablename__ = "pipeline_customized_templates"
     __table_args__ = (
@@ -1205,6 +1206,7 @@ class Pipeline(Base):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
     @property
     def dataset(self):
         return db.session.query(Dataset).filter(Dataset.pipeline_id == self.id).first()

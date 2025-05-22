@@ -39,9 +39,9 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.account import Account
 from models.dataset import Pipeline
-from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
+from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -170,7 +170,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
         args = parser.parse_args()
 
         try:
-            response = AppGenerateService.generate_single_iteration(
+            response = PipelineGenerateService.generate_single_iteration(
                 pipeline=pipeline, user=current_user, node_id=node_id, args=args, streaming=True
             )
 
@@ -207,7 +207,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
         args = parser.parse_args()
 
         try:
-            response = AppGenerateService.generate_single_loop(
+            response = PipelineGenerateService.generate_single_loop(
                 pipeline=pipeline, user=current_user, node_id=node_id, args=args, streaming=True
             )
 
@@ -241,15 +241,52 @@ class DraftRagPipelineRunApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
+        parser.add_argument("datasource_type", type=str, required=True, location="json")
+        parser.add_argument("datasource_info", type=list, required=True, location="json")
         args = parser.parse_args()
 
         try:
-            response = AppGenerateService.generate(
+            response = PipelineGenerateService.generate(
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
+                streaming=True,
+            )
+
+            return helper.compact_generate_response(response)
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
+
+
+class PublishedRagPipelineRunApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline):
+        """
+        Run published workflow
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("datasource_type", type=str, required=True, location="json")
+        parser.add_argument("datasource_info", type=list, required=True, location="json")
+        args = parser.parse_args()
+
+        try:
+            response = PipelineGenerateService.generate(
+                pipeline=pipeline,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.PUBLISHED,
                 streaming=True,
             )
 
@@ -279,11 +316,41 @@ class RagPipelineDatasourceNodeRunApi(Resource):
         args = parser.parse_args()
 
         inputs = args.get("inputs")
+
+        rag_pipeline_service = RagPipelineService()
+        result = rag_pipeline_service.run_datasource_workflow_node(
+            pipeline=pipeline, node_id=node_id, user_inputs=inputs, account=current_user
+        )
+
+        return result
+
+
+class RagPipelinePublishedNodeRunApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, node_id: str):
+        """
+        Run rag pipeline datasource
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        inputs = args.get("inputs")
         if inputs == None:
             raise ValueError("missing inputs")
 
         rag_pipeline_service = RagPipelineService()
-        workflow_node_execution = rag_pipeline_service.run_datasource_workflow_node(
+        workflow_node_execution = rag_pipeline_service.run_published_workflow_node(
             pipeline=pipeline, node_id=node_id, user_inputs=inputs, account=current_user
         )
 
@@ -354,7 +421,8 @@ class PublishedRagPipelineApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-
+        if not pipeline.is_published:
+            return None
         # fetch published workflow by pipeline
         rag_pipeline_service = RagPipelineService()
         workflow = rag_pipeline_service.get_published_workflow(pipeline=pipeline)
@@ -397,10 +465,8 @@ class PublishedRagPipelineApi(Resource):
                 marked_name=args.marked_name or "",
                 marked_comment=args.marked_comment or "",
             )
-
+            pipeline.is_published = True
             pipeline.workflow_id = workflow.id
-            db.session.commit()
-
             workflow_created_at = TimestampField().format(workflow.created_at)
 
             session.commit()
@@ -617,7 +683,7 @@ class RagPipelineByIdApi(Resource):
         return None, 204
 
 
-class RagPipelineSecondStepApi(Resource):
+class PublishedRagPipelineSecondStepApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -632,9 +698,28 @@ class RagPipelineSecondStepApi(Resource):
         node_id = request.args.get("node_id", required=True, type=str)
 
         rag_pipeline_service = RagPipelineService()
-        variables = rag_pipeline_service.get_second_step_parameters(
-            pipeline=pipeline, node_id=node_id
-        )
+        variables = rag_pipeline_service.get_published_second_step_parameters(pipeline=pipeline, node_id=node_id)
+        return {
+            "variables": variables,
+        }
+
+
+class DraftRagPipelineSecondStepApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def get(self, pipeline: Pipeline):
+        """
+        Get second step parameters of rag pipeline
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        node_id = request.args.get("node_id", required=True, type=str)
+
+        rag_pipeline_service = RagPipelineService()
+        variables = rag_pipeline_service.get_draft_second_step_parameters(pipeline=pipeline, node_id=node_id)
         return {
             "variables": variables,
         }
@@ -732,15 +817,21 @@ api.add_resource(
     RagPipelineDraftNodeRunApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run",
 )
-# api.add_resource(
-#     RagPipelinePublishedNodeRunApi,
-#     "/rag/pipelines/<uuid:pipeline_id>/workflows/published/nodes/<string:node_id>/run",
-# )
+api.add_resource(
+    RagPipelineDatasourceNodeRunApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/datasource/nodes/<string:node_id>/run",
+)
 
 api.add_resource(
     RagPipelineDraftRunIterationNodeApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/iteration/nodes/<string:node_id>/run",
 )
+
+api.add_resource(
+    RagPipelinePublishedNodeRunApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/nodes/<string:node_id>/run",
+)
+
 api.add_resource(
     RagPipelineDraftRunLoopNodeApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run",
@@ -762,7 +853,6 @@ api.add_resource(
     DefaultRagPipelineBlockConfigApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs/<string:block_type>",
 )
-
 api.add_resource(
     RagPipelineByIdApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>",
@@ -784,6 +874,10 @@ api.add_resource(
     "/rag/pipelines/datasource-plugins",
 )
 api.add_resource(
-    RagPipelineSecondStepApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/processing/paramters",
+    PublishedRagPipelineSecondStepApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/paramters",
+)
+api.add_resource(
+    DraftRagPipelineSecondStepApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/paramters",
 )

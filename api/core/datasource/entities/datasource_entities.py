@@ -23,7 +23,7 @@ class DatasourceProviderType(enum.StrEnum):
 
     ONLINE_DOCUMENT = "online_document"
     LOCAL_FILE = "local_file"
-    WEBSITE = "website"
+    WEBSITE_CRAWL = "website_crawl"
 
     @classmethod
     def value_of(cls, value: str) -> "DatasourceProviderType":
@@ -111,10 +111,10 @@ class DatasourceParameter(PluginParameter):
 
 
 class DatasourceIdentity(BaseModel):
-    author: str = Field(..., description="The author of the tool")
-    name: str = Field(..., description="The name of the tool")
-    label: I18nObject = Field(..., description="The label of the tool")
-    provider: str = Field(..., description="The provider of the tool")
+    author: str = Field(..., description="The author of the datasource")
+    name: str = Field(..., description="The name of the datasource")
+    label: I18nObject = Field(..., description="The label of the datasource")
+    provider: str = Field(..., description="The provider of the datasource")
     icon: Optional[str] = None
 
 
@@ -145,7 +145,7 @@ class DatasourceProviderEntity(ToolProviderEntity):
 
 
 class DatasourceProviderEntityWithPlugin(DatasourceProviderEntity):
-        datasources: list[DatasourceEntity] = Field(default_factory=list)
+    datasources: list[DatasourceEntity] = Field(default_factory=list)
 
 
 class DatasourceInvokeMeta(BaseModel):
@@ -195,3 +195,105 @@ class DatasourceInvokeFrom(Enum):
     """
 
     RAG_PIPELINE = "rag_pipeline"
+
+
+class GetOnlineDocumentPagesRequest(BaseModel):
+    """
+    Get online document pages request
+    """
+
+    tenant_id: str = Field(..., description="The tenant id")
+
+
+class OnlineDocumentPageIcon(BaseModel):
+    """
+    Online document page icon
+    """
+
+    type: str = Field(..., description="The type of the icon")
+    url: str = Field(..., description="The url of the icon")
+
+
+class OnlineDocumentPage(BaseModel):
+    """
+    Online document page
+    """
+
+    page_id: str = Field(..., description="The page id")
+    page_title: str = Field(..., description="The page title")
+    page_icon: Optional[OnlineDocumentPageIcon] = Field(None, description="The page icon")
+    type: str = Field(..., description="The type of the page")
+    last_edited_time: str = Field(..., description="The last edited time")
+
+
+class OnlineDocumentInfo(BaseModel):
+    """
+    Online document info
+    """
+
+    workspace_id: str = Field(..., description="The workspace id")
+    workspace_name: str = Field(..., description="The workspace name")
+    workspace_icon: str = Field(..., description="The workspace icon")
+    total: int = Field(..., description="The total number of documents")
+    pages: list[OnlineDocumentPage] = Field(..., description="The pages of the online document")
+
+
+class GetOnlineDocumentPagesResponse(BaseModel):
+    """
+    Get online document pages response
+    """
+
+    result: list[OnlineDocumentInfo]
+
+
+class GetOnlineDocumentPageContentRequest(BaseModel):
+    """
+    Get online document page content request
+    """
+
+    online_document_info_list: list[OnlineDocumentInfo]
+
+
+class OnlineDocumentPageContent(BaseModel):
+    """
+    Online document page content
+    """
+
+    page_id: str = Field(..., description="The page id")
+    content: str = Field(..., description="The content of the page")
+
+
+class GetOnlineDocumentPageContentResponse(BaseModel):
+    """
+    Get online document page content response
+    """
+
+    result: list[OnlineDocumentPageContent]
+
+
+class GetWebsiteCrawlRequest(BaseModel):
+    """
+    Get website crawl request
+    """
+
+    url: str = Field(..., description="The url of the website")
+    crawl_parameters: dict = Field(..., description="The crawl parameters")
+
+
+class WebSiteInfo(BaseModel):
+    """
+    Website info
+    """
+
+    source_url: str = Field(..., description="The url of the website")
+    markdown: str = Field(..., description="The markdown of the website")
+    title: str = Field(..., description="The title of the website")
+    description: str = Field(..., description="The description of the website")
+
+
+class GetWebsiteCrawlResponse(BaseModel):
+    """
+    Get website crawl response
+    """
+
+    result: list[WebSiteInfo]

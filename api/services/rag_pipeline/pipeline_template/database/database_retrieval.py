@@ -29,32 +29,31 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param language: language
         :return:
         """
-            
-        pipeline_built_in_templates: list[PipelineBuiltInTemplate] = db.session.query(PipelineBuiltInTemplate).filter(
-            PipelineBuiltInTemplate.language == language
-        ).all()
+
+        pipeline_built_in_templates: list[PipelineBuiltInTemplate] = (
+            db.session.query(PipelineBuiltInTemplate).filter(PipelineBuiltInTemplate.language == language).all()
+        )
 
         recommended_pipelines_results = []
         for pipeline_built_in_template in pipeline_built_in_templates:
             pipeline_model: Pipeline = pipeline_built_in_template.pipeline
 
             recommended_pipeline_result = {
-                'id': pipeline_built_in_template.id,
-                'name': pipeline_built_in_template.name,
-                'pipeline_id': pipeline_model.id,
-                'description': pipeline_built_in_template.description,
-                'icon': pipeline_built_in_template.icon,
-                'copyright': pipeline_built_in_template.copyright,
-                'privacy_policy': pipeline_built_in_template.privacy_policy,
-                'position': pipeline_built_in_template.position,
+                "id": pipeline_built_in_template.id,
+                "name": pipeline_built_in_template.name,
+                "pipeline_id": pipeline_model.id,
+                "description": pipeline_built_in_template.description,
+                "icon": pipeline_built_in_template.icon,
+                "copyright": pipeline_built_in_template.copyright,
+                "privacy_policy": pipeline_built_in_template.privacy_policy,
+                "position": pipeline_built_in_template.position,
             }
             dataset: Dataset = pipeline_model.dataset
             if dataset:
-                recommended_pipeline_result['chunk_structure'] = dataset.chunk_structure
+                recommended_pipeline_result["chunk_structure"] = dataset.chunk_structure
                 recommended_pipelines_results.append(recommended_pipeline_result)
 
-        return {'pipeline_templates': recommended_pipelines_results}
-
+        return {"pipeline_templates": recommended_pipelines_results}
 
     @classmethod
     def fetch_pipeline_template_detail_from_db(cls, pipeline_id: str) -> Optional[dict]:
@@ -64,6 +63,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :return:
         """
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
+
         # is in public recommended list
         pipeline_template = (
             db.session.query(PipelineBuiltInTemplate).filter(PipelineBuiltInTemplate.id == pipeline_id).first()

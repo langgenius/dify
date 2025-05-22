@@ -1,26 +1,19 @@
+from abc import ABC, abstractmethod
 from typing import Any
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
-from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
+from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.errors import ToolProviderCredentialValidationError
 
 
-class DatasourcePluginProviderController:
+class DatasourcePluginProviderController(ABC):
     entity: DatasourceProviderEntityWithPlugin
-    tenant_id: str
-    plugin_id: str
-    plugin_unique_identifier: str
 
-    def __init__(
-        self, entity: DatasourceProviderEntityWithPlugin, plugin_id: str, plugin_unique_identifier: str, tenant_id: str
-    ) -> None:
+    def __init__(self, entity: DatasourceProviderEntityWithPlugin) -> None:
         self.entity = entity
-        self.tenant_id = tenant_id
-        self.plugin_id = plugin_id
-        self.plugin_unique_identifier = plugin_unique_identifier
 
     @property
     def need_credentials(self) -> bool:
@@ -44,29 +37,19 @@ class DatasourcePluginProviderController:
         ):
             raise ToolProviderCredentialValidationError("Invalid credentials")
 
-    def get_datasource(self, datasource_name: str) -> DatasourcePlugin:  # type: ignore
+    @property
+    def provider_type(self) -> DatasourceProviderType:
+        """
+        returns the type of the provider
+        """
+        return DatasourceProviderType.LOCAL_FILE
+
+    @abstractmethod
+    def get_datasource(self, datasource_name: str) -> DatasourcePlugin:
         """
         return datasource with given name
         """
-        datasource_entity = next(
-            (
-                datasource_entity
-                for datasource_entity in self.entity.datasources
-                if datasource_entity.identity.name == datasource_name
-            ),
-            None,
-        )
-
-        if not datasource_entity:
-            raise ValueError(f"Datasource with name {datasource_name} not found")
-
-        return DatasourcePlugin(
-            entity=datasource_entity,
-            runtime=DatasourceRuntime(tenant_id=self.tenant_id),
-            tenant_id=self.tenant_id,
-            icon=self.entity.identity.icon,
-            plugin_unique_identifier=self.plugin_unique_identifier,
-        )
+        pass
 
     def get_datasources(self) -> list[DatasourcePlugin]:  # type: ignore
         """

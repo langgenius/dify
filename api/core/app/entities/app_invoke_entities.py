@@ -21,6 +21,7 @@ class InvokeFrom(Enum):
     WEB_APP = "web-app"
     EXPLORE = "explore"
     DEBUGGER = "debugger"
+    PUBLISHED = "published"
 
     @classmethod
     def value_of(cls, value: str):
@@ -206,6 +207,40 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig
     workflow_run_id: str
+
+    class SingleIterationRunEntity(BaseModel):
+        """
+        Single Iteration Run Entity.
+        """
+
+        node_id: str
+        inputs: dict
+
+    single_iteration_run: Optional[SingleIterationRunEntity] = None
+
+    class SingleLoopRunEntity(BaseModel):
+        """
+        Single Loop Run Entity.
+        """
+
+        node_id: str
+        inputs: dict
+
+    single_loop_run: Optional[SingleLoopRunEntity] = None
+
+
+class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
+    """
+    RAG Pipeline Application Generate Entity.
+    """
+
+    # app config
+    pipline_config: WorkflowUIBasedAppConfig
+    datasource_type: str
+    datasource_info: Mapping[str, Any]
+    dataset_id: str
+    batch: str
+    document_id: str
 
     class SingleIterationRunEntity(BaseModel):
         """

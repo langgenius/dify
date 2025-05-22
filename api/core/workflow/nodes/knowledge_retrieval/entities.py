@@ -57,8 +57,6 @@ class MultipleRetrievalConfig(BaseModel):
 
 
 class ModelConfig(BaseModel):
-
-
     provider: str
     name: str
     mode: str

@@ -3,7 +3,7 @@ import logging
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
-from typing import TYPE_CHECKING, Any, List, Optional, Self, Union
+from typing import TYPE_CHECKING, Any, Optional, Self, Union
 from uuid import uuid4
 
 from core.variables import utils as variable_utils
@@ -43,7 +43,7 @@ class WorkflowType(Enum):
 
     WORKFLOW = "workflow"
     CHAT = "chat"
-    RAG_PIPELINE = "rag_pipeline"
+    RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowType":
@@ -370,7 +370,7 @@ class Workflow(Base):
         return results
 
     @rag_pipeline_variables.setter
-    def rag_pipeline_variables(self, values: List[dict]) -> None:
+    def rag_pipeline_variables(self, values: list[dict]) -> None:
         self._rag_pipeline_variables = json.dumps(
             {item["variable"]: item for item in values},
             ensure_ascii=False,

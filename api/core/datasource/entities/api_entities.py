@@ -28,13 +28,13 @@ class DatasourceProviderApiEntity(BaseModel):
     description: I18nObject
     icon: str | dict
     label: I18nObject  # label
-    type: ToolProviderType
+    type: str
     masked_credentials: Optional[dict] = None
     original_credentials: Optional[dict] = None
     is_team_authorization: bool = False
     allow_delete: bool = True
-    plugin_id: Optional[str] = Field(default="", description="The plugin id of the tool")
-    plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the tool")
+    plugin_id: Optional[str] = Field(default="", description="The plugin id of the datasource")
+    plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the datasource")
     datasources: list[DatasourceApiEntity] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
 

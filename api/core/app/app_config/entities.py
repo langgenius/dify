@@ -283,7 +283,7 @@ class AppConfig(BaseModel):
     tenant_id: str
     app_id: str
     app_mode: AppMode
-    additional_features: AppAdditionalFeatures
+    additional_features: Optional[AppAdditionalFeatures] = None
     variables: list[VariableEntity] = []
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
 

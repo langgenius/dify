@@ -3,7 +3,11 @@ from typing import Any, cast
 
 from core.datasource.entities.datasource_entities import (
     DatasourceParameter,
+    DatasourceProviderType,
+    GetWebsiteCrawlResponse,
 )
+from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
+from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.file import File
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.variables.segments import ArrayAnySegment
@@ -77,15 +81,44 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
             for_log=True,
         )
 
-        # get conversation id
-        conversation_id = self.graph_runtime_state.variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
-
         try:
             # TODO: handle result
-            result = datasource_runtime._invoke_second_step(
-                user_id=self.user_id,
-                datasource_parameters=parameters,
-            )
+            if datasource_runtime.datasource_provider_type() == DatasourceProviderType.ONLINE_DOCUMENT:
+                datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+                result = datasource_runtime._get_online_document_page_content(
+                    user_id=self.user_id,
+                    datasource_parameters=parameters,
+                    provider_type=node_data.provider_type,
+                )
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    inputs=parameters_for_log,
+                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                    outputs={
+                        "result": result.result.model_dump(),
+                        "datasource_type": datasource_runtime.datasource_provider_type,
+                    },
+                )
+            elif datasource_runtime.datasource_provider_type == DatasourceProviderType.WEBSITE_CRAWL:
+                datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
+                result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
+                    user_id=self.user_id,
+                    datasource_parameters=parameters,
+                    provider_type=node_data.provider_type,
+                )
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    inputs=parameters_for_log,
+                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                    outputs={
+                        "result": result.result.model_dump(),
+                        "datasource_type": datasource_runtime.datasource_provider_type,
+                    },
+                )
+            else:
+                raise DatasourceNodeError(
+                    f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}"
+                )
         except PluginDaemonClientSideError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
