@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
-import { useStore } from '@/app/components/workflow/store'
 import { usePublishedPipelineProcessingParams } from '@/service/use-pipeline'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 
 type PartialInputVarType = PipelineInputVarType.textInput | PipelineInputVarType.number | PipelineInputVarType.select | PipelineInputVarType.checkbox
 
@@ -14,7 +14,7 @@ const VAR_TYPE_MAP: Record<PartialInputVarType, BaseFieldType> = {
 }
 
 export const useConfigurations = (datasourceNodeId: string) => {
-  const pipelineId = useStore(state => state.pipelineId)
+  const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
   const { data: paramsConfig } = usePublishedPipelineProcessingParams({
     pipeline_id: pipelineId!,
     node_id: datasourceNodeId,

@@ -25,10 +25,12 @@ import FilePreview from './preview/file-preview'
 import NotionPagePreview from './preview/notion-page-preview'
 import WebsitePreview from './preview/web-preview'
 import ProcessDocuments from './process-documents'
+import ChunkPreview from './preview/chunk-preview'
+import Processing from './processing'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
-  const [currentStep, setCurrentStep] = useState(1)
+  const [currentStep, setCurrentStep] = useState(3)
   const [datasource, setDatasource] = useState<Datasource>()
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
@@ -40,7 +42,10 @@ const TestRunPanel = () => {
 
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
+  const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const indexingType = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
+  const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict.search_method)
 
   const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
 
@@ -120,6 +125,10 @@ const TestRunPanel = () => {
     setCurrentStep(preStep => preStep - 1)
   }, [])
 
+  const handlePreviewChunks = useCallback((data: Record<string, any>) => {
+    console.log(data)
+  }, [])
+
   const handleProcess = useCallback((data: Record<string, any>) => {
     if (!datasource)
       return
@@ -146,7 +155,8 @@ const TestRunPanel = () => {
     }
     // todo: Run Pipeline
     console.log('datasource_type', datasource_type)
-  }, [datasource, fileList, notionPages, websiteCrawlJobId, websitePages])
+    handleNextStep()
+  }, [datasource, fileList, handleNextStep, notionPages, websiteCrawlJobId, websitePages])
 
   if (isFetchingPipelineInfo) {
     return (
@@ -232,24 +242,47 @@ const TestRunPanel = () => {
               <ProcessDocuments
                 dataSourceNodeId={datasource?.nodeId || ''}
                 onProcess={handleProcess}
+                onPreview={handlePreviewChunks}
                 onBack={handleBackStep}
+              />
+            )
+          }
+          {
+            currentStep === 3 && (
+              <Processing
+                datasetId={datasetId!}
+                batchId={''}
+                documents={[]}
+                indexingType={indexingType!}
+                retrievalMethod={retrievalMethod!}
               />
             )
           }
         </div>
       </div>
       {/* Preview */}
-      <div className='flex h-full flex-1 shrink-0 flex-col pl-2 pt-2'>
-        {
-          currentStep === 1 && (
-            <>
-              {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
-              {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
-              {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
-            </>
-          )
-        }
-      </div>
+      {
+        currentStep === 1 && (
+          <div className='flex h-full flex-1 shrink-0 flex-col pl-2 pt-2'>
+            {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
+            {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
+            {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+          </div>
+        )
+      }
+      {
+        currentStep === 2 && (
+          <ChunkPreview
+            datasource={datasource!}
+            files={fileList.map(file => file.file)}
+            notionPages={notionPages}
+            websitePages={websitePages}
+            isIdle={true}
+            isPending={true}
+            estimateData={undefined}
+          />
+        )
+      }
     </div>
   )
 }

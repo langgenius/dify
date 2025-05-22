@@ -201,7 +201,7 @@ const translation = {
     resume: '恢复处理',
     navTo: '前往文档',
     sideTipTitle: '接下来做什么',
-    sideTipContent: '当文档完成索引处理后，知识库即可集成至应用内作为上下文使用，你可以在提示词编排页找到上下文设置。你也可以创建成可独立使用的 ChatGPT 索引插件发布。',
+    sideTipContent: '当文档完成索引后，您可以管理和编辑文档、运行检索测试以及修改知识库设置。知识库即可集成到应用程序内作为上下文使用，因此请调整检索设置以确保最佳性能。',
     modelTitle: '确认停止索引过程吗？',
     modelContent: '如果您需要稍后恢复处理，则从停止处继续。',
     modelButtonConfirm: '确认停止',

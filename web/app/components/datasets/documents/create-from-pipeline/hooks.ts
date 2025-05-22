@@ -15,11 +15,11 @@ export const useAddDocumentsSteps = () => {
       value: AddDocumentsStep.dataSource,
     },
     {
-      label: t('datasetPipeline.addDocuments.steps.ProcessDocuments'),
+      label: t('datasetPipeline.addDocuments.steps.processDocuments'),
       value: AddDocumentsStep.processDocuments,
     },
     {
-      label: t('datasetPipeline.addDocuments.steps.ProcessingDocuments'),
+      label: t('datasetPipeline.addDocuments.steps.processingDocuments'),
       value: AddDocumentsStep.processingDocuments,
     },
   ]

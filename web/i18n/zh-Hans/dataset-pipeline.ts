@@ -85,6 +85,10 @@ const translation = {
     },
     stepTwo: {
       chunkSettings: '分段设置',
+      previewChunks: '预览分段',
+    },
+    stepThree: {
+      learnMore: '了解更多',
     },
     characters: '字符',
   },

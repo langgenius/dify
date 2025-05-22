@@ -201,7 +201,7 @@ const translation = {
     resume: 'Resume processing',
     navTo: 'Go to document',
     sideTipTitle: 'What\'s next',
-    sideTipContent: 'After the document finishes indexing, the Knowledge can be integrated into the application as context, you can find the context setting in the prompt orchestration page. You can also create it as an independent ChatGPT indexing plugin for release.',
+    sideTipContent: 'After finishing document indexing, you can manage and edit documents, run retrieval tests, and modify knowledge settings. Knowledge can then be integrated into your application as context, so make sure to adjust the Retrieval Setting to ensure optimal performance.',
     modelTitle: 'Are you sure to stop embedding?',
     modelContent: 'If you need to resume processing later, you will continue from where you left off.',
     modelButtonConfirm: 'Confirm',

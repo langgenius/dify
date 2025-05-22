@@ -85,6 +85,10 @@ const translation = {
     },
     stepTwo: {
       chunkSettings: 'Chunk Settings',
+      previewChunks: 'Preview Chunks',
+    },
+    stepThree: {
+      learnMore: 'Learn more',
     },
     characters: 'characters',
   },

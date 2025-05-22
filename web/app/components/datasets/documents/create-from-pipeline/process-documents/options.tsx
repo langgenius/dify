@@ -66,7 +66,7 @@ const Options = ({
         form.handleSubmit()
       }}
     >
-      <div className='flex flex-col gap-3 px-4 py-3'>
+      <div className='flex flex-col gap-3 border-t border-divider-subtle px-4 py-3'>
         {configurations.map((config, index) => {
           const FieldComponent = BaseField({
             initialData,

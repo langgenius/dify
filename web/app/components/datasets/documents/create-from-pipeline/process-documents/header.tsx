@@ -1,6 +1,7 @@
 import React from 'react'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
+import { RiSearchEyeLine } from '@remixicon/react'
 
 type HeaderProps = {
   onReset: () => void
@@ -21,10 +22,15 @@ const Header = ({
         {t('datasetPipeline.addDocuments.stepTwo.chunkSettings')}
       </div>
       <Button variant='ghost' disabled={disableReset} onClick={onReset}>
-        {t('common.operations.reset')}
+        {t('common.operation.reset')}
       </Button>
-      <Button variant='primary' onClick={onPreview}>
-        {t('common.operations.reset')}
+      <Button
+        variant='secondary-accent'
+        onClick={onPreview}
+        className='gap-x-0.5'
+      >
+        <RiSearchEyeLine className='size-4' />
+        <span className='px-0.5'>{t('datasetPipeline.addDocuments.stepTwo.previewChunks')}</span>
       </Button>
     </div>
   )

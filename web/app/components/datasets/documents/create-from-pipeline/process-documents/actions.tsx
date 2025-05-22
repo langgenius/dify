@@ -1,6 +1,7 @@
 import React from 'react'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
+import { RiArrowLeftLine } from '@remixicon/react'
 
 type ActionsProps = {
   onBack: () => void
@@ -18,8 +19,10 @@ const Actions = ({
       <Button
         variant='secondary'
         onClick={onBack}
+        className='gap-x-0.5'
       >
-        {t('datasetPipeline.operations.dataSource')}
+        <RiArrowLeftLine className='size-4' />
+        <span className='px-0.5'>{t('datasetPipeline.operations.dataSource')}</span>
       </Button>
       <Button
         variant='primary'

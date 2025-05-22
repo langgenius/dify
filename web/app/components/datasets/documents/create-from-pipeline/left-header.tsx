@@ -30,14 +30,16 @@ const LeftHeader = ({
       <div className='system-md-semibold text-text-primary'>
         {steps[currentStep - 1]?.label}
       </div>
-      <a
-        className='absolute -left-11 top-3.5'
-        href={`/datasets/${datasetId}/documents`}
-      >
-        <Button variant='secondary-accent' className='size-9 rounded-full p-0'>
-          <RiArrowLeftLine className='size-5 ' />
-        </Button>
-      </a>
+      {currentStep !== steps.length && (
+        <a
+          className='absolute -left-11 top-3.5'
+          href={`/datasets/${datasetId}/documents`}
+        >
+          <Button variant='secondary-accent' className='size-9 rounded-full p-0'>
+            <RiArrowLeftLine className='size-5 ' />
+          </Button>
+        </a>
+      )}
       <Effect className='left-8 top-[-34px] opacity-20' />
     </div>
   )
