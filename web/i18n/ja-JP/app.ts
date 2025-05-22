@@ -219,10 +219,10 @@ const translation = {
     description: 'Webアプリのアクセス権限を設定します',
     accessLabel: '誰がアクセスできますか',
     accessItemsDescription: {
-      anyone: '誰でもWebアプリにアクセス可能です',
-      specific: '特定のグループやメンバーがWebアプリにアクセス可能です',
-      organization: '組織内の誰でもWebアプリにアクセス可能です',
-      external: '認証された外部ユーザーがWebアプリにアクセス可能です',
+      anyone: '誰でもこの web アプリにアクセスできます（ログイン不要）',
+      specific: '特定の内部メンバーのみがこの web アプリにアクセスできます',
+      organization: 'すべての内部メンバーがこの web アプリにアクセスできます',
+      external: '認証された外部ユーザーがこの web アプリにアクセスできます',
     },
     accessItems: {
       anyone: 'リンクを知っているすべての人',
