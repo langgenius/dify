@@ -330,7 +330,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </div>
           <div className='flex h-5 w-5 shrink-0 items-center justify-center'>
             {app.access_mode === AccessMode.PUBLIC && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.anyone')}>
-              <RiGlobalLine className='h-4 w-4 text-text-accent' />
+              <RiGlobalLine className='h-4 w-4 text-text-quaternary' />
             </Tooltip>}
             {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.specific')}>
               <RiLockLine className='h-4 w-4 text-text-quaternary' />
