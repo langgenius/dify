@@ -60,7 +60,7 @@ const Header = () => {
         {
           !isMobile
           && <div className='flex shrink-0 items-center gap-1.5 self-stretch pl-3'>
-            <Link href="/apps" className='flex h-8 w-[52px] shrink-0 items-center justify-center gap-2'>
+            <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center gap-2 px-0.5'>
               <DifyLogo />
             </Link>
             <div className='font-light text-divider-deep'>/</div>
