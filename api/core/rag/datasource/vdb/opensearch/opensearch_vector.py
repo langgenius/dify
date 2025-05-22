@@ -44,7 +44,7 @@ class OpenSearchConfig(BaseModel):
             if not values.get("aws_service"):
                 raise ValueError("config OPENSEARCH_AWS_SERVICE is required for AWS_MANAGED_IAM auth method")
         if not values.get("OPENSEARCH_SECURE") and values.get("OPENSEARCH_VERIFY_CERTS"):
-            raise ValueError("verify_certs=True requires secure (HTTPS) connection")            
+            raise ValueError("verify_certs=True requires secure (HTTPS) connection")
         return values
 
     def create_aws_managed_iam_auth(self) -> Urllib3AWSV4SignerAuth:
