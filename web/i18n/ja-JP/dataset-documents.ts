@@ -51,7 +51,7 @@ const translation = {
     empty: {
       title: 'まだドキュメントがありません',
       upload: {
-        tip: 'ファイルをアップロードしたり、ウェブサイトから同期したり、NotionやGitHubなどのウェブアプリから同期することができます。',
+        tip: 'ファイルをアップロードしたり、ウェブサイトから同期したり、NotionやGitHubなどのWebアプリから同期することができます。',
       },
       sync: {
         tip: 'Difyは定期的にNotionからファイルをダウンロードし、処理を完了します。',

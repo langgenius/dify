@@ -33,16 +33,17 @@ const DifyLogo: FC<DifyLogoProps> = ({
   const { theme } = useTheme()
   const themedStyle = (theme === 'dark' && style === 'default') ? 'monochromeWhite' : style
   const { systemFeatures } = useGlobalPublicStore()
+  const hasBrandingLogo = Boolean(systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo)
 
   let src = `${basePath}${logoPathMap[themedStyle]}`
-  if (systemFeatures.branding.enabled)
+  if (hasBrandingLogo)
     src = systemFeatures.branding.workspace_logo
 
   return (
     <img
       src={src}
-      className={classNames('block object-contain', logoSizeMap[size], className)}
-      alt='Dify logo'
+      className={classNames('block object-contain', logoSizeMap[size], hasBrandingLogo && 'w-auto', className)}
+      alt={hasBrandingLogo ? 'Logo' : 'Dify logo'}
     />
   )
 }

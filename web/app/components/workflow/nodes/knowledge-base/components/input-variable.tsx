@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import type { ValueSelector } from '@/app/components/workflow/types'
@@ -15,11 +16,12 @@ const InputVariable = ({
   onInputVariableChange,
   readonly = false,
 }: InputVariableProps) => {
+  const { t } = useTranslation()
+
   return (
     <Field
       fieldTitleProps={{
-        title: 'Input Variable',
-        tooltip: 'Input Variable',
+        title: t('workflow.nodes.common.inputVars'),
       }}
     >
       <VarReferencePicker

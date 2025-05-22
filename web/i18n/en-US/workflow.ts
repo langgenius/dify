@@ -368,6 +368,7 @@ const translation = {
         ms: 'ms',
         retries: '{{num}} Retries',
       },
+      inputVars: 'Input Variables',
     },
     start: {
       required: 'required',
@@ -766,6 +767,11 @@ const translation = {
       loopNode: 'Loop Node',
       currentLoopCount: 'Current loop count: {{count}}',
       totalLoopCount: 'Total loop count: {{count}}',
+    },
+    knowledgeBase: {
+      chunkStructure: 'Chunk Structure',
+      changeChunkStructure: 'Change Chunk Structure',
+      aboutRetrieval: 'about retrieval method.',
     },
     note: {
       addNote: 'Add Note',

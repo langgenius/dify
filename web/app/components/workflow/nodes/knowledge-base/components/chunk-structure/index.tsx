@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import type { ChunkStructureEnum } from '../../types'
 import OptionCard from '../option-card'
@@ -15,6 +16,7 @@ const ChunkStructure = ({
   onChunkStructureChange,
   readonly = false,
 }: ChunkStructureProps) => {
+  const { t } = useTranslation()
   const {
     options,
     optionMap,
@@ -23,8 +25,8 @@ const ChunkStructure = ({
   return (
     <Field
       fieldTitleProps={{
-        title: 'Chunk Structure',
-        tooltip: 'Chunk Structure',
+        title: t('workflow.nodes.knowledgeBase.chunkStructure'),
+        tooltip: t('workflow.nodes.knowledgeBase.chunkStructure'),
         operation: (
           <Selector
             options={options}

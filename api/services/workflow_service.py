@@ -508,11 +508,11 @@ class WorkflowService:
             raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
 
         # Check if this workflow is currently referenced by an app
-        stmt = select(App).where(App.workflow_id == workflow_id)
-        app = session.scalar(stmt)
+        app_stmt = select(App).where(App.workflow_id == workflow_id)
+        app = session.scalar(app_stmt)
         if app:
             # Cannot delete a workflow that's currently in use by an app
-            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.name}'")
+            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.id}'")
 
         # Don't use workflow.tool_published as it's not accurate for specific workflow versions
         # Check if there's a tool provider using this specific workflow version

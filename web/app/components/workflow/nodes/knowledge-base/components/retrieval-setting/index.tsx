@@ -62,8 +62,7 @@ const RetrievalSetting = ({
         subTitle: (
           <div className='body-xs-regular flex items-center text-text-tertiary'>
             <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-            &nbsp;
-            about retrieval method.
+            &nbsp;{t('workflow.nodes.knowledgeBase.aboutRetrieval')}
           </div>
         ),
       }}

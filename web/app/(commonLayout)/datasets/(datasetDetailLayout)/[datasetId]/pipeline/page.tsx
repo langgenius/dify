@@ -3,7 +3,9 @@ import RagPipeline from '@/app/components/rag-pipeline'
 
 const PipelinePage = () => {
   return (
-    <RagPipeline />
+    <div className='h-full w-full overflow-x-auto'>
+      <RagPipeline />
+    </div>
   )
 }
 export default PipelinePage

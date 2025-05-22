@@ -187,6 +187,17 @@ const PluginPage = ({
               isExploringMarketplace && (
                 <>
                   <Link
+                    href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
+                    target='_blank'
+                  >
+                    <Button
+                      variant='ghost'
+                      className='text-text-tertiary'
+                    >
+                      {t('plugin.requestAPlugin')}
+                    </Button>
+                  </Link>
+                  <Link
                     href={getDocsUrl(locale, '/plugins/publish-plugins/publish-to-dify-marketplace/README')}
                     target='_blank'
                   >
@@ -198,7 +209,7 @@ const PluginPage = ({
                       {t('plugin.submitPlugin')}
                     </Button>
                   </Link>
-                  <div className='mx-2 h-3.5 w-[1px] bg-divider-regular'></div>
+                  <div className='mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular'></div>
                 </>
               )
             }
