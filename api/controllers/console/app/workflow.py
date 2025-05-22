@@ -731,6 +731,27 @@ class WorkflowByIdApi(Resource):
         return None, 204
 
 
+class DraftWorkflowNodeLastRunApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_run_node_execution_fields)
+    def get(self, app_model: App, node_id: str):
+        srv = WorkflowService()
+        workflow = srv.get_draft_workflow(app_model)
+        if not workflow:
+            raise NotFound("Workflow not found")
+        node_exec = srv.get_node_last_run(
+            app_model=app_model,
+            workflow=workflow,
+            node_id=node_id,
+        )
+        if node_exec is None:
+            raise NotFound("last run not found")
+        return node_exec
+
+
 api.add_resource(
     DraftWorkflowApi,
     "/apps/<uuid:app_id>/workflows/draft",
@@ -794,4 +815,8 @@ api.add_resource(
 api.add_resource(
     WorkflowByIdApi,
     "/apps/<uuid:app_id>/workflows/<string:workflow_id>",
+)
+api.add_resource(
+    DraftWorkflowNodeLastRunApi,
+    "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run",
 )

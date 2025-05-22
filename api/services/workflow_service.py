@@ -46,6 +46,22 @@ class WorkflowService:
     Workflow Service
     """
 
+    def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecution | None:
+        # TODO(QuantumGhost): This query is not fully covered by index.
+        criteria = (
+            WorkflowNodeExecution.tenant_id == app_model.tenant_id,
+            WorkflowNodeExecution.app_id == app_model.id,
+            WorkflowNodeExecution.workflow_id == workflow.id,
+            WorkflowNodeExecution.node_id == node_id,
+        )
+        node_exec = (
+            db.session.query(WorkflowNodeExecution)
+            .filter(*criteria)
+            .order_by(WorkflowNodeExecution.created_at.desc())
+            .first()
+        )
+        return node_exec
+
     def get_draft_workflow(self, app_model: App) -> Optional[Workflow]:
         """
         Get draft workflow
