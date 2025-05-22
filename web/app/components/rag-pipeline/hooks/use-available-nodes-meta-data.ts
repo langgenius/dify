@@ -17,6 +17,7 @@ export const useAvailableNodesMetaData = () => {
       metaData: {
         ...dataSourceDefault.metaData,
         isStart: true,
+        isRequired: true,
       },
     },
     {
