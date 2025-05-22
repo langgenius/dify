@@ -180,26 +180,37 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
 
 def _extract_text_from_plain_text(file_content: bytes) -> str:
     try:
-        return file_content.decode("utf-8", "ignore")
+        return file_content.decode("utf-8")
     except UnicodeDecodeError as e:
-        raise TextExtractionError("Failed to decode plain text file") from e
+        try:
+            return file_content.decode('shift_jis')
+        except UnicodeDecodeError as e:
+            raise TextExtractionError("Failed to decode plain text file") from e
 
 
 def _extract_text_from_json(file_content: bytes) -> str:
     try:
-        json_data = json.loads(file_content.decode("utf-8", "ignore"))
-        return json.dumps(json_data, indent=2, ensure_ascii=False)
-    except (UnicodeDecodeError, json.JSONDecodeError) as e:
-        raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
+        json_data = json.loads(file_content.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        try:
+            json_data = json.loads(file_content.decode('shift_jis'))
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
+
+    return json.dumps(json_data, indent=2, ensure_ascii=False)
 
 
 def _extract_text_from_yaml(file_content: bytes) -> str:
     """Extract the content from yaml file"""
     try:
-        yaml_data = yaml.safe_load_all(file_content.decode("utf-8", "ignore"))
-        return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
-    except (UnicodeDecodeError, yaml.YAMLError) as e:
-        raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
+        yaml_data = yaml.safe_load_all(file_content.decode("utf-8"))
+    except (UnicodeDecodeError, yaml.YAMLError):
+        try: 
+            yaml_data = yaml.safe_load_all(file_content.decode('shift_jis'))
+        except (UnicodeDecodeError, yaml.YAMLError) as e:
+            raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
+
+    return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
 
 
 def _extract_text_from_pdf(file_content: bytes) -> str:
@@ -338,22 +349,26 @@ def _extract_text_from_file(file: File):
 
 def _extract_text_from_csv(file_content: bytes) -> str:
     try:
-        csv_file = io.StringIO(file_content.decode("utf-8", "ignore"))
-        csv_reader = csv.reader(csv_file)
-        rows = list(csv_reader)
-
-        if not rows:
-            return ""
-
-        # Create Markdown table
-        markdown_table = "| " + " | ".join(rows[0]) + " |\n"
-        markdown_table += "| " + " | ".join(["---"] * len(rows[0])) + " |\n"
-        for row in rows[1:]:
-            markdown_table += "| " + " | ".join(row) + " |\n"
-
-        return markdown_table.strip()
+        csv_file = io.StringIO(file_content.decode("utf-8"))
     except Exception as e:
-        raise TextExtractionError(f"Failed to extract text from CSV: {str(e)}") from e
+        try:
+            csv_file = io.StringIO(file_content.decode('shift_jis'))
+        except Exception as e:
+            raise TextExtractionError(f"Failed to extract text from CSV: {str(e)}") from e
+
+    csv_reader = csv.reader(csv_file)
+    rows = list(csv_reader)
+
+    if not rows:
+        return ""
+
+    # Create Markdown table
+    markdown_table = "| " + " | ".join(rows[0]) + " |\n"
+    markdown_table += "| " + " | ".join(["---"] * len(rows[0])) + " |\n"
+    for row in rows[1:]:
+        markdown_table += "| " + " | ".join(row) + " |\n"
+
+    return markdown_table.strip()
 
 
 def _extract_text_from_excel(file_content: bytes) -> str:
