@@ -30,9 +30,9 @@ const LastRun: FC<Props> = ({
   ...otherResultPanelProps
 }) => {
   const isRunning = oneStepRunRunningStatus === NodeRunningStatus.Running
-  const isOneStepRunSuccess = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
+  // const isOneStepRunSuccess = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
   const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
-  const { data: lastRunResult, isFetching } = useLastRun(appId, nodeId, isOneStepRunSuccess)
+  const { data: lastRunResult, isFetching } = useLastRun(appId, nodeId, !isOneStepRunFailed)
   const runResult = (isOneStepRunFailed ? singleRunResult : lastRunResult) || {}
 
   if (isFetching) {
