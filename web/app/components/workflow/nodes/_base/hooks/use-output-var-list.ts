@@ -36,7 +36,6 @@ function useOutputVarList<T>({
   onOutputKeyOrdersChange,
 }: Params<T>) {
   const {
-    deleteNodeInspectorVars,
     renameInspectVarName,
     deleteInspectVar,
     nodesWithInspectVars,
@@ -80,9 +79,13 @@ function useOutputVarList<T>({
       renameInspectNameWithDebounce(id, newKey)
     }
     else if (changedIndex === undefined) {
-      deleteNodeInspectorVars(id)
+      const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
+        return varItem.name === Object.keys(newVars)[0]
+      })?.id
+      if(varId)
+        deleteInspectVar(id, varId)
     }
-  }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange, handleOutVarRenameChange, id, renameInspectNameWithDebounce, deleteNodeInspectorVars])
+  }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange, handleOutVarRenameChange, id, renameInspectNameWithDebounce, nodesWithInspectVars, deleteInspectVar])
 
   const generateNewKey = useCallback(() => {
     let keyIndex = Object.keys((inputs as any)[varKey]).length + 1
@@ -114,13 +117,12 @@ function useOutputVarList<T>({
   }] = useBoolean(false)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
   const removeVarInNode = useCallback(() => {
-    removeUsedVarInNodes(removedVar)
     const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
         return varItem.name === removedVar[1]
       })?.id
-      if(varId)
-        deleteInspectVar(id, varId)
-
+    if(varId)
+      deleteInspectVar(id, varId)
+    removeUsedVarInNodes(removedVar)
     hideRemoveVarConfirm()
   }, [deleteInspectVar, hideRemoveVarConfirm, id, nodesWithInspectVars, removeUsedVarInNodes, removedVar])
   const handleRemoveVariable = useCallback((index: number) => {
@@ -140,7 +142,12 @@ function useOutputVarList<T>({
     })
     setInputs(newInputs)
     onOutputKeyOrdersChange(outputKeyOrders.filter((_, i) => i !== index))
-  }, [outputKeyOrders, isVarUsedInNodes, id, inputs, setInputs, onOutputKeyOrdersChange, showRemoveVarConfirm, varKey])
+    const varId = nodesWithInspectVars.find(node => node.nodeId === id)?.vars.find((varItem) => {
+        return varItem.name === key
+      })?.id
+    if(varId)
+      deleteInspectVar(id, varId)
+  }, [outputKeyOrders, isVarUsedInNodes, id, inputs, setInputs, onOutputKeyOrdersChange, nodesWithInspectVars, deleteInspectVar, showRemoveVarConfirm, varKey])
 
   return {
     handleVarsChange,
