@@ -41,6 +41,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self.queue_manager = queue_manager
         self.workflow_thread_pool_id = workflow_thread_pool_id
 
+    def _get_app_id(self) -> str:
+        return self.application_generate_entity.app_config.app_id
+
     def run(self) -> None:
         """
         Run application
