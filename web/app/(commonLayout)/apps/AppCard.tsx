@@ -4,7 +4,7 @@ import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill } from '@remixicon/react'
+import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
@@ -337,6 +337,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </Tooltip>}
             {app.access_mode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.organization')}>
               <RiBuildingLine className='h-4 w-4 text-text-quaternary' />
+            </Tooltip>}
+            {app.access_mode === AccessMode.EXTERNAL_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.external')}>
+              <RiVerifiedBadgeLine className='h-4 w-4 text-text-quaternary' />
             </Tooltip>}
           </div>
         </div>

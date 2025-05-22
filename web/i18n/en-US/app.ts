@@ -200,6 +200,7 @@ const translation = {
     anyone: 'Anyone can access the web app',
     specific: 'Only specific groups or members can access the web app',
     organization: 'Anyone in the organization can access the web app',
+    external: 'Anyone with a verified account can access the web app',
   },
   accessControlDialog: {
     title: 'Web App Access Control',
@@ -207,8 +208,9 @@ const translation = {
     accessLabel: 'Who has access',
     accessItems: {
       anyone: 'Anyone with the link',
-      specific: 'Specific groups or members',
-      organization: 'Only members within the enterprise',
+      specific: 'Specific internal members',
+      organization: 'All internal members',
+      external: 'Authenticated external users',
     },
     groups_one: '{{count}} GROUP',
     groups_other: '{{count}} GROUPS',
