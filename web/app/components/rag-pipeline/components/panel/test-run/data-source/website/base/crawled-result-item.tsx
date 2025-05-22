@@ -3,23 +3,33 @@ import React, { useCallback } from 'react'
 import cn from '@/utils/classnames'
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
+import Button from '@/app/components/base/button'
+import { useTranslation } from 'react-i18next'
 
 type CrawledResultItemProps = {
   payload: CrawlResultItemType
   isChecked: boolean
   onCheckChange: (checked: boolean) => void
+  isPreview: boolean
+  showPreview: boolean
+  onPreview: () => void
 }
 
 const CrawledResultItem = ({
   payload,
   isChecked,
   onCheckChange,
+  isPreview,
+  onPreview,
+  showPreview,
 }: CrawledResultItemProps) => {
+  const { t } = useTranslation()
+
   const handleCheckChange = useCallback(() => {
     onCheckChange(!isChecked)
   }, [isChecked, onCheckChange])
   return (
-    <div className={cn('group flex cursor-pointer gap-x-2 rounded-lg p-2 hover:bg-state-base-hover')}>
+    <div className={cn('flex cursor-pointer gap-x-2 rounded-lg p-2', isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover')}>
       <Checkbox
         className='shrink-0'
         checked={isChecked}
@@ -39,6 +49,13 @@ const CrawledResultItem = ({
           {payload.source_url}
         </div>
       </div>
+      {showPreview && <Button
+        size='small'
+        onClick={onPreview}
+        className='system-xs-medium-uppercase right-0 top-0 hidden px-1.5 group-hover:absolute group-hover:block'
+      >
+        {t('datasetCreation.stepOne.website.preview')}
+      </Button>}
     </div>
   )
 }

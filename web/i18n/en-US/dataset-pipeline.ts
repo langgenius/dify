@@ -78,6 +78,10 @@ const translation = {
       processingDocuments: 'Processing Documents',
     },
     backToDataSource: 'Data Source',
+    stepOne: {
+      preview: 'Preview',
+    },
+    characters: 'characters',
   },
 }
 

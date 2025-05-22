@@ -164,5 +164,6 @@ export const usePublishedPipelineInfo = (pipelineId: string) => {
     queryFn: () => {
       return get<PublishedPipelineInfoResponse>(`/rag/pipelines/${pipelineId}/workflows/publish`)
     },
+    enabled: !!pipelineId,
   })
 }

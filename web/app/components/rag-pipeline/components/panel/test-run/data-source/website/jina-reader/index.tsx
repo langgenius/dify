@@ -11,6 +11,7 @@ type JinaReaderProps = {
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
+  onPreview?: (payload: CrawlResultItem) => void
 }
 
 const JinaReader = ({
@@ -19,6 +20,7 @@ const JinaReader = ({
   checkedCrawlResult,
   onCheckedCrawlResultChange,
   onJobIdChange,
+  onPreview,
 }: JinaReaderProps) => {
   return (
     <Crawler
@@ -28,6 +30,7 @@ const JinaReader = ({
       datasourceProvider={DataSourceProvider.jinaReader}
       onCheckedCrawlResultChange={onCheckedCrawlResultChange}
       onJobIdChange={onJobIdChange}
+      onPreview={onPreview}
     />
   )
 }

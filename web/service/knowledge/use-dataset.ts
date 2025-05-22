@@ -44,3 +44,22 @@ export const useDatasetRelatedApps = (datasetId: string) => {
     queryFn: () => get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`),
   })
 }
+
+type NotionPagePreviewRequest = {
+  workspaceID: string
+  pageID: string
+  pageType: string
+}
+
+type NotionPagePreviewResponse = {
+  content: string
+}
+
+export const usePreviewNotionPage = (params: NotionPagePreviewRequest) => {
+  const { workspaceID, pageID, pageType } = params
+  return useQuery({
+    queryKey: [NAME_SPACE, 'preview-notion-page'],
+    queryFn: () => get<NotionPagePreviewResponse>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`),
+    enabled: !!workspaceID && !!pageID && !!pageType,
+  })
+}

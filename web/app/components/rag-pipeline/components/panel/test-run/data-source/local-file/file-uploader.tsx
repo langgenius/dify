@@ -23,6 +23,7 @@ type IFileUploaderProps = {
   prepareFileList: (files: FileItem[]) => void
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   onFileListUpdate?: (files: FileItem[]) => void
+  onPreview?: (file: File) => void
   notSupportBatchUpload?: boolean
 }
 
@@ -31,6 +32,7 @@ const FileUploader = ({
   prepareFileList,
   onFileUpdate,
   onFileListUpdate,
+  onPreview,
   notSupportBatchUpload,
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
@@ -284,6 +286,7 @@ const FileUploader = ({
             return (
               <div
                 key={`${fileItem.fileID}-${index}`}
+                onClick={() => fileItem.file?.id && onPreview?.(fileItem.file)}
                 className={cn(
                   'flex h-12 items-center rounded-lg border border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-4',
                   isError && 'border-state-destructive-border bg-state-destructive-hover',

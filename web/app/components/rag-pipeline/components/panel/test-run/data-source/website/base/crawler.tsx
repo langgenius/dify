@@ -22,6 +22,7 @@ type CrawlerProps = {
   datasourceProvider: DataSourceProvider
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
+  onPreview?: (payload: CrawlResultItem) => void
 }
 
 enum Step {
@@ -37,6 +38,7 @@ const Crawler = ({
   datasourceProvider,
   onCheckedCrawlResultChange,
   onJobIdChange,
+  onPreview,
 }: CrawlerProps) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
@@ -123,6 +125,7 @@ const Crawler = ({
               checkedList={checkedCrawlResult}
               onSelectedChange={onCheckedCrawlResultChange}
               usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
+              onPreview={onPreview}
             />
           )}
         </div>

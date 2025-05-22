@@ -1,33 +1,30 @@
 'use client'
 import { useCallback, useMemo, useState } from 'react'
-// import StepIndicator from './step-indicator'
-// import { useTestRunSteps } from './hooks'
-// import DataSourceOptions from './data-source-options'
-import type { CrawlResultItem, FileItem } from '@/models/datasets'
+import DataSourceOptions from './data-source-options'
+import type { CrawlResultItem, CustomFile as File, FileItem } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
-// import LocalFile from './data-source/local-file'
+import LocalFile from '@/app/components/rag-pipeline/components/panel/test-run/data-source/local-file'
 import produce from 'immer'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { DataSourceProvider, type NotionPage } from '@/models/common'
-// import Notion from './data-source/notion'
-import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-// import Firecrawl from './data-source/website/firecrawl'
-// import JinaReader from './data-source/website/jina-reader'
-// import WaterCrawl from './data-source/website/water-crawl'
-// import Actions from './data-source/actions'
-// import DocumentProcessing from './document-processing'
-import { useTranslation } from 'react-i18next'
-import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
-import LocalFile from '@/app/components/rag-pipeline/components/panel/test-run/data-source/local-file'
 import Notion from '@/app/components/rag-pipeline/components/panel/test-run/data-source/notion'
+import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import FireCrawl from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website/firecrawl'
 import JinaReader from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website/jina-reader'
 import WaterCrawl from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website/water-crawl'
-import Actions from '@/app/components/rag-pipeline/components/panel/test-run/data-source/actions'
+import Actions from './data-source/actions'
 import DocumentProcessing from '@/app/components/rag-pipeline/components/panel/test-run/document-processing'
+import { useTranslation } from 'react-i18next'
+import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import LeftHeader from './left-header'
-// import { usePipelineRun } from '../../../hooks'
-// import type { Datasource } from './types'
+import { usePublishedPipelineInfo } from '@/service/use-pipeline'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import Loading from '@/app/components/base/loading'
+import type { Node } from '@/app/components/workflow/types'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import FilePreview from './preview/file-preview'
+import NotionPagePreview from './preview/notion-page-preview'
+import WebsitePreview from './preview/web-preview'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
@@ -37,11 +34,15 @@ const TestRunPanel = () => {
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
   const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
+  const [currentFile, setCurrentFile] = useState<File | undefined>()
+  const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
+  const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
 
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
+  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
 
-  // const steps = useTestRunSteps()
+  const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
 
   const allFileLoaded = (fileList.length > 0 && fileList.every(file => file.file.id))
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
@@ -79,13 +80,37 @@ const TestRunPanel = () => {
     setFiles(newList)
   }
 
-  const updateFileList = (preparedFiles: FileItem[]) => {
+  const updateFileList = useCallback((preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
-  }
+  }, [])
 
-  const updateNotionPages = (value: NotionPage[]) => {
+  const updateNotionPages = useCallback((value: NotionPage[]) => {
     setNotionPages(value)
-  }
+  }, [])
+
+  const updateCurrentFile = useCallback((file: File) => {
+    setCurrentFile(file)
+  }, [])
+
+  const hideFilePreview = useCallback(() => {
+    setCurrentFile(undefined)
+  }, [])
+
+  const updateCurrentPage = useCallback((page: NotionPage) => {
+    setCurrentNotionPage(page)
+  }, [])
+
+  const hideNotionPagePreview = useCallback(() => {
+    setCurrentNotionPage(undefined)
+  }, [])
+
+  const updateCurrentWebsite = useCallback((website: CrawlResultItem) => {
+    setCurrentWebsite(website)
+  }, [])
+
+  const hideWebsitePreview = useCallback(() => {
+    setCurrentWebsite(undefined)
+  }, [])
 
   const handleNextStep = useCallback(() => {
     setCurrentStep(preStep => preStep + 1)
@@ -94,8 +119,6 @@ const TestRunPanel = () => {
   const handleBackStep = useCallback(() => {
     setCurrentStep(preStep => preStep - 1)
   }, [])
-
-  // const { handleRun } = usePipelineRun()
 
   const handleProcess = useCallback((data: Record<string, any>) => {
     if (!datasource)
@@ -121,12 +144,15 @@ const TestRunPanel = () => {
       datasourceInfo.jobId = websiteCrawlJobId
       datasourceInfo.result = websitePages
     }
-    // handleRun({
-    //   inputs: data,
-    //   datasource_type,
-    //   datasource_info: datasourceInfo,
-    // })
+    // todo: Run Pipeline
+    console.log('datasource_type', datasource_type)
   }, [datasource, fileList, notionPages, websiteCrawlJobId, websitePages])
+
+  if (isFetchingPipelineInfo) {
+    return (
+      <Loading type='app' />
+    )
+  }
 
   return (
     <div
@@ -140,60 +166,65 @@ const TestRunPanel = () => {
         <div className='grow overflow-y-auto'>
           {
             currentStep === 1 && (
-              <>
-                <div className='flex flex-col gap-y-4 px-4 py-2'>
-                  {/* <DataSourceOptions
+              <div className='flex flex-col gap-y-5 pt-4'>
+                <DataSourceOptions
                   datasourceNodeId={datasource?.nodeId || ''}
                   onSelect={setDatasource}
-                /> */}
-                  {datasource?.type === DataSourceType.FILE && (
-                    <LocalFile
-                      files={fileList}
-                      updateFile={updateFile}
-                      updateFileList={updateFileList}
-                      notSupportBatchUpload={notSupportBatchUpload}
-                    />
-                  )}
-                  {datasource?.type === DataSourceType.NOTION && (
-                    <Notion
-                      nodeId={datasource?.nodeId || ''}
-                      notionPages={notionPages}
-                      updateNotionPages={updateNotionPages}
-                    />
-                  )}
-                  {datasource?.type === DataSourceProvider.fireCrawl && (
-                    <FireCrawl
-                      nodeId={datasource?.nodeId || ''}
-                      variables={datasource?.variables}
-                      checkedCrawlResult={websitePages}
-                      onCheckedCrawlResultChange={setWebsitePages}
-                      onJobIdChange={setWebsiteCrawlJobId}
-                    />
-                  )}
-                  {datasource?.type === DataSourceProvider.jinaReader && (
-                    <JinaReader
-                      nodeId={datasource?.nodeId || ''}
-                      variables={datasource?.variables}
-                      checkedCrawlResult={websitePages}
-                      onCheckedCrawlResultChange={setWebsitePages}
-                      onJobIdChange={setWebsiteCrawlJobId}
-                    />
-                  )}
-                  {datasource?.type === DataSourceProvider.waterCrawl && (
-                    <WaterCrawl
-                      nodeId={datasource?.nodeId || ''}
-                      variables={datasource?.variables}
-                      checkedCrawlResult={websitePages}
-                      onCheckedCrawlResultChange={setWebsitePages}
-                      onJobIdChange={setWebsiteCrawlJobId}
-                    />
-                  )}
-                  {isShowVectorSpaceFull && (
-                    <VectorSpaceFull />
-                  )}
-                </div>
+                  pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
+                />
+                {datasource?.type === DataSourceType.FILE && (
+                  <LocalFile
+                    files={fileList}
+                    updateFile={updateFile}
+                    updateFileList={updateFileList}
+                    onPreview={updateCurrentFile}
+                    notSupportBatchUpload={notSupportBatchUpload}
+                  />
+                )}
+                {datasource?.type === DataSourceType.NOTION && (
+                  <Notion
+                    nodeId={datasource?.nodeId || ''}
+                    notionPages={notionPages}
+                    updateNotionPages={updateNotionPages}
+                    canPreview
+                    onPreview={updateCurrentPage}
+                  />
+                )}
+                {datasource?.type === DataSourceProvider.fireCrawl && (
+                  <FireCrawl
+                    nodeId={datasource?.nodeId || ''}
+                    variables={datasource?.variables}
+                    checkedCrawlResult={websitePages}
+                    onCheckedCrawlResultChange={setWebsitePages}
+                    onJobIdChange={setWebsiteCrawlJobId}
+                    onPreview={updateCurrentWebsite}
+                  />
+                )}
+                {datasource?.type === DataSourceProvider.jinaReader && (
+                  <JinaReader
+                    nodeId={datasource?.nodeId || ''}
+                    variables={datasource?.variables}
+                    checkedCrawlResult={websitePages}
+                    onCheckedCrawlResultChange={setWebsitePages}
+                    onJobIdChange={setWebsiteCrawlJobId}
+                    onPreview={updateCurrentWebsite}
+                  />
+                )}
+                {datasource?.type === DataSourceProvider.waterCrawl && (
+                  <WaterCrawl
+                    nodeId={datasource?.nodeId || ''}
+                    variables={datasource?.variables}
+                    checkedCrawlResult={websitePages}
+                    onCheckedCrawlResultChange={setWebsitePages}
+                    onJobIdChange={setWebsiteCrawlJobId}
+                    onPreview={updateCurrentWebsite}
+                  />
+                )}
+                {isShowVectorSpaceFull && (
+                  <VectorSpaceFull />
+                )}
                 <Actions disabled={nextBtnDisabled} handleNextStep={handleNextStep} />
-              </>
+              </div>
             )
           }
           {
@@ -209,6 +240,15 @@ const TestRunPanel = () => {
       </div>
       {/* Preview */}
       <div className='flex h-full flex-1 shrink-0 flex-col pl-2 pt-2'>
+        {
+          currentStep === 1 && (
+            <>
+              {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
+              {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
+              {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+            </>
+          )
+        }
       </div>
     </div>
   )

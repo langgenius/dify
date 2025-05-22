@@ -78,6 +78,10 @@ const translation = {
       processingDocuments: '正在处理文档',
     },
     backToDataSource: '数据源',
+    stepOne: {
+      preview: '预览',
+    },
+    characters: '字符',
   },
 }
 

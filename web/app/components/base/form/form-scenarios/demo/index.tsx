@@ -24,7 +24,7 @@ const DemoForm = () => {
     },
   })
 
-const name = useStore(form.store, state => state.values.name)
+  const name = useStore(form.store, state => state.values.name)
 
   return (
     <form
@@ -59,7 +59,7 @@ const name = useStore(form.store, state => state.values.name)
         )
       }
       <form.AppForm>
-        <form.SubmitButton>Submit</form.SubmitButton>
+        <form.Actions />
       </form.AppForm>
     </form>
   )

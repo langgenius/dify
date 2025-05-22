@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import type { CrawlResultItem } from '@/models/datasets'
@@ -13,6 +13,7 @@ type CrawledResultProps = {
   list: CrawlResultItem[]
   checkedList: CrawlResultItem[]
   onSelectedChange: (selected: CrawlResultItem[]) => void
+  onPreview?: (payload: CrawlResultItem) => void
   usedTime: number
 }
 
@@ -22,8 +23,10 @@ const CrawledResult = ({
   checkedList,
   onSelectedChange,
   usedTime,
+  onPreview,
 }: CrawledResultProps) => {
   const { t } = useTranslation()
+  const [previewIndex, setPreviewIndex] = useState<number>(-1)
 
   const isCheckAll = checkedList.length === list.length
 
@@ -45,6 +48,12 @@ const CrawledResult = ({
     }
   }, [checkedList, onSelectedChange])
 
+  const handlePreview = useCallback((index: number) => {
+    if (!onPreview) return
+    setPreviewIndex(index)
+    onPreview(list[index])
+  }, [list, onPreview])
+
   return (
     <div className={cn('flex flex-col gap-y-2', className)}>
       <div className='system-sm-medium pt-2 text-text-primary'>
@@ -61,12 +70,15 @@ const CrawledResult = ({
           />
         </div>
         <div className='flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2'>
-          {list.map(item => (
+          {list.map((item, index) => (
             <CrawledResultItem
               key={item.source_url}
               payload={item}
               isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
               onCheckChange={handleItemCheckChange(item)}
+              isPreview={index === previewIndex}
+              onPreview={handlePreview.bind(null, index)}
+              showPreview={!!onPreview}
             />
           ))}
         </div>

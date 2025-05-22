@@ -11,6 +11,7 @@ type WaterCrawlProps = {
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
+  onPreview?: (payload: CrawlResultItem) => void
 }
 
 const WaterCrawl = ({
@@ -19,6 +20,7 @@ const WaterCrawl = ({
   checkedCrawlResult,
   onCheckedCrawlResultChange,
   onJobIdChange,
+  onPreview,
 }: WaterCrawlProps) => {
   return (
     <Crawler
@@ -28,6 +30,7 @@ const WaterCrawl = ({
       datasourceProvider={DataSourceProvider.jinaReader}
       onCheckedCrawlResultChange={onCheckedCrawlResultChange}
       onJobIdChange={onJobIdChange}
+      onPreview={onPreview}
     />
   )
 }

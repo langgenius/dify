@@ -11,6 +11,7 @@ type FireCrawlProps = {
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
+  onPreview?: (payload: CrawlResultItem) => void
 }
 
 const FireCrawl = ({
@@ -19,6 +20,7 @@ const FireCrawl = ({
   checkedCrawlResult,
   onCheckedCrawlResultChange,
   onJobIdChange,
+  onPreview,
 }: FireCrawlProps) => {
   return (
     <Crawler
@@ -28,6 +30,7 @@ const FireCrawl = ({
       datasourceProvider={DataSourceProvider.fireCrawl}
       onCheckedCrawlResultChange={onCheckedCrawlResultChange}
       onJobIdChange={onJobIdChange}
+      onPreview={onPreview}
     />
   )
 }

@@ -60,3 +60,15 @@ export const useMembers = () => {
     }),
   })
 }
+
+type FilePreviewResponse = {
+  content: string
+}
+
+export const useFilePreview = (fileID: string) => {
+  return useQuery<FilePreviewResponse>({
+    queryKey: [NAME_SPACE, 'file-preview', fileID],
+    queryFn: () => get<FilePreviewResponse>(`/files/${fileID}/preview`),
+    enabled: !!fileID,
+  })
+}
