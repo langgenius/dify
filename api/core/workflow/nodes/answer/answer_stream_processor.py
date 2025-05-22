@@ -71,7 +71,7 @@ class AnswerStreamProcessor(StreamProcessor):
         self.route_position = {}
         for answer_node_id, route_chunks in self.generate_routes.answer_generate_route.items():
             self.route_position[answer_node_id] = 0
-        self.rest_node_ids = self.graph.node_ids.copy()
+        self.rest_node_ids = set(self.graph.node_ids)
         self.current_stream_chunk_generating_node_ids = {}
 
     def _generate_stream_outputs_when_node_finished(
