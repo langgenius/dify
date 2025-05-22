@@ -30,9 +30,9 @@ const LastRun: FC<Props> = ({
   ...otherResultPanelProps
 }) => {
   const isRunning = oneStepRunRunningStatus === NodeRunningStatus.Running
-  // const isOneStepRunSuccess = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
   const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
-  const { data: lastRunResult, isFetching } = useLastRun(appId, nodeId, !isOneStepRunFailed)
+  const { data: lastRunResult, isFetching, error } = useLastRun(appId, nodeId, !isOneStepRunFailed)
+  const noLastRun = (error as any)?.status === 404
   const runResult = (isOneStepRunFailed ? singleRunResult : lastRunResult) || {}
 
   if (isFetching) {
@@ -45,7 +45,7 @@ const LastRun: FC<Props> = ({
   if (isRunning)
     return <ResultPanel status='running' showSteps={false} />
 
-  if (!runResult) {
+  if (noLastRun || !runResult) {
     return (
       <NoData canSingleRun={canSingleRun} onSingleRun={onSingleRunClicked} />
     )

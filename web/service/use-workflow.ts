@@ -94,8 +94,11 @@ export const useLastRun = (appID: string, nodeId: string, enabled: boolean) => {
     enabled,
     queryKey: [...useLastRunKey, appID, nodeId],
     queryFn: async () => {
-      return get(`apps/${appID}/workflows/draft/nodes/${nodeId}/last-run`)
+      return get(`apps/${appID}/workflows/draft/nodes/${nodeId}/last-run`, {}, {
+        silent: true,
+      })
     },
+    retry: 0,
   })
 }
 
