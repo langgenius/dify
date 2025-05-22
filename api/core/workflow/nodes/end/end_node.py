@@ -9,6 +9,10 @@ class EndNode(BaseNode[EndNodeData]):
     _node_data_cls = EndNodeData
     _node_type = NodeType.END
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
         """
         Run node

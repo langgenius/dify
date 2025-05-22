@@ -29,6 +29,10 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
     _node_data_cls = VariableAssignerNodeData
     _node_type = NodeType.VARIABLE_ASSIGNER
 
+    @classmethod
+    def version(cls) -> str:
+        return "2"
+
     def _run(self) -> NodeRunResult:
         inputs = self.node_data.model_dump()
         process_data: dict[str, Any] = {}
@@ -137,6 +141,13 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
             process_data=process_data,
+            outputs={
+                "updated_variables": [
+                    common_helpers.variable_to_output_mapping(selector, seg)
+                    for selector in updated_variable_selectors
+                    if (seg := self.graph_runtime_state.variable_pool.get(selector)) is not None
+                ],
+            },
         )
 
     def _handle_item(

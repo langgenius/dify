@@ -72,6 +72,10 @@ class IterationNode(BaseNode[IterationNodeData]):
             },
         }
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """
         Run the node.

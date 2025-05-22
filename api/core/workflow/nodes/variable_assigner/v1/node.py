@@ -14,9 +14,14 @@ class VariableAssignerNode(BaseNode[VariableAssignerData]):
     _node_data_cls = VariableAssignerData
     _node_type = NodeType.VARIABLE_ASSIGNER
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
+        assigned_variable_selector = self.node_data.assigned_variable_selector
         # Should be String, Number, Object, ArrayString, ArrayNumber, ArrayObject
-        original_variable = self.graph_runtime_state.variable_pool.get(self.node_data.assigned_variable_selector)
+        original_variable = self.graph_runtime_state.variable_pool.get(assigned_variable_selector)
         if not isinstance(original_variable, Variable):
             raise VariableOperatorNodeError("assigned variable not found")
 
@@ -44,7 +49,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerData]):
                 raise VariableOperatorNodeError(f"unsupported write mode: {self.node_data.write_mode}")
 
         # Over write the variable.
-        self.graph_runtime_state.variable_pool.add(self.node_data.assigned_variable_selector, updated_variable)
+        self.graph_runtime_state.variable_pool.add(assigned_variable_selector, updated_variable)
 
         # TODO: Move database operation to the pipeline.
         # Update conversation variable.
@@ -57,6 +62,14 @@ class VariableAssignerNode(BaseNode[VariableAssignerData]):
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs={
                 "value": income_value.to_object(),
+            },
+            outputs={
+                # NOTE(QuantumGhost): although only one variable is updated in `v1.VariableAssignerNode`,
+                # we still set `output_variables` as a list to ensure the schema of output is
+                # compatible with `v2.VariableAssignerNode`.
+                "updated_variables": [
+                    common_helpers.variable_to_output_mapping(assigned_variable_selector, updated_variable)
+                ]
             },
         )
 

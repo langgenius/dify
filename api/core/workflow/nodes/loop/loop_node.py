@@ -54,6 +54,10 @@ class LoopNode(BaseNode[LoopNodeData]):
     _node_data_cls = LoopNodeData
     _node_type = NodeType.LOOP
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """Run the node."""
         # Get inputs

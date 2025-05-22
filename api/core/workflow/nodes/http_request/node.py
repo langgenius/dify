@@ -60,6 +60,10 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
             },
         }
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
         process_data = {}
         try:

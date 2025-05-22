@@ -16,6 +16,10 @@ class IfElseNode(BaseNode[IfElseNodeData]):
     _node_data_cls = IfElseNodeData
     _node_type = NodeType.IF_ELSE
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
         """
         Run node

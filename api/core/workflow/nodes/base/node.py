@@ -1,7 +1,7 @@
 import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional, TypeVar, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.enums import CONTINUE_ON_ERROR_NODE_TYPE, RETRY_ON_ERROR_NODE_TYPE, NodeType
@@ -23,7 +23,7 @@ GenericNodeData = TypeVar("GenericNodeData", bound=BaseNodeData)
 
 class BaseNode(Generic[GenericNodeData]):
     _node_data_cls: type[GenericNodeData]
-    _node_type: NodeType
+    _node_type: ClassVar[NodeType]
 
     def __init__(
         self,
@@ -101,9 +101,10 @@ class BaseNode(Generic[GenericNodeData]):
             raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
 
         node_data = cls._node_data_cls(**config.get("data", {}))
-        return cls._extract_variable_selector_to_variable_mapping(
+        data = cls._extract_variable_selector_to_variable_mapping(
             graph_config=graph_config, node_id=node_id, node_data=cast(GenericNodeData, node_data)
         )
+        return data
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
@@ -138,6 +139,16 @@ class BaseNode(Generic[GenericNodeData]):
         :return:
         """
         return self._node_type
+
+    @classmethod
+    @abstractmethod
+    def version(cls) -> str:
+        """`node_version` returns the version of current node type."""
+        # NOTE(QuantumGhost): This should be in sync with `NODE_TYPE_CLASSES_MAPPING`.
+        #
+        # If you have introduced a new node type, please add it to `NODE_TYPE_CLASSES_MAPPING`
+        # in `api/core/workflow/nodes/__init__.py`.
+        pass
 
     @property
     def should_continue_on_error(self) -> bool:

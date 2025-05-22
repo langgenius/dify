@@ -148,6 +148,10 @@ class LLMNode(BaseNode[LLMNodeData]):
             )
         self._llm_file_saver = llm_file_saver
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         def process_structured_output(text: str) -> Optional[dict[str, Any]]:
             """Process structured output if enabled"""

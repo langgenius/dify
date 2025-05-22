@@ -16,6 +16,10 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
     _node_data_cls = ListOperatorNodeData
     _node_type = NodeType.LIST_OPERATOR
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self):
         inputs: dict[str, list] = {}
         process_data: dict[str, list] = {}

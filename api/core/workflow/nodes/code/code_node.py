@@ -40,6 +40,10 @@ class CodeNode(BaseNode[CodeNodeData]):
 
         return code_provider.get_default_config()
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
         # Get code language
         code_language = self.node_data.code_language

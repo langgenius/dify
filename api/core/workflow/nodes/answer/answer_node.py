@@ -18,7 +18,11 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class AnswerNode(BaseNode[AnswerNodeData]):
     _node_data_cls = AnswerNodeData
-    _node_type: NodeType = NodeType.ANSWER
+    _node_type = NodeType.ANSWER
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """

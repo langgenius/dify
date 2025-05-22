@@ -44,6 +44,10 @@ class ToolNode(BaseNode[ToolNodeData]):
     _node_data_cls = ToolNodeData
     _node_type = NodeType.TOOL
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> Generator:
         """
         Run the tool node
