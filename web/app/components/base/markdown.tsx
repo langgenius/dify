@@ -141,9 +141,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     const handleResize = () => {
       // This gets the echarts instance from the component
       const instance = echartsRef.current?.getEchartsInstance?.()
-      if (instance) {
+      if (instance)
         instance.resize()
-      }
     }
 
     window.addEventListener('resize', handleResize)
@@ -179,85 +178,87 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
     // Detect if this is historical data (already complete)
     // Historical data typically comes as a complete code block with complete JSON
-    const isCompleteJson =
-      (trimmedContent.startsWith('{') && trimmedContent.endsWith('}') &&
-       trimmedContent.split('{').length === trimmedContent.split('}').length) ||
-      (trimmedContent.startsWith('[') && trimmedContent.endsWith(']') &&
-       trimmedContent.split('[').length === trimmedContent.split(']').length);
+    const isCompleteJson
+      = (trimmedContent.startsWith('{') && trimmedContent.endsWith('}')
+        && trimmedContent.split('{').length === trimmedContent.split('}').length)
+      || (trimmedContent.startsWith('[') && trimmedContent.endsWith(']')
+        && trimmedContent.split('[').length === trimmedContent.split(']').length)
 
     // If the JSON structure looks complete, try to parse it right away
     if (isCompleteJson && !processedRef.current) {
       try {
-        const parsed = JSON.parse(trimmedContent);
+        const parsed = JSON.parse(trimmedContent)
         if (typeof parsed === 'object' && parsed !== null) {
-          setFinalChartOption(parsed);
-          setChartState('success');
-          processedRef.current = true;
-          return;
+          setFinalChartOption(parsed)
+          setChartState('success')
+          processedRef.current = true
+          return
         }
-      } catch {
+      }
+      catch {
         try {
           // eslint-disable-next-line no-new-func, sonarjs/code-eval
-          const result = new Function(`return ${trimmedContent}`)();
+          const result = new Function(`return ${trimmedContent}`)()
           if (typeof result === 'object' && result !== null) {
-            setFinalChartOption(result);
-            setChartState('success');
-            processedRef.current = true;
-            return;
+            setFinalChartOption(result)
+            setChartState('success')
+            processedRef.current = true
+            return
           }
-        } catch {
+        }
+        catch {
           // If we have a complete JSON structure but it doesn't parse,
           // it's likely an error rather than incomplete data
-          setChartState('error');
-          processedRef.current = true;
-          return;
+          setChartState('error')
+          processedRef.current = true
+          return
         }
       }
     }
 
     // If we get here, either the JSON isn't complete yet, or we failed to parse it
     // Check more conditions for streaming data
-    const isIncomplete =
-      trimmedContent.length < 5 ||
-      (trimmedContent.startsWith('{') &&
-       (!trimmedContent.endsWith('}') ||
-        trimmedContent.split('{').length !== trimmedContent.split('}').length)) ||
-      (trimmedContent.startsWith('[') &&
-       (!trimmedContent.endsWith(']') ||
-        trimmedContent.split('[').length !== trimmedContent.split('}').length)) ||
-      (trimmedContent.split('"').length % 2 !== 1) ||
-      (trimmedContent.includes('{"') && !trimmedContent.includes('"}'));
+    const isIncomplete
+      = trimmedContent.length < 5
+      || (trimmedContent.startsWith('{')
+        && (!trimmedContent.endsWith('}')
+          || trimmedContent.split('{').length !== trimmedContent.split('}').length))
+      || (trimmedContent.startsWith('[')
+        && (!trimmedContent.endsWith(']')
+          || trimmedContent.split('[').length !== trimmedContent.split('}').length))
+      || (trimmedContent.split('"').length % 2 !== 1)
+      || (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
 
     // Only try to parse streaming data if it looks complete and hasn't been processed
     if (!isIncomplete && !processedRef.current) {
-      let isValidOption = false;
+      let isValidOption = false
 
       try {
-        const parsed = JSON.parse(trimmedContent);
+        const parsed = JSON.parse(trimmedContent)
         if (typeof parsed === 'object' && parsed !== null) {
-          setFinalChartOption(parsed);
-          isValidOption = true;
+          setFinalChartOption(parsed)
+          isValidOption = true
         }
-      } catch(e) {
+      }
+      catch {
         try {
           // eslint-disable-next-line no-new-func, sonarjs/code-eval
-          const result = new Function(`return ${trimmedContent}`)();
+          const result = new Function(`return ${trimmedContent}`)()
           if (typeof result === 'object' && result !== null) {
-            setFinalChartOption(result);
-            isValidOption = true;
+            setFinalChartOption(result)
+            isValidOption = true
           }
-        } catch(e2) {
+        }
+        catch {
           // Both parsing methods failed, but content looks complete
-          if (!isIncomplete) {
-            setChartState('error');
-            processedRef.current = true;
-          }
+          setChartState('error')
+          processedRef.current = true
         }
       }
 
       if (isValidOption) {
-        setChartState('success');
-        processedRef.current = true;
+        setChartState('success')
+        processedRef.current = true
       }
     }
   }, [language, children])
@@ -283,7 +284,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
               borderBottomLeftRadius: '10px',
               borderBottomRightRadius: '10px',
               backgroundColor: isDarkMode ? 'var(--color-components-input-bg-normal)' : 'transparent',
-              color: 'var(--color-text-secondary)'
+              color: 'var(--color-text-secondary)',
             }}>
               <div style={{
                 marginBottom: '12px',
@@ -291,7 +292,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
                 height: '24px',
               }}>
                 {/* Rotating spinner that works in both light and dark modes */}
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{animation: 'spin 1.5s linear infinite'}}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ animation: 'spin 1.5s linear infinite' }}>
                   <style>
                     {`
                       @keyframes spin {
@@ -300,8 +301,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
                       }
                     `}
                   </style>
-                  <circle opacity="0.2" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M12 2C6.47715 2 2 6.47715 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <circle opacity="0.2" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                  <path d="M12 2C6.47715 2 2 6.47715 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </div>
               <div style={{
@@ -322,7 +323,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
               overflowX: 'auto',
               borderBottomLeftRadius: '10px',
               borderBottomRightRadius: '10px',
-              transition: 'background-color 0.3s ease'
+              transition: 'background-color 0.3s ease',
             }}>
               <ErrorBoundary>
                 <ReactEcharts
@@ -330,22 +331,21 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
                   option={finalChartOption}
                   style={{
                     height: '350px',
-                    width: '100%'
+                    width: '100%',
                   }}
                   theme={isDarkMode ? 'dark' : undefined}
                   opts={{
                     renderer: 'canvas',
-                    width: 'auto'
+                    width: 'auto',
                   }}
                   notMerge={true}
                   onEvents={{
                     // Force resize when chart is finished rendering
-                    'finished': () => {
+                    finished: () => {
                       const instance = echartsRef.current?.getEchartsInstance?.()
-                      if (instance) {
+                      if (instance)
                         instance.resize()
-                      }
-                    }
+                    },
                   }}
                 />
               </ErrorBoundary>
@@ -356,9 +356,9 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
         // Error state: show error message
         const errorOption = {
           title: {
-            text: "ECharts error - Wrong option."
-          }
-        };
+            text: 'ECharts error - Wrong option.',
+          },
+        }
 
         return (
           <div style={{
@@ -368,7 +368,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
             overflowX: 'auto',
             borderBottomLeftRadius: '10px',
             borderBottomRightRadius: '10px',
-            transition: 'background-color 0.3s ease'
+            transition: 'background-color 0.3s ease',
           }}>
             <ErrorBoundary>
               <ReactEcharts
@@ -376,12 +376,12 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
                 option={errorOption}
                 style={{
                   height: '350px',
-                  width: '100%'
+                  width: '100%',
                 }}
                 theme={isDarkMode ? 'dark' : undefined}
                 opts={{
                   renderer: 'canvas',
-                  width: 'auto'
+                  width: 'auto',
                 }}
                 notMerge={true}
               />
