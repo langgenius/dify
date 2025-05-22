@@ -369,6 +369,7 @@ const translation = {
         ms: '毫秒',
         retries: '{{num}} 重试次数',
       },
+      inputVars: '输入变量',
     },
     start: {
       required: '必填',
@@ -767,6 +768,11 @@ const translation = {
       loopNode: '循环节点',
       currentLoopCount: '当前循环次数：{{count}}',
       totalLoopCount: '总循环次数：{{count}}',
+    },
+    knowledgeBase: {
+      chunkStructure: '分段结构',
+      changeChunkStructure: '更改分段结构',
+      aboutRetrieval: '关于知识检索。',
     },
     note: {
       addNote: '添加注释',

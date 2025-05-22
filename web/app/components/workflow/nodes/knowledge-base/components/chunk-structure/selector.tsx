@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -21,6 +22,7 @@ const Selector = ({
   onChange,
   readonly,
 }: SelectorProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const handleSelect = useCallback((optionId: ChunkStructureEnum) => {
@@ -47,13 +49,13 @@ const Selector = ({
           size='small'
           variant='ghost-accent'
         >
-          change
+          {t('workflow.panel.change')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
         <div className='w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]'>
           <div className='system-sm-semibold px-3 pt-3.5 text-text-primary'>
-            change Chunk Structure
+            {t('workflow.nodes.knowledgeBase.changeChunkStructure')}
           </div>
           <div className='space-y-1 p-3 pt-2'>
             {

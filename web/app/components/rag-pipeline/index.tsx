@@ -46,6 +46,7 @@ const RagPipeline = () => {
       <RagPipelineMain
         edges={edgesData}
         nodes={nodesData}
+        viewport={data.graph.viewport}
       />
     </WorkflowWithDefaultContext>
   )

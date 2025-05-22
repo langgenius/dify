@@ -41,6 +41,7 @@ const WeightedScore = ({
           value={value.value[0]}
           onChange={v => !readonly && onChange({ value: [v, (10 - v * 10) / 10] })}
           trackClassName='weightedScoreSliderTrack'
+          disabled={readonly}
         />
         <div className='mt-3 flex justify-between'>
           <div className='system-xs-semibold-uppercase flex w-[90px] shrink-0 items-center text-util-colors-blue-light-blue-light-500'>
