@@ -25,6 +25,8 @@ const translation = {
     useTemplate: 'Use this Knowledge Pipeline',
     backToDataSource: 'Back to Data Source',
     process: 'Process',
+    dataSource: 'Data Source',
+    saveAndProcess: 'Save & Process',
   },
   knowledgeNameAndIcon: 'Knowledge name & icon',
   knowledgeNameAndIconPlaceholder: 'Please enter the name of the Knowledge Base',
@@ -80,6 +82,9 @@ const translation = {
     backToDataSource: 'Data Source',
     stepOne: {
       preview: 'Preview',
+    },
+    stepTwo: {
+      chunkSettings: 'Chunk Settings',
     },
     characters: 'characters',
   },

@@ -13,7 +13,6 @@ import FireCrawl from '@/app/components/rag-pipeline/components/panel/test-run/d
 import JinaReader from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website/jina-reader'
 import WaterCrawl from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website/water-crawl'
 import Actions from './data-source/actions'
-import DocumentProcessing from '@/app/components/rag-pipeline/components/panel/test-run/document-processing'
 import { useTranslation } from 'react-i18next'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import LeftHeader from './left-header'
@@ -25,6 +24,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import FilePreview from './preview/file-preview'
 import NotionPagePreview from './preview/notion-page-preview'
 import WebsitePreview from './preview/web-preview'
+import ProcessDocuments from './process-documents'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
@@ -229,7 +229,7 @@ const TestRunPanel = () => {
           }
           {
             currentStep === 2 && (
-              <DocumentProcessing
+              <ProcessDocuments
                 dataSourceNodeId={datasource?.nodeId || ''}
                 onProcess={handleProcess}
                 onBack={handleBackStep}

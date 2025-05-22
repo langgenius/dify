@@ -25,6 +25,8 @@ const translation = {
     useTemplate: '使用此知识库流水线',
     backToDataSource: '返回数据源',
     process: '处理',
+    dataSource: '数据源',
+    saveAndProcess: '保存并处理',
   },
   knowledgeNameAndIcon: '知识库名称和图标',
   knowledgeNameAndIconPlaceholder: '请输入知识库名称',
@@ -80,6 +82,9 @@ const translation = {
     backToDataSource: '数据源',
     stepOne: {
       preview: '预览',
+    },
+    stepTwo: {
+      chunkSettings: '分段设置',
     },
     characters: '字符',
   },

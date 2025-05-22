@@ -132,13 +132,26 @@ export const useDatasourceNodeRun = (
   })
 }
 
-// Get the config of shared input fields
-export const usePipelineProcessingParams = (params: PipelineProcessingParamsRequest) => {
+export const useDraftPipelineProcessingParams = (params: PipelineProcessingParamsRequest) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelineProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
     queryFn: () => {
-      return get<PipelineProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/processing/parameters`, {
+      return get<PipelineProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/draft/processing/parameters`, {
+        params: {
+          node_id,
+        },
+      })
+    },
+  })
+}
+
+export const usePublishedPipelineProcessingParams = (params: PipelineProcessingParamsRequest) => {
+  const { pipeline_id, node_id } = params
+  return useQuery<PipelineProcessingParamsResponse>({
+    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
+    queryFn: () => {
+      return get<PipelineProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/processing/parameters`, {
         params: {
           node_id,
         },

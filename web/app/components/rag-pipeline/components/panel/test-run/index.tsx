@@ -39,7 +39,6 @@ const TestRunPanel = () => {
   const allFileLoaded = (fileList.length > 0 && fileList.every(file => file.file.id))
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && enableBilling
-  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
   const nextDisabled = useMemo(() => {
     if (!fileList.length)
       return true
@@ -156,7 +155,7 @@ const TestRunPanel = () => {
                     files={fileList}
                     updateFile={updateFile}
                     updateFileList={updateFileList}
-                    notSupportBatchUpload={notSupportBatchUpload}
+                    notSupportBatchUpload={false} // only support single file upload in test run
                   />
                 )}
                 {datasource?.type === DataSourceType.NOTION && (
