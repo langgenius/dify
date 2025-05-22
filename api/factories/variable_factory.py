@@ -114,6 +114,10 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
     return cast(Variable, result)
 
 
+def infer_segment_type_from_value(value: Any, /) -> SegmentType:
+    return build_segment(value).value_type
+
+
 def build_segment(value: Any, /) -> Segment:
     if value is None:
         return NoneSegment()

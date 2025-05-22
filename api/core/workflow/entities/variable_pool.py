@@ -7,11 +7,11 @@ from pydantic import BaseModel, Field
 
 from core.file import File, FileAttribute, file_manager
 from core.variables import Segment, SegmentGroup, Variable
+from core.variables.consts import MIN_SELECTORS_LENGTH
 from core.variables.segments import FileSegment, NoneSegment
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.enums import SystemVariableKey
 from factories import variable_factory
-
-from ..constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from ..enums import SystemVariableKey
 
 VariableValue = Union[str, int, float, dict, list, File]
 
@@ -91,7 +91,7 @@ class VariablePool(BaseModel):
         Returns:
             None
         """
-        if len(selector) < 2:
+        if len(selector) < MIN_SELECTORS_LENGTH:
             raise ValueError("Invalid selector")
 
         if isinstance(value, Variable):
@@ -118,7 +118,7 @@ class VariablePool(BaseModel):
         Raises:
             ValueError: If the selector is invalid.
         """
-        if len(selector) < 2:
+        if len(selector) < MIN_SELECTORS_LENGTH:
             return None
 
         hash_key = hash(tuple(selector[1:]))

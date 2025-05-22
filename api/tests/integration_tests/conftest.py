@@ -1,4 +1,16 @@
 import os
+import random
+import secrets
+from collections.abc import Generator
+
+import pytest
+from flask import Flask
+from flask.testing import FlaskClient
+from sqlalchemy.orm import Session
+
+from app_factory import create_app
+from models import Account, DifySetup, Tenant, TenantAccountJoin, db
+from services.account_service import AccountService, RegisterService
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -17,3 +29,61 @@ def _load_env() -> None:
 
 
 _load_env()
+
+_CACHED_APP = create_app()
+
+
+@pytest.fixture
+def flask_app() -> Flask:
+    return _CACHED_APP
+
+
+@pytest.fixture(scope="session")
+def setup_account(request) -> Generator[Account, None, None]:
+    """`dify_setup` completes the setup process for the Dify application.
+
+    It creates `Account` and `Tenant`, and inserts a `DifySetup` record into the database.
+
+    Most tests in the `controllers` package may require dify has been successfully setup.
+    """
+    with _CACHED_APP.test_request_context():
+        rand_suffix = random.randint(int(1e6), int(1e7))
+        name = f"test-user-{rand_suffix}"
+        email = f"{name}@example.com"
+        RegisterService.setup(
+            email=email,
+            name=name,
+            password=secrets.token_hex(16),
+            ip_address="localhost",
+        )
+
+    with _CACHED_APP.test_request_context():
+        with Session(bind=db.engine, expire_on_commit=False) as session:
+            account = session.query(Account).filter_by(email=email).one()
+
+    yield account
+
+    with _CACHED_APP.test_request_context():
+        db.session.query(DifySetup).delete()
+        db.session.query(TenantAccountJoin).delete()
+        db.session.query(Account).delete()
+        db.session.query(Tenant).delete()
+        db.session.commit()
+
+
+@pytest.fixture
+def flask_req_ctx():
+    with _CACHED_APP.test_request_context():
+        yield
+
+
+@pytest.fixture
+def auth_header(setup_account) -> dict[str, str]:
+    token = AccountService.get_account_jwt_token(setup_account)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def test_client() -> Generator[FlaskClient, None, None]:
+    with _CACHED_APP.test_client() as client:
+        yield client

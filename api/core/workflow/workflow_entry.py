@@ -1,8 +1,8 @@
 import logging
 import time
 import uuid
-from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from collections.abc import Callable, Generator, Mapping, Sequence
+from typing import Any, Optional, TypeAlias, TypeVar, cast
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
@@ -10,6 +10,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.workflow.callbacks import WorkflowCallback
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
@@ -19,7 +20,7 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.event import NodeEvent
+from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from factories import file_factory
 from models.enums import UserFrom
@@ -120,6 +121,7 @@ class WorkflowEntry:
         node_id: str,
         user_id: str,
         user_inputs: dict,
+        conversation_variables: dict | None = None,
     ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
         """
         Single step run workflow node
@@ -144,13 +146,19 @@ class WorkflowEntry:
         except StopIteration:
             raise ValueError("node id not found in workflow graph")
 
+        node_config_data = node_config.get("data", {})
+
         # Get node class
-        node_type = NodeType(node_config.get("data", {}).get("type"))
-        node_version = node_config.get("data", {}).get("version", "1")
+        node_type = NodeType(node_config_data.get("type"))
+        node_version = node_config_data.get("version", "1")
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
+        metadata_attacher = _attach_execution_metadata_based_on_node_config(node_config_data)
 
         # init variable pool
-        variable_pool = VariablePool(environment_variables=workflow.environment_variables)
+        variable_pool = VariablePool(
+            environment_variables=workflow.environment_variables,
+            conversation_variable=conversation_variables or {},
+        )
 
         # init graph
         graph = Graph.init(graph_config=workflow.graph_dict)
@@ -188,11 +196,15 @@ class WorkflowEntry:
             variable_pool=variable_pool,
             tenant_id=workflow.tenant_id,
         )
+        cls._load_persisted_draft_var_and_populate_pool(app_id=workflow.app_id, variable_pool=variable_pool)
+
         try:
             # run node
             generator = node_instance.run()
         except Exception as e:
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
+        if metadata_attacher:
+            generator = _wrap_generator(generator, metadata_attacher)
         return node_instance, generator
 
     @classmethod
@@ -320,6 +332,16 @@ class WorkflowEntry:
         return value
 
     @classmethod
+    def _load_persisted_draft_var_and_populate_pool(cls, app_id: str, variable_pool: VariablePool) -> None:
+        """
+        Load persisted draft variables and populate the variable pool.
+        :param app_id: The application ID.
+        :param variable_pool: The variable pool to populate.
+        """
+        # TODO(QuantumGhost):
+        pass
+
+    @classmethod
     def mapping_user_inputs_to_variable_pool(
         cls,
         *,
@@ -367,3 +389,61 @@ class WorkflowEntry:
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)
+
+
+_YieldT_co = TypeVar("_YieldT_co", covariant=True)
+_YieldR_co = TypeVar("_YieldR_co", covariant=True)
+
+
+def _wrap_generator(
+    gen: Generator[_YieldT_co, None, None],
+    mapper: Callable[[_YieldT_co], _YieldR_co],
+) -> Generator[_YieldR_co, None, None]:
+    for item in gen:
+        yield mapper(item)
+
+
+_NodeOrInNodeEvent: TypeAlias = NodeEvent | InNodeEvent
+
+
+def _attach_execution_metadata(
+    extra_metadata: dict[NodeRunMetadataKey, Any],
+) -> Callable[[_NodeOrInNodeEvent], _NodeOrInNodeEvent]:
+    def _execution_metadata_mapper(e: NodeEvent | InNodeEvent) -> NodeEvent | InNodeEvent:
+        if not isinstance(e, RunCompletedEvent):
+            return e
+        run_result = e.run_result
+        if run_result.metadata is None:
+            run_result.metadata = {}
+        for k, v in extra_metadata.items():
+            run_result.metadata[k] = v
+        return e
+
+    return _execution_metadata_mapper
+
+
+def _attach_execution_metadata_based_on_node_config(
+    node_config: dict,
+) -> Callable[[_NodeOrInNodeEvent], _NodeOrInNodeEvent] | None:
+    in_loop = node_config.get("isInLoop", False)
+    in_iteration = node_config.get("isInIteration", False)
+    if in_loop:
+        loop_id = node_config.get("loop_id")
+        if loop_id is None:
+            raise Exception("invalid graph")
+        return _attach_execution_metadata(
+            {
+                NodeRunMetadataKey.LOOP_ID: loop_id,
+            }
+        )
+    elif in_iteration:
+        iteration_id = node_config.get("iteration_id")
+        if iteration_id is None:
+            raise Exception("invalid graph")
+        return _attach_execution_metadata(
+            {
+                NodeRunMetadataKey.ITERATION_ID: iteration_id,
+            }
+        )
+    else:
+        return None

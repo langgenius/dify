@@ -136,6 +136,8 @@ class Workflow(Base):
         "conversation_variables", db.Text, nullable=False, server_default="{}"
     )
 
+    VERSION_DRAFT = "draft"
+
     @classmethod
     def new(
         cls,
@@ -375,6 +377,10 @@ class Workflow(Base):
             {var.name: var.model_dump() for var in value},
             ensure_ascii=False,
         )
+
+    @staticmethod
+    def version_from_datetime(d: datetime) -> str:
+        return str(d)
 
 
 class WorkflowRunStatus(StrEnum):
@@ -843,7 +849,7 @@ def _naive_utc_datetime():
 
 class WorkflowDraftVariable(Base):
     @staticmethod
-    def unique_columns() -> list[str]:
+    def unique_app_id_node_id_name() -> list[str]:
         return [
             "app_id",
             "node_id",
@@ -851,7 +857,7 @@ class WorkflowDraftVariable(Base):
         ]
 
     __tablename__ = "workflow_draft_variables"
-    __table_args__ = (UniqueConstraint(*unique_columns()),)
+    __table_args__ = (UniqueConstraint(*unique_app_id_node_id_name()),)
 
     # id is the unique identifier of a draft variable.
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
@@ -1016,10 +1022,11 @@ class WorkflowDraftVariable(Base):
         name: str,
         value: Segment,
         visible: bool = True,
+        editable: bool = True,
     ) -> "WorkflowDraftVariable":
         variable = cls._new(app_id=app_id, node_id=node_id, name=name, value=value)
         variable.visible = visible
-        variable.editable = True
+        variable.editable = editable
         return variable
 
     @property
