@@ -182,7 +182,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     score=record.score,
                                 )
                             )
-                    
+
                     if self.return_resource:
                         for record in records:
                             segment = record.segment
