@@ -40,7 +40,7 @@ const useInspectVarsCrud = () => {
   const { data: systemVars } = useSysVarValues(appId)
   const invalidateSysVarValues = useInvalidateSysVarValues(appId)
 
-  const { mutate: doDeleteAllInspectorVars } = useDeleteAllInspectorVars(appId)
+  const { mutateAsync: doDeleteAllInspectorVars } = useDeleteAllInspectorVars(appId)
   const { mutate: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(appId)
   const { mutate: doDeleteInspectVar } = useDeleteInspectVar(appId)
 
