@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
@@ -150,6 +150,15 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     onRun(submitData)
   }
+
+  useEffect(() => {
+    if(filteredExistVarForms.length === 0)
+      onRun({})
+  }, [filteredExistVarForms, onRun])
+
+  if(filteredExistVarForms.length === 0)
+    return null
+
   return (
     <div className='absolute inset-0 z-10 rounded-2xl bg-background-overlay-alt'>
       <div className='flex h-full flex-col rounded-2xl bg-components-panel-bg'>

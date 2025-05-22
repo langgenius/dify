@@ -34,7 +34,6 @@ import {
   useNodeDataUpdate,
   useNodesInteractions,
   useNodesReadOnly,
-  useNodesSyncDraft,
   useToolIcon,
   useWorkflowHistory,
 } from '@/app/components/workflow/hooks'
@@ -114,7 +113,6 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [nodePanelWidth, otherPanelWidth, workflowCanvasWidth, updateNodePanelWidth])
 
   const { handleNodeSelect } = useNodesInteractions()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { nodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration, data.isInLoop)
   const toolIcon = useToolIcon(data)

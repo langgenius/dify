@@ -79,7 +79,7 @@ const useInspectVarsCrud = () => {
         return true
       const isSys = isSystemVar([nodeId])
       if (isSys)
-        return sysVars.some(varItem => varItem.selector?.[1] === name)
+        return sysVars.some(varItem => varItem.selector?.[1]?.replace('sys.', '') === name)
       const isChatVar = isConversationVar([nodeId])
       if (isChatVar)
         return conversationVars.some(varItem => varItem.selector?.[1] === name)
