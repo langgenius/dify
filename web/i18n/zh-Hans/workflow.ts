@@ -771,11 +771,6 @@ const translation = {
       currentLoopCount: '当前循环次数：{{count}}',
       totalLoopCount: '总循环次数：{{count}}',
     },
-    knowledgeBase: {
-      chunkStructure: '分段结构',
-      changeChunkStructure: '更改分段结构',
-      aboutRetrieval: '关于知识检索。',
-    },
     note: {
       addNote: '添加注释',
       editor: {
@@ -889,6 +884,15 @@ const translation = {
         install: '安装',
         cancel: '取消',
       },
+    },
+    dataSource: {
+      supportedFileFormats: '支持的文件格式',
+      supportedFileFormatsPlaceholder: '文件格式，例如：doc',
+    },
+    knowledgeBase: {
+      chunkStructure: '分段结构',
+      changeChunkStructure: '更改分段结构',
+      aboutRetrieval: '关于知识检索。',
     },
   },
   tracing: {

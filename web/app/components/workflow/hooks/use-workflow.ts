@@ -347,8 +347,8 @@ export const useWorkflow = () => {
     return []
   }, [store])
 
-  const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], targetNode?: Node) => {
-    const { id, parentId } = targetNode || {}
+  const getStartNodes = useCallback((nodes: Node[], currentNode?: Node) => {
+    const { id, parentId } = currentNode || {}
     let startNodes: Node[] = []
 
     if (parentId) {
@@ -366,6 +366,12 @@ export const useWorkflow = () => {
 
     if (!startNodes.length)
       startNodes = getRootNodesById(id || '')
+
+    return startNodes
+  }, [nodesMap, getRootNodesById])
+
+  const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], targetNode?: Node) => {
+    const startNodes = getStartNodes(nodes, targetNode)
 
     for (let i = 0; i < startNodes.length; i++) {
       const {
@@ -389,7 +395,7 @@ export const useWorkflow = () => {
     }
 
     return true
-  }, [t, workflowStore, nodesMap, getRootNodesById])
+  }, [t, workflowStore, getStartNodes])
 
   const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
     const {
@@ -454,6 +460,7 @@ export const useWorkflow = () => {
     getIterationNodeChildren,
     getLoopNodeChildren,
     getRootNodesById,
+    getStartNodes,
   }
 }
 

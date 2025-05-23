@@ -146,7 +146,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         data.type === BlockEnum.DataSource && (
           <div className='absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]'>
             <div className='system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary'>
-              data source
+              {t('workflow.blocks.data-source')}
             </div>
           </div>
         )

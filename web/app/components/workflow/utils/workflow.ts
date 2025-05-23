@@ -84,9 +84,7 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-
+export const getValidTreeNodes = (startNode: Node, nodes: Node[], edges: Edge[]) => {
   if (!startNode) {
     return {
       validNodes: [],

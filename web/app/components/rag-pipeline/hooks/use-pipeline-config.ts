@@ -5,6 +5,9 @@ import {
 } from '@/app/components/workflow/store'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useDataSourceList } from '@/service/use-pipeline'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { basePath } from '@/utils/var'
 
 export const usePipelineConfig = () => {
   const pipelineId = useStore(s => s.pipelineId)
@@ -39,4 +42,15 @@ export const usePipelineConfig = () => {
     pipelineId ? `/rag/pipelines/${pipelineId}/workflows/publish` : '',
     handleUpdatePublishedAt,
   )
+
+  const handleUpdateDataSourceList = useCallback((dataSourceList: ToolWithProvider[]) => {
+    dataSourceList.forEach((item) => {
+      if (typeof item.icon == 'string' && !item.icon.includes(basePath))
+        item.icon = `${basePath}${item.icon}`
+    })
+    const { setDataSourceList } = workflowStore.getState()
+    setDataSourceList!(dataSourceList)
+  }, [workflowStore])
+
+  useDataSourceList(!!pipelineId, handleUpdateDataSourceList)
 }

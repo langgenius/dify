@@ -770,11 +770,6 @@ const translation = {
       currentLoopCount: 'Current loop count: {{count}}',
       totalLoopCount: 'Total loop count: {{count}}',
     },
-    knowledgeBase: {
-      chunkStructure: 'Chunk Structure',
-      changeChunkStructure: 'Change Chunk Structure',
-      aboutRetrieval: 'about retrieval method.',
-    },
     note: {
       addNote: 'Add Note',
       editor: {
@@ -888,6 +883,15 @@ const translation = {
         install: 'Install',
         cancel: 'Cancel',
       },
+    },
+    dataSource: {
+      supportedFileFormats: 'Supported file formats',
+      supportedFileFormatsPlaceholder: 'File extension, e.g. doc',
+    },
+    knowledgeBase: {
+      chunkStructure: 'Chunk Structure',
+      changeChunkStructure: 'Change Chunk Structure',
+      aboutRetrieval: 'about retrieval method.',
     },
   },
   tracing: {

@@ -15,6 +15,7 @@ type TagInputProps = {
   customizedConfirmKey?: 'Enter' | 'Tab'
   isInWorkflow?: boolean
   placeholder?: string
+  inputClassName?: string
 }
 
 const TagInput: FC<TagInputProps> = ({
@@ -25,6 +26,7 @@ const TagInput: FC<TagInputProps> = ({
   customizedConfirmKey = 'Enter',
   isInWorkflow,
   placeholder,
+  inputClassName,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -93,15 +95,18 @@ const TagInput: FC<TagInputProps> = ({
           <div className={cn('group/tag-add mt-1 flex items-center gap-x-0.5', !isSpecialMode ? 'rounded-md border border-dashed border-divider-deep px-1.5' : '')}>
             {!isSpecialMode && !focused && <RiAddLine className='h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary' />}
             <AutosizeInput
-              inputClassName={cn('appearance-none text-text-primary caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary', isSpecialMode ? 'bg-transparent' : '')}
+              inputClassName={cn(
+                'appearance-none text-text-primary caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary',
+                isSpecialMode ? 'bg-transparent' : '',
+                inputClassName,
+              )}
               className={cn(
                 !isInWorkflow && 'max-w-[300px]',
                 isInWorkflow && 'max-w-[146px]',
-                `
-                system-xs-regular overflow-hidden rounded-md py-1
-                ${isSpecialMode && 'border border-transparent px-1.5'}
-                ${focused && isSpecialMode && 'border-dashed border-divider-deep'}
-              `)}
+                'system-xs-regular overflow-hidden rounded-md py-1',
+                isSpecialMode && 'border border-transparent px-1.5',
+                focused && isSpecialMode && 'border-dashed border-divider-deep',
+              )}
               onFocus={() => setFocused(true)}
               onBlur={handleBlur}
               value={value}

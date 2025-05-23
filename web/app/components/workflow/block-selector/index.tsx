@@ -5,10 +5,11 @@ import type { NodeSelectorProps } from './main'
 import NodeSelector from './main'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useDataSources } from './hooks'
+import { useStore } from '../store'
 
 const NodeSelectorWrapper = (props: NodeSelectorProps) => {
   const availableNodesMetaData = useHooksStore(s => s.availableNodesMetaData)
+  const dataSourceList = useStore(s => s.dataSourceList)
 
   const blocks = useMemo(() => {
     const result = availableNodesMetaData?.nodes || []
@@ -32,8 +33,6 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
       return true
     })
   }, [availableNodesMetaData?.nodes])
-
-  const dataSourceList = useDataSources()
 
   return (
     <NodeSelector

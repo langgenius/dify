@@ -20,6 +20,7 @@ import {
   CUSTOM_NODE,
   MAX_TREE_DEPTH,
 } from '../constants'
+import { useWorkflow } from '../hooks'
 import type { ToolNodeType } from '../nodes/tool/types'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useToastContext } from '@/app/components/base/toast'
@@ -42,6 +43,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const workflowTools = useStore(s => s.workflowTools)
   const { data: strategyProviders } = useStrategyProviders()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
+  const { getStartNodes } = useWorkflow()
 
   const getCheckData = useCallback((data: CommonNodeType<{}>) => {
     let checkData = data
@@ -62,7 +64,14 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
   const needWarningNodes = useMemo(() => {
     const list = []
-    const { validNodes } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
+    const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
+    const startNodes = getStartNodes(filteredNodes)
+    const validNodesFlattened = startNodes.map(startNode => getValidTreeNodes(startNode, filteredNodes, edges))
+    const validNodes = validNodesFlattened.reduce((acc, curr) => {
+      if (curr.validNodes)
+        acc.push(...curr.validNodes)
+      return acc
+    }, [] as Node[])
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i]
@@ -126,7 +135,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     })
 
     return list
-  }, [nodes, edges, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData])
+  }, [nodes, edges, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData, getStartNodes])
 
   return needWarningNodes
 }
@@ -143,6 +152,7 @@ export const useChecklistBeforePublish = () => {
   const { data: strategyProviders } = useStrategyProviders()
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
   const updateTime = useRef(0)
+  const { getStartNodes } = useWorkflow()
 
   const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
     let checkData = data
@@ -170,15 +180,22 @@ export const useChecklistBeforePublish = () => {
       getNodes,
       edges,
     } = store.getState()
-    const nodes = getNodes().filter(node => node.type === CUSTOM_NODE)
-    const {
-      validNodes,
-      maxDepth,
-    } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
+    const nodes = getNodes()
+    const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
+    const startNodes = getStartNodes(filteredNodes)
+    const validNodesFlattened = startNodes.map(startNode => getValidTreeNodes(startNode, filteredNodes, edges))
+    const validNodes = validNodesFlattened.reduce((acc, curr) => {
+      if (curr.validNodes)
+        acc.push(...curr.validNodes)
+      return acc
+    }, [] as Node[])
+    const maxDepthArr = validNodesFlattened.map(item => item.maxDepth)
 
-    if (maxDepth > MAX_TREE_DEPTH) {
-      notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
-      return false
+    for (let i = 0; i < maxDepthArr.length; i++) {
+      if (maxDepthArr[i] > MAX_TREE_DEPTH) {
+        notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
+        return false
+      }
     }
     // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
     const knowledgeRetrievalNodes = nodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
@@ -243,7 +260,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData])
+  }, [store, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, getStartNodes])
 
   return {
     handleCheckBeforePublish,

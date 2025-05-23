@@ -65,14 +65,17 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
           <GroupWithBox boxProps={{ withBorderBottom: true }}>
             <Field
               fieldTitleProps={{
-                title: 'supported file formats',
+                title: t('workflow.nodes.dataSource.supportedFileFormats'),
               }}
             >
-              <TagInput
-                items={fileExtensions}
-                onChange={handleFileExtensionsChange}
-                placeholder='File extension, e.g. doc'
-              />
+              <div className='rounded-lg bg-components-input-bg-normal p-1 pt-0'>
+                <TagInput
+                  items={fileExtensions}
+                  onChange={handleFileExtensionsChange}
+                  placeholder={t('workflow.nodes.dataSource.supportedFileFormatsPlaceholder')}
+                  inputClassName='bg-transparent'
+                />
+              </div>
             </Field>
           </GroupWithBox>
         )

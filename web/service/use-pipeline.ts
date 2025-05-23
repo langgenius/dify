@@ -160,12 +160,14 @@ export const usePublishedPipelineProcessingParams = (params: PipelineProcessingP
   })
 }
 
-export const useDataSourceList = (enabled?: boolean) => {
+export const useDataSourceList = (enabled: boolean, onSuccess: (v: ToolWithProvider[]) => void) => {
   return useQuery<ToolWithProvider[]>({
     enabled,
     queryKey: [NAME_SPACE, 'data-source'],
-    queryFn: () => {
-      return get('/rag/pipelines/datasource-plugins')
+    queryFn: async () => {
+      const data = await get<ToolWithProvider[]>('/rag/pipelines/datasource-plugins')
+      onSuccess(data)
+      return data
     },
     retry: false,
   })
