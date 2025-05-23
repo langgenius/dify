@@ -11,6 +11,7 @@ import type {
   InstallPackageResponse,
   InstalledLatestVersionResponse,
   InstalledPluginListResponse,
+  InstalledPluginListWithTotalResponse,
   PackageDependency,
   Permissions,
   Plugin,
@@ -33,6 +34,7 @@ import type {
 import { get, getMarketplace, post, postMarketplace } from './base'
 import type { MutateOptions, QueryOptions } from '@tanstack/react-query'
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -72,6 +74,53 @@ export const useInstalledPluginList = (disable?: boolean) => {
     enabled: !disable,
     initialData: !disable ? undefined : { plugins: [] },
   })
+}
+
+export const useInstalledPluginListWithPagination = (pageSize = 100) => {
+  const fetchPlugins = async ({ pageParam = 1 }) => {
+    const response = await get<InstalledPluginListWithTotalResponse>(
+      `/workspaces/current/plugin/list?page=${pageParam}&page_size=${pageSize}`,
+    )
+    return response
+  }
+
+  const {
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ['installed-plugins', pageSize],
+    queryFn: fetchPlugins,
+    getNextPageParam: (lastPage, pages) => {
+      const totalItems = lastPage.total
+      const currentPage = pages.length
+      const itemsLoaded = currentPage * pageSize
+
+      if (itemsLoaded >= totalItems)
+        return
+
+      return currentPage + 1
+    },
+    initialPageParam: 1,
+  })
+
+  const plugins = data?.pages.flatMap(page => page.plugins) ?? []
+
+  return {
+    data: {
+      plugins,
+    },
+    isLastPage: !hasNextPage,
+    loadNextPage: () => {
+      fetchNextPage()
+    },
+    isLoading,
+    isFetching: isFetchingNextPage,
+    error,
+  }
 }
 
 export const useInstalledLatestVersion = (pluginIds: string[]) => {

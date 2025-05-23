@@ -325,6 +325,11 @@ export type InstalledPluginListResponse = {
   plugins: PluginDetail[]
 }
 
+export type InstalledPluginListWithTotalResponse = {
+  plugins: PluginDetail[]
+  total: number
+}
+
 export type InstalledLatestVersionResponse = {
   versions: {
     [plugin_id: string]: {

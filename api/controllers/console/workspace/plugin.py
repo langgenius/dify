@@ -41,12 +41,16 @@ class PluginListApi(Resource):
     @account_initialization_required
     def get(self):
         tenant_id = current_user.current_tenant_id
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, required=False, location="args", default=1)
+        parser.add_argument("page_size", type=int, required=False, location="args", default=256)
+        args = parser.parse_args()
         try:
-            plugins = PluginService.list(tenant_id)
+            plugins_with_total = PluginService.list_with_total(tenant_id, args["page"], args["page_size"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
-        return jsonable_encoder({"plugins": plugins})
+        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
 class PluginListLatestVersionsApi(Resource):
