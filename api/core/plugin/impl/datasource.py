@@ -97,7 +97,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/{provider_type}/get_website_crawl",
+            f"plugin/{tenant_id}/dispatch/datasource/get_website_crawl",
             GetWebsiteCrawlResponse,
             data={
                 "user_id": user_id,
@@ -136,7 +136,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/{provider_type}/get_online_document_pages",
+            f"plugin/{tenant_id}/dispatch/datasource/get_online_document_pages",
             GetOnlineDocumentPagesResponse,
             data={
                 "user_id": user_id,
@@ -175,7 +175,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/{provider_type}/get_online_document_page_content",
+            f"plugin/{tenant_id}/dispatch/datasource/get_online_document_page_content",
             GetOnlineDocumentPageContentResponse,
             data={
                 "user_id": user_id,
@@ -233,45 +233,23 @@ class PluginDatasourceManager(BasePluginClient):
             "name": "langgenius/file/file",
             "plugin_id": "langgenius/file",
             "plugin_unique_identifier": "langgenius/file:0.0.1@dify",
-            "description": {
-                "zh_Hans": "File",
-                "en_US": "File",
-                "pt_BR": "File",
-                "ja_JP": "File"
-            },
+            "description": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
             "icon": "https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=945b4365-9d99-48c1-8c47-90593fe8b9c9&filename=13d9312f6b1352d3939b90a5257de58ff3cd619d5be4f5b266ff0298935ac328.svg",
-            "label": {
-                "zh_Hans": "File",
-                "en_US": "File",
-                "pt_BR": "File",
-                "ja_JP": "File"
-            },
+            "label": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
             "type": "datasource",
             "team_credentials": {},
             "is_team_authorization": False,
             "allow_delete": True,
-            "datasources": [{
-                "author": "langgenius",
-                "name": "upload_file",
-                "label": {
-                    "en_US": "File",
-                    "zh_Hans": "File",
-                    "pt_BR": "File",
-                    "ja_JP": "File"
-                },
-                "description": {
-                    "en_US": "File",
-                    "zh_Hans": "File",
-                    "pt_BR": "File",
-                    "ja_JP": "File."
-                },
-                "parameters": [],
-                "labels": [
-                    "search"
-                ],
-                "output_schema": None
-            }],
-            "labels": [
-                "search"
-            ]
+            "datasources": [
+                {
+                    "author": "langgenius",
+                    "name": "upload_file",
+                    "label": {"en_US": "File", "zh_Hans": "File", "pt_BR": "File", "ja_JP": "File"},
+                    "description": {"en_US": "File", "zh_Hans": "File", "pt_BR": "File", "ja_JP": "File."},
+                    "parameters": [],
+                    "labels": ["search"],
+                    "output_schema": None,
+                }
+            ],
+            "labels": ["search"],
         }
