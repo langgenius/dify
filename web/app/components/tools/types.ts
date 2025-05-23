@@ -53,7 +53,7 @@ export type Collection = {
   letter?: string
   // MCP Server
   server_url?: string
-  update_elapsed_time?: number
+  updated_at?: number
 }
 
 export type ToolParameter = {

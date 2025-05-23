@@ -131,7 +131,7 @@ export const useDeleteMCP = ({
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete-mcp'],
     mutationFn: (id: string) => {
-      return del('/console/api/workspaces/current/tool-provider/mcp', {
+      return del('/workspaces/current/tool-provider/mcp', {
         body: {
           provider_id: id,
         },

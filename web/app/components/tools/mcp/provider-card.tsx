@@ -101,7 +101,7 @@ const MCPCard = ({
               )}
             </div>
             <div className='system-xs-regular text-divider-deep'>/</div>
-            <div className='system-xs-regular truncate text-text-tertiary'>{`${t('tools.mcp.updateTime')} ${formatTimeFromNow(data.update_elapsed_time! * 1000)}`}</div>
+            <div className='system-xs-regular truncate text-text-tertiary'>{`${t('tools.mcp.updateTime')} ${formatTimeFromNow(data.updated_at!)}`}</div>
           </div>
         </div>
       </div>
