@@ -36,7 +36,11 @@ const getIcon = (data?: ToolWithProvider) => {
     return DEFAULT_ICON as AppIconSelection
   if (typeof data.icon === 'string')
     return { type: 'image', url: data.icon, fileId: extractFileId(data.icon) } as AppIconSelection
-  return data.icon as unknown as AppIconSelection
+  return {
+    ...data.icon,
+    icon: data.icon.content,
+    type: 'emoji',
+  } as unknown as AppIconSelection
 }
 
 const MCPModal = ({
