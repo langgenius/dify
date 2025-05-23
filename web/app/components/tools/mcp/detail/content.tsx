@@ -20,6 +20,7 @@ import OperationDropdown from './operation-dropdown'
 import ListLoading from './list-loading'
 import ToolItem from './tool-item'
 import {
+  useAuthorizeMCP,
   useDeleteMCP,
   useInvalidateMCPTools,
   useMCPTools,
@@ -44,14 +45,15 @@ const MCPDetailContent: FC<Props> = ({
 
   const { data: toolList = [], isPending: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
-  const { mutateAsync, isPending: isUpdating } = useUpdateMCPTools(detail.id)
+  const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools(detail.id)
+  const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
 
   const handleUpdateTools = useCallback(async () => {
     if (!detail)
       return
-    await mutateAsync()
+    await updateTools()
     invalidateMCPTools(detail.id)
-  }, [detail, mutateAsync])
+  }, [detail, updateTools])
 
   const { mutate: updateMCP } = useUpdateMCP({
     onSuccess: onUpdate,
@@ -74,6 +76,20 @@ const MCPDetailContent: FC<Props> = ({
     setTrue: showDeleting,
     setFalse: hideDeleting,
   }] = useBoolean(false)
+
+  const handleAuthorize = useCallback(async () => {
+    if (!detail)
+      return
+    const res = await authorizeMcp({
+      provider_id: detail.id,
+      server_url: detail.server_url!,
+    })
+    // TODO
+    if ((res as any)?.result === 'success') {
+      hideUpdateModal()
+      onUpdate()
+    }
+  }, [detail, updateMCP, hideUpdateModal, onUpdate])
 
   const handleUpdate = useCallback(async (data: any) => {
     if (!detail)
@@ -140,22 +156,20 @@ const MCPDetailContent: FC<Props> = ({
               {t('tools.auth.authorized')}
             </Button>
           )}
-          {!detail.is_team_authorization && (
+          {!detail.is_team_authorization && !isAuthorizing && (
             <Button
               variant='primary'
               className='w-full'
-              // onClick={() => setShowSettingAuth(true)}
+              onClick={handleAuthorize}
               disabled={!isCurrentWorkspaceManager}
             >
               {t('tools.mcp.authorize')}
             </Button>
           )}
-          {/* TODO */}
-          {deleting && (
+          {isAuthorizing && (
             <Button
               variant='primary'
               className='w-full'
-              // onClick={() => setShowSettingAuth(true)}
               disabled
             >
               <RiLoader2Line className={cn('mr-1 h-4 w-4 animate-spin')} />
@@ -215,8 +229,8 @@ const MCPDetailContent: FC<Props> = ({
 
         {!detail.is_team_authorization && (
           <div className='flex h-full w-full flex-col items-center justify-center'>
-            {!loading && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizingRequired')}</div>}
-            {loading && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizing')}</div>}
+            {!isAuthorizing && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizingRequired')}</div>}
+            {isAuthorizing && <div className='system-md-medium mb-1 text-text-secondary'>{t('tools.mcp.authorizing')}</div>}
             <div className='system-sm-regular text-text-tertiary'>{t('tools.mcp.authorizeTip')}</div>
           </div>
         )}

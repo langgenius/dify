@@ -141,6 +141,17 @@ export const useDeleteMCP = ({
   })
 }
 
+export const useAuthorizeMCP = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'authorize-mcp'],
+    mutationFn: (payload: { provider_id: string; server_url: string }) => {
+      return post('/workspaces/current/tool-provider/mcp/auth', {
+        body: payload,
+      })
+    },
+  })
+}
+
 export const useMCPTools = (providerID: string) => {
   return useQuery({
     enabled: !!providerID,
