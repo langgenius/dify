@@ -25,11 +25,14 @@ import { getKeyboardKeyCodeBySystem } from '@/app/components/workflow/utils'
 import { usePublishWorkflow } from '@/service/use-workflow'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { useToastContext } from '@/app/components/base/toast'
+import { useParams, useRouter } from 'next/navigation'
 
 const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
 
 const Popup = () => {
   const { t } = useTranslation()
+  const { datasetId } = useParams()
+  const { push } = useRouter()
   const [published, setPublished] = useState(false)
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
@@ -67,6 +70,10 @@ const Popup = () => {
   },
     { exactMatch: true, useCapture: true },
   )
+
+  const goToAddDocuments = useCallback(() => {
+    push(`/datasets/${datasetId}/documents/create-from-pipeline`)
+  }, [datasetId, push])
 
   return (
     <div className='w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>
@@ -117,6 +124,7 @@ const Popup = () => {
         <Button
           className='mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent'
           variant='tertiary'
+          onClick={goToAddDocuments}
         >
           <div className='flex grow items-center'>
             <RiPlayCircleLine className='mr-2 h-4 w-4' />
