@@ -12,7 +12,6 @@ export class Theme {
   public colorPathOnHeader = 'text-text-primary-on-surface'
   public backgroundButtonDefaultColorStyle = 'backgroundColor: #1C64F2'
   public roundedBackgroundColorStyle = 'backgroundColor: rgb(245 248 255)'
-  public chatBubbleColorStyle = 'backgroundColor: rgb(225 239 254)'
   public chatBubbleColor = 'rgb(225 239 254)'
 
   constructor(chatColorTheme: string | null = null, chatColorThemeInverted = false) {
@@ -28,7 +27,6 @@ export class Theme {
       this.backgroundHeaderColorStyle = `backgroundColor: ${this.primaryColor}`
       this.backgroundButtonDefaultColorStyle = `backgroundColor: ${this.primaryColor}; color: ${this.colorFontOnHeaderStyle};`
       this.roundedBackgroundColorStyle = `backgroundColor: ${hexToRGBA(this.primaryColor, 0.05)}`
-      this.chatBubbleColorStyle = `backgroundColor: ${hexToRGBA(this.primaryColor, 0.15)}`
       this.chatBubbleColor = `${hexToRGBA(this.primaryColor, 0.15)}`
     }
   }
