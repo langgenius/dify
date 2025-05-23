@@ -228,6 +228,7 @@ const useInspectVarsCrud = () => {
     deleteAllInspectorVars,
     isInspectVarEdited,
     resetToLastRunVar,
+    invalidateSysVarValues,
   }
 }
 

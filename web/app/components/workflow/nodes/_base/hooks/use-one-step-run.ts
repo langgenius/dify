@@ -116,6 +116,7 @@ const useOneStepRun = <T>({
   const isChatMode = useIsChatMode()
   const isIteration = data.type === BlockEnum.Iteration
   const isLoop = data.type === BlockEnum.Loop
+  const isStartNode = data.type === BlockEnum.Start
 
   const availableNodes = getBeforeNodesInSameBranch(id)
   const availableNodesIncludeParent = getBeforeNodesInSameBranchIncludeParent(id)
@@ -166,6 +167,7 @@ const useOneStepRun = <T>({
   const [runResult, doSetRunResult] = useState<NodeRunResult | null>(null)
   const {
     appendNodeInspectVars,
+    invalidateSysVarValues,
   } = useInspectVarsCrud()
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
     doSetRunResult(data)
@@ -175,8 +177,10 @@ const useOneStepRun = <T>({
       const { getNodes } = store.getState()
       const nodes = getNodes()
       appendNodeInspectVars(id, vars, nodes)
+      if(isStartNode)
+        invalidateSysVarValues()
     }
-  }, [invalidLastRun, appId, store, appendNodeInspectVars, id])
+  }, [invalidLastRun, appId, id, store, appendNodeInspectVars, isStartNode, invalidateSysVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)
