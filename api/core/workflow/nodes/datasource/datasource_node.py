@@ -6,11 +6,8 @@ from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
     GetOnlineDocumentPageContentResponse,
-    GetWebsiteCrawlRequest,
-    GetWebsiteCrawlResponse,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
-from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.file import File
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.variables.segments import ArrayAnySegment
@@ -42,22 +39,23 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         """
 
         node_data = cast(DatasourceNodeData, self.node_data)
-
-        # fetch datasource icon
-        datasource_info = {
-            "provider_id": node_data.provider_id,
-            "plugin_unique_identifier": node_data.plugin_unique_identifier,
-        }
+        variable_pool = self.graph_runtime_state.variable_pool
 
         # get datasource runtime
         try:
             from core.datasource.datasource_manager import DatasourceManager
 
+            datasource_type = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE.value])
+
+            datasource_info = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO.value])
+            if datasource_type is None:
+                raise DatasourceNodeError("Datasource type is not set")
+
             datasource_runtime = DatasourceManager.get_datasource_runtime(
                 provider_id=node_data.provider_id,
                 datasource_name=node_data.datasource_name,
                 tenant_id=self.tenant_id,
-                datasource_type=DatasourceProviderType(node_data.provider_type),
+                datasource_type=DatasourceProviderType(datasource_type),
             )
         except DatasourceNodeError as e:
             yield RunCompletedEvent(
@@ -75,12 +73,12 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         datasource_parameters = datasource_runtime.entity.parameters
         parameters = self._generate_parameters(
             datasource_parameters=datasource_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=variable_pool,
             node_data=self.node_data,
         )
         parameters_for_log = self._generate_parameters(
             datasource_parameters=datasource_parameters,
-            variable_pool=self.graph_runtime_state.variable_pool,
+            variable_pool=variable_pool,
             node_data=self.node_data,
             for_log=True,
         )
@@ -106,20 +104,19 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                         },
                     )
                 )
-            elif datasource_runtime.datasource_provider_type == DatasourceProviderType.WEBSITE_CRAWL:
-                datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-                website_crawl_result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
-                    user_id=self.user_id,
-                    datasource_parameters=GetWebsiteCrawlRequest(**parameters),
-                    provider_type=datasource_runtime.datasource_provider_type(),
+            elif (
+                datasource_runtime.datasource_provider_type in (
+                    DatasourceProviderType.WEBSITE_CRAWL,
+                    DatasourceProviderType.LOCAL_FILE,
                 )
+            ):
                 yield RunCompletedEvent(
                     run_result=NodeRunResult(
                         status=WorkflowNodeExecutionStatus.SUCCEEDED,
                         inputs=parameters_for_log,
                         metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
                         outputs={
-                            "website": website_crawl_result.result.model_dump(),
+                            "website": datasource_info,
                             "datasource_type": datasource_runtime.datasource_provider_type,
                         },
                     )

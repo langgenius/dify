@@ -18,3 +18,5 @@ class SystemVariableKey(StrEnum):
     DOCUMENT_ID = "document_id"
     BATCH = "batch"
     DATASET_ID = "dataset_id"
+    DATASOURCE_TYPE = "datasource_type"
+    DATASOURCE_INFO = "datasource_info"

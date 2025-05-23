@@ -161,7 +161,7 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
         args = parser.parse_args()
         dataset = DatasetService.create_empty_rag_pipeline_dataset(
             tenant_id=current_user.current_tenant_id,
-            rag_pipeline_dataset_create_entity=args,
+            rag_pipeline_dataset_create_entity=RagPipelineDatasetCreateEntity(**args),
         )
         return marshal(dataset, dataset_detail_fields), 201
 

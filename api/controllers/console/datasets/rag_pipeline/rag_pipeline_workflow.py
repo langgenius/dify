@@ -8,7 +8,6 @@ from flask_restful.inputs import int_range  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-from models.model import EndUser
 import services
 from configs import dify_config
 from controllers.console import api
@@ -40,6 +39,7 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.account import Account
 from models.dataset import Pipeline
+from models.model import EndUser
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
@@ -242,7 +242,7 @@ class DraftRagPipelineRunApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("datasource_info", type=list, required=True, location="json")
+        parser.add_argument("datasource_info_list", type=list, required=True, location="json")
         parser.add_argument("start_node_id", type=str, required=True, location="json")
         args = parser.parse_args()
 
@@ -320,6 +320,9 @@ class RagPipelineDatasourceNodeRunApi(Resource):
         inputs = args.get("inputs")
         if inputs == None:
             raise ValueError("missing inputs")
+        datasource_type = args.get("datasource_type")
+        if datasource_type == None:
+            raise ValueError("missing datasource_type")
 
         rag_pipeline_service = RagPipelineService()
         result = rag_pipeline_service.run_datasource_workflow_node(
@@ -327,7 +330,7 @@ class RagPipelineDatasourceNodeRunApi(Resource):
             node_id=node_id,
             user_inputs=inputs,
             account=current_user,
-            datasource_type=args.get("datasource_type"),
+            datasource_type=datasource_type,
         )
 
         return result

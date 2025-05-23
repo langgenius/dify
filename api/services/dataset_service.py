@@ -6,7 +6,7 @@ import random
 import time
 import uuid
 from collections import Counter
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from flask_login import current_user
 from sqlalchemy import func, select
@@ -298,13 +298,14 @@ class DatasetService:
             description=rag_pipeline_dataset_create_entity.description,
             permission=rag_pipeline_dataset_create_entity.permission,
             provider="vendor",
-            runtime_mode="rag_pipeline",
+            runtime_mode="rag-pipeline",
             icon_info=rag_pipeline_dataset_create_entity.icon_info,
         )
         with Session(db.engine) as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)
+            account = cast(Account, current_user)
             rag_pipeline_import_info: RagPipelineImportInfo = rag_pipeline_dsl_service.import_rag_pipeline(
-                account=current_user,
+                account=account,
                 import_mode=ImportMode.YAML_CONTENT.value,
                 yaml_content=rag_pipeline_dataset_create_entity.yaml_content,
                 dataset=dataset,

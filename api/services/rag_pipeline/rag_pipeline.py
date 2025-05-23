@@ -59,12 +59,12 @@ class RagPipelineService:
             if not result.get("pipeline_templates") and language != "en-US":
                 template_retrieval = PipelineTemplateRetrievalFactory.get_built_in_pipeline_template_retrieval()
                 result = template_retrieval.fetch_pipeline_templates_from_builtin("en-US")
-            return result.get("pipeline_templates")
+            return [PipelineBuiltInTemplate(**template) for template in result.get("pipeline_templates", [])]
         else:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             result = retrieval_instance.get_pipeline_templates(language)
-            return result.get("pipeline_templates")
+            return [PipelineCustomizedTemplate(**template) for template in result.get("pipeline_templates", [])]
 
     @classmethod
     def get_pipeline_template_detail(cls, template_id: str) -> Optional[dict]:

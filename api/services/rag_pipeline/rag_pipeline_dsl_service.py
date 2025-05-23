@@ -97,11 +97,6 @@ def _check_version_compatibility(imported_version: str) -> ImportStatus:
 class RagPipelinePendingData(BaseModel):
     import_mode: str
     yaml_content: str
-    name: str | None
-    description: str | None
-    icon_type: str | None
-    icon: str | None
-    icon_background: str | None
     pipeline_id: str | None
 
 
@@ -302,10 +297,6 @@ class RagPipelineDslService:
                         dataset.runtime_mode = "rag_pipeline"
                         dataset.chunk_structure = knowledge_configuration.chunk_structure
                     if knowledge_configuration.index_method.indexing_technique == "high_quality":
-                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            knowledge_configuration.index_method.embedding_setting.embedding_provider_name,  # type: ignore
-                            knowledge_configuration.index_method.embedding_setting.embedding_model_name,  # type: ignore
-                        )
                         dataset_collection_binding = (
                             db.session.query(DatasetCollectionBinding)
                             .filter(
@@ -445,10 +436,28 @@ class RagPipelineDslService:
                         dataset.runtime_mode = "rag_pipeline"
                         dataset.chunk_structure = knowledge_configuration.chunk_structure
                     if knowledge_configuration.index_method.indexing_technique == "high_quality":
-                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            knowledge_configuration.index_method.embedding_setting.embedding_provider_name,  # type: ignore
-                            knowledge_configuration.index_method.embedding_setting.embedding_model_name,  # type: ignore
+                        dataset_collection_binding = (
+                            db.session.query(DatasetCollectionBinding)
+                            .filter(
+                                DatasetCollectionBinding.provider_name
+                                == knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
+                                DatasetCollectionBinding.model_name
+                                == knowledge_configuration.index_method.embedding_setting.embedding_model_name,
+                                DatasetCollectionBinding.type == "dataset",
+                            )
+                            .order_by(DatasetCollectionBinding.created_at)
+                            .first()
                         )
+
+                        if not dataset_collection_binding:
+                            dataset_collection_binding = DatasetCollectionBinding(
+                                provider_name=knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
+                                model_name=knowledge_configuration.index_method.embedding_setting.embedding_model_name,
+                                collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
+                                type="dataset",
+                            )
+                            db.session.add(dataset_collection_binding)
+                            db.session.commit()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = (
@@ -602,7 +611,6 @@ class RagPipelineDslService:
         rag_pipeline_service.sync_draft_workflow(
             pipeline=pipeline,
             graph=workflow_data.get("graph", {}),
-            features=workflow_data.get("features", {}),
             unique_hash=unique_hash,
             account=account,
             environment_variables=environment_variables,

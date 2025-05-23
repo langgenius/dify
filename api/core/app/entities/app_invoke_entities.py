@@ -233,14 +233,14 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     """
     RAG Pipeline Application Generate Entity.
     """
-
-    # app config
-    pipline_config: WorkflowUIBasedAppConfig
+    # pipeline config
+    pipeline_config: WorkflowUIBasedAppConfig
     datasource_type: str
     datasource_info: Mapping[str, Any]
     dataset_id: str
     batch: str
-    document_id: str
+    document_id: Optional[str] = None
+    start_node_id: Optional[str] = None
 
     class SingleIterationRunEntity(BaseModel):
         """

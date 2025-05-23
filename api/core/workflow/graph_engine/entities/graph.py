@@ -121,6 +121,8 @@ class Graph(BaseModel):
         # fetch nodes that have no predecessor node
         root_node_configs = []
         all_node_id_config_mapping: dict[str, dict] = {}
+
+        
         for node_config in node_configs:
             node_id = node_config.get("id")
             if not node_id:
@@ -140,7 +142,8 @@ class Graph(BaseModel):
                 (
                     node_config.get("id")
                     for node_config in root_node_configs
-                    if node_config.get("data", {}).get("type", "") == NodeType.START.value
+                    if node_config.get("data", {}).get("type", "") == NodeType.START.value 
+                    or node_config.get("data", {}).get("type", "") == NodeType.DATASOURCE.value
                 ),
                 None,
             )

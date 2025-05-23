@@ -1,5 +1,6 @@
 import logging
-from typing import Optional, cast
+from collections.abc import Mapping
+from typing import Any, Optional, cast
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -12,6 +13,7 @@ from core.app.entities.app_invoke_entities import (
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
+from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.dataset import Pipeline
@@ -100,6 +102,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 SystemVariableKey.DOCUMENT_ID: self.application_generate_entity.document_id,
                 SystemVariableKey.BATCH: self.application_generate_entity.batch,
                 SystemVariableKey.DATASET_ID: self.application_generate_entity.dataset_id,
+                SystemVariableKey.DATASOURCE_TYPE: self.application_generate_entity.datasource_type,
+                SystemVariableKey.DATASOURCE_INFO: self.application_generate_entity.datasource_info,
             }
 
             variable_pool = VariablePool(
@@ -110,7 +114,10 @@ class PipelineRunner(WorkflowBasedAppRunner):
             )
 
             # init graph
-            graph = self._init_graph(graph_config=workflow.graph_dict)
+            graph = self._init_rag_pipeline_graph(
+                graph_config=workflow.graph_dict,
+                start_node_id=self.application_generate_entity.start_node_id,
+            )
 
         # RUN WORKFLOW
         workflow_entry = WorkflowEntry(
@@ -152,3 +159,43 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         # return workflow
         return workflow
+
+    def _init_rag_pipeline_graph(self, graph_config: Mapping[str, Any], start_node_id: Optional[str] = None) -> Graph:
+        """
+        Init pipeline graph
+        """
+        if "nodes" not in graph_config or "edges" not in graph_config:
+            raise ValueError("nodes or edges not found in workflow graph")
+
+        if not isinstance(graph_config.get("nodes"), list):
+            raise ValueError("nodes in workflow graph must be a list")
+
+        if not isinstance(graph_config.get("edges"), list):
+            raise ValueError("edges in workflow graph must be a list")
+        nodes = graph_config.get("nodes", [])
+        edges = graph_config.get("edges", [])
+        real_run_nodes = []
+        real_edges = []
+        exclude_node_ids = []
+        for node in nodes:
+            node_id = node.get("id")
+            node_type = node.get("data", {}).get("type", "")
+            if node_type == "datasource":
+                if start_node_id != node_id:
+                    exclude_node_ids.append(node_id)
+                    continue
+            real_run_nodes.append(node)
+        for edge in edges:
+            if edge.get("source") in exclude_node_ids :
+                continue
+            real_edges.append(edge)
+        graph_config = dict(graph_config)
+        graph_config["nodes"] = real_run_nodes
+        graph_config["edges"] = real_edges
+        # init graph
+        graph = Graph.init(graph_config=graph_config)
+
+        if not graph:
+            raise ValueError("graph not found in workflow")
+
+        return graph
