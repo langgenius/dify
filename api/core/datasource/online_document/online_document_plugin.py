@@ -1,4 +1,6 @@
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
+
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
@@ -6,7 +8,6 @@ from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
     GetOnlineDocumentPageContentResponse,
-    GetOnlineDocumentPagesRequest,
     GetOnlineDocumentPagesResponse,
 )
 from core.plugin.impl.datasource import PluginDatasourceManager

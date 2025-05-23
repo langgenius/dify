@@ -1,10 +1,11 @@
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
+
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
     DatasourceProviderType,
-    GetWebsiteCrawlRequest,
     GetWebsiteCrawlResponse,
 )
 from core.plugin.impl.datasource import PluginDatasourceManager
