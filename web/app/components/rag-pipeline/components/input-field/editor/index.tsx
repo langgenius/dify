@@ -1,5 +1,5 @@
 import { RiCloseLine } from '@remixicon/react'
-import DialogWrapper from '../dialog-wrapper'
+import DialogWrapper from './dialog-wrapper'
 import InputFieldForm from './form'
 import { convertToInputFieldFormData } from './utils'
 import { useCallback } from 'react'
@@ -60,27 +60,24 @@ const InputFieldEditor = ({
     <DialogWrapper
       show={show}
       onClose={onClose}
-      panelWrapperClassName='pr-[424px] justify-start'
-      className='w-[400px] grow-0 rounded-2xl border-[0.5px] bg-components-panel-bg shadow-shadow-shadow-9'
+      panelWrapperClassName='pr-[424px]'
     >
-      <div className='relative flex h-fit flex-col'>
-        <div className='system-xl-semibold flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary'>
-          {initialData ? t('datasetPipeline.inputFieldPanel.editInputField') : t('datasetPipeline.inputFieldPanel.addInputField')}
-        </div>
-        <button
-          type='button'
-          className='absolute right-2.5 top-2.5 flex size-8 items-center justify-center'
-          onClick={onClose}
-        >
-          <RiCloseLine className='size-4 text-text-tertiary' />
-        </button>
-        <InputFieldForm
-          initialData={formData}
-          supportFile
-          onCancel={onClose}
-          onSubmit={handleSubmit}
-        />
+      <div className='system-xl-semibold flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary'>
+        {initialData ? t('datasetPipeline.inputFieldPanel.editInputField') : t('datasetPipeline.inputFieldPanel.addInputField')}
       </div>
+      <button
+        type='button'
+        className='absolute right-2.5 top-2.5 flex size-8 items-center justify-center'
+        onClick={onClose}
+      >
+        <RiCloseLine className='size-4 text-text-tertiary' />
+      </button>
+      <InputFieldForm
+        initialData={formData}
+        supportFile
+        onCancel={onClose}
+        onSubmit={handleSubmit}
+      />
     </DialogWrapper>
   )
 }
