@@ -15,7 +15,7 @@ from core.plugin.entities.parameters import (
     init_frontend_parameter,
 )
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolLabelEnum, ToolProviderEntity
+from core.tools.entities.tool_entities import ToolLabelEnum
 
 
 class DatasourceProviderType(enum.StrEnum):
@@ -124,12 +124,12 @@ class DatasourceEntity(BaseModel):
     identity: DatasourceIdentity
     parameters: list[DatasourceParameter] = Field(default_factory=list)
     description: I18nObject = Field(..., description="The label of the datasource")
-    output_schema: Optional[dict] = None
 
     @field_validator("parameters", mode="before")
     @classmethod
     def set_parameters(cls, v, validation_info: ValidationInfo) -> list[DatasourceParameter]:
         return v or []
+
 
 class DatasourceProviderIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
@@ -142,11 +142,12 @@ class DatasourceProviderIdentity(BaseModel):
         description="The tags of the tool",
     )
 
-    
+
 class DatasourceProviderEntity(BaseModel):
     """
     Datasource provider entity
     """
+
     identity: DatasourceProviderIdentity
     credentials_schema: list[ProviderConfig] = Field(default_factory=list)
     oauth_schema: Optional[OAuthSchema] = None
@@ -210,7 +211,6 @@ class GetOnlineDocumentPagesRequest(BaseModel):
     """
     Get online document pages request
     """
-
 
 
 class OnlineDocumentPageIcon(BaseModel):
@@ -284,6 +284,7 @@ class GetWebsiteCrawlRequest(BaseModel):
     """
     Get website crawl request
     """
+
     crawl_parameters: dict = Field(..., description="The crawl parameters")
 
 
