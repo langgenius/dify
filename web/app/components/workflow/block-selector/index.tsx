@@ -5,8 +5,7 @@ import type { NodeSelectorProps } from './main'
 import NodeSelector from './main'
 import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useStore } from '@/app/components/workflow/store'
-import { useDataSourceList } from '@/service/use-pipeline'
+import { useDataSources } from './hooks'
 
 const NodeSelectorWrapper = (props: NodeSelectorProps) => {
   const availableNodesMetaData = useHooksStore(s => s.availableNodesMetaData)
@@ -34,8 +33,7 @@ const NodeSelectorWrapper = (props: NodeSelectorProps) => {
     })
   }, [availableNodesMetaData?.nodes])
 
-  const pipelineId = useStore(s => s.pipelineId)
-  const { data: dataSourceList } = useDataSourceList(!!pipelineId)
+  const dataSourceList = useDataSources()
 
   return (
     <NodeSelector

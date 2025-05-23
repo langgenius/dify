@@ -711,7 +711,7 @@ export const useNodesInteractions = () => {
       const outgoers = getOutgoers(prevNode, nodes, edges).sort((a, b) => a.position.y - b.position.y)
       const lastOutgoer = outgoers[outgoers.length - 1]
 
-      newNode.data._connectedTargetHandleIds = [targetHandle]
+      newNode.data._connectedTargetHandleIds = nodeType === BlockEnum.DataSource ? [] : [targetHandle]
       newNode.data._connectedSourceHandleIds = []
       newNode.position = {
         x: lastOutgoer ? lastOutgoer.position.x : prevNode.position.x + prevNode.width! + X_OFFSET,
@@ -745,27 +745,31 @@ export const useNodesInteractions = () => {
         }
       }
 
-      const newEdge: Edge = {
-        id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
-        type: CUSTOM_EDGE,
-        source: prevNodeId,
-        sourceHandle: prevNodeSourceHandle,
-        target: newNode.id,
-        targetHandle,
-        data: {
-          sourceType: prevNode.data.type,
-          targetType: newNode.data.type,
-          isInIteration,
-          isInLoop,
-          iteration_id: isInIteration ? prevNode.parentId : undefined,
-          loop_id: isInLoop ? prevNode.parentId : undefined,
-          _connectedNodeIsSelected: true,
-        },
-        zIndex: prevNode.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+      let newEdge = null
+      if (nodeType !== BlockEnum.DataSource) {
+        newEdge = {
+          id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
+          type: CUSTOM_EDGE,
+          source: prevNodeId,
+          sourceHandle: prevNodeSourceHandle,
+          target: newNode.id,
+          targetHandle,
+          data: {
+            sourceType: prevNode.data.type,
+            targetType: newNode.data.type,
+            isInIteration,
+            isInLoop,
+            iteration_id: isInIteration ? prevNode.parentId : undefined,
+            loop_id: isInLoop ? prevNode.parentId : undefined,
+            _connectedNodeIsSelected: true,
+          },
+          zIndex: prevNode.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+        }
       }
+
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
         [
-          { type: 'add', edge: newEdge },
+          ...(newEdge ? [{ type: 'add', edge: newEdge }] : []),
         ],
         nodes,
       )
@@ -816,7 +820,8 @@ export const useNodesInteractions = () => {
             _connectedNodeIsSelected: false,
           }
         })
-        draft.push(newEdge)
+        if (newEdge)
+          draft.push(newEdge)
       })
 
       if (checkNestedParallelLimit(newNodes, newEdges, prevNode)) {
@@ -959,7 +964,7 @@ export const useNodesInteractions = () => {
       const prevNode = nodes.find(node => node.id === prevNodeId)!
       const nextNode = nodes.find(node => node.id === nextNodeId)!
 
-      newNode.data._connectedTargetHandleIds = [targetHandle]
+      newNode.data._connectedTargetHandleIds = nodeType === BlockEnum.DataSource ? [] : [targetHandle]
       newNode.data._connectedSourceHandleIds = [sourceHandle]
       newNode.position = {
         x: nextNode.position.x,
@@ -986,24 +991,29 @@ export const useNodesInteractions = () => {
       }
 
       const currentEdgeIndex = edges.findIndex(edge => edge.source === prevNodeId && edge.target === nextNodeId)
-      const newPrevEdge = {
-        id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
-        type: CUSTOM_EDGE,
-        source: prevNodeId,
-        sourceHandle: prevNodeSourceHandle,
-        target: newNode.id,
-        targetHandle,
-        data: {
-          sourceType: prevNode.data.type,
-          targetType: newNode.data.type,
-          isInIteration,
-          isInLoop,
-          iteration_id: isInIteration ? prevNode.parentId : undefined,
-          loop_id: isInLoop ? prevNode.parentId : undefined,
-          _connectedNodeIsSelected: true,
-        },
-        zIndex: prevNode.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+      let newPrevEdge = null
+
+      if (nodeType !== BlockEnum.DataSource) {
+        newPrevEdge = {
+          id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
+          type: CUSTOM_EDGE,
+          source: prevNodeId,
+          sourceHandle: prevNodeSourceHandle,
+          target: newNode.id,
+          targetHandle,
+          data: {
+            sourceType: prevNode.data.type,
+            targetType: newNode.data.type,
+            isInIteration,
+            isInLoop,
+            iteration_id: isInIteration ? prevNode.parentId : undefined,
+            loop_id: isInLoop ? prevNode.parentId : undefined,
+            _connectedNodeIsSelected: true,
+          },
+          zIndex: prevNode.parentId ? (isInIteration ? ITERATION_CHILDREN_Z_INDEX : LOOP_CHILDREN_Z_INDEX) : 0,
+        }
       }
+
       let newNextEdge: Edge | null = null
 
       const nextNodeParentNode = nodes.find(node => node.id === nextNode.parentId) || null
@@ -1033,7 +1043,7 @@ export const useNodesInteractions = () => {
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
         [
           { type: 'remove', edge: edges[currentEdgeIndex] },
-          { type: 'add', edge: newPrevEdge },
+          ...(newPrevEdge ? [{ type: 'add', edge: newPrevEdge }] : []),
           ...(newNextEdge ? [{ type: 'add', edge: newNextEdge }] : []),
         ],
         [...nodes, newNode],
@@ -1088,7 +1098,8 @@ export const useNodesInteractions = () => {
             _connectedNodeIsSelected: false,
           }
         })
-        draft.push(newPrevEdge)
+        if (newPrevEdge)
+          draft.push(newPrevEdge)
 
         if (newNextEdge)
           draft.push(newNextEdge)
