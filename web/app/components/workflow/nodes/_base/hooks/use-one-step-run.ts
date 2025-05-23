@@ -564,7 +564,7 @@ const useOneStepRun = <T>({
   }
 
   const varSelectorsToVarInputs = (valueSelectors: ValueSelector[] | string[]): InputVar[] => {
-    return valueSelectors.map((item) => {
+    return valueSelectors.filter(item => !!item).map((item) => {
       return getInputVars([`{{#${typeof item === 'string' ? item : item.join('.')}#}}`])[0]
     })
   }
