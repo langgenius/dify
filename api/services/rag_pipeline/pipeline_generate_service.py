@@ -2,12 +2,11 @@ from collections.abc import Mapping
 from typing import Any, Union
 
 from configs import dify_config
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.dataset import Pipeline
-from models.model import Account, App, AppMode, EndUser
+from models.model import Account, App, EndUser
 from models.workflow import Workflow
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
@@ -57,23 +56,15 @@ class PipelineGenerateService:
         return max_active_requests
 
     @classmethod
-    def generate_single_iteration(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):
-        if app_model.mode == AppMode.ADVANCED_CHAT.value:
-            workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
-            return AdvancedChatAppGenerator.convert_to_event_stream(
-                AdvancedChatAppGenerator().single_iteration_generate(
-                    app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
-                )
+    def generate_single_iteration(
+        cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, streaming: bool = True
+    ):
+        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER)
+        return PipelineGenerator.convert_to_event_stream(
+            PipelineGenerator().single_iteration_generate(
+                pipeline=pipeline, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
             )
-        elif app_model.mode == AppMode.WORKFLOW.value:
-            workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
-            return AdvancedChatAppGenerator.convert_to_event_stream(
-                WorkflowAppGenerator().single_iteration_generate(
-                    app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
-                )
-            )
-        else:
-            raise ValueError(f"Invalid app mode {app_model.mode}")
+        )
 
     @classmethod
     def generate_single_loop(cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, streaming: bool = True):

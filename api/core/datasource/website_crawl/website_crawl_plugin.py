@@ -7,7 +7,6 @@ from core.datasource.entities.datasource_entities import (
     GetWebsiteCrawlResponse,
 )
 from core.plugin.impl.datasource import PluginDatasourceManager
-from core.plugin.utils.converter import convert_parameters_to_plugin_format
 
 
 class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
@@ -38,9 +37,7 @@ class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
     ) -> GetWebsiteCrawlResponse:
         manager = PluginDatasourceManager()
 
-        datasource_parameters = convert_parameters_to_plugin_format(datasource_parameters)
-
-        return manager.invoke_first_step(
+        return manager.get_website_crawl(
             tenant_id=self.tenant_id,
             user_id=user_id,
             datasource_provider=self.entity.identity.provider,
@@ -52,12 +49,3 @@ class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
 
     def datasource_provider_type(self) -> DatasourceProviderType:
         return DatasourceProviderType.WEBSITE_CRAWL
-
-    def fork_datasource_runtime(self, runtime: DatasourceRuntime) -> "DatasourcePlugin":
-        return DatasourcePlugin(
-            entity=self.entity,
-            runtime=runtime,
-            tenant_id=self.tenant_id,
-            icon=self.icon,
-            plugin_unique_identifier=self.plugin_unique_identifier,
-        )

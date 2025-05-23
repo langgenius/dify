@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
-from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType
 from core.entities.provider_entities import ProviderConfig
 from core.plugin.impl.tool import PluginToolManager
@@ -11,9 +10,11 @@ from core.tools.errors import ToolProviderCredentialValidationError
 
 class DatasourcePluginProviderController(ABC):
     entity: DatasourceProviderEntityWithPlugin
+    tenant_id: str
 
-    def __init__(self, entity: DatasourceProviderEntityWithPlugin) -> None:
+    def __init__(self, entity: DatasourceProviderEntityWithPlugin, tenant_id: str) -> None:
         self.entity = entity
+        self.tenant_id = tenant_id
 
     @property
     def need_credentials(self) -> bool:
@@ -50,21 +51,6 @@ class DatasourcePluginProviderController(ABC):
         return datasource with given name
         """
         pass
-
-    def get_datasources(self) -> list[DatasourcePlugin]:  # type: ignore
-        """
-        get all datasources
-        """
-        return [
-            DatasourcePlugin(
-                entity=datasource_entity,
-                runtime=DatasourceRuntime(tenant_id=self.tenant_id),
-                tenant_id=self.tenant_id,
-                icon=self.entity.identity.icon,
-                plugin_unique_identifier=self.plugin_unique_identifier,
-            )
-            for datasource_entity in self.entity.datasources
-        ]
 
     def validate_credentials_format(self, credentials: dict[str, Any]) -> None:
         """

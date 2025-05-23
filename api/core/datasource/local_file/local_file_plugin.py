@@ -26,12 +26,3 @@ class LocalFileDatasourcePlugin(DatasourcePlugin):
 
     def datasource_provider_type(self) -> DatasourceProviderType:
         return DatasourceProviderType.LOCAL_FILE
-
-    def fork_datasource_runtime(self, runtime: DatasourceRuntime) -> "DatasourcePlugin":
-        return DatasourcePlugin(
-            entity=self.entity,
-            runtime=runtime,
-            tenant_id=self.tenant_id,
-            icon=self.icon,
-            plugin_unique_identifier=self.plugin_unique_identifier,
-        )

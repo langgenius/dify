@@ -8,6 +8,7 @@ from flask_restful.inputs import int_range  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+from models.model import EndUser
 import services
 from configs import dify_config
 from controllers.console import api
@@ -44,7 +45,6 @@ from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
-from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 
 logger = logging.getLogger(__name__)
 
@@ -243,6 +243,7 @@ class DraftRagPipelineRunApi(Resource):
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("datasource_type", type=str, required=True, location="json")
         parser.add_argument("datasource_info", type=list, required=True, location="json")
+        parser.add_argument("start_node_id", type=str, required=True, location="json")
         args = parser.parse_args()
 
         try:
@@ -313,13 +314,20 @@ class RagPipelineDatasourceNodeRunApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("datasource_type", type=str, required=True, location="json")
         args = parser.parse_args()
 
         inputs = args.get("inputs")
+        if inputs == None:
+            raise ValueError("missing inputs")
 
         rag_pipeline_service = RagPipelineService()
         result = rag_pipeline_service.run_datasource_workflow_node(
-            pipeline=pipeline, node_id=node_id, user_inputs=inputs, account=current_user
+            pipeline=pipeline,
+            node_id=node_id,
+            user_inputs=inputs,
+            account=current_user,
+            datasource_type=args.get("datasource_type"),
         )
 
         return result
@@ -648,40 +656,6 @@ class RagPipelineByIdApi(Resource):
 
         return workflow
 
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_rag_pipeline
-    def delete(self, pipeline: Pipeline, workflow_id: str):
-        """
-        Delete workflow
-        """
-        # Check permission
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        rag_pipeline_service = RagPipelineService()
-
-        # Create a session and manage the transaction
-        with Session(db.engine) as session:
-            try:
-                rag_pipeline_service.delete_workflow(
-                    session=session, workflow_id=workflow_id, tenant_id=pipeline.tenant_id
-                )
-                # Commit the transaction in the controller
-                session.commit()
-            except WorkflowInUseError as e:
-                abort(400, description=str(e))
-            except DraftWorkflowDeletionError as e:
-                abort(400, description=str(e))
-            except ValueError as e:
-                raise NotFound(str(e))
-
-        return None, 204
-
 
 class PublishedRagPipelineSecondStepApi(Resource):
     @setup_required
@@ -695,8 +669,12 @@ class PublishedRagPipelineSecondStepApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        node_id = request.args.get("node_id", required=True, type=str)
-
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, location="args")
+        args = parser.parse_args()
+        node_id = args.get("node_id")
+        if not node_id:
+            raise ValueError("Node ID is required")
         rag_pipeline_service = RagPipelineService()
         variables = rag_pipeline_service.get_published_second_step_parameters(pipeline=pipeline, node_id=node_id)
         return {
@@ -716,7 +694,12 @@ class DraftRagPipelineSecondStepApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        node_id = request.args.get("node_id", required=True, type=str)
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, location="args")
+        args = parser.parse_args()
+        node_id = args.get("node_id")
+        if not node_id:
+            raise ValueError("Node ID is required")
 
         rag_pipeline_service = RagPipelineService()
         variables = rag_pipeline_service.get_draft_second_step_parameters(pipeline=pipeline, node_id=node_id)
@@ -777,9 +760,11 @@ class RagPipelineWorkflowRunNodeExecutionListApi(Resource):
         run_id = str(run_id)
 
         rag_pipeline_service = RagPipelineService()
+        user = cast("Account | EndUser", current_user)
         node_executions = rag_pipeline_service.get_rag_pipeline_workflow_run_node_executions(
             pipeline=pipeline,
             run_id=run_id,
+            user=user,
         )
 
         return {"data": node_executions}
@@ -875,9 +860,9 @@ api.add_resource(
 )
 api.add_resource(
     PublishedRagPipelineSecondStepApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/paramters",
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters",
 )
 api.add_resource(
     DraftRagPipelineSecondStepApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/paramters",
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/parameters",
 )

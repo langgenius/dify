@@ -251,7 +251,7 @@ class GetOnlineDocumentPageContentRequest(BaseModel):
     Get online document page content request
     """
 
-    online_document_info_list: list[OnlineDocumentInfo]
+    online_document_info: OnlineDocumentInfo
 
 
 class OnlineDocumentPageContent(BaseModel):
@@ -259,6 +259,7 @@ class OnlineDocumentPageContent(BaseModel):
     Online document page content
     """
 
+    workspace_id: str = Field(..., description="The workspace id")
     page_id: str = Field(..., description="The page id")
     content: str = Field(..., description="The content of the page")
 
@@ -268,7 +269,7 @@ class GetOnlineDocumentPageContentResponse(BaseModel):
     Get online document page content response
     """
 
-    result: list[OnlineDocumentPageContent]
+    result: OnlineDocumentPageContent
 
 
 class GetWebsiteCrawlRequest(BaseModel):
@@ -286,7 +287,7 @@ class WebSiteInfo(BaseModel):
     """
 
     source_url: str = Field(..., description="The url of the website")
-    markdown: str = Field(..., description="The markdown of the website")
+    content: str = Field(..., description="The content of the website")
     title: str = Field(..., description="The title of the website")
     description: str = Field(..., description="The description of the website")
 
@@ -296,4 +297,4 @@ class GetWebsiteCrawlResponse(BaseModel):
     Get website crawl response
     """
 
-    result: list[WebSiteInfo]
+    result: WebSiteInfo

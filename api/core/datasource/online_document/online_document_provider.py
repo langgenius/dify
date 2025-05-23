@@ -1,20 +1,18 @@
-from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType
+from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 
 
 class OnlineDocumentDatasourcePluginProviderController(DatasourcePluginProviderController):
     entity: DatasourceProviderEntityWithPlugin
-    tenant_id: str
     plugin_id: str
     plugin_unique_identifier: str
 
     def __init__(
         self, entity: DatasourceProviderEntityWithPlugin, plugin_id: str, plugin_unique_identifier: str, tenant_id: str
     ) -> None:
-        super().__init__(entity)
-        self.tenant_id = tenant_id
+        super().__init__(entity, tenant_id)
         self.plugin_id = plugin_id
         self.plugin_unique_identifier = plugin_unique_identifier
 
@@ -25,7 +23,7 @@ class OnlineDocumentDatasourcePluginProviderController(DatasourcePluginProviderC
         """
         return DatasourceProviderType.ONLINE_DOCUMENT
 
-    def get_datasource(self, datasource_name: str) -> DatasourcePlugin:  # type: ignore
+    def get_datasource(self, datasource_name: str) -> OnlineDocumentDatasourcePlugin:  # type: ignore
         """
         return datasource with given name
         """
@@ -41,7 +39,7 @@ class OnlineDocumentDatasourcePluginProviderController(DatasourcePluginProviderC
         if not datasource_entity:
             raise ValueError(f"Datasource with name {datasource_name} not found")
 
-        return DatasourcePlugin(
+        return OnlineDocumentDatasourcePlugin(
             entity=datasource_entity,
             runtime=DatasourceRuntime(tenant_id=self.tenant_id),
             tenant_id=self.tenant_id,

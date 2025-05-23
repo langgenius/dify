@@ -99,6 +99,7 @@ class PipelineGenerator(BaseAppGenerator):
         )
 
         inputs: Mapping[str, Any] = args["inputs"]
+        start_node_id: str = args["start_node_id"]
         datasource_type: str = args["datasource_type"]
         datasource_info_list: list[Mapping[str, Any]] = args["datasource_info_list"]
         batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
@@ -118,7 +119,7 @@ class PipelineGenerator(BaseAppGenerator):
                     position=position,
                     account=user,
                     batch=batch,
-                    document_form=pipeline.dataset.doc_form,
+                    document_form=pipeline.dataset.chunk_structure,
                 )
                 db.session.add(document)
                 db.session.commit()
@@ -231,7 +232,7 @@ class PipelineGenerator(BaseAppGenerator):
 
     def single_iteration_generate(
         self,
-        app_model: App,
+        pipeline: Pipeline,
         workflow: Workflow,
         node_id: str,
         user: Account | EndUser,
@@ -255,7 +256,7 @@ class PipelineGenerator(BaseAppGenerator):
             raise ValueError("inputs is required")
 
         # convert to app config
-        app_config = WorkflowAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
+        app_config = PipelineConfigManager.get_pipeline_config(pipeline=pipeline, workflow=workflow)
 
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(

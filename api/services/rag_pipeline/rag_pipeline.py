@@ -3,7 +3,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from uuid import uuid4
 
 from flask_login import current_user
@@ -12,6 +12,9 @@ from sqlalchemy.orm import Session
 
 import contexts
 from configs import dify_config
+from core.datasource.entities.datasource_entities import DatasourceProviderType, GetOnlineDocumentPagesRequest, GetOnlineDocumentPagesResponse, GetWebsiteCrawlRequest, GetWebsiteCrawlResponse
+from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
+from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables.variables import Variable
@@ -30,6 +33,7 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
 from models.dataset import Pipeline, PipelineBuiltInTemplate, PipelineCustomizedTemplate  # type: ignore
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.model import EndUser
 from models.workflow import (
     Workflow,
     WorkflowNodeExecution,
@@ -394,8 +398,8 @@ class RagPipelineService:
         return workflow_node_execution
 
     def run_datasource_workflow_node(
-        self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account
-    ) -> WorkflowNodeExecution:
+        self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account, datasource_type: str
+    ) -> dict:
         """
         Run published workflow datasource
         """
@@ -416,17 +420,36 @@ class RagPipelineService:
             provider_id=datasource_node_data.get("provider_id"),
             datasource_name=datasource_node_data.get("datasource_name"),
             tenant_id=pipeline.tenant_id,
+            datasource_type=DatasourceProviderType(datasource_type),
         )
-        result = datasource_runtime._invoke_first_step(
-            inputs=user_inputs,
-            provider_type=datasource_node_data.get("provider_type"),
-            user_id=account.id,
-        )
+        if datasource_runtime.datasource_provider_type() == DatasourceProviderType.ONLINE_DOCUMENT:
+            datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+            online_document_result: GetOnlineDocumentPagesResponse = (
+                datasource_runtime._get_online_document_pages(
+                    user_id=account.id,
+                    datasource_parameters=GetOnlineDocumentPagesRequest(tenant_id=pipeline.tenant_id),
+                    provider_type=datasource_runtime.datasource_provider_type(),
+                )
+            )
+            return {
+                "result": [page.model_dump() for page in online_document_result.result],
+                "provider_type": datasource_node_data.get("provider_type"),
+            }
 
-        return {
-            "result": result,
-            "provider_type": datasource_node_data.get("provider_type"),
-        }
+        elif datasource_runtime.datasource_provider_type == DatasourceProviderType.WEBSITE_CRAWL:
+            datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
+            website_crawl_result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
+                user_id=account.id,
+                datasource_parameters=GetWebsiteCrawlRequest(**user_inputs),
+                provider_type=datasource_runtime.datasource_provider_type(),
+            )
+            return {
+                "result": website_crawl_result.result.model_dump(),
+                "provider_type": datasource_node_data.get("provider_type"),
+            }
+        else:
+            raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
+
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
@@ -587,7 +610,7 @@ class RagPipelineService:
 
         return workflow
 
-    def get_published_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> dict:
+    def get_published_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> list[dict]:
         """
         Get second step parameters of rag pipeline
         """
@@ -599,7 +622,7 @@ class RagPipelineService:
         # get second step node
         rag_pipeline_variables = workflow.rag_pipeline_variables
         if not rag_pipeline_variables:
-            return {}
+            return []
 
         # get datasource provider
         datasource_provider_variables = [
@@ -609,7 +632,7 @@ class RagPipelineService:
         ]
         return datasource_provider_variables
 
-    def get_draft_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> dict:
+    def get_draft_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> list[dict]:
         """
         Get second step parameters of rag pipeline
         """
@@ -621,7 +644,7 @@ class RagPipelineService:
         # get second step node
         rag_pipeline_variables = workflow.rag_pipeline_variables
         if not rag_pipeline_variables:
-            return {}
+            return []
 
         # get datasource provider
         datasource_provider_variables = [
@@ -702,6 +725,7 @@ class RagPipelineService:
         self,
         pipeline: Pipeline,
         run_id: str,
+        user: Account | EndUser,
     ) -> list[WorkflowNodeExecution]:
         """
         Get workflow run node execution list
@@ -716,11 +740,16 @@ class RagPipelineService:
 
         # Use the repository to get the node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine, tenant_id=pipeline.tenant_id, app_id=pipeline.id
+            session_factory=db.engine,
+            app_id=pipeline.id,
+            user=user,
+            triggered_from=None
         )
 
         # Use the repository to get the node executions with ordering
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
         node_executions = repository.get_by_workflow_run(workflow_run_id=run_id, order_config=order_config)
+      # Convert domain models to database models
+        workflow_node_executions = [repository.to_db_model(node_execution) for node_execution in node_executions]
 
-        return list(node_executions)
+        return workflow_node_executions

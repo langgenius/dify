@@ -4,6 +4,9 @@ from typing import Any, cast
 from core.datasource.entities.datasource_entities import (
     DatasourceParameter,
     DatasourceProviderType,
+    GetOnlineDocumentPageContentRequest,
+    GetOnlineDocumentPageContentResponse,
+    GetWebsiteCrawlRequest,
     GetWebsiteCrawlResponse,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
@@ -54,6 +57,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                 provider_id=node_data.provider_id,
                 datasource_name=node_data.datasource_name,
                 tenant_id=self.tenant_id,
+                datasource_type=DatasourceProviderType(node_data.provider_type),
             )
         except DatasourceNodeError as e:
             yield RunCompletedEvent(
@@ -82,38 +86,43 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         )
 
         try:
-            # TODO: handle result
             if datasource_runtime.datasource_provider_type() == DatasourceProviderType.ONLINE_DOCUMENT:
                 datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                result = datasource_runtime._get_online_document_page_content(
-                    user_id=self.user_id,
-                    datasource_parameters=parameters,
-                    provider_type=node_data.provider_type,
+                online_document_result: GetOnlineDocumentPageContentResponse = (
+                    datasource_runtime._get_online_document_page_content(
+                        user_id=self.user_id,
+                        datasource_parameters=GetOnlineDocumentPageContentRequest(**parameters),
+                        provider_type=datasource_runtime.datasource_provider_type(),
+                    )
                 )
-                return NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    inputs=parameters_for_log,
-                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                    outputs={
-                        "result": result.result.model_dump(),
-                        "datasource_type": datasource_runtime.datasource_provider_type,
-                    },
+                yield RunCompletedEvent(
+                    run_result=NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                        inputs=parameters_for_log,
+                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                        outputs={
+                            "online_document": online_document_result.result.model_dump(),
+                            "datasource_type": datasource_runtime.datasource_provider_type,
+                        },
+                    )
                 )
             elif datasource_runtime.datasource_provider_type == DatasourceProviderType.WEBSITE_CRAWL:
                 datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-                result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
+                website_crawl_result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
                     user_id=self.user_id,
-                    datasource_parameters=parameters,
-                    provider_type=node_data.provider_type,
+                    datasource_parameters=GetWebsiteCrawlRequest(**parameters),
+                    provider_type=datasource_runtime.datasource_provider_type(),
                 )
-                return NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    inputs=parameters_for_log,
-                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                    outputs={
-                        "result": result.result.model_dump(),
-                        "datasource_type": datasource_runtime.datasource_provider_type,
-                    },
+                yield RunCompletedEvent(
+                    run_result=NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                        inputs=parameters_for_log,
+                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                        outputs={
+                            "website": website_crawl_result.result.model_dump(),
+                            "datasource_type": datasource_runtime.datasource_provider_type,
+                        },
+                    )
                 )
             else:
                 raise DatasourceNodeError(

@@ -7,7 +7,6 @@ from typing import Any, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
 
 from core.entities.provider_entities import ProviderConfig
-from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.parameters import (
     PluginParameter,
     PluginParameterOption,
@@ -350,7 +349,6 @@ class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
     plugin_id: Optional[str] = None
     credentials_schema: list[ProviderConfig] = Field(default_factory=list)
-    oauth_schema: Optional[OAuthSchema] = Field(default=None, description="The oauth schema of the tool provider")
 
 
 class ToolProviderEntityWithPlugin(ToolProviderEntity):

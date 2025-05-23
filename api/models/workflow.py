@@ -360,7 +360,7 @@ class Workflow(Base):
         )
 
     @property
-    def rag_pipeline_variables(self) -> Sequence[Variable]:
+    def rag_pipeline_variables(self) -> list[dict]:
         # TODO: find some way to init `self._conversation_variables` when instance created.
         if self._rag_pipeline_variables is None:
             self._rag_pipeline_variables = "{}"

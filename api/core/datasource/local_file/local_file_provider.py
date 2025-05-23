@@ -8,15 +8,13 @@ from core.datasource.local_file.local_file_plugin import LocalFileDatasourcePlug
 
 class LocalFileDatasourcePluginProviderController(DatasourcePluginProviderController):
     entity: DatasourceProviderEntityWithPlugin
-    tenant_id: str
     plugin_id: str
     plugin_unique_identifier: str
 
     def __init__(
         self, entity: DatasourceProviderEntityWithPlugin, plugin_id: str, plugin_unique_identifier: str, tenant_id: str
     ) -> None:
-        super().__init__(entity)
-        self.tenant_id = tenant_id
+        super().__init__(entity, tenant_id)
         self.plugin_id = plugin_id
         self.plugin_unique_identifier = plugin_unique_identifier
 
