@@ -169,7 +169,7 @@ const BasePanel: FC<BasePanelProps> = ({
     return {}
   })()
 
-  if (isShowSingleRun) {
+  if (isShowSingleRun || logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
         'relative mr-1  h-full',
