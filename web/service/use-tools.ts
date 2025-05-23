@@ -12,8 +12,6 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 
-import { listData } from '@/app/components/tools/mcp/mock'
-
 const NAME_SPACE = 'tools'
 
 const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
@@ -68,10 +66,7 @@ const useAllMCPToolsKey = [NAME_SPACE, 'MCPTools']
 export const useAllMCPTools = () => {
   return useQuery<ToolWithProvider[]>({
     queryKey: useAllMCPToolsKey,
-    // queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/mcp'),
-    queryFn: () => {
-      return listData as unknown as ToolWithProvider[]
-    },
+    queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/mcp'),
   })
 }
 
