@@ -4,7 +4,7 @@ import { z } from 'zod'
 export const InputType = z.enum([
   'text-input',
   'paragraph',
-  'number',
+  'number-input',
   'select',
   'checkbox',
   'file',

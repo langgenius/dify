@@ -3,13 +3,13 @@ import type { Option } from '../../../select/pure'
 import type { CustomActionsProps } from '../../components/form/actions'
 
 export enum BaseFieldType {
-  textInput = 'textInput',
+  textInput = 'text-input',
   paragraph = 'paragraph',
-  numberInput = 'numberInput',
+  numberInput = 'number-input',
   checkbox = 'checkbox',
   select = 'select',
   file = 'file',
-  fileList = 'fileList',
+  fileList = 'file-list',
 }
 
 export type ShowCondition = {

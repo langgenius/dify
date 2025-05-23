@@ -1,5 +1,5 @@
-import { InputVarType } from '@/app/components/workflow/types'
 import { InputType } from './types'
+import { PipelineInputVarType } from '@/models/pipeline'
 import { useTranslation } from 'react-i18next'
 import {
   RiAlignLeft,
@@ -12,28 +12,29 @@ import {
 } from '@remixicon/react'
 
 const i18nFileTypeMap: Record<string, string> = {
+  'number-input': 'number',
   'file': 'single-file',
   'file-list': 'multi-files',
 }
 
 const INPUT_TYPE_ICON = {
-  [InputVarType.textInput]: RiTextSnippet,
-  [InputVarType.paragraph]: RiAlignLeft,
-  [InputVarType.number]: RiHashtag,
-  [InputVarType.select]: RiListCheck3,
-  [InputVarType.checkbox]: RiCheckboxLine,
-  [InputVarType.singleFile]: RiFileTextLine,
-  [InputVarType.multiFiles]: RiFileCopy2Line,
+  [PipelineInputVarType.textInput]: RiTextSnippet,
+  [PipelineInputVarType.paragraph]: RiAlignLeft,
+  [PipelineInputVarType.number]: RiHashtag,
+  [PipelineInputVarType.select]: RiListCheck3,
+  [PipelineInputVarType.checkbox]: RiCheckboxLine,
+  [PipelineInputVarType.singleFile]: RiFileTextLine,
+  [PipelineInputVarType.multiFiles]: RiFileCopy2Line,
 }
 
 const DATA_TYPE = {
-  [InputVarType.textInput]: 'string',
-  [InputVarType.paragraph]: 'string',
-  [InputVarType.number]: 'number',
-  [InputVarType.select]: 'string',
-  [InputVarType.checkbox]: 'boolean',
-  [InputVarType.singleFile]: 'file',
-  [InputVarType.multiFiles]: 'array[file]',
+  [PipelineInputVarType.textInput]: 'string',
+  [PipelineInputVarType.paragraph]: 'string',
+  [PipelineInputVarType.number]: 'number',
+  [PipelineInputVarType.select]: 'string',
+  [PipelineInputVarType.checkbox]: 'boolean',
+  [PipelineInputVarType.singleFile]: 'file',
+  [PipelineInputVarType.multiFiles]: 'array[file]',
 }
 
 export const useInputTypeOptions = (supportFile: boolean) => {

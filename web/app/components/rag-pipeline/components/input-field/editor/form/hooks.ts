@@ -70,8 +70,8 @@ export const useConfigurations = (props: {
   const { t } = useTranslation()
   const { setFieldValue, supportFile } = props
 
-  const handleTypeChange = useCallback((type: string) => {
-    if ([PipelineInputVarType.singleFile, PipelineInputVarType.multiFiles].includes(type as PipelineInputVarType)) {
+  const handleTypeChange = useCallback((type: PipelineInputVarType) => {
+    if ([PipelineInputVarType.singleFile, PipelineInputVarType.multiFiles].includes(type)) {
       setFieldValue('allowedFileUploadMethods', DEFAULT_FILE_UPLOAD_SETTING.allowed_file_upload_methods)
       setFieldValue('allowedTypesAndExtensions', {
         allowedFileTypes: DEFAULT_FILE_UPLOAD_SETTING.allowed_file_types,
@@ -92,7 +92,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [],
       listeners: {
-        onChange: ({ value }) => handleTypeChange(value as string),
+        onChange: ({ value }) => handleTypeChange(value),
       },
       supportFile,
     }, {

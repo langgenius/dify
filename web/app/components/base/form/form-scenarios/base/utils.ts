@@ -10,6 +10,7 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
 
     switch (field.type) {
       case BaseFieldType.textInput:
+      case BaseFieldType.paragraph:
         zodType = z.string()
         break
       case BaseFieldType.numberInput:
@@ -27,7 +28,7 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
     }
 
     if (field.maxLength) {
-      if ([BaseFieldType.textInput].includes(field.type))
+      if ([BaseFieldType.textInput, BaseFieldType.paragraph].includes(field.type))
         zodType = (zodType as ZodString).max(field.maxLength, `${field.label} exceeds max length of ${field.maxLength}`)
     }
 
@@ -42,7 +43,7 @@ export const generateZodSchema = (fields: BaseConfiguration[]) => {
     }
 
     if (field.required) {
-      if ([BaseFieldType.textInput].includes(field.type))
+      if ([BaseFieldType.textInput, BaseFieldType.paragraph].includes(field.type))
         zodType = (zodType as ZodString).nonempty(`${field.label} is required`)
     }
     else {

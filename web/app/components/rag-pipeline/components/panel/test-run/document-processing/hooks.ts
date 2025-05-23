@@ -7,7 +7,7 @@ import { PipelineInputVarType } from '@/models/pipeline'
 
 const VAR_TYPE_MAP: Record<PipelineInputVarType, BaseFieldType> = {
   [PipelineInputVarType.textInput]: BaseFieldType.textInput,
-  [PipelineInputVarType.paragraph]: BaseFieldType.textInput,
+  [PipelineInputVarType.paragraph]: BaseFieldType.paragraph,
   [PipelineInputVarType.select]: BaseFieldType.select,
   [PipelineInputVarType.singleFile]: BaseFieldType.file,
   [PipelineInputVarType.multiFiles]: BaseFieldType.fileList,
