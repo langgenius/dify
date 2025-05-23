@@ -5,6 +5,7 @@ import {
 } from 'react'
 import { useStore } from '@/app/components/workflow/store'
 import { RiCloseLine } from '@remixicon/react'
+import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import DialogWrapper from './dialog-wrapper'
 import FieldList from './field-list'
@@ -33,15 +34,14 @@ const InputFieldDialog = ({
   const setRagPipelineVariables = useStore(state => state.setRagPipelineVariables)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
-  const datasourceTitleMap = useMemo(() => {
-    const datasourceNameMap: Record<string, string> = {}
-    const datasourceNodes = nodes.filter(node => node.data.type === BlockEnum.DataSource)
+  const datasourceNodeDataMap = useMemo(() => {
+    const datasourceNodeDataMap: Record<string, DataSourceNodeType> = {}
+    const datasourceNodes: Node<DataSourceNodeType>[] = nodes.filter(node => node.data.type === BlockEnum.DataSource)
     datasourceNodes.forEach((node) => {
       const { id, data } = node
-      if (data?.title)
-        datasourceNameMap[id] = data.title
+      datasourceNodeDataMap[id] = data
     })
-    return datasourceNameMap
+    return datasourceNodeDataMap
   }, [nodes])
 
   const inputFieldsMap = useMemo(() => {
@@ -55,10 +55,6 @@ const InputFieldDialog = ({
     })
     return inputFieldsMap
   }, [ragPipelineVariables])
-
-  const datasourceKeys = useMemo(() => {
-    return Object.keys(inputFieldsMap).filter(key => key !== 'shared')
-  }, [inputFieldsMap])
 
   const updateInputFields = useCallback(async (key: string, value: InputVar[]) => {
     const NewInputFieldsMap = produce(inputFieldsMap, (draft) => {
@@ -106,12 +102,12 @@ const InputFieldDialog = ({
         <div className='flex grow flex-col overflow-y-auto'>
           {/* Datasources Inputs */}
           {
-            datasourceKeys.map((key) => {
+            Object.keys(datasourceNodeDataMap).map((key) => {
               const inputFields = inputFieldsMap[key] || []
               return (
                 <FieldList
                   key={key}
-                  LabelRightContent={<Datasource title={datasourceTitleMap[key]} />}
+                  LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]} />}
                   inputFields={inputFields}
                   readonly={readonly}
                   labelClassName='pt-2 pb-1'
