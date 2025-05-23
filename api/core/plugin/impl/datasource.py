@@ -1,4 +1,5 @@
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from core.datasource.entities.api_entities import DatasourceProviderApiEntity
 from core.datasource.entities.datasource_entities import (
@@ -63,7 +64,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response(
             "GET",
-            f"plugin/{tenant_id}/management/datasources",
+            f"plugin/{tenant_id}/management/datasource",
             PluginDatasourceProviderEntity,
             params={"provider": tool_provider_id.provider_name, "plugin_id": tool_provider_id.plugin_id},
             transformer=transformer,

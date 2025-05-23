@@ -12,7 +12,11 @@ from sqlalchemy.orm import Session
 
 import contexts
 from configs import dify_config
-from core.datasource.entities.datasource_entities import DatasourceProviderType, GetOnlineDocumentPagesRequest, GetOnlineDocumentPagesResponse, GetWebsiteCrawlRequest, GetWebsiteCrawlResponse
+from core.datasource.entities.datasource_entities import (
+    DatasourceProviderType,
+    GetOnlineDocumentPagesResponse,
+    GetWebsiteCrawlResponse,
+)
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.model_runtime.utils.encoders import jsonable_encoder

@@ -8,7 +8,6 @@ from flask_restful.inputs import int_range  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
-from models.model import EndUser
 import services
 from configs import dify_config
 from controllers.console import api
@@ -40,6 +39,7 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.account import Account
 from models.dataset import Pipeline
+from models.model import EndUser
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
