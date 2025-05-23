@@ -50,8 +50,8 @@ class PipelineTemplateDetailApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    def get(self, pipeline_id: str):
-        pipeline_template = RagPipelineService.get_pipeline_template_detail(pipeline_id)
+    def get(self, template_id: str):
+        pipeline_template = RagPipelineService.get_pipeline_template_detail(template_id)
         return pipeline_template, 200
 
 
@@ -120,7 +120,7 @@ api.add_resource(
 )
 api.add_resource(
     PipelineTemplateDetailApi,
-    "/rag/pipeline/templates/<string:pipeline_id>",
+    "/rag/pipeline/templates/<string:template_id>",
 )
 api.add_resource(
     CustomizedPipelineTemplateApi,

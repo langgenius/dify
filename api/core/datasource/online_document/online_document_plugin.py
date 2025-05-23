@@ -1,3 +1,4 @@
+from typing import Any, Mapping
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
@@ -34,7 +35,7 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
     def _get_online_document_pages(
         self,
         user_id: str,
-        datasource_parameters: GetOnlineDocumentPagesRequest,
+        datasource_parameters: Mapping[str, Any],
         provider_type: str,
     ) -> GetOnlineDocumentPagesResponse:
         manager = PluginDatasourceManager()

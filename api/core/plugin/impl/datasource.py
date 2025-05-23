@@ -1,12 +1,10 @@
-from typing import Any
+from typing import Any, Mapping
 
 from core.datasource.entities.api_entities import DatasourceProviderApiEntity
 from core.datasource.entities.datasource_entities import (
     GetOnlineDocumentPageContentRequest,
     GetOnlineDocumentPageContentResponse,
-    GetOnlineDocumentPagesRequest,
     GetOnlineDocumentPagesResponse,
-    GetWebsiteCrawlRequest,
     GetWebsiteCrawlResponse,
 )
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
@@ -86,7 +84,7 @@ class PluginDatasourceManager(BasePluginClient):
         datasource_provider: str,
         datasource_name: str,
         credentials: dict[str, Any],
-        datasource_parameters: GetWebsiteCrawlRequest,
+        datasource_parameters: Mapping[str, Any],
         provider_type: str,
     ) -> GetWebsiteCrawlResponse:
         """
@@ -125,7 +123,7 @@ class PluginDatasourceManager(BasePluginClient):
         datasource_provider: str,
         datasource_name: str,
         credentials: dict[str, Any],
-        datasource_parameters: GetOnlineDocumentPagesRequest,
+        datasource_parameters: Mapping[str, Any],
         provider_type: str,
     ) -> GetOnlineDocumentPagesResponse:
         """

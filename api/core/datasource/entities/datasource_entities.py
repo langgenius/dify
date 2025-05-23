@@ -4,6 +4,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
+from core.entities.provider_entities import ProviderConfig
+from core.plugin.entities.oauth import OAuthSchema
 from core.plugin.entities.parameters import (
     PluginParameter,
     PluginParameterOption,
@@ -13,7 +15,7 @@ from core.plugin.entities.parameters import (
     init_frontend_parameter,
 )
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderEntity
+from core.tools.entities.tool_entities import ToolLabelEnum, ToolProviderEntity
 
 
 class DatasourceProviderType(enum.StrEnum):
@@ -118,29 +120,36 @@ class DatasourceIdentity(BaseModel):
     icon: Optional[str] = None
 
 
-class DatasourceDescription(BaseModel):
-    human: I18nObject = Field(..., description="The description presented to the user")
-    llm: str = Field(..., description="The description presented to the LLM")
-
-
 class DatasourceEntity(BaseModel):
     identity: DatasourceIdentity
     parameters: list[DatasourceParameter] = Field(default_factory=list)
-    description: Optional[DatasourceDescription] = None
+    description: I18nObject = Field(..., description="The label of the datasource")
     output_schema: Optional[dict] = None
-    has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
     @field_validator("parameters", mode="before")
     @classmethod
     def set_parameters(cls, v, validation_info: ValidationInfo) -> list[DatasourceParameter]:
         return v or []
 
+class DatasourceProviderIdentity(BaseModel):
+    author: str = Field(..., description="The author of the tool")
+    name: str = Field(..., description="The name of the tool")
+    description: I18nObject = Field(..., description="The description of the tool")
+    icon: str = Field(..., description="The icon of the tool")
+    label: I18nObject = Field(..., description="The label of the tool")
+    tags: Optional[list[ToolLabelEnum]] = Field(
+        default=[],
+        description="The tags of the tool",
+    )
 
-class DatasourceProviderEntity(ToolProviderEntity):
+    
+class DatasourceProviderEntity(BaseModel):
     """
     Datasource provider entity
     """
-
+    identity: DatasourceProviderIdentity
+    credentials_schema: list[ProviderConfig] = Field(default_factory=list)
+    oauth_schema: Optional[OAuthSchema] = None
     provider_type: DatasourceProviderType
 
 
@@ -202,7 +211,6 @@ class GetOnlineDocumentPagesRequest(BaseModel):
     Get online document pages request
     """
 
-    tenant_id: str = Field(..., description="The tenant id")
 
 
 class OnlineDocumentPageIcon(BaseModel):
@@ -276,8 +284,6 @@ class GetWebsiteCrawlRequest(BaseModel):
     """
     Get website crawl request
     """
-
-    url: str = Field(..., description="The url of the website")
     crawl_parameters: dict = Field(..., description="The crawl parameters")
 
 
@@ -297,4 +303,4 @@ class GetWebsiteCrawlResponse(BaseModel):
     Get website crawl response
     """
 
-    result: WebSiteInfo
+    result: list[WebSiteInfo]

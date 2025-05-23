@@ -1,3 +1,4 @@
+from typing import Any, Mapping
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
@@ -32,7 +33,7 @@ class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
     def _get_website_crawl(
         self,
         user_id: str,
-        datasource_parameters: GetWebsiteCrawlRequest,
+        datasource_parameters: Mapping[str, Any],
         provider_type: str,
     ) -> GetWebsiteCrawlResponse:
         manager = PluginDatasourceManager()

@@ -67,15 +67,15 @@ class RagPipelineService:
             return result.get("pipeline_templates")
 
     @classmethod
-    def get_pipeline_template_detail(cls, pipeline_id: str) -> Optional[dict]:
+    def get_pipeline_template_detail(cls, template_id: str) -> Optional[dict]:
         """
         Get pipeline template detail.
-        :param pipeline_id: pipeline id
+        :param template_id: template id
         :return:
         """
         mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
-        retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)
-        result: Optional[dict] = retrieval_instance.get_pipeline_template_detail(pipeline_id)
+        retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
+        result: Optional[dict] = retrieval_instance.get_pipeline_template_detail(template_id)
         return result
 
     @classmethod
@@ -427,7 +427,7 @@ class RagPipelineService:
             online_document_result: GetOnlineDocumentPagesResponse = (
                 datasource_runtime._get_online_document_pages(
                     user_id=account.id,
-                    datasource_parameters=GetOnlineDocumentPagesRequest(tenant_id=pipeline.tenant_id),
+                    datasource_parameters=user_inputs,
                     provider_type=datasource_runtime.datasource_provider_type(),
                 )
             )
@@ -440,11 +440,11 @@ class RagPipelineService:
             datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
             website_crawl_result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
                 user_id=account.id,
-                datasource_parameters=GetWebsiteCrawlRequest(**user_inputs),
+                datasource_parameters=user_inputs,
                 provider_type=datasource_runtime.datasource_provider_type(),
             )
             return {
-                "result": website_crawl_result.result.model_dump(),
+                "result": [result.model_dump() for result in website_crawl_result.result],
                 "provider_type": datasource_node_data.get("provider_type"),
             }
         else:
