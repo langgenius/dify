@@ -3,4 +3,5 @@ import type { RAGPipelineVariables } from '@/models/pipeline'
 
 export type DataSourceNodeType = CommonNodeType & {
   variables: RAGPipelineVariables
+  output_schema: Record<string, any>
 }

@@ -1,6 +1,8 @@
 import {
+  useCallback,
   useRef,
 } from 'react'
+import { BlockEnum } from '../types'
 import type {
   OnSelectBlock,
   ToolWithProvider,
@@ -27,6 +29,10 @@ const DataSources = ({
 }: AllToolsProps) => {
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
+  const formatedDataSources = dataSources.map(item => ({ ...item, tools: item.datasources || [] }))
+  const handleSelect = useCallback<OnSelectBlock>((_, toolDefaultValue) => {
+    onSelect(BlockEnum.DataSource, toolDefaultValue)
+  }, [onSelect])
 
   return (
     <div className={cn(className)}>
@@ -38,8 +44,8 @@ const DataSources = ({
         <Tools
           className={toolContentClassName}
           showWorkflowEmpty={false}
-          tools={dataSources}
-          onSelect={onSelect}
+          tools={formatedDataSources}
+          onSelect={handleSelect}
           viewType={ViewType.flat}
           hasSearchText={!!searchText}
         />
