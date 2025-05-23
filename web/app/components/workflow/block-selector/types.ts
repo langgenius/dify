@@ -33,6 +33,14 @@ export type ToolDefaultValue = {
   output_schema: Record<string, any>
 }
 
+export type DataSourceDefaultValue = {
+  provider_id: string
+  provider_type: string
+  provider_name: string
+  datasource_name: string
+  datasource_label: string
+}
+
 export type ToolValue = {
   provider_name: string
   tool_name: string

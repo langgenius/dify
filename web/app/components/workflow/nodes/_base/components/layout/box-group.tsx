@@ -9,16 +9,16 @@ import type {
   GroupProps,
 } from '.'
 
-type GroupWithBoxProps = {
+export type BoxGroupProps = {
   children?: ReactNode
   boxProps?: Omit<BoxProps, 'children'>
   groupProps?: Omit<GroupProps, 'children'>
 }
-export const GroupWithBox = memo(({
+export const BoxGroup = memo(({
   children,
   boxProps,
   groupProps,
-}: GroupWithBoxProps) => {
+}: BoxGroupProps) => {
   return (
     <Box {...boxProps}>
       <Group {...groupProps}>

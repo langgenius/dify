@@ -5,7 +5,10 @@ import type {
   XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type {
+  DataSourceDefaultValue,
+  ToolDefaultValue,
+} from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { FileResponse, NodeTracing } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -96,6 +99,7 @@ export type CommonNodeType<T = {}> = {
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
+& Partial<Pick<DataSourceDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'datasource_name'>>
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -311,7 +315,7 @@ export type NodeDefault<T = {}> = {
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
 }
 
-export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',
@@ -341,7 +345,7 @@ export type OnNodeAdd = (
     nodeType: BlockEnum
     sourceHandle?: string
     targetHandle?: string
-    toolDefaultValue?: ToolDefaultValue
+    toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue
   },
   oldNodesPayload: {
     prevNodeId?: string
