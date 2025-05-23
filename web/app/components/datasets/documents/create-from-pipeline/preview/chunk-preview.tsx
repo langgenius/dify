@@ -15,6 +15,7 @@ import { PreviewSlice } from '../../../formatted-text/flavours/preview-slice'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { RiSearchEyeLine } from '@remixicon/react'
 import Badge from '@/app/components/base/badge'
+import Button from '@/app/components/base/button'
 
 type ChunkPreviewProps = {
   datasource: Datasource
@@ -24,6 +25,7 @@ type ChunkPreviewProps = {
   isIdle: boolean
   isPending: boolean
   estimateData: FileIndexingEstimateResponse | undefined
+  onPreview: () => void
 }
 
 const ChunkPreview = ({
@@ -34,6 +36,7 @@ const ChunkPreview = ({
   isIdle,
   isPending,
   estimateData,
+  onPreview,
 }: ChunkPreviewProps) => {
   const { t } = useTranslation()
   const currentDocForm = useDatasetDetailContextWithSelector(s => s.dataset?.doc_form)
@@ -173,11 +176,16 @@ const ChunkPreview = ({
       )}
       {!isIdle && (
         <div className='flex h-full w-full items-center justify-center'>
-          <div className='flex flex-col items-center justify-center gap-3'>
+          <div className='flex flex-col items-center justify-center gap-3 pb-4'>
             <RiSearchEyeLine className='size-10 text-text-empty-state-icon' />
             <p className='text-sm text-text-tertiary'>
               {t('datasetCreation.stepTwo.previewChunkTip')}
             </p>
+            <Button
+              onClick={onPreview}
+            >
+              {t('datasetPipeline.addDocuments.stepTwo.previewChunks')}
+            </Button>
           </div>
         </div>
       )}

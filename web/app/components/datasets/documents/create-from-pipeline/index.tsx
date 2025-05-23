@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import DataSourceOptions from './data-source-options'
 import type { CrawlResultItem, CustomFile as File, FileItem } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
@@ -30,7 +30,7 @@ import Processing from './processing'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
-  const [currentStep, setCurrentStep] = useState(3)
+  const [currentStep, setCurrentStep] = useState(1)
   const [datasource, setDatasource] = useState<Datasource>()
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
@@ -46,6 +46,9 @@ const TestRunPanel = () => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const indexingType = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
   const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict.search_method)
+
+  const isPreview = useRef(false)
+  const formRef = useRef<any>(null)
 
   const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
 
@@ -158,6 +161,24 @@ const TestRunPanel = () => {
     handleNextStep()
   }, [datasource, fileList, handleNextStep, notionPages, websiteCrawlJobId, websitePages])
 
+  const onClickProcess = useCallback(() => {
+    isPreview.current = false
+    formRef.current?.submit()
+  }, [])
+
+  const onClickPreview = useCallback(() => {
+    isPreview.current = true
+    formRef.current?.submit()
+  }, [])
+
+  const onClickReset = useCallback(() => {
+    formRef.current?.reset()
+  }, [])
+
+  const handleSubmit = useCallback((data: Record<string, any>) => {
+    isPreview.current ? handlePreviewChunks(data) : handleProcess(data)
+  }, [handlePreviewChunks, handleProcess])
+
   if (isFetchingPipelineInfo) {
     return (
       <Loading type='app' />
@@ -240,9 +261,12 @@ const TestRunPanel = () => {
           {
             currentStep === 2 && (
               <ProcessDocuments
+                ref={formRef}
                 dataSourceNodeId={datasource?.nodeId || ''}
-                onProcess={handleProcess}
-                onPreview={handlePreviewChunks}
+                onProcess={onClickProcess}
+                onPreview={onClickPreview}
+                onSubmit={handleSubmit}
+                onReset={onClickReset}
                 onBack={handleBackStep}
               />
             )
@@ -280,6 +304,7 @@ const TestRunPanel = () => {
             isIdle={true}
             isPending={true}
             estimateData={undefined}
+            onPreview={onClickPreview}
           />
         )
       }
