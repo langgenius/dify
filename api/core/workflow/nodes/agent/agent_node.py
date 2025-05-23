@@ -207,7 +207,7 @@ class AgentNode(ToolNode):
                         extra = tool.get("extra", {})
 
                         tool_runtime = ToolManager.get_agent_tool_runtime(
-                            self.tenant_id, self.app_id, entity, self.invoke_from
+                            self.tenant_id, self.app_id, entity, invoke_from=self.invoke_from
                         )
                         if tool_runtime.entity.description:
                             tool_runtime.entity.description.llm = (
