@@ -8,14 +8,20 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 import httpx
-from httpx_sse import connect_sse
 from sseclient import SSEClient
 
+from core.helper.ssrf_proxy import create_ssrf_proxy_mcp_http_client, ssrf_proxy_sse_connect
 from core.mcp import types
+from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.types import SessionMessage
-from core.mcp.utils import create_mcp_http_client, remove_request_params
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_QUEUE_READ_TIMEOUT = 3
+
+
+def remove_request_params(url: str) -> str:
+    return urljoin(url, urlparse(url).path)
 
 
 @contextmanager
@@ -40,9 +46,9 @@ def sse_client(
     with ThreadPoolExecutor() as executor:
         try:
             logger.info(f"Connecting to SSE endpoint: {remove_request_params(url)}")
-            with create_mcp_http_client(headers=headers) as client:
-                with connect_sse(
-                    client, "GET", url, timeout=httpx.Timeout(timeout, read=sse_read_timeout)
+            with create_ssrf_proxy_mcp_http_client(headers=headers) as client:
+                with ssrf_proxy_sse_connect(
+                    url, 2, timeout=httpx.Timeout(timeout, read=sse_read_timeout), client=client
                 ) as event_source:
                     event_source.response.raise_for_status()
                     logger.debug("SSE connection established")
@@ -94,7 +100,7 @@ def sse_client(
                         try:
                             while not cancel_event.is_set():
                                 try:
-                                    message = write_queue.get(timeout=5)
+                                    message = write_queue.get(timeout=DEFAULT_QUEUE_READ_TIMEOUT)
                                     if message is None:
                                         break
                                     response = client.post(
@@ -130,6 +136,10 @@ def sse_client(
                         yield read_queue, write_queue
                     finally:
                         cancel_event.set()
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 401:
+                raise MCPAuthError()
+            raise MCPConnectionError()
         except Exception as exc:
             logger.exception("Error connecting to SSE endpoint")
             raise exc

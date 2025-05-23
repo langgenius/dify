@@ -628,7 +628,7 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon_background", type=str, required=True, nullable=True, location="json")
+        parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
         args = parser.parse_args()
         user = current_user
         return jsonable_encoder(
@@ -652,7 +652,7 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("icon_background", type=str, required=True, nullable=True, location="json")
+        parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         return jsonable_encoder(
@@ -704,8 +704,15 @@ class ToolMCPAuthApi(Resource):
                 authed=False,
                 authorization_code=args["authorization_code"],
             ):
+                MCPToolManageService.update_mcp_provider_credentials(
+                    tenant_id=tenant_id,
+                    provider_id=provider_id,
+                    credentials={},
+                    authed=True,
+                )
                 return {"result": "success"}
-        except MCPAuthError as e:
+
+        except MCPAuthError:
             auth_provider = OAuthClientProvider(provider_id, tenant_id)
             return auth(auth_provider, provider.server_url, args["authorization_code"])
 

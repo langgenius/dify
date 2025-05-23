@@ -40,7 +40,7 @@ SendNotificationT = TypeVar("SendNotificationT", ClientNotification, ServerNotif
 ReceiveRequestT = TypeVar("ReceiveRequestT", ClientRequest, ServerRequest)
 ReceiveResultT = TypeVar("ReceiveResultT", bound=BaseModel)
 ReceiveNotificationT = TypeVar("ReceiveNotificationT", ClientNotification, ServerNotification)
-DEFAULT_RESPONSE_READ_TIMEOUT = 5
+DEFAULT_RESPONSE_READ_TIMEOUT = 1
 
 
 class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
@@ -210,7 +210,7 @@ class BaseSession(
 
                 future.result(timeout=remaining)
             except Exception as e:
-                print(f"Error waiting for task: {e}")
+                logging.exception(f"Error waiting for task: {e}")
 
     def send_request(
         self,
@@ -247,8 +247,12 @@ class BaseSession(
                 timeout = request_read_timeout_seconds.total_seconds()
             elif self._session_read_timeout_seconds is not None:
                 timeout = self._session_read_timeout_seconds.total_seconds()
-
-            response_or_error = response_queue.get(timeout=timeout)
+            while not self._stop_event.is_set():
+                try:
+                    response_or_error = response_queue.get(timeout=timeout)
+                    break
+                except queue.Empty:
+                    continue
 
             if response_or_error is None:
                 raise MCPConnectionError(
@@ -315,7 +319,7 @@ class BaseSession(
         while not self._stop_event.is_set():
             try:
                 # Attempt to receive a message (this would be blocking in a synchronous context)
-                message = self._read_stream.get(timeout=5)
+                message = self._read_stream.get(timeout=DEFAULT_RESPONSE_READ_TIMEOUT)
                 if message is None:
                     break
                 if isinstance(message, HTTPStatusError):
