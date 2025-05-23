@@ -320,7 +320,7 @@ export const useHiddenConfigurations = (props: {
     }, {
       type: InputFieldType.textInput,
       label: t('appDebug.variableConfig.tooltips'),
-      variable: 'hint',
+      variable: 'tooltips',
       required: false,
       showConditions: [],
       showOptional: true,

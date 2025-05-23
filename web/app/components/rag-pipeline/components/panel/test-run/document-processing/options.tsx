@@ -28,7 +28,7 @@ const Options = ({
         if (!result.success) {
           const issues = result.error.issues
           const firstIssue = issues[0]
-          const errorMessage = `"${firstIssue.path.join('.')}" ${firstIssue.message}`
+          const errorMessage = `Path: ${firstIssue.path.join('.')} Error: ${firstIssue.message}`
           Toast.notify({
             type: 'error',
             message: errorMessage,

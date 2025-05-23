@@ -11,7 +11,7 @@ export const useInitialData = (variables: RAGPipelineVariables) => {
       if (item.type === PipelineInputVarType.number)
         initialData[item.variable] = item.default_value || 0
       if ([PipelineInputVarType.singleFile, PipelineInputVarType.multiFiles].includes(item.type))
-        initialData[item.variable] = item.default_value || []
+        initialData[item.variable] = []
       if (item.type === PipelineInputVarType.checkbox)
         initialData[item.variable] = item.default_value || true
     })

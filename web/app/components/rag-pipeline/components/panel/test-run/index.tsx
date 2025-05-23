@@ -119,6 +119,7 @@ const TestRunPanel = () => {
     }
     handleRun({
       inputs: data,
+      start_node_id: datasource.nodeId,
       datasource_type,
       datasource_info: datasourceInfo,
     })

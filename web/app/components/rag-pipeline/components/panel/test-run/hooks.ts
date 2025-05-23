@@ -30,6 +30,7 @@ export const useDatasourceOptions = () => {
     const datasourceNodes = nodes.filter(node => node.data.type === BlockEnum.DataSource)
     return datasourceNodes.map((node) => {
       let type: DataSourceType | DataSourceProvider = DataSourceType.FILE
+      // todo: distinguish datasource type via provider_type field
       switch (node.data.tool_name) {
         case 'file_upload':
           type = DataSourceType.FILE

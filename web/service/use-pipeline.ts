@@ -143,6 +143,7 @@ export const useDraftPipelineProcessingParams = (params: PipelineProcessingParam
         },
       })
     },
+    staleTime: 0,
   })
 }
 

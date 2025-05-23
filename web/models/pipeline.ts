@@ -98,12 +98,12 @@ export type PipelineCheckDependenciesResponse = {
 }
 
 export enum PipelineInputVarType {
-  textInput = 'textInput',
+  textInput = 'text-input',
   paragraph = 'paragraph',
   select = 'select',
-  number = 'numberInput',
+  number = 'number-input',
   singleFile = 'file',
-  multiFiles = 'fileList',
+  multiFiles = 'file-list',
   checkbox = 'checkbox',
 }
 

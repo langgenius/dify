@@ -20,6 +20,7 @@ export type ShowCondition = {
 export type NumberConfiguration = {
   max?: number
   min?: number
+  unit?: string
 }
 
 export type SelectConfiguration = {
