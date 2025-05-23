@@ -38,6 +38,7 @@ const DataSources = ({
       provider_name: toolDefaultValue?.provider_name,
       datasource_name: toolDefaultValue?.tool_name,
       datasource_label: toolDefaultValue?.tool_label,
+      title: toolDefaultValue?.title,
     })
   }, [onSelect])
 
