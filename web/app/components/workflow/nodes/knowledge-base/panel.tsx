@@ -2,11 +2,11 @@ import type { FC } from 'react'
 import {
   memo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { KnowledgeBaseNodeType } from './types'
 import {
   IndexMethodEnum,
 } from './types'
-import InputVariable from './components/input-variable'
 import ChunkStructure from './components/chunk-structure'
 import IndexMethod from './components/index-method'
 import RetrievalSetting from './components/retrieval-setting'
@@ -14,16 +14,19 @@ import EmbeddingModel from './components/embedding-model'
 import { useConfig } from './hooks/use-config'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
+  BoxGroup,
+  BoxGroupField,
   Group,
-  GroupWithBox,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import Split from '../_base/components/split'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   id,
   data,
 }) => {
+  const { t } = useTranslation()
   const { nodesReadOnly } = useNodesReadOnly()
   const {
     handleChunkStructureChange,
@@ -42,14 +45,24 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
 
   return (
     <div>
-      <GroupWithBox boxProps={{ withBorderBottom: true }}>
-        <InputVariable
+      <BoxGroupField
+        boxGroupProps={{
+          boxProps: { withBorderBottom: true },
+        }}
+        fieldProps={{
+          fieldTitleProps: {
+            title: t('workflow.nodes.common.inputVars'),
+          },
+        }}
+      >
+        <VarReferencePicker
           nodeId={id}
-          inputVariable={data.index_chunk_variable_selector}
-          onInputVariableChange={handleInputVariableChange}
+          isShowNodeName
+          value={data.index_chunk_variable_selector}
+          onChange={handleInputVariableChange}
           readonly={nodesReadOnly}
         />
-      </GroupWithBox>
+      </BoxGroupField>
       <Group
         className='py-3'
         withBorderBottom
@@ -60,7 +73,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
           readonly={nodesReadOnly}
         />
       </Group>
-      <GroupWithBox>
+      <BoxGroup>
         <div className='space-y-3'>
           <IndexMethod
             chunkStructure={data.chunk_structure}
@@ -102,7 +115,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
             readonly={nodesReadOnly}
           />
         </div>
-      </GroupWithBox>
+      </BoxGroup>
     </div>
   )
 }

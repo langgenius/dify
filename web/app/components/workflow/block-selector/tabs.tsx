@@ -4,9 +4,9 @@ import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/se
 import type {
   BlockEnum,
   NodeDefault,
+  OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
 import AllTools from './all-tools'
@@ -16,7 +16,7 @@ export type TabsProps = {
   activeTab: TabsEnum
   searchText: string
   tags: string[]
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
   blocks: NodeDefault[]
   dataSources?: ToolWithProvider[]

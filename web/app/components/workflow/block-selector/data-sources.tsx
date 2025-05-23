@@ -7,6 +7,7 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
+import type { ToolDefaultValue } from './types'
 import Tools from './tools'
 import { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
@@ -30,8 +31,14 @@ const DataSources = ({
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const formatedDataSources = dataSources.map(item => ({ ...item, tools: item.datasources || [] }))
-  const handleSelect = useCallback<OnSelectBlock>((_, toolDefaultValue) => {
-    onSelect(BlockEnum.DataSource, toolDefaultValue)
+  const handleSelect = useCallback((_: any, toolDefaultValue: ToolDefaultValue) => {
+    onSelect(BlockEnum.DataSource, toolDefaultValue && {
+      provider_id: toolDefaultValue?.provider_id,
+      provider_type: toolDefaultValue?.provider_type,
+      provider_name: toolDefaultValue?.provider_name,
+      datasource_name: toolDefaultValue?.tool_name,
+      datasource_label: toolDefaultValue?.tool_label,
+    })
   }, [onSelect])
 
   return (
@@ -45,7 +52,7 @@ const DataSources = ({
           className={toolContentClassName}
           showWorkflowEmpty={false}
           tools={formatedDataSources}
-          onSelect={handleSelect}
+          onSelect={handleSelect as OnSelectBlock}
           viewType={ViewType.flat}
           hasSearchText={!!searchText}
         />
