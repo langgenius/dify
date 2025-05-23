@@ -3,6 +3,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDataSourceList } from '@/service/use-pipeline'
+import { useStore } from '../store'
 import {
   TabsEnum,
   ToolTypeEnum,
@@ -74,4 +76,11 @@ export const useToolTabs = () => {
       name: t('workflow.tabs.workflowTool'),
     },
   ]
+}
+
+export const useDataSources = () => {
+  const pipelineId = useStore(s => s.pipelineId)
+  const { data: dataSourceList } = useDataSourceList(!!pipelineId)
+
+  return dataSourceList || []
 }
