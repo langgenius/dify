@@ -8,7 +8,7 @@ class VectorType(StrEnum):
     MYSCALE = "myscale"
     PGVECTOR = "pgvector"
     VASTBASE = "vastbase"
-    PGVECTO_RS = "pgvecto-rs"
+    PGVECTO_RS = "pgvecto_rs"
 
     QDRANT = "qdrant"
     RELYT = "relyt"
