@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field, field_validator
 from core.datasource.entities.datasource_entities import DatasourceParameter
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderType
 
 
 class DatasourceApiEntity(BaseModel):
