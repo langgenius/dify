@@ -1,5 +1,5 @@
-import type { FormType } from '@/app/components/base/form'
 import { useAppForm } from '@/app/components/base/form'
+import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import Toast from '@/app/components/base/toast'
@@ -9,7 +9,7 @@ type OptionsProps = {
   initialData: Record<string, any>
   configurations: BaseConfiguration[]
   schema: ZodSchema
-  CustomActions: (form: FormType) => React.JSX.Element
+  CustomActions: (props: CustomActionsProps) => React.JSX.Element
   onSubmit: (data: Record<string, any>) => void
 }
 

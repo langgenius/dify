@@ -2,8 +2,8 @@ import { generateZodSchema } from '@/app/components/base/form/form-scenarios/bas
 import { useConfigurations } from './hooks'
 import Options from './options'
 import Actions from './actions'
-import type { FormType } from '@/app/components/base/form'
 import { useCallback } from 'react'
+import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
 
 type DocumentProcessingProps = {
   dataSourceNodeId: string
@@ -19,8 +19,8 @@ const DocumentProcessing = ({
   const { initialData, configurations } = useConfigurations(dataSourceNodeId)
   const schema = generateZodSchema(configurations)
 
-  const renderCustomActions = useCallback((form: FormType) => (
-    <Actions form={form} onBack={onBack} />
+  const renderCustomActions = useCallback((props: CustomActionsProps) => (
+    <Actions formParams={props} onBack={onBack} />
   ), [onBack])
 
   return (

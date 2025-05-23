@@ -13,6 +13,7 @@ type DataSourceOptionsProps = {
   onSelect: (option: Datasource) => void
 }
 
+// TODO: replace all icons with tool icon_url
 const DATA_SOURCE_ICONS = {
   [DataSourceType.FILE]: File as React.FC<React.SVGProps<SVGSVGElement>>,
   [DataSourceType.NOTION]: Notion as React.FC<React.SVGProps<SVGSVGElement>>,
@@ -20,6 +21,8 @@ const DATA_SOURCE_ICONS = {
   [DataSourceProvider.jinaReader]: Jina as React.FC<React.SVGProps<SVGSVGElement>>,
   [DataSourceProvider.waterCrawl]: Watercrawl as React.FC<React.SVGProps<SVGSVGElement>>,
 }
+
+type KeyType = keyof typeof DATA_SOURCE_ICONS
 
 const DataSourceOptions = ({
   datasourceNodeId,
@@ -47,7 +50,7 @@ const DataSourceOptions = ({
           key={option.value}
           label={option.label}
           selected={datasourceNodeId === option.value}
-          Icon={DATA_SOURCE_ICONS[option.type as keyof typeof DATA_SOURCE_ICONS]}
+          Icon={DATA_SOURCE_ICONS[option.type as KeyType]}
           onClick={handelSelect.bind(null, option.value)}
         />
       ))}

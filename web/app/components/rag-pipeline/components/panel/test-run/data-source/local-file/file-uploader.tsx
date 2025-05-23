@@ -45,7 +45,7 @@ const FileUploader = ({
   const hideUpload = notSupportBatchUpload && fileList.length > 0
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const { data: supportFileTypesResponse } = useFileSupportTypes()
+  const { data: supportFileTypesResponse } = useFileSupportTypes() // Todo: replace with extensions configured in node
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []
   const supportTypesShowNames = (() => {
     const extensionMap: { [key: string]: string } = {

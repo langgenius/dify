@@ -4,8 +4,14 @@ import { useFormContext } from '../..'
 import Button from '../../../button'
 import { useTranslation } from 'react-i18next'
 
+export type CustomActionsProps = {
+  form: FormType
+  isSubmitting: boolean
+  canSubmit: boolean
+}
+
 type ActionsProps = {
-  CustomActions?: (form: FormType) => React.ReactNode | React.JSX.Element
+  CustomActions?: (props: CustomActionsProps) => React.ReactNode | React.JSX.Element
 }
 
 const Actions = ({
@@ -20,7 +26,7 @@ const Actions = ({
   ])
 
   if (CustomActions)
-    return CustomActions(form)
+    return CustomActions({ form, isSubmitting, canSubmit })
 
   return (
     <Button
