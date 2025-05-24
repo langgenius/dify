@@ -615,6 +615,92 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
+  url='/workflows/run/:workflow_run_id/node-executions'
+  method='GET'
+  title='特定のワークフローのノード実行情報を取得'
+  name='#Get-Workflow-Run-Node-Executions'
+/>
+<Row>
+  <Col>
+    ワークフローのノード実行情報を降順で返します
+
+    ### Response
+    - `data` (array[object])
+      - `id` (string) 識別子
+      - `created_at` (timestamp) 作成時間
+      - `created_by_account` (object) このノードを作成したアカウント情報
+        - `email` (string) メールアドレス
+        - `id` (string) 識別子
+        - `name` (string) 名前
+      - `created_by_end_user` (object|null) ユーザー
+      - `created_by_role` (string) 役割、例：'account`
+      - `elapsed_time` (float) 経過時間（単位：秒）
+      - `error` (string|null) エラーメッセージ
+      - `execution_metadata` (object|null) 実行メタデータ
+      - `extras` (object) 追加情報
+      - `finished_at` (timestamp) 終了時間
+      - `index` (int) ノードインデックス
+      - `inputs` (any|null) 入力データ
+      - `node_id` (string) ノード識別子
+      - `node_type` (string) ノードタイプ、例：'end`
+      - `outputs` (any|null) 出力データ
+      - `predecessor_node_id` (string|null) 先行ノード識別子
+      - `process_data` (object|null) 処理データ
+      - `status` (string) 実行状態、'running` / `succeeded` / `failed` / `stopped`
+      - `title` (string) ノードのタイトル
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_run_id/node-executions" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id/node-executions'\\\n --header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_run_id/node-executions'
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "data": [
+            {
+            "created_at": 1747244722,
+            "created_by_account": 
+                {
+                    "email": "lizb@test.com",
+                    "id": "17f71940-a7b5-4c77-b60f-2bd645c1ffa0",
+                    "name": "lizb"
+                 },
+           "created_by_end_user": None,
+           "created_by_role": "account",
+           "elapsed_time": 0.838795,
+           "error": None,
+           "execution_metadata": None,
+           "extras": {},
+           "finished_at": 1747244722,
+           "id": "bffa2838-0e2c-4cba-bc9c-9abbcc38d001",
+           "index": 3,
+           "inputs": None,
+           "node_id": "1747273509709",
+           "node_type": "end",
+           "outputs": None,
+           "predecessor_node_id": "1745917690204",
+           "process_data": None,
+           "status": "succeeded",
+           "title": "Finish",
+            },
+               ...
+          ]
+    }
+
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
   url='/info'
   method='GET'
   title='アプリケーションの基本情報を取得'
