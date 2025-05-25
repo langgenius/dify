@@ -366,7 +366,7 @@ def _extract_text_from_excel(file_content: bytes) -> str:
                 df = excel_file.parse(sheet_name=sheet_name)
                 df.dropna(how="all", inplace=True)
                 # Create Markdown table two times to separate tables with a newline
-                markdown_table += df.to_markdown(index=False) + "\n\n"
+                markdown_table += df.to_markdown(index=False, floatfmt='') + "\n\n"
             except Exception as e:
                 continue
         return markdown_table
