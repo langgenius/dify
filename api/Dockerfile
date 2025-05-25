@@ -15,7 +15,7 @@ FROM base AS packages
 # RUN sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev
+    && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev libfreetype6-dev
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
@@ -40,7 +40,27 @@ ENV TZ=UTC
 WORKDIR /app/api
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl nodejs libgmp-dev libmpfr-dev libmpc-dev \
+    && apt-get install -y --no-install-recommends \
+    curl \
+    nodejs \
+    libgmp-dev \
+    libmpfr-dev \
+    libmpc-dev \
+    libglib2.0-0 \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libpangocairo-1.0-0 \
+    libharfbuzz0b \
+    libharfbuzz-gobject0 \
+    libharfbuzz-icu0 \
+    libharfbuzz-subset0 \
+    libcairo2 \
+    libcairo-gobject2 \
+    libcairo-script-interpreter2 \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libpangocairo-1.0-0 \
+    libpangoxft-1.0-0 \
     # if you located in China, you can use aliyun mirror to speed up
     # && echo "deb http://mirrors.aliyun.com/debian testing main" > /etc/apt/sources.list \
     # Don't replace the sources.list file, create a separate testing.list file

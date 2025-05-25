@@ -26,22 +26,9 @@ from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
 from models import Account, Tenant, TenantAccountJoin
 from models.account import TenantAccountJoinRole
-from models.dataset import (
-    Dataset,
-    DatasetCollectionBinding,
-    DatasetMetadata,
-    DatasetMetadataBinding,
-    DocumentSegment,
-)
+from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.model import (
-    App,
-    AppAnnotationSetting,
-    AppMode,
-    Conversation,
-    MessageAnnotation,
-    UploadFile,
-)
+from models.model import App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
@@ -918,11 +905,7 @@ def create_admin_account(
     """
     try:
         # Check if organization exists
-        from models.organization import (
-            Organization,
-            OrganizationMember,
-            OrganizationRole,
-        )
+        from models.organization import Organization, OrganizationMember, OrganizationRole
 
         organization = (
             db.session.query(Organization)
@@ -1180,11 +1163,7 @@ def update_organization_cmd(org_id, name, description, email_domains, status):
 def list_organizations_cmd(tenant_id):
     """List all organizations with optional tenant filtering"""
     try:
-        from models.organization import (
-            Organization,
-            OrganizationMember,
-            OrganizationRole,
-        )
+        from models.organization import Organization, OrganizationMember, OrganizationRole
 
         query = db.session.query(Organization)
 

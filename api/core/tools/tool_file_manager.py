@@ -69,7 +69,7 @@ class ToolFileManager:
     def create_file_by_raw(
         self,
         *,
-        user_id: str,
+        user_id: Optional[str],
         tenant_id: str,
         conversation_id: Optional[str],
         file_binary: bytes,
