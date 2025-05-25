@@ -3,17 +3,18 @@ import uuid
 from typing import Any, Optional
 
 import chardet
+from flask import jsonify, request
+from flask_restful import Resource  # type: ignore
+from jinja2 import Template
+from weasyprint import HTML
+
 from controllers.inner_tools import api
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from flask import jsonify, request
-from flask_restful import Resource  # type: ignore
-from jinja2 import Template
 from models.account import Tenant
 from models.model import UploadFile
 from models.workflow import WorkflowRun
-from weasyprint import HTML
 
 
 class AnswersSummaryAnalysisApi(Resource):
