@@ -134,6 +134,24 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
   const isDarkMode = theme === Theme.dark
 
+  const echartsStyle = useMemo(() => ({
+    height: '350px',
+    width: '100%',
+  }), [])
+
+  const echartsOpts = useMemo(() => ({
+    renderer: 'canvas',
+    width: 'auto',
+  }) as any, [])
+
+  const echartsOnEvents = useMemo(() => ({
+    finished: () => {
+      const instance = echartsRef.current?.getEchartsInstance?.()
+      if (instance)
+        instance.resize()
+    },
+  }), [echartsRef]) // echartsRef is stable, so this effectively runs once.
+
   // Handle container resize for echarts
   useEffect(() => {
     if (language !== 'echarts' || !echartsRef.current) return
@@ -329,24 +347,11 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
                 <ReactEcharts
                   ref={echartsRef}
                   option={finalChartOption}
-                  style={{
-                    height: '350px',
-                    width: '100%',
-                  }}
+                  style={echartsStyle}
                   theme={isDarkMode ? 'dark' : undefined}
-                  opts={{
-                    renderer: 'canvas',
-                    width: 'auto',
-                  }}
+                  opts={echartsOpts}
                   notMerge={true}
-                  onEvents={{
-                    // Force resize when chart is finished rendering
-                    finished: () => {
-                      const instance = echartsRef.current?.getEchartsInstance?.()
-                      if (instance)
-                        instance.resize()
-                    },
-                  }}
+                  onEvents={echartsOnEvents}
                 />
               </ErrorBoundary>
             </div>
@@ -374,15 +379,9 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
               <ReactEcharts
                 ref={echartsRef}
                 option={errorOption}
-                style={{
-                  height: '350px',
-                  width: '100%',
-                }}
+                style={echartsStyle}
                 theme={isDarkMode ? 'dark' : undefined}
-                opts={{
-                  renderer: 'canvas',
-                  width: 'auto',
-                }}
+                opts={echartsOpts}
                 notMerge={true}
               />
             </ErrorBoundary>
@@ -423,7 +422,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
           </SyntaxHighlighter>
         )
     }
-  }, [children, language, isSVG, finalChartOption, props, theme, match])
+  }, [children, language, isSVG, finalChartOption, props, theme, match, chartState, isDarkMode, echartsStyle, echartsOpts, echartsOnEvents])
 
   if (inline || !match)
     return <code {...props} className={className}>{children}</code>
