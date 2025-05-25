@@ -137,21 +137,20 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const echartsStyle = useMemo(() => ({
     height: '350px',
     width: '100%',
-  }), []);
+  }), [])
 
   const echartsOpts = useMemo(() => ({
     renderer: 'canvas',
     width: 'auto',
-  }) as any, []);
+  }) as any, [])
 
   const echartsOnEvents = useMemo(() => ({
     finished: () => {
-      const instance = echartsRef.current?.getEchartsInstance?.();
-      if (instance) {
-        instance.resize();
-      }
+      const instance = echartsRef.current?.getEchartsInstance?.()
+      if (instance)
+        instance.resize()
     },
-  }), [echartsRef]); // echartsRef is stable, so this effectively runs once.
+  }), [echartsRef]) // echartsRef is stable, so this effectively runs once.
 
   // Handle container resize for echarts
   useEffect(() => {
@@ -423,7 +422,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
           </SyntaxHighlighter>
         )
     }
-  }, [children, language, isSVG, finalChartOption, props, theme, match, chartState, isDarkMode, echartsStyle, echartsOpts, echartsOnEvents]);
+  }, [children, language, isSVG, finalChartOption, props, theme, match, chartState, isDarkMode, echartsStyle, echartsOpts, echartsOnEvents])
 
   if (inline || !match)
     return <code {...props} className={className}>{children}</code>
