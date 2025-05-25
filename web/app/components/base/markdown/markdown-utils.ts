@@ -3,7 +3,7 @@
  * These functions were extracted from the main markdown renderer for better separation of concerns.
  * Includes preprocessing for LaTeX and custom "think" tags.
  */
-import { flow } from 'lodash-es';
+import { flow } from 'lodash-es'
 
 export const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')

@@ -3,8 +3,8 @@
  * Extracted from the main markdown renderer for modularity.
  * Uses the VideoGallery component to display videos.
  */
-import React, { memo } from 'react';
-import VideoGallery from '@/app/components/base/video-gallery';
+import React, { memo } from 'react'
+import VideoGallery from '@/app/components/base/video-gallery'
 
 const VideoBlock: any = memo(({ node }: any) => {
   const srcs = node.children.filter((child: any) => 'properties' in child).map((child: any) => (child as any).properties.src)
@@ -18,4 +18,4 @@ const VideoBlock: any = memo(({ node }: any) => {
 })
 VideoBlock.displayName = 'VideoBlock'
 
-export default VideoBlock;
+export default VideoBlock

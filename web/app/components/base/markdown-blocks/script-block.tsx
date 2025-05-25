@@ -4,7 +4,7 @@
  * Note: Current implementation returns the script tag as a string, which might not execute as expected in React.
  * This behavior is preserved from the original implementation and may need review for security and functionality.
  */
-import React, { memo } from 'react';
+import { memo } from 'react'
 
 const ScriptBlock = memo(({ node }: any) => {
   const scriptContent = node.children[0]?.value || ''
@@ -12,4 +12,4 @@ const ScriptBlock = memo(({ node }: any) => {
 })
 ScriptBlock.displayName = 'ScriptBlock'
 
-export default ScriptBlock;
+export default ScriptBlock

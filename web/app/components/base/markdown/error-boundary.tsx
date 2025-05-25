@@ -5,7 +5,7 @@
  * logs those errors, and displays a fallback UI instead of the crashed component tree.
  * Primarily used around complex rendering logic like ECharts or SVG within Markdown.
  */
-import React, { Component } from 'react';
+import React, { Component } from 'react'
 // **Add an ECharts runtime error handler
 // Avoid error #7832 (Crash when ECharts accesses undefined objects)
 // This can happen when a component attempts to access an undefined object that references an unregistered map, causing the program to crash.

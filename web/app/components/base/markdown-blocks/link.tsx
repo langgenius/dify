@@ -3,8 +3,8 @@
  * Extracted from the main markdown renderer for modularity.
  * Handles special rendering for "abbr:" type links for interactive chat actions.
  */
-import React from 'react';
-import { useChatContext } from '@/app/components/base/chat/chat/context';
+import React from 'react'
+import { useChatContext } from '@/app/components/base/chat/chat/context'
 
 const Link = ({ node, children, ...props }: any) => {
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
@@ -19,4 +19,4 @@ const Link = ({ node, children, ...props }: any) => {
   }
 }
 
-export default Link;
+export default Link

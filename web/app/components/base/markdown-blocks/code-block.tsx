@@ -1,19 +1,19 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import ReactEcharts from 'echarts-for-react';
-import SyntaxHighlighter from 'react-syntax-highlighter';
+import ReactEcharts from 'echarts-for-react'
+import SyntaxHighlighter from 'react-syntax-highlighter'
 import {
   atelierHeathDark,
   atelierHeathLight,
-} from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import ActionButton from '@/app/components/base/action-button';
-import CopyIcon from '@/app/components/base/copy-icon';
-import SVGBtn from '@/app/components/base/svg';
-import Flowchart from '@/app/components/base/mermaid';
-import { Theme } from '@/types/app';
-import useTheme from '@/hooks/use-theme';
-import SVGRenderer from '../svg-gallery'; // Assumes svg-gallery.tsx is in /base directory
-import MarkdownMusic from '@/app/components/base/markdown-blocks/music';
-import ErrorBoundary from '@/app/components/base/markdown';
+} from 'react-syntax-highlighter/dist/esm/styles/hljs'
+import ActionButton from '@/app/components/base/action-button'
+import CopyIcon from '@/app/components/base/copy-icon'
+import SVGBtn from '@/app/components/base/svg'
+import Flowchart from '@/app/components/base/mermaid'
+import { Theme } from '@/types/app'
+import useTheme from '@/hooks/use-theme'
+import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
+import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
+import ErrorBoundary from '@/app/components/base/markdown'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -385,4 +385,4 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 })
 CodeBlock.displayName = 'CodeBlock'
 
-export default CodeBlock;
+export default CodeBlock

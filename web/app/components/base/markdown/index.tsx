@@ -9,16 +9,16 @@ import { flow } from 'lodash-es'
 import cn from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
 import {
-  CodeBlock,
-  Paragraph,
-  VideoBlock,
   AudioBlock,
-  ScriptBlock,
+  CodeBlock,
   Img,
   Link,
   MarkdownButton,
   MarkdownForm,
-  ThinkBlock
+  Paragraph,
+  ScriptBlock,
+  ThinkBlock,
+  VideoBlock,
 } from '@/app/components/base/markdown-blocks'
 
 /**
