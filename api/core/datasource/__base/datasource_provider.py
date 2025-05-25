@@ -9,10 +9,10 @@ from core.tools.errors import ToolProviderCredentialValidationError
 
 
 class DatasourcePluginProviderController(ABC):
-    entity: DatasourceProviderEntityWithPlugin
+    entity: DatasourceProviderEntityWithPlugin | None
     tenant_id: str
 
-    def __init__(self, entity: DatasourceProviderEntityWithPlugin, tenant_id: str) -> None:
+    def __init__(self, entity: DatasourceProviderEntityWithPlugin | None, tenant_id: str) -> None:
         self.entity = entity
         self.tenant_id = tenant_id
 

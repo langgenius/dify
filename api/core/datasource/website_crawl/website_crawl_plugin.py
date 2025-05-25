@@ -49,5 +49,5 @@ class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
             provider_type=provider_type,
         )
 
-    def datasource_provider_type(self) -> DatasourceProviderType:
+    def datasource_provider_type(self) -> str:
         return DatasourceProviderType.WEBSITE_CRAWL

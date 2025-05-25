@@ -20,7 +20,7 @@ class DatasourcePlugin(ABC):
         self.runtime = runtime
 
     @abstractmethod
-    def datasource_provider_type(self) -> DatasourceProviderType:
+    def datasource_provider_type(self) -> str:
         """
         returns the type of the datasource provider
         """

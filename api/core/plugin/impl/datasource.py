@@ -6,7 +6,7 @@ from core.datasource.entities.datasource_entities import (
     GetOnlineDocumentPageContentRequest,
     GetOnlineDocumentPageContentResponse,
     GetOnlineDocumentPagesResponse,
-    GetWebsiteCrawlResponse,
+    GetWebsiteCrawlResponse, DatasourceProviderEntity,
 )
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import (
@@ -17,7 +17,7 @@ from core.plugin.impl.base import BasePluginClient
 
 
 class PluginDatasourceManager(BasePluginClient):
-    def fetch_datasource_providers(self, tenant_id: str) -> list[DatasourceProviderApiEntity]:
+    def fetch_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
         """
         Fetch datasource providers for the given tenant.
         """
@@ -46,12 +46,15 @@ class PluginDatasourceManager(BasePluginClient):
         #     for datasource in provider.declaration.datasources:
         #         datasource.identity.provider = provider.declaration.identity.name
 
-        return [DatasourceProviderApiEntity(**self._get_local_file_datasource_provider())]
+        return [PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())]
 
     def fetch_datasource_provider(self, tenant_id: str, provider: str) -> PluginDatasourceProviderEntity:
         """
         Fetch datasource provider for the given tenant and plugin.
         """
+        if provider == "langgenius/file/file":
+            return PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
+
         tool_provider_id = ToolProviderID(provider)
 
         def transformer(json_response: dict[str, Any]) -> dict:
@@ -218,6 +221,7 @@ class PluginDatasourceManager(BasePluginClient):
                 "X-Plugin-ID": tool_provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
+
         )
 
         for resp in response:
@@ -228,27 +232,48 @@ class PluginDatasourceManager(BasePluginClient):
     def _get_local_file_datasource_provider(self) -> dict[str, Any]:
         return {
             "id": "langgenius/file/file",
-            "author": "langgenius",
-            "name": "langgenius/file/file",
             "plugin_id": "langgenius/file",
+            "provider": "langgenius",
             "plugin_unique_identifier": "langgenius/file:0.0.1@dify",
-            "description": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
-            "icon": "https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=945b4365-9d99-48c1-8c47-90593fe8b9c9&filename=13d9312f6b1352d3939b90a5257de58ff3cd619d5be4f5b266ff0298935ac328.svg",
-            "label": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
-            "type": "datasource",
-            "team_credentials": {},
-            "is_team_authorization": False,
-            "allow_delete": True,
-            "datasources": [
-                {
+            "declaration": {
+                "identity": {
                     "author": "langgenius",
-                    "name": "upload_file",
-                    "label": {"en_US": "File", "zh_Hans": "File", "pt_BR": "File", "ja_JP": "File"},
-                    "description": {"en_US": "File", "zh_Hans": "File", "pt_BR": "File", "ja_JP": "File."},
+                    "name": "langgenius/file/file",
+                    "label": {
+                        "zh_Hans": "File",
+                        "en_US": "File",
+                        "pt_BR": "File",
+                        "ja_JP": "File"
+                    },
+                    "icon": "https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=945b4365-9d99-48c1-8c47-90593fe8b9c9&filename=13d9312f6b1352d3939b90a5257de58ff3cd619d5be4f5b266ff0298935ac328.svg",
+                    "description": {
+                        "zh_Hans": "File",
+                        "en_US": "File",
+                        "pt_BR": "File",
+                        "ja_JP": "File"
+                    }
+                },
+                "credentials_schema": [],
+                "provider_type": "local_file",
+                "datasources": [{
+                    "identity": {
+                        "author": "langgenius",
+                        "name": "local_file",
+                        "provider": "langgenius",
+                        "label": {
+                            "zh_Hans": "File",
+                            "en_US": "File",
+                            "pt_BR": "File",
+                            "ja_JP": "File"
+                        }
+                    },
                     "parameters": [],
-                    "labels": ["search"],
-                    "output_schema": None,
-                }
-            ],
-            "labels": ["search"],
+                    "description": {
+                        "zh_Hans": "File",
+                        "en_US": "File",
+                        "pt_BR": "File",
+                        "ja_JP": "File"
+                    }
+                }]
+            }
         }

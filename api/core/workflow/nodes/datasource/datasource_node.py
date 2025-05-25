@@ -40,14 +40,19 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
 
         node_data = cast(DatasourceNodeData, self.node_data)
         variable_pool = self.graph_runtime_state.variable_pool
-
+        datasource_type = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE.value])
+        if not datasource_type:
+            raise DatasourceNodeError("Datasource type is not set")
+        datasource_type = datasource_type.value
+        datasource_info = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO.value])
+        if not datasource_info:
+            raise DatasourceNodeError("Datasource info is not set")
+        datasource_info = datasource_info.value
         # get datasource runtime
         try:
             from core.datasource.datasource_manager import DatasourceManager
 
-            datasource_type = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE.value])
 
-            datasource_info = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO.value])
             if datasource_type is None:
                 raise DatasourceNodeError("Datasource type is not set")
 
@@ -84,47 +89,55 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         )
 
         try:
-            if datasource_runtime.datasource_provider_type() == DatasourceProviderType.ONLINE_DOCUMENT:
-                datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                online_document_result: GetOnlineDocumentPageContentResponse = (
-                    datasource_runtime._get_online_document_page_content(
-                        user_id=self.user_id,
-                        datasource_parameters=GetOnlineDocumentPageContentRequest(**parameters),
-                        provider_type=datasource_runtime.datasource_provider_type(),
+            match datasource_type:
+                case DatasourceProviderType.ONLINE_DOCUMENT:
+                    datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+                    online_document_result: GetOnlineDocumentPageContentResponse = (
+                        datasource_runtime._get_online_document_page_content(
+                            user_id=self.user_id,
+                            datasource_parameters=GetOnlineDocumentPageContentRequest(**parameters),
+                            provider_type=datasource_type,
+                        )
                     )
-                )
-                yield RunCompletedEvent(
-                    run_result=NodeRunResult(
-                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                        inputs=parameters_for_log,
-                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                        outputs={
-                            "online_document": online_document_result.result.model_dump(),
-                            "datasource_type": datasource_runtime.datasource_provider_type,
-                        },
+                    yield RunCompletedEvent(
+                        run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                            inputs=parameters_for_log,
+                            metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                            outputs={
+                                "online_document": online_document_result.result.model_dump(),
+                                "datasource_type": datasource_type,
+                            },
+                        )
                     )
-                )
-            elif (
-                datasource_runtime.datasource_provider_type in (
-                    DatasourceProviderType.WEBSITE_CRAWL,
-                    DatasourceProviderType.LOCAL_FILE,
-                )
-            ):
-                yield RunCompletedEvent(
-                    run_result=NodeRunResult(
-                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                        inputs=parameters_for_log,
-                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                        outputs={
-                            "website": datasource_info,
-                            "datasource_type": datasource_runtime.datasource_provider_type,
-                        },
+                case DatasourceProviderType.WEBSITE_CRAWL | DatasourceProviderType.LOCAL_FILE:
+                    yield RunCompletedEvent(
+                        run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                            inputs=parameters_for_log,
+                            metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                            outputs={
+                                "website": datasource_info,
+                                "datasource_type": datasource_type,
+                            },
+                        )
                     )
-                )
-            else:
-                raise DatasourceNodeError(
-                    f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}"
-                )
+                case DatasourceProviderType.LOCAL_FILE:
+                    yield RunCompletedEvent(
+                        run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                            inputs=parameters_for_log,
+                            metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                            outputs={
+                                "file": datasource_info,
+                                "datasource_type": datasource_runtime.datasource_provider_type,
+                            },
+                        )
+                    )
+                case _:
+                    raise DatasourceNodeError(
+                        f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}"
+                    )
         except PluginDaemonClientSideError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -170,23 +183,24 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         datasource_parameters_dictionary = {parameter.name: parameter for parameter in datasource_parameters}
 
         result: dict[str, Any] = {}
-        for parameter_name in node_data.datasource_parameters:
-            parameter = datasource_parameters_dictionary.get(parameter_name)
-            if not parameter:
-                result[parameter_name] = None
-                continue
-            datasource_input = node_data.datasource_parameters[parameter_name]
-            if datasource_input.type == "variable":
-                variable = variable_pool.get(datasource_input.value)
-                if variable is None:
-                    raise DatasourceParameterError(f"Variable {datasource_input.value} does not exist")
-                parameter_value = variable.value
-            elif datasource_input.type in {"mixed", "constant"}:
-                segment_group = variable_pool.convert_template(str(datasource_input.value))
-                parameter_value = segment_group.log if for_log else segment_group.text
-            else:
-                raise DatasourceParameterError(f"Unknown datasource input type '{datasource_input.type}'")
-            result[parameter_name] = parameter_value
+        if node_data.datasource_parameters:
+            for parameter_name in node_data.datasource_parameters:
+                parameter = datasource_parameters_dictionary.get(parameter_name)
+                if not parameter:
+                    result[parameter_name] = None
+                    continue
+                datasource_input = node_data.datasource_parameters[parameter_name]
+                if datasource_input.type == "variable":
+                    variable = variable_pool.get(datasource_input.value)
+                    if variable is None:
+                        raise DatasourceParameterError(f"Variable {datasource_input.value} does not exist")
+                    parameter_value = variable.value
+                elif datasource_input.type in {"mixed", "constant"}:
+                    segment_group = variable_pool.convert_template(str(datasource_input.value))
+                    parameter_value = segment_group.log if for_log else segment_group.text
+                else:
+                    raise DatasourceParameterError(f"Unknown datasource input type '{datasource_input.type}'")
+                result[parameter_name] = parameter_value
 
         return result
 

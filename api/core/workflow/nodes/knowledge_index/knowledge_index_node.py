@@ -19,6 +19,7 @@ from .entities import KnowledgeIndexNodeData
 from .exc import (
     KnowledgeIndexNodeError,
 )
+from ..base import BaseNode
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ default_retrieval_model = {
 }
 
 
-class KnowledgeIndexNode(LLMNode):
+class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
     _node_data_cls = KnowledgeIndexNodeData  # type: ignore
     _node_type = NodeType.KNOWLEDGE_INDEX
 
@@ -44,7 +45,7 @@ class KnowledgeIndexNode(LLMNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs={},
-                error="Query variable is not object type.",
+                error="Index chunk variable is not object type.",
             )
         chunks = variable.value
         variables = {"chunks": chunks}

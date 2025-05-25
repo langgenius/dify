@@ -24,5 +24,5 @@ class LocalFileDatasourcePlugin(DatasourcePlugin):
         self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
 
-    def datasource_provider_type(self) -> DatasourceProviderType:
+    def datasource_provider_type(self) -> str:
         return DatasourceProviderType.LOCAL_FILE

@@ -1,4 +1,4 @@
-from typing import Any, Literal, Union
+from typing import Any, Literal, Union, Optional
 
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -9,30 +9,17 @@ from core.workflow.nodes.base.entities import BaseNodeData
 class DatasourceEntity(BaseModel):
     provider_id: str
     provider_name: str  # redundancy
-    datasource_name: str
-    tool_label: str  # redundancy
-    datasource_configurations: dict[str, Any]
+    provider_type: str
+    datasource_name: Optional[str] = "local_file"
+    datasource_configurations: dict[str, Any] | None = None
     plugin_unique_identifier: str | None = None  # redundancy
-
-    @field_validator("tool_configurations", mode="before")
-    @classmethod
-    def validate_tool_configurations(cls, value, values: ValidationInfo):
-        if not isinstance(value, dict):
-            raise ValueError("tool_configurations must be a dictionary")
-
-        for key in values.data.get("tool_configurations", {}):
-            value = values.data.get("tool_configurations", {}).get(key)
-            if not isinstance(value, str | int | float | bool):
-                raise ValueError(f"{key} must be a string")
-
-        return value
 
 
 class DatasourceNodeData(BaseNodeData, DatasourceEntity):
     class DatasourceInput(BaseModel):
         # TODO: check this type
-        value: Union[Any, list[str]]
-        type: Literal["mixed", "variable", "constant"]
+        value: Optional[Union[Any, list[str]]] = None
+        type: Optional[Literal["mixed", "variable", "constant"]] = None
 
         @field_validator("type", mode="before")
         @classmethod
@@ -51,4 +38,4 @@ class DatasourceNodeData(BaseNodeData, DatasourceEntity):
                 raise ValueError("value must be a string, int, float, or bool")
             return typ
 
-    datasource_parameters: dict[str, DatasourceInput]
+    datasource_parameters: dict[str, DatasourceInput] | None = None
