@@ -15,7 +15,7 @@ import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
 import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
 import cn from '@/utils/classnames'
-import BlockCode from '@/app/components/base/markdown-blocks/code-block'
+import CodeBlock from '@/app/components/base/markdown-blocks/code-block'
 
 const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
