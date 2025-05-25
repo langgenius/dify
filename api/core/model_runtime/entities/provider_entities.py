@@ -135,7 +135,7 @@ class ProviderEntity(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     # position from plugin _position.yaml
-    position: Optional[dict[str, list[str]]] = {}
+    position: Optional[dict[str, Optional[list[str]]]] = {}
 
     @field_validator("models", mode="before")
     @classmethod
