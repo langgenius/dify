@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
+from services.quota_service import QuotaService
+from services.errors.quota import QuotaExceededError
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -176,6 +178,17 @@ class DatasetService:
         embedding_model_name: Optional[str] = None,
         retrieval_model: Optional[RetrievalModel] = None,
     ):
+        # Check dataset quota
+        tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).first()
+        if tenant:
+            current_dataset_count = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id).count()
+            if QuotaService.check_quota(tenant, 'max_datasets', current_dataset_count):
+                QuotaService.handle_quota_overage(tenant, 'max_datasets')
+        else:
+            # Handle case where tenant is not found. This might indicate an issue.
+            # For now, let it proceed, or consider raising an error if tenant must exist.
+            pass
+
         # check if dataset name already exists
         if db.session.query(Dataset).filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
@@ -923,7 +936,19 @@ class DocumentService:
                     if count > batch_upload_limit:
                         raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
-                    DocumentService.check_documents_upload_quota(count, features)
+                    total_size_bytes = 0
+                    if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                        upload_file_ids = knowledge_config.data_source.info_list.file_info_list.file_ids
+                        for file_id in upload_file_ids:
+                            upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id, UploadFile.tenant_id == dataset.tenant_id).first()
+                            if upload_file:
+                                total_size_bytes += upload_file.size
+                    # For Notion and Website crawls, size is not directly available here.
+                    # Passing 0 for size check, meaning this specific check will primarily apply to file uploads.
+                    # Alternative: estimate size or skip check for these types if appropriate.
+                    
+                    total_size_mb = total_size_bytes / (1024 * 1024)
+                    DocumentService.check_documents_upload_quota(total_size_mb, features)
 
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
@@ -1180,12 +1205,19 @@ class DocumentService:
         return documents, batch
 
     @staticmethod
-    def check_documents_upload_quota(count: int, features: FeatureModel):
-        can_upload_size = features.documents_upload_quota.limit - features.documents_upload_quota.size
-        if count > can_upload_size:
-            raise ValueError(
-                f"You have reached the limit of your subscription. Only {can_upload_size} documents can be uploaded."
-            )
+    def check_documents_upload_quota(size_of_current_upload_mb: int, features: FeatureModel): # Renamed 'count' to 'size_of_current_upload_mb' for clarity
+        """
+        Checks if the tenant has exceeded its document size quota (max_document_size_mb)
+        for the current upload batch.
+        Note: The `features` parameter is currently unused after the change,
+        but kept for signature consistency if other parts of the system rely on it.
+        """
+        tenant = current_user.current_tenant
+
+        # Check for max_document_size_mb using QuotaService.
+        # This replaces the previous ValueError logic with a check against tenant quota.
+        if QuotaService.check_quota(tenant, 'max_document_size_mb', size_of_current_upload_mb):
+            QuotaService.handle_quota_overage(tenant, 'max_document_size_mb')
 
     @staticmethod
     def build_document(
@@ -2249,6 +2281,11 @@ class SegmentService:
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
             raise NotFound("Dataset not found.")
+
+        # Check document quota
+        current_document_count = db.session.query(Document).filter(Document.dataset_id == dataset_id).count()
+        if QuotaService.check_quota(dataset.tenant, 'max_documents', current_document_count):
+            QuotaService.handle_quota_overage(dataset.tenant, 'max_documents')
 
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)

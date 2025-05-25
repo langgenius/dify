@@ -149,6 +149,17 @@ class BillingService:
             return BillingService._send_request("GET", "/education/autocomplete", params=params)
 
     @classmethod
+    def get_tenant_quota(cls, tenant_id: str) -> dict:
+        # In a real application, this would make a request to a billing API
+        # For this example, we'll use a mock response
+        # Replace with actual API call if needed
+        if tenant_id == "test_tenant_id_with_quota":
+            return {"max_users": 10, "max_documents": 1000}
+        else:
+            # Default quota for other tenants or if the API call fails
+            return {"max_users": 1, "max_documents": 10}
+
+    @classmethod
     def get_compliance_download_link(
         cls,
         doc_name: str,

@@ -4,7 +4,7 @@ from typing import Optional, cast
 
 from flask_login import UserMixin  # type: ignore
 from sqlalchemy import func
-from sqlalchemy.orm import Mapped, mapped_column, reconstructor
+from sqlalchemy.orm import Mapped, mapped_column, reconstructor, relationship
 
 from models.base import Base
 
@@ -204,6 +204,8 @@ class Tenant(Base):
     custom_config = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    tenant_quota = relationship("TenantQuota", uselist=False, backref="tenant")
+    _quota_info: Optional[dict] = None
 
     def get_accounts(self) -> list[Account]:
         return (
@@ -219,6 +221,13 @@ class Tenant(Base):
     @custom_config_dict.setter
     def custom_config_dict(self, value: dict):
         self.custom_config = json.dumps(value)
+
+    @property
+    def quota(self) -> dict:
+        if self._quota_info is None:
+            from services.billing_service import BillingService
+            self._quota_info = BillingService.get_tenant_quota(self.id)
+        return self._quota_info
 
 
 class TenantAccountJoin(Base):
@@ -299,3 +308,23 @@ class TenantPluginPermission(Base):
         db.String(16), nullable=False, server_default="everyone"
     )
     debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), nullable=False, server_default="noone")
+
+
+class TenantQuota(Base):
+    __tablename__ = 'tenant_quotas'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tenant_quota_pkey'),
+        db.Index('tenant_quota_tenant_id_idx', 'tenant_id'),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, db.ForeignKey('tenants.id'), unique=True, nullable=False)
+    max_users: Mapped[int] = mapped_column(db.Integer, nullable=True)
+    max_documents: Mapped[int] = mapped_column(db.Integer, nullable=True)
+    max_document_size_mb: Mapped[int] = mapped_column(db.Integer, nullable=True)
+    max_api_calls_per_day: Mapped[int] = mapped_column(db.Integer, nullable=True)
+    max_api_calls_per_month: Mapped[int] = mapped_column(db.Integer, nullable=True)
+    max_apps: Mapped[int] = mapped_column(db.Integer, nullable=True)
+    max_datasets: Mapped[int] = mapped_column(db.Integer, nullable=True)
+    created_at: Mapped[db.DateTime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at: Mapped[db.DateTime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp())

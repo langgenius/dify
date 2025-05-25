@@ -13,13 +13,14 @@ import {
   RiSquareLine,
 } from '@remixicon/react'
 import { Plan, SelfHostedPlan } from '../type'
-import VectorSpaceInfo from '../usage-info/vector-space-info'
-import AppsInfo from '../usage-info/apps-info'
+// import VectorSpaceInfo from '../usage-info/vector-space-info' // Keep if still needed for other purposes, or remove if fully replaced
+// import AppsInfo from '../usage-info/apps-info' // Keep if still needed for other purposes, or remove if fully replaced
+import UsageInfoContainer from '../usage-info' // Import the new container
 import UpgradeBtn from '../upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
-import UsageInfo from '@/app/components/billing/usage-info'
+// UsageInfo (single item) is no longer directly used here, it's used by UsageInfoContainer
 import VerifyStateModal from '@/app/education-apply/verify-state-modal'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
 import { useEducationVerify } from '@/service/use-education'
@@ -40,10 +41,11 @@ const PlanComp: FC<Props> = ({
     type,
   } = plan
 
-  const {
-    usage,
-    total,
-  } = plan
+  // Remove usage and total from here as they are fetched by UsageInfoContainer
+  // const {
+  //   usage,
+  //   total,
+  // } = plan
 
   const [showModal, setShowModal] = React.useState(false)
   const { mutateAsync } = useEducationVerify()
@@ -98,29 +100,9 @@ const PlanComp: FC<Props> = ({
           </div>
         </div>
       </div>
-      {/* Plan detail */}
-      <div className='grid grid-cols-3 content-start gap-1 p-2'>
-        <AppsInfo />
-        <UsageInfo
-          Icon={RiGroupLine}
-          name={t('billing.usagePage.teamMembers')}
-          usage={usage.teamMembers}
-          total={total.teamMembers}
-        />
-        <UsageInfo
-          Icon={RiBook2Line}
-          name={t('billing.usagePage.documentsUploadQuota')}
-          usage={usage.documentsUploadQuota}
-          total={total.documentsUploadQuota}
-        />
-        <VectorSpaceInfo />
-        <UsageInfo
-          Icon={RiFileEditLine}
-          name={t('billing.usagePage.annotationQuota')}
-          usage={usage.annotatedResponse}
-          total={total.annotatedResponse}
-        />
-
+      {/* Plan detail - Replaced with UsageInfoContainer */}
+      <div className='p-2'> {/* Keep p-2 for padding, adjust grid if UsageInfoContainer handles its own grid */}
+        <UsageInfoContainer />
       </div>
       <VerifyStateModal
         showLink

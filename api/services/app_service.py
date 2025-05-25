@@ -8,6 +8,8 @@ from flask_sqlalchemy.pagination import Pagination
 
 from configs import dify_config
 from constants.model_template import default_app_templates
+from services.quota_service import QuotaService
+from services.errors.quota import QuotaExceededError
 from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -78,6 +80,17 @@ class AppService:
         :param args: request args
         :param account: Account instance
         """
+        # Check app quota
+        tenant = account.current_tenant
+        if tenant:
+            current_app_count = db.session.query(App).filter(App.tenant_id == tenant.id).count()
+            if QuotaService.check_quota(tenant, 'max_apps', current_app_count):
+                QuotaService.handle_quota_overage(tenant, 'max_apps')
+        else:
+            # Handle case where tenant is not found, though this should ideally not happen
+            # for a logged-in user creating an app.
+            pass
+
         app_mode = AppMode.value_of(args["mode"])
         app_template = default_app_templates[app_mode]
 

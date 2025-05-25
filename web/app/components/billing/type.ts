@@ -110,3 +110,28 @@ export type SubscriptionItem = {
 export type SubscriptionUrlsBackend = {
   url: string
 }
+
+export interface QuotaLimits {
+  max_users: number | null;
+  max_documents: number | null;
+  max_document_size_mb: number | null;
+  max_api_calls_per_day: number | null;
+  max_api_calls_per_month: number | null;
+  max_apps: number | null;
+  max_datasets: number | null;
+}
+
+export interface CurrentUsage {
+  max_users: number;
+  max_documents: number;
+  max_document_size_mb: string; // Or number if it's a calculated sum
+  max_api_calls_per_day: string;  // Or number if tracked
+  max_api_calls_per_month: string; // Or number if tracked
+  max_apps: number;
+  max_datasets: number;
+}
+
+export interface QuotaUsageResponse {
+  limits: QuotaLimits;
+  usage: CurrentUsage;
+}

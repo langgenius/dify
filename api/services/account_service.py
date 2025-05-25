@@ -15,6 +15,8 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
+from services.quota_service import QuotaService
+from services.errors.quota import QuotaExceededError
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -644,6 +646,12 @@ class TenantService:
     @staticmethod
     def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
         """Create tenant member"""
+
+        # Check user quota before adding a new member
+        current_user_count = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.tenant_id == tenant.id).count()
+        if QuotaService.check_quota(tenant, 'max_users', current_user_count):
+            QuotaService.handle_quota_overage(tenant, 'max_users')
+
         if role == TenantAccountRole.OWNER.value:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
                 logging.error(f"Tenant {tenant.id} has already an owner.")
