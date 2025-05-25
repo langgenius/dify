@@ -66,6 +66,16 @@ server {
       include proxy.conf;
     }
 
+    location /langbot {
+      proxy_pass http://host.docker.internal:5300;
+      include proxy.conf;
+    }
+
+    location /callback {
+      proxy_pass http://host.docker.internal:2290;
+      include proxy.conf;
+    }
+
     location / {
       proxy_pass http://web:3000;
       include proxy.conf;
