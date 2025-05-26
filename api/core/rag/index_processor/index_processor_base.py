@@ -13,7 +13,7 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from models.dataset import Dataset, DatasetProcessRule
+from models.dataset import Dataset, Document as DatasetDocument, DatasetProcessRule
 
 
 class BaseIndexProcessor(ABC):
@@ -35,7 +35,7 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def index(self, dataset: Dataset, document: Document, chunks: Mapping[str, Any]):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Mapping[str, Any]):
         raise NotImplementedError
 
     @abstractmethod

@@ -42,12 +42,6 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
         # extract variables
         variable = variable_pool.get(node_data.index_chunk_variable_selector)
         is_preview = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM]) == InvokeFrom.DEBUGGER
-        if not isinstance(variable, ObjectSegment):
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                inputs={},
-                error="Index chunk variable is not object type.",
-            )
         chunks = variable.value
         variables = {"chunks": chunks}
         if not chunks:

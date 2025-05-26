@@ -16,7 +16,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import ChildDocument, Document, ParentChildStructureChunk
 from extensions.ext_database import db
 from libs import helper
-from models.dataset import ChildChunk, Dataset, DocumentSegment
+from models.dataset import ChildChunk, Dataset, Document as DatasetDocument, DocumentSegment
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 
@@ -205,7 +205,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     child_nodes.append(child_document)
         return child_nodes
 
-    def index(self, dataset: Dataset, document: Document, chunks: Mapping[str, Any]):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Mapping[str, Any]):
         parent_childs = ParentChildStructureChunk(**chunks)
         documents = []
         for parent_child in parent_childs.parent_child_chunks:

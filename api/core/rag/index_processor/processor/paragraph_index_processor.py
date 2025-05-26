@@ -15,7 +15,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document, GeneralStructureChunk
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
-from models.dataset import Dataset, DatasetProcessRule
+from models.dataset import Dataset, Document as DatasetDocument, DatasetProcessRule
 from services.entities.knowledge_entities.knowledge_entities import Rule
 
 
@@ -128,7 +128,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 docs.append(doc)
         return docs
 
-    def index(self, dataset: Dataset, document: Document, chunks: Mapping[str, Any]):
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: Mapping[str, Any]):
         paragraph = GeneralStructureChunk(**chunks)
         documents = []
         for content in paragraph.general_chunk:

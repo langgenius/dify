@@ -203,7 +203,7 @@ class PluginDatasourceManager(BasePluginClient):
         """
         validate the credentials of the provider
         """
-        tool_provider_id = GenericProviderID(provider)
+        datasource_provider_id = GenericProviderID(provider)
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
@@ -212,12 +212,12 @@ class PluginDatasourceManager(BasePluginClient):
             data={
                 "user_id": user_id,
                 "data": {
-                    "provider": tool_provider_id.provider_name,
+                    "provider": datasource_provider_id.provider_name,
                     "credentials": credentials,
                 },
             },
             headers={
-                "X-Plugin-ID": tool_provider_id.plugin_id,
+                "X-Plugin-ID": datasource_provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
 
@@ -227,34 +227,11 @@ class PluginDatasourceManager(BasePluginClient):
             return resp.result
 
         return False
-    
-    def get_provider_oauth_url(self, datasource_type: str, datasource_name: str, provider: str) -> str:
-        """
-        get the oauth url of the provider
-        """
-        tool_provider_id = GenericProviderID(provider)
 
-        response = self._request_with_plugin_daemon_response_stream(
-            "GET",
-            "plugin/datasource/oauth",
-            PluginBasicBooleanResponse,
-            params={"page": 1, "page_size": 256},
-            headers={
-                "X-Plugin-ID": tool_provider_id.plugin_id,
-                "Content-Type": "application/json",
-            },
-
-        )
-
-        for resp in response:
-            return resp.result
-
-        return False
-    
     def _get_local_file_datasource_provider(self) -> dict[str, Any]:
         return {
             "id": "langgenius/file/file",
-            "plugin_id": "langgenius/file",
+            "plugin_id": "langgenius/file/file",
             "provider": "langgenius",
             "plugin_unique_identifier": "langgenius/file:0.0.1@dify",
             "declaration": {
@@ -280,7 +257,7 @@ class PluginDatasourceManager(BasePluginClient):
                 "datasources": [{
                     "identity": {
                         "author": "langgenius",
-                        "name": "local_file",
+                        "name": "upload-file",
                         "provider": "langgenius",
                         "label": {
                             "zh_Hans": "File",
