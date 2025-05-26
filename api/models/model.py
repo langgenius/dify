@@ -295,7 +295,7 @@ class App(Base):
         return tags or []
 
     @property
-    def create_user_name(self):
+    def author_name(self):
         if self.created_by:
             account = db.session.query(Account).filter(Account.id == self.created_by).first()
             if account:

@@ -101,6 +101,7 @@ app_partial_fields = {
     "tags": fields.List(fields.Nested(tag_fields)),
     "access_mode": fields.String,
     "create_user_name": fields.String,
+    "author_name": fields.String,
 }
 
 
