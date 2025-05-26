@@ -22,13 +22,13 @@ from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
+from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_app_generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from extensions.ext_database import db
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, Pipeline
@@ -108,16 +108,17 @@ class PipelineGenerator(BaseAppGenerator):
         for datasource_info in datasource_info_list:
             workflow_run_id = str(uuid.uuid4())
             document_id = None
-            
+
             # Add null check for dataset
-            if not pipeline.dataset:
+            dataset = pipeline.dataset
+            if not dataset:
                 raise ValueError("Pipeline dataset is required")
-            
+
             if invoke_from == InvokeFrom.PUBLISHED:
-                position = DocumentService.get_documents_position(pipeline.dataset_id)
+                position = DocumentService.get_documents_position(dataset.id)
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
-                    dataset_id=pipeline.dataset_id,
+                    dataset_id=dataset.id,
                     built_in_field_enabled=pipeline.dataset.built_in_field_enabled,
                     datasource_type=datasource_type,
                     datasource_info=datasource_info,
