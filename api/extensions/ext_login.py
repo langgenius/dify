@@ -6,10 +6,11 @@ from flask_login import user_loaded_from_request, user_logged_in
 from werkzeug.exceptions import NotFound, Unauthorized
 
 import contexts
+from configs import dify_config
 from dify_app import DifyApp
 from extensions.ext_database import db
 from libs.passport import PassportService
-from models.account import Account
+from models.account import Account, Tenant, TenantAccountJoin
 from models.model import EndUser
 from services.account_service import AccountService
 
@@ -31,6 +32,26 @@ def load_user_from_request(request_from_flask_login):
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
     else:
         auth_token = request.args.get("_token")
+
+    # Check for admin API key authentication first
+    if dify_config.ADMIN_API_KEY_ENABLE and auth_header:
+        admin_api_key = dify_config.ADMIN_API_KEY
+        if admin_api_key and admin_api_key == auth_token:
+            workspace_id = request.headers.get("X-WORKSPACE-ID")
+            if workspace_id:
+                tenant_account_join = (
+                    db.session.query(Tenant, TenantAccountJoin)
+                    .filter(Tenant.id == workspace_id)
+                    .filter(TenantAccountJoin.tenant_id == Tenant.id)
+                    .filter(TenantAccountJoin.role == "owner")
+                    .one_or_none()
+                )
+                if tenant_account_join:
+                    tenant, ta = tenant_account_join
+                    account = db.session.query(Account).filter_by(id=ta.account_id).first()
+                    if account:
+                        account.current_tenant = tenant
+                        return account
 
     if request.blueprint in {"console", "inner_api"}:
         if not auth_token:
