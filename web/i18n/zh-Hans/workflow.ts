@@ -232,6 +232,7 @@ const translation = {
     'noResult': '未找到匹配项',
     'agent': 'Agent 策略',
     'sources': '数据源',
+    'searchDataSource': '搜索数据源',
   },
   blocks: {
     'start': '开始',

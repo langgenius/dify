@@ -231,6 +231,7 @@ const translation = {
     'noResult': 'No match found',
     'agent': 'Agent Strategy',
     'sources': 'Sources',
+    'searchDataSource': 'Search Data Source',
   },
   blocks: {
     'start': 'Start',

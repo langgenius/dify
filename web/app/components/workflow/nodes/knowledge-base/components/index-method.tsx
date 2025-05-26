@@ -94,7 +94,7 @@ const IndexMethod = ({
               <div className='flex items-center'>
                 <div className='flex grow items-center'>
                   <div className='system-xs-medium truncate text-text-secondary'>
-                    Number of Keywords
+                    {t('datasetSettings.form.numberOfKeywords')}
                   </div>
                   <Tooltip
                     popupContent='number of keywords'

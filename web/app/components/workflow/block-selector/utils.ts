@@ -4,7 +4,7 @@ import type { DataSourceItem } from './types'
 
 export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
   return {
-    id: dataSourceItem.plugin_unique_identifier,
+    id: dataSourceItem.plugin_id,
     name: dataSourceItem.declaration.identity.name,
     author: dataSourceItem.declaration.identity.author,
     description: dataSourceItem.declaration.identity.description,

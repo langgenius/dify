@@ -3,6 +3,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
+import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { groupBy } from 'lodash-es'
 import BlockIcon from '../block-icon'
@@ -26,6 +27,7 @@ const Blocks = ({
   blocks,
 }: BlocksProps) => {
   const { t } = useTranslation()
+  const store = useStoreApi()
 
   const groups = useMemo(() => {
     return BLOCK_CLASSIFICATIONS.reduce((acc, classification) => {
@@ -43,6 +45,14 @@ const Blocks = ({
 
   const renderGroup = useCallback((classification: string) => {
     const list = groups[classification].sort((a, b) => a.metaData.sort - b.metaData.sort)
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const hasKnowledgeBaseNode = nodes.some(node => node.data.type === BlockEnum.KnowledgeBase)
+    const filteredList = list.filter((block) => {
+      if (hasKnowledgeBaseNode)
+        return block.metaData.type !== BlockEnum.KnowledgeBase
+      return true
+    })
 
     return (
       <div
@@ -50,14 +60,14 @@ const Blocks = ({
         className='mb-1 last-of-type:mb-0'
       >
         {
-          classification !== '-' && !!list.length && (
+          classification !== '-' && !!filteredList.length && (
             <div className='flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary'>
               {t(`workflow.tabs.${classification}`)}
             </div>
           )
         }
         {
-          list.map(block => (
+          filteredList.map(block => (
             <Tooltip
               key={block.metaData.type}
               position='right'
@@ -98,7 +108,7 @@ const Blocks = ({
         }
       </div>
     )
-  }, [groups, onSelect, t])
+  }, [groups, onSelect, t, store])
 
   return (
     <div className='max-h-[480px] overflow-y-auto p-1'>

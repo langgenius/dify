@@ -105,6 +105,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
 
     if (activeTab === TabsEnum.Tools)
       return t('workflow.tabs.searchTool')
+
+    if (activeTab === TabsEnum.Sources)
+      return t('workflow.tabs.searchDataSource')
     return ''
   }, [activeTab, t])
 
