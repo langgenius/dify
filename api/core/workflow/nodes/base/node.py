@@ -90,8 +90,28 @@ class BaseNode(Generic[GenericNodeData]):
         graph_config: Mapping[str, Any],
         config: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
+        """Extracts references variable selectors from node configuration.
+
+        The `config` parameter represents the configuration for a specific node type and corresponds
+        to the `data` field in the node definition object.
+
+        The returned mapping has the following structure:
+
+            {'1747829548239.#1747829667553.result#': ['1747829667553', 'result']}
+
+        Here, the key consists of two parts: the current node ID (provided as the `node_id`
+        parameter to `_extract_variable_selector_to_variable_mapping`) and the variable selector,
+        enclosed in `#` symbols. These two parts are separated by a dot (`.`).
+
+        The value is a list of string representing the variable selector, where the first element is the node ID
+        of the referenced variable, and the second element is the variable name within that node.
+
+        The meaning of the above response is:
+
+        The node with ID `1747829548239` references the variable `result` from the node with
+        ID `1747829667553`. For example, if `1747829548239` is a LLM node, its prompt may contain a
+        reference to the `result` output variable of node `1747829667553`.
+
         :param graph_config: graph config
         :param config: node config
         :return:
