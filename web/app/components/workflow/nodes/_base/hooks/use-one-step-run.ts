@@ -252,7 +252,21 @@ const useOneStepRun = <T>({
     let hasError = false
     try {
       if (!isIteration && !isLoop) {
-        res = await singleNodeRun(appId!, id, { inputs: submitData }) as any
+        const isStartNode = data.type === BlockEnum.Start
+        const postData: Record<string, any> = {}
+        if(isStartNode) {
+          const { '#sys.query#': query, '#sys.files#': files, ...inputs } = submitData
+          if(isChatMode)
+            postData.conversation_id = ''
+
+          postData.inputs = inputs
+          postData.query = query
+          postData.files = files || []
+        }
+        else {
+          postData.inputs = submitData
+        }
+        res = await singleNodeRun(appId!, id, postData) as any
       }
       else if (isIteration) {
         setIterationRunResult([])
