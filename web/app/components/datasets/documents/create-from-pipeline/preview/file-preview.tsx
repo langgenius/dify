@@ -27,22 +27,27 @@ const FilePreview = ({
     return arr.slice(0, -1).join()
   }
 
-  const getFileSize = (size: number) => {
-    if (size / 1024 < 10)
-      return `${(size / 1024).toFixed(1)} KB`
-
-    return `${(size / 1024 / 1024).toFixed(1)} MB`
+  const getFileSize = (fileSize: number) => {
+    if (!fileSize)
+      return fileSize
+    const units = ['', 'K', 'M', 'G', 'T', 'P']
+    let index = 0
+    while (fileSize >= 1024 && index < units.length) {
+      fileSize = fileSize / 1024
+      index++
+    }
+    return `${fileSize.toFixed(2)} ${units[index]}B`
   }
 
   return (
     <div className='h-full rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
-      <div className='flex gap-x-2 pb-3 pl-6 pr-4 pt-4'>
+      <div className='flex gap-x-2 border-b border-divider-subtle pb-3 pl-6 pr-4 pt-4'>
         <div className='flex grow flex-col gap-y-1'>
-          <div className='system-2xs-semibold-uppercase'>{t('datasetPipeline.addDocuments.stepOne.preview')}</div>
+          <div className='system-2xs-semibold-uppercase text-text-accent'>{t('datasetPipeline.addDocuments.stepOne.preview')}</div>
           <div className='title-md-semi-bold text-tex-primary'>{`${getFileName(file)}.${file.extension}`}</div>
-          <div className='system-xs-medium flex gap-x-1  text-text-tertiary'>
+          <div className='system-xs-medium flex items-center gap-x-1 text-text-tertiary'>
             <DocumentFileIcon
-              className='size-6 shrink-0'
+              className='size-3.5 shrink-0'
               name={file.name}
               extension={file.extension}
             />
@@ -65,12 +70,10 @@ const FilePreview = ({
           <RiCloseLine className='size-[18px]' />
         </button>
       </div>
-      <div className='px-6 py-5'>
-        {isFetching && <Loading />}
-        {!isFetching && fileData && (
-          <div className='body-md-regular overflow-hidden text-text-secondary'>{fileData.content}</div>
-        )}
-      </div>
+      {isFetching && <Loading />}
+      {!isFetching && fileData && (
+        <div className='body-md-regular overflow-hidden px-6 py-5 text-text-secondary'>{fileData.content}</div>
+      )}
     </div>
   )
 }

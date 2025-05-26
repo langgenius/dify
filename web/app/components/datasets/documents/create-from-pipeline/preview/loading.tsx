@@ -3,7 +3,7 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 
 const Loading = () => {
   return (
-    <div className='flex h-full flex-col gap-y-12 bg-gradient-to-b from-components-panel-bg-transparent to-components-panel-bg px-6 py-5'>
+    <div className='flex h-full flex-col gap-y-3 overflow-hidden bg-gradient-to-b from-components-panel-bg-transparent to-components-panel-bg px-6 py-5'>
       <SkeletonContainer className='w-full gap-0'>
         <SkeletonRectangle className='my-1.5 w-full' />
         <SkeletonRectangle className='my-1.5 w-full' />

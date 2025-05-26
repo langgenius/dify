@@ -187,9 +187,9 @@ const TestRunPanel = () => {
 
   return (
     <div
-      className='relative flex h-[calc(100vh-56px)] min-w-[1512px] rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
+      className='relative flex h-[calc(100vh-56px)] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
     >
-      <div className='flex flex-1 flex-col px-14'>
+      <div className='flex h-full min-w-[760px] flex-1 flex-col px-14'>
         <LeftHeader
           title={t('datasetPipeline.addDocuments.title')}
           currentStep={currentStep}
@@ -287,7 +287,7 @@ const TestRunPanel = () => {
       {/* Preview */}
       {
         currentStep === 1 && (
-          <div className='flex h-full flex-1 shrink-0 flex-col pl-2 pt-2'>
+          <div className='flex h-full w-[752px] shrink-0 flex-col pl-2 pt-2'>
             {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
             {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
             {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
