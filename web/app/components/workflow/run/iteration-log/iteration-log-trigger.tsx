@@ -49,7 +49,6 @@ const IterationLogTrigger = ({
     const iterDurationMap = nodeInfo?.iterDurationMap || iterationNodeMeta?.iteration_duration_map || {}
 
     let structuredList: NodeTracing[][] = []
-
     if (iterationNodeMeta?.iteration_duration_map) {
       const instanceKeys = Object.keys(iterationNodeMeta.iteration_duration_map)
       structuredList = instanceKeys
