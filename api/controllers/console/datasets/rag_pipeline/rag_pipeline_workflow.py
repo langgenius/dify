@@ -279,7 +279,7 @@ class PublishedRagPipelineRunApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("datasource_type", type=str, required=True, location="json")
-        parser.add_argument("datasource_info", type=list, required=True, location="json")
+        parser.add_argument("datasource_info_list", type=list, required=True, location="json")
         parser.add_argument("start_node_id", type=str, required=True, location="json")
         parser.add_argument("is_preview", type=bool, required=True, location="json", default=False)
         args = parser.parse_args()

@@ -2,26 +2,30 @@ import logging
 from datetime import UTC, datetime
 from typing import Optional
 
+from flask_login import current_user
 import requests
 from flask import current_app, redirect, request
 from flask_restful import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Unauthorized, Forbidden, NotFound
 
 from configs import dify_config
 from constants.languages import languages
+from controllers.console.wraps import account_initialization_required, setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import extract_remote_ip
+from libs.login import login_required
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
 from models.account import AccountStatus
+from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
-
+from core.plugin.impl.oauth import OAuthHandler
 from .. import api
 
 
@@ -181,5 +185,64 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     return account
 
 
+class PluginOauthApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider, plugin_id):
+        # Check user role first
+        if not current_user.is_editor:
+            raise Forbidden()
+        # get all plugin oauth configs
+        plugin_oauth_config = db.session.query(DatasourceOauthParamConfig).filter_by(
+            provider=provider,
+            plugin_id=plugin_id
+            ).first()
+        if not plugin_oauth_config:
+            raise NotFound()
+        oauth_handler = OAuthHandler()
+        response = oauth_handler.get_authorization_url(
+            current_user.current_tenant.id,
+            current_user.id,
+            plugin_id,
+            provider,
+            system_credentials=plugin_oauth_config.system_credentials
+        )
+        return response.model_dump()
+
+class PluginOauthCallback(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider, plugin_id):
+        oauth_handler = OAuthHandler()
+        plugin_oauth_config = db.session.query(DatasourceOauthParamConfig).filter_by(
+            provider=provider,
+            plugin_id=plugin_id
+        ).first()
+        if not plugin_oauth_config:
+            raise NotFound()
+        credentials = oauth_handler.get_credentials(
+            current_user.current_tenant.id,
+            current_user.id,
+            plugin_id,
+            provider,
+            system_credentials=plugin_oauth_config.system_credentials,
+            request=request
+        )
+        datasource_provider = DatasourceProvider(
+            datasource_name=plugin_oauth_config.datasource_name,
+            plugin_id=plugin_id,
+            provider=provider,
+            auth_type="oauth",
+            encrypted_credentials=credentials
+        )
+        db.session.add(datasource_provider)
+        db.session.commit()
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}")
+
+
 api.add_resource(OAuthLogin, "/oauth/login/<provider>")
 api.add_resource(OAuthCallback, "/oauth/authorize/<provider>")
+api.add_resource(PluginOauthApi, "/oauth/plugin/provider/<string:provider>/plugin/<string:plugin_id>")
+api.add_resource(PluginOauthCallback, "/oauth/plugin/callback/<string:provider>/plugin/<string:plugin_id>")

@@ -8,7 +8,6 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console import api
-from core.plugin.impl.oauth import OAuthHandler
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
@@ -110,29 +109,9 @@ class OAuthDataSourceSync(Resource):
         return {"result": "success"}, 200
 
 
-class DatasourcePluginOauthApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, datasource_type, datasource_name):
-        # Check user role first
-        if not current_user.is_editor:
-            raise Forbidden()
-        # get all builtin providers
-        oauth_handler = OAuthHandler()
-        providers = oauth_handler.get_authorization_url(
-            current_user.current_tenant.id, 
-            current_user.id, 
-            datasource_type, 
-            datasource_name,
-            system_credentials={}
-        )
-        return providers
-
 
 
 api.add_resource(OAuthDataSource, "/oauth/data-source/<string:provider>")
 api.add_resource(OAuthDataSourceCallback, "/oauth/data-source/callback/<string:provider>")
 api.add_resource(OAuthDataSourceBinding, "/oauth/data-source/binding/<string:provider>")
 api.add_resource(OAuthDataSourceSync, "/oauth/data-source/<string:provider>/<uuid:binding_id>/sync")
-api.add_resource(DatasourcePluginOauthApi, "/oauth/plugin/datasource/<string:datasoruce_type>/<string:datasource_name>")
