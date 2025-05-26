@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Literal, Optional, Union, overload
 
-from flask import Flask, current_app
+from flask import Flask, copy_current_request_context, current_app, has_request_context
 from pydantic import ValidationError
 from sqlalchemy.orm import sessionmaker
 
@@ -207,17 +207,22 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_mode=app_model.mode,
         )
 
-        # new thread
-        worker_thread = threading.Thread(
-            target=self._generate_worker,
-            kwargs={
-                "flask_app": current_app._get_current_object(),  # type: ignore
-                "application_generate_entity": application_generate_entity,
-                "queue_manager": queue_manager,
-                "context": contextvars.copy_context(),
-                "workflow_thread_pool_id": workflow_thread_pool_id,
-            },
-        )
+        # new thread with request context and contextvars
+        context = contextvars.copy_context()
+
+        @copy_current_request_context
+        def worker_with_context():
+            # Run the worker within the copied context
+            return context.run(
+                self._generate_worker,
+                flask_app=current_app._get_current_object(),  # type: ignore
+                application_generate_entity=application_generate_entity,
+                queue_manager=queue_manager,
+                context=context,
+                workflow_thread_pool_id=workflow_thread_pool_id,
+            )
+
+        worker_thread = threading.Thread(target=worker_with_context)
 
         worker_thread.start()
 
@@ -408,8 +413,22 @@ class WorkflowAppGenerator(BaseAppGenerator):
         """
         for var, val in context.items():
             var.set(val)
+
+        # Save current user before entering new app context
+        from flask import g
+
+        saved_user = None
+        if has_request_context() and hasattr(g, "_login_user"):
+            saved_user = g._login_user
+
         with flask_app.app_context():
             try:
+                # Restore user in new app context
+                if saved_user is not None:
+                    from flask import g
+
+                    g._login_user = saved_user
+
                 # workflow app
                 runner = WorkflowAppRunner(
                     application_generate_entity=application_generate_entity,
