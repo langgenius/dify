@@ -307,6 +307,7 @@ const translation = {
     organizeBlocks: 'ノード整理',
     change: '変更',
     optional: '（任意）',
+    moveToThisNode: 'このノードに移動する',
   },
   nodes: {
     common: {

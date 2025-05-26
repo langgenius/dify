@@ -302,6 +302,7 @@ const translation = {
     organizeBlocks: 'سازماندهی بلوک‌ها',
     change: 'تغییر',
     optional: '(اختیاری)',
+    moveToThisNode: 'به این گره بروید',
   },
   nodes: {
     common: {

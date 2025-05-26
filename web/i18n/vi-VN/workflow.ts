@@ -302,6 +302,7 @@ const translation = {
     organizeBlocks: 'Tổ chức các khối',
     change: 'Thay đổi',
     optional: '(tùy chọn)',
+    moveToThisNode: 'Di chuyển đến nút này',
   },
   nodes: {
     common: {

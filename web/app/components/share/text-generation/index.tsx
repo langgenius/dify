@@ -13,6 +13,7 @@ import { checkOrSetAccessToken } from '../utils'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
+import AppUnavailable from '../../base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
@@ -38,6 +39,10 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
+import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
+import { AccessMode } from '@/models/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -98,13 +103,24 @@ const TextGeneration: FC<IMainProps> = ({
     doSetInputs(newInputs)
     inputsRef.current = newInputs
   }, [])
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
-  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
+
+  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({
+    appId,
+    isInstalledApp,
+    enabled: systemFeatures.webapp_auth.enabled,
+  })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({
+    appId,
+    isInstalledApp,
+    enabled: systemFeatures.webapp_auth.enabled,
+  })
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
@@ -395,10 +411,9 @@ const TextGeneration: FC<IMainProps> = ({
   useEffect(() => {
     (async () => {
       const [appData, appParams]: any = await fetchInitData()
-      const { app_id: appId, site: siteInfo, can_replace_logo, custom_config } = appData
+      const { app_id: appId, site: siteInfo, custom_config } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
-      setCanReplaceLogo(can_replace_logo)
       setCustomConfig(custom_config)
       changeLanguage(siteInfo.default_language)
 
@@ -422,14 +437,7 @@ const TextGeneration: FC<IMainProps> = ({
   }, [])
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
-  useEffect(() => {
-    if (siteInfo?.title) {
-      if (canReplaceLogo)
-        document.title = `${siteInfo.title}`
-      else
-        document.title = `${siteInfo.title} - Powered by Dify`
-    }
-  }, [siteInfo?.title, canReplaceLogo])
+  useDocumentTitle(siteInfo?.title || t('share.generation.title'))
 
   useAppFavicon({
     enable: !isInstalledApp,
@@ -528,12 +536,14 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   )
 
-  if (!appId || !siteInfo || !promptConfig) {
+  if (!appId || !siteInfo || !promptConfig || (systemFeatures.webapp_auth.enabled && (isGettingAccessMode || isCheckingPermission))) {
     return (
       <div className='flex h-screen items-center'>
         <Loading type='app' />
       </div>)
   }
+  if (systemFeatures.webapp_auth.enabled && !userCanAccessResult?.result)
+    return <AppUnavailable code={403} unknownReason='no permission.' />
 
   return (
     <div className={cn(
@@ -559,7 +569,7 @@ const TextGeneration: FC<IMainProps> = ({
               imageUrl={siteInfo.icon_url}
             />
             <div className='system-md-semibold grow truncate text-text-secondary'>{siteInfo.title}</div>
-            <MenuDropdown data={siteInfo} />
+            <MenuDropdown hideLogout={isInstalledApp || appAccessMode?.accessMode === AccessMode.PUBLIC} data={siteInfo} />
           </div>
           {siteInfo.description && (
             <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>
@@ -631,10 +641,9 @@ const TextGeneration: FC<IMainProps> = ({
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
           )}>
             <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-            {customConfig?.replace_webapp_logo && (
-              <img src={customConfig?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
-            )}
-            {!customConfig?.replace_webapp_logo && (
+            {systemFeatures.branding.enabled ? (
+              <img src={systemFeatures.branding.login_page_logo} alt='logo' className='block h-5 w-auto' />
+            ) : (
               <DifyLogo size='small' />
             )}
           </div>

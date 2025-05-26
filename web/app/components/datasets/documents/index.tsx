@@ -70,7 +70,7 @@ const EmptyElement: FC<{ canAdd: boolean; onClick: () => void; type?: 'upload' |
       <div className={s.emptyTip}>
         {t(`datasetDocuments.list.empty.${type}.tip`)}
       </div>
-      {type === 'upload' && canAdd && <Button onClick={onClick} className={s.addFileBtn}>
+      {type === 'upload' && canAdd && <Button onClick={onClick} className={s.addFileBtn} variant='secondary-accent'>
         <PlusIcon className={s.plusIcon} />{t('datasetDocuments.list.addFile')}
       </Button>}
     </div>
@@ -267,7 +267,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
                 ? 'https://docs.dify.ai/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
                 : 'https://docs.dify.ai/en/guides/knowledge-base/integrate-knowledge-within-application'
             }
-            >
+          >
             <span>{t('datasetDocuments.list.learnMore')}</span>
             <RiExternalLinkLine className='h-3 w-3' />
           </a>

@@ -960,11 +960,11 @@ class DocumentService:
                         "score_threshold_enabled": False,
                     }
 
-                dataset.retrieval_model = (
-                    knowledge_config.retrieval_model.model_dump()
-                    if knowledge_config.retrieval_model
-                    else default_retrieval_model
-                )  # type: ignore
+                    dataset.retrieval_model = (
+                        knowledge_config.retrieval_model.model_dump()
+                        if knowledge_config.retrieval_model
+                        else default_retrieval_model
+                    )  # type: ignore
 
         documents = []
         if knowledge_config.original_document_id:
@@ -992,7 +992,7 @@ class DocumentService:
                             created_by=account.id,
                         )
                     else:
-                        logging.warn(
+                        logging.warning(
                             f"Invalid process rule mode: {process_rule.mode}, can not find dataset process rule"
                         )
                         return

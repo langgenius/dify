@@ -26,9 +26,8 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import { useToastContext } from '@/app/components/base/toast'
 import { usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { fetchAppDetail, fetchAppSSO } from '@/service/apps'
+import { fetchAppDetail } from '@/service/apps'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useSelector as useAppSelector } from '@/context/app-context'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
@@ -36,7 +35,6 @@ const FeaturesTrigger = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
   const setAppDetail = useAppStore(s => s.setAppDetail)
-  const systemFeatures = useAppSelector(state => state.systemFeatures)
   const {
     nodesReadOnly,
     getNodesReadOnly,
@@ -85,18 +83,12 @@ const FeaturesTrigger = () => {
   const updateAppDetail = useCallback(async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appID! })
-      if (systemFeatures.enable_web_sso_switch_component) {
-        const ssoRes = await fetchAppSSO({ appId: appID! })
-        setAppDetail({ ...res, enable_sso: ssoRes.enabled })
-      }
-      else {
-        setAppDetail({ ...res })
-      }
+      setAppDetail({ ...res })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appID, setAppDetail, systemFeatures.enable_web_sso_switch_component])
+  }, [appID, setAppDetail])
   const { mutateAsync: publishWorkflow } = usePublishWorkflow(appID!)
   const onPublish = useCallback(async (params?: PublishWorkflowParams) => {
     if (await handleCheckBeforePublish()) {

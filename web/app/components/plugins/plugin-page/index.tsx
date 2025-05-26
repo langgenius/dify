@@ -25,7 +25,6 @@ import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import PermissionSetModal from '@/app/components/plugins/permission-setting-modal/modal'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import {
   useRouter,
@@ -42,6 +41,8 @@ import I18n from '@/context/i18n'
 import { noop } from 'lodash-es'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 const BUNDLE_INFO_KEY = 'bundle-info'
@@ -58,8 +59,7 @@ const PluginPage = ({
   const { locale } = useContext(I18n)
   const searchParams = useSearchParams()
   const { replace } = useRouter()
-
-  document.title = `${t('plugin.metadata.title')} - Dify`
+  useDocumentTitle(t('plugin.metadata.title'))
 
   // just support install one package now
   const packageId = useMemo(() => {
@@ -136,7 +136,7 @@ const PluginPage = ({
   const options = usePluginPageContext(v => v.options)
   const activeTab = usePluginPageContext(v => v.activeTab)
   const setActiveTab = usePluginPageContext(v => v.setActiveTab)
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   const isPluginsTab = useMemo(() => activeTab === PLUGIN_PAGE_TABS_MAP.plugins, [activeTab])
   const isExploringMarketplace = useMemo(() => {
@@ -187,6 +187,17 @@ const PluginPage = ({
               isExploringMarketplace && (
                 <>
                   <Link
+                    href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
+                    target='_blank'
+                  >
+                    <Button
+                      variant='ghost'
+                      className='text-text-tertiary'
+                    >
+                      {t('plugin.requestAPlugin')}
+                    </Button>
+                  </Link>
+                  <Link
                     href={getDocsUrl(locale, '/plugins/publish-plugins/publish-to-dify-marketplace/README')}
                     target='_blank'
                   >
@@ -198,7 +209,7 @@ const PluginPage = ({
                       {t('plugin.submitPlugin')}
                     </Button>
                   </Link>
-                  <div className='mx-2 h-3.5 w-[1px] bg-divider-regular'></div>
+                  <div className='mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular'></div>
                 </>
               )
             }

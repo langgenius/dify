@@ -302,6 +302,7 @@ const translation = {
     organizeBlocks: 'Blöcke organisieren',
     change: 'Ändern',
     optional: '(optional)',
+    moveToThisNode: 'Bewege zu diesem Knoten',
   },
   nodes: {
     common: {

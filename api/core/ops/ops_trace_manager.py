@@ -30,6 +30,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
+from core.workflow.entities.workflow_execution_entities import WorkflowExecution
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
@@ -234,7 +235,11 @@ class OpsTraceManager:
             return None
 
         tracing_provider = app_ops_trace_config.get("tracing_provider")
-        if tracing_provider is None or tracing_provider not in provider_config_map:
+        if tracing_provider is None:
+            return None
+        try:
+            provider_config_map[tracing_provider]
+        except KeyError:
             return None
 
         # decrypt_token
@@ -287,8 +292,14 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if tracing_provider not in provider_config_map and tracing_provider is not None:
-            raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+        if enabled == True:
+            try:
+                provider_config_map[tracing_provider]
+            except KeyError:
+                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+        else:
+            if tracing_provider is not None:
+                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: Optional[App] = db.session.query(App).filter(App.id == app_id).first()
         if not app_config:
@@ -367,7 +378,7 @@ class TraceTask:
         self,
         trace_type: Any,
         message_id: Optional[str] = None,
-        workflow_run: Optional[WorkflowRun] = None,
+        workflow_execution: Optional[WorkflowExecution] = None,
         conversation_id: Optional[str] = None,
         user_id: Optional[str] = None,
         timer: Optional[Any] = None,
@@ -375,7 +386,7 @@ class TraceTask:
     ):
         self.trace_type = trace_type
         self.message_id = message_id
-        self.workflow_run_id = workflow_run.id if workflow_run else None
+        self.workflow_run_id = workflow_execution.id if workflow_execution else None
         self.conversation_id = conversation_id
         self.user_id = user_id
         self.timer = timer

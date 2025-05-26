@@ -190,7 +190,7 @@ class DatasetRetrieval:
                 retrieve_config.rerank_mode or "reranking_model",
                 retrieve_config.reranking_model,
                 retrieve_config.weights,
-                retrieve_config.reranking_enabled or True,
+                True if retrieve_config.reranking_enabled is None else retrieve_config.reranking_enabled,
                 message_id,
                 metadata_filter_document_ids,
                 metadata_condition,

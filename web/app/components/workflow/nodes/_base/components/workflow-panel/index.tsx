@@ -17,6 +17,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import NextStep from '../next-step'
 import PanelOperator from '../panel-operator'
+import NodePosition from '@/app/components/workflow/nodes/_base/components/node-position'
 import HelpLink from '../help-link'
 import {
   DescriptionInput,
@@ -62,6 +63,9 @@ const BasePanel: FC<BasePanelProps> = ({
   id,
   data,
   children,
+  position,
+  width,
+  height,
 }) => {
   const { t } = useTranslation()
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
@@ -244,6 +248,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   </Tooltip>
                 )
               }
+              <NodePosition nodePosition={position} nodeWidth={width} nodeHeight={height}></NodePosition>
               <HelpLink nodeType={data.type} />
               <PanelOperator id={id} data={data} showHelpLink={false} />
               <div className='mx-3 h-3.5 w-[1px] bg-divider-regular' />

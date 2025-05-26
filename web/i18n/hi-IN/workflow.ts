@@ -314,6 +314,7 @@ const translation = {
     organizeBlocks: 'ब्लॉक्स को व्यवस्थित करें',
     change: 'बदलें',
     optional: '(वैकल्पिक)',
+    moveToThisNode: 'इस नोड पर जाएं',
   },
   nodes: {
     common: {
