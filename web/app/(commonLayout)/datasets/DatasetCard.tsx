@@ -111,7 +111,7 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group relative col-span-1 flex min-h-[160px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg'
+        className='group relative col-span-1 flex min-h-[171px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
@@ -163,7 +163,7 @@ const DatasetCard = ({
         <div
           className={cn(
             'mb-2 max-h-[72px] grow px-[14px] text-xs leading-normal text-text-tertiary group-hover:line-clamp-2 group-hover:max-h-[36px]',
-            tags.length ? 'line-clamp-2' : 'line-clamp-4',
+            tags.length ? 'line-clamp-2' : 'line-clamp-4 ',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}
           title={dataset.description}>
