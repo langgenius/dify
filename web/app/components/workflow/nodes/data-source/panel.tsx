@@ -8,6 +8,7 @@ import { BoxGroupField } from '@/app/components/workflow/nodes/_base/components/
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import TagInput from '@/app/components/base/tag-input'
 import { useConfig } from './hooks/use-config'
+import { OUTPUT_VARIABLES_MAP } from './constants'
 
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
@@ -46,53 +47,17 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
       }
       <OutputVars>
         <VarItem
-          name='datasource_type'
-          type='string'
-          description={'local_file, online_document, website_crawl'}
+          name={OUTPUT_VARIABLES_MAP.datasource_type.name}
+          type={OUTPUT_VARIABLES_MAP.datasource_type.type}
+          description={OUTPUT_VARIABLES_MAP.datasource_type.description}
         />
         {
           isLocalFile && (
             <VarItem
-              name='file'
-              type='Object'
-              description={'file'}
-              subItems={[
-                {
-                  name: 'type',
-                  type: 'string',
-                  description: '',
-                },
-                {
-                  name: 'upload_file_id',
-                  type: 'string',
-                  description: '',
-                },
-                {
-                  name: 'name',
-                  type: 'string',
-                  description: '',
-                },
-                {
-                  name: 'size',
-                  type: 'number',
-                  description: '',
-                },
-                {
-                  name: 'extension',
-                  type: 'string',
-                  description: '',
-                },
-                {
-                  name: 'mime_type',
-                  type: 'string',
-                  description: '',
-                },
-                {
-                  name: 'upload_file_url',
-                  type: 'string',
-                  description: '',
-                },
-              ]}
+              name={OUTPUT_VARIABLES_MAP.file.name}
+              type={OUTPUT_VARIABLES_MAP.file.type}
+              description={OUTPUT_VARIABLES_MAP.file.description}
+              subItems={OUTPUT_VARIABLES_MAP.file.subItems}
             />
           )
         }

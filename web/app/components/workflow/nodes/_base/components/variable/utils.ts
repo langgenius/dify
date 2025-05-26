@@ -33,6 +33,7 @@ import {
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
+import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
 import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
 import type { AgentNodeType } from '../../../agent/types'
@@ -457,6 +458,11 @@ const formatItem = (
       break
     }
 
+    case BlockEnum.DataSource: {
+      res.vars = DataSourceNodeDefault.getOutputVars?.(data as any) || []
+      break
+    }
+
     case 'env': {
       res.vars = data.envList.map((env: EnvironmentVariable) => {
         return {
@@ -513,6 +519,8 @@ const formatItem = (
     const isFile = v.type === VarType.file
     const children = (() => {
       if (isFile) {
+        if (v.children)
+          return v.children
         return OUTPUT_FILE_SUB_VARIABLES.map((key) => {
           return {
             variable: key,
@@ -529,9 +537,10 @@ const formatItem = (
     return obj?.children && ((obj?.children as Var[]).length > 0 || Object.keys((obj?.children as StructuredOutput)?.schema?.properties || {}).length > 0)
   }).map((v) => {
     const isFile = v.type === VarType.file
-
     const { children } = (() => {
       if (isFile) {
+        if (v.children)
+          return { children: v.children }
         return {
           children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
             return {
