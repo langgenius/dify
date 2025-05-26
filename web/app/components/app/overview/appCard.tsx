@@ -18,7 +18,7 @@ import style from './style.module.css'
 import type { ConfigParams } from './settings'
 import Tooltip from '@/app/components/base/tooltip'
 import AppBasic from '@/app/components/app-sidebar/basic'
-import { asyncRunSafe, randomString } from '@/utils'
+import { asyncRunSafe } from '@/utils'
 import { basePath } from '@/utils/var'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
@@ -184,7 +184,7 @@ function AppCard({
                   : t('appOverview.overview.apiInfo.explanation')
               }
             />
-            <div className='flex items-center gap-1'>
+            <div className='flex shrink-0 items-center gap-1'>
               <Indicator color={runningStatus ? 'green' : 'yellow'} />
               <div className={`${runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
                 {runningStatus
@@ -210,7 +210,7 @@ function AppCard({
                 content={isApp ? appUrl : apiUrl}
                 className={'!size-6'}
               />
-              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} className='z-50 !size-6 rounded-md hover:bg-state-base-hover' selectorId={randomString(8)} />}
+              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
               {isApp && <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />}
               {/* button copy link/ button regenerate */}
               {showConfirmDelete && (

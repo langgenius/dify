@@ -14,7 +14,7 @@ const translation = {
     permissionsOnlyMe: '自分のみ',
     permissionsAllMember: 'すべてのチームメンバー',
     permissionsInvitedMembers: '一部のチームメンバー',
-    me: '(あなた様)',
+    me: '(あなた)',
     indexMethod: 'インデックス方法',
     indexMethodHighQuality: '高品質',
     indexMethodHighQualityTip: 'より正確な検索のため、埋め込みモデルを呼び出してドキュメントを処理することで、LLMは高品質な回答を生成できます。',

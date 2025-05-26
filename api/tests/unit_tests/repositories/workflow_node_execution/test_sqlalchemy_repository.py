@@ -4,12 +4,14 @@ Unit tests for the SQLAlchemy implementation of WorkflowNodeExecutionRepository.
 
 import json
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
@@ -298,7 +300,7 @@ def test_to_db_model(repository):
         status=NodeExecutionStatus.RUNNING,
         error=None,
         elapsed_time=1.5,
-        metadata={NodeRunMetadataKey.TOTAL_TOKENS: 100},
+        metadata={NodeRunMetadataKey.TOTAL_TOKENS: 100, NodeRunMetadataKey.TOTAL_PRICE: Decimal("0.0")},
         created_at=datetime.now(),
         finished_at=None,
     )
@@ -324,7 +326,7 @@ def test_to_db_model(repository):
     assert db_model.inputs_dict == domain_model.inputs
     assert db_model.process_data_dict == domain_model.process_data
     assert db_model.outputs_dict == domain_model.outputs
-    assert db_model.execution_metadata_dict == domain_model.metadata
+    assert db_model.execution_metadata_dict == jsonable_encoder(domain_model.metadata)
 
     assert db_model.status == domain_model.status
     assert db_model.error == domain_model.error
