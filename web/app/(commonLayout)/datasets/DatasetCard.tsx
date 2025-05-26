@@ -163,7 +163,7 @@ const DatasetCard = ({
         <div
           className={cn(
             'mb-2 max-h-[72px] grow px-[14px] text-xs leading-normal text-text-tertiary group-hover:line-clamp-2 group-hover:max-h-[36px]',
-            tags.length ? 'line-clamp-2' : 'line-clamp-4 ',
+            tags.length ? 'line-clamp-2' : 'line-clamp-4',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}
           title={dataset.description}>
