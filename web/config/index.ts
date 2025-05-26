@@ -267,6 +267,8 @@ Thought: {{agent_scratchpad}}
 
 export const VAR_REGEX = /\{\{(#[a-zA-Z0-9_-]{1,50}(\.[a-zA-Z_]\w{0,29}){1,10}#)\}\}/gi
 
+export const VAR_REGEX_TEXT = /\{\{#([a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*)#\}\}/gi
+
 export const resetReg = () => VAR_REGEX.lastIndex = 0
 
 export let textGenerationTimeoutMs = 60000
