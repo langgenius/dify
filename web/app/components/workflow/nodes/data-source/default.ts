@@ -22,8 +22,8 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
     }
   },
   getOutputVars(payload) {
-    const { provider_id, provider_type } = payload
-    const isLocalFile = provider_id === 'langgenius/file/file' && provider_type === CollectionType.datasource
+    const { datasource_name, provider_type } = payload
+    const isLocalFile = datasource_name === 'local_file' && provider_type === CollectionType.datasource
     return [
       {
         variable: OUTPUT_VARIABLES_MAP.datasource_type.name,
@@ -35,12 +35,6 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
               {
                 variable: OUTPUT_VARIABLES_MAP.file.name,
                 type: OUTPUT_VARIABLES_MAP.file.type,
-                children: OUTPUT_VARIABLES_MAP.file.subItems.map((item) => {
-                  return {
-                    variable: item.name,
-                    type: item.type,
-                  }
-                }),
               },
           ]
           : []

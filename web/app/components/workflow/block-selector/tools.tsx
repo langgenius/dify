@@ -55,7 +55,6 @@ const Blocks = ({
     }
   }
   */
-  console.log(tools, 'tools')
   const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => tool.label[language][0])
   const treeViewToolsData = useMemo(() => {
     const result: Record<string, ToolWithProvider[]> = {}

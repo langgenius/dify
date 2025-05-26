@@ -1,18 +1,19 @@
 import {
   useCallback,
 } from 'react'
+import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
+  RetrievalSearchMethodEnum,
 } from '../types'
 import type {
   HybridSearchModeEnum,
   KnowledgeBaseNodeType,
   RerankingModel,
-  RetrievalSearchMethodEnum,
 } from '../types'
 
 export const useConfig = (id: string) => {
@@ -43,8 +44,17 @@ export const useConfig = (id: string) => {
   }, [handleNodeDataUpdate, getNodeData])
 
   const handleIndexMethodChange = useCallback((indexMethod: IndexMethodEnum) => {
-    handleNodeDataUpdate({ indexing_technique: indexMethod })
-  }, [handleNodeDataUpdate])
+    const nodeData = getNodeData()
+
+    handleNodeDataUpdate(produce(nodeData?.data as KnowledgeBaseNodeType, (draft) => {
+      draft.indexing_technique = indexMethod
+
+      if (indexMethod === IndexMethodEnum.ECONOMICAL)
+        draft.retrieval_model.search_method = RetrievalSearchMethodEnum.invertedIndex
+      else if (indexMethod === IndexMethodEnum.QUALIFIED)
+        draft.retrieval_model.search_method = RetrievalSearchMethodEnum.semantic
+    }))
+  }, [handleNodeDataUpdate, getNodeData])
 
   const handleKeywordNumberChange = useCallback((keywordNumber: number) => {
     handleNodeDataUpdate({ keyword_number: keywordNumber })

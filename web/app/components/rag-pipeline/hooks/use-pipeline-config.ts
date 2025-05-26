@@ -6,7 +6,7 @@ import {
 import { useWorkflowConfig } from '@/service/use-workflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useDataSourceList } from '@/service/use-pipeline'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { basePath } from '@/utils/var'
 
 export const usePipelineConfig = () => {
@@ -43,10 +43,11 @@ export const usePipelineConfig = () => {
     handleUpdatePublishedAt,
   )
 
-  const handleUpdateDataSourceList = useCallback((dataSourceList: ToolWithProvider[]) => {
+  const handleUpdateDataSourceList = useCallback((dataSourceList: DataSourceItem[]) => {
     dataSourceList.forEach((item) => {
-      if (typeof item.icon == 'string' && !item.icon.includes(basePath))
-        item.icon = `${basePath}${item.icon}`
+      const icon = item.declaration.identity.icon
+      if (typeof icon == 'string' && !icon.includes(basePath))
+        item.declaration.identity.icon = `${basePath}${icon}`
     })
     const { setDataSourceList } = workflowStore.getState()
     setDataSourceList!(dataSourceList)

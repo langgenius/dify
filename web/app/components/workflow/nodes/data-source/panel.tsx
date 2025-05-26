@@ -13,12 +13,12 @@ import { OUTPUT_VARIABLES_MAP } from './constants'
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()
   const {
-    provider_id,
     provider_type,
     fileExtensions = [],
+    datasource_name,
   } = data
   const { handleFileExtensionsChange } = useConfig(id)
-  const isLocalFile = provider_id === 'langgenius/file/file' && provider_type === CollectionType.datasource
+  const isLocalFile = datasource_name === 'local_file' && provider_type === CollectionType.datasource
 
   return (
     <div >
@@ -57,6 +57,11 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               name={OUTPUT_VARIABLES_MAP.file.name}
               type={OUTPUT_VARIABLES_MAP.file.type}
               description={OUTPUT_VARIABLES_MAP.file.description}
+              subItems={OUTPUT_VARIABLES_MAP.file.subItems.map(item => ({
+                name: item.name,
+                type: item.type,
+                description: item.description,
+              }))}
             />
           )
         }

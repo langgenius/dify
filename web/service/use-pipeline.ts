@@ -19,7 +19,7 @@ import type {
   UpdateTemplateInfoRequest,
   UpdateTemplateInfoResponse,
 } from '@/models/pipeline'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 
 const NAME_SPACE = 'pipeline'
 
@@ -161,12 +161,12 @@ export const usePublishedPipelineProcessingParams = (params: PipelineProcessingP
   })
 }
 
-export const useDataSourceList = (enabled: boolean, onSuccess: (v: ToolWithProvider[]) => void) => {
-  return useQuery<ToolWithProvider[]>({
+export const useDataSourceList = (enabled: boolean, onSuccess: (v: DataSourceItem[]) => void) => {
+  return useQuery<DataSourceItem[]>({
     enabled,
     queryKey: [NAME_SPACE, 'datasource'],
     queryFn: async () => {
-      const data = await get<ToolWithProvider[]>('/rag/pipelines/datasource-plugins')
+      const data = await get<DataSourceItem[]>('/rag/pipelines/datasource-plugins')
       onSuccess(data)
       return data
     },

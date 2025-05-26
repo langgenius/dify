@@ -12,16 +12,6 @@ export const OUTPUT_VARIABLES_MAP = {
     description: 'file',
     subItems: [
       {
-        name: 'type',
-        type: VarType.string,
-        description: '',
-      },
-      {
-        name: 'upload_file_id',
-        type: VarType.string,
-        description: '',
-      },
-      {
         name: 'name',
         type: VarType.string,
         description: '',
@@ -32,12 +22,32 @@ export const OUTPUT_VARIABLES_MAP = {
         description: '',
       },
       {
+        name: 'type',
+        type: VarType.string,
+        description: '',
+      },
+      {
         name: 'extension',
         type: VarType.string,
         description: '',
       },
       {
         name: 'mime_type',
+        type: VarType.string,
+        description: '',
+      },
+      {
+        name: 'transfer_method',
+        type: VarType.string,
+        description: '',
+      },
+      {
+        name: 'url',
+        type: VarType.string,
+        description: '',
+      },
+      {
+        name: 'related_id',
         type: VarType.string,
         description: '',
       },
