@@ -39,7 +39,7 @@ function MCPServiceCard({
 
   const { data: currentWorkflow } = useAppWorkflow(appInfo.id)
 
-  const toggleDisabled = !isCurrentWorkspaceEditor
+  const toggleDisabled = !isCurrentWorkspaceEditor || !currentWorkflow?.graph
   const runningStatus = appInfo.enable_site // TODO
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
@@ -59,8 +59,10 @@ function MCPServiceCard({
 
   const [showMCPServerModal, setShowMCPServerModal] = useState(false)
 
-  if (!currentWorkflow || !currentWorkflow.graph)
+  if (!currentWorkflow)
     return null
+
+  // TODO: show disabled state if workflow not published
 
   return (
     <>
@@ -133,7 +135,7 @@ function MCPServiceCard({
             </div>
           </div>
           <div className='flex items-center gap-1 self-stretch p-3'>
-            <Button size='small' variant='ghost'>{t('tools.mcp.server.addDescription')}</Button>
+            <Button disabled={toggleDisabled} size='small' variant='ghost'>{t('tools.mcp.server.addDescription')}</Button>
           </div>
         </div>
       </div>
