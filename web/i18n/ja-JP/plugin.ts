@@ -136,6 +136,7 @@ const translation = {
     installPlugin: 'プラグインをインストールする',
     back: '戻る',
     uploadingPackage: '{{packageName}}をアップロード中...',
+    installWarning: 'このプラグインはインストールを許可されていません。',
   },
   installFromGitHub: {
     installedSuccessfully: 'インストールに成功しました',
