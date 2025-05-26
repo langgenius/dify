@@ -30,7 +30,7 @@ const NotionPageSelector = ({
   const { t } = useTranslation()
   const pipeline_id = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const { mutateAsync: getNotionPages } = useDatasourceNodeRun()
-  const [notionData, setNotionData] = useState<DataSourceNotionWorkspace[]>()
+  const [notionData, setNotionData] = useState<DataSourceNotionWorkspace[]>([])
   const [searchValue, setSearchValue] = useState('')
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
 
@@ -50,17 +50,13 @@ const NotionPageSelector = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const notionWorkspaces = useMemo(() => {
-    return notionData || []
-  }, [notionData])
-
-  const firstWorkspaceId = notionWorkspaces[0]?.workspace_id
-  const currentWorkspace = notionWorkspaces.find(workspace => workspace.workspace_id === currentWorkspaceId)
+  const firstWorkspaceId = notionData[0]?.workspace_id
+  const currentWorkspace = notionData.find(workspace => workspace.workspace_id === currentWorkspaceId)
 
   const PagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
     const selectedPagesId = new Set<string>()
     const boundPagesId = new Set<string>()
-    const pagesMap = notionWorkspaces.reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
+    const pagesMap = notionData.reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
       next.pages.forEach((page) => {
         if (page.is_bound) {
           selectedPagesId.add(page.page_id)
@@ -75,7 +71,7 @@ const NotionPageSelector = ({
       return prev
     }, {})
     return [pagesMap, selectedPagesId, boundPagesId]
-  }, [notionWorkspaces])
+  }, [notionData])
   const defaultSelectedPagesId = [...Array.from(PagesMapAndSelectedPagesId[1]), ...(value || [])]
   const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
 
@@ -116,7 +112,7 @@ const NotionPageSelector = ({
           <div className='flex grow items-center gap-x-1'>
             <WorkspaceSelector
               value={currentWorkspaceId || firstWorkspaceId}
-              items={notionWorkspaces}
+              items={notionData}
               onSelect={handleSelectWorkspace}
             />
           </div>

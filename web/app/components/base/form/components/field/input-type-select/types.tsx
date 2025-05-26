@@ -1,7 +1,7 @@
 import type { RemixiconComponentType } from '@remixicon/react'
 import { z } from 'zod'
 
-export const InputType = z.enum([
+export const InputTypeEnum = z.enum([
   'text-input',
   'paragraph',
   'number-input',
@@ -11,8 +11,10 @@ export const InputType = z.enum([
   'file-list',
 ])
 
+export type InputType = z.infer<typeof InputTypeEnum>
+
 export type FileTypeSelectOption = {
-  value: string
+  value: InputType
   label: string
   Icon: RemixiconComponentType
   type: string

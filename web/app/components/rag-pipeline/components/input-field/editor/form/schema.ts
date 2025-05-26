@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next'
 import { z } from 'zod'
 import type { SchemaOptions } from './types'
 import { PipelineInputVarType } from '@/models/pipeline'
-import { InputType } from '@/app/components/base/form/components/field/input-type-select/types'
+import { InputTypeEnum } from '@/app/components/base/form/components/field/input-type-select/types'
 
 export const TEXT_MAX_LENGTH = 256
 
@@ -24,7 +24,7 @@ export const SupportedFileTypes = z.enum([
 export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction, options: SchemaOptions) => {
   const { maxFileUploadLimit } = options
   const commonSchema = z.object({
-    type: InputType,
+    type: InputTypeEnum,
     variable: z.string({
       invalid_type_error: t('appDebug.varKeyError.notValid', { key: t('appDebug.variableConfig.varName') }),
     }).nonempty({

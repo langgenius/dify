@@ -1,4 +1,4 @@
-import { InputType } from './types'
+import { InputTypeEnum } from './types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useTranslation } from 'react-i18next'
 import {
@@ -39,7 +39,7 @@ const DATA_TYPE = {
 
 export const useInputTypeOptions = (supportFile: boolean) => {
   const { t } = useTranslation()
-  const options = supportFile ? InputType.options : InputType.exclude(['file', 'file-list']).options
+  const options = supportFile ? InputTypeEnum.options : InputTypeEnum.exclude(['file', 'file-list']).options
 
   return options.map((value) => {
     return {

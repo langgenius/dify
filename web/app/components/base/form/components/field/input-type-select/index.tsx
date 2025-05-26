@@ -6,7 +6,7 @@ import type { LabelProps } from '../../label'
 import Label from '../../label'
 import { useCallback } from 'react'
 import Trigger from './trigger'
-import type { FileTypeSelectOption } from './types'
+import type { FileTypeSelectOption, InputType } from './types'
 import { useInputTypeOptions } from './hooks'
 import Option from './option'
 
@@ -24,7 +24,7 @@ const InputTypeSelectField = ({
   className,
   ...customSelectProps
 }: InputTypeSelectFieldProps) => {
-  const field = useFieldContext<string>()
+  const field = useFieldContext<InputType>()
   const inputTypeOptions = useInputTypeOptions(supportFile)
 
   const renderTrigger = useCallback((option: FileTypeSelectOption | undefined, open: boolean) => {
@@ -44,7 +44,7 @@ const InputTypeSelectField = ({
       <CustomSelect<FileTypeSelectOption>
         value={field.state.value}
         options={inputTypeOptions}
-        onChange={value => field.handleChange(value)}
+        onChange={value => field.handleChange(value as InputType)}
         triggerProps={{
           className: 'gap-x-0.5',
         }}
