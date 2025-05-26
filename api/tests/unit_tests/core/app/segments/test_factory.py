@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from uuid import uuid4
 
@@ -232,7 +233,11 @@ def _scalar_value() -> st.SearchStrategy[int | float | str | File]:
 @given(_scalar_value())
 def test_build_segment_and_extract_values_for_scalar_types(value):
     seg = variable_factory.build_segment(value)
-    assert seg.value == value
+    # nan == nan yields false, so we need to use `math.isnan` to check `seg.value` here.
+    if isinstance(value, float) and math.isnan(value):
+        assert math.isnan(seg.value)
+    else:
+        assert seg.value == value
 
 
 @given(st.lists(_scalar_value()))

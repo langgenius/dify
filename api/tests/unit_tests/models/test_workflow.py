@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from constants import HIDDEN_VALUE
 from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from models.workflow import Workflow, WorkflowNodeExecution
+from models.workflow import Workflow, WorkflowNodeExecution, is_system_variable_editable
 
 
 def test_environment_variables():
@@ -163,3 +163,21 @@ class TestWorkflowNodeExecution:
         original = {"a": 1, "b": ["2"]}
         node_exec.execution_metadata = json.dumps(original)
         assert node_exec.execution_metadata_dict == original
+
+
+class TestIsSystemVariableEditable:
+    def test_is_system_variable(self):
+        cases = [
+            ("query", True),
+            ("files", True),
+            ("dialogue_count", False),
+            ("conversation_id", False),
+            ("user_id", False),
+            ("app_id", False),
+            ("workflow_id", False),
+            ("workflow_run_id", False),
+        ]
+        for name, editable in cases:
+            assert editable == is_system_variable_editable(name)
+
+        assert is_system_variable_editable("invalid_or_new_system_variable") == False
