@@ -199,6 +199,7 @@ const translation = {
       modal: {
         addTitle: 'Add description to enable MCP server',
         editTitle: 'Edit description',
+        description: 'Description',
         descriptionPlaceholder: 'Explain what this tool does and how it should be used by the LLM',
         parameters: 'Parameters',
         parametersTip: 'Add descriptions for each parameter to help the LLM understand their purpose and constraints.',

@@ -199,6 +199,7 @@ const translation = {
       modal: {
         addTitle: '添加描述以启用 MCP 服务',
         editTitle: '编辑 MCP 服务描述',
+        description: '描述',
         descriptionPlaceholder: '解释此工具的功能以及 LLM 应如何使用它',
         parameters: '参数',
         parametersTip: '为每个参数添加描述，以帮助 LLM 理解其目的和约束条件。',
