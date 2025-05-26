@@ -172,3 +172,11 @@ export type WorkflowToolProviderResponse = {
   }
   privacy_policy: string
 }
+
+export type MCPServerDetail = {
+  id: string
+  server_code: string
+  description: string
+  status: string
+  parameters?: Record<string, string>
+}

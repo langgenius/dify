@@ -1,6 +1,7 @@
 import { del, get, post, put } from './base'
 import type {
   Collection,
+  MCPServerDetail,
   Tool,
 } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
@@ -172,6 +173,60 @@ export const useInvalidateMCPTools = () => {
 export const useUpdateMCPTools = (providerID: string) => {
   return useMutation({
     mutationFn: () => get<Tool[]>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
+  })
+}
+
+export const useMCPServerDetail = (appID: string) => {
+  return useQuery<MCPServerDetail>({
+    queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
+    queryFn: () => get<MCPServerDetail>(`/apps/${appID}/server`),
+  })
+}
+
+export const useCreateMCPServer = ({
+  onSuccess,
+}: {
+  onSuccess?: () => void
+}) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'create-mcp-server'],
+    mutationFn: (payload: {
+      appID: string
+      description: string
+      parameters?: Record<string, string>
+    }) => {
+      const { appID, ...rest } = payload
+      return post(`apps/${appID}/server`, {
+        body: {
+          ...rest,
+        },
+      })
+    },
+    onSuccess,
+  })
+}
+
+export const useUpdateMCPServer = ({
+  onSuccess,
+}: {
+  onSuccess?: () => void
+}) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-mcp-server'],
+    mutationFn: (payload: {
+      appID: string
+      description?: string
+      status?: string
+      parameters?: Record<string, string>
+    }) => {
+      const { appID, ...rest } = payload
+      return put(`apps/${appID}/server`, {
+        body: {
+          ...rest,
+        },
+      })
+    },
+    onSuccess,
   })
 }
 
