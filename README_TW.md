@@ -233,7 +233,7 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 ## 社群與聯絡方式
 
-- [Github Discussion](https://github.com/langgenius/dify/discussions)：最適合分享反饋和提問。
+- [GitHub Discussion](https://github.com/langgenius/dify/discussions)：最適合分享反饋和提問。
 - [GitHub Issues](https://github.com/langgenius/dify/issues)：最適合報告使用 Dify.AI 時遇到的問題和提出功能建議。請參閱我們的[貢獻指南](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)。
 - [Discord](https://discord.gg/FngNHpbcY7)：最適合分享您的應用程式並與社群互動。
 - [X(Twitter)](https://twitter.com/dify_ai)：最適合分享您的應用程式並與社群互動。

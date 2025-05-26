@@ -236,7 +236,7 @@ docker compose up -d
 
 ## コミュニティ & お問い合わせ
 
-* [Github Discussion](https://github.com/langgenius/dify/discussions). 主に: フィードバックの共有や質問。
+* [GitHub Discussion](https://github.com/langgenius/dify/discussions). 主に: フィードバックの共有や質問。
 * [GitHub Issues](https://github.com/langgenius/dify/issues). 主に: Dify.AIを使用する際に発生するエラーや問題については、[貢献ガイド](CONTRIBUTING_JA.md)を参照してください
 * [Discord](https://discord.gg/FngNHpbcY7). 主に: アプリケーションの共有やコミュニティとの交流。
 * [X(Twitter)](https://twitter.com/dify_ai). 主に: アプリケーションの共有やコミュニティとの交流。
