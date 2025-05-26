@@ -1,10 +1,11 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Any, Optional, cast
+from typing import Any, Optional, Union, cast
 
 from flask_login import current_user
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -89,7 +90,7 @@ class WorkflowTool(Tool):
         result = generator.generate(
             app_model=app,
             workflow=workflow,
-            user=cast("Account | EndUser", current_user),
+            user=self._get_user(user_id, self.runtime.invoke_from),
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
             streaming=False,
@@ -112,6 +113,19 @@ class WorkflowTool(Tool):
 
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
         yield self.create_json_message(outputs)
+
+    def _get_user(self, user_id: str, invoke_from: InvokeFrom) -> Union[EndUser, Account]:
+        """
+        get the user by user id
+        """
+        if invoke_from in {InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP}:
+            user = db.session.query(EndUser).filter(EndUser.id == user_id).first()
+        else:
+            user = cast(Account, current_user)
+        if not user:
+            raise ValueError("user not found")
+
+        return user
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
         """
