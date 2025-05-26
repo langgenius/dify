@@ -1,12 +1,11 @@
 import json
-import sys
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+import sys
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from core.file import File
-
 from .types import SegmentType
 
 
@@ -75,6 +74,20 @@ class StringSegment(Segment):
 class FloatSegment(Segment):
     value_type: SegmentType = SegmentType.NUMBER
     value: float
+    # NOTE(QuantumGhost): seems that the equality for FloatSegment with `NaN` value has some problems.
+    # The following tests cannot pass.
+    #
+    #     def test_float_segment_and_nan():
+    #         nan = float("nan")
+    #         assert nan != nan
+    #
+    #         f1 = FloatSegment(value=float("nan"))
+    #         f2 = FloatSegment(value=float("nan"))
+    #         assert f1 != f2
+    #
+    #         f3 = FloatSegment(value=nan)
+    #         f4 = FloatSegment(value=nan)
+    #         assert f3 != f4
 
 
 class IntegerSegment(Segment):
