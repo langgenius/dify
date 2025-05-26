@@ -135,7 +135,7 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[], isCollectVar?: b
             varMap[newPath] = item
             getParentOutputVarMap(item, newPath, varMap)
           })
-          outgoer._parentOutputVarMap = { ...(root._parentOutputVarMap ?? {}), ...varMap }
+          outgoer._parentOutputVarMap = { ...(root._parentOutputVarMap ?? {}), ...(outgoer._parentOutputVarMap ?? {}), ...varMap }
         }
 
         if (outgoer.data.type === BlockEnum.Iteration)
@@ -388,7 +388,7 @@ export const getNotExistVariablesByArray = (array: string[][], varMap: Record<st
     return []
   const var_warnings: string[] = []
   array.forEach((item) => {
-    if (!item.length)
+    if (!item.length || !Array.isArray(item))
       return
     if (['sys'].includes(item[0]))
       return

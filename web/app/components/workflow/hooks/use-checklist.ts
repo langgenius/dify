@@ -120,7 +120,6 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             varErrorMessage: [],
           })
         }
-        errMessageMap.set(node.id, list[list.length - 1])
         if (nodesExtraData[node.data.type as BlockEnum].checkVarValid) {
           const { errorMessage: varErrorMessages } = nodesExtraData[node.data.type as BlockEnum].checkVarValid(node.data, { ...allVariablesMap, ...node._parentOutputVarMap }, t)
 
