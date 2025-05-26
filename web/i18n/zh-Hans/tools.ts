@@ -190,6 +190,21 @@ const translation = {
     getTools: '获取工具',
     toolsNum: '包含 {{count}} 个工具',
     onlyTool: '包含 1 个工具',
+    server: {
+      title: 'MCP 服务',
+      url: '服务端点 URL',
+      addDescription: '添加描述',
+      edit: '编辑描述',
+      modal: {
+        addTitle: '添加描述以启用 MCP 服务',
+        editTitle: '编辑 MCP 服务描述',
+        descriptionPlaceholder: '解释此工具的功能以及 LLM 应如何使用它',
+        parameters: '参数',
+        parametersTip: '为每个参数添加描述，以帮助 LLM 理解其目的和约束条件。',
+        parametersPlaceholder: '参数的用途和约束条件',
+        confirm: '启用 MCP 服务',
+      },
+    },
   },
 }
 

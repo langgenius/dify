@@ -12,7 +12,6 @@ import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Confirm from '@/app/components/base/confirm'
-import ShareQRCode from '@/app/components/base/qrcode'
 import type { AppDetailResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
 import type { AppSSO } from '@/types/app'
@@ -88,7 +87,6 @@ function MCPServiceCard({
                 content={appUrl}
                 className={'!size-6'}
               />
-              <ShareQRCode content={appUrl} />
               <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />
               {/* button copy link/ button regenerate */}
               {showConfirmDelete && (

@@ -190,6 +190,21 @@ const translation = {
     getTools: 'Get tools',
     toolsNum: '{{count}} tools included',
     onlyTool: '1 tool included',
+    server: {
+      title: 'MCP Server',
+      url: 'Server URL',
+      addDescription: 'Add description',
+      edit: 'Edit description',
+      modal: {
+        addTitle: 'Add description to enable MCP server',
+        editTitle: 'Edit description',
+        descriptionPlaceholder: 'Explain what this tool does and how it should be used by the LLM',
+        parameters: 'Parameters',
+        parametersTip: 'Add descriptions for each parameter to help the LLM understand their purpose and constraints.',
+        parametersPlaceholder: 'Parameter purpose and constraints',
+        confirm: 'Enable MCP Server',
+      },
+    },
   },
 }
 
