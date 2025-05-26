@@ -122,8 +122,6 @@ class WorkflowTool(Tool):
             user = db.session.query(EndUser).filter(EndUser.id == user_id).first()
         else:
             user = cast(Account, current_user)
-        if not user:
-            raise ValueError("user not found")
 
         return user
 
