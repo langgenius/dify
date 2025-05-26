@@ -54,6 +54,8 @@ import BeforeRunForm from '../before-run-form'
 import { debounce } from 'lodash-es'
 import { NODES_EXTRA_DATA } from '@/app/components/workflow/constants'
 import { useLogs } from '@/app/components/workflow/run/hooks'
+import PanelWrap from '../before-run-form/panel-wrap'
+import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 
 type BasePanelProps = {
   children: ReactNode
@@ -173,7 +175,32 @@ const BasePanel: FC<BasePanelProps> = ({
     return {}
   })()
 
-  if (isShowSingleRun || logParams.showSpecialResultPanel) {
+  if(logParams.showSpecialResultPanel) {
+    return (
+    <div className={cn(
+        'relative mr-1  h-full',
+      )}>
+        <div
+          ref={containerRef}
+          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+          style={{
+            width: `${nodePanelWidth}px`,
+          }}
+        >
+          <PanelWrap
+            nodeName={data.title}
+            onHide={hideSingleRun}
+          >
+            <div className='h-0 grow overflow-y-auto pb-4'>
+              <SpecialResultPanel {...passedLogParams} />
+            </div>
+          </PanelWrap>
+        </div>
+      </div>
+    )
+  }
+
+  if (isShowSingleRun) {
     return (
       <div className={cn(
         'relative mr-1  h-full',

@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiCloseLine,
   RiLoader2Line,
 } from '@remixicon/react'
 import type { Props as FormProps } from './form'
@@ -20,8 +19,7 @@ import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
-// import { useWhyDidYouUpdate } from 'ahooks'
+import PanelWrap from './panel-wrap'
 const i18nPrefix = 'workflow.singleRun'
 
 export type BeforeRunFormProps = {
@@ -66,18 +64,14 @@ function formatValue(value: string | any, type: InputVarType) {
 }
 const BeforeRunForm: FC<BeforeRunFormProps> = ({
   nodeName,
-  nodeType,
-  toolIcon,
   onHide,
   onRun,
   onStop,
   runningStatus,
   result,
   forms,
-  showSpecialResultPanel,
   filteredExistVarForms,
   existVarValuesInForms,
-  ...restResultPanelParams
 }) => {
   const { t } = useTranslation()
 
@@ -160,67 +154,47 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     return null
 
   return (
-    <div className='absolute inset-0 z-10 rounded-2xl bg-background-overlay-alt'>
-      <div className='flex h-full flex-col rounded-2xl bg-components-panel-bg'>
-        <div className='flex h-8 shrink-0 items-center justify-between pl-4 pr-3 pt-3'>
-          <div className='truncate text-base font-semibold text-text-primary'>
-            {t(`${i18nPrefix}.testRun`)} {nodeName}
-          </div>
-          <div className='ml-2 shrink-0 cursor-pointer p-1' onClick={() => {
-            onHide()
-          }}>
-            <RiCloseLine className='h-4 w-4 text-text-tertiary ' />
-          </div>
+    <PanelWrap
+      nodeName={nodeName}
+      onHide={onHide}
+    >
+      <div className='h-0 grow overflow-y-auto pb-4'>
+        <div className='mt-3 space-y-4 px-4'>
+          {filteredExistVarForms.map((form, index) => (
+            <div key={index}>
+              <Form
+                key={index}
+                className={cn(index < forms.length - 1 && 'mb-4')}
+                {...form}
+              />
+              {index < forms.length - 1 && <Split />}
+            </div>
+          ))}
         </div>
-        {
-          showSpecialResultPanel && (
-            <div className='h-0 grow overflow-y-auto pb-4'>
-              <SpecialResultPanel {...restResultPanelParams} />
+        <div className='mt-4 flex justify-between space-x-2 px-4' >
+          {isRunning && (
+            <div
+              className='cursor-pointer rounded-lg border border-divider-regular bg-components-button-secondary-bg p-2 shadow-xs'
+              onClick={onStop}
+            >
+              <StopCircle className='h-4 w-4 text-text-tertiary' />
             </div>
-          )
-        }
-        {
-          !showSpecialResultPanel && (
-            <div className='h-0 grow overflow-y-auto pb-4'>
-              <div className='mt-3 space-y-4 px-4'>
-                {filteredExistVarForms.map((form, index) => (
-                  <div key={index}>
-                    <Form
-                      key={index}
-                      className={cn(index < forms.length - 1 && 'mb-4')}
-                      {...form}
-                    />
-                    {index < forms.length - 1 && <Split />}
-                  </div>
-                ))}
-              </div>
-              <div className='mt-4 flex justify-between space-x-2 px-4' >
-                {isRunning && (
-                  <div
-                    className='cursor-pointer rounded-lg border border-divider-regular bg-components-button-secondary-bg p-2 shadow-xs'
-                    onClick={onStop}
-                  >
-                    <StopCircle className='h-4 w-4 text-text-tertiary' />
-                  </div>
-                )}
-                <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
-                  {isRunning && <RiLoader2Line className='h-4 w-4 animate-spin' />}
-                  <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
-                </Button>
-              </div>
-              {isRunning && (
-                <ResultPanel status='running' showSteps={false} />
-              )}
-              {isFinished && (
-                <>
-                  {result}
-                </>
-              )}
-            </div>
-          )
-        }
+          )}
+          <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
+            {isRunning && <RiLoader2Line className='h-4 w-4 animate-spin' />}
+            <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
+          </Button>
+        </div>
+        {isRunning && (
+          <ResultPanel status='running' showSteps={false} />
+        )}
+        {isFinished && (
+          <>
+            {result}
+          </>
+        )}
       </div>
-    </div>
+    </PanelWrap>
   )
 }
 export default React.memo(BeforeRunForm)

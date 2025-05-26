@@ -7,6 +7,7 @@ import type { CaseItem, Condition, LoopNodeType } from './types'
 import { ValueType } from '@/app/components/workflow/types'
 
 type Params = {
+  id: string
   payload: LoopNodeType
   runInputData: Record<string, any>
   runResult: NodeTracing
@@ -16,6 +17,7 @@ type Params = {
 }
 
 const useSingleRunFormParams = ({
+  id,
   payload,
   runInputData,
   runResult,
@@ -138,7 +140,8 @@ const useSingleRunFormParams = ({
       if(loopVariable.value_type === ValueType.variable)
         vars.push(loopVariable.value)
     })
-    return vars
+    const hasFilterLoopVars = vars.filter(item => item[0] !== id)
+    return hasFilterLoopVars
   }
 
   return {

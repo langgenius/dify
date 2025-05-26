@@ -200,7 +200,7 @@ export type InputVar = {
   options?: string[]
   value_selector?: ValueSelector
   getVarValueFromDependent?: boolean
-  hide: boolean
+  hide?: boolean
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {

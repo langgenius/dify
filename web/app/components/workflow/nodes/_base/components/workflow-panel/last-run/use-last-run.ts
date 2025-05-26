@@ -182,6 +182,10 @@ const useLastRun = <T>({
         if(!selector || selector.length === 0)
           return
         const [nodeId, varName] = selector.slice(0, 2)
+        if(nodeId === id) { // inner vars like loop vars
+          values[variable] = true
+          return
+        }
         const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
         if (inspectVarValue)
           values[variable] = true
@@ -204,6 +208,7 @@ const useLastRun = <T>({
   const getFilteredExistVarForms = (forms: FormProps[]) => {
     if (!forms || forms.length === 0)
       return []
+
     const existVarValuesInForms = getExistVarValuesInForms(forms)
 
     const res = forms.map((form, i) => {
