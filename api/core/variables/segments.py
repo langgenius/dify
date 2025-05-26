@@ -1,11 +1,12 @@
 import json
+import sys
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-import sys
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from core.file import File
+
 from .types import SegmentType
 
 
