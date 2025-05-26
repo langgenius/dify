@@ -30,7 +30,6 @@ const DataSources = ({
 }: AllToolsProps) => {
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
-  const formatedDataSources = dataSources.map(item => ({ ...item, tools: item.datasources || [] }))
   const handleSelect = useCallback((_: any, toolDefaultValue: ToolDefaultValue) => {
     onSelect(BlockEnum.DataSource, toolDefaultValue && {
       provider_id: toolDefaultValue?.provider_id,
@@ -52,7 +51,7 @@ const DataSources = ({
         <Tools
           className={toolContentClassName}
           showWorkflowEmpty={false}
-          tools={formatedDataSources}
+          tools={dataSources}
           onSelect={handleSelect as OnSelectBlock}
           viewType={ViewType.flat}
           hasSearchText={!!searchText}

@@ -57,7 +57,6 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               name={OUTPUT_VARIABLES_MAP.file.name}
               type={OUTPUT_VARIABLES_MAP.file.type}
               description={OUTPUT_VARIABLES_MAP.file.description}
-              subItems={OUTPUT_VARIABLES_MAP.file.subItems}
             />
           )
         }

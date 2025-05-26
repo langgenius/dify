@@ -417,7 +417,6 @@ export type MoreInfo = {
 
 export type ToolWithProvider = Collection & {
   tools: Tool[]
-  datasources?: Tool[]
 }
 
 export enum SupportUploadFileTypes {

@@ -3,6 +3,8 @@ import type { StateCreator } from 'zustand'
 import type {
   ToolWithProvider,
 } from '@/app/components/workflow/types'
+import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 
 export type RagPipelineSliceShape = {
   pipelineId: string
@@ -13,7 +15,7 @@ export type RagPipelineSliceShape = {
   ragPipelineVariables: RAGPipelineVariables
   setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) => void
   dataSourceList: ToolWithProvider[]
-  setDataSourceList: (dataSourceList: ToolWithProvider[]) => void
+  setDataSourceList: (dataSourceList: DataSourceItem[]) => void
 }
 
 export type CreateRagPipelineSliceSlice = StateCreator<RagPipelineSliceShape>
@@ -26,5 +28,8 @@ export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = 
   ragPipelineVariables: [],
   setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) => set(() => ({ ragPipelineVariables })),
   dataSourceList: [],
-  setDataSourceList: (dataSourceList: ToolWithProvider[]) => set(() => ({ dataSourceList })),
+  setDataSourceList: (dataSourceList: DataSourceItem[]) => {
+    const formatedDataSourceList = dataSourceList.map(item => transformDataSourceToTool(item))
+    set(() => ({ dataSourceList: formatedDataSourceList }))
+  },
 })

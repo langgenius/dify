@@ -519,8 +519,6 @@ const formatItem = (
     const isFile = v.type === VarType.file
     const children = (() => {
       if (isFile) {
-        if (v.children)
-          return v.children
         return OUTPUT_FILE_SUB_VARIABLES.map((key) => {
           return {
             variable: key,
@@ -539,8 +537,6 @@ const formatItem = (
     const isFile = v.type === VarType.file
     const { children } = (() => {
       if (isFile) {
-        if (v.children)
-          return { children: v.children }
         return {
           children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
             return {
