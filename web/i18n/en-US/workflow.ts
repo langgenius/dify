@@ -256,7 +256,7 @@ const translation = {
     'loop': 'Loop',
     'loop-end': 'Exit Loop',
     'knowledge-index': 'Knowledge Base',
-    'data-source': 'Data Source',
+    'datasource': 'Data Source',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -280,7 +280,7 @@ const translation = {
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
     'knowledge-index': 'Knowledge Base About',
-    'data-source': 'Data Source About',
+    'datasource': 'Data Source About',
   },
   operator: {
     zoomIn: 'Zoom In',

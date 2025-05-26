@@ -45,7 +45,7 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
-  DataSource = 'data-source',
+  DataSource = 'datasource',
   KnowledgeBase = 'knowledge-index',
 }
 
@@ -99,7 +99,7 @@ export type CommonNodeType<T = {}> = {
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
-& Partial<Pick<DataSourceDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'datasource_name'>>
+  & Partial<Pick<DataSourceDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'datasource_name'>>
 
 export type CommonEdgeType = {
   _hovering?: boolean

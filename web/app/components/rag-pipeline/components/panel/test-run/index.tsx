@@ -96,32 +96,44 @@ const TestRunPanel = () => {
   const handleProcess = useCallback((data: Record<string, any>) => {
     if (!datasource)
       return
-    const datasourceInfo: Record<string, any> = {}
+    const datasourceInfoList: Record<string, any>[] = []
     let datasource_type = ''
     if (datasource.type === DataSourceType.FILE) {
       datasource_type = 'local_file'
-      datasourceInfo.fileId = fileList.map(file => file.fileID)
+      const documentInfo = {
+        upload_file_id: fileList[0].file.id,
+        name: fileList[0].file.name,
+        type: fileList[0].file.type,
+        size: fileList[0].file.size,
+        extension: fileList[0].file.extension,
+        mime_type: fileList[0].file.mime_type,
+      }
+      datasourceInfoList.push(documentInfo)
     }
     if (datasource.type === DataSourceType.NOTION) {
       datasource_type = 'online_document'
-      datasourceInfo.workspaceId = notionPages[0].workspace_id
-      datasourceInfo.page = notionPages.map((page) => {
-        const { workspace_id, ...rest } = page
-        return rest
-      })
+      const { workspace_id, ...rest } = notionPages[0]
+      const documentInfo = {
+        workspace_id,
+        page: rest,
+      }
+      datasourceInfoList.push(documentInfo)
     }
     if (datasource.type === DataSourceProvider.fireCrawl
       || datasource.type === DataSourceProvider.jinaReader
       || datasource.type === DataSourceProvider.waterCrawl) {
       datasource_type = 'website_crawl'
-      datasourceInfo.jobId = websiteCrawlJobId
-      datasourceInfo.result = websitePages
+      const documentInfo = {
+        job_id: websiteCrawlJobId,
+        result: websitePages[0],
+      }
+      datasourceInfoList.push(documentInfo)
     }
     handleRun({
       inputs: data,
       start_node_id: datasource.nodeId,
       datasource_type,
-      datasource_info: datasourceInfo,
+      datasource_info_list: datasourceInfoList,
     })
   }, [datasource, fileList, handleRun, notionPages, websiteCrawlJobId, websitePages])
 
