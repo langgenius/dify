@@ -3,17 +3,19 @@ import logging
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from sqlalchemy import orm
+from sqlalchemy import Engine, orm
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import and_, or_
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.constants import is_dummy_output_variable
-from core.variables import Segment
+from core.variables import Segment, Variable
 from core.variables.consts import MIN_SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes import NodeType
+from core.workflow.variable_loader import VariableLoader
 from factories import variable_factory
+from factories.variable_factory import build_segment, segment_to_variable
 from models.workflow import WorkflowDraftVariable, is_system_variable_editable
 
 _logger = logging.getLogger(__name__)
@@ -25,6 +27,36 @@ class WorkflowDraftVariableList:
     total: int | None = None
 
 
+class DraftVarLoader(VariableLoader):
+    # This implements the VariableLoader interface for loading draft variables.
+    #
+    # ref: core.workflow.variable_loader.VariableLoader
+    def __init__(self, engine: Engine, app_id: str) -> None:
+        self._engine = engine
+        self._app_id = app_id
+
+    def load_variables(self, selectors: list[list[str]]) -> list[Variable]:
+        if not selectors:
+            return []
+        with Session(bind=self._engine, expire_on_commit=False) as session:
+            srv = WorkflowDraftVariableService(session)
+            draft_vars = srv.get_draft_variables_by_selectors(self._app_id, selectors)
+        variables = []
+        for draft_var in draft_vars:
+            segment = build_segment(
+                draft_var.value,
+            )
+            variable = segment_to_variable(
+                segment=segment,
+                selector=draft_var.get_selector(),
+                id=draft_var.id,
+                name=draft_var.name,
+                description=draft_var.description,
+            )
+            variables.append(variable)
+        return variables
+
+
 class WorkflowDraftVariableService:
     _session: Session
 
@@ -33,6 +65,28 @@ class WorkflowDraftVariableService:
 
     def get_variable(self, variable_id: str) -> WorkflowDraftVariable | None:
         return self._session.query(WorkflowDraftVariable).filter(WorkflowDraftVariable.id == variable_id).first()
+
+    def get_draft_variables_by_selectors(
+        self,
+        app_id: str,
+        selectors: Sequence[list[str]],
+    ) -> list[WorkflowDraftVariable]:
+        ors = []
+        for selector in selectors:
+            node_id, name = selector
+            ors.append(and_(WorkflowDraftVariable.node_id == node_id, WorkflowDraftVariable.name == name))
+
+        # NOTE(QuantumGhost): Although the number of `or` expressions may be large, as long as
+        # each expression includes conditions on both `node_id` and `name` (which are covered by the unique index),
+        # PostgreSQL can efficiently retrieve the results using a bitmap index scan.
+        #
+        # Alternatively, a `SELECT` statement could be constructed for each selector and
+        # combined using `UNION` to fetch all rows.
+        # Benchmarking indicates that both approaches yield comparable performance.
+        variables = (
+            self._session.query(WorkflowDraftVariable).where(WorkflowDraftVariable.app_id == app_id, or_(*ors)).all()
+        )
+        return variables
 
     def save_output_variables(self, app_id: str, node_id: str, node_type: NodeType, output: Mapping[str, Any]):
         variable_builder = _DraftVariableBuilder(app_id=app_id)

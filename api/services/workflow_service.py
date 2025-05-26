@@ -3,7 +3,6 @@ import logging
 import time
 from collections.abc import Callable, Generator, Sequence
 from datetime import UTC, datetime
-from inspect import isgenerator
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -28,6 +27,7 @@ from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_M
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
+from libs import gen_utils
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
@@ -42,7 +42,11 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
-from .workflow_draft_variable_service import WorkflowDraftVariableService, should_save_output_variables_for_draft
+from .workflow_draft_variable_service import (
+    DraftVarLoader,
+    WorkflowDraftVariableService,
+    should_save_output_variables_for_draft,
+)
 
 
 class WorkflowService:
@@ -310,26 +314,28 @@ class WorkflowService:
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
 
-        # conv_vars = common_helpers.get_conversation_variables()
-
-        # run draft workflow node
-        start_at = time.perf_counter()
+        # TODO(QuantumGhost): We may get rid of the `list_conversation_variables`
+        # here, and rely on `DraftVarLoader` to load conversation variables.
         with Session(bind=db.engine) as session:
-            # TODO(QunatumGhost): inject conversation variables
-            # to variable pool.
             draft_var_srv = WorkflowDraftVariableService(session)
 
             conv_vars_list = draft_var_srv.list_conversation_variables(app_id=app_model.id)
             conv_var_mapping = {v.name: v.get_value().value for v in conv_vars_list.variables}
 
+        variable_loader = DraftVarLoader(engine=db.engine, app_id=app_model.id)
+        run = WorkflowEntry.single_step_run(
+            workflow=draft_workflow,
+            node_id=node_id,
+            user_inputs=user_inputs,
+            user_id=account.id,
+            conversation_variables=conv_var_mapping,
+            variable_loader=variable_loader,
+        )
+
+        # run draft workflow node
+        start_at = time.perf_counter()
         node_execution = self._handle_node_run_result(
-            invoke_node_fn=lambda: WorkflowEntry.single_step_run(
-                workflow=draft_workflow,
-                node_id=node_id,
-                user_inputs=user_inputs,
-                user_id=account.id,
-                conversation_variables=conv_var_mapping,
-            ),
+            invoke_node_fn=lambda: run,
             start_at=start_at,
             node_id=node_id,
         )
@@ -403,7 +409,7 @@ class WorkflowService:
     ) -> NodeExecution:
         try:
             node_instance, generator = invoke_node_fn()
-            generator = _inspect_generator(generator)
+            generator = gen_utils.inspect(generator, logging.getLogger(__name__))
 
             node_run_result: NodeRunResult | None = None
             for event in generator:
@@ -610,19 +616,3 @@ class WorkflowService:
 
         session.delete(workflow)
         return True
-
-
-def _inspect_generator(gen: Generator[Any] | Any) -> Any:
-    if not isgenerator(gen):
-        return gen
-
-    def wrapper():
-        for item in gen:
-            logging.getLogger(__name__).info(
-                "received generator item, type=%s, value=%s",
-                type(item),
-                item,
-            )
-            yield item
-
-    return wrapper()

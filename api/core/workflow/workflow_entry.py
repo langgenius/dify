@@ -2,12 +2,13 @@ import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, Optional, TypeAlias, TypeVar, cast
+from typing import Any, Optional, TypeAlias, cast
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
+from core.variables import Variable
 from core.workflow.callbacks import WorkflowCallback
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunMetadataKey
@@ -22,12 +23,26 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.variable_loader import VariableLoader
 from factories import file_factory
+from libs import gen_utils
 from models.enums import UserFrom
 from models.workflow import (
     Workflow,
     WorkflowType,
 )
+
+
+class _DummyVariableLoader(VariableLoader):
+    """A dummy implementation of VariableLoader that does not load any variables.
+    Serves as a placeholder when no variable loading is needed.
+    """
+
+    def load_variables(self, selectors: list[list[str]]) -> list[Variable]:
+        return []
+
+
+_DUMMY_VARIABLE_LOADER = _DummyVariableLoader()
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +137,7 @@ class WorkflowEntry:
         user_id: str,
         user_inputs: dict,
         conversation_variables: dict | None = None,
+        variable_loader: VariableLoader = _DUMMY_VARIABLE_LOADER,
     ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
         """
         Single step run workflow node
@@ -190,6 +206,19 @@ class WorkflowEntry:
         except NotImplementedError:
             variable_mapping = {}
 
+        # Loading missing variable from draft var here, and set it into
+        # variable_pool.
+        variables_to_load: list[list[str]] = []
+        for key, selector in variable_mapping.items():
+            trimmed_key = key.removeprefix(f"{node_id}.")
+            if trimmed_key in user_inputs:
+                continue
+            if variable_pool.get(selector) is None:
+                variables_to_load.append(list(selector))
+        loaded = variable_loader.load_variables(variables_to_load)
+        for var in loaded:
+            variable_pool.add(var.selector, var.value)
+
         cls.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
@@ -204,7 +233,7 @@ class WorkflowEntry:
         except Exception as e:
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
         if metadata_attacher:
-            generator = _wrap_generator(generator, metadata_attacher)
+            generator = gen_utils.map_(generator, metadata_attacher)
         return node_instance, generator
 
     @classmethod
@@ -389,18 +418,6 @@ class WorkflowEntry:
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)
-
-
-_YieldT_co = TypeVar("_YieldT_co", covariant=True)
-_YieldR_co = TypeVar("_YieldR_co", covariant=True)
-
-
-def _wrap_generator(
-    gen: Generator[_YieldT_co, None, None],
-    mapper: Callable[[_YieldT_co], _YieldR_co],
-) -> Generator[_YieldR_co, None, None]:
-    for item in gen:
-        yield mapper(item)
 
 
 _NodeOrInNodeEvent: TypeAlias = NodeEvent | InNodeEvent
