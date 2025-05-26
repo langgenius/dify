@@ -1,12 +1,11 @@
 from collections.abc import Mapping
 from typing import Any
 
-from core.datasource.entities.api_entities import DatasourceProviderApiEntity
 from core.datasource.entities.datasource_entities import (
     GetOnlineDocumentPageContentRequest,
     GetOnlineDocumentPageContentResponse,
     GetOnlineDocumentPagesResponse,
-    GetWebsiteCrawlResponse, DatasourceProviderEntity,
+    GetWebsiteCrawlResponse,
 )
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import (
@@ -228,7 +227,30 @@ class PluginDatasourceManager(BasePluginClient):
             return resp.result
 
         return False
+    
+    def get_provider_oauth_url(self, datasource_type: str, datasource_name: str, provider: str) -> str:
+        """
+        get the oauth url of the provider
+        """
+        tool_provider_id = GenericProviderID(provider)
 
+        response = self._request_with_plugin_daemon_response_stream(
+            "GET",
+            f"plugin/datasource/oauth",
+            PluginBasicBooleanResponse,
+            params={"page": 1, "page_size": 256},
+            headers={
+                "X-Plugin-ID": tool_provider_id.plugin_id,
+                "Content-Type": "application/json",
+            },
+
+        )
+
+        for resp in response:
+            return resp.result
+
+        return False
+    
     def _get_local_file_datasource_provider(self) -> dict[str, Any]:
         return {
             "id": "langgenius/file/file",

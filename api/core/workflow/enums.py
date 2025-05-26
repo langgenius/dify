@@ -20,3 +20,4 @@ class SystemVariableKey(StrEnum):
     DATASET_ID = "dataset_id"
     DATASOURCE_TYPE = "datasource_type"
     DATASOURCE_INFO = "datasource_info"
+    INVOKE_FROM = "invoke_from"

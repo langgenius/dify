@@ -92,7 +92,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
+    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
         # convert to app config
         pipeline_config = PipelineConfigManager.get_pipeline_config(
             pipeline=pipeline,
@@ -108,23 +108,24 @@ class PipelineGenerator(BaseAppGenerator):
         for datasource_info in datasource_info_list:
             workflow_run_id = str(uuid.uuid4())
             document_id = None
-            dataset = pipeline.dataset
-            if not dataset:
-                raise ValueError("Dataset not found")
+            
+            # Add null check for dataset
+            if not pipeline.dataset:
+                raise ValueError("Pipeline dataset is required")
+            
             if invoke_from == InvokeFrom.PUBLISHED:
-                position = DocumentService.get_documents_position(pipeline.dataset_id)
                 position = DocumentService.get_documents_position(pipeline.dataset_id)
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=pipeline.dataset_id,
-                    built_in_field_enabled=dataset.built_in_field_enabled,
+                    built_in_field_enabled=pipeline.dataset.built_in_field_enabled,
                     datasource_type=datasource_type,
                     datasource_info=datasource_info,
                     created_from="rag-pipeline",
                     position=position,
                     account=user,
                     batch=batch,
-                    document_form=dataset.chunk_structure,
+                    document_form=pipeline.dataset.chunk_structure,
                 )
                 db.session.add(document)
                 db.session.commit()
@@ -136,7 +137,7 @@ class PipelineGenerator(BaseAppGenerator):
                 pipeline_config=pipeline_config,
                 datasource_type=datasource_type,
                 datasource_info=datasource_info,
-                dataset_id=dataset.id,
+                dataset_id=pipeline.dataset.id,
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
@@ -274,27 +275,24 @@ class PipelineGenerator(BaseAppGenerator):
             raise ValueError("inputs is required")
 
         # convert to app config
-        pipeline_config = PipelineConfigManager.get_pipeline_config(pipeline=pipeline, workflow=workflow)
+        app_config = PipelineConfigManager.get_pipeline_config(pipeline=pipeline, workflow=workflow)
 
-        # init application generate entity
+        # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
             task_id=str(uuid.uuid4()),
-            app_config=pipeline_config,
-            pipeline_config=pipeline_config,
-            datasource_type=args["datasource_type"],
-            datasource_info=args["datasource_info"],
+            app_config=app_config,
+            pipeline_config=app_config,
+            datasource_type=args.get("datasource_type", ""),
+            datasource_info=args.get("datasource_info", {}),
             dataset_id=pipeline.dataset_id,
-            batch=args["batch"],
-            document_id=args["document_id"],
+            batch=args.get("batch", ""),
+            document_id=args.get("document_id"),
             inputs={},
             files=[],
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras={"auto_generate_conversation_name": False},
-            single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
-                node_id=node_id, inputs=args["inputs"]
-            ),
+            call_depth=0,
             workflow_run_id=str(uuid.uuid4()),
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)

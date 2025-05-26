@@ -3,6 +3,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.variables.segments import ObjectSegment
@@ -10,16 +11,15 @@ from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.llm.node import LLMNode
 from extensions.ext_database import db
 from models.dataset import Dataset, Document
 from models.workflow import WorkflowNodeExecutionStatus
 
+from ..base import BaseNode
 from .entities import KnowledgeIndexNodeData
 from .exc import (
     KnowledgeIndexNodeError,
 )
-from ..base import BaseNode
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,7 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
         variable_pool = self.graph_runtime_state.variable_pool
         # extract variables
         variable = variable_pool.get(node_data.index_chunk_variable_selector)
+        is_preview = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM]) == InvokeFrom.DEBUGGER
         if not isinstance(variable, ObjectSegment):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -55,6 +56,13 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
             )
         # retrieve knowledge
         try:
+            if is_preview:
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    inputs=variables,
+                    process_data=None,
+                    outputs={"result": "success"},
+                )
             results = self._invoke_knowledge_index(node_data=node_data, chunks=chunks, variable_pool=variable_pool)
             outputs = {"result": results}
             return NodeRunResult(
@@ -90,15 +98,15 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
         batch = variable_pool.get(["sys", SystemVariableKey.BATCH])
         if not batch:
             raise KnowledgeIndexNodeError("Batch is required.")
-        dataset = Dataset.query.filter_by(id=dataset_id).first()
+        dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
         if not dataset:
             raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
 
-        document = Document.query.filter_by(id=document_id).first()
+        document = db.session.query(Document).filter_by(id=document_id).first()
         if not document:
             raise KnowledgeIndexNodeError(f"Document {document_id} not found.")
 
-        index_processor = IndexProcessorFactory(node_data.chunk_structure).init_index_processor()
+        index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
         index_processor.index(dataset, document, chunks)
 
         # update document status

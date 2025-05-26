@@ -1,4 +1,4 @@
-from typing import Any, Literal, Union, Optional
+from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo

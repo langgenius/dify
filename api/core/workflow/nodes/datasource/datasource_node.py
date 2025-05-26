@@ -17,7 +17,6 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -33,7 +32,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
     _node_data_cls = DatasourceNodeData
     _node_type = NodeType.DATASOURCE
 
-    def _run(self) -> Generator:
+    def _run(self) -> NodeRunResult:
         """
         Run the datasource node
         """
@@ -58,21 +57,19 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
 
             datasource_runtime = DatasourceManager.get_datasource_runtime(
                 provider_id=node_data.provider_id,
-                datasource_name=node_data.datasource_name,
+                datasource_name=node_data.datasource_name or "",
                 tenant_id=self.tenant_id,
                 datasource_type=DatasourceProviderType(datasource_type),
             )
         except DatasourceNodeError as e:
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
+            return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs={},
                     metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
                     error=f"Failed to get datasource runtime: {str(e)}",
                     error_type=type(e).__name__,
                 )
-            )
-            return
+            
 
         # get parameters
         datasource_parameters = datasource_runtime.entity.parameters
@@ -99,66 +96,55 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                             provider_type=datasource_type,
                         )
                     )
-                    yield RunCompletedEvent(
-                        run_result=NodeRunResult(
-                            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                            inputs=parameters_for_log,
-                            metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                            outputs={
-                                "online_document": online_document_result.result.model_dump(),
-                                "datasource_type": datasource_type,
-                            },
-                        )
+                    return NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                        inputs=parameters_for_log,
+                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                        outputs={
+                            "online_document": online_document_result.result.model_dump(),
+                            "datasource_type": datasource_type,
+                        },
                     )
                 case DatasourceProviderType.WEBSITE_CRAWL | DatasourceProviderType.LOCAL_FILE:
-                    yield RunCompletedEvent(
-                        run_result=NodeRunResult(
-                            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                            inputs=parameters_for_log,
-                            metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                            outputs={
+                    return NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                        inputs=parameters_for_log,
+                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                        outputs={
                                 "website": datasource_info,
                                 "datasource_type": datasource_type,
-                            },
-                        )
+                        },
                     )
                 case DatasourceProviderType.LOCAL_FILE:
-                    yield RunCompletedEvent(
-                        run_result=NodeRunResult(
-                            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                            inputs=parameters_for_log,
-                            metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                            outputs={
+                    return NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                        inputs=parameters_for_log,
+                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                        outputs={
                                 "file": datasource_info,
                                 "datasource_type": datasource_runtime.datasource_provider_type,
                             },
                         )
-                    )
                 case _:
                     raise DatasourceNodeError(
                         f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}"
                     )
         except PluginDaemonClientSideError as e:
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    inputs=parameters_for_log,
-                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                    error=f"Failed to transform datasource message: {str(e)}",
-                    error_type=type(e).__name__,
-                )
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=parameters_for_log,
+                metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                error=f"Failed to transform datasource message: {str(e)}",
+                error_type=type(e).__name__,
             )
         except DatasourceNodeError as e:
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    inputs=parameters_for_log,
-                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                    error=f"Failed to invoke datasource: {str(e)}",
-                    error_type=type(e).__name__,
-                )
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=parameters_for_log,
+                metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                error=f"Failed to invoke datasource: {str(e)}",
+                error_type=type(e).__name__,
             )
-            return
 
     def _generate_parameters(
         self,
@@ -225,18 +211,19 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         :return:
         """
         result = {}
-        for parameter_name in node_data.datasource_parameters:
-            input = node_data.datasource_parameters[parameter_name]
-            if input.type == "mixed":
-                assert isinstance(input.value, str)
-                selectors = VariableTemplateParser(input.value).extract_variable_selectors()
-                for selector in selectors:
-                    result[selector.variable] = selector.value_selector
-            elif input.type == "variable":
-                result[parameter_name] = input.value
-            elif input.type == "constant":
-                pass
+        if node_data.datasource_parameters:
+            for parameter_name in node_data.datasource_parameters:
+                input = node_data.datasource_parameters[parameter_name]
+                if input.type == "mixed":
+                    assert isinstance(input.value, str)
+                    selectors = VariableTemplateParser(input.value).extract_variable_selectors()
+                    for selector in selectors:
+                        result[selector.variable] = selector.value_selector
+                elif input.type == "variable":
+                    result[parameter_name] = input.value
+                elif input.type == "constant":
+                    pass
 
-        result = {node_id + "." + key: value for key, value in result.items()}
+            result = {node_id + "." + key: value for key, value in result.items()}
 
         return result

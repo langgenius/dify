@@ -270,7 +270,7 @@ class DatasetService:
             permission=rag_pipeline_dataset_create_entity.permission,
             provider="vendor",
             runtime_mode="rag_pipeline",
-            icon_info=rag_pipeline_dataset_create_entity.icon_info,
+            icon_info=rag_pipeline_dataset_create_entity.icon_info.model_dump(),
             created_by=current_user.id,
             pipeline_id=pipeline.id,
         )
@@ -299,7 +299,7 @@ class DatasetService:
             permission=rag_pipeline_dataset_create_entity.permission,
             provider="vendor",
             runtime_mode="rag-pipeline",
-            icon_info=rag_pipeline_dataset_create_entity.icon_info,
+            icon_info=rag_pipeline_dataset_create_entity.icon_info.model_dump(),
         )
         with Session(db.engine) as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)

@@ -104,6 +104,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 SystemVariableKey.DATASET_ID: self.application_generate_entity.dataset_id,
                 SystemVariableKey.DATASOURCE_TYPE: self.application_generate_entity.datasource_type,
                 SystemVariableKey.DATASOURCE_INFO: self.application_generate_entity.datasource_info,
+                SystemVariableKey.INVOKE_FROM: self.application_generate_entity.invoke_from,
             }
 
             variable_pool = VariablePool(

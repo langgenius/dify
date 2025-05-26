@@ -21,8 +21,8 @@ class RagPipelineDatasetCreateEntity(BaseModel):
     description: str
     icon_info: IconInfo
     permission: str
-    partial_member_list: list[str]
-    yaml_content: str
+    partial_member_list: Optional[list[str]] = None
+    yaml_content: Optional[str] = None
 
 
 class RerankingModelConfig(BaseModel):

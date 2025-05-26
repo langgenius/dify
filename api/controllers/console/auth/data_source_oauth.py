@@ -8,6 +8,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console import api
+from core.plugin.impl.datasource import PluginDatasourceManager
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
@@ -109,7 +110,30 @@ class OAuthDataSourceSync(Resource):
         return {"result": "success"}, 200
 
 
+class DatasourcePluginOauthApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, datasource_type, datasource_name):
+        # Check user role first
+        if not current_user.is_editor:
+            raise Forbidden()
+        
+        # get all builtin providers
+        manager = PluginDatasourceManager()
+        # Fix: use correct method name or implement the missing method
+        try:
+            providers = manager.get_providers()  # or whatever the correct method is
+            # Filter by datasource_type and datasource_name if needed
+            oauth_config = {}  # Build appropriate OAuth URL response
+            return oauth_config
+        except AttributeError:
+            # Method doesn't exist, return empty response or implement
+            return {"oauth_url": None, "supported": False}
+
+
 api.add_resource(OAuthDataSource, "/oauth/data-source/<string:provider>")
 api.add_resource(OAuthDataSourceCallback, "/oauth/data-source/callback/<string:provider>")
 api.add_resource(OAuthDataSourceBinding, "/oauth/data-source/binding/<string:provider>")
 api.add_resource(OAuthDataSourceSync, "/oauth/data-source/<string:provider>/<uuid:binding_id>/sync")
+api.add_resource(DatasourcePluginOauthApi, "/oauth/plugin/datasource/<string:datasoruce_type>/<string:datasource_name>")

@@ -280,6 +280,8 @@ class PublishedRagPipelineRunApi(Resource):
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         parser.add_argument("datasource_type", type=str, required=True, location="json")
         parser.add_argument("datasource_info", type=list, required=True, location="json")
+        parser.add_argument("start_node_id", type=str, required=True, location="json")
+        parser.add_argument("is_preview", type=bool, required=True, location="json", default=False)
         args = parser.parse_args()
 
         try:
@@ -287,7 +289,7 @@ class PublishedRagPipelineRunApi(Resource):
                 pipeline=pipeline,
                 user=current_user,
                 args=args,
-                invoke_from=InvokeFrom.PUBLISHED,
+                invoke_from=InvokeFrom.DEBUGGER if args.get("is_preview") else InvokeFrom.PUBLISHED,
                 streaming=True,
             )
 
@@ -469,6 +471,7 @@ class PublishedRagPipelineApi(Resource):
 
         rag_pipeline_service = RagPipelineService()
         with Session(db.engine) as session:
+            pipeline = session.merge(pipeline)
             workflow = rag_pipeline_service.publish_workflow(
                 session=session,
                 pipeline=pipeline,
@@ -478,6 +481,7 @@ class PublishedRagPipelineApi(Resource):
             )
             pipeline.is_published = True
             pipeline.workflow_id = workflow.id
+            session.add(pipeline)
             workflow_created_at = TimestampField().format(workflow.created_at)
 
             session.commit()
@@ -796,6 +800,10 @@ api.add_resource(
 api.add_resource(
     DraftRagPipelineRunApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run",
+)
+api.add_resource(
+    PublishedRagPipelineRunApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/run",
 )
 api.add_resource(
     RagPipelineTaskStopApi,
