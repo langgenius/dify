@@ -193,6 +193,7 @@ const translation = {
     server: {
       title: 'MCP 服务',
       url: '服务端点 URL',
+      reGen: '你想要重新生成服务端点 URL 吗？',
       addDescription: '添加描述',
       edit: '编辑描述',
       modal: {

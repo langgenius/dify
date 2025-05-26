@@ -4,8 +4,11 @@ import { useTranslation } from 'react-i18next'
 import {
   RiLoopLeftLine,
 } from '@remixicon/react'
+import {
+  Mcp,
+} from '@/app/components/base/icons/src/vender/other'
+import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
-import AppBasic from '@/app/components/app-sidebar/basic'
 import { asyncRunSafe } from '@/utils'
 import { basePath } from '@/utils/var'
 import Switch from '@/app/components/base/switch'
@@ -32,7 +35,6 @@ function MCPServiceCard({
   const [genLoading, setGenLoading] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const basicName = t('appOverview.overview.apiInfo.title')
   const toggleDisabled = !isCurrentWorkspaceEditor
   const runningStatus = appInfo.enable_site // TODO
   const { app_base_url, access_token } = appInfo.site ?? {}
@@ -54,15 +56,18 @@ function MCPServiceCard({
   return (
     <div className={cn('w-full max-w-full rounded-xl border-l-[0.5px] border-t border-effects-highlight')}>
       <div className='rounded-xl bg-background-default'>
-        <div className='flex w-full flex-col items-start justify-center gap-3 self-stretch p-3'>
+        <div className='flex w-full flex-col items-start justify-center gap-3 self-stretch border-b-[0.5px] border-divider-subtle p-3'>
           <div className='flex w-full items-center gap-3 self-stretch'>
-            <AppBasic
-              iconType={'app'}
-              icon={appInfo.icon}
-              icon_background={appInfo.icon_background}
-              name={basicName}
-              type={t('appOverview.overview.appInfo.explanation')}
-            />
+            <div className='flex grow items-center'>
+              <div className='mr-3 shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-500 p-1 shadow-md'>
+                <Mcp className='h-4 w-4 text-text-primary-on-surface' />
+              </div>
+              <div className="group w-full">
+                <div className="min-w-0 overflow-hidden text-ellipsis break-normal">
+                  {t('tools.mcp.server.title')}
+                </div>
+              </div>
+            </div>
             <div className='flex items-center gap-1'>
               <Indicator color={runningStatus ? 'green' : 'yellow'} />
               <div className={`${runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
@@ -75,7 +80,7 @@ function MCPServiceCard({
           </div>
           <div className='flex flex-col items-start justify-center self-stretch'>
             <div className="system-xs-medium pb-1 text-text-tertiary">
-              {t('appOverview.overview.appInfo.accessibleAddress')}
+              {t('tools.mcp.server.url')}
             </div>
             <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
               <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
@@ -93,7 +98,7 @@ function MCPServiceCard({
                 <Confirm
                   type='warning'
                   title={t('appOverview.overview.appInfo.regenerate')}
-                  content={t('appOverview.overview.appInfo.regenerateNotice')}
+                  content={t('tools.mcp.server.reGen')}
                   isShow={showConfirmDelete}
                   onConfirm={() => {
                     onGenCode()
@@ -118,6 +123,7 @@ function MCPServiceCard({
           </div>
         </div>
         <div className='flex items-center gap-1 self-stretch p-3'>
+          <Button size='small' variant='ghost'>{t('tools.mcp.server.addDescription')}</Button>
         </div>
       </div>
     </div>

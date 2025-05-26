@@ -193,6 +193,7 @@ const translation = {
     server: {
       title: 'MCP Server',
       url: 'Server URL',
+      reGen: 'Do you want to regenerator server URL?',
       addDescription: 'Add description',
       edit: 'Edit description',
       modal: {
