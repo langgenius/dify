@@ -90,7 +90,6 @@ const ResultPanel: FC<ResultPanelProps> = ({
           isLoopNode && handleShowLoopResultList && (
             <LoopLogTrigger
               nodeInfo={nodeInfo}
-              // allExecutions={[nodeInfo]}
               onShowLoopResultList={handleShowLoopResultList}
             />
           )
