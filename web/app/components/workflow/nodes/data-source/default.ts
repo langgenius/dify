@@ -2,7 +2,6 @@ import type { NodeDefault } from '../../types'
 import type { DataSourceNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { CollectionType } from '@/app/components/tools/types'
 import { OUTPUT_VARIABLES_MAP } from './constants'
 
 const metaData = genNodeMetaData({
@@ -22,8 +21,8 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
     }
   },
   getOutputVars(payload) {
-    const { datasource_name, provider_type } = payload
-    const isLocalFile = datasource_name === 'local_file' && provider_type === CollectionType.datasource
+    const { provider_type } = payload
+    const isLocalFile = provider_type === 'local_file'
     return [
       {
         variable: OUTPUT_VARIABLES_MAP.datasource_type.name,

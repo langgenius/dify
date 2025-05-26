@@ -2,7 +2,6 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { memo } from 'react'
 import type { DataSourceNodeType } from './types'
-import { CollectionType } from '@/app/components/tools/types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import { BoxGroupField } from '@/app/components/workflow/nodes/_base/components/layout'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -15,10 +14,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const {
     provider_type,
     fileExtensions = [],
-    datasource_name,
   } = data
   const { handleFileExtensionsChange } = useConfig(id)
-  const isLocalFile = datasource_name === 'local_file' && provider_type === CollectionType.datasource
+  const isLocalFile = provider_type === 'local_file'
 
   return (
     <div >
