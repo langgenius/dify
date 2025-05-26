@@ -109,7 +109,7 @@ const BlockIcon: FC<BlockIconProps> = ({
         )
       }
       {
-        type === BlockEnum.Tool && toolIcon && (
+        (type === BlockEnum.Tool || type === BlockEnum.DataSource) && toolIcon && (
           <>
             {
               typeof toolIcon === 'string'
