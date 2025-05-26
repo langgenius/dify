@@ -87,7 +87,7 @@ const IndexMethod = ({
                 />
               }
               title={t('datasetSettings.form.indexMethodEconomy')}
-              description={t('datasetSettings.form.indexMethodEconomyTip')}
+              description={t('datasetSettings.form.indexMethodEconomyTip', { count: keywordNumber })}
               onClick={handleIndexMethodChange}
               effectColor='blue'
             >
