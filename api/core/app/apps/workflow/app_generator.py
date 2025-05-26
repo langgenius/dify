@@ -135,7 +135,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_run_id=workflow_run_id,
         )
 
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
@@ -282,7 +281,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             ),
             workflow_run_id=str(uuid.uuid4()),
         )
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
@@ -359,7 +357,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
             workflow_run_id=str(uuid.uuid4()),
         )
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 

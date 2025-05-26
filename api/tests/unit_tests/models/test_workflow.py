@@ -2,14 +2,13 @@ import json
 from unittest import mock
 from uuid import uuid4
 
-import contexts
 from constants import HIDDEN_VALUE
 from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from models.workflow import Workflow, WorkflowNodeExecution
 
 
 def test_environment_variables():
-    contexts.tenant_id.set("tenant_id")
+    # tenant_id context variable removed - using current_user.current_tenant_id directly
 
     # Create a Workflow instance
     workflow = Workflow(
@@ -51,7 +50,7 @@ def test_environment_variables():
 
 
 def test_update_environment_variables():
-    contexts.tenant_id.set("tenant_id")
+    # tenant_id context variable removed - using current_user.current_tenant_id directly
 
     # Create a Workflow instance
     workflow = Workflow(
@@ -104,7 +103,7 @@ def test_update_environment_variables():
 
 
 def test_to_dict():
-    contexts.tenant_id.set("tenant_id")
+    # tenant_id context variable removed - using current_user.current_tenant_id directly
 
     # Create a Workflow instance
     workflow = Workflow(
