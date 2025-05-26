@@ -1,4 +1,4 @@
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from core.datasource.entities.datasource_entities import (

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 from werkzeug.exceptions import NotFound
 
 from core.agent.plugin_entities import AgentStrategyProviderEntity
+from core.datasource.entities.datasource_entities import DatasourceProviderEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
@@ -62,6 +63,7 @@ class PluginCategory(enum.StrEnum):
     Model = "model"
     Extension = "extension"
     AgentStrategy = "agent-strategy"
+    Datasource = "datasource"
 
 
 class PluginDeclaration(BaseModel):
@@ -69,6 +71,7 @@ class PluginDeclaration(BaseModel):
         tools: Optional[list[str]] = Field(default_factory=list[str])
         models: Optional[list[str]] = Field(default_factory=list[str])
         endpoints: Optional[list[str]] = Field(default_factory=list[str])
+        datasources: Optional[list[str]] = Field(default_factory=list[str])
 
     class Meta(BaseModel):
         minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
@@ -90,6 +93,7 @@ class PluginDeclaration(BaseModel):
     model: Optional[ProviderEntity] = None
     endpoint: Optional[EndpointProviderDeclaration] = None
     agent_strategy: Optional[AgentStrategyProviderEntity] = None
+    datasource: Optional[DatasourceProviderEntity] = None
     meta: Meta
 
     @model_validator(mode="before")
@@ -100,6 +104,8 @@ class PluginDeclaration(BaseModel):
             values["category"] = PluginCategory.Tool
         elif values.get("model"):
             values["category"] = PluginCategory.Model
+        elif values.get("datasource"):
+            values["category"] = PluginCategory.Datasource
         elif values.get("agent_strategy"):
             values["category"] = PluginCategory.AgentStrategy
         else:

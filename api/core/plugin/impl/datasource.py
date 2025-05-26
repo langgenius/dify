@@ -236,7 +236,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "GET",
-            f"plugin/datasource/oauth",
+            "plugin/datasource/oauth",
             PluginBasicBooleanResponse,
             params={"page": 1, "page_size": 256},
             headers={

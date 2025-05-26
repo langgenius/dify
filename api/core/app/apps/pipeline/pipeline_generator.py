@@ -30,7 +30,7 @@ from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
-from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
+from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, Pipeline
 from models.model import AppMode
 from services.dataset_service import DocumentService
