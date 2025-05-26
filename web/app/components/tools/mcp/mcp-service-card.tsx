@@ -20,6 +20,7 @@ import { useAppContext } from '@/context/app-context'
 import type { AppSSO } from '@/types/app'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
+import { useAppWorkflow } from '@/service/use-workflow'
 import cn from '@/utils/classnames'
 
 export type IAppCardProps = {
@@ -35,6 +36,8 @@ function MCPServiceCard({
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const [genLoading, setGenLoading] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+
+  const { data: currentWorkflow } = useAppWorkflow(appInfo.id)
 
   const toggleDisabled = !isCurrentWorkspaceEditor
   const runningStatus = appInfo.enable_site // TODO
@@ -55,6 +58,9 @@ function MCPServiceCard({
   }
 
   const [showMCPServerModal, setShowMCPServerModal] = useState(false)
+
+  if (!currentWorkflow || !currentWorkflow.graph)
+    return null
 
   return (
     <>

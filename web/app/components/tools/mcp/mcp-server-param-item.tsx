@@ -19,7 +19,7 @@ const MCPServerParamItem = ({
       <div className='flex h-6 items-center gap-2'>
         <div className='system-xs-medium text-text-secondary'>{data.label}</div>
         <div className='system-xs-medium text-text-quaternary'>·</div>
-        <div className='system-xs-medium text-text-secondary'>{data.name}</div>
+        <div className='system-xs-medium text-text-secondary'>{data.variable}</div>
         <div className='system-xs-medium text-text-tertiary'>{data.type}</div>
       </div>
       <Textarea
