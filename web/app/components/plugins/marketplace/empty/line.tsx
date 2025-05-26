@@ -17,9 +17,9 @@ const Line = ({
         <path d='M1 0L1 240' stroke='url(#paint0_linear_6295_52176)' />
         <defs>
           <linearGradient id='paint0_linear_6295_52176' x1='-7.99584' y1='240' x2='-7.88094' y2='3.95539e-05' gradientUnits='userSpaceOnUse'>
-            <stop stop-opacity='0.01' />
-            <stop offset='0.503965' stop-color='#C8CEDA' stop-opacity='0.14' />
-            <stop offset='1' stop-opacity='0.01' />
+            <stop stopOpacity='0.01' />
+            <stop offset='0.503965' stopColor='#C8CEDA' stopOpacity='0.14' />
+            <stop offset='1' stopOpacity='0.01' />
           </linearGradient>
         </defs>
       </svg>
