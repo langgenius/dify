@@ -20,15 +20,16 @@ import {
   CUSTOM_NODE,
   MAX_TREE_DEPTH,
 } from '../constants'
-import { useWorkflow } from '../hooks'
+import {
+  useGetToolIcon,
+  useWorkflow,
+} from '../hooks'
 import type { ToolNodeType } from '../nodes/tool/types'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useToastContext } from '@/app/components/base/toast'
-import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import type { AgentNodeType } from '../nodes/agent/types'
 import { useStrategyProviders } from '@/service/use-strategy'
-import { canFindTool } from '@/utils'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
@@ -44,6 +45,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { data: strategyProviders } = useStrategyProviders()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
   const { getStartNodes } = useWorkflow()
+  const getToolIcon = useGetToolIcon()
 
   const getCheckData = useCallback((data: CommonNodeType<{}>) => {
     let checkData = data
@@ -75,23 +77,12 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i]
-      let toolIcon
       let moreDataForCheckValid
 
-      if (node.data.type === BlockEnum.Tool) {
-        const { provider_type } = node.data
-
+      if (node.data.type === BlockEnum.Tool)
         moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
-        if (provider_type === CollectionType.builtIn)
-          toolIcon = buildInTools.find(tool => canFindTool(tool.id, node.data.provider_id || ''))?.icon
 
-        if (provider_type === CollectionType.custom)
-          toolIcon = customTools.find(tool => tool.id === node.data.provider_id)?.icon
-
-        if (provider_type === CollectionType.workflow)
-          toolIcon = workflowTools.find(tool => tool.id === node.data.provider_id)?.icon
-      }
-
+      const toolIcon = getToolIcon(node.data)
       if (node.data.type === BlockEnum.Agent) {
         const data = node.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
@@ -135,7 +126,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     })
 
     return list
-  }, [nodes, edges, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData, getStartNodes])
+  }, [nodes, edges, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData, getStartNodes, getToolIcon])
 
   return needWarningNodes
 }

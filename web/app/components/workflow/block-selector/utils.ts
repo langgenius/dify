@@ -1,4 +1,3 @@
-import { CollectionType } from '@/app/components/tools/types'
 import type { Tool } from '@/app/components/tools/types'
 import type { DataSourceItem } from './types'
 
@@ -10,7 +9,7 @@ export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
     description: dataSourceItem.declaration.identity.description,
     icon: dataSourceItem.declaration.identity.icon,
     label: dataSourceItem.declaration.identity.label,
-    type: CollectionType.datasource,
+    type: dataSourceItem.declaration.provider_type,
     team_credentials: {},
     is_team_authorization: false,
     allow_delete: true,

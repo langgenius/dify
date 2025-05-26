@@ -44,7 +44,7 @@ export type Collection = {
   description: TypeWithI18N
   icon: string | Emoji
   label: TypeWithI18N
-  type: CollectionType
+  type: CollectionType | string
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
