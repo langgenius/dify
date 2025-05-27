@@ -6,7 +6,8 @@ from werkzeug.exceptions import BadRequest
 import services
 from controllers.console.auth.error import EmailCodeError, EmailOrPasswordMismatchError, InvalidEmailError
 from controllers.console.error import AccountBannedError, AccountNotFound
-from controllers.console.wraps import setup_required
+from controllers.console.wraps import only_edition_enterprise, setup_required
+from controllers.web import api
 from libs.helper import email
 from libs.password import valid_password
 from services.account_service import AccountService
@@ -16,6 +17,8 @@ from services.webapp_auth_service import WebAppAuthService
 class LoginApi(Resource):
     """Resource for web app email/password login."""
 
+    @setup_required
+    @only_edition_enterprise
     def post(self):
         """Authenticate user and login."""
         parser = reqparse.RequestParser()
@@ -56,6 +59,7 @@ class LoginApi(Resource):
 
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
+    @only_edition_enterprise
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
@@ -78,6 +82,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 
 class EmailCodeLoginApi(Resource):
     @setup_required
+    @only_edition_enterprise
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=str, required=True, location="json")
@@ -114,7 +119,7 @@ class EmailCodeLoginApi(Resource):
         return {"result": "success", "token": token}
 
 
-# api.add_resource(LoginApi, "/login")
+api.add_resource(LoginApi, "/login")
 # api.add_resource(LogoutApi, "/logout")
-# api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
-# api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
+api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
+api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
