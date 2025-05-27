@@ -19,11 +19,11 @@ jobs:
       matrix:
         include:
           - service_name: "build-api-arm64"
-            image_name: "registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-api-arm"
+            image_name: "registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-api"
             context: "api"
             platform: linux/arm64
           - service_name: "build-web-arm64"
-            image_name: "registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-web-arm"
+            image_name: "registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-web"
             context: "web"
             platform: linux/arm64
 
@@ -52,7 +52,7 @@ jobs:
         run: |
           DATE=$(date +"%Y%m%d%H%M%S%Z")
           BRANCH_NAME=$(echo "$BRANCH_NAME" | sed 's#[^a-zA-Z0-9._-]#-#g')
-          IMAGE_TAG_NAME="${BRANCH_NAME}-${COMMIT_HASH::7}-${DATE}"
+          IMAGE_TAG_NAME="${BRANCH_NAME}-${COMMIT_HASH::7}-${DATE}-arm"
           echo "IMAGE_TAG_NAME=$IMAGE_TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "IMAGE_FULL_TAG=${{ matrix.image_name }}:${IMAGE_TAG_NAME}" >> $GITHUB_ENV
 
