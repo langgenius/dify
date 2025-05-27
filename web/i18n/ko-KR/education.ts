@@ -42,6 +42,7 @@ const translation = {
   submitError: '양식 제출에 실패했습니다. 나중에 다시 시도해 주세요.',
   successTitle: '당신은 Dify 교육 인증을 받았습니다.',
   emailLabel: '현재 이메일',
+  test: '테스트',
 }
 
 export default translation

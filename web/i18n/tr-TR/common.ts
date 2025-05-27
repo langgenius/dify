@@ -149,6 +149,8 @@ const translation = {
     newDataset: 'Bilgi Oluştur',
     tools: 'Araçlar',
     exploreMarketplace: 'Marketplace\'i Keşfedin',
+    account: 'Hesap',
+    appDetail: 'Uygulama Detayı',
   },
   userProfile: {
     settings: 'Ayarlar',
@@ -644,6 +646,7 @@ const translation = {
   license: {
     expiring_plural: '{{count}} gün içinde sona eriyor',
     expiring: 'Bir günde sona eriyor',
+    unlimited: 'Sınırsız',
   },
   pagination: {
     perPage: 'Sayfa başına öğe sayısı',
@@ -667,6 +670,7 @@ const translation = {
     dropImageHere: 'Görüntünüzü buraya bırakın veya',
     browse: 'tarayıcı',
   },
+  you: 'Sen',
 }
 
 export default translation

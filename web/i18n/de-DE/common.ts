@@ -145,6 +145,8 @@ const translation = {
     newDataset: 'Wissen erstellen',
     tools: 'Werkzeuge',
     exploreMarketplace: 'Marketplace erkunden',
+    account: 'Konto',
+    appDetail: 'App-Details',
   },
   userProfile: {
     settings: 'Einstellungen',
@@ -644,6 +646,7 @@ const translation = {
   license: {
     expiring: 'Läuft an einem Tag ab',
     expiring_plural: 'Läuft in {{count}} Tagen ab',
+    unlimited: 'Unbegrenzt',
   },
   pagination: {
     perPage: 'Artikel pro Seite',
@@ -667,6 +670,7 @@ const translation = {
     browse: 'blättern',
     supportedFormats: 'Unterstützt PNG, JPG, JPEG, WEBP und GIF',
   },
+  you: 'Du',
 }
 
 export default translation

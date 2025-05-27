@@ -205,6 +205,41 @@ const translation = {
     modelNotSupported: 'โมเดลไม่ได้รับการสนับสนุน',
     modelNotSupportedTip: 'โมเดลปัจจุบันไม่รองรับฟีเจอร์นี้และจะถูกลดระดับเป็นการฉีดคำสั่งโดยอัตโนมัติ.',
   },
+  accessItemsDescription: {
+    anyone: 'ใครก็สามารถเข้าถึงเว็บแอปได้',
+    organization: 'ใครก็ได้ในองค์กรสามารถเข้าถึงแอปเว็บได้',
+    specific: 'สมาชิกหรือกลุ่มเฉพาะเท่านั้นที่สามารถเข้าถึงแอปเว็บได้',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: 'ใครก็ตามที่มีลิงก์',
+      organization: 'เฉพาะสมาชิกภายในองค์กร',
+      specific: 'กลุ่มหรือสมาชิกเฉพาะ',
+    },
+    operateGroupAndMember: {
+      expand: 'ขยาย',
+      allMembers: 'สมาชิกทั้งหมด',
+      searchPlaceholder: 'ค้นหากลุ่มและสมาชิก',
+      noResult: 'ไม่มีผลลัพธ์',
+    },
+    updateSuccess: 'อัปเดตสำเร็จแล้ว',
+    accessLabel: 'ใครมีสิทธิ์เข้าถึง',
+    noGroupsOrMembers: 'ไม่มีกลุ่มหรือสมาชิกที่เลือก',
+    members_other: '{{count}} สมาชิก',
+    groups_one: '{{count}} กลุ่ม',
+    members_one: '{{count}} สมาชิก',
+    description: 'ตั้งค่าการเข้าถึงแอปเว็บ',
+    title: 'การควบคุมการเข้าถึงเว็บแอปพลิเคชัน',
+    webAppSSONotEnabledTip: 'กรุณาติดต่อผู้ดูแลระบบองค์กรเพื่อกำหนดวิธีการตรวจสอบสิทธิ์แอปเว็บ.',
+    groups_other: '{{count}} กลุ่ม',
+  },
+  publishApp: {
+    notSet: 'ยังไม่ได้ตั้งค่า',
+    title: 'ใครสามารถเข้าถึงแอปเว็บได้',
+    notSetDesc: 'ขณะนี้ไม่มีใครสามารถเข้าถึงเว็บแอปได้ กรุณาเพิ่มสิทธิ์การเข้าถึง.',
+  },
+  accessControl: 'การควบคุมการเข้าถึงเว็บแอปพลิเคชัน',
+  noAccessPermission: 'ไม่มีสิทธิ์เข้าถึงเว็บแอป',
 }
 
 export default translation

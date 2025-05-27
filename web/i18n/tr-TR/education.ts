@@ -42,6 +42,7 @@ const translation = {
   learn: 'Eğitim doğrulamasının nasıl yapılacağını öğrenin',
   successContent: 'Hesabınıza Dify Profesyonel planı için %100 indirim kuponu verdik. Kuponun geçerlilik süresi bir yıldır, lütfen bu süre içinde kullanın.',
   successTitle: 'Dify Eğitim Onayınız Var',
+  test: 'test',
 }
 
 export default translation

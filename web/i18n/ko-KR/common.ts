@@ -141,6 +141,8 @@ const translation = {
     newDataset: '지식 만들기',
     tools: '도구',
     exploreMarketplace: 'Marketplace 둘러보기',
+    account: '계정',
+    appDetail: '앱 세부정보',
   },
   userProfile: {
     settings: '설정',
@@ -640,6 +642,7 @@ const translation = {
   license: {
     expiring_plural: '{{count}}일 후에 만료',
     expiring: '하루 후에 만료',
+    unlimited: '무제한',
   },
   pagination: {
     perPage: '페이지당 항목 수',
@@ -663,6 +666,7 @@ const translation = {
     browse: '브라우즈',
     dropImageHere: '여기에 이미지를 드롭하거나',
   },
+  you: '당신',
 }
 
 export default translation

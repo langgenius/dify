@@ -216,6 +216,41 @@ const translation = {
     moreFillTip: 'Maximal 10 Ebenen der Verschachtelung anzeigen',
     LLMResponse: 'LLM-Antwort',
   },
+  accessItemsDescription: {
+    organization: 'Jeder in der Organisation kann auf die Webanwendung zugreifen.',
+    specific: 'Nur bestimmte Gruppen oder Mitglieder können auf die Webanwendung zugreifen.',
+    anyone: 'Jeder kann auf die Webanwendung zugreifen.',
+  },
+  accessControlDialog: {
+    accessItems: {
+      specific: 'Spezifische Gruppen oder Mitglieder',
+      organization: 'Nur Mitglieder innerhalb des Unternehmens',
+      anyone: 'Jeder mit dem Link',
+    },
+    operateGroupAndMember: {
+      allMembers: 'Alle Mitglieder',
+      expand: 'Erweitern',
+      noResult: 'Kein Ergebnis',
+      searchPlaceholder: 'Gruppen und Mitglieder suchen',
+    },
+    members_other: '{{count}} MITGLIEDER',
+    groups_other: '{{count}} GRUPPEN',
+    noGroupsOrMembers: 'Keine Gruppen oder Mitglieder ausgewählt',
+    groups_one: '{{count}} GRUPPE',
+    title: 'Zugriffskontrolle für Webanwendungen',
+    description: 'Webanwendungszugriffsberechtigungen festlegen',
+    updateSuccess: 'Erfolgreich aktualisiert',
+    accessLabel: 'Wer hat Zugang',
+    webAppSSONotEnabledTip: 'Bitte kontaktieren Sie den Unternehmensadministrator, um die Authentifizierungsmethode der Webanwendung zu konfigurieren.',
+    members_one: '{{count}} MITGLIED',
+  },
+  publishApp: {
+    title: 'Wer kann auf die Webanwendung zugreifen?',
+    notSet: 'Nicht festgelegt',
+    notSetDesc: 'Derzeit kann niemand auf die Webanwendung zugreifen. Bitte setzen Sie die Berechtigungen.',
+  },
+  accessControl: 'Zugriffskontrolle für Webanwendungen',
+  noAccessPermission: 'Keine Berechtigung zum Zugriff auf die Webanwendung',
 }
 
 export default translation

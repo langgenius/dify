@@ -42,6 +42,7 @@ const translation = {
   rejectContent: 'Infelizmente, você não é elegível para o status de Educação Verificada e, portanto, não pode receber o cupom exclusivo de 100% para o Plano Profissional Dify se usar este endereço de e-mail.',
   successTitle: 'Você Tem a Educação Dify Verificada',
   submitError: 'A submissão do formulário falhou. Por favor, tente novamente mais tarde.',
+  test: 'teste',
 }
 
 export default translation

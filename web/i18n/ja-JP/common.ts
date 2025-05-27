@@ -660,6 +660,7 @@ const translation = {
   license: {
     expiring_plural: '有効期限 {{count}} 日',
     expiring: '1日で有効期限が切れます',
+    unlimited: '無制限',
   },
   pagination: {
     perPage: 'ページあたりのアイテム数',

@@ -216,6 +216,41 @@ const translation = {
     modelNotSupported: 'Model nie jest obsługiwany',
     modelNotSupportedTip: 'Aktualny model nie obsługuje tej funkcji i zostaje automatycznie obniżony do wstrzyknięcia zapytania.',
   },
+  accessItemsDescription: {
+    specific: 'Tylko określone grupy lub członkowie mogą uzyskać dostęp do aplikacji internetowej',
+    organization: 'Każdy w organizacji ma dostęp do aplikacji internetowej.',
+    anyone: 'Każdy może uzyskać dostęp do aplikacji webowej.',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: 'Każdy z linkiem',
+      organization: 'Tylko członkowie w obrębie przedsiębiorstwa',
+      specific: 'Specyficzne grupy lub członkowie',
+    },
+    operateGroupAndMember: {
+      noResult: 'Brak wyniku',
+      expand: 'Rozszerz',
+      allMembers: 'Wszyscy członkowie',
+      searchPlaceholder: 'Szukaj grup i członków',
+    },
+    groups_other: '{{count}} GRUPY',
+    accessLabel: 'Kto ma dostęp',
+    members_one: '{{count}} CZŁONEK',
+    groups_one: '{{count}} GRUPA',
+    title: 'Kontrola dostępu do aplikacji internetowej',
+    updateSuccess: 'Aktualizacja powiodła się',
+    noGroupsOrMembers: 'Nie wybrano grup ani członków',
+    webAppSSONotEnabledTip: 'Proszę skontaktować się z administratorem przedsiębiorstwa, aby skonfigurować metodę uwierzytelniania aplikacji internetowej.',
+    description: 'Ustaw uprawnienia dostępu do aplikacji webowej',
+    members_other: '{{count}} CZŁONKÓW',
+  },
+  publishApp: {
+    title: 'Kto ma dostęp do aplikacji internetowej',
+    notSet: 'Nie ustawiono',
+    notSetDesc: 'Obecnie nikt nie może uzyskać dostępu do aplikacji internetowej. Proszę ustawić uprawnienia.',
+  },
+  noAccessPermission: 'Brak uprawnień do dostępu do aplikacji internetowej',
+  accessControl: 'Kontrola dostępu do aplikacji internetowej',
 }
 
 export default translation

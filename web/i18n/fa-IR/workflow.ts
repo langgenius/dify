@@ -660,6 +660,7 @@ const translation = {
         },
         json: 'json تولید شده توسط ابزار',
       },
+      authorize: 'مجوز دادن',
     },
     questionClassifiers: {
       model: 'مدل',

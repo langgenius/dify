@@ -154,6 +154,8 @@ const translation = {
     newDataset: 'ज्ञान बनाएं',
     tools: 'उपकरण',
     exploreMarketplace: 'मार्केटप्लेस का अन्वेषण करें',
+    appDetail: 'ऐप विवरण',
+    account: 'खाता',
   },
   userProfile: {
     settings: 'सेटिंग्स',
@@ -666,6 +668,7 @@ const translation = {
   license: {
     expiring: 'एक दिन में समाप्त हो रहा है',
     expiring_plural: '{{गिनती}} दिनों में समाप्त हो रहा है',
+    unlimited: 'असीमित',
   },
   pagination: {
     perPage: 'प्रति पृष्ठ आइटम',
@@ -689,6 +692,7 @@ const translation = {
     browse: 'ब्राउज़ करें',
     dropImageHere: 'अपनी छवि यहाँ छोड़ें, या',
   },
+  you: 'आप',
 }
 
 export default translation

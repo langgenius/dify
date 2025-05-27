@@ -660,6 +660,7 @@ const translation = {
         },
         json: '도구로 생성된 JSON',
       },
+      authorize: '권한 부여',
     },
     questionClassifiers: {
       model: '모델',

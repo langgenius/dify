@@ -150,6 +150,8 @@ const translation = {
     newDataset: 'Utwórz Wiedzę',
     tools: 'Narzędzia',
     exploreMarketplace: 'Zapoznaj się z Marketplace',
+    account: 'Konto',
+    appDetail: 'Szczegóły aplikacji',
   },
   userProfile: {
     settings: 'Ustawienia',
@@ -662,6 +664,7 @@ const translation = {
   license: {
     expiring_plural: 'Wygasa za {{count}} dni',
     expiring: 'Wygasa w ciągu jednego dnia',
+    unlimited: 'Nieograniczony',
   },
   pagination: {
     perPage: 'Ilość elementów na stronie',
@@ -685,6 +688,7 @@ const translation = {
     browse: 'przeglądaj',
     supportedFormats: 'Obsługuje PNG, JPG, JPEG, WEBP i GIF',
   },
+  you: 'Ty',
 }
 
 export default translation

@@ -62,6 +62,7 @@ const translation = {
       placeholder: '도구 선택...',
       paramsTip2: '\'자동\'이 꺼져 있으면 기본값이 사용됩니다.',
       unsupportedContent: '설치된 플러그인 버전은 이 작업을 제공하지 않습니다.',
+      toolSetting: '도구 설정',
     },
     configureApp: '앱 구성',
     strategyNum: '{{번호}} {{전략}} 포함',
@@ -210,6 +211,7 @@ const translation = {
     title: '플러그인',
   },
   difyVersionNotCompatible: '현재 Dify 버전이 이 플러그인과 호환되지 않습니다. 필요한 최소 버전으로 업그레이드하십시오: {{minimalDifyVersion}}',
+  requestAPlugin: '플러그인을 요청하세요',
 }
 
 export default translation

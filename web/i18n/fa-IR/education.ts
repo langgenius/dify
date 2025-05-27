@@ -42,6 +42,7 @@ const translation = {
   rejectTitle: 'تأییدیه آموزشی دیفی شما رد شده است',
   submit: 'ارسال',
   successTitle: 'شما آموزش دیفی تأیید شده دارید',
+  test: 'آزمون',
 }
 
 export default translation

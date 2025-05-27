@@ -42,6 +42,7 @@ const translation = {
   learn: 'Erfahren Sie, wie Sie Ihre Ausbildung überprüfen lassen.',
   emailLabel: 'Ihre aktuelle E-Mail',
   successTitle: 'Sie haben die Dify-Ausbildung verifiziert',
+  test: 'Test',
 }
 
 export default translation

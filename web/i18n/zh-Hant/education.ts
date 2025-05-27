@@ -42,6 +42,7 @@ const translation = {
   submit: '提交',
   successTitle: '您已獲得 Dify 教育認證',
   toVerified: '獲取教育證明',
+  test: '測試',
 }
 
 export default translation

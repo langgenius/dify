@@ -42,6 +42,7 @@ const translation = {
   emailLabel: 'La tua email attuale',
   rejectContent: 'Sfortunatamente, non sei idoneo per lo status di Educazione Verificata e quindi non puoi ricevere il coupon esclusivo del 100% per il Piano Professionale Dify se usi questo indirizzo email.',
   rejectTitle: 'La tua verifica educativa Dify è stata rifiutata.',
+  test: 'test',
 }
 
 export default translation

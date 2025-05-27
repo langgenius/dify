@@ -42,6 +42,7 @@ const translation = {
   rejectTitle: 'Su verificación educativa de Dify ha sido rechazada.',
   currentSigned: 'ACTUALMENTE CONECTADO COMO',
   rejectContent: 'Desafortunadamente, no eres elegible para el estado de Educación Verificada y, por lo tanto, no puedes recibir el exclusivo cupón del 100% para el Plan Profesional de Dify si utilizas esta dirección de correo electrónico.',
+  test: 'prueba',
 }
 
 export default translation

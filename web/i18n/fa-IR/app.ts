@@ -209,6 +209,41 @@ const translation = {
     modelNotSupportedTip: 'مدل فعلی این ویژگی را پشتیبانی نمی‌کند و به‌طور خودکار به تزریق درخواست تنزل پیدا می‌کند.',
     structuredTip: 'خروجی‌های ساختاری یک ویژگی است که تضمین می‌کند مدل همیشه پاسخ‌هایی تولید می‌کند که به طرح JSON ارائه شده شما پایبند باشد.',
   },
+  accessItemsDescription: {
+    anyone: 'هر کسی می‌تواند به وب‌اپلیکیشن دسترسی پیدا کند',
+    organization: 'هر کسی در سازمان می‌تواند به اپلیکیشن وب دسترسی پیدا کند.',
+    specific: 'فقط گروه‌ها یا اعضای خاصی می‌توانند به اپلیکیشن وب دسترسی پیدا کنند.',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: 'هر کسی که لینک را داشته باشد',
+      organization: 'فقط اعضای داخل سازمان',
+      specific: 'گروه‌ها یا اعضای خاص',
+    },
+    operateGroupAndMember: {
+      allMembers: 'تمام اعضا',
+      searchPlaceholder: 'گروه‌ها و اعضا را جستجو کنید',
+      noResult: 'نتیجه‌ای نیست',
+      expand: 'گسترش دهید',
+    },
+    updateSuccess: 'به‌روز رسانی با موفقیت انجام شد',
+    groups_other: '{{count}} گروه',
+    groups_one: '{{count}} گروه',
+    members_one: '{{count}} عضو',
+    title: 'کنترل دسترسی به وب اپلیکیشن',
+    members_other: '{{count}} عضو',
+    accessLabel: 'چه کسی به آن دسترسی دارد',
+    noGroupsOrMembers: 'هیچ گروه یا عضوی انتخاب نشده است',
+    description: 'مجوزهای دسترسی به برنامه وب را تنظیم کنید',
+    webAppSSONotEnabledTip: 'لطفاً با مدیر شرکت تماس بگیرید تا روش احراز هویت برنامه وب را پیکربندی کند.',
+  },
+  publishApp: {
+    title: 'چه کسی می‌تواند به برنامه وب دسترسی داشته باشد؟',
+    notSet: 'تنظیم نشده است',
+    notSetDesc: 'در حال حاضر هیچ‌کس نمی‌تواند به برنامه وب دسترسی پیدا کند. لطفاً مجوزها را تنظیم کنید.',
+  },
+  accessControl: 'کنترل دسترسی به وب اپلیکیشن',
+  noAccessPermission: 'دسترسی به برنامه وب مجاز نیست',
 }
 
 export default translation

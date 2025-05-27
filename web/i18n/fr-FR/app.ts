@@ -208,6 +208,41 @@ const translation = {
     moreFillTip: 'Affichage d\'un maximum de 10 niveaux d\'imbrication',
     configure: 'Configurer',
   },
+  accessItemsDescription: {
+    specific: 'Seules des groupes ou membres spécifiques peuvent accéder à l\'application web.',
+    anyone: 'Tout le monde peut accéder à l\'application web.',
+    organization: 'Toute personne dans l\'organisation peut accéder à l\'application web.',
+  },
+  accessControlDialog: {
+    accessItems: {
+      organization: 'Seuls les membres au sein de l\'entreprise',
+      specific: 'Groupes ou membres spécifiques',
+      anyone: 'Quiconque avec le lien',
+    },
+    operateGroupAndMember: {
+      allMembers: 'Tous les membres',
+      searchPlaceholder: 'Rechercher des groupes et des membres',
+      expand: 'Développer',
+      noResult: 'Aucun résultat',
+    },
+    members_other: '{{count}} MEMBRES',
+    members_one: '{{count}} MEMBRE',
+    description: 'Définir les autorisations d\'accès à l\'application web',
+    accessLabel: 'Qui a accès',
+    updateSuccess: 'Mise à jour réussie',
+    webAppSSONotEnabledTip: 'Veuillez contacter l\'administrateur de l\'entreprise pour configurer la méthode d\'authentification de l\'application web.',
+    groups_other: '{{count}} GROUPES',
+    title: 'Contrôle d\'accès à l\'application Web',
+    groups_one: '{{count}} GROUPE',
+    noGroupsOrMembers: 'Aucun groupe ou membre sélectionné',
+  },
+  publishApp: {
+    title: 'Qui peut accéder à l\'application web',
+    notSet: 'Non défini',
+    notSetDesc: 'Actuellement, personne ne peut accéder à l\'application web. Veuillez définir les autorisations.',
+  },
+  noAccessPermission: 'Pas de permission d\'accéder à l\'application web',
+  accessControl: 'Contrôle d\'accès à l\'application Web',
 }
 
 export default translation

@@ -209,6 +209,41 @@ const translation = {
     moreFillTip: 'Mostrando um máximo de 10 níveis de aninhamento',
     notConfiguredTip: 'A saída estruturada ainda não foi configurada.',
   },
+  accessItemsDescription: {
+    anyone: 'Qualquer pessoa pode acessar o aplicativo web',
+    specific: 'Apenas grupos ou membros específicos podem acessar o aplicativo web',
+    organization: 'Qualquer pessoa na organização pode acessar o aplicativo web',
+  },
+  accessControlDialog: {
+    accessItems: {
+      specific: 'Grupos específicos ou membros',
+      anyone: 'Qualquer pessoa com o link',
+      organization: 'Apenas membros dentro da empresa',
+    },
+    operateGroupAndMember: {
+      expand: 'Expandir',
+      allMembers: 'Todos os membros',
+      searchPlaceholder: 'Pesquisar grupos e membros',
+      noResult: 'Nenhum resultado',
+    },
+    groups_one: '{{count}} GRUPO',
+    members_other: '{{count}} MEMBROS',
+    updateSuccess: 'Atualização bem-sucedida',
+    accessLabel: 'Quem tem acesso',
+    members_one: '{{count}} MEMBRO',
+    webAppSSONotEnabledTip: 'Por favor, entre em contato com o administrador da empresa para configurar o método de autenticação da aplicação web.',
+    description: 'Defina as permissões de acesso do aplicativo da web',
+    noGroupsOrMembers: 'Nenhum grupo ou membro selecionado',
+    groups_other: '{{count}} GRUPOS',
+    title: 'Controle de Acesso do Aplicativo Web',
+  },
+  publishApp: {
+    notSet: 'Não definido',
+    title: 'Quem pode acessar o aplicativo web',
+    notSetDesc: 'Atualmente, ninguém pode acessar o aplicativo web. Por favor, defina as permissões.',
+  },
+  accessControl: 'Controle de Acesso do Aplicativo Web',
+  noAccessPermission: 'Sem permissão para acessar o aplicativo web',
 }
 
 export default translation

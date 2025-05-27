@@ -42,6 +42,7 @@ const translation = {
   submitError: 'L\'envoi du formulaire a échoué. Veuillez réessayer plus tard.',
   toVerified: 'Faire vérifier l\'éducation',
   rejectContent: 'Malheureusement, vous n\'êtes pas éligible au statut Éducation Vérifié et ne pouvez donc pas recevoir le coupon exclusif de 100 % pour le Plan Professionnel Dify si vous utilisez cette adresse e-mail.',
+  test: 'test',
 }
 
 export default translation

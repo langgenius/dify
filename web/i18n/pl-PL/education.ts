@@ -42,6 +42,7 @@ const translation = {
   learn: 'Dowiedz się, jak uzyskać potwierdzenie wykształcenia',
   emailLabel: 'Twój aktualny email',
   submitError: 'Przesłanie formularza nie powiodło się. Proszę spróbować ponownie później.',
+  test: 'test',
 }
 
 export default translation

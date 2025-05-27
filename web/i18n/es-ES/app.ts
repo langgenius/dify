@@ -208,6 +208,41 @@ const translation = {
     structuredTip: 'Las Salidas Estructuradas son una función que garantiza que el modelo siempre generará respuestas que se ajusten a su esquema JSON proporcionado.',
     modelNotSupported: 'Modelo no soportado',
   },
+  accessItemsDescription: {
+    organization: 'Cualquiera en la organización puede acceder a la aplicación web',
+    anyone: 'Cualquiera puede acceder a la aplicación web',
+    specific: 'Solo grupos o miembros específicos pueden acceder a la aplicación web',
+  },
+  accessControlDialog: {
+    accessItems: {
+      specific: 'Grupos o miembros específicos',
+      anyone: 'Cualquiera con el enlace',
+      organization: 'Solo miembros dentro de la empresa',
+    },
+    operateGroupAndMember: {
+      allMembers: 'Todos los miembros',
+      expand: 'Expandir',
+      noResult: 'Sin resultado',
+      searchPlaceholder: 'Buscar grupos y miembros',
+    },
+    members_other: '{{count}} MIEMBROS',
+    groups_other: '{{count}} GRUPOS',
+    accessLabel: '¿Quién tiene acceso?',
+    groups_one: '{{count}} GRUPO',
+    members_one: '{{count}} MIEMBRO',
+    noGroupsOrMembers: 'No grupos o miembros seleccionados',
+    title: 'Control de Acceso a la Aplicación Web',
+    updateSuccess: 'Actualización exitosa',
+    description: 'Establecer permisos de acceso a la aplicación web',
+    webAppSSONotEnabledTip: 'Por favor, contacte al administrador de la empresa para configurar el método de autenticación de la aplicación web.',
+  },
+  publishApp: {
+    notSetDesc: 'Actualmente nadie puede acceder a la aplicación web. Por favor, configure los permisos.',
+    title: '¿Quién puede acceder a la aplicación web?',
+    notSet: 'No establecido',
+  },
+  accessControl: 'Control de Acceso a la Aplicación Web',
+  noAccessPermission: 'No permiso para acceder a la aplicación web',
 }
 
 export default translation

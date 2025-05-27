@@ -659,6 +659,7 @@ const translation = {
         },
         json: 'เครื่องมือสร้าง JSON',
       },
+      authorize: 'อนุญาต',
     },
     questionClassifiers: {
       model: 'แบบ',

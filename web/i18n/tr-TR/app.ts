@@ -205,6 +205,41 @@ const translation = {
     modelNotSupportedTip: 'Mevcut model bu özelliği desteklemiyor ve otomatik olarak prompt enjeksiyonuna düşürülüyor.',
     structuredTip: 'Yapılandırılmış Çıktılar, modelin sağladığınız JSON Şemasına uyacak şekilde her zaman yanıtlar üretmesini sağlayan bir özelliktir.',
   },
+  accessItemsDescription: {
+    organization: 'Örgütteki herkes web uygulamasına erişebilir.',
+    specific: 'Sadece belirli gruplar veya üyeler web uygulamasına erişebilir.',
+    anyone: 'Herkes web uygulamasına erişebilir',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: 'Bağlantıya sahip olan herkes',
+      organization: 'Sadece işletme içindeki üyeler',
+      specific: 'Belirli gruplar veya üyeler',
+    },
+    operateGroupAndMember: {
+      allMembers: 'Tüm üyeler',
+      expand: 'Genişlet',
+      noResult: 'Sonuç yok',
+      searchPlaceholder: 'Grupları ve üyeleri ara',
+    },
+    members_one: '{{count}} ÜYE',
+    groups_other: '{{count}} GRUP',
+    webAppSSONotEnabledTip: 'Lütfen web uygulaması kimlik doğrulama yöntemini yapılandırmak için kurumsal yöneticinizle iletişime geçin.',
+    members_other: '{{count}} ÜYE',
+    groups_one: '{{count}} GRUP',
+    accessLabel: 'Kimin erişimi var',
+    updateSuccess: 'Başarıyla güncellendi',
+    noGroupsOrMembers: 'Seçilen grup veya üye yok',
+    title: 'Web Uygulaması Erişim Kontrolü',
+    description: 'Web uygulaması erişim izinlerini ayarlayın',
+  },
+  publishApp: {
+    notSet: 'Ayarlar yapılmamış',
+    title: 'Web uygulamasına kim erişebilir',
+    notSetDesc: 'Şu anda kimse web uygulamasına erişemiyor. Lütfen izinleri ayarlayın.',
+  },
+  accessControl: 'Web Uygulaması Erişim Kontrolü',
+  noAccessPermission: 'Web uygulamasına erişim izni yok',
 }
 
 export default translation

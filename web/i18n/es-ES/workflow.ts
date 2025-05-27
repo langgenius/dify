@@ -658,6 +658,7 @@ const translation = {
         },
         json: 'JSON generado por la herramienta',
       },
+      authorize: 'Autorizar',
     },
     questionClassifiers: {
       model: 'modelo',

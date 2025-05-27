@@ -145,6 +145,8 @@ const translation = {
     newDataset: 'Tạo Kiến thức',
     tools: 'Công cụ',
     exploreMarketplace: 'Khám phá Marketplace',
+    appDetail: 'Chi tiết ứng dụng',
+    account: 'Tài khoản',
   },
   userProfile: {
     settings: 'Cài đặt',
@@ -644,6 +646,7 @@ const translation = {
   license: {
     expiring_plural: 'Hết hạn sau {{count}} ngày',
     expiring: 'Hết hạn trong một ngày',
+    unlimited: 'Vô hạn',
   },
   pagination: {
     perPage: 'Mục trên mỗi trang',
@@ -667,6 +670,7 @@ const translation = {
     dropImageHere: 'Kéo hình ảnh của bạn vào đây, hoặc',
     browse: 'duyệt',
   },
+  you: 'Bạn',
 }
 
 export default translation

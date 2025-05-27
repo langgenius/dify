@@ -42,6 +42,7 @@ const translation = {
   emailLabel: 'Email hiện tại của bạn',
   rejectContent: 'Rất tiếc, bạn không đủ điều kiện để nhận trạng thái Xác minh Giáo dục và do đó không thể nhận được mã giảm giá độc quyền 100% cho Kế hoạch Chuyên nghiệp Dify nếu bạn sử dụng địa chỉ email này.',
   submitError: 'Gửi mẫu không thành công. Vui lòng thử lại sau.',
+  test: 'kiểm tra',
 }
 
 export default translation

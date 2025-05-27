@@ -42,6 +42,7 @@ const translation = {
   rejectTitle: 'Dify教育認証が拒否されました',
   rejectContent: '申し訳ございませんが、このメールアドレスでは 教育認証 の資格を取得できず、Difyプロフェッショナルプランの50％割引クーポン を受け取ることはできません。',
   emailLabel: '現在のメールアドレス',
+  test: 'テスト',
 }
 
 export default translation

@@ -220,6 +220,41 @@ const translation = {
     notConfiguredTip: 'L\'output strutturato non è stato ancora configurato.',
     modelNotSupportedTip: 'Il modello attuale non supporta questa funzione e viene automaticamente downgradato a iniezione di prompt.',
   },
+  accessItemsDescription: {
+    anyone: 'Chiunque può accedere all\'app web',
+    specific: 'Solo gruppi o membri specifici possono accedere all\'app web.',
+    organization: 'Qualsiasi persona nell\'organizzazione può accedere all\'app web',
+  },
+  accessControlDialog: {
+    accessItems: {
+      organization: 'Solo i membri all\'interno dell\'impresa',
+      specific: 'Gruppi o membri specifici',
+      anyone: 'Chiunque con il link',
+    },
+    operateGroupAndMember: {
+      expand: 'Espandere',
+      noResult: 'Nessun risultato',
+      searchPlaceholder: 'Cerca gruppi e membri',
+      allMembers: 'Tutti i membri',
+    },
+    members_one: '{{count}} MEMBRO',
+    groups_other: '{{count}} GRUPPI',
+    groups_one: '{{count}} GRUPPO',
+    noGroupsOrMembers: 'Nessun gruppo o membro selezionato',
+    updateSuccess: 'Aggiornamento avvenuto con successo',
+    accessLabel: 'Chi ha accesso',
+    title: 'Controllo di accesso all\'app web',
+    webAppSSONotEnabledTip: 'Si prega di contattare l\'amministratore dell\'impresa per configurare il metodo di autenticazione dell\'app web.',
+    description: 'Imposta le autorizzazioni di accesso all\'app web',
+    members_other: '{{count}} MEMBRI',
+  },
+  publishApp: {
+    notSet: 'Non impostato',
+    notSetDesc: 'Attualmente nessuno può accedere all\'app web. Si prega di impostare i permessi.',
+    title: 'Chi può accedere all\'app web',
+  },
+  accessControl: 'Controllo di accesso all\'app web',
+  noAccessPermission: 'Nessun permesso per accedere all\'app web',
 }
 
 export default translation

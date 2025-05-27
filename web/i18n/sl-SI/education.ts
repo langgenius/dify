@@ -42,6 +42,7 @@ const translation = {
   emailLabel: 'Vaš trenutni elektronski naslov',
   currentSigned: 'Trenutno prijavljen kot',
   rejectContent: 'Na žalost niste upravičeni do statusa Verificirane izobrazbe in zato ne morete prejeti ekskluzivnega 100-odstotnega kupona za Dify profesionalni načrt, če uporabljate ta e-poštni naslov.',
+  test: 'test',
 }
 
 export default translation

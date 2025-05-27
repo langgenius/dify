@@ -42,6 +42,7 @@ const translation = {
   currentSigned: 'CONEXIUNE ÎN PREZENT CA',
   rejectTitle: 'Verificarea educațională Dify a fost respinsă',
   successContent: 'Am emis un cupon de discount de 100% pentru planul Professional Dify pe contul dumneavoastră. Cuponul este valabil timp de un an, vă rugăm să îl utilizați în perioada de valabilitate.',
+  test: 'test',
 }
 
 export default translation

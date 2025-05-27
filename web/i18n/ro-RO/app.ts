@@ -209,6 +209,41 @@ const translation = {
     configure: 'Configurează',
     modelNotSupportedTip: 'Modelul actual nu suportă această funcție și este downgradat automat la injecția de prompt.',
   },
+  accessItemsDescription: {
+    anyone: 'Oricine poate accesa aplicația web',
+    organization: 'Oricine din organizație poate accesa aplicația web',
+    specific: 'Numai grupuri sau membri specifici pot accesa aplicația web.',
+  },
+  accessControlDialog: {
+    accessItems: {
+      organization: 'Numai membrii din cadrul întreprinderii',
+      specific: 'Grupuri sau membri specifici',
+      anyone: 'Oricine are linkul',
+    },
+    operateGroupAndMember: {
+      noResult: 'Niciun rezultat',
+      expand: 'Expandează',
+      searchPlaceholder: 'Caută grupuri și membri',
+      allMembers: 'Toți membrii',
+    },
+    updateSuccess: 'Actualizare reușită',
+    groups_other: '{{count}} GRUPURI',
+    noGroupsOrMembers: 'Niciun grup sau membri selectați',
+    members_one: '{{count}} MEMBRU',
+    members_other: '{{count}} MEMBRI',
+    title: 'Controlul Accesului la Aplicația Web',
+    accessLabel: 'Cine are acces',
+    webAppSSONotEnabledTip: 'Vă rugăm să contactați administratorul de întreprindere pentru a configura metoda de autentificare a aplicației web.',
+    groups_one: '{{count}} GRUP',
+    description: 'Setați permisiunile de acces la aplicația web',
+  },
+  publishApp: {
+    notSet: 'Nu este setat',
+    title: 'Cine poate accesa aplicația web',
+    notSetDesc: 'În prezent, nimeni nu poate accesa aplicația web. Vă rugăm să setați permisiunile.',
+  },
+  noAccessPermission: 'Nici o permisiune pentru a accesa aplicația web',
+  accessControl: 'Controlul Accesului la Aplicația Web',
 }
 
 export default translation
