@@ -15,7 +15,6 @@ const translation = {
   },
   author: 'Автор',
   auth: {
-    unauthorized: 'Авторизовать',
     authorized: 'Авторизовано',
     setup: 'Настроить авторизацию для использования',
     setupModalTitle: 'Настроить авторизацию',

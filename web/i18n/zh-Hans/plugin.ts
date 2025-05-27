@@ -77,6 +77,7 @@ const translation = {
     modelNum: '{{num}} 模型已包含',
     toolSelector: {
       title: '添加工具',
+      toolSetting: '工具设置',
       toolLabel: '工具',
       descriptionLabel: '工具描述',
       descriptionPlaceholder: '简要描述工具目的，例如，获取特定位置的温度。',

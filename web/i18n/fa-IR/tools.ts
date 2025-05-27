@@ -15,7 +15,6 @@ const translation = {
   },
   author: 'توسط',
   auth: {
-    unauthorized: 'برای مجوز دادن',
     authorized: 'مجوز داده شده',
     setup: 'تنظیم مجوز برای استفاده',
     setupModalTitle: 'تنظیم مجوز',

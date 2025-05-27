@@ -648,7 +648,6 @@ const translation = {
       'variables': 'Variabile',
     },
     tool: {
-      toAuthorize: 'Autorizați',
       inputVars: 'Variabile de intrare',
       outputVars: {
         text: 'conținut generat de instrument',
