@@ -214,6 +214,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     source["word_count"] = segment.word_count
                                     source["segment_position"] = segment.position
                                     source["index_node_hash"] = segment.index_node_hash
+                                    source["page_number"] = segment.page_number
                                 if segment.answer:
                                     source["content"] = f"question:{segment.content} \nanswer:{segment.answer}"
                                 else:
