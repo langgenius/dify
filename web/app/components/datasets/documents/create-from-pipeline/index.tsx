@@ -213,6 +213,7 @@ const TestRunPanel = () => {
       start_node_id: datasource.nodeId,
       datasource_type: datasource.type,
       datasource_info_list: datasourceInfoList,
+      is_preview: false,
     }, {
       onSuccess: () => {
         handleNextStep()
