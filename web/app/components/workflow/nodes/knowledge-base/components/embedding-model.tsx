@@ -1,13 +1,12 @@
 import {
   memo,
   useCallback,
-  useEffect,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
@@ -28,9 +27,8 @@ const EmbeddingModel = ({
 }: EmbeddingModelProps) => {
   const { t } = useTranslation()
   const {
-    defaultModel,
-    modelList: embeddingModelList,
-  } = useModelListAndDefaultModel(ModelTypeEnum.textEmbedding)
+    data: embeddingModelList,
+  } = useModelList(ModelTypeEnum.textEmbedding)
   const embeddingModelConfig = useMemo(() => {
     if (!embeddingModel || !embeddingModelProvider)
       return undefined
@@ -47,15 +45,6 @@ const EmbeddingModel = ({
       embeddingModel: model.model,
     })
   }, [onEmbeddingModelChange])
-
-  useEffect(() => {
-    if (!embeddingModelConfig && defaultModel) {
-      handleEmbeddingModelChange({
-        provider: defaultModel.provider.provider,
-        model: defaultModel.model,
-      })
-    }
-  }, [embeddingModelConfig, defaultModel, handleEmbeddingModelChange])
 
   return (
     <Field
