@@ -1,5 +1,5 @@
 const translation = {
-  test2: 'test',
+  test: 'test',
   toVerified: 'Get Education Verified',
   toVerifiedTip: {
     front: 'You are now eligible for Education Verified status. Please enter your education information below to complete the process and receive an',
