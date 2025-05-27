@@ -14,7 +14,7 @@ env:
 
 jobs:
   build:
-    runs-on: arm64_runner
+    runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         include:
@@ -52,7 +52,7 @@ jobs:
         run: |
           DATE=$(date +"%Y%m%d%H%M%S%Z")
           BRANCH_NAME=$(echo "$BRANCH_NAME" | sed 's#[^a-zA-Z0-9._-]#-#g')
-          IMAGE_TAG Nutzung:${BRANCH_NAME}-${COMMIT_HASH::7}-${DATE}-arm64"
+          IMAGE_TAG_NAME:${BRANCH_NAME}-${COMMIT_HASH::7}-${DATE}-arm64"
           echo "IMAGE_TAG_NAME=$IMAGE_TAG_NAME" >> "$GITHUB_OUTPUT"
           echo "IMAGE_FULL_TAG=${{ matrix.image_name }}:${IMAGE_TAG_NAME}" >> $GITHUB_ENV
 
