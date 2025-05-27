@@ -387,7 +387,7 @@ class DatasetTagsApi(DatasetApiResource):
         args = parser.parse_args()
         TagService.delete_tag(args.get("tag_id"))
 
-        return {"result": "success"}, 200
+        return 204
 
     @staticmethod
     def _validate_tag_name(name):
@@ -415,7 +415,7 @@ class DatasetTagBindingApi(DatasetApiResource):
         args["type"] = "knowledge"
         TagService.save_tag_binding(args)
 
-        return {"result": "success"}, 200
+        return 204
 
 
 class DatasetTagUnbindingApi(DatasetApiResource):
@@ -433,7 +433,7 @@ class DatasetTagUnbindingApi(DatasetApiResource):
         args["type"] = "knowledge"
         TagService.delete_tag_binding(args)
 
-        return {"result": "success"}, 200
+        return 204
 
 
 class DatasetTagsBindingStatusApi(DatasetApiResource):
