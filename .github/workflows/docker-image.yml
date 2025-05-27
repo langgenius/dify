@@ -19,11 +19,11 @@ jobs:
       matrix:
         include:
           - service_name: "build-api-arm64"
-            image_name: "registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-api"
+            image_name: "registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-api-arm"
             context: "api"
             platform: linux/arm64
           - service_name: "build-web-arm64"
-            image_name: "registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-web"
+            image_name: "registry.cn-hangzhou.aliyuncs.com/kindlingx/apo-dify-web-arm"
             context: "web"
             platform: linux/arm64
 
