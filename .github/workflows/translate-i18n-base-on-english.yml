@@ -4,12 +4,10 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
-  push:
-    branches: 
-      - "fix/i18n-auto-run-faild"
 
 jobs:
   check-and-update:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     defaults:
       run:
