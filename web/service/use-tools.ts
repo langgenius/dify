@@ -183,11 +183,17 @@ export const useMCPServerDetail = (appID: string) => {
   })
 }
 
-export const useCreateMCPServer = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
+export const useInvalidateMCPServerDetail = () => {
+  const queryClient = useQueryClient()
+  return (appID: string) => {
+    queryClient.invalidateQueries(
+      {
+        queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
+      })
+  }
+}
+
+export const useCreateMCPServer = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'create-mcp-server'],
     mutationFn: (payload: {
@@ -202,19 +208,15 @@ export const useCreateMCPServer = ({
         },
       })
     },
-    onSuccess,
   })
 }
 
-export const useUpdateMCPServer = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
+export const useUpdateMCPServer = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'update-mcp-server'],
     mutationFn: (payload: {
       appID: string
+      id: string
       description?: string
       status?: string
       parameters?: Record<string, string>
@@ -226,7 +228,6 @@ export const useUpdateMCPServer = ({
         },
       })
     },
-    onSuccess,
   })
 }
 

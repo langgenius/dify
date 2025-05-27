@@ -7,30 +7,75 @@ import Button from '@/app/components/base/button'
 import Textarea from '@/app/components/base/textarea'
 import Divider from '@/app/components/base/divider'
 import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
+import type {
+  MCPServerDetail,
+} from '@/app/components/tools/types'
+import {
+  useCreateMCPServer,
+  useInvalidateMCPServerDetail,
+  useUpdateMCPServer,
+} from '@/service/use-tools'
 import cn from '@/utils/classnames'
 
 export type ModalProps = {
-  latestParams?: any
-  data?: any
+  appID: string
+  latestParams?: any[]
+  data?: MCPServerDetail
   show: boolean
-  onConfirm: () => void
   onHide: () => void
 }
 
 const MCPServerModal = ({
-  // latestParams,
+  appID,
+  latestParams = [],
   data,
   show,
-  onConfirm,
   onHide,
 }: ModalProps) => {
   const { t } = useTranslation()
+  const { mutateAsync: createMCPServer, isPending: creating } = useCreateMCPServer()
+  const { mutateAsync: updateMCPServer, isPending: updating } = useUpdateMCPServer()
+  const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
 
-  const [description, setDescription] = React.useState('')
+  const [description, setDescription] = React.useState(data?.description || '')
+  const [params, setParams] = React.useState(data?.parameters || {})
+
+  const handleParamChange = (variable: string, value: string) => {
+    setParams(prev => ({
+      ...prev,
+      [variable]: value,
+    }))
+  }
+
+  const getParamValue = () => {
+    const res = {} as any
+    latestParams.map((param) => {
+      res[param.variable] = params[param.variable]
+      return param
+    })
+    return res
+  }
 
   const submit = async () => {
-    await onConfirm()
-    onHide()
+    if (!data) {
+      await createMCPServer({
+        appID,
+        description,
+        parameters: getParamValue(),
+      })
+      invalidateMCPServerDetail(appID)
+      onHide()
+    }
+    else {
+      await updateMCPServer({
+        appID,
+        id: data.id,
+        description,
+        parameters: getParamValue(),
+      })
+      invalidateMCPServerDetail(appID)
+      onHide()
+    }
   }
 
   return (
@@ -58,22 +103,27 @@ const MCPServerModal = ({
             onChange={e => setDescription(e.target.value)}
           ></Textarea>
         </div>
-        <div>
-          <div className='mb-1 flex items-center gap-2'>
-            <div className='system-xs-medium-uppercase shrink-0 text-text-primary'>{t('tools.mcp.server.modal.parameters')}</div>
-            <Divider type='horizontal' className='!m-0 !h-px grow bg-divider-subtle' />
+        {latestParams.length > 0 && (
+          <div>
+            <div className='mb-1 flex items-center gap-2'>
+              <div className='system-xs-medium-uppercase shrink-0 text-text-primary'>{t('tools.mcp.server.modal.parameters')}</div>
+              <Divider type='horizontal' className='!m-0 !h-px grow bg-divider-subtle' />
+            </div>
+            <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.server.modal.parametersTip')}</div>
+            <div className='space-y-3'>
+              {latestParams.map(paramItem => (
+                <MCPServerParamItem
+                  key={paramItem.variable}
+                  data={paramItem}
+                  onChange={value => handleParamChange(paramItem.variable, value)}
+                />
+              ))}
+            </div>
           </div>
-          <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.server.modal.parametersTip')}</div>
-          <div className='space-y-3'>
-            <MCPServerParamItem
-              data={{}}
-              onChange={() => ({})}
-            />
-          </div>
-        </div>
+        )}
       </div>
       <div className='flex flex-row-reverse p-6 pt-5'>
-        <Button disabled={!description } className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.server.modal.confirm')}</Button>
+        <Button disabled={!description || creating || updating} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.server.modal.confirm')}</Button>
         <Button onClick={onHide}>{t('tools.mcp.modal.cancel')}</Button>
       </div>
     </Modal>

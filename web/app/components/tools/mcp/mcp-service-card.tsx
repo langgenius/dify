@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiLoopLeftLine,
@@ -23,6 +23,7 @@ import { useAppWorkflow } from '@/service/use-workflow'
 import {
   useMCPServerDetail,
 } from '@/service/use-tools'
+import { BlockEnum } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 export type IAppCardProps = {
@@ -48,10 +49,16 @@ function MCPServiceCard({
   const serverPublished = !!id
   const serverActivated = status === 'active'
   const serverURL = serverPublished ? `${globalThis.location.protocol}//${globalThis.location.host}/api/server/${server_code}/mcp` : '***********'
-
   const toggleDisabled = !isCurrentWorkspaceEditor || appUnpublished
 
   const [activated, setActivated] = useState(serverActivated)
+
+  const latestParams = useMemo(() => {
+    if (!currentWorkflow?.graph)
+      return []
+    const startNode = currentWorkflow?.graph.nodes.find(node => node.data.type === BlockEnum.Start) as any
+    return startNode?.data.variables as any[] || []
+  }, [currentWorkflow])
 
   const onGenCode = async () => {
     if (onGenerateCode) {
@@ -78,10 +85,6 @@ function MCPServiceCard({
     setShowMCPServerModal(false)
     if (!serverActivated)
       setActivated(false)
-  }
-
-  const handleServerModalConfirm = () => {
-    setShowMCPServerModal(false)
   }
 
   useEffect(() => {
@@ -164,7 +167,7 @@ function MCPServiceCard({
               variant='ghost'
               onClick={() => setShowMCPServerModal(true)}
             >
-              {serverPublished ? t('tools.mcp.server.editDescription') : t('tools.mcp.server.addDescription')}
+              {serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}
             </Button>
           </div>
         </div>
@@ -172,7 +175,9 @@ function MCPServiceCard({
       {showMCPServerModal && (
         <MCPServerModal
           show={showMCPServerModal}
-          onConfirm={handleServerModalConfirm}
+          appID={appInfo.id}
+          data={serverPublished ? detail : undefined}
+          latestParams={latestParams}
           onHide={handleServerModalHide}
         />
       )}
