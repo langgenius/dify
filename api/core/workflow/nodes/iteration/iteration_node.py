@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from queue import Empty, Queue
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from flask import Flask, current_app
+from flask import Flask, current_app, has_request_context
 
 from configs import dify_config
 from core.variables import ArrayVariable, IntegerVariable, NoneVariable
@@ -586,7 +586,21 @@ class IterationNode(BaseNode[IterationNodeData]):
         """
         for var, val in context.items():
             var.set(val)
+
+        # FIXME(-LAN-): Save current user before entering new app context
+        from flask import g
+
+        saved_user = None
+        if has_request_context() and hasattr(g, "_login_user"):
+            saved_user = g._login_user
+
         with flask_app.app_context():
+            # Restore user in new app context
+            if saved_user is not None:
+                from flask import g
+
+                g._login_user = saved_user
+
             parallel_mode_run_id = uuid.uuid4().hex
             graph_engine_copy = graph_engine.create_copy()
             variable_pool_copy = graph_engine_copy.graph_runtime_state.variable_pool
