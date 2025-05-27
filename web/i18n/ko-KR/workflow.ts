@@ -648,7 +648,6 @@ const translation = {
       'varNotSet': '변수가 설정되지 않음',
     },
     tool: {
-      toAuthorize: '승인하기',
       inputVars: '입력 변수',
       outputVars: {
         text: '도구가 생성한 내용',

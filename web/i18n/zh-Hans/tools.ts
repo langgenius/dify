@@ -15,7 +15,6 @@ const translation = {
   },
   author: '作者',
   auth: {
-    unauthorized: '去授权',
     authorized: '已授权',
     setup: '要使用请先授权',
     setupModalTitle: '设置授权',

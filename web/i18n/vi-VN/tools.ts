@@ -14,7 +14,6 @@ const translation = {
   },
   author: 'Tác giả',
   auth: {
-    unauthorized: 'Chưa xác thực',
     authorized: 'Đã xác thực',
     setup: 'Thiết lập xác thực để sử dụng',
     setupModalTitle: 'Thiết lập xác thực',

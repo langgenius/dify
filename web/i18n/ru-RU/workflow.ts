@@ -648,7 +648,6 @@ const translation = {
       'selectAssignedVariable': 'Выберите назначенную переменную...',
     },
     tool: {
-      toAuthorize: 'Авторизовать',
       inputVars: 'Входные переменные',
       outputVars: {
         text: 'контент, сгенерированный инструментом',

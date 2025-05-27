@@ -652,7 +652,7 @@ const translation = {
       'assignedVarsDescription': '赋值变量必须是可写入的变量，例如会话变量。',
     },
     tool: {
-      toAuthorize: '授权',
+      authorize: '授权',
       inputVars: '输入变量',
       outputVars: {
         text: '工具生成的内容',
