@@ -16,6 +16,7 @@ import type {
   PipelineTemplateListParams,
   PipelineTemplateListResponse,
   PublishedPipelineInfoResponse,
+  PublishedPipelineRunRequest,
   UpdateTemplateInfoRequest,
   UpdateTemplateInfoResponse,
 } from '@/models/pipeline'
@@ -181,5 +182,23 @@ export const usePublishedPipelineInfo = (pipelineId: string) => {
       return get<PublishedPipelineInfoResponse>(`/rag/pipelines/${pipelineId}/workflows/publish`)
     },
     enabled: !!pipelineId,
+  })
+}
+
+export const useRunPublishedPipeline = (
+  mutationOptions: MutationOptions<any, Error, PublishedPipelineRunRequest> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'run-published-pipeline'],
+    mutationFn: (request: PublishedPipelineRunRequest) => {
+      const { pipeline_id: pipelineId, ...rest } = request
+      return post<PublishedPipelineInfoResponse>(`/rag/pipelines/${pipelineId}/workflows/published/run`, {
+        body: {
+          ...rest,
+          response_mode: 'blocking',
+        },
+      })
+    },
+    ...mutationOptions,
   })
 }

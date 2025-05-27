@@ -6,6 +6,12 @@ import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Viewport } from 'reactflow'
 import type { TransferMethod } from '@/types/app'
 
+export enum DatasourceType {
+  localFile = 'local-file',
+  onlineDocument = 'online-document',
+  websiteCrawl = 'website-crawl',
+}
+
 export type PipelineTemplateListParams = {
   type: 'built-in' | 'customized'
 }
@@ -169,4 +175,13 @@ export type PublishedPipelineInfoResponse = {
   version: string
   marked_name: string
   marked_comment: string
+}
+
+export type PublishedPipelineRunRequest = {
+  pipeline_id: string
+  inputs: Record<string, any>
+  start_node_id: string
+  datasource_type: DatasourceType
+  datasource_info_list: Array<Record<string, any>>
+  is_preview?: boolean
 }

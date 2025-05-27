@@ -1,6 +1,4 @@
-import type { DataSourceProvider } from '@/models/common'
-import type { DataSourceType } from '@/models/datasets'
-import type { RAGPipelineVariables } from '@/models/pipeline'
+import type { DatasourceType, RAGPipelineVariables } from '@/models/pipeline'
 
 export enum TestRunStep {
   dataSource = 'dataSource',
@@ -10,11 +8,14 @@ export enum TestRunStep {
 export type DataSourceOption = {
   label: string
   value: string
-  type: DataSourceType | DataSourceProvider
+  type: DatasourceType
 }
 
 export type Datasource = {
   nodeId: string
-  type: DataSourceType | DataSourceProvider
+  type: DatasourceType
   variables: RAGPipelineVariables
+  description: string
+  docTitle?: string
+  docLink?: string
 }

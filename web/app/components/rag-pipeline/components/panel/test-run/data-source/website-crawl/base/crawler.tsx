@@ -3,15 +3,13 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CrawlResultItem } from '@/models/datasets'
 import Header from '@/app/components/datasets/create/website/base/header'
-import Options from '../base/options'
-import Crawling from '../base/crawling'
-import ErrorMessage from '../base/error-message'
-import CrawledResult from '../base/crawled-result'
+import Options from './options'
+import Crawling from './crawling'
+import ErrorMessage from './error-message'
+import CrawledResult from './crawled-result'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { useDatasourceNodeRun } from '@/service/use-pipeline'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useWebCrawlerHeaderInfo } from '../../../hooks'
-import type { DataSourceProvider } from '@/models/common'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -19,9 +17,13 @@ type CrawlerProps = {
   nodeId: string
   variables: RAGPipelineVariables
   checkedCrawlResult: CrawlResultItem[]
-  datasourceProvider: DataSourceProvider
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
+  headerInfo: {
+    title: string
+    docTitle: string
+    docLink: string
+  }
   onPreview?: (payload: CrawlResultItem) => void
 }
 
@@ -35,7 +37,7 @@ const Crawler = ({
   nodeId,
   variables,
   checkedCrawlResult,
-  datasourceProvider,
+  headerInfo,
   onCheckedCrawlResultChange,
   onJobIdChange,
   onPreview,
@@ -44,8 +46,6 @@ const Crawler = ({
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-
-  const headerInfoMap = useWebCrawlerHeaderInfo()
 
   useEffect(() => {
     if (step !== Step.init)
@@ -91,7 +91,7 @@ const Crawler = ({
     <div>
       <Header
         isInPipeline
-        {...headerInfoMap[datasourceProvider]}
+        {...headerInfo}
       />
       <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <Options

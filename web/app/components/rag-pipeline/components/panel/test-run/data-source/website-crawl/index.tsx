@@ -2,36 +2,41 @@
 import React from 'react'
 import type { CrawlResultItem } from '@/models/datasets'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import Crawler from '../base/crawler'
-import { DataSourceProvider } from '@/models/common'
+import Crawler from './base/crawler'
 
-type FireCrawlProps = {
+type WebsiteCrawlProps = {
   nodeId: string
   variables: RAGPipelineVariables
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
+  headerInfo: {
+    title: string
+    docTitle: string
+    docLink: string
+  }
   onPreview?: (payload: CrawlResultItem) => void
 }
 
-const FireCrawl = ({
+const WebsiteCrawl = ({
   nodeId,
   variables,
   checkedCrawlResult,
+  headerInfo,
   onCheckedCrawlResultChange,
   onJobIdChange,
   onPreview,
-}: FireCrawlProps) => {
+}: WebsiteCrawlProps) => {
   return (
     <Crawler
       nodeId={nodeId}
       variables={variables}
       checkedCrawlResult={checkedCrawlResult}
-      datasourceProvider={DataSourceProvider.fireCrawl}
+      headerInfo={headerInfo}
       onCheckedCrawlResultChange={onCheckedCrawlResultChange}
       onJobIdChange={onJobIdChange}
       onPreview={onPreview}
     />
   )
 }
-export default FireCrawl
+export default WebsiteCrawl

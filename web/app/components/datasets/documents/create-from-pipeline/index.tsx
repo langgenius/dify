@@ -1,22 +1,19 @@
 'use client'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import DataSourceOptions from './data-source-options'
-import type { CrawlResultItem, CustomFile as File, FileItem } from '@/models/datasets'
-import { DataSourceType } from '@/models/datasets'
+import type { CrawlResultItem, CustomFile as File, FileIndexingEstimateResponse, FileItem } from '@/models/datasets'
 import LocalFile from '@/app/components/rag-pipeline/components/panel/test-run/data-source/local-file'
 import produce from 'immer'
 import { useProviderContextSelector } from '@/context/provider-context'
-import { DataSourceProvider, type NotionPage } from '@/models/common'
+import type { NotionPage } from '@/models/common'
 import Notion from '@/app/components/rag-pipeline/components/panel/test-run/data-source/notion'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import FireCrawl from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website/firecrawl'
-import JinaReader from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website/jina-reader'
-import WaterCrawl from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website/water-crawl'
+import WebsiteCrawl from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website-crawl'
 import Actions from './data-source/actions'
 import { useTranslation } from 'react-i18next'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import LeftHeader from './left-header'
-import { usePublishedPipelineInfo } from '@/service/use-pipeline'
+import { usePublishedPipelineInfo, useRunPublishedPipeline } from '@/service/use-pipeline'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Loading from '@/app/components/base/loading'
 import type { Node } from '@/app/components/workflow/types'
@@ -27,6 +24,7 @@ import WebsitePreview from './preview/web-preview'
 import ProcessDocuments from './process-documents'
 import ChunkPreview from './preview/chunk-preview'
 import Processing from './processing'
+import { DatasourceType } from '@/models/pipeline'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
@@ -39,6 +37,7 @@ const TestRunPanel = () => {
   const [currentFile, setCurrentFile] = useState<File | undefined>()
   const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
   const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
+  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
 
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
@@ -66,13 +65,11 @@ const TestRunPanel = () => {
 
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
-    if (datasource.type === DataSourceType.FILE)
+    if (datasource.type === DatasourceType.localFile)
       return nextDisabled
-    if (datasource.type === DataSourceType.NOTION)
+    if (datasource.type === DatasourceType.onlineDocument)
       return isShowVectorSpaceFull || !notionPages.length
-    if (datasource.type === DataSourceProvider.fireCrawl
-      || datasource.type === DataSourceProvider.jinaReader
-      || datasource.type === DataSourceProvider.waterCrawl)
+    if (datasource.type === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     return false
   }, [datasource, nextDisabled, isShowVectorSpaceFull, notionPages.length, websitePages.length])
@@ -128,38 +125,100 @@ const TestRunPanel = () => {
     setCurrentStep(preStep => preStep - 1)
   }, [])
 
-  const handlePreviewChunks = useCallback((data: Record<string, any>) => {
-    console.log(data)
-  }, [])
+  const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
 
-  const handleProcess = useCallback((data: Record<string, any>) => {
+  const handlePreviewChunks = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
       return
-    const datasourceInfo: Record<string, any> = {}
-    let datasource_type = ''
-    if (datasource.type === DataSourceType.FILE) {
-      datasource_type = 'local_file'
-      datasourceInfo.fileId = fileList.map(file => file.fileID)
+    const datasourceInfoList: Record<string, any>[] = []
+    if (datasource.type === DatasourceType.localFile) {
+      const { id, name, type, size, extension, mime_type } = fileList[0].file
+      const documentInfo = {
+        upload_file_id: id,
+        name,
+        type,
+        size,
+        extension,
+        mime_type,
+      }
+      datasourceInfoList.push(documentInfo)
     }
-    if (datasource.type === DataSourceType.NOTION) {
-      datasource_type = 'online_document'
-      datasourceInfo.workspaceId = notionPages[0].workspace_id
-      datasourceInfo.page = notionPages.map((page) => {
-        const { workspace_id, ...rest } = page
-        return rest
+    if (datasource.type === DatasourceType.onlineDocument) {
+      const { workspace_id, ...rest } = notionPages[0]
+      const documentInfo = {
+        workspace_id,
+        page: rest,
+      }
+      datasourceInfoList.push(documentInfo)
+    }
+    if (datasource.type === DatasourceType.websiteCrawl) {
+      const documentInfo = {
+        job_id: websiteCrawlJobId,
+        result: websitePages[0],
+      }
+      datasourceInfoList.push(documentInfo)
+    }
+    await runPublishedPipeline({
+      pipeline_id: pipelineId!,
+      inputs: data,
+      start_node_id: datasource.nodeId,
+      datasource_type: datasource.type,
+      datasource_info_list: datasourceInfoList,
+      is_preview: true,
+    }, {
+      onSuccess: (res) => {
+        setEstimateData(res as FileIndexingEstimateResponse)
+      },
+    })
+  }, [datasource, fileList, notionPages, pipelineId, runPublishedPipeline, websiteCrawlJobId, websitePages])
+
+  const handleProcess = useCallback(async (data: Record<string, any>) => {
+    if (!datasource)
+      return
+    const datasourceInfoList: Record<string, any>[] = []
+    if (datasource.type === DatasourceType.localFile) {
+      fileList.forEach((file) => {
+        const { id, name, type, size, extension, mime_type } = file.file
+        const documentInfo = {
+          upload_file_id: id,
+          name,
+          type,
+          size,
+          extension,
+          mime_type,
+        }
+        datasourceInfoList.push(documentInfo)
       })
     }
-    if (datasource.type === DataSourceProvider.fireCrawl
-      || datasource.type === DataSourceProvider.jinaReader
-      || datasource.type === DataSourceProvider.waterCrawl) {
-      datasource_type = 'website_crawl'
-      datasourceInfo.jobId = websiteCrawlJobId
-      datasourceInfo.result = websitePages
+    if (datasource.type === DatasourceType.onlineDocument) {
+      notionPages.forEach((page) => {
+        const { workspace_id, ...rest } = page
+        const documentInfo = {
+          workspace_id,
+          page: rest,
+        }
+        datasourceInfoList.push(documentInfo)
+      })
     }
-    // todo: Run Pipeline
-    console.log('datasource_type', datasource_type)
-    handleNextStep()
-  }, [datasource, fileList, handleNextStep, notionPages, websiteCrawlJobId, websitePages])
+    if (datasource.type === DatasourceType.websiteCrawl) {
+      const documentInfo = {
+        job_id: websiteCrawlJobId,
+        result: websitePages,
+      }
+      datasourceInfoList.push(documentInfo)
+    }
+    await runPublishedPipeline({
+      pipeline_id: pipelineId!,
+      inputs: data,
+      start_node_id: datasource.nodeId,
+      datasource_type: datasource.type,
+      datasource_info_list: datasourceInfoList,
+    }, {
+      onSuccess: () => {
+        handleNextStep()
+      },
+    })
+  }, [datasource, fileList, handleNextStep, notionPages, pipelineId, runPublishedPipeline, websiteCrawlJobId, websitePages])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -203,7 +262,7 @@ const TestRunPanel = () => {
                   onSelect={setDatasource}
                   pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
                 />
-                {datasource?.type === DataSourceType.FILE && (
+                {datasource?.type === DatasourceType.localFile && (
                   <LocalFile
                     files={fileList}
                     updateFile={updateFile}
@@ -212,7 +271,7 @@ const TestRunPanel = () => {
                     notSupportBatchUpload={notSupportBatchUpload}
                   />
                 )}
-                {datasource?.type === DataSourceType.NOTION && (
+                {datasource?.type === DatasourceType.onlineDocument && (
                   <Notion
                     nodeId={datasource?.nodeId || ''}
                     notionPages={notionPages}
@@ -221,30 +280,15 @@ const TestRunPanel = () => {
                     onPreview={updateCurrentPage}
                   />
                 )}
-                {datasource?.type === DataSourceProvider.fireCrawl && (
-                  <FireCrawl
+                {datasource?.type === DatasourceType.websiteCrawl && (
+                  <WebsiteCrawl
                     nodeId={datasource?.nodeId || ''}
                     variables={datasource?.variables}
-                    checkedCrawlResult={websitePages}
-                    onCheckedCrawlResultChange={setWebsitePages}
-                    onJobIdChange={setWebsiteCrawlJobId}
-                    onPreview={updateCurrentWebsite}
-                  />
-                )}
-                {datasource?.type === DataSourceProvider.jinaReader && (
-                  <JinaReader
-                    nodeId={datasource?.nodeId || ''}
-                    variables={datasource?.variables}
-                    checkedCrawlResult={websitePages}
-                    onCheckedCrawlResultChange={setWebsitePages}
-                    onJobIdChange={setWebsiteCrawlJobId}
-                    onPreview={updateCurrentWebsite}
-                  />
-                )}
-                {datasource?.type === DataSourceProvider.waterCrawl && (
-                  <WaterCrawl
-                    nodeId={datasource?.nodeId || ''}
-                    variables={datasource?.variables}
+                    headerInfo={{
+                      title: datasource.description,
+                      docTitle: datasource.docTitle || '',
+                      docLink: datasource.docLink || '',
+                    }}
                     checkedCrawlResult={websitePages}
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
@@ -287,7 +331,7 @@ const TestRunPanel = () => {
       {/* Preview */}
       {
         currentStep === 1 && (
-          <div className='flex h-full w-[752px] shrink-0 flex-col pl-2 pt-2'>
+          <div className='flex h-full w-[752px] shrink-0 pl-2 pt-2'>
             {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
             {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
             {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
@@ -296,16 +340,20 @@ const TestRunPanel = () => {
       }
       {
         currentStep === 2 && (
-          <ChunkPreview
-            datasource={datasource!}
-            files={fileList.map(file => file.file)}
-            notionPages={notionPages}
-            websitePages={websitePages}
-            isIdle={true}
-            isPending={true}
-            estimateData={undefined}
-            onPreview={onClickPreview}
-          />
+          <div className='flex h-full w-[752px] shrink-0 pl-2 pt-2'>
+            {estimateData && (
+              <ChunkPreview
+                datasource={datasource!}
+                files={fileList.map(file => file.file)}
+                notionPages={notionPages}
+                websitePages={websitePages}
+                isIdle={isIdle}
+                isPending={isPending}
+                estimateData={estimateData}
+                onPreview={onClickPreview}
+              />
+            )}
+          </div>
         )
       }
     </div>

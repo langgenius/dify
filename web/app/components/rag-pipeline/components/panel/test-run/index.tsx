@@ -5,21 +5,19 @@ import StepIndicator from './step-indicator'
 import { useTestRunSteps } from './hooks'
 import DataSourceOptions from './data-source-options'
 import type { CrawlResultItem, FileItem } from '@/models/datasets'
-import { DataSourceType } from '@/models/datasets'
 import LocalFile from './data-source/local-file'
 import produce from 'immer'
 import { useProviderContextSelector } from '@/context/provider-context'
-import { DataSourceProvider, type NotionPage } from '@/models/common'
+import type { NotionPage } from '@/models/common'
 import Notion from './data-source/notion'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import Firecrawl from './data-source/website/firecrawl'
-import JinaReader from './data-source/website/jina-reader'
-import WaterCrawl from './data-source/website/water-crawl'
+import WebsiteCrawl from './data-source/website-crawl'
 import Actions from './data-source/actions'
 import DocumentProcessing from './document-processing'
 import { useTranslation } from 'react-i18next'
 import { usePipelineRun } from '../../../hooks'
 import type { Datasource } from './types'
+import { DatasourceType } from '@/models/pipeline'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
@@ -49,13 +47,11 @@ const TestRunPanel = () => {
 
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
-    if (datasource.type === DataSourceType.FILE)
+    if (datasource.type === DatasourceType.localFile)
       return nextDisabled
-    if (datasource.type === DataSourceType.NOTION)
+    if (datasource.type === DatasourceType.onlineDocument)
       return isShowVectorSpaceFull || !notionPages.length
-    if (datasource.type === DataSourceProvider.fireCrawl
-      || datasource.type === DataSourceProvider.jinaReader
-      || datasource.type === DataSourceProvider.waterCrawl)
+    if (datasource.type === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     return false
   }, [datasource, nextDisabled, isShowVectorSpaceFull, notionPages.length, websitePages.length])
@@ -97,21 +93,19 @@ const TestRunPanel = () => {
     if (!datasource)
       return
     const datasourceInfoList: Record<string, any>[] = []
-    let datasource_type = ''
-    if (datasource.type === DataSourceType.FILE) {
-      datasource_type = 'local_file'
+    if (datasource.type === DatasourceType.localFile) {
+      const { id, name, type, size, extension, mime_type } = fileList[0].file
       const documentInfo = {
-        upload_file_id: fileList[0].file.id,
-        name: fileList[0].file.name,
-        type: fileList[0].file.type,
-        size: fileList[0].file.size,
-        extension: fileList[0].file.extension,
-        mime_type: fileList[0].file.mime_type,
+        upload_file_id: id,
+        name,
+        type,
+        size,
+        extension,
+        mime_type,
       }
       datasourceInfoList.push(documentInfo)
     }
-    if (datasource.type === DataSourceType.NOTION) {
-      datasource_type = 'online_document'
+    if (datasource.type === DatasourceType.onlineDocument) {
       const { workspace_id, ...rest } = notionPages[0]
       const documentInfo = {
         workspace_id,
@@ -119,20 +113,17 @@ const TestRunPanel = () => {
       }
       datasourceInfoList.push(documentInfo)
     }
-    if (datasource.type === DataSourceProvider.fireCrawl
-      || datasource.type === DataSourceProvider.jinaReader
-      || datasource.type === DataSourceProvider.waterCrawl) {
-      datasource_type = 'website_crawl'
+    if (datasource.type === DatasourceType.websiteCrawl) {
       const documentInfo = {
         job_id: websiteCrawlJobId,
-        result: websitePages[0],
+        result: [websitePages[0]],
       }
       datasourceInfoList.push(documentInfo)
     }
     handleRun({
       inputs: data,
       start_node_id: datasource.nodeId,
-      datasource_type,
+      datasource_type: datasource.type,
       datasource_info_list: datasourceInfoList,
     })
   }, [datasource, fileList, handleRun, notionPages, websiteCrawlJobId, websitePages])
@@ -163,7 +154,7 @@ const TestRunPanel = () => {
                   datasourceNodeId={datasource?.nodeId || ''}
                   onSelect={setDatasource}
                 />
-                {datasource?.type === DataSourceType.FILE && (
+                {datasource?.type === DatasourceType.localFile && (
                   <LocalFile
                     files={fileList}
                     updateFile={updateFile}
@@ -171,36 +162,23 @@ const TestRunPanel = () => {
                     notSupportBatchUpload={false} // only support single file upload in test run
                   />
                 )}
-                {datasource?.type === DataSourceType.NOTION && (
+                {datasource?.type === DatasourceType.onlineDocument && (
                   <Notion
                     nodeId={datasource?.nodeId || ''}
                     notionPages={notionPages}
                     updateNotionPages={updateNotionPages}
                   />
                 )}
-                {datasource?.type === DataSourceProvider.fireCrawl && (
-                  <Firecrawl
+                {datasource?.type === DatasourceType.websiteCrawl && (
+                  <WebsiteCrawl
                     nodeId={datasource?.nodeId || ''}
                     variables={datasource?.variables}
                     checkedCrawlResult={websitePages}
-                    onCheckedCrawlResultChange={setWebsitePages}
-                    onJobIdChange={setWebsiteCrawlJobId}
-                  />
-                )}
-                {datasource?.type === DataSourceProvider.jinaReader && (
-                  <JinaReader
-                    nodeId={datasource?.nodeId || ''}
-                    variables={datasource?.variables}
-                    checkedCrawlResult={websitePages}
-                    onCheckedCrawlResultChange={setWebsitePages}
-                    onJobIdChange={setWebsiteCrawlJobId}
-                  />
-                )}
-                {datasource?.type === DataSourceProvider.waterCrawl && (
-                  <WaterCrawl
-                    nodeId={datasource?.nodeId || ''}
-                    variables={datasource?.variables}
-                    checkedCrawlResult={websitePages}
+                    headerInfo={{
+                      title: datasource.description,
+                      docTitle: datasource.docTitle || '',
+                      docLink: datasource.docLink || '',
+                    }}
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
                   />
