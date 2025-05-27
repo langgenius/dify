@@ -11,6 +11,7 @@ const metaData = genNodeMetaData({
 const nodeDefault: NodeDefault<DataSourceNodeType> = {
   metaData,
   defaultValue: {
+    variables: [],
     datasource_parameters: {},
     datasource_configurations: {},
   },

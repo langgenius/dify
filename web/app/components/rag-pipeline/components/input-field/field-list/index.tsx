@@ -1,11 +1,10 @@
 import { RiAddLine } from '@remixicon/react'
-import FieldItem from './field-item'
 import cn from '@/utils/classnames'
-import { useCallback, useMemo, useState } from 'react'
 import InputFieldEditor from '../editor'
-import { ReactSortable } from 'react-sortablejs'
-import produce from 'immer'
 import type { InputVar } from '@/models/pipeline'
+import ActionButton from '@/app/components/base/action-button'
+import { useFieldList } from './hooks'
+import FieldListContainer from './field-list-container'
 
 type FieldListProps = {
   LabelRightContent: React.ReactNode
@@ -17,62 +16,21 @@ type FieldListProps = {
 
 const FieldList = ({
   LabelRightContent,
-  inputFields,
-  handleInputFieldsChange,
+  inputFields: initialInputFields,
+  handleInputFieldsChange: onInputFieldsChange,
   readonly,
   labelClassName,
 }: FieldListProps) => {
-  const [showInputFieldEditor, setShowInputFieldEditor] = useState(false)
-  const [currentIndex, setCurrentIndex] = useState<number>(-1)
-  const [currentInputField, setCurrentInputField] = useState<InputVar>()
-
-  const optionList = useMemo(() => {
-    return inputFields.map((content, index) => {
-      return ({
-        id: index,
-        name: content.variable,
-      })
-    })
-  }, [inputFields])
-
-  const handleListSortChange = useCallback((list: Array<{ id: number, name: string }>) => {
-    const newInputFields = list.map((item) => {
-      return inputFields.find(field => field.variable === item.name)
-    })
-    handleInputFieldsChange(newInputFields as InputVar[])
-  }, [handleInputFieldsChange, inputFields])
-
-  const handleRemoveField = useCallback((index: number) => {
-    const newInputFields = inputFields.filter((_, i) => i !== index)
-    handleInputFieldsChange(newInputFields)
-  }, [handleInputFieldsChange, inputFields])
-
-  const handleAddField = () => {
-    setCurrentIndex(-1) // -1 means add new field
-    setCurrentInputField(undefined)
-    setShowInputFieldEditor(true)
-  }
-
-  const handleEditField = useCallback((index: number) => {
-    setCurrentIndex(index)
-    setCurrentInputField(inputFields[index])
-    setShowInputFieldEditor(true)
-  }, [inputFields])
-
-  const handleSubmitChange = useCallback((data: InputVar) => {
-    const newInputFields = produce(inputFields, (draft) => {
-      if (currentIndex === -1) {
-        draft.push(data)
-        return
-      }
-      draft[currentIndex] = data
-    })
-    handleInputFieldsChange(newInputFields)
-  }, [currentIndex, handleInputFieldsChange, inputFields])
-
-  const handleCloseEditor = useCallback(() => {
-    setShowInputFieldEditor(false)
-  }, [])
+  const {
+    inputFields,
+    handleSubmitField,
+    handleListSortChange,
+    handleRemoveField,
+    handleCancelInputFieldEditor,
+    handleOpenInputFieldEditor,
+    showInputFieldEditor,
+    editingField,
+  } = useFieldList(initialInputFields, onInputFieldsChange)
 
   return (
     <div className='flex flex-col'>
@@ -80,41 +38,27 @@ const FieldList = ({
         <div className='grow'>
           {LabelRightContent}
         </div>
-        <button
-          type='button'
-          className='h-6 px-2 py-1 disabled:cursor-not-allowed'
-          onClick={handleAddField}
+        <ActionButton
+          onClick={() => handleOpenInputFieldEditor()}
           disabled={readonly}
-          aria-disabled={readonly}
         >
           <RiAddLine className='h-4 w-4 text-text-tertiary' />
-        </button>
+        </ActionButton>
       </div>
-      <ReactSortable
+      <FieldListContainer
         className='flex flex-col gap-y-1 px-4 pb-2'
-        list={optionList}
-        setList={list => handleListSortChange(list)}
-        handle='.handle'
-        ghostClass='opacity-50'
-        animation={150}
-        disabled={readonly}
-      >
-        {inputFields?.map((item, index) => (
-          <FieldItem
-            key={index}
-            readonly={readonly}
-            payload={item}
-            onRemove={handleRemoveField.bind(null, index)}
-            onClickEdit={handleEditField.bind(null, index)}
-          />
-        ))}
-      </ReactSortable>
+        inputFields={inputFields}
+        onEditField={handleOpenInputFieldEditor}
+        onRemoveField={handleRemoveField}
+        onListSortChange={handleListSortChange}
+        readonly={readonly}
+      />
       {showInputFieldEditor && (
         <InputFieldEditor
           show={showInputFieldEditor}
-          initialData={currentInputField}
-          onSubmit={handleSubmitChange}
-          onClose={handleCloseEditor}
+          initialData={editingField}
+          onSubmit={handleSubmitField}
+          onClose={handleCancelInputFieldEditor}
         />
       )}
     </div>

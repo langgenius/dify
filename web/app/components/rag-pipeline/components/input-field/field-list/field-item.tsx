@@ -1,5 +1,5 @@
 'use client'
-import React, { useRef } from 'react'
+import React, { useCallback, useRef } from 'react'
 import { useHover } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import {
@@ -13,12 +13,13 @@ import cn from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import type { InputVar } from '@/models/pipeline'
 import type { InputVarType } from '@/app/components/workflow/types'
+import ActionButton from '@/app/components/base/action-button'
 
 type FieldItemProps = {
   readonly?: boolean
   payload: InputVar
-  onClickEdit: () => void
-  onRemove: () => void
+  onClickEdit: (id: string) => void
+  onRemove: (id: string) => void
 }
 
 const FieldItem = ({
@@ -31,6 +32,16 @@ const FieldItem = ({
 
   const ref = useRef(null)
   const isHovering = useHover(ref)
+
+  const handleOnClickEdit = useCallback(() => {
+    if (readonly) return
+    onClickEdit(payload.variable)
+  }, [onClickEdit, payload.variable, readonly])
+
+  const handleRemove = useCallback(() => {
+    if (readonly) return
+    onRemove(payload.variable)
+  }, [onRemove, payload.variable, readonly])
 
   return (
     <div
@@ -67,19 +78,17 @@ const FieldItem = ({
       {(isHovering && !readonly)
         ? (
           <div className='flex shrink-0 items-center gap-x-1'>
-            <button
-              type='button'
-              className='cursor-pointer rounded-md p-1 hover:bg-state-base-hover'
-              onClick={onClickEdit}
+            <ActionButton
+              className='mr-1'
+              onClick={handleOnClickEdit}
             >
               <RiEditLine className='size-4 text-text-tertiary' />
-            </button>
-            <button
-              onClick={onRemove}
-              className='group cursor-pointer rounded-md p-1 hover:bg-state-destructive-hover'
+            </ActionButton>
+            <ActionButton
+              onClick={handleRemove}
             >
               <RiDeleteBinLine className='size-4 text-text-tertiary group-hover:text-text-destructive' />
-            </button>
+            </ActionButton>
           </div>
         )
         : (
