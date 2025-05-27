@@ -91,6 +91,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           customComponent: isFullDocMode && CustomButton,
         })
         handleCancel('add')
+        setContent('')
         if (isFullDocMode) {
           refreshTimer.current = setTimeout(() => {
             onSave()

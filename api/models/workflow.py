@@ -6,6 +6,8 @@ from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
 
+from flask_login import current_user
+
 from core.variables import utils as variable_utils
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
@@ -17,7 +19,6 @@ import sqlalchemy as sa
 from sqlalchemy import UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-import contexts
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Segment, SegmentType, Variable
@@ -274,7 +275,16 @@ class Workflow(Base):
         if self._environment_variables is None:
             self._environment_variables = "{}"
 
-        tenant_id = contexts.tenant_id.get()
+        # Get tenant_id from current_user (Account or EndUser)
+        if isinstance(current_user, Account):
+            # Account user
+            tenant_id = current_user.current_tenant_id
+        else:
+            # EndUser
+            tenant_id = current_user.tenant_id
+
+        if not tenant_id:
+            return []
 
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
         results = [
@@ -297,7 +307,17 @@ class Workflow(Base):
             self._environment_variables = "{}"
             return
 
-        tenant_id = contexts.tenant_id.get()
+        # Get tenant_id from current_user (Account or EndUser)
+        if isinstance(current_user, Account):
+            # Account user
+            tenant_id = current_user.current_tenant_id
+        else:
+            # EndUser
+            tenant_id = current_user.tenant_id
+
+        if not tenant_id:
+            self._environment_variables = "{}"
+            return
 
         value = list(value)
         if any(var for var in value if not var.id):
