@@ -43,3 +43,36 @@ export const convertToInputFieldFormData = (data?: InputVar): FormData => {
     },
   }
 }
+
+export const convertFormDataToINputField = (data: FormData): InputVar => {
+  const {
+    type,
+    label,
+    variable,
+    maxLength,
+    default: defaultValue,
+    required,
+    tooltips,
+    options,
+    placeholder,
+    unit,
+    allowedFileUploadMethods,
+    allowedTypesAndExtensions: { allowedFileTypes, allowedFileExtensions },
+  } = data
+
+  return {
+    type,
+    label,
+    variable,
+    max_length: maxLength,
+    default_value: defaultValue,
+    required,
+    tooltips,
+    options,
+    placeholder,
+    unit,
+    allowed_file_upload_methods: allowedFileUploadMethods,
+    allowed_file_types: allowedFileTypes,
+    allowed_file_extensions: allowedFileExtensions,
+  }
+}

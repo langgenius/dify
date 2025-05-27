@@ -1,7 +1,7 @@
 import { RiCloseLine } from '@remixicon/react'
 import DialogWrapper from './dialog-wrapper'
 import InputFieldForm from './form'
-import { convertToInputFieldFormData } from './utils'
+import { convertFormDataToINputField, convertToInputFieldFormData } from './utils'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { InputVar } from '@/models/pipeline'
@@ -24,35 +24,8 @@ const InputFieldEditor = ({
   const formData = convertToInputFieldFormData(initialData)
 
   const handleSubmit = useCallback((value: FormData) => {
-    const {
-      type,
-      label,
-      variable,
-      maxLength,
-      required,
-      tooltips,
-      options,
-      placeholder,
-      unit,
-      default: defaultValue,
-      allowedFileUploadMethods,
-      allowedTypesAndExtensions,
-    } = value
-    onSubmit({
-      type,
-      label,
-      variable,
-      max_length: maxLength,
-      required,
-      tooltips,
-      options,
-      placeholder,
-      unit,
-      default_value: defaultValue,
-      allowed_file_upload_methods: allowedFileUploadMethods,
-      allowed_file_types: allowedTypesAndExtensions.allowedFileTypes,
-      allowed_file_extensions: allowedTypesAndExtensions.allowedFileExtensions,
-    })
+    const inputFieldData = convertFormDataToINputField(value)
+    onSubmit(inputFieldData)
     onClose()
   }, [onSubmit, onClose])
 
