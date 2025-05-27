@@ -1,19 +1,25 @@
 import React from 'react'
 import cn from '@/utils/classnames'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { BlockEnum } from '@/app/components/workflow/types'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import { useToolIcon } from '@/app/components/workflow/hooks'
 
 type OptionCardProps = {
   label: string
-  Icon: React.FC<React.SVGProps<SVGSVGElement>> | string
   selected: boolean
+  nodeData: DataSourceNodeType
   onClick?: () => void
 }
 
 const OptionCard = ({
   label,
-  Icon,
   selected,
+  nodeData,
   onClick,
 }: OptionCardProps) => {
+  const toolIcon = useToolIcon(nodeData)
+
   return (
     <div
       className={cn(
@@ -25,11 +31,10 @@ const OptionCard = ({
       onClick={onClick}
     >
       <div className='flex size-7 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1'>
-        {
-          typeof Icon === 'string'
-            ? <div className='text-[18px] leading-[18px]'>{Icon}</div>
-            : <Icon className='size-5' />
-        }
+        <BlockIcon
+          type={BlockEnum.DataSource}
+          toolIcon={toolIcon}
+        />
       </div>
       <div className={cn('system-sm-medium text-text-secondary', selected && 'text-primary')}>
         {label}

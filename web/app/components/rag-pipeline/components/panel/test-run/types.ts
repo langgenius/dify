@@ -1,3 +1,4 @@
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DatasourceType, RAGPipelineVariables } from '@/models/pipeline'
 
 export enum TestRunStep {
@@ -8,7 +9,7 @@ export enum TestRunStep {
 export type DataSourceOption = {
   label: string
   value: string
-  type: DatasourceType
+  data: DataSourceNodeType
 }
 
 export type Datasource = {

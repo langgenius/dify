@@ -1,28 +1,12 @@
 import { useCallback, useEffect } from 'react'
 import { useDatasourceOptions } from '../hooks'
 import OptionCard from './option-card'
-import { File, Watercrawl } from '@/app/components/base/icons/src/public/knowledge'
-import { Notion } from '@/app/components/base/icons/src/public/common'
-import { Jina } from '@/app/components/base/icons/src/public/llm'
-import { DataSourceType } from '@/models/datasets'
-import { DataSourceProvider } from '@/models/common'
 import type { Datasource } from '../types'
 
 type DataSourceOptionsProps = {
   datasourceNodeId: string
   onSelect: (option: Datasource) => void
 }
-
-// TODO: replace all icons with tool icon_url
-const DATA_SOURCE_ICONS = {
-  [DataSourceType.FILE]: File as React.FC<React.SVGProps<SVGSVGElement>>,
-  [DataSourceType.NOTION]: Notion as React.FC<React.SVGProps<SVGSVGElement>>,
-  [DataSourceProvider.fireCrawl]: '🔥',
-  [DataSourceProvider.jinaReader]: Jina as React.FC<React.SVGProps<SVGSVGElement>>,
-  [DataSourceProvider.waterCrawl]: Watercrawl as React.FC<React.SVGProps<SVGSVGElement>>,
-}
-
-type KeyType = keyof typeof DATA_SOURCE_ICONS
 
 const DataSourceOptions = ({
   datasourceNodeId,
@@ -49,8 +33,8 @@ const DataSourceOptions = ({
         <OptionCard
           key={option.value}
           label={option.label}
+          nodeData={option.data}
           selected={datasourceNodeId === option.value}
-          Icon={DATA_SOURCE_ICONS[option.type as KeyType]}
           onClick={handelSelect.bind(null, option.value)}
         />
       ))}

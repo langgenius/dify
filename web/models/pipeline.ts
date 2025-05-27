@@ -7,9 +7,9 @@ import type { Viewport } from 'reactflow'
 import type { TransferMethod } from '@/types/app'
 
 export enum DatasourceType {
-  localFile = 'local-file',
-  onlineDocument = 'online-document',
-  websiteCrawl = 'website-crawl',
+  localFile = 'local_file',
+  onlineDocument = 'online_document',
+  websiteCrawl = 'website_crawl',
 }
 
 export type PipelineTemplateListParams = {

@@ -32,7 +32,7 @@ export const useDatasourceOptions = () => {
         type: node.data.provider_type as DatasourceType,
         variables: node.data.variables || [],
         description: node.data.desc || '',
-        docTitle: '', // todo: Add docTitle and docLink if needed, or remove these properties if not used
+        docTitle: '', // todo: Add docTitle and docLink
         docLink: '',
       }
     })
@@ -41,12 +41,11 @@ export const useDatasourceOptions = () => {
   const options = useMemo(() => {
     const options: DataSourceOption[] = []
     datasourceNodes.forEach((node) => {
-      const type = node.data.provider_type as DatasourceType
       const label = node.data.title
       options.push({
         label,
         value: node.id,
-        type,
+        data: node.data,
       })
     })
     return options
