@@ -810,7 +810,7 @@ class ProviderConfiguration(BaseModel):
 
         def get_sort_key(model: ModelWithProviderEntity):
             # Get the position list for the current model type
-            positions = model_type_positions.get(model.model_type.value, [])
+            positions = model_type_positions.get(model.model_type.value, []) or []
 
             # If the model name is in the position list, use its index for sorting
             # Otherwise use a large value (list length) to place undefined models at the end
