@@ -40,6 +40,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchAllBuiltInTools,
   fetchAllCustomTools,
+  fetchAllMCPTools,
   fetchAllWorkflowTools,
 } from '@/service/tools'
 import { CollectionType } from '@/app/components/tools/types'
@@ -448,6 +449,13 @@ export const useFetchToolsData = () => {
 
       workflowStore.setState({
         workflowTools: workflowTools || [],
+      })
+    }
+    if(type === 'mcp') {
+      const mcpTools = await fetchAllMCPTools()
+
+      workflowStore.setState({
+        mcpTools: mcpTools || [],
       })
     }
   }, [workflowStore])

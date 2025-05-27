@@ -205,6 +205,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     handleFetchAllTools('builtin')
     handleFetchAllTools('custom')
     handleFetchAllTools('workflow')
+    handleFetchAllTools('mcp')
   }, [handleFetchAllTools])
 
   const {
