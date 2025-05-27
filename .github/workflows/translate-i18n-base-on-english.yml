@@ -5,7 +5,8 @@ on:
     types: [closed]
     branches: [main]
   push:
-    branches: [fix/i18n-auto-run-faild]
+    branches: 
+      - fix/i18n-auto-run-faild
 
 jobs:
   check-and-update:
