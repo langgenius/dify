@@ -12,18 +12,25 @@ from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 
 from configs import dify_config
 from dify_app import DifyApp
+from models import Account, EndUser
 
 
 @user_logged_in.connect
 @user_loaded_from_request.connect
-def on_user_loaded(_sender, user):
+def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
     if dify_config.ENABLE_OTEL:
         from opentelemetry.trace import get_current_span
 
         if user:
             current_span = get_current_span()
+            if isinstance(user, Account) and user.current_tenant_id:
+                tenant_id = user.current_tenant_id
+            elif isinstance(user, EndUser):
+                tenant_id = user.tenant_id
+            else:
+                return
             if current_span:
-                current_span.set_attribute("service.tenant.id", user.current_tenant_id)
+                current_span.set_attribute("service.tenant.id", tenant_id)
                 current_span.set_attribute("service.user.id", user.id)
 
 
