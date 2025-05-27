@@ -141,7 +141,6 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
       {isInPanel && appDetail.mode === 'workflow' && (
         <MCPServiceCard
           appInfo={appDetail}
-          onGenerateCode={onGenerateCode}
         />
       )}
     </div>

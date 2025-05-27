@@ -231,6 +231,15 @@ export const useUpdateMCPServer = () => {
   })
 }
 
+export const useRefreshMCPServerCode = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
+    mutationFn: (appID: string) => {
+      return get<MCPServerDetail>(`apps/${appID}/server/refresh`)
+    },
+  })
+}
+
 export const useBuiltinProviderInfo = (providerName: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'builtin-provider-info', providerName],

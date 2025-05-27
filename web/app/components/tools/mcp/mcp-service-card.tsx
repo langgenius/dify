@@ -9,7 +9,6 @@ import {
 } from '@/app/components/base/icons/src/vender/other'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
-import { asyncRunSafe } from '@/utils'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
@@ -21,23 +20,26 @@ import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { useAppWorkflow } from '@/service/use-workflow'
 import {
+  useInvalidateMCPServerDetail,
   useMCPServerDetail,
+  useRefreshMCPServerCode,
+  useUpdateMCPServer,
 } from '@/service/use-tools'
 import { BlockEnum } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 export type IAppCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
-  onGenerateCode?: () => Promise<void>
 }
 
 function MCPServiceCard({
   appInfo,
-  onGenerateCode,
 }: IAppCardProps) {
   const { t } = useTranslation()
+  const { mutateAsync: updateMCPServer } = useUpdateMCPServer()
+  const { mutateAsync: refreshMCPServerCode, isPending: genLoading } = useRefreshMCPServerCode()
+  const invalidateMCPServerDetail = useInvalidateMCPServerDetail()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
-  const [genLoading, setGenLoading] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showMCPServerModal, setShowMCPServerModal] = useState(false)
 
@@ -61,23 +63,34 @@ function MCPServiceCard({
   }, [currentWorkflow])
 
   const onGenCode = async () => {
-    if (onGenerateCode) {
-      setGenLoading(true)
-      await asyncRunSafe(onGenerateCode())
-      setGenLoading(false)
-    }
+    await refreshMCPServerCode(detail?.id || '')
+    invalidateMCPServerDetail(appInfo.id)
   }
 
   const onChangeStatus = async (state: boolean) => {
+    setActivated(state)
     if (state) {
-      if (!serverPublished) {
-        setActivated(true)
+      if (!serverPublished)
         setShowMCPServerModal(true)
-      }
-      // TODO handle server activation
+
+      await updateMCPServer({
+        appID: appInfo.id,
+        id: id || '',
+        description: detail?.description || '',
+        parameters: detail?.parameters || {},
+        status: 'active',
+      })
+      invalidateMCPServerDetail(appInfo.id)
     }
     else {
-      // TODO handle server activation
+      await updateMCPServer({
+        appID: appInfo.id,
+        id: id || '',
+        description: detail?.description || '',
+        parameters: detail?.parameters || {},
+        status: 'inactive',
+      })
+      invalidateMCPServerDetail(appInfo.id)
     }
   }
 
