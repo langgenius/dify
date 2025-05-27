@@ -18,6 +18,7 @@ from controllers.web.error import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
+from core.app.app_config.entities import VariableEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -175,11 +176,30 @@ class ChatMCPApi(Resource):
         app = db.session.query(App).filter(App.id == server.app_id).first()
         if not app:
             raise NotFound("App Not Found")
+        if app.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+            workflow = app.workflow
+            if workflow is None:
+                raise AppUnavailableError()
+
+            features_dict = workflow.features_dict
+            user_input_form = workflow.user_input_form(to_old_structure=True)
+        else:
+            app_model_config = app.app_model_config
+            if app_model_config is None:
+                raise AppUnavailableError()
+
+            features_dict = app_model_config.to_dict()
+
+            user_input_form = features_dict.get("user_input_form", [])
+        try:
+            user_input_form = [VariableEntity.model_validate(item) for item in user_input_form]
+        except ValidationError as e:
+            raise ValueError(f"Invalid user_input_form: {str(e)}")
         try:
             request = ClientRequest.model_validate(args)
         except ValidationError as e:
             raise ValueError(f"Invalid MCP request: {str(e)}")
-        mcp_server_handler = MCPServerReuqestHandler(app, request)
+        mcp_server_handler = MCPServerReuqestHandler(app, request, user_input_form)
         return helper.compact_generate_response(mcp_server_handler.handle())
 
 

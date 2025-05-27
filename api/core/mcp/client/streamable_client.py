@@ -8,7 +8,6 @@ and session management.
 
 import logging
 import queue
-import threading
 from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -106,11 +105,6 @@ class StreamableHTTPTransport:
             CONTENT_TYPE: JSON,
             **self.headers,
         }
-        self.stop_event = threading.Event()
-
-    def stop(self):
-        """Signal to stop all operations."""
-        self.stop_event.set()
 
     def _update_headers_with_session(self, base_headers: dict[str, str]) -> dict[str, str]:
         """Update headers with session ID if available."""
@@ -170,6 +164,9 @@ class StreamableHTTPTransport:
                 # Put exception in queue that goes to client
                 server_to_client_queue.put(exc)
                 return False
+        elif sse.event == "ping":
+            logger.debug("Received ping event")
+            return False
         else:
             logger.warning(f"Unknown SSE event: {sse.event}")
             return False
@@ -198,8 +195,6 @@ class StreamableHTTPTransport:
                 logger.debug("GET SSE connection established")
 
                 for sse in event_source.iter_sse():
-                    if self.stop_event.is_set():
-                        break
                     self._handle_sse_event(sse, server_to_client_queue)
 
         except Exception as exc:
@@ -230,8 +225,6 @@ class StreamableHTTPTransport:
             logger.debug("Resumption GET SSE connection established")
 
             for sse in event_source.iter_sse():
-                if self.stop_event.is_set():
-                    break
                 is_complete = self._handle_sse_event(
                     sse,
                     ctx.server_to_client_queue,
@@ -300,13 +293,13 @@ class StreamableHTTPTransport:
         try:
             event_source = EventSource(response)
             for sse in event_source.iter_sse():
-                if self.stop_event.is_set():
-                    break
-                self._handle_sse_event(
+                is_complete = self._handle_sse_event(
                     sse,
                     ctx.server_to_client_queue,
                     resumption_callback=(ctx.metadata.on_resumption_token_update if ctx.metadata else None),
                 )
+                if is_complete:
+                    break
         except Exception as e:
             ctx.server_to_client_queue.put(e)
 
@@ -346,7 +339,7 @@ class StreamableHTTPTransport:
         This method processes messages from the client_to_server_queue and sends them to the server.
         Responses are written to the server_to_client_queue.
         """
-        while not self.stop_event.is_set():
+        while True:
             try:
                 # Read message from client queue with timeout to check stop_event periodically
                 session_message = client_to_server_queue.get(timeout=DEFAULT_QUEUE_READ_TIMEOUT)
@@ -382,10 +375,8 @@ class StreamableHTTPTransport:
                 else:
                     self._handle_post_request(ctx)
             except queue.Empty:
-                # Timeout - continue loop to check stop_event
                 continue
             except Exception as exc:
-                # Send exception to client
                 server_to_client_queue.put(exc)
 
     def terminate_session(self, client: httpx.Client) -> None:
@@ -478,9 +469,6 @@ def streamablehttp_client(
                     # Signal threads to stop
                     client_to_server_queue.put(None)
         finally:
-            # Clean up
-            transport.stop()
-
             # Clear any remaining items and add None sentinel to unblock any waiting threads
             try:
                 while not client_to_server_queue.empty():

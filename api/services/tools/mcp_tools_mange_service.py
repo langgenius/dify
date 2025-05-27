@@ -1,5 +1,6 @@
 import json
 
+from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
@@ -58,8 +59,13 @@ class MCPToolManageService:
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         if mcp_provider is None:
             raise ValueError("MCP tool not found")
-        with MCPClient(mcp_provider.server_url, provider_id, tenant_id, authed=mcp_provider.authed) as mcp_client:
-            tools = mcp_client.list_tools()
+        try:
+            with MCPClient(mcp_provider.server_url, provider_id, tenant_id, authed=mcp_provider.authed) as mcp_client:
+                tools = mcp_client.list_tools()
+        except MCPAuthError as e:
+            raise ValueError("Please auth the tool first")
+        except MCPConnectionError as e:
+            raise ValueError(f"Failed to connect to MCP server: {e}")
         mcp_provider.tools = json.dumps([tool.model_dump() for tool in tools])
         mcp_provider.authed = True
         db.session.commit()

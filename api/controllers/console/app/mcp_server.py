@@ -68,16 +68,31 @@ class AppMCPServerController(Resource):
         parser.add_argument("id", type=str, required=True, location="json")
         parser.add_argument("description", type=str, required=True, location="json")
         parser.add_argument("parameters", type=dict, required=True, location="json")
-        parser.add_argument("status", type=str, required=True, location="json")
         args = parser.parse_args()
         server = db.session.query(AppMCPServer).filter(AppMCPServer.id == args["id"]).first()
         if not server:
             raise Forbidden()
         server.description = args["description"]
         server.parameters = json.dumps(args["parameters"], ensure_ascii=False)
-        server.status = AppMCPServerStatus(args["status"])
+        db.session.commit()
+        return server
+
+
+class AppMCPServerRefreshController(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(app_server_fields)
+    def get(self, server_id):
+        if not current_user.is_editor:
+            raise Forbidden()
+        server = db.session.query(AppMCPServer).filter(AppMCPServer.id == server_id).first()
+        if not server:
+            raise Forbidden()
+        server.server_code = AppMCPServer.generate_server_code(16)
         db.session.commit()
         return server
 
 
 api.add_resource(AppMCPServerController, "/apps/<uuid:app_id>/server")
+api.add_resource(AppMCPServerRefreshController, "/apps/<uuid:server_id>/server/refresh")

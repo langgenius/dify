@@ -21,7 +21,6 @@ class MCPClient:
         tenant_id: str,
         authed: bool = True,
         authorization_code: Optional[str] = None,
-        scope: Optional[str] = None,
     ):
         # Initialize info
         self.provider_id = provider_id
@@ -32,7 +31,6 @@ class MCPClient:
         # Authentication info
         self.authed = authed
         self.authorization_code = authorization_code
-        self.scope = scope
         if authed:
             from core.mcp.auth.auth_provider import OAuthClientProvider
 
@@ -49,7 +47,7 @@ class MCPClient:
         self._initialized = False
 
     def __enter__(self):
-        self._initialize(first_try=True)
+        self._initialize()
         self._initialized = True
         return self
 
@@ -58,7 +56,6 @@ class MCPClient:
 
     def _initialize(
         self,
-        first_try: bool = True,
     ):
         """Initialize the client with fallback to SSE if streamable connection fails"""
         connection_methods = {"mcp": streamablehttp_client, "sse": sse_client}
@@ -71,9 +68,9 @@ class MCPClient:
             self.connect_server(client_factory, method_name)
         except KeyError:
             try:
-                self.connect_server(streamablehttp_client, "sse")
+                self.connect_server(sse_client, "sse")
             except MCPConnectionError:
-                self.connect_server(sse_client, "mcp")
+                self.connect_server(streamablehttp_client, "mcp")
 
     def connect_server(self, client_factory: Callable, method_name: str, first_try: bool = True):
         from core.mcp.auth.auth_flow import auth
@@ -100,8 +97,8 @@ class MCPClient:
         except MCPAuthError:
             if not self.authed:
                 raise
-
-            auth(self.provider, self.server_url, self.authorization_code, self.scope)
+            auth(self.provider, self.server_url, self.authorization_code)
+            self.token = self.provider.tokens()
             if first_try:
                 return self.connect_server(client_factory, method_name, first_try=False)
 
@@ -134,5 +131,6 @@ class MCPClient:
             self._session = None
             self._initialized = False
             self.exit_stack.close()
-        except Exception:
+        except Exception as e:
             logging.exception("Error during cleanup")
+            raise ValueError(f"Error during cleanup: {e}")

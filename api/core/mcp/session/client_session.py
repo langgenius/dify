@@ -3,12 +3,11 @@ from typing import Any, Protocol
 
 from pydantic import AnyUrl, TypeAdapter
 
-from configs.app_config import DifyConfig
+from configs import dify_config
 from core.mcp import types
 from core.mcp.entities import SUPPORTED_PROTOCOL_VERSIONS, RequestContext
 from core.mcp.session.base_session import BaseSession, RequestResponder
 
-dify_config = DifyConfig()
 DEFAULT_CLIENT_INFO = types.Implementation(name="Dify", version=dify_config.CURRENT_VERSION)
 
 

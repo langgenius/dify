@@ -1177,7 +1177,6 @@ class SessionMessage:
 class OAuthClientMetadata(BaseModel):
     client_name: str
     redirect_uris: list[str]
-    scope: str
     grant_types: Optional[list[str]] = None
     response_types: Optional[list[str]] = None
     token_endpoint_auth_method: Optional[str] = None

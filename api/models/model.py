@@ -1461,6 +1461,10 @@ class AppMCPServer(Base):
 
             return result
 
+    @property
+    def parameters_dict(self) -> dict[str, Any]:
+        return json.loads(self.parameters)
+
 
 class Site(Base):
     __tablename__ = "sites"

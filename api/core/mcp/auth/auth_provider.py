@@ -1,6 +1,6 @@
 from typing import Optional
 
-from configs.app_config import DifyConfig
+from configs import dify_config
 from core.mcp.types import (
     OAuthClientInformation,
     OAuthClientInformationFull,
@@ -10,8 +10,6 @@ from core.mcp.types import (
 from services.tools.mcp_tools_mange_service import MCPToolManageService
 
 LATEST_PROTOCOL_VERSION = "1.0"
-
-dify_config = DifyConfig()
 
 
 class OAuthClientProvider:
@@ -25,7 +23,7 @@ class OAuthClientProvider:
     @property
     def redirect_url(self) -> str:
         """The URL to redirect the user agent to after authorization."""
-        return dify_config.CONSOLE_WEB_URL
+        return dify_config.CONSOLE_WEB_URL + "/tools"
 
     @property
     def client_metadata(self) -> OAuthClientMetadata:
@@ -37,7 +35,6 @@ class OAuthClientProvider:
             response_types=["code"],
             client_name="Dify",
             client_uri="https://github.com/langgenius/dify",
-            scope="read write",
         )
 
     def client_information(self) -> Optional[OAuthClientInformation]:
@@ -91,7 +88,3 @@ class OAuthClientProvider:
         if not mcp_provider:
             return ""
         return mcp_provider.credentials.get("code_verifier", "")
-
-
-class UnauthorizedError(Exception):
-    pass

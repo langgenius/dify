@@ -127,6 +127,7 @@ def create_ssrf_proxy_mcp_http_client(
         "verify": HTTP_REQUEST_NODE_SSL_VERIFY,
         "headers": headers or {},
         "timeout": timeout,
+        "follow_redirects": True,  # Enable redirect following for MCP connections
     }
 
     if dify_config.SSRF_PROXY_ALL_URL:

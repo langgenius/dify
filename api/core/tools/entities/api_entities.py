@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -57,7 +57,7 @@ class ToolProviderApiEntity(BaseModel):
                     if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES.value:
                         parameter["type"] = "files"
         # -------------
-
+        optional_fields = self.optional_field("server_url", self.server_url)
         return {
             "id": self.id,
             "author": self.author,
@@ -73,4 +73,9 @@ class ToolProviderApiEntity(BaseModel):
             "allow_delete": self.allow_delete,
             "tools": tools,
             "labels": self.labels,
+            **optional_fields,
         }
+
+    def optional_field(self, key: str, value: Any) -> dict:
+        """Return dict with key-value if value is truthy, empty dict otherwise."""
+        return {key: value} if value else {}

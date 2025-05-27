@@ -2,30 +2,31 @@ import json
 from collections.abc import Mapping
 from typing import cast
 
-from configs.app_config import DifyConfig
+from configs import dify_config
 from controllers.web.passport import generate_session_id
+from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.mcp import types
 from core.mcp.types import INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND
 from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_database import db
-from models.model import App, EndUser
+from models.model import App, AppMCPServer, EndUser
 from services.app_generate_service import AppGenerateService
 
 """
 Apply to MCP HTTP streamable server with stateless http
 """
-dify_config = DifyConfig()
 
 
 class MCPServerReuqestHandler:
-    def __init__(self, app: App, request: types.ClientRequest):
+    def __init__(self, app: App, request: types.ClientRequest, user_input_form: list[VariableEntity]):
         self.app = app
         self.request = request
-        if not self.app.mcp_server:
+        self.mcp_server: AppMCPServer = self.app.mcp_server
+        if not self.mcp_server:
             raise ValueError("MCP server not found")
-        self.mcp_server = self.app.mcp_server
         self.end_user = self.retrieve_end_user()
+        self.user_input_form = user_input_form
 
     @property
     def request_type(self):
@@ -33,6 +34,7 @@ class MCPServerReuqestHandler:
 
     @property
     def parameter_schema(self):
+        parameters, required = self._convert_input_form_to_parameters(self.user_input_form)
         return {
             "type": "object",
             "properties": {
@@ -41,10 +43,11 @@ class MCPServerReuqestHandler:
                     "type": "object",
                     "description": "Allows the entry of various variable values defined by the App. The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable. If the variable is of file type, specify an object that has the keys described in `files`.",  # noqa: E501
                     "default": {},
-                    # TODO: add input parameters
+                    "properties": parameters,
+                    "required": required,
                 },
             },
-            "required": ["query"],
+            "required": "query",
         }
 
     @property
@@ -152,3 +155,25 @@ class MCPServerReuqestHandler:
             .filter(EndUser.external_user_id == self.mcp_server.id, EndUser.type == "mcp")
             .first()
         )
+
+    def _convert_input_form_to_parameters(self, user_input_form: list[VariableEntity]):
+        parameters = {}
+        required = []
+        for item in user_input_form:
+            if item.type in (
+                VariableEntityType.FILE,
+                VariableEntityType.FILE_LIST,
+                VariableEntityType.EXTERNAL_DATA_TOOL,
+            ):
+                continue
+            if item.required:
+                required.append(item.variable)
+            parameters[item.variable]["description"] = self.mcp_server.parameters_dict[item.label]["description"]
+            if item.type in (VariableEntityType.TEXT_INPUT, VariableEntityType.PARAGRAPH):
+                parameters[item.variable]["type"] = "string"
+            elif item.type == VariableEntityType.SELECT:
+                parameters[item.variable]["type"] = "string"
+                parameters[item.variable]["enum"] = item.options
+            elif item.type == VariableEntityType.NUMBER:
+                parameters[item.variable]["type"] = "number"
+        return parameters, required

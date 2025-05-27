@@ -1,6 +1,7 @@
 from collections.abc import Generator
 from typing import Any, Optional
 
+from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
 from core.mcp.types import ImageContent, TextContent
 from core.plugin.utils.converter import convert_parameters_to_plugin_format
@@ -37,9 +38,14 @@ class MCPTool(Tool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        with MCPClient(self.server_url, self.provider_id, self.tenant_id, authed=True) as mcp_client:
-            tool_parameters = convert_parameters_to_plugin_format(tool_parameters)
-            result = mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+        try:
+            with MCPClient(self.server_url, self.provider_id, self.tenant_id, authed=True) as mcp_client:
+                tool_parameters = convert_parameters_to_plugin_format(tool_parameters)
+                result = mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+        except MCPAuthError as e:
+            raise ValueError("Please auth the tool first")
+        except MCPConnectionError as e:
+            raise ValueError(f"Failed to connect to MCP server: {e}")
         for content in result.content:
             if isinstance(content, TextContent):
                 yield self.create_text_message(content.text)
