@@ -14,12 +14,13 @@ import { LanguagesSupported } from '@/i18n/language'
 import { IS_CE_EDITION } from '@/config'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
-import { useFileSupportTypes, useFileUploadConfig } from '@/service/use-common'
+import { useFileUploadConfig } from '@/service/use-common'
 
 const FILES_NUMBER_LIMIT = 20
 
 type IFileUploaderProps = {
   fileList: FileItem[]
+  allowedExtensions: string[]
   prepareFileList: (files: FileItem[]) => void
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   onFileListUpdate?: (files: FileItem[]) => void
@@ -29,6 +30,7 @@ type IFileUploaderProps = {
 
 const FileUploader = ({
   fileList,
+  allowedExtensions,
   prepareFileList,
   onFileUpdate,
   onFileListUpdate,
@@ -45,9 +47,7 @@ const FileUploader = ({
   const hideUpload = notSupportBatchUpload && fileList.length > 0
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const { data: supportFileTypesResponse } = useFileSupportTypes() // Todo: replace with extensions configured in node
-  const supportTypes = supportFileTypesResponse?.allowed_extensions || []
-  const supportTypesShowNames = (() => {
+  const supportTypesShowNames = useMemo(() => {
     const extensionMap: { [key: string]: string } = {
       md: 'markdown',
       pptx: 'pptx',
@@ -56,14 +56,14 @@ const FileUploader = ({
       docx: 'docx',
     }
 
-    return [...supportTypes]
+    return allowedExtensions
       .map(item => extensionMap[item] || item) // map to standardized extension
       .map(item => item.toLowerCase()) // convert to lower case
       .filter((item, index, self) => self.indexOf(item) === index) // remove duplicates
       .map(item => item.toUpperCase()) // convert to upper case
       .join(locale !== LanguagesSupported[1] ? ', ' : '、 ')
-  })()
-  const ACCEPTS = supportTypes.map((ext: string) => `.${ext}`)
+  }, [locale, allowedExtensions])
+  const ACCEPTS = allowedExtensions.map((ext: string) => `.${ext}`)
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
     batch_count_limit: 5,
@@ -266,7 +266,7 @@ const FileUploader = ({
 
             <span>
               {t('datasetCreation.stepOne.uploader.button')}
-              {supportTypes.length > 0 && (
+              {allowedExtensions.length > 0 && (
                 <label className='ml-1 cursor-pointer text-text-accent' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
               )}
             </span>

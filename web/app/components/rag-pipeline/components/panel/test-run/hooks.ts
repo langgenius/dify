@@ -31,9 +31,10 @@ export const useDatasourceOptions = () => {
         nodeId: node.id,
         type: node.data.provider_type as DatasourceType,
         variables: node.data.variables || [],
-        description: node.data.desc || '',
+        description: '', // todo: Add description
         docTitle: '', // todo: Add docTitle and docLink
         docLink: '',
+        fileExtensions: node.data.fileExtensions || [],
       }
     })
   }, [datasourceNodes])

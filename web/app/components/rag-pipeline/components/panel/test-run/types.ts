@@ -19,4 +19,5 @@ export type Datasource = {
   description: string
   docTitle?: string
   docLink?: string
+  fileExtensions?: string[]
 }

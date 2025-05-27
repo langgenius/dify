@@ -36,6 +36,7 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
         description: node.data.desc || '',
         docTitle: '', // todo: Add docTitle and docLink if needed, or remove these properties if not used
         docLink: '',
+        fileExtensions: node.data.fileExtensions || [],
       }
     })
   }, [datasourceNodes])

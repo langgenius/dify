@@ -265,6 +265,7 @@ const TestRunPanel = () => {
                 {datasource?.type === DatasourceType.localFile && (
                   <LocalFile
                     files={fileList}
+                    allowedExtensions={datasource?.fileExtensions || []}
                     updateFile={updateFile}
                     updateFileList={updateFileList}
                     onPreview={updateCurrentFile}
