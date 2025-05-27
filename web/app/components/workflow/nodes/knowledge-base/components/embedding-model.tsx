@@ -1,5 +1,7 @@
 import {
   memo,
+  useCallback,
+  useEffect,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,6 +28,7 @@ const EmbeddingModel = ({
 }: EmbeddingModelProps) => {
   const { t } = useTranslation()
   const {
+    defaultModel,
     modelList: embeddingModelList,
   } = useModelListAndDefaultModel(ModelTypeEnum.textEmbedding)
   const embeddingModelConfig = useMemo(() => {
@@ -38,12 +41,21 @@ const EmbeddingModel = ({
     }
   }, [embeddingModel, embeddingModelProvider])
 
-  const handleRerankingModelChange = (model: DefaultModel) => {
+  const handleEmbeddingModelChange = useCallback((model: DefaultModel) => {
     onEmbeddingModelChange?.({
       embeddingModelProvider: model.provider,
       embeddingModel: model.model,
     })
-  }
+  }, [onEmbeddingModelChange])
+
+  useEffect(() => {
+    if (!embeddingModelConfig && defaultModel) {
+      handleEmbeddingModelChange({
+        provider: defaultModel.provider.provider,
+        model: defaultModel.model,
+      })
+    }
+  }, [embeddingModelConfig, defaultModel, handleEmbeddingModelChange])
 
   return (
     <Field
@@ -54,7 +66,7 @@ const EmbeddingModel = ({
       <ModelSelector
         defaultModel={embeddingModelConfig && { provider: embeddingModelConfig.providerName, model: embeddingModelConfig.modelName }}
         modelList={embeddingModelList}
-        onSelect={handleRerankingModelChange}
+        onSelect={handleEmbeddingModelChange}
         readonly={readonly}
       />
     </Field>
