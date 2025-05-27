@@ -235,6 +235,10 @@ class Executor:
                                 files[key].append(file_tuple)
 
                     # convert files to list for httpx request
+                    # If there are no actual files, we still need to force httpx to use `multipart/form-data`.
+                    # This is achieved by inserting a harmless placeholder file that will be ignored by the server.
+                    if not files:
+                        self.files = [("__multipart_placeholder__", ("", b"", "application/octet-stream"))]
                     if files:
                         self.files = []
                         for key, file_tuples in files.items():
