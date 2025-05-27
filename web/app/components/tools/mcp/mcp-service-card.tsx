@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiLoopLeftLine,
@@ -10,7 +10,6 @@ import {
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { asyncRunSafe } from '@/utils'
-import { basePath } from '@/utils/var'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
@@ -21,6 +20,9 @@ import type { AppSSO } from '@/types/app'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
 import { useAppWorkflow } from '@/service/use-workflow'
+import {
+  useMCPServerDetail,
+} from '@/service/use-tools'
 import cn from '@/utils/classnames'
 
 export type IAppCardProps = {
@@ -36,14 +38,20 @@ function MCPServiceCard({
   const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const [genLoading, setGenLoading] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showMCPServerModal, setShowMCPServerModal] = useState(false)
 
   const { data: currentWorkflow } = useAppWorkflow(appInfo.id)
+  const { data: detail } = useMCPServerDetail(appInfo.id)
+  const { id, status, server_code } = detail ?? {}
 
-  const toggleDisabled = !isCurrentWorkspaceEditor || !currentWorkflow?.graph
-  const runningStatus = appInfo.enable_site // TODO
-  const { app_base_url, access_token } = appInfo.site ?? {}
-  const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
-  const appUrl = `${app_base_url}${basePath}/${appMode}/${access_token}`
+  const appUnpublished = !currentWorkflow?.graph
+  const serverPublished = !!id
+  const serverActivated = status === 'active'
+  const serverURL = serverPublished ? `${globalThis.location.protocol}//${globalThis.location.host}/api/server/${server_code}/mcp` : '***********'
+
+  const toggleDisabled = !isCurrentWorkspaceEditor || appUnpublished
+
+  const [activated, setActivated] = useState(serverActivated)
 
   const onGenCode = async () => {
     if (onGenerateCode) {
@@ -53,16 +61,35 @@ function MCPServiceCard({
     }
   }
 
-  const onChangeStatus = async (status: boolean) => {
-    // TODO
+  const onChangeStatus = async (state: boolean) => {
+    if (state) {
+      if (!serverPublished) {
+        setActivated(true)
+        setShowMCPServerModal(true)
+      }
+      // TODO handle server activation
+    }
+    else {
+      // TODO handle server activation
+    }
   }
 
-  const [showMCPServerModal, setShowMCPServerModal] = useState(false)
+  const handleServerModalHide = () => {
+    setShowMCPServerModal(false)
+    if (!serverActivated)
+      setActivated(false)
+  }
+
+  const handleServerModalConfirm = () => {
+    setShowMCPServerModal(false)
+  }
+
+  useEffect(() => {
+    setActivated(serverActivated)
+  }, [serverActivated])
 
   if (!currentWorkflow)
     return null
-
-  // TODO: show disabled state if workflow not published
 
   return (
     <>
@@ -81,14 +108,20 @@ function MCPServiceCard({
                 </div>
               </div>
               <div className='flex items-center gap-1'>
-                <Indicator color={runningStatus ? 'green' : 'yellow'} />
-                <div className={`${runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
-                  {runningStatus
+                <Indicator color={serverActivated ? 'green' : 'yellow'} />
+                <div className={`${serverActivated ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
+                  {serverActivated
                     ? t('appOverview.overview.status.running')
                     : t('appOverview.overview.status.disable')}
                 </div>
               </div>
-              <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={toggleDisabled} />
+              <Tooltip
+                popupContent={appUnpublished ? t('tools.mcp.server.publishTip') : ''}
+              >
+                <div>
+                  <Switch defaultValue={activated} onChange={onChangeStatus} disabled={toggleDisabled} />
+                </div>
+              </Tooltip>
             </div>
             <div className='flex flex-col items-start justify-center self-stretch'>
               <div className="system-xs-medium pb-1 text-text-tertiary">
@@ -97,53 +130,64 @@ function MCPServiceCard({
               <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
                 <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
                   <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-text-secondary">
-                    {appUrl}
+                    {serverURL}
                   </div>
                 </div>
-                <CopyFeedback
-                  content={appUrl}
-                  className={'!size-6'}
-                />
-                <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />
-                {/* button copy link/ button regenerate */}
-                {showConfirmDelete && (
-                  <Confirm
-                    type='warning'
-                    title={t('appOverview.overview.appInfo.regenerate')}
-                    content={t('tools.mcp.server.reGen')}
-                    isShow={showConfirmDelete}
-                    onConfirm={() => {
-                      onGenCode()
-                      setShowConfirmDelete(false)
-                    }}
-                    onCancel={() => setShowConfirmDelete(false)}
-                  />
-                )}
-                {isCurrentWorkspaceManager && (
-                  <Tooltip
-                    popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
-                  >
-                    <div
-                      className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
-                      onClick={() => setShowConfirmDelete(true)}
-                    >
-                      <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')}/>
-                    </div>
-                  </Tooltip>
+                {serverPublished && (
+                  <>
+                    <CopyFeedback
+                      content={serverURL}
+                      className={'!size-6'}
+                    />
+                    <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />
+                    {isCurrentWorkspaceManager && (
+                      <Tooltip
+                        popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
+                      >
+                        <div
+                          className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+                          onClick={() => setShowConfirmDelete(true)}
+                        >
+                          <RiLoopLeftLine className={cn('h-4 w-4 text-text-tertiary hover:text-text-secondary', genLoading && 'animate-spin')}/>
+                        </div>
+                      </Tooltip>
+                    )}
+                  </>
                 )}
               </div>
             </div>
           </div>
           <div className='flex items-center gap-1 self-stretch p-3'>
-            <Button disabled={toggleDisabled} size='small' variant='ghost'>{t('tools.mcp.server.addDescription')}</Button>
+            <Button
+              disabled={toggleDisabled}
+              size='small'
+              variant='ghost'
+              onClick={() => setShowMCPServerModal(true)}
+            >
+              {serverPublished ? t('tools.mcp.server.editDescription') : t('tools.mcp.server.addDescription')}
+            </Button>
           </div>
         </div>
       </div>
       {showMCPServerModal && (
         <MCPServerModal
           show={showMCPServerModal}
-          onConfirm={() => setShowMCPServerModal(false)}
-          onHide={() => setShowMCPServerModal(false)}
+          onConfirm={handleServerModalConfirm}
+          onHide={handleServerModalHide}
+        />
+      )}
+      {/* button copy link/ button regenerate */}
+      {showConfirmDelete && (
+        <Confirm
+          type='warning'
+          title={t('appOverview.overview.appInfo.regenerate')}
+          content={t('tools.mcp.server.reGen')}
+          isShow={showConfirmDelete}
+          onConfirm={() => {
+            onGenCode()
+            setShowConfirmDelete(false)
+          }}
+          onCancel={() => setShowConfirmDelete(false)}
         />
       )}
     </>

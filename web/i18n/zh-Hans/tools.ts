@@ -206,6 +206,7 @@ const translation = {
         parametersPlaceholder: '参数的用途和约束条件',
         confirm: '启用 MCP 服务',
       },
+      publishTip: '应用未发布。请先发布应用。',
     },
   },
 }

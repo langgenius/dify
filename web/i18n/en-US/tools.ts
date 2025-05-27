@@ -206,6 +206,7 @@ const translation = {
         parametersPlaceholder: 'Parameter purpose and constraints',
         confirm: 'Enable MCP Server',
       },
+      publishTip: 'App not published. Please publish the app first.',
     },
   },
 }

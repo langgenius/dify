@@ -60,7 +60,7 @@ const MCPServerModal = ({
         </div>
         <div>
           <div className='mb-1 flex items-center gap-2'>
-            <div className='system-xs-medium-uppercase text-text-primary'>{t('tools.mcp.server.modal.parameters')}</div>
+            <div className='system-xs-medium-uppercase shrink-0 text-text-primary'>{t('tools.mcp.server.modal.parameters')}</div>
             <Divider type='horizontal' className='!m-0 !h-px grow bg-divider-subtle' />
           </div>
           <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.server.modal.parametersTip')}</div>
