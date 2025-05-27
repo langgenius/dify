@@ -150,7 +150,7 @@ def test_extract_text_from_plain_text_non_utf8():
         temp_file.write(non_utf8_content)
         temp_file.seek(0)
         text = _extract_text_from_plain_text(temp_file.read())
-    assert text == "Hello, world."
+    assert text == "Hello, world©."
 
 
 @patch("pypdfium2.PdfDocument")
