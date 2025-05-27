@@ -504,6 +504,8 @@ export const useToolIcon = (data: Node['data']) => {
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
+  const mcpTools = useStore(s => s.mcpTools)
+
   const toolIcon = useMemo(() => {
     if (data.type === BlockEnum.Tool) {
       let targetTools = buildInTools
@@ -511,11 +513,13 @@ export const useToolIcon = (data: Node['data']) => {
         targetTools = buildInTools
       else if (data.provider_type === CollectionType.custom)
         targetTools = customTools
+      else if (data.provider_type === CollectionType.mcp)
+        targetTools = mcpTools
       else
         targetTools = workflowTools
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
-  }, [data, buildInTools, customTools, workflowTools])
+  }, [data.type, data.provider_type, data.provider_id, buildInTools, customTools, mcpTools, workflowTools])
 
   return toolIcon
 }
