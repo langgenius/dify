@@ -43,12 +43,11 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
   const options = useMemo(() => {
     const options: DataSourceOption[] = []
     datasourceNodes.forEach((node) => {
-      const type = node.data.provider_type as DatasourceType
       const label = node.data.title
       options.push({
         label,
         value: node.id,
-        type,
+        data: node.data,
       })
     })
     return options
