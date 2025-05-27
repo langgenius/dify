@@ -540,7 +540,7 @@ class GraphEngine:
         for var, val in context.items():
             var.set(val)
 
-        # Save current user before entering new app context
+        # FIXME(-LAN-): Save current user before entering new app context
         from flask import g
 
         saved_user = None
