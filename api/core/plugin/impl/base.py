@@ -6,6 +6,7 @@ from typing import TypeVar
 
 import requests
 from pydantic import BaseModel
+from requests.exceptions import HTTPError
 from yarl import URL
 
 from configs import dify_config
@@ -136,12 +137,31 @@ class BasePluginClient:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
         """
-        response = self._request(method, path, headers, data, params, files)
-        json_response = response.json()
-        if transformer:
-            json_response = transformer(json_response)
+        try:
+            response = self._request(method, path, headers, data, params, files)
+            response.raise_for_status()
+        except HTTPError as e:
+            msg = f"Failed to request plugin daemon, status: {e.response.status_code}, url: {path}"
+            logging.exception(msg)
+            raise e
+        except Exception as e:
+            msg = f"Failed to request plugin daemon, url: {path}"
+            logging.exception(msg)
+            raise ValueError(msg) from e
 
-        rep = PluginDaemonBasicResponse[type](**json_response)  # type: ignore
+        try:
+            json_response = response.json()
+            if transformer:
+                json_response = transformer(json_response)
+            rep = PluginDaemonBasicResponse[type](**json_response)  # type: ignore
+        except Exception:
+            msg = (
+                f"Failed to parse response from plugin daemon to PluginDaemonBasicResponse [{str(type.__name__)}],"
+                f" url: {path}"
+            )
+            logging.exception(msg)
+            raise ValueError(msg)
+
         if rep.code != 0:
             try:
                 error = PluginDaemonError(**json.loads(rep.message))
