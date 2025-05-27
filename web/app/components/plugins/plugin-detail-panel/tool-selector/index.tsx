@@ -119,6 +119,7 @@ const ToolSelector: FC<Props> = ({
     const paramValues = generateFormValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form === 'llm') as any), true)
     return {
       provider_name: tool.provider_id,
+      provider_show_name: tool.provider_name,
       type: tool.provider_type,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
@@ -252,7 +253,9 @@ const ToolSelector: FC<Props> = ({
             <ToolItem
               open={isShow}
               icon={currentProvider?.icon || manifestIcon}
+              isMCPTool={currentProvider?.type === CollectionType.mcp}
               providerName={value.provider_name}
+              providerShowName={value.provider_show_name}
               toolLabel={value.tool_label || value.tool_name}
               showSwitch={supportEnableSwitch}
               switchValue={value.enabled}

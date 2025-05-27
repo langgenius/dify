@@ -126,6 +126,12 @@ const AgentTools: FC = () => {
     })
     setModelConfig(newModelConfig)
   }
+  const getProviderShowName = (item: AgentTool) => {
+    const type = item.provider_type
+    if(type === CollectionType.builtIn)
+      return item.provider_name.split('/').pop()
+    return item.provider_name
+  }
 
   return (
     <>
@@ -187,7 +193,7 @@ const AgentTools: FC = () => {
                     (item.isDeleted || item.notAuthor || !item.enabled) ? 'opacity-50' : '',
                   )}
                 >
-                  <span className='system-xs-medium pr-1.5 text-text-secondary'>{item.provider_type === CollectionType.builtIn ? item.provider_name.split('/').pop() : item.tool_label}</span>
+                  <span className='system-xs-medium pr-1.5 text-text-secondary'>{getProviderShowName(item)}</span>
                   <span className='text-text-tertiary'>{item.tool_label}</span>
                   {!item.isDeleted && (
                     <Tooltip

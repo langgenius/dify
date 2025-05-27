@@ -21,6 +21,8 @@ import cn from '@/utils/classnames'
 type Props = {
   icon?: any
   providerName?: string
+  isMCPTool?: boolean
+  providerShowName?: string
   toolLabel?: string
   showSwitch?: boolean
   switchValue?: boolean
@@ -40,6 +42,8 @@ type Props = {
 const ToolItem = ({
   open,
   icon,
+  isMCPTool,
+  providerShowName,
   providerName,
   toolLabel,
   showSwitch,
@@ -56,7 +60,7 @@ const ToolItem = ({
   versionMismatch,
 }: Props) => {
   const { t } = useTranslation()
-  const providerNameText = providerName?.split('/').pop()
+  const providerNameText = isMCPTool ? providerShowName : providerName?.split('/').pop()
   const isTransparent = uninstalled || versionMismatch || isError
   const [isDeleting, setIsDeleting] = useState(false)
 
