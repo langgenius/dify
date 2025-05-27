@@ -40,7 +40,7 @@ const NotionSvg = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xm
 
 const ICON_MAP = {
   app: <AppIcon className='border !border-[rgba(0,0,0,0.05)]' />,
-  api: <div className='bg-util-colors-violet-500 rounded-lg border-[0.5px] border-divider-subtle p-1 shadow-md'>
+  api: <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-500 p-1 shadow-md'>
     <Code className='h-4 w-4 text-text-primary-on-surface' />
   </div>,
   dataset: <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />,

@@ -97,7 +97,7 @@ const ProviderList = () => {
               />
             </div>
           </div>
-          {(filteredCollectionList.length > 0 && (activeTab === 'api' || activeTab === 'workflow')) && (
+          {activeTab !== 'mcp' && (
             <div className={cn(
               'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
               !filteredCollectionList.length && activeTab === 'workflow' && 'grow',

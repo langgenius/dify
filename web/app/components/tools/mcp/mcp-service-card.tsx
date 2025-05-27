@@ -75,7 +75,7 @@ function MCPServiceCard({
                   <Mcp className='h-4 w-4 text-text-primary-on-surface' />
                 </div>
                 <div className="group w-full">
-                  <div className="min-w-0 overflow-hidden text-ellipsis break-normal">
+                  <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
                     {t('tools.mcp.server.title')}
                   </div>
                 </div>

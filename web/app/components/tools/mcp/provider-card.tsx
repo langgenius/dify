@@ -107,7 +107,7 @@ const MCPCard = ({
       </div>
       <div className='flex items-center gap-1 rounded-b-xl pb-2.5 pl-4 pr-2.5 pt-1.5'>
         <div className='system-xs-regular grow truncate text-text-tertiary' title={data.server_url}>{data.server_url}</div>
-        {data.is_team_authorization && <Indicator color='green' />}
+        {data.is_team_authorization && <Indicator color='green' className='shrink-0' />}
         {(!data.is_team_authorization || !data.tools.length) && (
           <div className='system-xs-medium flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 text-util-colors-red-red-500'>
             {t('tools.mcp.noConfigured')}

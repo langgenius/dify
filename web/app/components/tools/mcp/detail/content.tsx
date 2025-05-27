@@ -44,6 +44,7 @@ const MCPDetailContent: FC<Props> = ({
   const { isCurrentWorkspaceManager } = useAppContext()
 
   const { data: toolList = [], isPending: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
+  console.log('MCPDetailContent', detail, toolList)
   const invalidateMCPTools = useInvalidateMCPTools()
   const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools(detail.id)
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
