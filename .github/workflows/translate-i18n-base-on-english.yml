@@ -6,7 +6,7 @@ on:
     branches: [main]
   push:
     branches: 
-      - fix/i18n-auto-run-faild
+      - "fix/i18n-auto-run-faild"
 
 jobs:
   check-and-update:
