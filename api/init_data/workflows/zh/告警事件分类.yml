@@ -159,6 +159,28 @@ workflow:
       targetHandle: target
       type: custom
       zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: question-classifier
+        targetType: template-transform
+      id: 1747310030413-1748308921189-1748308934593-target
+      source: '1747310030413'
+      sourceHandle: '1748308921189'
+      target: '1748308934593'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        sourceType: template-transform
+        targetType: end
+      id: 1748308934593-source-1748308923990-target
+      source: '1748308934593'
+      sourceHandle: source
+      target: '1748308923990'
+      targetHandle: target
+      type: custom
+      zIndex: 0
     nodes:
     - data:
         desc: ''
@@ -186,7 +208,7 @@ workflow:
       positionAbsolute:
         x: 30
         y: 264.5
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -199,13 +221,13 @@ workflow:
           \ rate|error count|killed)\\b',\n                r'\\b.*(service|应用|系统|request|log|container|请求|日志).*(不可用|失败|错误率|宕机|终止|错误).*\\\
           b',\n                r'\\b(5xx|503|502|404)\\b',\n            ],\n     \
           \       INFRASTRUCTURE: [\n                r'\\b(network.*rtt|rtt.*latency)\\\
-          b',  # match network rtt\n                r'\\b(cpu|memory|disk|network|bandwidth|storage|资源|硬件|负载|容量|throughput|read\
-          \ speed|write speed|i/o|file descriptor|cfs_throttled|usage|utilization)\\\
+          b',  # match network rtt\n                r'\\b.*(cpu|memory|disk|network|bandwidth|storage|资源|rtt|cpu_cfs_throttled|硬件负载|容量|磁盘|吞吐量|文件描述符|throughput|read\
+          \ speed|write speed|i/o|file descriptor|cfs_throttled|usage|utilization).*\\\
           b',\n                r'\\b(usage|utilization|exhausted|不足|过载|瓶颈|high|abnormal|low|less\
-          \ than|exceeds)\\b',\n                r'\\b(server|node|cluster|数据库|队列|container).*(高负载|故障|资源|使用率|异常)\\\
+          \ than|exceeds)\\b',\n                r'\\b.*(server|node|cluster|数据库|队列|内存|container).*(高负载|故障|资源|使用率|异常).*\\\
           b',\n            ],\n            LATENCY: [\n                r'\\b(request|api|接口|调用|查询).*(latency|延时|延迟|缓慢)\\\
-          b',  \n                r'.*(request|请求).*(latency|延时|延迟|缓慢).*\\b',\n   \
-          \             r'\\b(latency|delay|response time|timeout|slow|秒|毫秒|ms)\\\
+          b',  \n                r'.*(request|请求|响应|下游).*(latency|延时|延迟|缓慢|耗时).*\\\
+          b',\n                r'\\b(latency|delay|response time|timeout|slow|秒|毫秒|ms)\\\
           b(?!.*(network|rtt))',  \n            ]\n        }\n\n        \n       \
           \ self.compiled_rules = {\n            category: [re.compile(pattern, re.IGNORECASE)\
           \ for pattern in patterns]\n            for category, patterns in self.rules.items()\n\
@@ -370,6 +392,8 @@ workflow:
           name: service_availability
         - id: '1747310114991'
           name: infrastructure
+        - id: '1748308921189'
+          name: 其他
         desc: ''
         instruction: ''
         instructions: ''
@@ -388,20 +412,67 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 202
+      height: 238
       id: '1747310030413'
       position:
         x: 939
-        y: 395.5
+        y: 413.5
       positionAbsolute:
         x: 939
-        y: 395.5
+        y: 413.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        outputs:
+        - value_selector:
+          - '1748308934593'
+          - output
+          variable: output
+        selected: false
+        title: 结束
+        type: end
+      height: 88
+      id: '1748308923990'
+      position:
+        x: 1545
+        y: 415.5
+      positionAbsolute:
+        x: 1545
+        y: 415.5
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 243
+    - data:
+        desc: ''
+        selected: false
+        template: 暂不支持的告警类型{{ alert }}
+        title: 暂不支持
+        type: template-transform
+        variables:
+        - value_selector:
+          - '1745224781828'
+          - alertName
+          variable: alert
+      height: 52
+      id: '1748308934593'
+      position:
+        x: 1242
+        y: 472
+      positionAbsolute:
+        x: 1242
+        y: 472
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 243
     viewport:
-      x: -390.0498275252221
-      y: -1.7848260842371246
-      zoom: 0.544042198619822
+      x: -252.36708811682195
+      y: 12.679066648163143
+      zoom: 0.6171138784972152

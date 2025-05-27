@@ -19,25 +19,19 @@ class ThreadPolarisNetTimeTool(BuiltinTool):
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
-        pod = tool_parameters.get('pod', '')
-        node_name = tool_parameters.get('nodeName', '')
-        pid = tool_parameters.get('pid', '')
+        pod = tool_parameters.get('pod', '.*')
+        node_name = tool_parameters.get('nodeName', '.*')
+        pid = tool_parameters.get('pid', '.*')
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
-
-        if node_name == '':
-            node_name = '.*'
-        if pid == '':
-            pid = '.*'
+        container_id = tool_parameters.get('containerId', '.*')
 
         metric_params = {
-            'node_name': node_name,
-            'pid': pid,
+            'node_name': node_name if node_name != '' else '.*',
+            'pid': pid if pid != '' else '.*',
+            'container_id': container_id if container_id != '' else '.*',
+            'pod': pod if pod != '' else '.*',
         }
-        if pod != '':
-            metric_params['pod'] = pod
-        else:
-            metric_params['container_id'] = '.*'
 
         params = {
             'metricName': 'Thread Polaris Metrics - 北极星指标（线程） - 各类型耗时折线图 - Net',

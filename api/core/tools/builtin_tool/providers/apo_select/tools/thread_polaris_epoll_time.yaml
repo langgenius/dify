@@ -47,6 +47,17 @@ parameters:
       zh_Hans: 进程id
     llm_description: pid
     form: llm
+  - name: containerId 
+    type: string
+    required: False
+    label:
+      en_US: Container ID
+      zh_Hans: 容器ID
+    human_description:
+      en_US: Container ID
+      zh_Hans: 容器ID
+    llm_description: Container ID
+    form: llm
   - name: startTime
     type: number
     required: true

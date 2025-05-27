@@ -1043,6 +1043,7 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1747355869184-true-1747355986489-target
+      selected: false
       source: '1747355869184'
       sourceHandle: 'true'
       target: '1747355986489'
@@ -1109,6 +1110,7 @@ workflow:
         sourceType: if-else
         targetType: tool
       id: 1747355869184-true-17473562733380-target
+      selected: false
       source: '1747355869184'
       sourceHandle: 'true'
       target: '17473562733380'
@@ -1240,14 +1242,14 @@ workflow:
           required: false
           type: text-input
           variable: nodeIp
-      height: 192
+      height: 193
       id: '1741227526517'
       position:
         x: 30
-        y: 372
+        y: 359
       positionAbsolute:
         x: 30
-        y: 372
+        y: 359
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1334,7 +1336,7 @@ workflow:
           - '1741497176064'
           - item
           variable: arg1
-      height: 52
+      height: 53
       id: '1741497181784'
       parentId: '1741497176064'
       position:
@@ -1484,7 +1486,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741502699500'
       parentId: '1741497176064'
       position:
@@ -1511,7 +1513,7 @@ workflow:
         selected: false
         title: End
         type: end
-      height: 88
+      height: 89
       id: '1741502839759'
       position:
         x: 12047
@@ -1564,7 +1566,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 89
       id: '1741506766037'
       parentId: '1741497176064'
       position:
@@ -1611,14 +1613,14 @@ workflow:
           - '1741597274153'
           - output
           variable: arg
-      height: 52
+      height: 53
       id: '1741509454645'
       position:
         x: 1545
-        y: 556
+        y: 543
       positionAbsolute:
         x: 1545
-        y: 556
+        y: 543
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1689,7 +1691,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 89
       id: '1741512806512'
       position:
         x: 11744
@@ -1709,14 +1711,14 @@ workflow:
         title: unsupport alert
         type: template-transform
         variables: []
-      height: 52
+      height: 53
       id: '1741592094819'
       position:
         x: 939
-        y: 372
+        y: 359
       positionAbsolute:
         x: 939
-        y: 372
+        y: 359
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1732,14 +1734,14 @@ workflow:
         selected: false
         title: End
         type: end
-      height: 88
+      height: 89
       id: '1741592144815'
       position:
         x: 1242
-        y: 372
+        y: 359
       positionAbsolute:
         x: 1242
-        y: 372
+        y: 359
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1849,14 +1851,14 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741597223833'
       position:
         x: 939
-        y: 464
+        y: 451
       positionAbsolute:
         x: 939
-        y: 464
+        y: 451
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1875,14 +1877,14 @@ workflow:
           - result
         - - '1742629595400'
           - text
-      height: 151
+      height: 150
       id: '1741597274153'
       position:
         x: 1242
-        y: 524.5
+        y: 511.5
       positionAbsolute:
         x: 1242
-        y: 524.5
+        y: 511.5
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1918,14 +1920,14 @@ workflow:
           - '1742807803325'
           - pid
           variable: arg3
-      height: 52
+      height: 53
       id: '1741599658821'
       position:
         x: 939
-        y: 556
+        y: 543
       positionAbsolute:
         x: 939
-        y: 556
+        y: 543
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1984,14 +1986,14 @@ workflow:
         selected: false
         title: alert instance info
         type: if-else
-      height: 272
+      height: 273
       id: '1742453019576'
       position:
         x: 636
-        y: 372
+        y: 359
       positionAbsolute:
         x: 636
-        y: 372
+        y: 359
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2131,7 +2133,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742547917612'
       parentId: '1741497176064'
       position:
@@ -2275,14 +2277,14 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742629595400'
       position:
         x: 939
-        y: 648
+        y: 635
       positionAbsolute:
         x: 939
-        y: 648
+        y: 635
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2422,7 +2424,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742798505742'
       parentId: '1741497176064'
       position:
@@ -2438,25 +2440,33 @@ workflow:
       width: 243
       zIndex: 1002
     - data:
-        code: "  \ndef get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
+        code: "def get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
           \ \n    if value is not None: \n      return value \n  return \"\" \n\n\
-          import json \n\ndef main(arg: str) -> dict:\n  data = json.loads(arg) \n\
-          \  return { \n  \"alertName\": get_value(data, [\"alertName\"]),      \n\
-          \  \"service\": get_value(data, [\"svc_name\", \"service\"]), \n  \"endpoint\"\
-          : get_value(data,[\"endpoint\", \"content_key\"]), \n  \"pod\": get_value(data,[\"\
-          pod\", \"src_pod\", \"pod_name\"]), \n  \"namespace\": get_value(data,[\"\
-          namespace\", \"src_namespace\"]),\n  \"pid\": get_value(data,[\"pid\"]),\n\
-          }"
+          import json \n\ndef main(arg: str, node: str) -> dict:\n  data = json.loads(arg)\
+          \ \n  return { \n  \"alertName\": get_value(data, [\"alertName\"]),    \
+          \  \n  \"service\": get_value(data, [\"svc_name\", \"service\"]), \n  \"\
+          endpoint\": get_value(data,[\"endpoint\", \"content_key\"]), \n  \"pod\"\
+          : get_value(data,[\"pod\", \"src_pod\", \"pod_name\"]), \n  \"namespace\"\
+          : get_value(data,[\"namespace\", \"src_namespace\"]),\n  \"pid\": get_value(data,[\"\
+          pid\"]),\n  \"node\": node if node else get_value(data,[\"node\", \"nodeName\"\
+          , \"node_name\"]),\n  \"containerId\": get_value(data,[\"containerId\",\
+          \ \"container_id\"]),\n}"
         code_language: python3
         desc: ''
         outputs:
           alertName:
             children: null
             type: string
+          containerId:
+            children: null
+            type: string
           endpoint:
             children: null
             type: string
           namespace:
+            children: null
+            type: string
+          node:
             children: null
             type: string
           pid:
@@ -2476,14 +2486,18 @@ workflow:
           - '1741227526517'
           - params
           variable: arg
-      height: 52
+        - value_selector:
+          - '1741227526517'
+          - nodeName
+          variable: node
+      height: 53
       id: '1742807803325'
       position:
-        x: 333
-        y: 372
+        x: 334.5801129819097
+        y: 359
       positionAbsolute:
-        x: 333
-        y: 372
+        x: 334.5801129819097
+        y: 359
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -2650,7 +2664,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742980228913'
       parentId: '1741497176064'
       position:
@@ -2826,7 +2840,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742980318484'
       parentId: '1741497176064'
       position:
@@ -2953,7 +2967,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742980720651'
       parentId: '1741497176064'
       position:
@@ -3080,7 +3094,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742980748320'
       parentId: '1741497176064'
       position:
@@ -3207,7 +3221,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742980780865'
       parentId: '1741497176064'
       position:
@@ -3334,7 +3348,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742980837261'
       parentId: '1741497176064'
       position:
@@ -3461,7 +3475,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742980885557'
       parentId: '1741497176064'
       position:
@@ -3502,7 +3516,7 @@ workflow:
           - '1741509454645'
           - first
           variable: arg1
-      height: 52
+      height: 53
       id: '17430589567120'
       position:
         x: 2151
@@ -3608,6 +3622,9 @@ workflow:
         tool_label: 线程在CPU上的耗时折线图（按Pod统计）
         tool_name: 线程在CPU上的耗时折线图（按Pod统计）
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742807803325.containerId#}}'
           endTime:
             type: variable
             value:
@@ -3628,7 +3645,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430595109950'
       position:
         x: 3060
@@ -3802,7 +3819,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430595158080'
       position:
         x: 3363
@@ -3836,15 +3853,15 @@ workflow:
         - id: 2b2ad468-efcd-4bcc-aeb9-d53d2f2770ad
           role: user
           text: "# 分析目标\n基于跨资源类别的异常线程数据，判断应用实例{{#17430589567120.pod#}}是否受告警事件{{#1742807803325.alertName#}}影响，并进行初步根因定位。\n\
-            \n# 输入数据规范\n- **分资源类别数据**：线程延迟及关联的北极星指标（如网络类延迟加上对应的异常网络RTT数据,不要忽略RTT数据）。\n\
+            \n# 输入数据规范\n- **分资源类别数据**：线程延迟及关联的北极星指标（如网络类延迟加上对应的异常网络网络链路延迟数据,不要忽略网络链路延迟数据）。\n\
             - **异常数据点计数**：延迟超过同类型线程历史均值20%的实例数，需标注线程延迟均值。\n\n# 分析规则\n1. **主异常方向判定**\n\
             - 标注异常线程的延迟均值。\n- 识别延迟增幅最显著的资源类型（如延迟从毫秒级跃升至秒级）。\n- **线程数量优先原则**：若某资源类型（如网络/epoll）的异常线程数量最多，则归因至该类别。请仔细分析各方向异常线程数量。\n\
             *示例：网络/epoll类异常线程4条 vs CPU类2条 → 归因为网络方向问题。*\n\n2. **误判规避**\n- 若CPU或运行队列（RunQ）延迟突增且无并发网络/epoll异常，优先归因为CPU资源争用。\n\
             \n3. **决胜优先级（降序）**\n'CPU > 网络 > Epoll > 文件 > RunQ'\n\n# 根因归因与建议\n- **CPU延迟突增**：检查代码过度嵌套问题，确认后执行版本回滚。\n\
-            - **CPU抢占过高**：排查同节点进程的资源争用。\n- **网络/Epoll延迟突增**：\n- 若RTT异常 → 网络链路问题;\n\
-            - 若RTT正常 → 下游服务延迟问题。\n- **文件操作延迟升高**：审计文件句柄泄漏。\n\n# 输出格式\n**应用实例**:{{#17430589567120.pod#}}\
+            - **CPU抢占过高**：排查同节点进程的资源争用。\n- **网络/Epoll延迟突增**：\n- 若网络链路延迟异常 → 网络链路问题;\n\
+            - 若网络链路延迟正常 → 下游服务延迟问题。\n- **文件操作延迟升高**：审计文件句柄泄漏。\n\n# 输出格式\n**应用实例**:{{#17430589567120.pod#}}\
             \  \n**北极星指标趋势摘要**\n- 按指标维度描述显著变化，若无异常标注\"未观测到显著偏离\"。\n\n**初步根因结论**\n\
-            - 明确告警事件对应用的影响状态。\n- 基于北极星指标与分析规则输出单一归因结论。\n*注：若网络/Epoll类异常但RTT正常，归因为下游服务延迟。*\n\
+            - 明确告警事件对应用的影响状态。\n- 基于北极星指标与分析规则输出单一归因结论。\n*注：若网络/Epoll类异常但网络链路延迟正常，归因为下游服务延迟。*\n\
             注： 如果对应方向有报告连接，需展示报告链接，可点击\n没有不用展示报告\n\n# 输入数据\n-cpu：{{#17443388433580.result#}}\
             \  \n- net：{{#17443388438160.result#}}  \n- file：{{#17443388421360.result#}}\
             \  \n- epoll：{{#1744290470304.result#}}  \n- RunQ：{{#17443388443000.result#}}\n\
@@ -3857,7 +3874,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 89
       id: '17430596469370'
       position:
         x: 4878
@@ -3963,6 +3980,9 @@ workflow:
         tool_label: 线程在文件操作上的耗时折线图（按Pod统计）
         tool_name: 线程在文件操作上的耗时折线图（按Pod统计）
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742807803325.containerId#}}'
           endTime:
             type: variable
             value:
@@ -3970,7 +3990,7 @@ workflow:
             - endTime
           nodeName:
             type: mixed
-            value: '{{#1741227526517.nodeName#}}'
+            value: '{{#1742807803325.node#}}'
           pid:
             type: mixed
             value: '{{#17430589567120.pid#}}'
@@ -3983,7 +4003,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430597987060'
       position:
         x: 3363
@@ -4160,14 +4180,14 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430598152780'
       position:
         x: 3666
-        y: 720
+        y: 702
       positionAbsolute:
         x: 3666
-        y: 720
+        y: 702
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -4266,6 +4286,9 @@ workflow:
         tool_label: 线程在网络操作上的耗时折线图（按Pod统计）
         tool_name: 线程在网络操作上的耗时折线图（按Pod统计）
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742807803325.containerId#}}'
           endTime:
             type: variable
             value:
@@ -4286,7 +4309,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430598907140'
       position:
         x: 2757
@@ -4417,6 +4440,9 @@ workflow:
         tool_label: Query container rtt
         tool_name: 查询容器网络与下游RTT
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742807803325.containerId#}}'
           endTime:
             type: variable
             value:
@@ -4425,6 +4451,12 @@ workflow:
           namespace:
             type: mixed
             value: '{{#17430589567120.namespace#}}'
+          node:
+            type: mixed
+            value: '{{#1742807803325.node#}}'
+          pid:
+            type: mixed
+            value: '{{#1742807803325.pid#}}'
           pod:
             type: mixed
             value: '{{#17430589567120.pod#}}'
@@ -4434,7 +4466,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430598942980'
       position:
         x: 3060
@@ -4540,6 +4572,9 @@ workflow:
         tool_label: 线程在Epoll操作上的耗时折线图（按Pod统计）
         tool_name: 线程在Epoll操作上的耗时折线图（按Pod统计）
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742807803325.containerId#}}'
           endTime:
             type: variable
             value:
@@ -4547,7 +4582,7 @@ workflow:
             - endTime
           nodeName:
             type: mixed
-            value: '{{#1741227526517.nodeName#}}'
+            value: '{{#1742807803325.node#}}'
           pid:
             type: mixed
             value: '{{#17430589567120.pid#}}'
@@ -4560,7 +4595,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430610599980'
       position:
         x: 3060
@@ -4691,6 +4726,9 @@ workflow:
         tool_label: Query container rtt
         tool_name: 查询容器网络与下游RTT
         tool_parameters:
+          containerId:
+            type: mixed
+            value: ''
           endTime:
             type: variable
             value:
@@ -4708,7 +4746,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430610640640'
       position:
         x: 3363
@@ -4834,7 +4872,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430610719970'
       position:
         x: 3060
@@ -4982,7 +5020,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17430610756270'
       position:
         x: 3363
@@ -5023,14 +5061,14 @@ workflow:
           - '17430610640640'
           - text
           variable: data_json
-      height: 52
+      height: 53
       id: '1744255998058'
       position:
         x: 3666
-        y: 812
+        y: 794
       positionAbsolute:
         x: 3666
-        y: 812
+        y: 794
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5063,7 +5101,7 @@ workflow:
           - '17430598942980'
           - text
           variable: data_json
-      height: 52
+      height: 53
       id: '17442560822670'
       position:
         x: 3363
@@ -5165,7 +5203,7 @@ workflow:
           - '1744255998058'
           - result
           variable: proof_json
-      height: 52
+      height: 53
       id: '1744287265980'
       position:
         x: 4272
@@ -5211,7 +5249,7 @@ workflow:
           - '1744287265980'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '1744290470304'
       position:
         x: 4575
@@ -5314,14 +5352,14 @@ workflow:
           - '17430610756270'
           - text
           variable: proof_json
-      height: 52
+      height: 53
       id: '17443356883380'
       position:
         x: 3969
-        y: 1178
+        y: 1160
       positionAbsolute:
         x: 3969
-        y: 1178
+        y: 1160
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5417,14 +5455,14 @@ workflow:
           - '17442560822670'
           - result
           variable: proof_json
-      height: 52
+      height: 53
       id: '17443357536900'
       position:
         x: 3969
-        y: 1050
+        y: 1032
       positionAbsolute:
         x: 3969
-        y: 1050
+        y: 1032
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5520,7 +5558,7 @@ workflow:
           - '17430598152780'
           - text
           variable: proof_json
-      height: 52
+      height: 53
       id: '17443357893440'
       position:
         x: 4272
@@ -5623,14 +5661,14 @@ workflow:
           - '17430595158080'
           - text
           variable: proof_json
-      height: 52
+      height: 53
       id: '17443357899060'
       position:
         x: 3969
-        y: 922
+        y: 904
       positionAbsolute:
         x: 3969
-        y: 922
+        y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -5669,7 +5707,7 @@ workflow:
           - '17443357893440'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '17443388421360'
       position:
         x: 4575
@@ -5715,7 +5753,7 @@ workflow:
           - '17443357899060'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '17443388433580'
       position:
         x: 4272
@@ -5761,7 +5799,7 @@ workflow:
           - '17443357536900'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '17443388438160'
       position:
         x: 4272
@@ -5807,7 +5845,7 @@ workflow:
           - '17443356883380'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '17443388443000'
       position:
         x: 4272
@@ -5849,7 +5887,7 @@ workflow:
           - '1742798505742'
           - text
           variable: data_json
-      height: 52
+      height: 53
       id: '1744342068305'
       parentId: '1741497176064'
       position:
@@ -5893,7 +5931,7 @@ workflow:
           - '1742547917612'
           - text
           variable: data_json
-      height: 52
+      height: 53
       id: '1744342138380'
       parentId: '1741497176064'
       position:
@@ -5999,7 +6037,7 @@ workflow:
           - '1742980228913'
           - text
           variable: proof_json
-      height: 52
+      height: 53
       id: '1744342244843'
       parentId: '1741497176064'
       position:
@@ -6105,7 +6143,7 @@ workflow:
           - '1742980318484'
           - text
           variable: proof_json
-      height: 52
+      height: 53
       id: '1744342309386'
       parentId: '1741497176064'
       position:
@@ -6211,7 +6249,7 @@ workflow:
           - '1744342138380'
           - result
           variable: proof_json
-      height: 52
+      height: 53
       id: '1744342372882'
       parentId: '1741497176064'
       position:
@@ -6317,7 +6355,7 @@ workflow:
           - '1744342068305'
           - result
           variable: proof_json
-      height: 52
+      height: 53
       id: '1744342426374'
       parentId: '1741497176064'
       position:
@@ -6423,7 +6461,7 @@ workflow:
           - '17430610756270'
           - text
           variable: proof_json
-      height: 52
+      height: 53
       id: '1744342478278'
       parentId: '1741497176064'
       position:
@@ -6473,7 +6511,7 @@ workflow:
           - '1744342478278'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '1744342609856'
       parentId: '1741497176064'
       position:
@@ -6523,7 +6561,7 @@ workflow:
           - '1744342426374'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '1744342800777'
       parentId: '1741497176064'
       position:
@@ -6573,7 +6611,7 @@ workflow:
           - '1744342372882'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '1744342846753'
       parentId: '1741497176064'
       position:
@@ -6623,7 +6661,7 @@ workflow:
           - '1744342309386'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '1744342890395'
       parentId: '1741497176064'
       position:
@@ -6673,7 +6711,7 @@ workflow:
           - '1744342244843'
           - result
           variable: data_json
-      height: 52
+      height: 53
       id: '1744342920172'
       parentId: '1741497176064'
       position:
@@ -6732,14 +6770,14 @@ workflow:
             type: mixed
             value: '{{#17430610599980.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745323059455'
       position:
         x: 3969
-        y: 812
+        y: 794
       positionAbsolute:
         x: 3969
-        y: 812
+        y: 794
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6789,14 +6827,14 @@ workflow:
             type: mixed
             value: '{{#17430610719970.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745323078946'
       position:
         x: 3666
-        y: 1178
+        y: 1160
       positionAbsolute:
         x: 3666
-        y: 1178
+        y: 1160
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6846,14 +6884,14 @@ workflow:
             type: mixed
             value: '{{#17430595109950.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745323114690'
       position:
         x: 3666
-        y: 922
+        y: 904
       positionAbsolute:
         x: 3666
-        y: 922
+        y: 904
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6903,14 +6941,14 @@ workflow:
             type: mixed
             value: '{{#17430597987060.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745323119371'
       position:
         x: 3969
-        y: 720
+        y: 702
       positionAbsolute:
         x: 3969
-        y: 720
+        y: 702
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -6960,14 +6998,14 @@ workflow:
             type: mixed
             value: '{{#17430598907140.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745323124559'
       position:
         x: 3666
-        y: 1050
+        y: 1032
       positionAbsolute:
         x: 3666
-        y: 1050
+        y: 1032
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7019,7 +7057,7 @@ workflow:
             type: mixed
             value: '{{#1742980720651.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745325937486'
       parentId: '1741497176064'
       position:
@@ -7080,7 +7118,7 @@ workflow:
             type: mixed
             value: '{{#1742980748320.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745326017289'
       parentId: '1741497176064'
       position:
@@ -7141,7 +7179,7 @@ workflow:
             type: mixed
             value: '{{#1742980780865.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745326029444'
       parentId: '1741497176064'
       position:
@@ -7202,7 +7240,7 @@ workflow:
             type: mixed
             value: '{{#1742980837261.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745326038950'
       parentId: '1741497176064'
       position:
@@ -7263,7 +7301,7 @@ workflow:
             type: mixed
             value: '{{#1742980885557.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '1745326055068'
       parentId: '1741497176064'
       position:
@@ -7446,7 +7484,7 @@ workflow:
             type: mixed
             value: cpu_time
         type: tool
-      height: 88
+      height: 89
       id: '1745388058502'
       position:
         x: 4575
@@ -7631,7 +7669,7 @@ workflow:
             type: mixed
             value: network_time
         type: tool
-      height: 88
+      height: 89
       id: '17453881280910'
       position:
         x: 4575
@@ -7812,7 +7850,7 @@ workflow:
             type: mixed
             value: scheduling_time
         type: tool
-      height: 88
+      height: 89
       id: '17453881639600'
       position:
         x: 4575
@@ -7842,14 +7880,14 @@ workflow:
         selected: false
         title: 条件分支 2
         type: if-else
-      height: 124
+      height: 125
       id: '1745494305165'
       position:
         x: 1848
-        y: 556
+        y: 543
       positionAbsolute:
         x: 1848
-        y: 556
+        y: 543
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7862,14 +7900,14 @@ workflow:
         title: 未查询到关联服务
         type: template-transform
         variables: []
-      height: 52
+      height: 53
       id: '1745494335273'
       position:
         x: 2151
-        y: 556
+        y: 543
       positionAbsolute:
         x: 2151
-        y: 556
+        y: 543
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7885,14 +7923,14 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 88
+      height: 89
       id: '1745494338512'
       position:
         x: 2454
-        y: 556
+        y: 543
       positionAbsolute:
         x: 2454
-        y: 556
+        y: 543
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7922,14 +7960,14 @@ workflow:
         selected: false
         title: 告警初步方向分析
         type: if-else
-      height: 150
+      height: 151
       id: '1747355869184'
       position:
         x: 2454
-        y: 684
+        y: 671
       positionAbsolute:
         x: 2454
-        y: 684
+        y: 671
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -8050,6 +8088,9 @@ workflow:
         tool_label: 线程在网络操作上的耗时折线图（按Pod统计）
         tool_name: 线程在网络操作上的耗时折线图（按Pod统计）
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742807803325.containerId#}}'
           endTime:
             type: variable
             value:
@@ -8058,6 +8099,12 @@ workflow:
           node:
             type: mixed
             value: ''
+          nodeName:
+            type: mixed
+            value: '{{#1742807803325.node#}}'
+          pid:
+            type: mixed
+            value: '{{#1742807803325.pid#}}'
           pod:
             type: mixed
             value: '{{#17430589567120.pod#}}'
@@ -8067,13 +8114,13 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1747355986489'
       position:
-        x: 2757
+        x: 2755.3795535397207
         y: 1270
       positionAbsolute:
-        x: 2757
+        x: 2755.3795535397207
         y: 1270
       selected: false
       sourcePosition: right
@@ -8197,6 +8244,9 @@ workflow:
         tool_label: Query container rtt
         tool_name: 查询容器网络与下游RTT
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742807803325.containerId#}}'
           endTime:
             type: variable
             value:
@@ -8205,6 +8255,12 @@ workflow:
           namespace:
             type: mixed
             value: '{{#17430589567120.namespace#}}'
+          node:
+            type: mixed
+            value: '{{#1742807803325.node#}}'
+          pid:
+            type: mixed
+            value: '{{#1742807803325.pid#}}'
           pod:
             type: mixed
             value: '{{#17430589567120.pod#}}'
@@ -8214,7 +8270,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17473562733380'
       position:
         x: 2757
@@ -8222,7 +8278,7 @@ workflow:
       positionAbsolute:
         x: 2757
         y: 1362
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -8272,7 +8328,7 @@ workflow:
             type: mixed
             value: '{{#1747355986489.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '17473564423850'
       position:
         x: 3060
@@ -8329,7 +8385,7 @@ workflow:
             type: mixed
             value: '{{#17473562733380.text#}}'
         type: tool
-      height: 52
+      height: 53
       id: '17473564454180'
       position:
         x: 3060
@@ -8386,7 +8442,7 @@ workflow:
           - '17473564423850'
           - text
           variable: data_json
-      height: 52
+      height: 53
       id: '1747356893645'
       position:
         x: 3363
@@ -8444,7 +8500,7 @@ workflow:
           - '17473564454180'
           - text
           variable: data_json
-      height: 52
+      height: 53
       id: '1747356923703'
       position:
         x: 3363
@@ -8477,15 +8533,16 @@ workflow:
         - id: 2b2ad468-efcd-4bcc-aeb9-d53d2f2770ad
           role: user
           text: "# 分析目标\n基于NET消耗的异常线程数据和RTT异常长数据，判断应用实例{{#17430589567120.pod#}}是否受告警事件{{#1742807803325.alertName#}}影响，并进行初步根因定位。\n\
-            \n# 输入数据规范\n- 线程在北极星指标NET上的异常消耗样本。\n- Pod相关下游容器RTT异常消耗样本。\n\n# 分析规则\n\
+            \n# 输入数据规范\n- 线程在北极星指标NET上的异常消耗样本。\n- Pod相关下游容器网络链路延迟异常消耗样本。\n\n# 分析规则\n\
             1. **主异常方向判定**\n- 标注异常线程的延迟均值。\n- 识别延迟增幅最显著的线程。\n- 根据RTT识别是自身异常还是下游异常\n\
-            2. **RTT识别思路**\n- RTT显著增高或接近0.05s附近\n- 若只有个别RTT出现异常（比如只有一个下游RTT异常）则认为网络异常是由下游导致的\n\
-            - 若有多个RTT同步出现异常（比如有3个及以上下游RTT异常）则认为是容器自身网络出现问题，进而影响了RTT\n2. \n若无相关NET或RTT异常数据，则认为该时间段内对应数据无明显异常，可能只是出现短时间小幅波动。\n\
-            并给出具体的排查解决思路。\n\n# 输出格式\n**应用实例**:{{#17430589567120.pod#}}  \n**北极星指标趋势摘要**\n\
-            - 按指标维度描述显著变化，若无异常标注\"未观测到显著偏离\"。\n**与下游容器RTT分析**\n- 如果是下游RTT异常则列出异常的RTT和对应下游。\n\
-            - 如果是自身网络导致下游RTT异常则给出造成的影响并说明是自身原因导致与下游的RTT升高\n- 最后根据分析规则判断错误方向。\n\n\n\
-            **初步根因结论**\n- 明确告警事件对应用的影响状态。\n- 基于北极星指标与分析规则输出单一归因结论。\n\n# 输入数据\n- 北极星指标NET消耗异常均值最高的实例{{#1747356893645.top_abnormal_means#}}，北极星指标NET消耗异常增速均值最高的实例{{#1747356893645.top_abnormal_growths#}}\n\
-            - 容器RTT异常消耗均值最高的实例{{#1747356923703.top_abnormal_means#}}\n容器RTT异常增速均值最高的实例\n\
+            2. **网络链路延迟识别思路**\n- 网络链路延迟显著增高或接近0.05s附近\n- 若只有个别网络链路延迟出现异常（比如只有一个下游网络链路延迟异常）则认为网络异常是由下游导致，而非自身网络问题\n\
+            - 若有多个网络链路延迟同步出现异常（比如有3个及以上下游网络链路延迟异常）则认为是容器自身网络出现问题，进而影响了网络链路延迟.\n3.\
+            \ \n若无相关NET或网络链路延迟异常数据，则认为该时间段内对应数据无明显异常，可能只是出现短时间小幅波动。提示用户该数据无异常。\n\n\
+            # 输出格式\n**应用实例**:{{#17430589567120.pod#}}  \n**北极星指标趋势摘要**\n- 按指标维度描述显著变化，若无异常标注\"\
+            未观测到显著偏离\"。\n**与下游容器网络链路延迟分析**\n- 如果是下游网络链路延迟异常则列出异常的网络链路延迟和对应下游。\n- 如果是自身网络导致下游网络链路延迟异常则给出造成的影响并说明是自身原因导致与下游的网络链路延迟升高\n\
+            - 最后根据分析规则判断错误方向。\n\n\n**初步根因结论**\n- 明确告警事件对应用的影响状态。\n- 基于北极星指标与分析规则输出单一归因结论。\n\
+            \n# 输入数据\n- 北极星指标NET消耗异常均值最高的实例{{#1747356893645.top_abnormal_means#}}，北极星指标NET消耗异常增速均值最高的实例{{#1747356893645.top_abnormal_growths#}}\n\
+            - 容器网络链路延迟异常消耗均值最高的实例{{#1747356923703.top_abnormal_means#}}\n容器网络链路延迟异常增速均值最高的实例\n\
             \n# 输出准则\n- 使用简洁的非技术表述，避免歧义。\n- 结论需聚焦可执行建议（如\"检查代码嵌套\"而非\"可能存在性能问题\"）。"
         selected: false
         title: 网络方向分析
@@ -8493,15 +8550,15 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 89
       id: '17473569800940'
       position:
         x: 3666
-        y: 1270
+        y: 1252
       positionAbsolute:
         x: 3666
-        y: 1270
-      selected: true
+        y: 1252
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -8517,20 +8574,20 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 88
+      height: 89
       id: '1747357345949'
       position:
         x: 3969
-        y: 1270
+        y: 1252
       positionAbsolute:
         x: 3969
-        y: 1270
+        y: 1252
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 243
     viewport:
-      x: -690.3825562997647
-      y: -43.90932228206026
-      zoom: 0.289713647959684
+      x: -901.9051067237931
+      y: -287.18452633582376
+      zoom: 0.4796228446520448

@@ -428,15 +428,22 @@ workflow:
             value: ''
             varType: string
             variable_selector:
-            - '1741227526517'
+            - '1742807803325'
             - nodeName
+          - comparison_operator: empty
+            id: 95786764-d469-4d88-af11-54420e537571
+            value: ''
+            varType: string
+            variable_selector:
+            - '1742807803325'
+            - containerId
           id: 'true'
           logical_operator: and
         desc: ''
         selected: false
         title: alert instance info
         type: if-else
-      height: 176
+      height: 202
       id: '1742453019576'
       position:
         x: 638
@@ -452,23 +459,31 @@ workflow:
     - data:
         code: "  \ndef get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
           \ \n    if value is not None: \n      return value \n  return \"\" \n\n\
-          import json \n\ndef main(arg: str) -> dict:\n  data = json.loads(arg) \n\
-          \  return { \n  \"alertName\": get_value(data, [\"alertName\"]),      \n\
-          \  \"service\": get_value(data, [\"svc_name\", \"service\"]), \n  \"endpoint\"\
-          : get_value(data,[\"endpoint\", \"content_key\"]), \n  \"pod\": get_value(data,[\"\
-          pod\", \"src_pod\", \"pod_name\"]), \n  \"namespace\": get_value(data,[\"\
-          namespace\", \"src_namespace\"]),\n  \"pid\": get_value(data,[\"pid\"]),\
-          \  \n}"
+          import json \n\ndef main(arg: str, node: str) -> dict:\n  data = json.loads(arg)\
+          \ \n  return { \n  \"alertName\": get_value(data, [\"alertName\"]),    \
+          \  \n  \"service\": get_value(data, [\"svc_name\", \"service\"]), \n  \"\
+          endpoint\": get_value(data,[\"endpoint\", \"content_key\"]), \n  \"pod\"\
+          : get_value(data,[\"pod\", \"src_pod\", \"pod_name\"]), \n  \"namespace\"\
+          : get_value(data,[\"namespace\", \"src_namespace\"]),\n  \"pid\": get_value(data,[\"\
+          pid\"]),\n  \"containerId\": get_value(data,[\"containerId\"]),\n  \"nodeName\"\
+          : node if node else get_value(data,[\"node\", \"src_node\", \"node_name\"\
+          , \"nodeName\"]),\n}"
         code_language: python3
         desc: ''
         outputs:
           alertName:
             children: null
             type: string
+          containerId:
+            children: null
+            type: string
           endpoint:
             children: null
             type: string
           namespace:
+            children: null
+            type: string
+          nodeName:
             children: null
             type: string
           pid:
@@ -488,6 +503,10 @@ workflow:
           - '1741227526517'
           - params
           variable: arg
+        - value_selector:
+          - '1741227526517'
+          - nodeName
+          variable: node
       height: 52
       id: '1742807803325'
       position:
@@ -996,6 +1015,9 @@ workflow:
           namespace:
             type: mixed
             value: ''
+          nodeName:
+            type: mixed
+            value: '{{#1741227526517.nodeName#}}'
           pageNum:
             type: constant
             value: 1
@@ -1025,14 +1047,16 @@ workflow:
       type: custom
       width: 243
     - data:
-        code: "\ndef main(pod: str, service: str, node: str, pid: str) -> dict:\n\
-          \    query = ''\n    if len(pod) > 0 and len(service) > 0:\n        query\
-          \ = f\"\"\"k8s_pod_name='{pod}' and container_name='{service}'\"\"\"\n \
-          \   elif len(pod) > 0:\n        query = f\"\"\"k8s_pod_name='{pod}'\"\"\"\
-          \n    elif len(service) > 0:\n        query = f\"\"\"container_name='{service}'\"\
-          \"\"\n    elif len(node) > 0 and len(pid) > 0:\n        query = f\"\"\"\
-          host_name='{node}' and pid='{pid}'\"\"\"\n\n    return {\n        \"query\"\
-          : query,\n    }"
+        code: "\ndef main(pod: str, service: str, node: str, pid: str, containerId:\
+          \ str) -> dict:\n    query = ''\n    if len(containerId) > 0 and len(node)\
+          \ > 0:\n        query = f\"\"\"container_id='{containerId}' and host_name='{node}'\"\
+          \"\"\n    elif len(pod) > 0 and len(service) > 0:\n        query = f\"\"\
+          \"k8s_pod_name='{pod}' and container_name='{service}'\"\"\"\n    elif len(pod)\
+          \ > 0:\n        query = f\"\"\"k8s_pod_name='{pod}'\"\"\"\n    elif len(node)\
+          \ > 0 and len(pid) > 0:\n        query = f\"\"\"host_name='{node}' and pid='{pid}'\"\
+          \"\"\n    elif len(service) > 0:\n        query = f\"\"\"container_name='{service}'\"\
+          \"\"\n    elif len(containerId) > 0:\n        query = f\"\"\"container_id='{containerId}'\"\
+          \"\"\n\n    return {\n        \"query\": query,\n    }"
         code_language: python3
         desc: ''
         outputs:
@@ -1052,13 +1076,17 @@ workflow:
           - service
           variable: service
         - value_selector:
-          - '1741227526517'
+          - '1742807803325'
           - nodeName
           variable: node
         - value_selector:
           - '1742807803325'
           - pid
           variable: pid
+        - value_selector:
+          - '1742807803325'
+          - containerId
+          variable: containerId
       height: 52
       id: '1744878352649'
       position:
@@ -1067,7 +1095,7 @@ workflow:
       positionAbsolute:
         x: 1854
         y: 762
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1309,14 +1337,16 @@ workflow:
       type: custom
       width: 243
     - data:
-        code: "\ndef main(pod: str, service: str, node: str, pid: str) -> dict:\n\
-          \    query = ''\n    if len(pod) > 0 and len(service) > 0:\n        query\
-          \ = f\"\"\"k8s_pod_name='{pod}' and container_name='{service}'\"\"\"\n \
-          \   elif len(pod) > 0:\n        query = f\"\"\"k8s_pod_name='{pod}'\"\"\"\
-          \n    elif len(service) > 0:\n        query = f\"\"\"container_name='{service}'\"\
-          \"\"\n    elif len(node) > 0 and len(pid) > 0:\n        query = f\"\"\"\
-          host_name='{node}' and pid='{pid}'\"\"\"\n\n    return {\n        \"query\"\
-          : query,\n    }"
+        code: "\ndef main(pod: str, service: str, node: str, pid: str, containerId:\
+          \ str) -> dict:\n    query = ''\n    if len(containerId) > 0 and len(node)\
+          \ > 0:\n        query = f\"\"\"container_id='{containerId}' and host_name='{node}'\"\
+          \"\"\n    elif len(pod) > 0 and len(service) > 0:\n        query = f\"\"\
+          \"k8s_pod_name='{pod}' and container_name='{service}'\"\"\"\n    elif len(pod)\
+          \ > 0:\n        query = f\"\"\"k8s_pod_name='{pod}'\"\"\"\n    elif len(node)\
+          \ > 0 and len(pid) > 0:\n        query = f\"\"\"host_name='{node}' and pid='{pid}'\"\
+          \"\"\n    elif len(service) > 0:\n        query = f\"\"\"container_name='{service}'\"\
+          \"\"\n    elif len(containerId) > 0:\n        query = f\"\"\"container_id='{containerId}'\"\
+          \"\"\n\n    return {\n        \"query\": query,\n    }"
         code_language: python3
         desc: ''
         outputs:
@@ -1336,13 +1366,17 @@ workflow:
           - service
           variable: service
         - value_selector:
-          - '1741227526517'
+          - '1742807803325'
           - nodeName
           variable: node
         - value_selector:
           - '1742807803325'
           - pid
           variable: pid
+        - value_selector:
+          - '1742807803325'
+          - containerId
+          variable: containerId
       height: 52
       id: '17448784268890'
       position:
@@ -1436,7 +1470,7 @@ workflow:
       positionAbsolute:
         x: 2766
         y: 463
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1622,10 +1656,14 @@ workflow:
     - data:
         desc: ''
         selected: false
-        template: 暂不支持改告警类型。
+        template: 暂不支持的告警类型：{{ alertName }}
         title: 不支持的告警类型
         type: template-transform
-        variables: []
+        variables:
+        - value_selector:
+          - '1742807803325'
+          - alertName
+          variable: alertName
       height: 52
       id: '1745313576757'
       position:
@@ -1706,6 +1744,6 @@ workflow:
       type: custom
       width: 243
     viewport:
-      x: -359.2312231098896
-      y: -68.8711341493929
-      zoom: 0.44692047807854524
+      x: -260.5500541387065
+      y: 29.947524516835898
+      zoom: 0.41387663994240576

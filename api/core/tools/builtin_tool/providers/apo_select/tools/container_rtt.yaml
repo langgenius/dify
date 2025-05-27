@@ -42,6 +42,19 @@ parameters:
       pt_BR: Specified namespace
     llm_description: Specified namespace
     form: llm
+  - name: containerId
+    type: string
+    required: false
+    label:
+      en_US: containerId
+      zh_Hans: 容器ID
+      pt_BR: containerId
+    human_description:
+      en_US: Specified container ID
+      zh_Hans: 指定的容器ID
+      pt_BR: Specified container ID
+    llm_description: Specified container ID
+    form: llm
   - name: startTime
     type: number
     required: true

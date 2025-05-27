@@ -22,6 +22,7 @@ class ContainerRTTTool(BuiltinTool):
         namespace = tool_parameters.get("namespace") or ".*"
         node = tool_parameters.get("node") or ".*"
         pid = tool_parameters.get("pid") or ".*"
+        container_id = tool_parameters.get("containerId") or ".*"
         start_time = tool_parameters.get("startTime")
         end_time = tool_parameters.get("endTime")
         params = {
@@ -31,6 +32,7 @@ class ContainerRTTTool(BuiltinTool):
             "namespace": namespace,
             "node": node,
             "pid": pid,
+            "container_id": container_id,
           },
           'startTime': start_time,
           'endTime': end_time,
@@ -47,3 +49,4 @@ class ContainerRTTTool(BuiltinTool):
             }
         })
         yield self.create_text_message(list)
+
