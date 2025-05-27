@@ -34,6 +34,7 @@ import {
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
 import type { AgentNodeType } from '../../../agent/types'
@@ -459,7 +460,7 @@ const formatItem = (
     }
 
     case BlockEnum.DataSource: {
-      res.vars = DataSourceNodeDefault.getOutputVars?.(data as any) || []
+      res.vars = DataSourceNodeDefault.getOutputVars?.(data as DataSourceNodeType) || []
       break
     }
 
