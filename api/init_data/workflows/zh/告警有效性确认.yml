@@ -1574,6 +1574,9 @@ workflow:
         tool_label: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
         tool_name: 查询容器网络与下游RTT
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742806924635.containerId#}}'
           endTime:
             type: variable
             value:
@@ -1605,7 +1608,7 @@ workflow:
       positionAbsolute:
         x: 1242
         y: 821
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -3337,6 +3340,9 @@ workflow:
         tool_label: 容器与下游服务的网络往返时间(RTT,按命名空间和Pod统计)
         tool_name: 查询容器网络与下游RTT
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742806924635.containerId#}}'
           endTime:
             type: variable
             value:
@@ -4201,10 +4207,14 @@ workflow:
           \ \"service\"]), \n  \"endpoint\": get_value(data,[\"endpoint\", \"content_key\"\
           ]), \n  \"pod\": get_value(data,[\"pod\", \"src_pod\", \"pod_name\"]), \n\
           \  \"namespace\": get_value(data,[\"namespace\", \"src_namespace\"]), \n\
-          \  \"pid\": get_value(data,[\"pid\"]),\n}"
+          \  \"pid\": get_value(data,[\"pid\"]),\n  \"containerId\": get_value(data,[\"\
+          container_id\", \"containerID\"]),\n}"
         code_language: python3
         desc: ''
         outputs:
+          containerId:
+            children: null
+            type: string
           endpoint:
             children: null
             type: string
@@ -5702,6 +5712,9 @@ workflow:
           namespace:
             type: mixed
             value: '{{#1742806924635.namespace#}}'
+          pid:
+            type: mixed
+            value: '{{#1742806924635.pid#}}'
           pod_name:
             type: mixed
             value: '{{#1742806924635.pod#}}'
@@ -6437,6 +6450,9 @@ workflow:
         tool_label: 线程在网络操作上的耗时折线图（按Pod统计）
         tool_name: 线程在网络操作上的耗时折线图（按Pod统计）
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742806924635.containerId#}}'
           endTime:
             type: variable
             value:
@@ -6445,6 +6461,9 @@ workflow:
           nodeName:
             type: mixed
             value: '{{#1742806924635.node#}}'
+          pid:
+            type: mixed
+            value: '{{#1742806924635.pid#}}'
           pod:
             type: mixed
             value: '{{#1742806924635.pod#}}'
@@ -6607,6 +6626,9 @@ workflow:
         tool_label: 线程在网络操作上的耗时折线图（按Pod统计）
         tool_name: 线程在网络操作上的耗时折线图（按Pod统计）
         tool_parameters:
+          containerId:
+            type: mixed
+            value: '{{#1742806924635.containerId#}}'
           endTime:
             type: variable
             value:
@@ -6615,6 +6637,9 @@ workflow:
           nodeName:
             type: mixed
             value: '{{#1742806924635.node#}}'
+          pid:
+            type: mixed
+            value: '{{#1742806924635.pid#}}'
           pod:
             type: mixed
             value: '{{#1742806924635.pod#}}'
@@ -6681,6 +6706,6 @@ workflow:
       type: custom
       width: 243
     viewport:
-      x: 163.84507308379324
-      y: -5.426022001110766
-      zoom: 0.32862581873159724
+      x: -417.35774577655206
+      y: -305.92096666780355
+      zoom: 0.6171138784972154
