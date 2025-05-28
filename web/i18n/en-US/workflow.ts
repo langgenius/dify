@@ -874,6 +874,8 @@ const translation = {
         install: 'Install',
         cancel: 'Cancel',
       },
+      clickToViewParameterSchema: 'Click to view parameter schema',
+      parameterSchema: 'Parameter Schema',
     },
   },
   tracing: {

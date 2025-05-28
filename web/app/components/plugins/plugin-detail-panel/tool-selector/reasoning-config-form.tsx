@@ -185,7 +185,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       <div key={variable} className='space-y-1'>
         <div className='system-sm-semibold flex items-center justify-between py-2 text-text-secondary'>
           <div className='flex items-center'>
-            <span className={cn('code-sm-semibold text-text-secondary')}>{label[language] || label.en_US}</span>
+            <span className={cn('code-sm-semibold max-w-[140px] truncate text-text-secondary')} title={label[language] || label.en_US}>{label[language] || label.en_US}</span>
             {required && (
               <span className='ml-1 text-red-500'>*</span>
             )}
@@ -194,8 +194,8 @@ const ReasoningConfigForm: React.FC<Props> = ({
             <span className='system-xs-regular text-text-tertiary'>{valueType}</span>
             {!isShowSchemaTooltip && (
               <Tooltip
-                popupContent={<div className='system-xs-medium w-[200px] text-text-secondary'>
-                  Click to view parameter schema
+                popupContent={<div className='system-xs-medium text-text-secondary'>
+                  {t('workflow.nodes.agent.clickToViewParameterSchema')}
                 </div>}
                 asChild={false}>
                   <div

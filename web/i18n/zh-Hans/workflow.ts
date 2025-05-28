@@ -875,6 +875,8 @@ const translation = {
         install: '安装',
         cancel: '取消',
       },
+      clickToViewParameterSchema: '点击查看参数 schema',
+      parameterSchema: '参数 Schema',
     },
   },
   tracing: {
