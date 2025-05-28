@@ -179,7 +179,7 @@ const MCPDetailContent: FC<Props> = ({
           )}
         </div>
       </div>
-      <div className='grow'>
+      <div className='flex grow flex-col'>
         {((detail.is_team_authorization && isGettingTools) || isUpdating) && (
           <>
             <div className='flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2'>
@@ -217,7 +217,7 @@ const MCPDetailContent: FC<Props> = ({
                 </Button>
               </div>
             </div>
-            <div className='flex w-full grow flex-col gap-2 overflow-y-auto px-4 pb-4'>
+            <div className='flex h-0 w-full grow flex-col gap-2 overflow-y-auto px-4 pb-4'>
               {toolList.map(tool => (
                 <ToolItem
                   key={`${detail.id}${tool.name}`}
