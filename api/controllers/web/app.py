@@ -49,10 +49,18 @@ class AppMeta(WebApiResource):
 class AppAccessMode(Resource):
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("appId", type=str, required=True, location="args")
+        parser.add_argument("appId", type=str, required=False, location="args")
+        parser.add_argument("appCode", type=str, required=False, location="args")
         args = parser.parse_args()
 
-        app_id = args["appId"]
+        app_id = args.get("appId")
+        if args.get("appCode"):
+            app_code = args["appCode"]
+            app_id = AppService.get_app_id_by_code(app_code)
+
+        if not app_id:
+            raise ValueError("appId or appCode must be provided")
+
         res = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
 
         return {"accessMode": res.access_mode}
