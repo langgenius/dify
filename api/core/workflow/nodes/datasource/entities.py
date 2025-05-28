@@ -18,7 +18,7 @@ class DatasourceEntity(BaseModel):
 class DatasourceNodeData(BaseNodeData, DatasourceEntity):
     class DatasourceInput(BaseModel):
         # TODO: check this type
-        value: Optional[Union[Any, list[str]]] = None
+        value: Union[Any, list[str]]
         type: Optional[Literal["mixed", "variable", "constant"]] = None
 
         @field_validator("type", mode="before")

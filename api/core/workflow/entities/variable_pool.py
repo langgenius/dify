@@ -10,7 +10,12 @@ from core.variables import Segment, SegmentGroup, Variable
 from core.variables.segments import FileSegment, NoneSegment
 from factories import variable_factory
 
-from ..constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from ..constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    RAG_PIPELINE_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from ..enums import SystemVariableKey
 
 VariableValue = Union[str, int, float, dict, list, File]
@@ -42,6 +47,10 @@ class VariablePool(BaseModel):
         description="Conversation variables.",
         default_factory=list,
     )
+    rag_pipeline_variables: Mapping[str, Any] = Field(
+        description="RAG pipeline variables.",
+            default_factory=dict,
+    )
 
     def __init__(
         self,
@@ -50,18 +59,21 @@ class VariablePool(BaseModel):
         user_inputs: Mapping[str, Any] | None = None,
         environment_variables: Sequence[Variable] | None = None,
         conversation_variables: Sequence[Variable] | None = None,
+        rag_pipeline_variables: Mapping[str, Any] | None = None,
         **kwargs,
     ):
         environment_variables = environment_variables or []
         conversation_variables = conversation_variables or []
         user_inputs = user_inputs or {}
         system_variables = system_variables or {}
+        rag_pipeline_variables = rag_pipeline_variables or {}
 
         super().__init__(
             system_variables=system_variables,
             user_inputs=user_inputs,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
+            rag_pipeline_variables=rag_pipeline_variables,
             **kwargs,
         )
 
@@ -73,6 +85,9 @@ class VariablePool(BaseModel):
         # Add conversation variables to the variable pool
         for var in self.conversation_variables:
             self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
+        # Add rag pipeline variables to the variable pool
+        for var, value in self.rag_pipeline_variables.items():
+            self.add((RAG_PIPELINE_VARIABLE_NODE_ID, var), value)
 
     def add(self, selector: Sequence[str], value: Any, /) -> None:
         """

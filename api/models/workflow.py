@@ -152,6 +152,7 @@ class Workflow(Base):
         created_by: str,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
+        rag_pipeline_variables: list[dict],
         marked_name: str = "",
         marked_comment: str = "",
     ) -> "Workflow":
@@ -166,6 +167,7 @@ class Workflow(Base):
         workflow.created_by = created_by
         workflow.environment_variables = environment_variables or []
         workflow.conversation_variables = conversation_variables or []
+        workflow.rag_pipeline_variables = rag_pipeline_variables or []
         workflow.marked_name = marked_name
         workflow.marked_comment = marked_comment
         workflow.created_at = datetime.now(UTC).replace(tzinfo=None)
@@ -340,7 +342,7 @@ class Workflow(Base):
             "features": self.features_dict,
             "environment_variables": [var.model_dump(mode="json") for var in environment_variables],
             "conversation_variables": [var.model_dump(mode="json") for var in self.conversation_variables],
-            "rag_pipeline_variables": [var.model_dump(mode="json") for var in self.rag_pipeline_variables],
+            "rag_pipeline_variables": self.rag_pipeline_variables,
         }
         return result
 
@@ -553,6 +555,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
 
     SINGLE_STEP = "single-step"
     WORKFLOW_RUN = "workflow-run"
+    RAG_PIPELINE_RUN = "rag-pipeline-run"
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

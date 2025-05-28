@@ -4,29 +4,12 @@ from typing import Optional
 from flask_login import current_user
 
 from constants import HIDDEN_VALUE
-from core import datasource
-from core.datasource.__base import datasource_provider
-from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.helper import encrypter
-from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.entities.provider_entities import FormType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.plugin.impl.datasource import PluginDatasourceManager
-from core.provider_manager import ProviderManager
+from extensions.ext_database import db
 from models.oauth import DatasourceProvider
-from models.provider import ProviderType
-from services.entities.model_provider_entities import (
-    CustomConfigurationResponse,
-    CustomConfigurationStatus,
-    DefaultModelResponse,
-    ModelWithProviderEntityResponse,
-    ProviderResponse,
-    ProviderWithModelsResponse,
-    SimpleProviderEntityResponse,
-    SystemConfigurationResponse,
-)
-from extensions.database import db
 
 logger = logging.getLogger(__name__)
 
@@ -115,16 +98,26 @@ class DatasourceProviderService:
 
         :param tenant_id: workspace id
         :param provider: provider name
-        :param datasource_name: datasource name
         :param plugin_id: plugin id
         :return:
         """
         # Get all provider configurations of the current workspace
-        datasource_provider = db.session.query(DatasourceProvider).filter_by(tenant_id=tenant_id,
+        datasource_provider: DatasourceProvider | None = db.session.query(DatasourceProvider).filter_by(tenant_id=tenant_id,
                                                                             provider=provider,
                                                                             plugin_id=plugin_id).first()
+        if not datasource_provider:
+            return None
+        encrypted_credentials = datasource_provider.encrypted_credentials
+        # Get provider credential secret variables
+        credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider=provider)
 
+        # Obfuscate provider credentials
+        copy_credentials = encrypted_credentials.copy()
+        for key, value in copy_credentials.items():
+            if key in credential_secret_variables:
+                copy_credentials[key] = encrypter.obfuscated_token(value)
 
+        return copy_credentials
 
 
     def remove_datasource_credentials(self,
@@ -136,11 +129,9 @@ class DatasourceProviderService:
 
         :param tenant_id: workspace id
         :param provider: provider name
-        :param datasource_name: datasource name
         :param plugin_id: plugin id
         :return:
         """
-        # Get all provider configurations of the current workspace
         datasource_provider = db.session.query(DatasourceProvider).filter_by(tenant_id=tenant_id,
                                                                             provider=provider,
                                                                             plugin_id=plugin_id).first()

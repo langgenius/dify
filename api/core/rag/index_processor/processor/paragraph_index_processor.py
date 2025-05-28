@@ -131,7 +131,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Mapping[str, Any]):
         paragraph = GeneralStructureChunk(**chunks)
         documents = []
-        for content in paragraph.general_chunk:
+        for content in paragraph.general_chunks:
             metadata = {
                 "dataset_id": dataset.id,
                 "document_id": document.id,
@@ -151,3 +151,14 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             elif dataset.indexing_technique == "economy":
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
+
+
+    def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
+        paragraph = GeneralStructureChunk(**chunks)
+        preview = []
+        for content in paragraph.general_chunks:
+            preview.append({"content": content})
+        return {
+            "preview": preview,
+            "total_segments": len(paragraph.general_chunks)
+            }

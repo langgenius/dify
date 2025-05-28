@@ -40,7 +40,7 @@ class GeneralStructureChunk(BaseModel):
     General Structure Chunk.
     """
 
-    general_chunk: list[str]
+    general_chunks: list[str]
 
 
 class ParentChildChunk(BaseModel):

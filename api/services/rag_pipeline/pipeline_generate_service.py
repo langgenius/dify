@@ -69,9 +69,9 @@ class PipelineGenerateService:
     @classmethod
     def generate_single_loop(cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, streaming: bool = True):
         workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER)
-        return WorkflowAppGenerator.convert_to_event_stream(
-            WorkflowAppGenerator().single_loop_generate(
-                app_model=pipeline, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
+        return PipelineGenerator.convert_to_event_stream(
+            PipelineGenerator().single_loop_generate(
+                pipeline=pipeline, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
             )
         )
 

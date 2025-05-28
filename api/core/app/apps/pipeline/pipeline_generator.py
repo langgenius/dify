@@ -28,10 +28,13 @@ from core.app.entities.task_entities import WorkflowAppBlockingResponse, Workflo
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, Pipeline
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.dataset_service import DocumentService
 
@@ -51,7 +54,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
-    ) -> Generator[Mapping | str, None, None]: ...
+    ) -> Generator[Mapping | str, None, None] | None: ...
 
     @overload
     def generate(
@@ -92,7 +95,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
+    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None], None]:
         # convert to app config
         pipeline_config = PipelineConfigManager.get_pipeline_config(
             pipeline=pipeline,
@@ -119,14 +122,14 @@ class PipelineGenerator(BaseAppGenerator):
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
                     dataset_id=dataset.id,
-                    built_in_field_enabled=pipeline.dataset.built_in_field_enabled,
+                    built_in_field_enabled=dataset.built_in_field_enabled,
                     datasource_type=datasource_type,
                     datasource_info=datasource_info,
                     created_from="rag-pipeline",
                     position=position,
                     account=user,
                     batch=batch,
-                    document_form=pipeline.dataset.chunk_structure,
+                    document_form=dataset.chunk_structure,
                 )
                 db.session.add(document)
                 db.session.commit()
@@ -138,7 +141,7 @@ class PipelineGenerator(BaseAppGenerator):
                 pipeline_config=pipeline_config,
                 datasource_type=datasource_type,
                 datasource_info=datasource_info,
-                dataset_id=pipeline.dataset.id,
+                dataset_id=dataset.id,
                 start_node_id=start_node_id,
                 batch=batch,
                 document_id=document_id,
@@ -159,15 +162,24 @@ class PipelineGenerator(BaseAppGenerator):
             contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
             contexts.plugin_tool_providers.set({})
             contexts.plugin_tool_providers_lock.set(threading.Lock())
-
+            if invoke_from == InvokeFrom.DEBUGGER:
+                workflow_triggered_from = WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING
+            else:
+                workflow_triggered_from = WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN
             # Create workflow node execution repository
             session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+            workflow_execution_repository = SQLAlchemyWorkflowExecutionRepository(
+                session_factory=session_factory,
+                user=user,
+                app_id=application_generate_entity.app_config.app_id,
+                triggered_from=workflow_triggered_from,
+            )
 
             workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
                 session_factory=session_factory,
                 user=user,
                 app_id=application_generate_entity.app_config.app_id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+                triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
             )
             if invoke_from == InvokeFrom.DEBUGGER:
                 return self._generate(
@@ -176,6 +188,7 @@ class PipelineGenerator(BaseAppGenerator):
                     user=user,
                     application_generate_entity=application_generate_entity,
                     invoke_from=invoke_from,
+                    workflow_execution_repository=workflow_execution_repository,
                     workflow_node_execution_repository=workflow_node_execution_repository,
                     streaming=streaming,
                     workflow_thread_pool_id=workflow_thread_pool_id,
@@ -187,6 +200,7 @@ class PipelineGenerator(BaseAppGenerator):
                     user=user,
                     application_generate_entity=application_generate_entity,
                     invoke_from=invoke_from,
+                    workflow_execution_repository=workflow_execution_repository,
                     workflow_node_execution_repository=workflow_node_execution_repository,
                     streaming=streaming,
                     workflow_thread_pool_id=workflow_thread_pool_id,
@@ -200,6 +214,7 @@ class PipelineGenerator(BaseAppGenerator):
         user: Union[Account, EndUser],
         application_generate_entity: RagPipelineGenerateEntity,
         invoke_from: InvokeFrom,
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
         workflow_thread_pool_id: Optional[str] = None,
@@ -207,11 +222,12 @@ class PipelineGenerator(BaseAppGenerator):
         """
         Generate App response.
 
-        :param app_model: App
+        :param pipeline: Pipeline
         :param workflow: Workflow
         :param user: account or end user
         :param application_generate_entity: application generate entity
         :param invoke_from: invoke from source
+        :param workflow_execution_repository: repository for workflow execution
         :param workflow_node_execution_repository: repository for workflow node execution
         :param streaming: is stream
         :param workflow_thread_pool_id: workflow thread pool id
@@ -244,6 +260,7 @@ class PipelineGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             stream=streaming,
         )
@@ -276,16 +293,20 @@ class PipelineGenerator(BaseAppGenerator):
             raise ValueError("inputs is required")
 
         # convert to app config
-        app_config = PipelineConfigManager.get_pipeline_config(pipeline=pipeline, workflow=workflow)
+        pipeline_config = PipelineConfigManager.get_pipeline_config(pipeline=pipeline, workflow=workflow)
+
+        dataset = pipeline.dataset
+        if not dataset:
+            raise ValueError("Pipeline dataset is required")
 
         # init application generate entity - use RagPipelineGenerateEntity instead
         application_generate_entity = RagPipelineGenerateEntity(
             task_id=str(uuid.uuid4()),
-            app_config=app_config,
-            pipeline_config=app_config,
+            app_config=pipeline_config,
+            pipeline_config=pipeline_config,
             datasource_type=args.get("datasource_type", ""),
             datasource_info=args.get("datasource_info", {}),
-            dataset_id=pipeline.dataset_id,
+            dataset_id=dataset.id,
             batch=args.get("batch", ""),
             document_id=args.get("document_id"),
             inputs={},
@@ -299,9 +320,15 @@ class PipelineGenerator(BaseAppGenerator):
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
-
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+
+        workflow_execution_repository = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=session_factory,
+            user=user,
+            app_id=application_generate_entity.app_config.app_id,
+            triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
+        )
 
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
@@ -316,6 +343,7 @@ class PipelineGenerator(BaseAppGenerator):
             user=user,
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
         )
@@ -345,20 +373,30 @@ class PipelineGenerator(BaseAppGenerator):
         if args.get("inputs") is None:
             raise ValueError("inputs is required")
 
+        dataset = pipeline.dataset
+        if not dataset:
+            raise ValueError("Pipeline dataset is required")
+
         # convert to app config
-        app_config = WorkflowAppConfigManager.get_app_config(pipeline=pipeline, workflow=workflow)
+        pipeline_config = PipelineConfigManager.get_pipeline_config(pipeline=pipeline, workflow=workflow)
 
         # init application generate entity
-        application_generate_entity = WorkflowAppGenerateEntity(
+        application_generate_entity = RagPipelineGenerateEntity(
             task_id=str(uuid.uuid4()),
-            app_config=app_config,
+            app_config=pipeline_config,
+            pipeline_config=pipeline_config,
+            datasource_type=args.get("datasource_type", ""),
+            datasource_info=args.get("datasource_info", {}),
+            batch=args.get("batch", ""),
+            document_id=args.get("document_id"),
+            dataset_id=dataset.id,
             inputs={},
             files=[],
             user_id=user.id,
             stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
-            single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
+            single_loop_run=RagPipelineGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
             workflow_run_id=str(uuid.uuid4()),
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
@@ -367,6 +405,13 @@ class PipelineGenerator(BaseAppGenerator):
 
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+
+        workflow_execution_repository = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=session_factory,
+            user=user,
+            app_id=application_generate_entity.app_config.app_id,
+            triggered_from=WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
+        )
 
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
@@ -381,6 +426,7 @@ class PipelineGenerator(BaseAppGenerator):
             user=user,
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
         )
@@ -438,6 +484,7 @@ class PipelineGenerator(BaseAppGenerator):
         workflow: Workflow,
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         stream: bool = False,
     ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -459,6 +506,7 @@ class PipelineGenerator(BaseAppGenerator):
             user=user,
             stream=stream,
             workflow_node_execution_repository=workflow_node_execution_repository,
+            workflow_execution_repository=workflow_execution_repository,
         )
 
         try:
@@ -481,7 +529,7 @@ class PipelineGenerator(BaseAppGenerator):
         datasource_info: Mapping[str, Any],
         created_from: str,
         position: int,
-        account: Account,
+        account: Union[Account, EndUser],
         batch: str,
         document_form: str,
     ):

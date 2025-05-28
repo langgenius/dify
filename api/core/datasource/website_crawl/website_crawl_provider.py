@@ -11,7 +11,7 @@ class WebsiteCrawlDatasourcePluginProviderController(DatasourcePluginProviderCon
 
     def __init__(
         self,
-        entity: DatasourceProviderEntityWithPlugin | None,
+        entity: DatasourceProviderEntityWithPlugin,
         plugin_id: str,
         plugin_unique_identifier: str,
         tenant_id: str,

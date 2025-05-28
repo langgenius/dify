@@ -4,7 +4,7 @@ import logging
 import re
 import threading
 import uuid
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import pandas as pd
 from flask import Flask, current_app
@@ -20,7 +20,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
-from models.dataset import Dataset
+from models.dataset import Dataset, Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import Rule
 
 
@@ -160,6 +160,12 @@ class QAIndexProcessor(BaseIndexProcessor):
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)
         return docs
+    
+    def index(self, dataset: Dataset, document: Document, chunks: Mapping[str, Any]):
+        pass
+    
+    def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
+        return {"preview": chunks}
 
     def _format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents, document_language):
         format_documents = []

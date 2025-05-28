@@ -10,6 +10,7 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     RagPipelineGenerateEntity,
 )
+from core.variables.variables import RAGPipelineVariable
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
@@ -106,12 +107,19 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 SystemVariableKey.DATASOURCE_INFO: self.application_generate_entity.datasource_info,
                 SystemVariableKey.INVOKE_FROM: self.application_generate_entity.invoke_from.value,
             }
+            rag_pipeline_variables = {}
+            if workflow.rag_pipeline_variables:
+                for v in workflow.rag_pipeline_variables:
+                    rag_pipeline_variable = RAGPipelineVariable(**v)
+                    if rag_pipeline_variable.belong_to_node_id == self.application_generate_entity.start_node_id and rag_pipeline_variable.variable in inputs:
+                        rag_pipeline_variables[rag_pipeline_variable.variable] = inputs[rag_pipeline_variable.variable]
 
             variable_pool = VariablePool(
                 system_variables=system_inputs,
                 user_inputs=inputs,
                 environment_variables=workflow.environment_variables,
                 conversation_variables=[],
+                rag_pipeline_variables=rag_pipeline_variables,
             )
 
             # init graph

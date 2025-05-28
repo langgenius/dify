@@ -39,15 +39,30 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
     def _run(self) -> NodeRunResult:  # type: ignore
         node_data = cast(KnowledgeIndexNodeData, self.node_data)
         variable_pool = self.graph_runtime_state.variable_pool
+        dataset_id = variable_pool.get(["sys", SystemVariableKey.DATASET_ID])
+        if not dataset_id:
+            raise KnowledgeIndexNodeError("Dataset ID is required.")
+        dataset = db.session.query(Dataset).filter_by(id=dataset_id.value).first()
+        if not dataset:
+            raise KnowledgeIndexNodeError(f"Dataset {dataset_id.value} not found.")
+
         # extract variables
         variable = variable_pool.get(node_data.index_chunk_variable_selector)
-        is_preview = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM]) == InvokeFrom.DEBUGGER
+        if not variable:
+            raise KnowledgeIndexNodeError("Index chunk variable is required.")
+        invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
+        if invoke_from:
+            is_preview = invoke_from.value == InvokeFrom.DEBUGGER.value
+        else:
+            is_preview = False
         chunks = variable.value
         variables = {"chunks": chunks}
         if not chunks:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Chunks is required."
             )
+        outputs = self._get_preview_output(dataset.chunk_structure, chunks)
+
         # retrieve knowledge
         try:
             if is_preview:
@@ -55,12 +70,12 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=variables,
                     process_data=None,
-                    outputs={"result": "success"},
+                    outputs=outputs,
                 )
-            results = self._invoke_knowledge_index(node_data=node_data, chunks=chunks, variable_pool=variable_pool)
-            outputs = {"result": results}
+            results = self._invoke_knowledge_index(dataset=dataset, node_data=node_data, chunks=chunks,
+                                                   variable_pool=variable_pool)
             return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, process_data=None, outputs=outputs
+                status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, process_data=None, outputs=results
             )
 
         except KnowledgeIndexNodeError as e:
@@ -81,24 +96,18 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
             )
 
     def _invoke_knowledge_index(
-        self, node_data: KnowledgeIndexNodeData, chunks: Mapping[str, Any], variable_pool: VariablePool
+        self, dataset: Dataset, node_data: KnowledgeIndexNodeData, chunks: Mapping[str, Any],
+        variable_pool: VariablePool
     ) -> Any:
-        dataset_id = variable_pool.get(["sys", SystemVariableKey.DATASET_ID])
-        if not dataset_id:
-            raise KnowledgeIndexNodeError("Dataset ID is required.")
         document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
         if not document_id:
             raise KnowledgeIndexNodeError("Document ID is required.")
         batch = variable_pool.get(["sys", SystemVariableKey.BATCH])
         if not batch:
             raise KnowledgeIndexNodeError("Batch is required.")
-        dataset = db.session.query(Dataset).filter_by(id=dataset_id).first()
-        if not dataset:
-            raise KnowledgeIndexNodeError(f"Dataset {dataset_id} not found.")
-
-        document = db.session.query(Document).filter_by(id=document_id).first()
+        document = db.session.query(Document).filter_by(id=document_id.value).first()
         if not document:
-            raise KnowledgeIndexNodeError(f"Document {document_id} not found.")
+            raise KnowledgeIndexNodeError(f"Document {document_id.value} not found.")
 
         index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
         index_processor.index(dataset, document, chunks)
@@ -106,14 +115,19 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
         # update document status
         document.indexing_status = "completed"
         document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        db.session.add(document)
         db.session.commit()
 
         return {
             "dataset_id": dataset.id,
             "dataset_name": dataset.name,
-            "batch": batch,
+            "batch": batch.value,
             "document_id": document.id,
             "document_name": document.name,
-            "created_at": document.created_at,
+            "created_at": document.created_at.timestamp(),
             "display_status": document.indexing_status,
         }
+
+    def _get_preview_output(self, chunk_structure: str, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
+        index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
+        return index_processor.format_preview(chunks)

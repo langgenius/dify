@@ -234,3 +234,19 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             if dataset.indexing_technique == "high_quality":
                 vector = Vector(dataset)
                 vector.create(documents)
+
+    def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
+        parent_childs = ParentChildStructureChunk(**chunks)
+        preview = []
+        for parent_child in parent_childs.parent_child_chunks:
+            preview.append(
+                {
+                    "content": parent_child.parent_content,
+                    "child_chunks": parent_child.child_contents
+
+                }
+            )
+        return {
+            "preview": preview,
+            "total_segments": len(parent_childs.parent_child_chunks)
+        }

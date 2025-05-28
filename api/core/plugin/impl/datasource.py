@@ -30,22 +30,16 @@ class PluginDatasourceManager(BasePluginClient):
 
             return json_response
 
-        # response = self._request_with_plugin_daemon_response(
-        #     "GET",
-        #     f"plugin/{tenant_id}/management/datasources",
-        #     list[PluginDatasourceProviderEntity],
-        #     params={"page": 1, "page_size": 256},
-        #     transformer=transformer,
-        # )
+        response = self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/datasources",
+            list[PluginDatasourceProviderEntity],
+            params={"page": 1, "page_size": 256},
+            transformer=transformer,
+        )
+        local_file_datasource_provider = PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
 
-        # for provider in response:
-        #     provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"
-
-        #     # override the provider name for each tool to plugin_id/provider_name
-        #     for datasource in provider.declaration.datasources:
-        #         datasource.identity.provider = provider.declaration.identity.name
-
-        return [PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())]
+        return [local_file_datasource_provider] + response
 
     def fetch_datasource_provider(self, tenant_id: str, provider: str) -> PluginDatasourceProviderEntity:
         """

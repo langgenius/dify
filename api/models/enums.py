@@ -14,6 +14,8 @@ class UserFrom(StrEnum):
 class WorkflowRunTriggeredFrom(StrEnum):
     DEBUGGING = "debugging"
     APP_RUN = "app-run"
+    RAG_PIPELINE_RUN = "rag-pipeline-run"
+    RAG_PIPELINE_DEBUGGING = "rag-pipeline-debugging"
 
 
 class DraftVariableType(StrEnum):

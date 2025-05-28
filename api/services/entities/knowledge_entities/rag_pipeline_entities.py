@@ -111,3 +111,12 @@ class KnowledgeConfiguration(BaseModel):
     chunk_structure: str
     index_method: IndexMethod
     retrieval_setting: RetrievalSetting
+
+
+class KnowledgeBaseUpdateConfiguration(BaseModel):
+    """
+    Knowledge Base Update Configuration.
+    """
+    index_method: IndexMethod
+    chunk_structure: str
+    retrieval_setting: RetrievalSetting

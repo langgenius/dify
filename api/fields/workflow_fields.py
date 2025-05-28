@@ -41,10 +41,9 @@ conversation_variable_fields = {
 }
 
 pipeline_variable_fields = {
-    "id": fields.String,
     "label": fields.String,
     "variable": fields.String,
-    "type": fields.String(attribute="type.value"),
+    "type": fields.String,
     "belong_to_node_id": fields.String,
     "max_length": fields.Integer,
     "required": fields.Boolean,

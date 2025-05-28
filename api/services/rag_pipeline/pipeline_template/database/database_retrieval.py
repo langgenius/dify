@@ -36,7 +36,9 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
 
         recommended_pipelines_results = []
         for pipeline_built_in_template in pipeline_built_in_templates:
-            pipeline_model: Pipeline = pipeline_built_in_template.pipeline
+            pipeline_model: Pipeline | None = pipeline_built_in_template.pipeline
+            if not pipeline_model:
+                continue
 
             recommended_pipeline_result = {
                 "id": pipeline_built_in_template.id,
@@ -48,7 +50,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
                 "privacy_policy": pipeline_built_in_template.privacy_policy,
                 "position": pipeline_built_in_template.position,
             }
-            dataset: Dataset = pipeline_model.dataset
+            dataset: Dataset | None = pipeline_model.dataset
             if dataset:
                 recommended_pipeline_result["chunk_structure"] = dataset.chunk_structure
                 recommended_pipelines_results.append(recommended_pipeline_result)
@@ -72,15 +74,19 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         if not pipeline_template:
             return None
 
-        # get app detail
+        # get pipeline detail
         pipeline = db.session.query(Pipeline).filter(Pipeline.id == pipeline_template.pipeline_id).first()
         if not pipeline or not pipeline.is_public:
+            return None
+
+        dataset: Dataset | None = pipeline.dataset
+        if not dataset:
             return None
 
         return {
             "id": pipeline.id,
             "name": pipeline.name,
-            "icon": pipeline.icon,
-            "mode": pipeline.mode,
+            "icon": pipeline_template.icon,
+            "chunk_structure": dataset.chunk_structure,
             "export_data": RagPipelineDslService.export_rag_pipeline_dsl(pipeline=pipeline),
         }

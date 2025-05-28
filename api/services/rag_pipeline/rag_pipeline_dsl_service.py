@@ -4,13 +4,14 @@ import logging
 import uuid
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Optional
+from typing import Optional, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
 import yaml  # type: ignore
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
+from flask_login import current_user
 from packaging import version
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -31,7 +32,10 @@ from factories import variable_factory
 from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.workflow import Workflow
-from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration
+from services.entities.knowledge_entities.rag_pipeline_entities import (
+    KnowledgeConfiguration,
+    RagPipelineDatasetCreateEntity,
+)
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
@@ -540,9 +544,6 @@ class RagPipelineDslService:
             # Update existing pipeline
             pipeline.name = pipeline_data.get("name", pipeline.name)
             pipeline.description = pipeline_data.get("description", pipeline.description)
-            pipeline.icon_type = icon_type
-            pipeline.icon = icon
-            pipeline.icon_background = pipeline_data.get("icon_background", pipeline.icon_background)
             pipeline.updated_by = account.id
         else:
             if account.current_tenant_id is None:
@@ -554,12 +555,6 @@ class RagPipelineDslService:
             pipeline.tenant_id = account.current_tenant_id
             pipeline.name = pipeline_data.get("name", "")
             pipeline.description = pipeline_data.get("description", "")
-            pipeline.icon_type = icon_type
-            pipeline.icon = icon
-            pipeline.icon_background = pipeline_data.get("icon_background", "#FFFFFF")
-            pipeline.enable_site = True
-            pipeline.enable_api = True
-            pipeline.use_icon_as_answer_icon = pipeline_data.get("use_icon_as_answer_icon", False)
             pipeline.created_by = account.id
             pipeline.updated_by = account.id
 
@@ -667,26 +662,6 @@ class RagPipelineDslService:
                 ]
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)
-        export_data["dependencies"] = [
-            jsonable_encoder(d.model_dump())
-            for d in DependenciesAnalysisService.generate_dependencies(
-                tenant_id=pipeline.tenant_id, dependencies=dependencies
-            )
-        ]
-
-    @classmethod
-    def _append_model_config_export_data(cls, export_data: dict, pipeline: Pipeline) -> None:
-        """
-        Append model config export data
-        :param export_data: export data
-        :param pipeline: Pipeline instance
-        """
-        app_model_config = pipeline.app_model_config
-        if not app_model_config:
-            raise ValueError("Missing app configuration, please check.")
-
-        export_data["model_config"] = app_model_config.to_dict()
-        dependencies = cls._extract_dependencies_from_model_config(app_model_config.to_dict())
         export_data["dependencies"] = [
             jsonable_encoder(d.model_dump())
             for d in DependenciesAnalysisService.generate_dependencies(
@@ -863,3 +838,46 @@ class RagPipelineDslService:
             return pt.decode()
         except Exception:
             return None
+
+
+    @staticmethod
+    def create_rag_pipeline_dataset(
+        tenant_id: str,
+        rag_pipeline_dataset_create_entity: RagPipelineDatasetCreateEntity,
+    ):
+        # check if dataset name already exists
+        if (
+            db.session.query(Dataset)
+            .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
+            .first()
+        ):
+            raise ValueError(
+                f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
+            )
+
+        dataset = Dataset(
+            name=rag_pipeline_dataset_create_entity.name,
+            description=rag_pipeline_dataset_create_entity.description,
+            permission=rag_pipeline_dataset_create_entity.permission,
+            provider="vendor",
+            runtime_mode="rag-pipeline",
+            icon_info=rag_pipeline_dataset_create_entity.icon_info.model_dump(),
+        )
+        with Session(db.engine) as session:
+            rag_pipeline_dsl_service = RagPipelineDslService(session)
+            account = cast(Account, current_user)
+            rag_pipeline_import_info: RagPipelineImportInfo = rag_pipeline_dsl_service.import_rag_pipeline(
+                account=account,
+                import_mode=ImportMode.YAML_CONTENT.value,
+                yaml_content=rag_pipeline_dataset_create_entity.yaml_content,
+                dataset=dataset,
+            )
+        return {
+            "id": rag_pipeline_import_info.id,
+            "dataset_id": dataset.id,
+            "pipeline_id": rag_pipeline_import_info.pipeline_id,
+            "status": rag_pipeline_import_info.status,
+            "imported_dsl_version": rag_pipeline_import_info.imported_dsl_version,
+            "current_dsl_version": rag_pipeline_import_info.current_dsl_version,
+            "error": rag_pipeline_import_info.error,
+        }

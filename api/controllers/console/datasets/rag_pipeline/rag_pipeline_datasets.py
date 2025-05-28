@@ -15,6 +15,7 @@ from libs.login import login_required
 from models.dataset import DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import RagPipelineDatasetCreateEntity
+from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
 def _validate_name(name):
@@ -91,7 +92,7 @@ class CreateRagPipelineDatasetApi(Resource):
             raise Forbidden()
         rag_pipeline_dataset_create_entity = RagPipelineDatasetCreateEntity(**args)
         try:
-            import_info = DatasetService.create_rag_pipeline_dataset(
+            import_info = RagPipelineDslService.create_rag_pipeline_dataset(
                 tenant_id=current_user.current_tenant_id,
                 rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
             )

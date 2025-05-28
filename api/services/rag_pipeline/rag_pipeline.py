@@ -46,7 +46,8 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
-from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
+from services.dataset_service import DatasetService
+from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeBaseUpdateConfiguration, PipelineTemplateInfoEntity
 from services.errors.app import WorkflowHashNotEqualError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 
@@ -261,8 +262,7 @@ class RagPipelineService:
         session: Session,
         pipeline: Pipeline,
         account: Account,
-        marked_name: str = "",
-        marked_comment: str = "",
+        knowledge_base_setting: KnowledgeBaseUpdateConfiguration,
     ) -> Workflow:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == pipeline.tenant_id,
@@ -282,18 +282,25 @@ class RagPipelineService:
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
-            environment_variables=draft_workflow.environment_variables,
+            environment_variables=draft_workflow.environment_variables, 
             conversation_variables=draft_workflow.conversation_variables,
-            marked_name=marked_name,
-            marked_comment=marked_comment,
+            rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
+            marked_name="",
+            marked_comment="",
         )
-
         # commit db session changes
         session.add(workflow)
 
-        # trigger app workflow events TODO
-        # app_published_workflow_was_updated.send(pipeline, published_workflow=workflow)
-
+        # update dataset
+        dataset = pipeline.dataset
+        if not dataset:
+            raise ValueError("Dataset not found")
+        DatasetService.update_rag_pipeline_dataset_settings(
+            session=session,
+            dataset=dataset, 
+            knowledge_base_setting=knowledge_base_setting, 
+            has_published=pipeline.is_published
+        )
         # return new workflow
         return workflow
 
