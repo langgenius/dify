@@ -107,22 +107,24 @@ const InputFieldDialog = ({
               return (
                 <FieldList
                   key={key}
+                  nodeId={key}
                   LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]} />}
                   inputFields={inputFields}
                   readonly={readonly}
                   labelClassName='pt-2 pb-1'
-                  handleInputFieldsChange={updateInputFields.bind(null, key)}
+                  handleInputFieldsChange={updateInputFields}
                 />
               )
             })
           }
           {/* Shared Inputs */}
           <FieldList
+            nodeId='shared'
             LabelRightContent={<SharedInputs />}
             inputFields={inputFieldsMap.shared || []}
             readonly={readonly}
             labelClassName='pt-1 pb-2'
-            handleInputFieldsChange={updateInputFields.bind(null, 'shared')}
+            handleInputFieldsChange={updateInputFields}
           />
         </div>
         <FooterTip />

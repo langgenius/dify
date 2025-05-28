@@ -1,12 +1,11 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PreviewContainer } from '../../../preview/container'
 import { PreviewHeader } from '../../../preview/header'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { CrawlResultItem, CustomFile, DocumentItem, FileIndexingEstimateResponse } from '@/models/datasets'
-import { ChunkingMode, DataSourceType } from '@/models/datasets'
+import { ChunkingMode } from '@/models/datasets'
 import type { NotionPage } from '@/models/common'
-import { DataSourceProvider } from '@/models/common'
 import PreviewDocumentPicker from '../../../common/document-picker/preview-document-picker'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { ChunkContainer, QAPreview } from '../../../chunk'
@@ -16,6 +15,7 @@ import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from
 import { RiSearchEyeLine } from '@remixicon/react'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
+import { DatasourceType } from '@/models/pipeline'
 
 type ChunkPreviewProps = {
   datasource: Datasource
@@ -45,12 +45,7 @@ const ChunkPreview = ({
   const [previewNotionPage, setPreviewNotionPage] = useState<NotionPage>(notionPages[0])
   const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(websitePages[0])
 
-  const dataSourceType = useMemo(() => {
-    const type = datasource.type
-    if (type === DataSourceProvider.fireCrawl || type === DataSourceProvider.jinaReader || type === DataSourceProvider.waterCrawl)
-      return DataSourceType.WEB
-    return type
-  }, [datasource.type])
+  const dataSourceType = datasource?.type
 
   return (
     <PreviewContainer
@@ -58,7 +53,7 @@ const ChunkPreview = ({
         title={t('datasetCreation.stepTwo.preview')}
       >
         <div className='flex items-center gap-1'>
-          {dataSourceType === DataSourceType.FILE
+          {dataSourceType === DatasourceType.localFile
             && <PreviewDocumentPicker
               files={files as Array<Required<CustomFile>>}
               onChange={(selected) => {
@@ -67,7 +62,7 @@ const ChunkPreview = ({
               value={previewFile}
             />
           }
-          {dataSourceType === DataSourceType.NOTION
+          {dataSourceType === DatasourceType.onlineDocument
             && <PreviewDocumentPicker
               files={
                 notionPages.map(page => ({
@@ -87,7 +82,7 @@ const ChunkPreview = ({
               }}
             />
           }
-          {dataSourceType === DataSourceType.WEB
+          {dataSourceType === DatasourceType.websiteCrawl
             && <PreviewDocumentPicker
               files={
                 websitePages.map(page => ({

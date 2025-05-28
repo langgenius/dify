@@ -1,3 +1,4 @@
+import React, { useCallback } from 'react'
 import { RiAddLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import InputFieldEditor from '../editor'
@@ -7,20 +8,26 @@ import { useFieldList } from './hooks'
 import FieldListContainer from './field-list-container'
 
 type FieldListProps = {
+  nodeId: string
   LabelRightContent: React.ReactNode
   inputFields: InputVar[]
-  handleInputFieldsChange: (value: InputVar[]) => void
+  handleInputFieldsChange: (key: string, value: InputVar[]) => void
   readonly?: boolean
   labelClassName?: string
 }
 
 const FieldList = ({
+  nodeId,
   LabelRightContent,
   inputFields: initialInputFields,
-  handleInputFieldsChange: onInputFieldsChange,
+  handleInputFieldsChange,
   readonly,
   labelClassName,
 }: FieldListProps) => {
+  const onInputFieldsChange = useCallback((value: InputVar[]) => {
+    handleInputFieldsChange(nodeId, value)
+  }, [handleInputFieldsChange, nodeId])
+
   const {
     inputFields,
     handleSubmitField,
@@ -67,4 +74,4 @@ const FieldList = ({
   )
 }
 
-export default FieldList
+export default React.memo(FieldList)
