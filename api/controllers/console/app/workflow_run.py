@@ -1,5 +1,8 @@
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from typing import cast
+
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
+from flask_restful.inputs import int_range
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
@@ -12,8 +15,7 @@ from fields.workflow_run_fields import (
 )
 from libs.helper import uuid_value
 from libs.login import login_required
-from models import App
-from models.model import AppMode
+from models import Account, App, AppMode, EndUser
 from services.workflow_run_service import WorkflowRunService
 
 
@@ -90,7 +92,12 @@ class WorkflowRunNodeExecutionListApi(Resource):
         run_id = str(run_id)
 
         workflow_run_service = WorkflowRunService()
-        node_executions = workflow_run_service.get_workflow_run_node_executions(app_model=app_model, run_id=run_id)
+        user = cast("Account | EndUser", current_user)
+        node_executions = workflow_run_service.get_workflow_run_node_executions(
+            app_model=app_model,
+            run_id=run_id,
+            user=user,
+        )
 
         return {"data": node_executions}
 

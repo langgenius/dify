@@ -15,7 +15,6 @@ const translation = {
   },
   author: '저자',
   auth: {
-    unauthorized: '인증되지 않음',
     authorized: '인증됨',
     setup: '사용을 위한 인증 설정',
     setupModalTitle: '인증 설정',

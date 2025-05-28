@@ -1,4 +1,10 @@
 const translation = {
+  theme: {
+    theme: '主题',
+    light: '浅色',
+    dark: '深色',
+    auto: '自动',
+  },
   api: {
     success: '成功',
     actionSuccess: '操作成功',
@@ -57,6 +63,7 @@ const translation = {
     submit: '提交',
     skip: '跳过',
     format: '格式化',
+    more: '更多',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
@@ -140,6 +147,8 @@ const translation = {
     status: 'beta',
     explore: '探索',
     apps: '工作室',
+    appDetail: '应用详情',
+    account: '账户',
     plugins: '插件',
     exploreMarketplace: '探索 Marketplace',
     pluginsTips: '集成第三方插件或创建与 ChatGPT 兼容的 AI 插件。',
@@ -189,7 +198,7 @@ const translation = {
   account: {
     account: '账户',
     myAccount: '我的账户',
-    studio: 'Dify 工作室',
+    studio: '工作室',
     avatar: '头像',
     name: '用户名',
     email: '邮箱',
@@ -201,8 +210,8 @@ const translation = {
     newPassword: '新密码',
     notEqual: '两个密码不相同',
     confirmPassword: '确认密码',
-    langGeniusAccount: 'Dify 账号',
-    langGeniusAccountTip: '您的 Dify 账号和相关的用户数据。',
+    langGeniusAccount: '账号关联数据',
+    langGeniusAccountTip: '您的账号相关的用户数据。',
     editName: '编辑名字',
     showAppLength: '显示 {{length}} 个应用',
     delete: '删除账户',
@@ -475,7 +484,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API 扩展提供了一个集中式的 API 管理，在此统一添加 API 配置后，方便在 Dify 上的各类应用中直接使用。',
     link: '了解如何开发您自己的 API 扩展。',
-    linkUrl: 'https://docs.dify.ai/v/zh-hans/guides/extension/api-based-extension',
+    linkUrl: 'https://docs.dify.ai/zh-hans/guides/extension/api-based-extension',
     add: '新增 API 扩展',
     selector: {
       title: 'API 扩展',
@@ -650,6 +659,7 @@ const translation = {
   license: {
     expiring: '许可证还有 1 天到期',
     expiring_plural: '许可证还有 {{count}} 天到期',
+    unlimited: '无限制',
   },
   pagination: {
     perPage: '每页显示',
@@ -659,6 +669,7 @@ const translation = {
     browse: '浏览',
     supportedFormats: '支持PNG、JPG、JPEG、WEBP和GIF格式',
   },
+  you: '你',
 }
 
 export default translation

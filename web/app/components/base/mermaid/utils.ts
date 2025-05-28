@@ -36,9 +36,9 @@ export function preprocessMermaidCode(code: string): string {
 export function prepareMermaidCode(code: string, style: 'classic' | 'handDrawn'): string {
   let finalCode = preprocessMermaidCode(code)
 
-  // Special handling for gantt charts
-  if (finalCode.trim().startsWith('gantt')) {
-    // For gantt charts, preserve the structure exactly as is
+  // Special handling for gantt charts and mindmaps
+  if (finalCode.trim().startsWith('gantt') || finalCode.trim().startsWith('mindmap')) {
+    // For gantt charts and mindmaps, preserve the structure exactly as is
     return finalCode
   }
 
@@ -177,8 +177,15 @@ export function isMermaidCodeComplete(code: string): boolean {
       return lines.length >= 3
     }
 
+    // Special handling for mindmaps
+    if (trimmedCode.startsWith('mindmap')) {
+      // For mindmaps, check if it has at least a root node
+      const lines = trimmedCode.split('\n').filter(line => line.trim().length > 0)
+      return lines.length >= 2
+    }
+
     // Check for basic syntax structure
-    const hasValidStart = /^(graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram)/.test(trimmedCode)
+    const hasValidStart = /^(graph|flowchart|sequenceDiagram|classDiagram|classDef|class|stateDiagram|gantt|pie|er|journey|requirementDiagram|mindmap)/.test(trimmedCode)
 
     // Check for balanced brackets and parentheses
     const isBalanced = (() => {

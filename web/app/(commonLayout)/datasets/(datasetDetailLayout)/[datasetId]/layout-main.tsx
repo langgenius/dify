@@ -31,6 +31,7 @@ import { getLocaleOnClient } from '@/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -98,7 +99,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
               className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
               href={
                 locale === LanguagesSupported[1]
-                  ? 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
+                  ? 'https://docs.dify.ai/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
                   : 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application'
               }
               target='_blank' rel='noopener noreferrer'
@@ -158,10 +159,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return baseNavigation
   }, [datasetRes?.provider, datasetId, t])
 
-  useEffect(() => {
-    if (datasetRes)
-      document.title = `${datasetRes.name || 'Dataset'} - Dify`
-  }, [datasetRes])
+  useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 
   const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
 

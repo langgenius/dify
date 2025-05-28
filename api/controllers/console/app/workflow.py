@@ -3,7 +3,7 @@ import logging
 from typing import cast
 
 from flask import abort, request
-from flask_restful import Resource, inputs, marshal_with, reqparse  # type: ignore
+from flask_restful import Resource, inputs, marshal_with, reqparse
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -81,8 +81,7 @@ class DraftWorkflowApi(Resource):
             parser.add_argument("graph", type=dict, required=True, nullable=False, location="json")
             parser.add_argument("features", type=dict, required=True, nullable=False, location="json")
             parser.add_argument("hash", type=str, required=False, location="json")
-            # TODO: set this to required=True after frontend is updated
-            parser.add_argument("environment_variables", type=list, required=False, location="json")
+            parser.add_argument("environment_variables", type=list, required=True, location="json")
             parser.add_argument("conversation_variables", type=list, required=False, location="json")
             args = parser.parse_args()
         elif "text/plain" in content_type:

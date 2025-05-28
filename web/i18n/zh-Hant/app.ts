@@ -158,11 +158,15 @@ const translation = {
       title: '奧皮克',
       description: 'Opik 是一個用於評估、測試和監控 LLM 應用程式的開源平臺。',
     },
+    weave: {
+      title: '編織',
+      description: 'Weave 是一個開源平台，用於評估、測試和監控大型語言模型應用程序。',
+    },
   },
   answerIcon: {
-    descriptionInExplore: '是否使用 WebApp 圖示在 Explore 中取代 🤖',
-    title: '使用 WebApp 圖示取代 🤖',
-    description: '是否在共享應用程式中使用 WebApp 圖示進行取代 🤖',
+    descriptionInExplore: '是否使用 web app 圖示在 Explore 中取代 🤖',
+    title: '使用 web app 圖示取代 🤖',
+    description: '是否在共享應用程式中使用 web app 圖示進行取代 🤖',
   },
   importFromDSLUrl: '寄件者 URL',
   importFromDSL: '從 DSL 導入',
@@ -192,6 +196,17 @@ const translation = {
     noParams: '無需參數',
     params: '應用程式參數',
     label: '應用程式',
+  },
+  structOutput: {
+    moreFillTip: '顯示最多10層的嵌套',
+    required: '必需的',
+    LLMResponse: 'LLM 回應',
+    structured: '結構化的',
+    configure: '配置',
+    modelNotSupported: '模型不支持',
+    modelNotSupportedTip: '當前模型不支持此功能，並自動降級為提示注入。',
+    structuredTip: '結構化輸出是一項功能，確保模型始終生成符合您提供的 JSON 架構的響應。',
+    notConfiguredTip: '結構化輸出尚未配置',
   },
 }
 

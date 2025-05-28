@@ -1,10 +1,10 @@
 from functools import wraps
 
 from flask import request
-from flask_restful import Resource  # type: ignore
+from flask_restful import Resource
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
-from controllers.web.error import WebSSOAuthRequiredError
+from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
@@ -29,7 +29,7 @@ def validate_jwt_token(view=None):
 
 def decode_jwt_token():
     system_features = FeatureService.get_system_features()
-    app_code = request.headers.get("X-App-Code")
+    app_code = str(request.headers.get("X-App-Code"))
     try:
         auth_header = request.headers.get("Authorization")
         if auth_header is None:
@@ -57,35 +57,53 @@ def decode_jwt_token():
         if not end_user:
             raise NotFound()
 
-        _validate_web_sso_token(decoded, system_features, app_code)
+        # for enterprise webapp auth
+        app_web_auth_enabled = False
+        if system_features.webapp_auth.enabled:
+            app_web_auth_enabled = (
+                EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
+            )
+
+        _validate_webapp_token(decoded, app_web_auth_enabled, system_features.webapp_auth.enabled)
+        _validate_user_accessibility(decoded, app_code, app_web_auth_enabled, system_features.webapp_auth.enabled)
 
         return app_model, end_user
     except Unauthorized as e:
-        if system_features.sso_enforced_for_web:
-            app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get("enabled", False)
-            if app_web_sso_enabled:
-                raise WebSSOAuthRequiredError()
+        if system_features.webapp_auth.enabled:
+            app_web_auth_enabled = (
+                EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=str(app_code)).access_mode != "public"
+            )
+            if app_web_auth_enabled:
+                raise WebAppAuthRequiredError()
 
         raise Unauthorized(e.description)
 
 
-def _validate_web_sso_token(decoded, system_features, app_code):
-    app_web_sso_enabled = False
-
-    # Check if SSO is enforced for web, and if the token source is not SSO, raise an error and redirect to SSO login
-    if system_features.sso_enforced_for_web:
-        app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get("enabled", False)
-        if app_web_sso_enabled:
-            source = decoded.get("token_source")
-            if not source or source != "sso":
-                raise WebSSOAuthRequiredError()
-
-    # Check if SSO is not enforced for web, and if the token source is SSO,
-    # raise an error and redirect to normal passport login
-    if not system_features.sso_enforced_for_web or not app_web_sso_enabled:
+def _validate_webapp_token(decoded, app_web_auth_enabled: bool, system_webapp_auth_enabled: bool):
+    # Check if authentication is enforced for web app, and if the token source is not webapp,
+    # raise an error and redirect to login
+    if system_webapp_auth_enabled and app_web_auth_enabled:
         source = decoded.get("token_source")
-        if source and source == "sso":
-            raise Unauthorized("sso token expired.")
+        if not source or source != "webapp":
+            raise WebAppAuthRequiredError()
+
+    # Check if authentication is not enforced for web, and if the token source is webapp,
+    # raise an error and redirect to normal passport login
+    if not system_webapp_auth_enabled or not app_web_auth_enabled:
+        source = decoded.get("token_source")
+        if source and source == "webapp":
+            raise Unauthorized("webapp token expired.")
+
+
+def _validate_user_accessibility(decoded, app_code, app_web_auth_enabled: bool, system_webapp_auth_enabled: bool):
+    if system_webapp_auth_enabled and app_web_auth_enabled:
+        # Check if the user is allowed to access the web app
+        user_id = decoded.get("user_id")
+        if not user_id:
+            raise WebAppAuthRequiredError()
+
+        if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
+            raise WebAppAuthAccessDeniedError()
 
 
 class WebApiResource(Resource):

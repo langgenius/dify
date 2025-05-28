@@ -61,13 +61,9 @@ const PremiumBadge: React.FC<PremiumBadgeProps> = ({
       {children}
       <Highlight
         className={classNames(
-          'absolute top-0 opacity-50 hover:opacity-80',
+          'absolute top-0 opacity-50 right-1/2 translate-x-[20%] transition-all duration-100 ease-out hover:opacity-80 hover:translate-x-[30%]',
           size === 's' ? 'h-[18px] w-12' : 'h-6 w-12',
         )}
-        style={{
-          right: '50%',
-          transform: 'translateX(10%)',
-        }}
       />
     </div>
   )

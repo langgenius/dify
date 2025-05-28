@@ -180,6 +180,8 @@ const translation = {
     moreFrom: 'Marketplace에서 더 보기',
     sortBy: '정렬',
     and: '그리고',
+    verifiedTip: 'Dify에 의해 확인됨',
+    partnerTip: 'Dify 파트너에 의해 확인됨',
   },
   task: {
     installingWithSuccess: '{{installingLength}} 플러그인 설치, {{successLength}} 성공.',
@@ -204,6 +206,10 @@ const translation = {
   searchPlugins: '검색 플러그인',
   install: '{{num}} 설치',
   fromMarketplace: 'Marketplace에서',
+  metadata: {
+    title: '플러그인',
+  },
+  difyVersionNotCompatible: '현재 Dify 버전이 이 플러그인과 호환되지 않습니다. 필요한 최소 버전으로 업그레이드하십시오: {{minimalDifyVersion}}',
 }
 
 export default translation

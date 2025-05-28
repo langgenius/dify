@@ -121,7 +121,7 @@ const Doc = ({ apiBaseUrl }: DocProps) => {
             </button>
           )}
       </div>
-      <article className={cn('prose-xl prose mx-1 rounded-t-xl bg-background-default px-4 pt-16 sm:mx-12', theme === Theme.dark && 'dark:prose-invert')}>
+      <article className={cn('prose-xl prose mx-1 rounded-t-xl bg-background-default px-4 pt-16 sm:mx-12', theme === Theme.dark && 'prose-invert')}>
         {Template}
       </article>
     </div>

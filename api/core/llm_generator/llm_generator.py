@@ -3,6 +3,8 @@ import logging
 import re
 from typing import Optional, cast
 
+import json_repair
+
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import (
@@ -49,15 +51,19 @@ class LLMGenerator:
             response = cast(
                 LLMResult,
                 model_instance.invoke_llm(
-                    prompt_messages=list(prompts), model_parameters={"max_tokens": 100, "temperature": 1}, stream=False
+                    prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
                 ),
             )
         answer = cast(str, response.message.content)
         cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
         if cleaned_answer is None:
             return ""
-        result_dict = json.loads(cleaned_answer)
-        answer = result_dict["Your Output"]
+        try:
+            result_dict = json.loads(cleaned_answer)
+            answer = result_dict["Your Output"]
+        except json.JSONDecodeError as e:
+            logging.exception("Failed to generate name after answer, use query instead")
+            answer = query
         name = answer.strip()
 
         if len(name) > 75:
@@ -366,7 +372,20 @@ class LLMGenerator:
                 ),
             )
 
-            generated_json_schema = cast(str, response.message.content)
+            raw_content = response.message.content
+
+            if not isinstance(raw_content, str):
+                raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
+
+            try:
+                parsed_content = json.loads(raw_content)
+            except json.JSONDecodeError:
+                parsed_content = json_repair.loads(raw_content)
+
+            if not isinstance(parsed_content, dict | list):
+                raise ValueError(f"Failed to parse structured output from llm: {raw_content}")
+
+            generated_json_schema = json.dumps(parsed_content, indent=2, ensure_ascii=False)
             return {"output": generated_json_schema, "error": ""}
 
         except InvokeError as e:

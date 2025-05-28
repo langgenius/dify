@@ -199,7 +199,7 @@ export const NodeSourceHandle = memo(({
             onSelect={handleSelect}
             asChild
             triggerClassName={open => `
-              hidden absolute top-0 left-0 pointer-events-none 
+              hidden absolute top-0 left-0 pointer-events-none
               ${nodeSelectorClassName}
               group-hover:!flex
               ${data.selected && '!flex'}

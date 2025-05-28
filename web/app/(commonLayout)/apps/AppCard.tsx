@@ -2,9 +2,10 @@
 
 import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiMoreFill } from '@remixicon/react'
+import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import Toast, { ToastContext } from '@/app/components/base/toast'
@@ -30,7 +31,11 @@ import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
-import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
+import AccessControl from '@/app/components/app/app-access-control'
+import { AccessMode } from '@/models/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { formatTime } from '@/utils/time'
 
 export type AppCardProps = {
   app: App
@@ -40,6 +45,7 @@ export type AppCardProps = {
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
@@ -53,6 +59,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showAccessControl, setShowAccessControl] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const onConfirmDelete = useCallback(async () => {
@@ -71,8 +78,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       })
     }
     setShowConfirmDelete(false)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [app.id])
+  }, [app.id, mutateApps, notify, onPlanInfoChanged, onRefresh, t])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -176,6 +182,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     setShowSwitchModal(false)
   }
 
+  const onUpdateAccessControl = useCallback(() => {
+    if (onRefresh)
+      onRefresh()
+    mutateApps()
+    setShowAccessControl(false)
+  }, [onRefresh, mutateApps, setShowAccessControl])
+
   const Operations = (props: HtmlContentProps) => {
     const onMouseLeave = async () => {
       props.onClose?.()
@@ -198,17 +211,23 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       exportCheck()
     }
-    const onClickSwitch = async (e: React.MouseEvent<HTMLDivElement>) => {
+    const onClickSwitch = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
       setShowSwitchModal(true)
     }
-    const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
+    const onClickDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
       setShowConfirmDelete(true)
+    }
+    const onClickAccessControl = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      setShowAccessControl(true)
     }
     const onClickInstalledApp = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
@@ -226,41 +245,49 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       }
     }
     return (
-      <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
-        <button className='mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover' onClick={onClickSettings}>
+      <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickSettings}>
           <span className='system-sm-regular text-text-secondary'>{t('app.editApp')}</span>
         </button>
-        <Divider className="!my-1" />
-        <button className='mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover' onClick={onClickDuplicate}>
+        <Divider className="my-1" />
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickDuplicate}>
           <span className='system-sm-regular text-text-secondary'>{t('app.duplicate')}</span>
         </button>
-        <button className='mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover' onClick={onClickExport}>
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickExport}>
           <span className='system-sm-regular text-text-secondary'>{t('app.export')}</span>
         </button>
         {(app.mode === 'completion' || app.mode === 'chat') && (
           <>
-            <Divider className="!my-1" />
-            <div
-              className='mx-1 flex h-9 cursor-pointer items-center rounded-lg px-3 py-2 hover:bg-state-base-hover'
+            <Divider className="my-1" />
+            <button
+              className='mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
               onClick={onClickSwitch}
             >
               <span className='text-sm leading-5 text-text-secondary'>{t('app.switch')}</span>
-            </div>
+            </button>
           </>
         )}
-        <Divider className="!my-1" />
-        <button className='mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+        <Divider className="my-1" />
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
           <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
         </button>
-        <Divider className="!my-1" />
-        <div
-          className='group mx-1 flex h-8 w-[calc(100%_-_8px)] cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
+        <Divider className="my-1" />
+        {
+          systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor && <>
+            <button className='mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickAccessControl}>
+              <span className='text-sm leading-5 text-text-secondary'>{t('app.accessControl')}</span>
+            </button>
+            <Divider className='my-1' />
+          </>
+        }
+        <button
+          className='group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
           onClick={onClickDelete}
         >
           <span className='system-sm-regular text-text-secondary group-hover:text-text-destructive'>
             {t('common.operation.delete')}
           </span>
-        </div>
+        </button>
       </div>
     )
   }
@@ -269,6 +296,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   useEffect(() => {
     setTags(app.tags)
   }, [app.tags])
+
+  const EditTimeText = useMemo(() => {
+    const timeText = formatTime({
+      date: (app.updated_at || app.created_at) * 1000,
+      dateFormat: 'MM/DD/YYYY h:mm',
+    })
+    return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.updated_at, app.created_at])
 
   return (
     <>
@@ -294,13 +330,22 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <div className='flex items-center text-sm font-semibold leading-5 text-text-secondary'>
               <div className='truncate' title={app.name}>{app.name}</div>
             </div>
-            <div className='flex items-center text-[10px] font-medium leading-[18px] text-text-tertiary'>
-              {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
-              {app.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-              {app.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
-              {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
-              {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
+            <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
+              <div className='truncate' title={app.author_name}>{app.author_name}</div>
+              <div>·</div>
+              <div className='truncate'>{EditTimeText}</div>
             </div>
+          </div>
+          <div className='flex h-5 w-5 shrink-0 items-center justify-center'>
+            {app.access_mode === AccessMode.PUBLIC && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.anyone')}>
+              <RiGlobalLine className='h-4 w-4 text-text-accent' />
+            </Tooltip>}
+            {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.specific')}>
+              <RiLockLine className='h-4 w-4 text-text-quaternary' />
+            </Tooltip>}
+            {app.access_mode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.organization')}>
+              <RiBuildingLine className='h-4 w-4 text-text-quaternary' />
+            </Tooltip>}
           </div>
         </div>
         <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
@@ -358,7 +403,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   popupClassName={
                     (app.mode === 'completion' || app.mode === 'chat')
                       ? '!w-[256px] translate-x-[-224px]'
-                      : '!w-[160px] translate-x-[-128px]'
+                      : '!w-[216px] translate-x-[-128px]'
                   }
                   className={'!z-20 h-fit'}
                 />
@@ -418,6 +463,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
         />
+      )}
+      {showAccessControl && (
+        <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
       )}
     </>
   )

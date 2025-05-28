@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-class CreatedByRole(StrEnum):
+class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
 
@@ -14,3 +14,10 @@ class UserFrom(StrEnum):
 class WorkflowRunTriggeredFrom(StrEnum):
     DEBUGGING = "debugging"
     APP_RUN = "app-run"
+
+
+class DraftVariableType(StrEnum):
+    # node means that the correspond variable
+    NODE = "node"
+    SYS = "sys"
+    CONVERSATION = "conversation"

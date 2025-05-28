@@ -11,7 +11,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 <div>
   ### 鉴权
 
-  Dify Service API 使用 `API-Key` 进行鉴权。
+  Service API 使用 `API-Key` 进行鉴权。
 
   建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。
 
@@ -69,7 +69,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则
-          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义 / hierarchical 父子
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
               - <code>id</code> (string) 预处理规则的唯一标识符
@@ -207,7 +207,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         - <code>doc_language</code> 在 Q&A 模式下，指定文档的语言，例如：<code>English</code>、<code>Chinese</code>
 
         - <code>process_rule</code> 处理规则
-          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义 / hierarchical 父子
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
               - <code>id</code> (string) 预处理规则的唯一标识符
@@ -341,7 +341,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='embedding_model' type='str' key='embedding_model'>
         Embedding 模型名称
       </Property>
-      <Property name='embedding_provider_name' type='str' key='embedding_provider_name'>
+      <Property name='embedding_model_provider' type='str' key='embedding_model_provider'>
         Embedding 模型供应商
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
@@ -790,7 +790,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则（选填）
-          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义 / hierarchical 父子
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
               - <code>id</code> (string) 预处理规则的唯一标识符
@@ -892,7 +892,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则（选填）
-          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义 / hierarchical 父子
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
               - <code>id</code> (string) 预处理规则的唯一标识符
@@ -1047,10 +1047,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -1342,10 +1340,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -1628,10 +1624,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>

@@ -180,6 +180,8 @@ const translation = {
     viewMore: '查看更多',
     difyMarketplace: 'Dify 市場',
     pluginsResult: '{{num}} 個結果',
+    verifiedTip: '由Dify驗證',
+    partnerTip: '由 Dify 合作夥伴驗證',
   },
   task: {
     installingWithError: '安裝 {{installingLength}} 個插件，{{successLength}} 成功，{{errorLength}} 失敗',
@@ -189,6 +191,7 @@ const translation = {
     clearAll: '全部清除',
     installing: '安裝 {{installingLength}} 個外掛程式，0 個完成。',
   },
+  requestAPlugin: '申请外掛程式',
   submitPlugin: '提交外掛程式',
   findMoreInMarketplace: '在 Marketplace 中查找更多內容',
   installPlugin: '安裝外掛程式',
@@ -204,6 +207,10 @@ const translation = {
   endpointsEnabled: '{{num}} 組已啟用端點',
   fromMarketplace: '從 Marketplace',
   searchCategories: '搜索類別',
+  metadata: {
+    title: '插件',
+  },
+  difyVersionNotCompatible: '當前的 Dify 版本與此插件不兼容，請升級至所需的最低版本：{{minimalDifyVersion}}',
 }
 
 export default translation

@@ -1,5 +1,5 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi
-CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subject" and "intention" in order to accurately figure out what the user's input language actually is. 
+CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subject" and "intention" in order to accurately figure out what the user's input language actually is.
 Notice: the language type user uses could be diverse, which can be English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.
 ENSURE your output is in the SAME language as the user's input!
 Your output is restricted only to: (Input language) Intention + Subject(short as possible)
@@ -58,7 +58,7 @@ User Input: yo, 你今天咋样？
   "Your Output": "查询今日我的状态☺️"
 }
 
-User Input: 
+User Input:
 """  # noqa: E501
 
 PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE = (
@@ -163,11 +163,11 @@ Here is a task description for which I would like you to create a high-quality p
 {{TASK_DESCRIPTION}}
 </task_description>
 Based on task description, please create a well-structured prompt template that another AI could use to consistently complete the task. The prompt template should include:
-- Do not include <input> or <output> section and variables in the prompt, assume user will add them at their own will. 
-- Clear instructions for the AI that will be using this prompt, demarcated with <instruction> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
-- Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not include variables in the prompt. Give three pairs of input and output examples.   
+- Do not include <input> or <output> section and variables in the prompt, assume user will add them at their own will.
+- Clear instructions for the AI that will be using this prompt, demarcated with <instruction> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag.
+- Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not include variables in the prompt. Give three pairs of input and output examples.
 - Include other relevant sections demarcated with appropriate XML tags like <examples>, <instruction>.
-- Use the same language as task description. 
+- Use the same language as task description.
 - Output in ``` xml ``` and start with <instruction>
 Please generate the full prompt template with at least 300 words and output only the prompt template.
 """  # noqa: E501
@@ -178,28 +178,28 @@ Here is a task description for which I would like you to create a high-quality p
 {{TASK_DESCRIPTION}}
 </task_description>
 Based on task description, please create a well-structured prompt template that another AI could use to consistently complete the task. The prompt template should include:
-- Descriptive variable names surrounded by {{ }} (two curly brackets) to indicate where the actual values will be substituted in. Choose variable names that clearly indicate the type of value expected. Variable names have to be composed of number, english alphabets and underline and nothing else. 
-- Clear instructions for the AI that will be using this prompt, demarcated with <instruction> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
-- Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not use curly brackets any other than in <instruction> section. 
+- Descriptive variable names surrounded by {{ }} (two curly brackets) to indicate where the actual values will be substituted in. Choose variable names that clearly indicate the type of value expected. Variable names have to be composed of number, english alphabets and underline and nothing else.
+- Clear instructions for the AI that will be using this prompt, demarcated with <instruction> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag.
+- Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not use curly brackets any other than in <instruction> section.
 - Any other relevant sections demarcated with appropriate XML tags like <input>, <output>, etc.
-- Use the same language as task description. 
+- Use the same language as task description.
 - Output in ``` xml ``` and start with <instruction>
 Please generate the full prompt template and output only the prompt template.
 """  # noqa: E501
 
 RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE = """
-I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted. 
+I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted.
 <information to be extracted>
-variables name bounded two double curly brackets. Variable name has to be composed of number, english alphabets and underline and nothing else. 
+variables name bounded two double curly brackets. Variable name has to be composed of number, english alphabets and underline and nothing else.
 </information to be extracted>
 
 Step 1: Carefully read the input and understand the structure of the expected output.
-Step 2: Extract relevant parameters from the provided text based on the name and description of object. 
+Step 2: Extract relevant parameters from the provided text based on the name and description of object.
 Step 3: Structure the extracted parameters to JSON object as specified in <structure>.
-Step 4: Ensure that the list of variable_names is properly formatted and valid. The output should not contain any XML tags. Output an empty list if there is no valid variable name in input text. 
+Step 4: Ensure that the list of variable_names is properly formatted and valid. The output should not contain any XML tags. Output an empty list if there is no valid variable name in input text.
 
 ### Structure
-Here is the structure of the expected output, I should always follow the output structure. 
+Here is the structure of the expected output, I should always follow the output structure.
 ["variable_name_1", "variable_name_2"]
 
 ### Input Text
@@ -214,13 +214,13 @@ I should always output a valid list. Output nothing other than the list of varia
 
 RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE = """
 <instruction>
-Step 1: Identify the purpose of the chatbot from the variable {{TASK_DESCRIPTION}} and infer chatbot's tone  (e.g., friendly, professional, etc.) to add personality traits. 
+Step 1: Identify the purpose of the chatbot from the variable {{TASK_DESCRIPTION}} and infer chatbot's tone  (e.g., friendly, professional, etc.) to add personality traits.
 Step 2: Create a coherent and engaging opening statement.
 Step 3: Ensure the output is welcoming and clearly explains what the chatbot is designed to do. Do not include any XML tags in the output.
-Please use the same language as the user's input language. If user uses chinese then generate opening statement in chinese,  if user uses english then generate opening statement in english. 
-Example Input: 
+Please use the same language as the user's input language. If user uses chinese then generate opening statement in chinese,  if user uses english then generate opening statement in english.
+Example Input:
 Provide customer support for an e-commerce website
-Example Output: 
+Example Output:
 Welcome! I'm here to assist you with any questions or issues you might have with your shopping experience. Whether you're looking for product information, need help with your order, or have any other inquiries, feel free to ask. I'm friendly, helpful, and ready to support you in any way I can.
 <Task>
 Here is the task description: {{INPUT_TEXT}}
@@ -276,15 +276,15 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
 {
   "type": "object",
   "properties": {
-    "email": { 
+    "email": {
       "type": "string",
       "format": "email"
     },
-    "password": { 
+    "password": {
       "type": "string",
       "minLength": 8
     },
-    "age": { 
+    "age": {
       "type": "integer",
       "minimum": 18
     }

@@ -1,4 +1,4 @@
-![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
+![cover-v5-optimized](./images/GitHub_README_if.png)
 
 <p align="center">
   📌 <a href="https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast">介紹 Dify 工作流程檔案上傳功能：重現 Google NotebookLM Podcast</a>
@@ -85,8 +85,6 @@ docker compose up -d
 
 **1. 工作流程**：
 在視覺化畫布上建立和測試強大的 AI 工作流程，利用以下所有功能及更多。
-
-https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
 
 **2. 全面的模型支援**：
 無縫整合來自數十個推理提供商和自託管解決方案的數百個專有/開源 LLM，涵蓋 GPT、Mistral、Llama3 和任何與 OpenAI API 兼容的模型。您可以在[此處](https://docs.dify.ai/getting-started/readme/model-providers)找到支援的模型提供商完整列表。
@@ -235,7 +233,7 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 ## 社群與聯絡方式
 
-- [Github Discussion](https://github.com/langgenius/dify/discussions)：最適合分享反饋和提問。
+- [GitHub Discussion](https://github.com/langgenius/dify/discussions)：最適合分享反饋和提問。
 - [GitHub Issues](https://github.com/langgenius/dify/issues)：最適合報告使用 Dify.AI 時遇到的問題和提出功能建議。請參閱我們的[貢獻指南](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)。
 - [Discord](https://discord.gg/FngNHpbcY7)：最適合分享您的應用程式並與社群互動。
 - [X(Twitter)](https://twitter.com/dify_ai)：最適合分享您的應用程式並與社群互動。

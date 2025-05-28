@@ -54,6 +54,10 @@ const translation = {
     viewDetails: 'Poglej podrobnosti',
     copied: 'Kopirati',
     in: 'v',
+    downloadFailed: 'Prenos ni uspel. Prosim, poskusite znova pozneje.',
+    more: 'Več',
+    downloadSuccess: 'Prenos končan.',
+    format: 'Format',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -157,6 +161,9 @@ const translation = {
     community: 'Skupnost',
     about: 'O nas',
     logout: 'Odjava',
+    support: 'Podpora',
+    github: 'GitHub',
+    compliance: 'Skladnost',
   },
   settings: {
     accountGroup: 'SPLOŠNO',
@@ -206,6 +213,9 @@ const translation = {
     deleteSuccessTip: 'Vaš račun potrebuje čas, da dokonča brisanje. Ko bo vse končano, vam bomo poslali e-pošto.',
     feedbackTitle: 'Povratne informacije',
     deleteLabel: 'Za potrditev spodaj vnesite svoj e-poštni naslov',
+    workspaceName: 'Ime delovnega prostora',
+    workspaceIcon: 'Ikona delovnega prostora',
+    editWorkspaceInfo: 'Uredi informacije o delovnem prostoru',
   },
   members: {
     team: 'Ekipa',
@@ -452,7 +462,7 @@ const translation = {
     apiBasedExtension: {
       title: 'Razširitve API omogočajo centralizirano upravljanje API, kar poenostavi konfiguracijo za enostavno uporabo v aplikacijah Dify.',
       link: 'Naučite se, kako razviti svojo API razširitev.',
-      linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+      linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
       add: 'Dodaj API razširitev',
       selector: {
         title: 'API razširitev',
@@ -681,7 +691,7 @@ const translation = {
     type: 'Vrsta',
     link: 'Preberite, kako razvijete lastno razširitev API-ja.',
     title: 'Razširitve API zagotavljajo centralizirano upravljanje API, kar poenostavlja konfiguracijo za enostavno uporabo v aplikacijah Dify.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Dodajanje razširitve API-ja',
   },
   about: {
@@ -746,6 +756,7 @@ const translation = {
     conversationNamePlaceholder: 'Prosimo, vnesite ime pogovora',
     thinking: 'Razmišljanje...',
     thought: 'Misel',
+    resend: 'Ponovno pošlji',
   },
   promptEditor: {
     context: {
@@ -835,6 +846,25 @@ const translation = {
   },
   pagination: {
     perPage: 'Elementi na stran',
+  },
+  theme: {
+    theme: 'Tema',
+    light: 'svetloba',
+    auto: 'sistem',
+    dark: 'temno',
+  },
+  compliance: {
+    sandboxUpgradeTooltip: 'Na voljo je le z načrtom Professional ali Team.',
+    gdpr: 'GDPR DPA',
+    soc2Type2: 'Poročilo SOC 2 Tip II',
+    professionalUpgradeTooltip: 'Na voljo je le s Team načrtom ali višjim.',
+    iso27001: 'Certifikacija ISO 27001:2022',
+    soc2Type1: 'Poročilo SOC 2 Tip I',
+  },
+  imageInput: {
+    supportedFormats: 'Podpira PNG, JPG, JPEG, WEBP in GIF',
+    browse: 'brskati',
+    dropImageHere: 'Tukaj spustite svojo sliko ali',
   },
 }
 

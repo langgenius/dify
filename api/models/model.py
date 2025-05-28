@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.signature import sign_tool_file
 from services.plugin.plugin_service import PluginService
 
 if TYPE_CHECKING:
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin  # type: ignore
+from flask_login import UserMixin
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -23,15 +24,14 @@ from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
-from core.file.tool_file_parser import ToolFileParser
 from libs.helper import generate_string
-from models.base import Base
-from models.enums import CreatedByRole
-from models.workflow import WorkflowRunStatus
 
 from .account import Account, Tenant
+from .base import Base
 from .engine import db
+from .enums import CreatorUserRole
 from .types import StringUUID
+from .workflow import WorkflowRunStatus
 
 if TYPE_CHECKING:
     from .workflow import Workflow
@@ -293,6 +293,15 @@ class App(Base):
         )
 
         return tags or []
+
+    @property
+    def author_name(self):
+        if self.created_by:
+            account = db.session.query(Account).filter(Account.id == self.created_by).first()
+            if account:
+                return account.name
+
+        return None
 
 
 class AppModelConfig(Base):
@@ -602,7 +611,7 @@ class InstalledApp(Base):
         return tenant
 
 
-class Conversation(db.Model):  # type: ignore[name-defined]
+class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="conversation_pkey"),
@@ -794,7 +803,7 @@ class Conversation(db.Model):  # type: ignore[name-defined]
 
         for message in messages:
             if message.workflow_run:
-                status_counts[message.workflow_run.status] += 1
+                status_counts[WorkflowRunStatus(message.workflow_run.status)] += 1
 
         return (
             {
@@ -864,7 +873,7 @@ class Conversation(db.Model):  # type: ignore[name-defined]
         }
 
 
-class Message(db.Model):  # type: ignore[name-defined]
+class Message(Base):
     __tablename__ = "messages"
     __table_args__ = (
         PrimaryKeyConstraint("id", name="message_pkey"),
@@ -986,9 +995,7 @@ class Message(db.Model):  # type: ignore[name-defined]
                 if not tool_file_id:
                     continue
 
-                sign_url = ToolFileParser.get_tool_file_manager().sign_file(
-                    tool_file_id=tool_file_id, extension=extension
-                )
+                sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
             elif "file-preview" in url:
                 # get upload file id
                 upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview?\?timestamp="
@@ -1213,7 +1220,7 @@ class Message(db.Model):  # type: ignore[name-defined]
         )
 
 
-class MessageFeedback(db.Model):  # type: ignore[name-defined]
+class MessageFeedback(Base):
     __tablename__ = "message_feedbacks"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_feedback_pkey"),
@@ -1239,8 +1246,23 @@ class MessageFeedback(db.Model):  # type: ignore[name-defined]
         account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
         return account
 
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "app_id": str(self.app_id),
+            "conversation_id": str(self.conversation_id),
+            "message_id": str(self.message_id),
+            "rating": self.rating,
+            "content": self.content,
+            "from_source": self.from_source,
+            "from_end_user_id": str(self.from_end_user_id) if self.from_end_user_id else None,
+            "from_account_id": str(self.from_account_id) if self.from_account_id else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+        }
 
-class MessageFile(db.Model):  # type: ignore[name-defined]
+
+class MessageFile(Base):
     __tablename__ = "message_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_file_pkey"),
@@ -1257,7 +1279,7 @@ class MessageFile(db.Model):  # type: ignore[name-defined]
         url: str | None = None,
         belongs_to: Literal["user", "assistant"] | None = None,
         upload_file_id: str | None = None,
-        created_by_role: CreatedByRole,
+        created_by_role: CreatorUserRole,
         created_by: str,
     ):
         self.message_id = message_id
@@ -1281,7 +1303,7 @@ class MessageFile(db.Model):  # type: ignore[name-defined]
     created_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class MessageAnnotation(db.Model):  # type: ignore[name-defined]
+class MessageAnnotation(Base):
     __tablename__ = "message_annotations"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_annotation_pkey"),
@@ -1312,7 +1334,7 @@ class MessageAnnotation(db.Model):  # type: ignore[name-defined]
         return account
 
 
-class AppAnnotationHitHistory(db.Model):  # type: ignore[name-defined]
+class AppAnnotationHitHistory(Base):
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),
@@ -1324,7 +1346,7 @@ class AppAnnotationHitHistory(db.Model):  # type: ignore[name-defined]
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
-    annotation_id = db.Column(StringUUID, nullable=False)
+    annotation_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     source = db.Column(db.Text, nullable=False)
     question = db.Column(db.Text, nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
@@ -1350,7 +1372,7 @@ class AppAnnotationHitHistory(db.Model):  # type: ignore[name-defined]
         return account
 
 
-class AppAnnotationSetting(db.Model):  # type: ignore[name-defined]
+class AppAnnotationSetting(Base):
     __tablename__ = "app_annotation_settings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_settings_pkey"),
@@ -1365,26 +1387,6 @@ class AppAnnotationSetting(db.Model):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_user_id = db.Column(StringUUID, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
-    @property
-    def created_account(self):
-        account = (
-            db.session.query(Account)
-            .join(AppAnnotationSetting, AppAnnotationSetting.created_user_id == Account.id)
-            .filter(AppAnnotationSetting.id == self.annotation_id)
-            .first()
-        )
-        return account
-
-    @property
-    def updated_account(self):
-        account = (
-            db.session.query(Account)
-            .join(AppAnnotationSetting, AppAnnotationSetting.updated_user_id == Account.id)
-            .filter(AppAnnotationSetting.id == self.annotation_id)
-            .first()
-        )
-        return account
 
     @property
     def collection_binding_detail(self):
@@ -1424,7 +1426,7 @@ class EndUser(Base, UserMixin):
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id = db.Column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(255), nullable=False)
     external_user_id = db.Column(db.String(255), nullable=True)
@@ -1554,7 +1556,7 @@ class UploadFile(Base):
         size: int,
         extension: str,
         mime_type: str,
-        created_by_role: CreatedByRole,
+        created_by_role: CreatorUserRole,
         created_by: str,
         created_at: datetime,
         used: bool,

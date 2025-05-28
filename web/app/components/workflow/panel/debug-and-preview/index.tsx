@@ -39,6 +39,7 @@ const DebugAndPreview = () => {
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
+  const visibleVariables = variables.filter(v => v.hide !== true)
 
   const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
 
@@ -107,7 +108,7 @@ const DebugAndPreview = () => {
               </ActionButton>
             </Tooltip>
           )}
-          {variables.length > 0 && (
+          {visibleVariables.length > 0 && (
             <div className='relative'>
               <Tooltip
                 popupContent={t('workflow.panel.userInputField')}

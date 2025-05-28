@@ -6,6 +6,7 @@ from typing import Optional
 
 import click
 from flask import current_app
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -297,11 +298,11 @@ def migrate_knowledge_vector_database():
     page = 1
     while True:
         try:
-            datasets = (
-                Dataset.query.filter(Dataset.indexing_technique == "high_quality")
-                .order_by(Dataset.created_at.desc())
-                .paginate(page=page, per_page=50)
+            stmt = (
+                select(Dataset).filter(Dataset.indexing_technique == "high_quality").order_by(Dataset.created_at.desc())
             )
+
+            datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
         except NotFound:
             break
 
@@ -444,13 +445,13 @@ def convert_to_agent_apps():
             WHERE a.mode = 'chat'
             AND am.agent_mode is not null
             AND (
-				am.agent_mode like '%"strategy": "function_call"%'
+                am.agent_mode like '%"strategy": "function_call"%'
                 OR am.agent_mode  like '%"strategy": "react"%'
-			)
+            )
             AND (
-				am.agent_mode like '{"enabled": true%'
+                am.agent_mode like '{"enabled": true%'
                 OR am.agent_mode like '{"max_iteration": %'
-			) ORDER BY a.created_at DESC LIMIT 1000
+            ) ORDER BY a.created_at DESC LIMIT 1000
         """
 
         with db.engine.begin() as conn:
@@ -551,11 +552,12 @@ def old_metadata_migration():
     page = 1
     while True:
         try:
-            documents = (
-                DatasetDocument.query.filter(DatasetDocument.doc_metadata is not None)
+            stmt = (
+                select(DatasetDocument)
+                .filter(DatasetDocument.doc_metadata.is_not(None))
                 .order_by(DatasetDocument.created_at.desc())
-                .paginate(page=page, per_page=50)
             )
+            documents = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
         except NotFound:
             break
         if not documents:
@@ -592,11 +594,15 @@ def old_metadata_migration():
                             )
                             db.session.add(dataset_metadata_binding)
                         else:
-                            dataset_metadata_binding = DatasetMetadataBinding.query.filter(
-                                DatasetMetadataBinding.dataset_id == document.dataset_id,
-                                DatasetMetadataBinding.document_id == document.id,
-                                DatasetMetadataBinding.metadata_id == dataset_metadata.id,
-                            ).first()
+                            dataset_metadata_binding = (
+                                db.session.query(DatasetMetadataBinding)  # type: ignore
+                                .filter(
+                                    DatasetMetadataBinding.dataset_id == document.dataset_id,
+                                    DatasetMetadataBinding.document_id == document.id,
+                                    DatasetMetadataBinding.metadata_id == dataset_metadata.id,
+                                )
+                                .first()
+                            )
                             if not dataset_metadata_binding:
                                 dataset_metadata_binding = DatasetMetadataBinding(
                                     tenant_id=document.tenant_id,
@@ -668,7 +674,7 @@ def upgrade_db():
             click.echo(click.style("Starting database migration.", fg="green"))
 
             # run db migration
-            import flask_migrate  # type: ignore
+            import flask_migrate
 
             flask_migrate.upgrade()
 

@@ -1,4 +1,10 @@
 const translation = {
+  theme: {
+    theme: 'テーマ',
+    light: '明るい',
+    dark: '暗い',
+    auto: 'システム',
+  },
   api: {
     success: '成功',
     actionSuccess: 'アクションが成功しました',
@@ -57,6 +63,7 @@ const translation = {
     copied: 'コピーしました',
     in: '中',
     format: 'フォーマット',
+    more: 'もっと',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -140,6 +147,8 @@ const translation = {
     status: 'ベータ版',
     explore: '探索',
     apps: 'スタジオ',
+    appDetail: 'アプリの詳細',
+    account: 'アカウント',
     plugins: 'プラグイン',
     pluginsTips: 'サードパーティのプラグインを統合するか、ChatGPT互換のAIプラグインを作成します。',
     datasets: 'ナレッジ',
@@ -162,6 +171,7 @@ const translation = {
     community: 'コミュニティ',
     about: 'Difyについて',
     logout: 'ログアウト',
+    github: 'GitHub',
   },
   compliance: {
     soc2Type1: 'SOC 2 Type I 報告書',
@@ -197,8 +207,8 @@ const translation = {
     newPassword: '新しいパスワード',
     confirmPassword: 'パスワードを確認',
     notEqual: '2つのパスワードが異なります。',
-    langGeniusAccount: 'Difyアカウント',
-    langGeniusAccountTip: 'Difyアカウントと関連するユーザーデータ。',
+    langGeniusAccount: 'アカウント関連データ',
+    langGeniusAccountTip: 'アカウントに関連するユーザーデータ。',
     editName: '名前を編集',
     showAppLength: '{{length}}アプリを表示',
     delete: 'アカウントを削除',
@@ -206,7 +216,7 @@ const translation = {
     deleteConfirmTip: '確認のため、登録したメールから次の内容をに送信してください ',
     account: 'アカウント',
     myAccount: 'マイアカウント',
-    studio: 'Difyスタジオ',
+    studio: 'スタジオ',
     deletePrivacyLinkTip: 'お客様のデータの取り扱い方法の詳細については、当社の',
     deletePrivacyLink: 'プライバシーポリシー。',
     deleteSuccessTip: 'アカウントの削除が完了するまでに時間が必要です。すべて完了しましたら、メールでお知らせします。',
@@ -242,7 +252,7 @@ const translation = {
     datasetOperator: 'ナレッジ管理員',
     datasetOperatorTip: 'ナレッジベースのみを管理できる',
     inviteTeamMember: 'チームメンバーを招待する',
-    inviteTeamMemberTip: '彼らはサインイン後、直接あなた様のチームデータにアクセスできます。',
+    inviteTeamMemberTip: '彼らはサインイン後、直接あなたのチームデータにアクセスできます。',
     emailNotSetup: 'メールサーバーがセットアップされていないので、招待メールを送信することはできません。代わりに招待後に発行される招待リンクをユーザーに通知してください。',
     email: 'メール',
     emailInvalid: '無効なメール形式',
@@ -250,7 +260,7 @@ const translation = {
     sendInvite: '招待を送る',
     invitedAsRole: '{{role}}ユーザーとして招待されました',
     invitationSent: '招待が送信されました',
-    invitationSentTip: '招待が送信され、彼らはDifyにサインインしてあなた様のチームデータにアクセスできます。',
+    invitationSentTip: '招待が送信され、彼らはDifyにサインインしてあなたのチームデータにアクセスできます。',
     invitationLink: '招待リンク',
     failedInvitationEmails: '以下のユーザーは正常に招待されませんでした',
     ok: 'OK',
@@ -262,7 +272,7 @@ const translation = {
     setEditor: 'エディターに設定',
     disInvite: '招待をキャンセル',
     deleteMember: 'メンバーを削除',
-    you: '(あなた様)',
+    you: '(あなた)',
   },
   integrations: {
     connected: '接続済み',
@@ -438,8 +448,8 @@ const translation = {
     connect: '接続',
     configure: '設定',
     notion: {
-      title: 'ノーション',
-      description: 'ナレッジデータソースとしてノーションを使用します。',
+      title: 'Notion',
+      description: 'ナレッジデータソースとしてNotionを使用します。',
       connectedWorkspace: '接続済みワークスペース',
       addWorkspace: 'ワークスペースの追加',
       connected: '接続済み',
@@ -475,7 +485,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API拡張機能は、Difyのアプリケーション全体での簡単な使用のための設定を簡素化し、集中的なAPI管理を提供します。',
     link: '独自のAPI拡張機能を開発する方法について学ぶ。',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API拡張機能を追加',
     selector: {
       title: 'API拡張機能',
@@ -563,6 +573,7 @@ const translation = {
     inputPlaceholder: 'ボットと話す',
     thought: '思考',
     thinking: '考え中...',
+    resend: '再送信してください',
   },
   promptEditor: {
     placeholder: 'ここにプロンプトワードを入力してください。変数を挿入するには「{」を、プロンプトコンテンツブロックを挿入するには「/」を入力します。',
@@ -652,6 +663,12 @@ const translation = {
   },
   pagination: {
     perPage: 'ページあたりのアイテム数',
+  },
+  you: 'あなた',
+  imageInput: {
+    browse: 'ブラウズする',
+    supportedFormats: 'PNG、JPG、JPEG、WEBP、およびGIFをサポートしています。',
+    dropImageHere: 'ここに画像をドロップするか、',
   },
 }
 

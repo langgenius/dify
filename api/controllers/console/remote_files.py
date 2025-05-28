@@ -2,8 +2,8 @@ import urllib.parse
 from typing import cast
 
 import httpx
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
 
 import services
 from controllers.common import helpers
