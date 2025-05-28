@@ -40,8 +40,6 @@ class LoginApi(Resource):
         except services.errors.account.AccountNotFoundError:
             raise AccountNotFound()
 
-        WebAppAuthService._validate_user_accessibility(account=account, app_code=app_code)
-
         end_user = WebAppAuthService.create_end_user(email=args["email"], app_code=app_code)
 
         token = WebAppAuthService.login(account=account, app_code=app_code, end_user_id=end_user.id)
@@ -110,8 +108,6 @@ class EmailCodeLoginApi(Resource):
         account = WebAppAuthService.get_user_through_email(user_email)
         if not account:
             raise AccountNotFound()
-
-        WebAppAuthService._validate_user_accessibility(account=account, app_code=app_code)
 
         end_user = WebAppAuthService.create_end_user(email=user_email, app_code=app_code)
 
