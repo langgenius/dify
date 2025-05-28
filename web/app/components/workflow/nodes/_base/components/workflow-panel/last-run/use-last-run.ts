@@ -103,6 +103,7 @@ const useLastRun = <T>({
 }: Params<T>) => {
   const { conversationVars, systemVars, hasSetInspectVar } = useInspectVarsCrud()
   const blockType = oneStepRunParams.data.type
+  const isStartNode = blockType === BlockEnum.Start
   const isIterationNode = blockType === BlockEnum.Iteration
   const isLoopNode = blockType === BlockEnum.Loop
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -202,7 +203,7 @@ const useLastRun = <T>({
         if(!selector || selector.length === 0)
           return
         const [nodeId, varName] = selector.slice(0, 2)
-        if(nodeId === id) { // inner vars like loop vars
+        if(!isStartNode && nodeId === id) { // inner vars like loop vars
           values[variable] = true
           return
         }
