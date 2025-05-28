@@ -9,20 +9,10 @@ CERT_NAME="${DOMAIN}" # 証明書名をドメイン名と同じにする
 # Check if the certificate already exists
 if [ -f "/etc/letsencrypt/renewal/${CERT_NAME}.conf" ]; then
   echo "Certificate exists. Attempting to renew..."
-  certbot renew --noninteractive --cert-name ${CERT_NAME} --email ${EMAIL} --agree-tos --no-eff-email ${OPTIONS}
+  certbot renew --noninteractive --cert-name ${CERT_NAME} --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email ${OPTIONS}
 else
   echo "Certificate does not exist. Obtaining a new certificate..."
-  
-  # Check if wildcard domain is requested (contains *)
-  if echo "${OPTIONS}" | grep -q "\*"; then
-    echo "Wildcard domain detected. Using DNS challenge..."
-    certbot certonly --noninteractive --manual --preferred-challenges dns \
-      --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMAIN} ${OPTIONS}
-  else
-    echo "Regular domain. Using webroot challenge..."
-    certbot certonly --noninteractive --webroot --webroot-path=/var/www/html \
-      --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMAIN} ${OPTIONS}
-  fi
+  certbot certonly --noninteractive --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${DOMAIN} ${OPTIONS}
 fi
 echo "Certificate operation successful"
 # Note: Nginx reload should be handled outside this container
