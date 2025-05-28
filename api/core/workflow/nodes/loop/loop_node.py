@@ -478,6 +478,13 @@ class LoopNode(BaseNode[LoopNodeData]):
 
             variable_mapping.update(sub_node_variable_mapping)
 
+        for loop_variable in node_data.loop_variables:
+            if loop_variable.value_type == "variable":
+                assert loop_variable.value is not None, "Loop variable value must be provided for variable type"
+                # add loop variable to variable mapping
+                selector = loop_variable.value
+                variable_mapping[f"{node_id}.{loop_variable.label}"] = selector
+
         # remove variable out from loop
         variable_mapping = {
             key: value for key, value in variable_mapping.items() if value[0] not in loop_graph.node_ids
