@@ -9,12 +9,17 @@ def _setup_gevent():
 
     It should be
     """
+    _FALSE_VALUE_FOR_ENV = frozenset(["false", "0", "no"])
     # It seems that JetBrains Python debugger does not work well with gevent,
     # so we need to disable gevent in debug mode.
     # If you are using debugpy and set GEVENT_SUPPORT=True, you can debug with gevent.
-    if (flask_debug := os.environ.get("FLASK_DEBUG", "0")) and flask_debug.lower() not in {"false", "0", "no"}:
+    flask_debug_env = os.environ.get("FLASK_DEBUG", "0").lower()
+    if flask_debug_env not in _FALSE_VALUE_FOR_ENV:
+        print("Flask Debug enabled.", flush=True)
         return
-    if os.environ.get("GEVENT_SUPPORT", "0") == "0":
+    gevent_support_env = os.environ.get("GEVENT_SUPPORT", "false").lower()
+    if gevent_support_env in _FALSE_VALUE_FOR_ENV:
+        print("Gevent disabled.", flush=True)
         return
 
     from gevent import monkey
@@ -30,6 +35,7 @@ def _setup_gevent():
     import psycogreen.gevent  # type: ignore
 
     psycogreen.gevent.patch_psycopg()
+    print("Gevnet and psycopg patched", flush=True)
 
 
 _setup_gevent()
