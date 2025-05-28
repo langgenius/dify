@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -12,15 +13,17 @@ import type { Option } from './type'
 
 type SelectorProps = {
   options: Option[]
-  value: ChunkStructureEnum
+  value?: ChunkStructureEnum
   onChange: (key: ChunkStructureEnum) => void
   readonly?: boolean
+  trigger?: ReactNode
 }
 const Selector = ({
   options,
   value,
   onChange,
   readonly,
+  trigger,
 }: SelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -40,17 +43,24 @@ const Selector = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger onClick={() => {
-        if (readonly)
-          return
-        setOpen(!open)
-      }}>
-        <Button
-          size='small'
-          variant='ghost-accent'
-        >
-          {t('workflow.panel.change')}
-        </Button>
+      <PortalToFollowElemTrigger
+        asChild
+        onClick={() => {
+          if (readonly)
+            return
+          setOpen(!open)
+        }}
+      >
+        {
+          trigger || (
+            <Button
+              size='small'
+              variant='ghost-accent'
+            >
+              {t('workflow.panel.change')}
+            </Button>
+          )
+        }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
         <div className='w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]'>

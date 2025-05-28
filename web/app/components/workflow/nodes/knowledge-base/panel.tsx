@@ -75,27 +75,33 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
       </Group>
       <BoxGroup>
         <div className='space-y-3'>
-          <IndexMethod
-            chunkStructure={data.chunk_structure}
-            indexMethod={data.indexing_technique}
-            onIndexMethodChange={handleIndexMethodChange}
-            keywordNumber={data.keyword_number}
-            onKeywordNumberChange={handleKeywordNumberChange}
-            readonly={nodesReadOnly}
-          />
           {
-            data.indexing_technique === IndexMethodEnum.QUALIFIED && (
-              <EmbeddingModel
-                embeddingModel={data.embedding_model}
-                embeddingModelProvider={data.embedding_model_provider}
-                onEmbeddingModelChange={handleEmbeddingModelChange}
-                readonly={nodesReadOnly}
-              />
+            data.chunk_structure && (
+              <>
+                <IndexMethod
+                  chunkStructure={data.chunk_structure}
+                  indexMethod={data.indexing_technique}
+                  onIndexMethodChange={handleIndexMethodChange}
+                  keywordNumber={data.keyword_number}
+                  onKeywordNumberChange={handleKeywordNumberChange}
+                  readonly={nodesReadOnly}
+                />
+                {
+                  data.indexing_technique === IndexMethodEnum.QUALIFIED && (
+                    <EmbeddingModel
+                      embeddingModel={data.embedding_model}
+                      embeddingModelProvider={data.embedding_model_provider}
+                      onEmbeddingModelChange={handleEmbeddingModelChange}
+                      readonly={nodesReadOnly}
+                    />
+                  )
+                }
+                <div className='pt-1'>
+                  <Split className='h-[1px]' />
+                </div>
+              </>
             )
           }
-          <div className='pt-1'>
-            <Split className='h-[1px]' />
-          </div>
           <RetrievalSetting
             indexMethod={data.indexing_technique}
             searchMethod={data.retrieval_model.search_method}

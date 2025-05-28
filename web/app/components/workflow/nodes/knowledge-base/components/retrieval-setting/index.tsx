@@ -17,11 +17,11 @@ import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import SearchMethodOption from './search-method-option'
 
 type RetrievalSettingProps = {
-  indexMethod: IndexMethodEnum
+  indexMethod?: IndexMethodEnum
   readonly?: boolean
-  searchMethod: RetrievalSearchMethodEnum
+  searchMethod?: RetrievalSearchMethodEnum
   onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
-  hybridSearchMode: HybridSearchModeEnum
+  hybridSearchMode?: HybridSearchModeEnum
   onHybridSearchModeChange: (value: HybridSearchModeEnum) => void
   rerankingModelEnabled?: boolean
   onRerankingModelEnabledChange?: (value: boolean) => void

@@ -891,6 +891,7 @@ const translation = {
     },
     knowledgeBase: {
       chunkStructure: 'Chunk Structure',
+      chooseChunkStructure: 'Choose a chunk structure',
       changeChunkStructure: 'Change Chunk Structure',
       aboutRetrieval: 'about retrieval method.',
     },

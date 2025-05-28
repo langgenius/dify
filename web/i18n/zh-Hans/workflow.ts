@@ -892,6 +892,7 @@ const translation = {
     },
     knowledgeBase: {
       chunkStructure: '分段结构',
+      chooseChunkStructure: '选择分段结构',
       changeChunkStructure: '更改分段结构',
       aboutRetrieval: '关于知识检索。',
     },

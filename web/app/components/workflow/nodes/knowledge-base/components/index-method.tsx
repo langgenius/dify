@@ -21,7 +21,7 @@ import {
 
 type IndexMethodProps = {
   chunkStructure: ChunkStructureEnum
-  indexMethod: IndexMethodEnum
+  indexMethod?: IndexMethodEnum
   onIndexMethodChange: (value: IndexMethodEnum) => void
   keywordNumber: number
   onKeywordNumberChange: (value: number) => void

@@ -15,7 +15,7 @@ import type {
   Option,
 } from './type'
 
-export const useRetrievalSetting = (indexMethod: IndexMethodEnum) => {
+export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const { t } = useTranslation()
   const VectorSearchOption: Option = useMemo(() => {
     return {

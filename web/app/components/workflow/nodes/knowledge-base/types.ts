@@ -32,19 +32,19 @@ export type WeightedScore = {
 }
 
 export type RetrievalSetting = {
-  search_method: RETRIEVE_METHOD
+  search_method?: RETRIEVE_METHOD
   reranking_enable?: boolean
   reranking_model?: RerankingModel
   weights?: WeightedScore
   top_k: number
   score_threshold_enabled: boolean
   score_threshold: number
-  hybridSearchMode: RerankingModeEnum
+  hybridSearchMode?: RerankingModeEnum
 }
 export type KnowledgeBaseNodeType = CommonNodeType & {
   index_chunk_variable_selector: string[]
-  chunk_structure: ChunkStructureEnum
-  indexing_technique: IndexingType
+  chunk_structure?: ChunkStructureEnum
+  indexing_technique?: IndexingType
   embedding_model?: string
   embedding_model_provider?: string
   keyword_number: number

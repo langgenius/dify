@@ -30,9 +30,9 @@ type SearchMethodOptionProps = {
   readonly?: boolean
   option: Option
   hybridSearchModeOptions: HybridSearchModeOption[]
-  searchMethod: RetrievalSearchMethodEnum
+  searchMethod?: RetrievalSearchMethodEnum
   onRetrievalSearchMethodChange: (value: RetrievalSearchMethodEnum) => void
-  hybridSearchMode: HybridSearchModeEnum
+  hybridSearchMode?: HybridSearchModeEnum
   onHybridSearchModeChange: (value: HybridSearchModeEnum) => void
   weightedScore?: WeightedScore
   onWeightedScoreChange: (value: { value: number[] }) => void
