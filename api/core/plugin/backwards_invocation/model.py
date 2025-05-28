@@ -58,6 +58,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
                         LLMNode.deduct_llm_quota(
                             tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage
                         )
+                    chunk.prompt_messages = []
                     yield chunk
 
             return handle()
@@ -68,7 +69,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
                     model=response.model,
-                    prompt_messages=response.prompt_messages,
+                    prompt_messages=[],
                     system_fingerprint=response.system_fingerprint,
                     delta=LLMResultChunkDelta(
                         index=0,
