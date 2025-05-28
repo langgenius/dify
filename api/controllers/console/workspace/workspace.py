@@ -189,7 +189,7 @@ class BetaConfigWorkspaceApi(Resource):
 
         tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
 
-        db_config = tenant.beta_config_dict  
+        db_config = tenant.beta_config_dict
         param_config = args["beta_config"] or {}
 
         if not db_config:
