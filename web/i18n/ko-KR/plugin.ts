@@ -25,7 +25,7 @@ const translation = {
   },
   source: {
     local: '로컬 패키지 파일',
-    marketplace: '시장',
+    marketplace: '마켓',
     github: '깃허브',
   },
   detailPanel: {
@@ -197,7 +197,7 @@ const translation = {
   endpointsEnabled: '{{num}}개의 엔드포인트 집합이 활성화되었습니다.',
   installFrom: '에서 설치',
   allCategories: '모든 카테고리',
-  submitPlugin: '제출 플러그인',
+  submitPlugin: '플러그인 제출',
   findMoreInMarketplace: 'Marketplace에서 더 알아보기',
   searchCategories: '검색 카테고리',
   search: '검색',
