@@ -1,18 +1,27 @@
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, ClassVar, TypeAlias
+
 from core.variables import SegmentType, Variable
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
+from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
+from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 from factories import variable_factory
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .node_data import VariableAssignerData, WriteMode
 
+_CONV_VAR_UPDATER_FACTORY: TypeAlias = Callable[[], ConversationVariableUpdater]
+
 
 class VariableAssignerNode(BaseNode[VariableAssignerData]):
     _node_data_cls = VariableAssignerData
     _node_type = NodeType.VARIABLE_ASSIGNER
+    _conv_var_updater_factory: ClassVar[_CONV_VAR_UPDATER_FACTORY] = staticmethod(conversation_variable_updater_factory)
 
     @classmethod
     def version(cls) -> str:
@@ -73,7 +82,9 @@ class VariableAssignerNode(BaseNode[VariableAssignerData]):
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", "conversation_id"])
         if not conversation_id:
             raise VariableOperatorNodeError("conversation_id not found")
-        common_helpers.update_conversation_variable(conversation_id=conversation_id.text, variable=updated_variable)
+        conv_var_updater = self._conv_var_updater_factory()
+        conv_var_updater.update(conversation_id=conversation_id.text, variable=updated_variable)
+        conv_var_updater.flush()
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
