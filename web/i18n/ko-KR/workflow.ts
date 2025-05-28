@@ -200,7 +200,7 @@ const translation = {
       code: '코드',
       model: '모델',
       rerankModel: '재정렬 모델',
-      visionVariable: '시력 변수',
+      visionVariable: '비전 변수',
     },
     invalidVariable: '잘못된 변수',
     rerankModelRequired: 'Rerank Model을 켜기 전에 설정에서 모델이 성공적으로 구성되었는지 확인하십시오.',
