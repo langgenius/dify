@@ -25,6 +25,7 @@ export const useWorkflowConfig = <T = WorkflowConfigResponse>(url: string, onSuc
   return useQuery({
     enabled: !!url,
     queryKey: [NAME_SPACE, 'config', url],
+    staleTime: 0,
     queryFn: async () => {
       const data = await get<T>(url)
       onSuccess(data)

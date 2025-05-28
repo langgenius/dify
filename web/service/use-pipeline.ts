@@ -166,6 +166,7 @@ export const useDataSourceList = (enabled: boolean, onSuccess: (v: DataSourceIte
   return useQuery<DataSourceItem[]>({
     enabled,
     queryKey: [NAME_SPACE, 'datasource'],
+    staleTime: 0,
     queryFn: async () => {
       const data = await get<DataSourceItem[]>('/rag/pipelines/datasource-plugins')
       onSuccess(data)
