@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Optional, Union
@@ -155,10 +156,10 @@ class LangfuseSpan(BaseModel):
         description="The status message of the span. Additional field for context of the event. E.g. the error "
         "message of an error event.",
     )
-    input: Optional[Union[str, dict[str, Any], list, None]] = Field(
+    input: Optional[Union[str, Mapping[str, Any], list, None]] = Field(
         default=None, description="The input of the span. Can be any JSON object."
     )
-    output: Optional[Union[str, dict[str, Any], list, None]] = Field(
+    output: Optional[Union[str, Mapping[str, Any], list, None]] = Field(
         default=None, description="The output of the span. Can be any JSON object."
     )
     version: Optional[str] = Field(

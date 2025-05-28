@@ -167,6 +167,54 @@ const translation = {
   documentsDisabled: '{{num}} 문서 사용 안 함 - 30일 이상 비활성 상태',
   allKnowledge: '모든 지식',
   allKnowledgeDescription: '이 작업 영역의 모든 정보를 표시하려면 선택합니다. 워크스페이스 소유자만 모든 기술 자료를 관리할 수 있습니다.',
+  metadata: {
+    createMetadata: {
+      namePlaceholder: '메타데이터 이름 추가',
+      name: '이름',
+      type: '유형',
+      back: '뒤',
+      title: '새 메타데이터',
+    },
+    checkName: {
+      empty: '메타데이터 이름은 비어 있을 수 없습니다.',
+      invalid: '메타데이터 이름은 소문자, 숫자 및 밑줄만 포함할 수 있으며 소문자로 시작해야 합니다.',
+    },
+    batchEditMetadata: {
+      multipleValue: '다중 값',
+      editMetadata: '메타데이터 편집',
+      applyToAllSelectDocument: '선택한 모든 문서에 적용',
+      editDocumentsNum: '{{num}} 개 문서 편집 중',
+      applyToAllSelectDocumentTip: '선택된 모든 문서에 대해 위에서 편집한 모든 메타데이터와 새 메타데이터를 자동으로 생성하십시오. 그렇지 않으면 메타데이터 편집은 해당 문서에만 적용됩니다.',
+    },
+    selectMetadata: {
+      manageAction: '관리하다',
+      newAction: '새 메타데이터',
+      search: '메타데이터 검색',
+    },
+    datasetMetadata: {
+      name: '이름',
+      deleteTitle: '삭제 확인',
+      disabled: '장애인',
+      addMetaData: '메타데이터 추가',
+      values: '{{num}} 값들',
+      namePlaceholder: '메타데이터 이름',
+      rename: '이름 변경',
+      builtInDescription: '내장 메타데이터는 자동으로 추출되고 생성됩니다. 사용하기 전에 활성화해야 하며 편집할 수 없습니다.',
+      deleteContent: '정말 \'{{name}}\' 메타데이터를 삭제하시겠습니까?',
+      description: '이 지식에서 모든 메타데이터를 관리할 수 있습니다. 수정 사항은 모든 문서에 동기화됩니다.',
+      builtIn: '내장형',
+    },
+    documentMetadata: {
+      technicalParameters: '기술 매개변수',
+      startLabeling: '레이블링 시작',
+      metadataToolTip: '메타데이터는 정보 검색의 정확성과 관련성을 향상시키는 중요한 필터 역할을 합니다. 이 문서에 대한 메타데이터를 여기에서 수정하고 추가할 수 있습니다.',
+      documentInformation: '문서 정보',
+    },
+    addMetadata: '메타데이터 추가',
+    metadata: '메타데이터',
+    chooseTime: '시간을 선택하세요...',
+  },
+  embeddingModelNotAvailable: '임베딩 모델을 사용할 수 없습니다.',
 }
 
 export default translation

@@ -191,7 +191,7 @@ const VersionHistoryPanel = () => {
   }, [t, updateWorkflow, resetWorkflowVersionHistory])
 
   return (
-    <div className='flex w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>
+    <div className='flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>
       <div className='flex items-center gap-x-2 px-4 pt-3'>
         <div className='system-xl-semibold flex-1 py-1 text-text-primary'>{t('workflow.versionHistory.title')}</div>
         <Filter
@@ -208,50 +208,51 @@ const VersionHistoryPanel = () => {
           <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
       </div>
-      <div className="relative flex-1 overflow-y-auto px-3 py-2">
-        {(isFetching && !versionHistory?.pages?.length)
-          ? (
-            <Loading />
-          )
-          : (
-            <>
-              {versionHistory?.pages?.map((page, pageNumber) => (
-                page.items?.map((item, idx) => {
-                  const isLast = pageNumber === versionHistory.pages.length - 1 && idx === page.items.length - 1
-                  return <VersionHistoryItem
-                    key={item.id}
-                    item={item}
-                    currentVersion={currentVersion}
-                    latestVersionId={appDetail!.workflow!.id}
-                    onClick={handleVersionClick}
-                    handleClickMenuItem={handleClickMenuItem.bind(null, item)}
-                    isLast={isLast}
-                  />
-                })
-              ))}
-              {hasNextPage && (
-                <div className='absolute bottom-2 left-2 flex p-2'>
-                  <div
-                    className='flex cursor-pointer items-center gap-x-1'
-                    onClick={handleNextPage}
-                  >
-                    <div className='item-center flex justify-center p-0.5'>
-                      {
-                        isFetching
-                          ? <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
-                          : <RiArrowDownDoubleLine className='h-3.5 w-3.5 text-text-accent' />}
-                    </div>
-                    <div className='system-xs-medium-uppercase py-[1px] text-text-accent'>
-                      {t('workflow.common.loadMore')}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0].items.length) && (
-                <Empty onResetFilter={handleResetFilter} />
-              )}
-            </>
-          )}
+      <div className="flex h-0 flex-1 flex-col">
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          {(isFetching && !versionHistory?.pages?.length)
+            ? (
+              <Loading />
+            )
+            : (
+              <>
+                {versionHistory?.pages?.map((page, pageNumber) => (
+                  page.items?.map((item, idx) => {
+                    const isLast = pageNumber === versionHistory.pages.length - 1 && idx === page.items.length - 1
+                    return <VersionHistoryItem
+                      key={item.id}
+                      item={item}
+                      currentVersion={currentVersion}
+                      latestVersionId={appDetail!.workflow!.id}
+                      onClick={handleVersionClick}
+                      handleClickMenuItem={handleClickMenuItem.bind(null, item)}
+                      isLast={isLast}
+                    />
+                  })
+                ))}
+                {!isFetching && (!versionHistory?.pages?.length || !versionHistory.pages[0].items.length) && (
+                  <Empty onResetFilter={handleResetFilter} />
+                )}
+              </>
+            )}
+        </div>
+        {hasNextPage && (
+          <div className='p-2'>
+            <div
+              className='flex cursor-pointer items-center gap-x-1'
+              onClick={handleNextPage}
+            >
+              <div className='item-center flex justify-center p-0.5'>
+                {isFetching
+                  ? <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
+                  : <RiArrowDownDoubleLine className='h-3.5 w-3.5 text-text-accent' />}
+              </div>
+              <div className='system-xs-medium-uppercase py-[1px] text-text-accent'>
+                {t('workflow.common.loadMore')}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       {restoreConfirmOpen && (<RestoreConfirmModal
         isOpen={restoreConfirmOpen}

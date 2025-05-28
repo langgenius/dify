@@ -1,9 +1,4 @@
 html[data-theme="dark"] {
-    --color-premium-yearly-tip-text-background: linear-gradient(91deg, #FDB022 2.18%, #F79009 108.79%);
-    --color-premium-badge-background: linear-gradient(95deg, rgba(103, 111, 131, 0.90) 0%, rgba(73, 84, 100, 0.90) 105.58%), var(--util-colors-gray-gray-200, #18222F);
-    --color-premium-text-background: linear-gradient(92deg, rgba(249, 250, 251, 0.95) 0%, rgba(233, 235, 240, 0.95) 97.78%);
-    --color-price-enterprise-background: linear-gradient(180deg, rgba(185, 211, 234, 0.00) 0%, rgba(180, 209, 234, 0.92) 100%);
-    --color-grid-mask-background: linear-gradient(0deg, rgba(0, 0, 0, 0.00) 0%, rgba(24, 24, 25, 0.1) 62.25%, rgba(24, 24, 25, 0.10) 100%);
     --color-chatbot-bg: linear-gradient(180deg,
             rgba(34, 34, 37, 0.9) 0%,
             rgba(29, 29, 32, 0.9) 90.48%);
@@ -60,5 +55,12 @@ html[data-theme="dark"] {
     --mask-top2bottom-gray-50-to-transparent: linear-gradient(180deg,
             rgba(24, 24, 27, 0.08) 0%,
             rgba(0, 0, 0, 0) 100%);
-    --color-line-divider-bg: linear-gradient(90deg, rgba(200, 206, 218, 0.14) 0%, rgba(0, 0, 0, 0) 100%, );
+    --color-line-divider-bg: linear-gradient(90deg, rgba(200, 206, 218, 0.14) 0%, rgba(0, 0, 0, 0) 100%);
+    --color-access-app-icon-mask-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.03) 100%);
+    --color-premium-yearly-tip-text-background: linear-gradient(91deg, #FDB022 2.18%, #F79009 108.79%);
+    --color-premium-badge-background: linear-gradient(95deg, rgba(103, 111, 131, 0.90) 0%, rgba(73, 84, 100, 0.90) 105.58%), var(--util-colors-gray-gray-200, #18222F);
+    --color-premium-text-background: linear-gradient(92deg, rgba(249, 250, 251, 0.95) 0%, rgba(233, 235, 240, 0.95) 97.78%);
+    --color-premium-badge-border-highlight-color: #ffffff33;
+    --color-price-enterprise-background: linear-gradient(180deg, rgba(185, 211, 234, 0.00) 0%, rgba(180, 209, 234, 0.92) 100%);
+    --color-grid-mask-background: linear-gradient(0deg, rgba(0, 0, 0, 0.00) 0%, rgba(24, 24, 25, 0.1) 62.25%, rgba(24, 24, 25, 0.10) 100%);
 }

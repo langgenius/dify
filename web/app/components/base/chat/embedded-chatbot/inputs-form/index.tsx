@@ -22,7 +22,12 @@ const InputsFormNode = ({
     currentConversationId,
     themeBuilder,
     handleStartChat,
+    allInputsHidden,
+    inputsForms,
   } = useEmbeddedChatbotContext()
+
+  if (allInputsHidden || inputsForms.length === 0)
+    return null
 
   return (
     <div className={cn('mb-6 flex flex-col items-center px-4 pt-6', isMobile && 'mb-4 pt-4')}>

@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -15,6 +16,11 @@ from fields.installed_app_fields import installed_app_list_fields
 from libs.login import login_required
 from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
+from services.app_service import AppService
+from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import FeatureService
+
+logger = logging.getLogger(__name__)
 
 
 class InstalledAppsListApi(Resource):
@@ -48,6 +54,21 @@ class InstalledAppsListApi(Resource):
             for installed_app in installed_apps
             if installed_app.app is not None
         ]
+
+        # filter out apps that user doesn't have access to
+        if FeatureService.get_system_features().webapp_auth.enabled:
+            user_id = current_user.id
+            res = []
+            for installed_app in installed_app_list:
+                app_code = AppService.get_app_code_by_id(str(installed_app["app"].id))
+                if EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
+                    user_id=user_id,
+                    app_code=app_code,
+                ):
+                    res.append(installed_app)
+            installed_app_list = res
+            logger.debug(f"installed_app_list: {installed_app_list}, user_id: {user_id}")
+
         installed_app_list.sort(
             key=lambda app: (
                 -app["is_pinned"],
@@ -66,7 +87,7 @@ class InstalledAppsListApi(Resource):
         parser.add_argument("app_id", type=str, required=True, help="Invalid app_id")
         args = parser.parse_args()
 
-        recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args["app_id"]).first()
+        recommended_app = db.session.query(RecommendedApp).filter(RecommendedApp.app_id == args["app_id"]).first()
         if recommended_app is None:
             raise NotFound("App not found")
 
@@ -79,9 +100,11 @@ class InstalledAppsListApi(Resource):
         if not app.is_public:
             raise Forbidden("You can't install a non-public app")
 
-        installed_app = InstalledApp.query.filter(
-            and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id)
-        ).first()
+        installed_app = (
+            db.session.query(InstalledApp)
+            .filter(and_(InstalledApp.app_id == args["app_id"], InstalledApp.tenant_id == current_tenant_id))
+            .first()
+        )
 
         if installed_app is None:
             # todo: position

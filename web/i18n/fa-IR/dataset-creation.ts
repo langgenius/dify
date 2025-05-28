@@ -87,6 +87,14 @@ const translation = {
       useSitemap: 'از نقشه سایت استفاده کنید',
       jinaReaderNotConfiguredDescription: 'با وارد کردن کلید API رایگان خود برای دسترسی، Jina Reader را راه اندازی کنید.',
       useSitemapTooltip: 'نقشه سایت را دنبال کنید تا سایت را بخزید. در غیر این صورت، Jina Reader بر اساس ارتباط صفحه به صورت تکراری می خزد و صفحات کمتر اما با کیفیت بالاتر را به دست می آورد.',
+      watercrawlDoc: 'مستندات واتر کراول',
+      configureFirecrawl: 'تنظیم Firecrawl',
+      waterCrawlNotConfiguredDescription: 'برای استفاده از Watercrawl، آن را با کلید API پیکربندی کنید.',
+      waterCrawlNotConfigured: 'Watercrawl پیکربندی نشده است',
+      configureJinaReader: 'پیکربندی خواننده جینا',
+      watercrawlDocLink: 'https://docs.dify.ai/fa/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
+      watercrawlTitle: 'محتوای وب را با واترکرال استخراج کنید',
+      configureWatercrawl: 'تنظیم واترکراول',
     },
     cancel: 'لغو',
   },
@@ -199,6 +207,11 @@ const translation = {
     learnMore: 'بیشتر بدانید',
     description: 'در حال حاضر، پایگاه دانش Dify فقط منابع داده محدودی دارد. کمک به یک منبع داده به پایگاه دانش Dify راهی فوق العاده برای کمک به افزایش انعطاف پذیری و قدرت پلتفرم برای همه کاربران است. راهنمای مشارکت ما شروع کار را آسان می کند. لطفا برای کسب اطلاعات بیشتر روی لینک زیر کلیک کنید.',
     title: 'به منابع داده دیگر متصل شوید؟',
+  },
+  watercrawl: {
+    getApiKeyLinkText: 'کلید API خود را از watercrawl.dev دریافت کنید',
+    configWatercrawl: 'تنظیم واترکراول',
+    apiKeyPlaceholder: 'کلید API از watercrawl.dev',
   },
 }
 

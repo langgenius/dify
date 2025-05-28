@@ -44,7 +44,7 @@ import {
   useShortcuts,
   useWorkflow,
   useWorkflowReadOnly,
-  useWorkflowUpdate,
+  useWorkflowRefreshDraft,
 } from './hooks'
 import CustomNode from './nodes'
 import CustomNoteNode from './note-node'
@@ -160,7 +160,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
     if (document.visibilityState === 'hidden')
       syncWorkflowDraftWhenPageClose()

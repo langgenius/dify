@@ -11,7 +11,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 <div>
   ### Authentication
 
-  Service API of Dify authenticates using an `API-Key`.
+  Service API authenticates using an `API-Key`.
 
   It is suggested that developers store the `API-Key` in the backend instead of sharing or storing it in the client side to avoid the leakage of the `API-Key`, which may lead to property loss.
 
@@ -68,7 +68,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         Processing rules
-          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
+          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom / hierarchical
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
             - <code>pre_processing_rules</code> (array[object]) Preprocessing rules
               - <code>id</code> (string) Unique identifier for the preprocessing rule
@@ -203,7 +203,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         - <code>doc_language</code> In Q&A mode, specify the language of the document, for example: <code>English</code>, <code>Chinese</code>
 
         - <code>process_rule</code> Processing rules
-          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
+          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom / hierarchical
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
             - <code>pre_processing_rules</code> (array[object]) Preprocessing rules
               - <code>id</code> (string) Unique identifier for the preprocessing rule
@@ -314,7 +314,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index technique (optional)
-        If this is not set, embedding_model, embedding_provider_name and retrieval_model will be set to null
+        If this is not set, embedding_model, embedding_model_provider and retrieval_model will be set to null
           - <code>high_quality</code> High quality
           - <code>economy</code> Economy
       </Property>
@@ -338,7 +338,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='embedding_model' type='str' key='embedding_model'>
         Embedding model name (optional)
       </Property>
-      <Property name='embedding_provider_name' type='str' key='embedding_provider_name'>
+      <Property name='embedding_model_provider' type='str' key='embedding_model_provider'>
         Embedding model provider name (optional)
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
@@ -783,7 +783,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         Processing rules
-          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
+          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom / hierarchical
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
             - <code>pre_processing_rules</code> (array[object]) Preprocessing rules
               - <code>id</code> (string) Unique identifier for the preprocessing rule
@@ -885,7 +885,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         Processing rules
-          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
+          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom / hierarchical
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
             - <code>pre_processing_rules</code> (array[object]) Preprocessing rules
               - <code>id</code> (string) Unique identifier for the preprocessing rule
@@ -1040,10 +1040,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -1335,10 +1333,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -1620,10 +1616,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
