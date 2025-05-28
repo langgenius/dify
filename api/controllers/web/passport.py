@@ -136,7 +136,7 @@ def exchange_token_for_existing_web_user(app_code: str, user_id: str):
             app_id=app_model.id,
             type="browser",
             is_anonymous=True,
-            session_id=generate_session_id(),
+            session_id=user_id,
         )
         db.session.add(end_user)
         db.session.commit()
