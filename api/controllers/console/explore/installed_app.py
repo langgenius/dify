@@ -60,9 +60,12 @@ class InstalledAppsListApi(Resource):
             user_id = current_user.id
             res = []
             app_ids = [installed_app["app"].id for installed_app in installed_app_list]
-            access_modes = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids)
+            webapp_settings = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids)
             for installed_app in installed_app_list:
-                if access_modes.get(installed_app["app"].id).access_mode == "sso_verified":
+                webapp_setting = webapp_settings.get(installed_app["app"].id)
+                if not webapp_setting:
+                    continue
+                if webapp_setting.access_mode == "sso_verified":
                     continue
                 app_code = AppService.get_app_code_by_id(str(installed_app["app"].id))
                 if EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(
