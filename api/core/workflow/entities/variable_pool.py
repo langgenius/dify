@@ -30,9 +30,11 @@ class VariablePool(BaseModel):
     # TODO: This user inputs is not used for pool.
     user_inputs: Mapping[str, Any] = Field(
         description="User inputs",
+        default_factory=dict,
     )
     system_variables: Mapping[SystemVariableKey, Any] = Field(
         description="System variables",
+        default_factory=dict,
     )
     environment_variables: Sequence[Variable] = Field(
         description="Environment variables.",
@@ -43,28 +45,7 @@ class VariablePool(BaseModel):
         default_factory=list,
     )
 
-    def __init__(
-        self,
-        *,
-        system_variables: Mapping[SystemVariableKey, Any] | None = None,
-        user_inputs: Mapping[str, Any] | None = None,
-        environment_variables: Sequence[Variable] | None = None,
-        conversation_variables: Sequence[Variable] | None = None,
-        **kwargs,
-    ):
-        environment_variables = environment_variables or []
-        conversation_variables = conversation_variables or []
-        user_inputs = user_inputs or {}
-        system_variables = system_variables or {}
-
-        super().__init__(
-            system_variables=system_variables,
-            user_inputs=user_inputs,
-            environment_variables=environment_variables,
-            conversation_variables=conversation_variables,
-            **kwargs,
-        )
-
+    def model_post_init(self, context: Any, /) -> None:
         for key, value in self.system_variables.items():
             self.add((SYSTEM_VARIABLE_NODE_ID, key.value), value)
         # Add environment variables to the variable pool
