@@ -59,6 +59,7 @@ def start_authorization(
     metadata: Optional[OAuthMetadata],
     client_information: OAuthClientInformation,
     redirect_url: str,
+    provider_id: str,
 ) -> tuple[str, str]:
     """Begins the authorization flow."""
     response_type = "code"
@@ -84,7 +85,7 @@ def start_authorization(
         "code_challenge": code_challenge,
         "code_challenge_method": code_challenge_method,
         "redirect_uri": redirect_url,
-        "state": "/tools?provider_id=" + client_information.client_id,
+        "state": provider_id,
     }
 
     authorization_url = f"{authorization_url}?{urllib.parse.urlencode(params)}"
@@ -229,6 +230,7 @@ def auth(
         metadata,
         client_information,
         provider.redirect_url,
+        provider.provider_id,
     )
 
     provider.save_code_verifier(code_verifier)

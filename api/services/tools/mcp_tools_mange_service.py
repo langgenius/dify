@@ -31,7 +31,7 @@ class MCPToolManageService:
     @staticmethod
     def create_mcp_provider(
         tenant_id: str, name: str, server_url: str, user_id: str, icon: str, icon_type: str, icon_background: str
-    ) -> dict:
+    ) -> ToolProviderApiEntity:
         existing_provider = (
             db.session.query(MCPToolProvider)
             .filter(
@@ -58,7 +58,7 @@ class MCPToolManageService:
         )
         db.session.add(mcp_tool)
         db.session.commit()
-        return {"result": "success"}
+        return ToolTransformService.mcp_provider_to_user_provider(mcp_tool)
 
     @staticmethod
     def retrieve_mcp_tools(tenant_id: str) -> list[ToolProviderApiEntity]:
