@@ -358,7 +358,7 @@ class AgentNode(ToolNode):
         if model_schema.features:
             for feature in model_schema.features[:]:  # Create a copy to safely modify during iteration
                 try:
-                    AgentOldVersionModelFeatures(feature)  # Try to create enum member from value
+                    AgentOldVersionModelFeatures(feature.value)  # Try to create enum member from value
                 except ValueError:
                     model_schema.features.remove(feature)
         return model_schema
