@@ -37,7 +37,7 @@ const translation = {
       title: 'Upload file',
       button: 'Drag and drop file or folder, or',
       browse: 'Browse',
-      tip: 'Supports {{supportTypes}}. Max {{size}}MB each.',
+      tip: 'Supports {{supportTypes}}. Max {{batchCount}} in a batch and {{size}} MB each.',
       validation: {
         typeError: 'File type not supported',
         size: 'File too large. Maximum is {{size}}MB',

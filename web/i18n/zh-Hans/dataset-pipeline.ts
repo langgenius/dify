@@ -49,6 +49,7 @@ const translation = {
   },
   testRun: {
     title: '测试运行',
+    tooltip: '在测试运行模式下，每次只能上传一个文件，便于调试和观察。',
     steps: {
       dataSource: '数据源',
       documentProcessing: '文档处理',

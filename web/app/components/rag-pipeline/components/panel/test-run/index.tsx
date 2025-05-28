@@ -18,6 +18,8 @@ import { useTranslation } from 'react-i18next'
 import { usePipelineRun } from '../../../hooks'
 import type { Datasource } from './types'
 import { DatasourceType } from '@/models/pipeline'
+import { TransferMethod } from '@/types/app'
+import Tooltip from '@/app/components/base/tooltip'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
@@ -96,12 +98,14 @@ const TestRunPanel = () => {
     if (datasource.type === DatasourceType.localFile) {
       const { id, name, type, size, extension, mime_type } = fileList[0].file
       const documentInfo = {
-        upload_file_id: id,
+        related_id: id,
         name,
         type,
         size,
         extension,
         mime_type,
+        url: '',
+        transfer_method: TransferMethod.local_file,
       }
       datasourceInfoList.push(documentInfo)
     }
@@ -140,8 +144,12 @@ const TestRunPanel = () => {
         <RiCloseLine className='size-4 text-text-tertiary' />
       </button>
       <div className='flex flex-col gap-y-0.5 px-3 pb-2 pt-3.5'>
-        <div className='system-md-semibold-uppercase flex items-center justify-between pl-1 pr-8 text-text-primary'>
-          {t('datasetPipeline.testRun.title')}
+        <div className='flex items-center gap-x-1 pl-1 pr-8'>
+          <span className='system-md-semibold-uppercase text-text-primary'>{t('datasetPipeline.testRun.title')}</span>
+          <Tooltip
+            popupContent={t('datasetPipeline.testRun.tooltip')}
+            popupClassName='max-w-[240px]'
+          />
         </div>
         <StepIndicator steps={steps} currentStep={currentStep} />
       </div>

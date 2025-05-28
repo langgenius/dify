@@ -25,6 +25,7 @@ import ProcessDocuments from './process-documents'
 import ChunkPreview from './preview/chunk-preview'
 import Processing from './processing'
 import { DatasourceType } from '@/models/pipeline'
+import { TransferMethod } from '@/types/app'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
@@ -137,12 +138,14 @@ const TestRunPanel = () => {
     if (datasource.type === DatasourceType.localFile) {
       const { id, name, type, size, extension, mime_type } = previewFile.current as File
       const documentInfo = {
-        upload_file_id: id,
+        related_id: id,
         name,
         type,
         size,
         extension,
         mime_type,
+        url: '',
+        transfer_method: TransferMethod.local_file,
       }
       datasourceInfoList.push(documentInfo)
     }
@@ -183,12 +186,14 @@ const TestRunPanel = () => {
       fileList.forEach((file) => {
         const { id, name, type, size, extension, mime_type } = file.file
         const documentInfo = {
-          upload_file_id: id,
+          related_id: id,
           name,
           type,
           size,
           extension,
           mime_type,
+          url: '',
+          transfer_method: TransferMethod.local_file,
         }
         datasourceInfoList.push(documentInfo)
       })

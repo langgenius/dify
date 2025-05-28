@@ -49,6 +49,7 @@ const translation = {
   },
   testRun: {
     title: 'Test Run',
+    tooltip: 'In Test Run mode, only one file upload at a time is allowed for easier debugging and observation.',
     steps: {
       dataSource: 'Data Source',
       documentProcessing: 'Document Processing',
