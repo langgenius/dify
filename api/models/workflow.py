@@ -181,6 +181,24 @@ class Workflow(Base):
 
     @property
     def graph_dict(self) -> Mapping[str, Any]:
+        # TODO(QuantumGhost): Consider caching `graph_dict` to avoid repeated JSON decoding.
+        #
+        # Using `functools.cached_property` could help, but some code in the codebase may
+        # modify the returned dict, which can cause issues elsewhere.
+        #
+        # For example, changing this property to a cached property led to errors like the
+        # following when single stepping an `Iteration` node:
+        #
+        #     Root node id 1748401971780start not found in the graph
+        #
+        # There is currently no standard way to make a dict deeply immutable in Python,
+        # and tracking modifications to the returned dict is difficult. For now, we leave
+        # the code as-is to avoid these issues.
+        #
+        # Currently, the following functions / methods would mutate the returned dict:
+        #
+        # - `_get_graph_and_variable_pool_of_single_iteration`.
+        # - `_get_graph_and_variable_pool_of_single_loop`.
         return json.loads(self.graph) if self.graph else {}
 
     @property
