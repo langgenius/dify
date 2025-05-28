@@ -129,7 +129,7 @@ class WebAppAuthService:
             "app_code": site.code,
             "user_id": account.id,
             "end_user_id": end_user_id,
-            "token_source": "webapp",
+            "token_source": "enterprise_login",
             "exp": exp,
         }
 
