@@ -28,7 +28,7 @@ const ProviderList = () => {
 
   const searchParams = useSearchParams()
   const authCode = searchParams.get('code') || ''
-  const providerID = decodeURIComponent(searchParams.get('state') || '').split('provider_id=')[1] || ''
+  const providerID = searchParams.get('state') || ''
 
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: authCode && providerID ? 'mcp' : 'builtin',

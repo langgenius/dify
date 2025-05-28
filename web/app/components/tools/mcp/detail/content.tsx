@@ -194,7 +194,7 @@ const MCPDetailContent: FC<Props> = ({
             </div>
           </>
         )}
-        {!isGettingTools && !toolList.length && (
+        {detail.is_team_authorization && !isGettingTools && !toolList.length && (
           <div className='flex h-full w-full flex-col items-center justify-center'>
             <div className='system-sm-regular mb-3 text-text-tertiary'>{t('tools.mcp.toolsEmpty')}</div>
             <Button

@@ -41,7 +41,7 @@ const MCPList = ({
 }: Props) => {
   const searchParams = useSearchParams()
   const authCode = searchParams.get('code') || ''
-  const providerID = decodeURIComponent(searchParams.get('state') || '').split('provider_id=')[1] || ''
+  const providerID = searchParams.get('state') || ''
 
   const { data: list = [], refetch } = useAllMCPTools()
   const { mutateAsync: authorizeMcp } = useAuthorizeMCP()
@@ -92,9 +92,9 @@ const MCPList = ({
   }
 
   useEffect(() => {
-    if (authCode && providerID)
+    if (authCode && providerID && list.length > 0)
       handleUpdateAuthorization(providerID, authCode)
-  }, [authCode, providerID])
+  }, [authCode, providerID, list])
 
   return (
     <>
