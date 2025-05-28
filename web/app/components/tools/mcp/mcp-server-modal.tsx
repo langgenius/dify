@@ -115,6 +115,7 @@ const MCPServerModal = ({
                 <MCPServerParamItem
                   key={paramItem.variable}
                   data={paramItem}
+                  value={params[paramItem.variable] || ''}
                   onChange={value => handleParamChange(paramItem.variable, value)}
                 />
               ))}

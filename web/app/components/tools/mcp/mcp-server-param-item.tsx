@@ -5,11 +5,13 @@ import Textarea from '@/app/components/base/textarea'
 
 type Props = {
   data?: any
+  value: string
   onChange: (value: string) => void
 }
 
 const MCPServerParamItem = ({
   data,
+  value,
   onChange,
 }: Props) => {
   const { t } = useTranslation()
@@ -24,7 +26,7 @@ const MCPServerParamItem = ({
       </div>
       <Textarea
         className='h-8 resize-none'
-        value={data.value}
+        value={value}
         placeholder={t('tools.mcp.server.modal.parametersPlaceholder')}
         onChange={e => onChange(e.target.value)}
       ></Textarea>
