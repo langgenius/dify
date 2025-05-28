@@ -1,18 +1,17 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from flask import request
-from flask_restful import Resource
-from werkzeug.exceptions import NotFound, Unauthorized
-
 from configs import dify_config
 from controllers.web import api
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
+from flask import request
+from flask_restful import Resource
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from werkzeug.exceptions import NotFound, Unauthorized
 
 
 class PassportResource(Resource):
@@ -95,23 +94,14 @@ class PassportResource(Resource):
 api.add_resource(PassportResource, "/passport")
 
 
-def decode_enterprise_webapp_user_id(auth_header: str | None):
+def decode_enterprise_webapp_user_id(jwt_token: str | None):
     """
     Decode the enterprise user session from the Authorization header.
     """
-    if not auth_header:
+    if not jwt_token:
         return None
 
-    if " " not in auth_header:
-        raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
-    auth_scheme, tk = auth_header.split(None, 1)
-    auth_scheme = auth_scheme.lower()
-
-    if auth_scheme != "bearer":
-        raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
-    decoded = PassportService().verify(tk)
+    decoded = PassportService().verify(jwt_token)
     source = decoded.get("token_source")
     if not source or source != "enterprise_login":
         raise Unauthorized("Invalid token source. Expected 'enterprise_login'.")
