@@ -5,16 +5,13 @@ from typing import Any, Optional, cast
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
-from controllers.web.error import WebAppAuthAccessDeniedError
 from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
 from models.account import Account, AccountStatus
 from models.model import App, EndUser, Site
-from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
-from services.feature_service import FeatureService
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 
 
@@ -106,19 +103,6 @@ class WebAppAuthService:
         db.session.commit()
 
         return end_user
-
-    @classmethod
-    def _validate_user_accessibility(cls, account: Account, app_code: str):
-        """Check if the user is allowed to access the app."""
-        system_features = FeatureService.get_system_features()
-        if system_features.webapp_auth.enabled:
-            app_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
-
-            if (
-                app_settings.access_mode != "public"
-                and not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(account.id, app_code=app_code)
-            ):
-                raise WebAppAuthAccessDeniedError()
 
     @classmethod
     def _get_account_jwt_token(cls, account: Account, site: Site, end_user_id: str) -> str:
