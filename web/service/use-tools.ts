@@ -157,7 +157,7 @@ export const useMCPTools = (providerID: string) => {
   return useQuery({
     enabled: !!providerID,
     queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
-    queryFn: () => get<Tool[]>(`/workspaces/current/tool-provider/mcp/tools/${providerID}`),
+    queryFn: () => get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/tools/${providerID}`),
   })
 }
 export const useInvalidateMCPTools = () => {
@@ -172,7 +172,7 @@ export const useInvalidateMCPTools = () => {
 
 export const useUpdateMCPTools = (providerID: string) => {
   return useMutation({
-    mutationFn: () => get<Tool[]>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
+    mutationFn: () => get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
   })
 }
 
