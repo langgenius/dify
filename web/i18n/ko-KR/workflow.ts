@@ -463,7 +463,7 @@ const translation = {
       metadata: {
         options: {
           disabled: {
-            title: '장애인',
+            title: '사용안함',
             subTitle: '메타데이터 필터링을 활성화하지 않음',
           },
           automatic: {
