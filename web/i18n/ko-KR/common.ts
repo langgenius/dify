@@ -193,8 +193,6 @@ const translation = {
     myAccount: '내 계정',
     studio: '디파이 스튜디오',
     account: '계정',
-<<<<<<< HEAD
-=======
     deletePrivacyLink: '개인 정보 보호 정책.',
     deleteSuccessTip: '계정 삭제를 완료하는 데 시간이 필요합니다. 모든 작업이 완료되면 이메일로 연락드리겠습니다.',
     deleteLabel: '확인하려면 아래 이메일을 입력하십시오.',
@@ -210,7 +208,6 @@ const translation = {
     workspaceIcon: '작업 공간 아이콘',
     editWorkspaceInfo: '작업 공간 정보 편집',
     workspaceName: '작업 공간 이름',
->>>>>>> f233a64eb56213a7c74960284b424928d857d38a
   },
   members: {
     team: '팀',
