@@ -1057,6 +1057,75 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+  method='GET'
+  title='ドキュメントセグメントの詳細を表示'
+  name='#view_document_segment'
+/>
+<Row>
+  <Col>
+    指定されたナレッジベース内の特定のドキュメントセグメントの詳細を表示します
+
+    ### パス
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        ナレッジベースID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        ドキュメントID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        セグメントID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="リクエスト"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="レスポンス">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "セグメントID",
+        "position": 2,
+        "document_id": "ドキュメントID",
+        "content": "セグメント内容テキスト",
+        "sign_content": "署名内容テキスト",
+        "answer": "回答内容(Q&Aモードの場合)",
+        "word_count": 470,
+        "tokens": 382,
+        "keywords": ["キーワード1", "キーワード2"],
+        "index_node_id": "インデックスノードID",
+        "index_node_hash": "インデックスノードハッシュ",
+        "hit_count": 0,
+        "enabled": true,
+        "status": "completed",
+        "created_by": "作成者ID",
+        "created_at": 作成タイムスタンプ,
+        "updated_at": 更新タイムスタンプ,
+        "indexing_at": インデックス作成タイムスタンプ,
+        "completed_at": 完了タイムスタンプ,
+        "error": null,
+        "child_chunks": []
+      },
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
   method='DELETE'
   title='ドキュメント内のチャンクを削除'
   name='#delete_segment'
@@ -1100,7 +1169,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 <hr className='ml-0 mr-0' />
 
 <Heading
-  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='POST'
   title='ドキュメント内のチャンクを更新'
   name='#update_segment'

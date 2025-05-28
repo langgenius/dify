@@ -1351,6 +1351,75 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+  method='GET'
+  title='查看文档分段详情'
+  name='#view_document_segment'
+/>
+<Row>
+  <Col>
+    查看指定知识库中特定文档的分段详情
+
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "分段唯一ID",
+        "position": 2,
+        "document_id": "所属文档ID",
+        "content": "分段内容文本",
+        "sign_content": "签名内容文本",
+        "answer": "答案内容(如果有)",
+        "word_count": 470,
+        "tokens": 382,
+        "keywords": ["关键词1", "关键词2"],
+        "index_node_id": "索引节点ID",
+        "index_node_hash": "索引节点哈希值",
+        "hit_count": 0,
+        "enabled": true,
+        "status": "completed",
+        "created_by": "创建者ID",
+        "created_at": 创建时间戳,
+        "updated_at": 更新时间戳,
+        "indexing_at": 索引时间戳,
+        "completed_at": 完成时间戳,
+        "error": null,
+        "child_chunks": []
+      },
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
   method='POST'
   title='更新文档分段'
   name='#update_segment'

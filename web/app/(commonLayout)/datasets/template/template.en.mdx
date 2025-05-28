@@ -1300,6 +1300,76 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+  method='GET'
+  title='Get a Chunk Details in a Document'
+  name='#view_document_chunk'
+/>
+<Row>
+  <Col>
+    Get details of a specific document segment in the specified knowledge base
+
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge Base ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        Segment ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "chunk_id",
+        "position": 2,
+        "document_id": "document_id",
+        "content": "Segment content text",
+        "sign_content": "Signature content text",
+        "answer": "Answer content (if in Q&A mode)",
+        "word_count": 470,
+        "tokens": 382,
+        "keywords": ["keyword1", "keyword2"],
+        "index_node_id": "index_node_id",
+        "index_node_hash": "index_node_hash",
+        "hit_count": 0,
+        "enabled": true,
+        "status": "completed",
+        "created_by": "creator_id",
+        "created_at": creation_timestamp,
+        "updated_at": update_timestamp,
+        "indexing_at": indexing_timestamp,
+        "completed_at": completion_timestamp,
+        "error": null,
+        "child_chunks": []
+      },
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='DELETE'
   title='Delete a Chunk in a Document'
   name='#delete_segment'
