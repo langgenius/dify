@@ -64,19 +64,20 @@ from core.workflow.graph_engine.entities.event import (
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App
 from models.workflow import Workflow
 from services.workflow_draft_variable_service import (
-    WorkflowDraftVariableService,
-    should_save_output_variables_for_draft,
+    DraftVariableSaver,
 )
 
 
 class WorkflowBasedAppRunner(AppRunner):
-    def __init__(self, queue_manager: AppQueueManager):
+    def __init__(self, queue_manager: AppQueueManager, variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER) -> None:
         self.queue_manager = queue_manager
+        self._variable_loader = variable_loader
 
     def _get_app_id(self) -> str:
         raise NotImplementedError("not implemented")
@@ -182,6 +183,13 @@ class WorkflowBasedAppRunner(AppRunner):
         except NotImplementedError:
             variable_mapping = {}
 
+        load_into_variable_pool(
+            variable_loader=self._variable_loader,
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+        )
+
         WorkflowEntry.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
@@ -271,6 +279,12 @@ class WorkflowBasedAppRunner(AppRunner):
             )
         except NotImplementedError:
             variable_mapping = {}
+        load_into_variable_pool(
+            self._variable_loader,
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+        )
 
         WorkflowEntry.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
@@ -385,23 +399,17 @@ class WorkflowBasedAppRunner(AppRunner):
                     in_loop_id=event.in_loop_id,
                 )
             )
-
-            # FIXME(QuantumGhost): rely on private state of queue_manager is not ideal.
-            should_save = should_save_output_variables_for_draft(
-                self.queue_manager._invoke_from,
-                loop_id=event.in_loop_id,
-                iteration_id=event.in_iteration_id,
-            )
-            if should_save and outputs is not None:
-                with Session(bind=db.engine) as session:
-                    draft_var_srv = WorkflowDraftVariableService(session)
-                    draft_var_srv.save_output_variables(
-                        app_id=self._get_app_id(),
-                        node_id=event.node_id,
-                        node_type=event.node_type,
-                        output=outputs,
-                    )
-                    session.commit()
+            with Session(bind=db.engine) as session, session.begin():
+                draft_var_saver = DraftVariableSaver(
+                    session=session,
+                    app_id=self._get_app_id(),
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    # FIXME(QuantumGhost): rely on private state of queue_manager is not ideal.
+                    invoke_from=self.queue_manager._invoke_from,
+                    enclosing_node_id=event.in_loop_id or event.in_iteration_id or None,
+                )
+                draft_var_saver.save(outputs)
 
         elif isinstance(event, NodeRunFailedEvent):
             self._publish_event(
@@ -717,3 +725,11 @@ class WorkflowBasedAppRunner(AppRunner):
 
     def _publish_event(self, event: AppQueueEvent) -> None:
         self.queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
+
+
+def _remove_first_element_from_variable_string(key: str) -> str:
+    """
+    Remove the first element from the prefix.
+    """
+    prefix, remaining = key.split(".", maxsplit=1)
+    return remaining

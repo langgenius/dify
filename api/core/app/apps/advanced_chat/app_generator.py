@@ -29,12 +29,14 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
+from services.workflow_draft_variable_service import DraftVarLoader
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +262,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
+        var_loader = DraftVarLoader(
+            engine=db.engine,
+            app_id=application_generate_entity.app_config.app_id,
+        )
 
         return self._generate(
             workflow=workflow,
@@ -270,6 +276,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             conversation=None,
             stream=streaming,
+            variable_loader=var_loader,
         )
 
     def single_loop_generate(
@@ -335,6 +342,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
+        var_loader = DraftVarLoader(
+            engine=db.engine,
+            app_id=application_generate_entity.app_config.app_id,
+        )
 
         return self._generate(
             workflow=workflow,
@@ -345,6 +356,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             conversation=None,
             stream=streaming,
+            variable_loader=var_loader,
         )
 
     def _generate(
@@ -358,6 +370,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         conversation: Optional[Conversation] = None,
         stream: bool = True,
+        variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         """
         Generate App response.
@@ -410,6 +423,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 conversation_id=conversation.id,
                 message_id=message.id,
                 context=context,
+                variable_loader=variable_loader,
             )
 
         worker_thread = threading.Thread(target=worker_with_context)
@@ -439,6 +453,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         conversation_id: str,
         message_id: str,
         context: contextvars.Context,
+        variable_loader: VariableLoader,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -480,6 +495,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     conversation=conversation,
                     message=message,
                     dialogue_count=self._dialogue_count,
+                    variable_loader=variable_loader,
                 )
 
                 runner.run()
