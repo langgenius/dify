@@ -75,11 +75,7 @@ export const useInvalidateAllMCPTools = () => {
   return useInvalid(useAllMCPToolsKey)
 }
 
-export const useCreateMCP = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
+export const useCreateMCP = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'create-mcp'],
     mutationFn: (payload: {
@@ -89,13 +85,12 @@ export const useCreateMCP = ({
       icon: string
       icon_background?: string | null
     }) => {
-      return post('workspaces/current/tool-provider/mcp', {
+      return post<ToolWithProvider>('workspaces/current/tool-provider/mcp', {
         body: {
           ...payload,
         },
       })
     },
-    onSuccess,
   })
 }
 
@@ -170,9 +165,9 @@ export const useInvalidateMCPTools = () => {
   }
 }
 
-export const useUpdateMCPTools = (providerID: string) => {
+export const useUpdateMCPTools = () => {
   return useMutation({
-    mutationFn: () => get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
+    mutationFn: (providerID: string) => get<{ tools: Tool[] }>(`/workspaces/current/tool-provider/mcp/update/${providerID}`),
   })
 }
 

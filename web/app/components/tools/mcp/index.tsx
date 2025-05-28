@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import NewMCPCard from './create-card'
 import MCPCard from './provider-card'
 import MCPDetailPanel from './detail/provider-detail'
-import { useAllMCPTools, useInvalidateAllMCPTools } from '@/service/use-tools'
+import { useAllMCPTools, useAuthorizeMCP, useInvalidateAllMCPTools, useInvalidateMCPTools, useUpdateMCPTools } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
@@ -34,6 +34,9 @@ const MCPList = ({
 }: Props) => {
   const { data: list = [] } = useAllMCPTools()
   const invalidateMCPList = useInvalidateAllMCPTools()
+  const { mutateAsync: authorizeMcp } = useAuthorizeMCP()
+  const { mutateAsync: updateTools } = useUpdateMCPTools()
+  const invalidateMCPTools = useInvalidateMCPTools()
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
@@ -43,7 +46,22 @@ const MCPList = ({
     })
   }, [list, searchText])
 
-  const [currentProvider, setCurrentProvider] = useState<ToolWithProvider>()
+  const [currentProviderID, setCurrentProviderID] = useState<string>()
+
+  const currentProvider = useMemo(() => {
+    return list.find(provider => provider.id === currentProviderID)
+  }, [list, currentProviderID])
+
+  const handleCreate = async (provider: ToolWithProvider) => {
+    invalidateMCPList()
+    setCurrentProviderID(provider.id)
+    await authorizeMcp({
+      provider_id: provider.id,
+      server_url: provider.server_url!,
+    })
+    await updateTools(provider.id)
+    invalidateMCPTools(provider.id)
+  }
 
   return (
     <>
@@ -53,13 +71,13 @@ const MCPList = ({
           !list.length && 'h-[calc(100vh_-_136px)] overflow-hidden',
         )}
       >
-        <NewMCPCard handleCreate={invalidateMCPList} />
+        <NewMCPCard handleCreate={handleCreate} />
         {filteredList.map(provider => (
           <MCPCard
             key={provider.id}
             data={provider}
             currentProvider={currentProvider}
-            handleSelect={setCurrentProvider}
+            handleSelect={setCurrentProviderID}
             onUpdate={() => invalidateMCPList()}
           />
         ))}
@@ -68,7 +86,7 @@ const MCPList = ({
       {currentProvider && (
         <MCPDetailPanel
           detail={currentProvider}
-          onHide={() => setCurrentProvider(undefined)}
+          onHide={() => setCurrentProviderID(undefined)}
           onUpdate={() => invalidateMCPList()}
         />
       )}

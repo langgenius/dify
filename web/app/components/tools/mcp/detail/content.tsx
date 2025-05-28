@@ -45,14 +45,14 @@ const MCPDetailContent: FC<Props> = ({
 
   const { data, isPending: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
-  const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools(detail.id)
+  const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
   const toolList = data?.tools || []
 
   const handleUpdateTools = useCallback(async () => {
     if (!detail)
       return
-    await updateTools()
+    await updateTools(detail.id)
     invalidateMCPTools(detail.id)
   }, [detail, updateTools])
 

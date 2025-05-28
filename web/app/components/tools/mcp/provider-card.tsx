@@ -17,7 +17,7 @@ import cn from '@/utils/classnames'
 type Props = {
   currentProvider?: ToolWithProvider
   data: ToolWithProvider
-  handleSelect: (provider: ToolWithProvider) => void
+  handleSelect: (providerID: string) => void
   onUpdate: () => void
 }
 
@@ -78,7 +78,7 @@ const MCPCard = ({
 
   return (
     <div
-      onClick={() => handleSelect(data)}
+      onClick={() => handleSelect(data.id)}
       className={cn(
         'group relative flex cursor-pointer flex-col rounded-xl border-[1.5px] border-transparent bg-components-card-bg shadow-xs hover:bg-components-card-bg-alt hover:shadow-md',
         currentProvider?.id === data.id && 'border-components-option-card-option-selected-border bg-components-card-bg-alt',
@@ -107,7 +107,7 @@ const MCPCard = ({
       </div>
       <div className='flex items-center gap-1 rounded-b-xl pb-2.5 pl-4 pr-2.5 pt-1.5'>
         <div className='system-xs-regular grow truncate text-text-tertiary' title={data.server_url}>{data.server_url}</div>
-        {data.is_team_authorization && <Indicator color='green' className='shrink-0' />}
+        {data.is_team_authorization && data.tools.length > 0 && <Indicator color='green' className='shrink-0' />}
         {(!data.is_team_authorization || !data.tools.length) && (
           <div className='system-xs-medium flex shrink-0 items-center gap-1 rounded-md border border-util-colors-red-red-500 bg-components-badge-bg-red-soft px-1.5 py-0.5 text-util-colors-red-red-500'>
             {t('tools.mcp.noConfigured')}

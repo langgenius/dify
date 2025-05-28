@@ -12,9 +12,10 @@ import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import { useAppContext } from '@/context/app-context'
 import { useCreateMCP } from '@/service/use-tools'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 
 type Props = {
-  handleCreate: () => void
+  handleCreate: (provider: ToolWithProvider) => void
 }
 
 const NewMCPCard = ({ handleCreate }: Props) => {
@@ -23,9 +24,12 @@ const NewMCPCard = ({ handleCreate }: Props) => {
   const language = getLanguage(locale)
   const { isCurrentWorkspaceManager } = useAppContext()
 
-  const { mutate: createMCP } = useCreateMCP({
-    onSuccess: handleCreate,
-  })
+  const { mutateAsync: createMCP } = useCreateMCP()
+
+  const create = async (info: any) => {
+    const provider = await createMCP(info)
+    handleCreate(provider)
+  }
 
   const linkUrl = useMemo(() => {
     // TODO help link
@@ -60,7 +64,7 @@ const NewMCPCard = ({ handleCreate }: Props) => {
       {showModal && (
         <MCPModal
           show={showModal}
-          onConfirm={createMCP}
+          onConfirm={create}
           onHide={() => setShowModal(false)}
         />
       )}
