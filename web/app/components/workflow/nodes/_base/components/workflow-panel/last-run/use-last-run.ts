@@ -19,6 +19,7 @@ import useLoopSingleRunFormParams from '@/app/components/workflow/nodes/loop/use
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useVariableAggregatorSingleRunFormParams from '@/app/components/workflow/nodes/variable-assigner/use-single-run-form-params'
 import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
+import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 
 // import
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
@@ -102,6 +103,8 @@ const useLastRun = <T>({
 }: Params<T>) => {
   const { conversationVars, systemVars, hasSetInspectVar } = useInspectVarsCrud()
   const blockType = oneStepRunParams.data.type
+  const isIterationNode = blockType === BlockEnum.Iteration
+  const isLoopNode = blockType === BlockEnum.Loop
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getData: getDataForCheckMore,
@@ -148,9 +151,26 @@ const useLastRun = <T>({
     loopRunResult,
   })
 
+  const toSubmitData = useCallback((data: Record<string, any>) => {
+    if(!isIterationNode && !isLoopNode)
+      return data
+
+    const allVarObject = singleRunParams?.allVarObject || {}
+    const formattedData: Record<string, any> = {}
+    Object.keys(allVarObject).forEach((key) => {
+      const [varSectorStr, nodeId] = key.split(DELIMITER)
+      formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr]
+    })
+    if(isIterationNode) {
+      const iteratorInputKey = `${id}.input_selector`
+      formattedData[iteratorInputKey] = data[iteratorInputKey]
+    }
+    return formattedData
+  }, [isIterationNode, isLoopNode, singleRunParams?.allVarObject, id])
+
   const callRunApi = async (data: Record<string, any>) => {
     await handleSyncWorkflowDraft(true)
-    doCallRunApi(data)
+    doCallRunApi(toSubmitData(data))
   }
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)

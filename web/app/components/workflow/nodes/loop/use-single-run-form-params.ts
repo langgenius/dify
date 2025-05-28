@@ -7,8 +7,7 @@ import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSyst
 import type { InputVar, ValueSelector, Variable } from '../../types'
 import type { CaseItem, Condition, LoopNodeType } from './types'
 import { ValueType } from '@/app/components/workflow/types'
-
-const DELIMITER = '@@@@@'
+import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 
 type Params = {
   id: string
@@ -36,17 +35,17 @@ const useSingleRunFormParams = ({
   const { isNodeInLoop } = useIsNodeInLoop(id)
 
   const { getLoopNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
-  const iterationChildrenNodes = getLoopNodeChildren(id)
+  const loopChildrenNodes = getLoopNodeChildren(id)
   const beforeNodes = getBeforeNodesInSameBranch(id)
-  const canChooseVarNodes = [...beforeNodes, ...iterationChildrenNodes]
+  const canChooseVarNodes = [...beforeNodes, ...loopChildrenNodes]
 
-  const { usedOutVars } = (() => {
+  const { usedOutVars, allVarObject } = (() => {
     const vars: ValueSelector[] = []
     const varObjs: Record<string, boolean> = {}
     const allVarObject: Record<string, {
       inSingleRunPassedKey: string
     }> = {}
-    iterationChildrenNodes.forEach((node) => {
+    loopChildrenNodes.forEach((node) => {
       const nodeVars = getNodeUsedVars(node).filter(item => item && item.length > 0)
       nodeVars.forEach((varSelector) => {
         if (varSelector[0] === id) { // skip loop node itself variable: item, index
@@ -87,6 +86,7 @@ const useSingleRunFormParams = ({
     }))
     return {
       usedOutVars: res,
+      allVarObject,
     }
   })()
 
@@ -211,6 +211,7 @@ const useSingleRunFormParams = ({
   return {
     forms,
     nodeInfo,
+    allVarObject,
     getDependentVars,
   }
 }

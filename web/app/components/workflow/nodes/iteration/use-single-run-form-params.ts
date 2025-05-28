@@ -8,9 +8,9 @@ import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSyst
 import { InputVarType } from '@/app/components/workflow/types'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import type { NodeTracing } from '@/types/workflow'
+import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 
 const i18nPrefix = 'workflow.nodes.iteration'
-const DELIMITER = '@@@@@'
 
 type Params = {
   id: string,
@@ -47,7 +47,7 @@ const useSingleRunFormParams = ({
     })
   }, [iteratorInputKey, runInputData, setRunInputData])
 
-  const { usedOutVars } = (() => {
+  const { usedOutVars, allVarObject } = (() => {
     const vars: ValueSelector[] = []
     const varObjs: Record<string, boolean> = {}
     const allVarObject: Record<string, {
@@ -93,6 +93,7 @@ const useSingleRunFormParams = ({
     }))
     return {
       usedOutVars: res,
+      allVarObject,
     }
   })()
 
@@ -143,6 +144,7 @@ const useSingleRunFormParams = ({
   return {
     forms,
     nodeInfo,
+    allVarObject,
     getDependentVars,
     getDependentVar,
   }
