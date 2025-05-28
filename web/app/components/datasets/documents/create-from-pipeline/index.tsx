@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import DataSourceOptions from './data-source-options'
-import type { CrawlResultItem, CustomFile as File, FileIndexingEstimateResponse, FileItem } from '@/models/datasets'
+import type { CrawlResultItem, DocumentItem, CustomFile as File, FileIndexingEstimateResponse, FileItem } from '@/models/datasets'
 import LocalFile from '@/app/components/rag-pipeline/components/panel/test-run/data-source/local-file'
 import produce from 'immer'
 import { useProviderContextSelector } from '@/context/provider-context'
@@ -48,6 +48,9 @@ const TestRunPanel = () => {
 
   const isPreview = useRef(false)
   const formRef = useRef<any>(null)
+  const previewFile = useRef<DocumentItem>(fileList[0].file as DocumentItem)
+  const previewNotionPage = useRef<NotionPage>(notionPages[0])
+  const previewWebsitePage = useRef<CrawlResultItem>(websitePages[0])
 
   const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
 
@@ -132,7 +135,7 @@ const TestRunPanel = () => {
       return
     const datasourceInfoList: Record<string, any>[] = []
     if (datasource.type === DatasourceType.localFile) {
-      const { id, name, type, size, extension, mime_type } = fileList[0].file
+      const { id, name, type, size, extension, mime_type } = previewFile.current as File
       const documentInfo = {
         upload_file_id: id,
         name,
@@ -144,7 +147,7 @@ const TestRunPanel = () => {
       datasourceInfoList.push(documentInfo)
     }
     if (datasource.type === DatasourceType.onlineDocument) {
-      const { workspace_id, ...rest } = notionPages[0]
+      const { workspace_id, ...rest } = previewNotionPage.current
       const documentInfo = {
         workspace_id,
         page: rest,
@@ -154,7 +157,7 @@ const TestRunPanel = () => {
     if (datasource.type === DatasourceType.websiteCrawl) {
       const documentInfo = {
         job_id: websiteCrawlJobId,
-        result: websitePages[0],
+        result: previewWebsitePage.current,
       }
       datasourceInfoList.push(documentInfo)
     }
@@ -167,10 +170,10 @@ const TestRunPanel = () => {
       is_preview: true,
     }, {
       onSuccess: (res) => {
-        setEstimateData(res as FileIndexingEstimateResponse)
+        setEstimateData(res.data.outputs as FileIndexingEstimateResponse)
       },
     })
-  }, [datasource, fileList, notionPages, pipelineId, runPublishedPipeline, websiteCrawlJobId, websitePages])
+  }, [datasource, pipelineId, runPublishedPipeline, websiteCrawlJobId])
 
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
@@ -231,13 +234,24 @@ const TestRunPanel = () => {
     formRef.current?.submit()
   }, [])
 
-  const onClickReset = useCallback(() => {
-    formRef.current?.reset()
-  }, [])
-
   const handleSubmit = useCallback((data: Record<string, any>) => {
     isPreview.current ? handlePreviewChunks(data) : handleProcess(data)
   }, [handlePreviewChunks, handleProcess])
+
+  const handlePreviewFileChange = useCallback((file: DocumentItem) => {
+    previewFile.current = file
+    onClickPreview()
+  }, [onClickPreview])
+
+  const handlePreviewNotionPageChange = useCallback((page: NotionPage) => {
+    previewNotionPage.current = page
+    onClickPreview()
+  }, [onClickPreview])
+
+  const handlePreviewWebsiteChange = useCallback((website: CrawlResultItem) => {
+    previewWebsitePage.current = website
+    onClickPreview()
+  }, [onClickPreview])
 
   if (isFetchingPipelineInfo) {
     return (
@@ -312,7 +326,6 @@ const TestRunPanel = () => {
                 onProcess={onClickProcess}
                 onPreview={onClickPreview}
                 onSubmit={handleSubmit}
-                onReset={onClickReset}
                 onBack={handleBackStep}
               />
             )
@@ -353,6 +366,9 @@ const TestRunPanel = () => {
                 isPending={isPending}
                 estimateData={estimateData}
                 onPreview={onClickPreview}
+                handlePreviewFileChange={handlePreviewFileChange}
+                handlePreviewNotionPageChange={handlePreviewNotionPageChange}
+                handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
               />
             )}
           </div>

@@ -5,13 +5,13 @@ import { RiSearchEyeLine } from '@remixicon/react'
 
 type HeaderProps = {
   onReset: () => void
-  disableReset?: boolean
+  resetDisabled: boolean
   onPreview?: () => void
 }
 
 const Header = ({
   onReset,
-  disableReset = true,
+  resetDisabled,
   onPreview,
 }: HeaderProps) => {
   const { t } = useTranslation()
@@ -21,7 +21,7 @@ const Header = ({
       <div className='system-sm-semibold-uppercase grow text-text-secondary'>
         {t('datasetPipeline.addDocuments.stepTwo.chunkSettings')}
       </div>
-      <Button variant='ghost' disabled={disableReset} onClick={onReset}>
+      <Button variant='ghost' disabled={resetDisabled} onClick={onReset}>
         {t('common.operation.reset')}
       </Button>
       <Button

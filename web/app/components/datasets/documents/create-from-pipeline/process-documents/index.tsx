@@ -1,15 +1,13 @@
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
 import { useConfigurations } from './hooks'
-import Options from './options'
+import Form from './form'
 import Actions from './actions'
-import Header from './header'
 
 type ProcessDocumentsProps = {
   dataSourceNodeId: string
   ref: React.RefObject<any>
   onProcess: () => void
   onPreview: () => void
-  onReset: () => void
   onSubmit: (data: Record<string, any>) => void
   onBack: () => void
 }
@@ -19,7 +17,6 @@ const ProcessDocuments = ({
   onProcess,
   onPreview,
   onSubmit,
-  onReset,
   onBack,
   ref,
 }: ProcessDocumentsProps) => {
@@ -28,20 +25,14 @@ const ProcessDocuments = ({
 
   return (
     <div className='flex flex-col gap-y-4 pt-4'>
-      <div className='flex flex-col rounded-lg border border-components-panel-border bg-components-panel-bg'>
-        <Header
-          onReset={onReset}
-          disableReset={!ref.current?.isDirty()}
-          onPreview={onPreview}
-        />
-        <Options
-          ref={ref}
-          initialData={initialData}
-          configurations={configurations}
-          schema={schema}
-          onSubmit={onSubmit}
-        />
-      </div>
+      <Form
+        ref={ref}
+        initialData={initialData}
+        configurations={configurations}
+        schema={schema}
+        onSubmit={onSubmit}
+        onPreview={onPreview}
+      />
       <Actions onBack={onBack} onProcess={onProcess} />
     </div>
   )

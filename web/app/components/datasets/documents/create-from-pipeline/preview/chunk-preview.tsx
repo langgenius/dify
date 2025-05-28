@@ -26,6 +26,9 @@ type ChunkPreviewProps = {
   isPending: boolean
   estimateData: FileIndexingEstimateResponse | undefined
   onPreview: () => void
+  handlePreviewFileChange: (file: DocumentItem) => void
+  handlePreviewNotionPageChange: (page: NotionPage) => void
+  handlePreviewWebsitePageChange: (page: CrawlResultItem) => void
 }
 
 const ChunkPreview = ({
@@ -37,6 +40,9 @@ const ChunkPreview = ({
   isPending,
   estimateData,
   onPreview,
+  handlePreviewFileChange,
+  handlePreviewNotionPageChange,
+  handlePreviewWebsitePageChange,
 }: ChunkPreviewProps) => {
   const { t } = useTranslation()
   const currentDocForm = useDatasetDetailContextWithSelector(s => s.dataset?.doc_form)
@@ -58,6 +64,7 @@ const ChunkPreview = ({
               files={files as Array<Required<CustomFile>>}
               onChange={(selected) => {
                 setPreviewFile(selected)
+                handlePreviewFileChange(selected)
               }}
               value={previewFile}
             />
@@ -74,6 +81,7 @@ const ChunkPreview = ({
               onChange={(selected) => {
                 const selectedPage = notionPages.find(page => page.page_id === selected.id)
                 setPreviewNotionPage(selectedPage!)
+                handlePreviewNotionPageChange(selectedPage!)
               }}
               value={{
                 id: previewNotionPage?.page_id || '',
@@ -94,6 +102,7 @@ const ChunkPreview = ({
               onChange={(selected) => {
                 const selectedPage = websitePages.find(page => page.source_url === selected.id)
                 setPreviewWebsitePage(selectedPage!)
+                handlePreviewWebsitePageChange(selectedPage!)
               }}
               value={
                 {
@@ -113,7 +122,7 @@ const ChunkPreview = ({
           }
         </div>
       </PreviewHeader>}
-      className='relative flex h-full w-1/2 shrink-0 p-4 pr-0'
+      className='relative flex h-full w-full shrink-0'
       mainClassName='space-y-6'
     >
       {currentDocForm === ChunkingMode.qa && estimateData?.qa_preview && (
@@ -169,7 +178,7 @@ const ChunkPreview = ({
           )
         })
       )}
-      {!isIdle && (
+      {isIdle && (
         <div className='flex h-full w-full items-center justify-center'>
           <div className='flex flex-col items-center justify-center gap-3 pb-4'>
             <RiSearchEyeLine className='size-10 text-text-empty-state-icon' />
