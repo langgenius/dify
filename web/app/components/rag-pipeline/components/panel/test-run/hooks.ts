@@ -4,11 +4,24 @@ import { TestRunStep } from './types'
 import { useNodes } from 'reactflow'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { DatasourceType } from '@/models/pipeline'
+import type { CrawlResultItem, FileItem } from '@/models/datasets'
+import produce from 'immer'
+import type { NotionPage } from '@/models/common'
 
 export const useTestRunSteps = () => {
   const { t } = useTranslation()
+  const [currentStep, setCurrentStep] = useState(1)
+
+  const handleNextStep = useCallback(() => {
+    setCurrentStep(preStep => preStep + 1)
+  }, [])
+
+  const handleBackStep = useCallback(() => {
+    setCurrentStep(preStep => preStep - 1)
+  }, [])
+
   const steps = [
     {
       label: t('datasetPipeline.testRun.steps.dataSource'),
@@ -19,7 +32,13 @@ export const useTestRunSteps = () => {
       value: TestRunStep.documentProcessing,
     },
   ]
-  return steps
+
+  return {
+    steps,
+    currentStep,
+    handleNextStep,
+    handleBackStep,
+  }
 }
 
 export const useDatasourceOptions = () => {
@@ -53,4 +72,57 @@ export const useDatasourceOptions = () => {
   }, [datasourceNodes])
 
   return { datasources, options }
+}
+
+export const useLocalFile = () => {
+  const [fileList, setFileList] = useState<FileItem[]>([])
+
+  const allFileLoaded = useMemo(() => (fileList.length > 0 && fileList.every(file => file.file.id)), [fileList])
+
+  const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
+    const newList = produce(list, (draft) => {
+      const targetIndex = draft.findIndex(file => file.fileID === fileItem.fileID)
+      draft[targetIndex] = {
+        ...draft[targetIndex],
+        progress,
+      }
+    })
+    setFileList(newList)
+  }
+
+  const updateFileList = (preparedFiles: FileItem[]) => {
+    setFileList(preparedFiles)
+  }
+
+  return {
+    fileList,
+    allFileLoaded,
+    updateFile,
+    updateFileList,
+  }
+}
+
+export const useNotionPages = () => {
+  const [notionPages, setNotionPages] = useState<NotionPage[]>([])
+
+  const updateNotionPages = (value: NotionPage[]) => {
+    setNotionPages(value)
+  }
+
+  return {
+    notionPages,
+    updateNotionPages,
+  }
+}
+
+export const useWebsiteCrawl = () => {
+  const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
+  const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
+
+  return {
+    websitePages,
+    websiteCrawlJobId,
+    setWebsitePages,
+    setWebsiteCrawlJobId,
+  }
 }

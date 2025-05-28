@@ -1,9 +1,8 @@
 'use client'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import DataSourceOptions from './data-source-options'
-import type { CrawlResultItem, DocumentItem, CustomFile as File, FileIndexingEstimateResponse, FileItem } from '@/models/datasets'
+import type { CrawlResultItem, DocumentItem, CustomFile as File, FileIndexingEstimateResponse } from '@/models/datasets'
 import LocalFile from '@/app/components/rag-pipeline/components/panel/test-run/data-source/local-file'
-import produce from 'immer'
 import { useProviderContextSelector } from '@/context/provider-context'
 import type { NotionPage } from '@/models/common'
 import Notion from '@/app/components/rag-pipeline/components/panel/test-run/data-source/notion'
@@ -26,108 +25,72 @@ import ChunkPreview from './preview/chunk-preview'
 import Processing from './processing'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
+import { useAddDocumentsSteps, useLocalFile, useNotionsPages, useWebsiteCrawl } from './hooks'
 
 const TestRunPanel = () => {
   const { t } = useTranslation()
-  const [currentStep, setCurrentStep] = useState(1)
-  const [datasource, setDatasource] = useState<Datasource>()
-  const [fileList, setFiles] = useState<FileItem[]>([])
-  const [notionPages, setNotionPages] = useState<NotionPage[]>([])
-  const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
-  const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
-  const [currentFile, setCurrentFile] = useState<File | undefined>()
-  const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
-  const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
-  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
-
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
   const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const indexingType = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
   const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict.search_method)
+  const [datasource, setDatasource] = useState<Datasource>()
+  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
 
   const isPreview = useRef(false)
   const formRef = useRef<any>(null)
-  const previewFile = useRef<DocumentItem>(fileList[0].file as DocumentItem)
-  const previewNotionPage = useRef<NotionPage>(notionPages[0])
-  const previewWebsitePage = useRef<CrawlResultItem>(websitePages[0])
 
   const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
 
-  const allFileLoaded = (fileList.length > 0 && fileList.every(file => file.file.id))
+  const {
+    currentStep,
+    handleNextStep,
+    handleBackStep,
+  } = useAddDocumentsSteps()
+  const {
+    fileList,
+    previewFile,
+    allFileLoaded,
+    updateFile,
+    updateFileList,
+    currentFile,
+    updateCurrentFile,
+    hideFilePreview,
+  } = useLocalFile()
+  const {
+    notionPages,
+    previewNotionPage,
+    updateNotionPages,
+    currentNotionPage,
+    updateCurrentPage,
+    hideNotionPagePreview,
+  } = useNotionsPages()
+  const {
+    websitePages,
+    websiteCrawlJobId,
+    previewWebsitePage,
+    setWebsitePages,
+    setWebsiteCrawlJobId,
+    currentWebsite,
+    updateCurrentWebsite,
+    hideWebsitePreview,
+  } = useWebsiteCrawl()
+
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && enableBilling
   const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
-  const nextDisabled = useMemo(() => {
-    if (!fileList.length)
-      return true
-    if (fileList.some(file => !file.file.id))
-      return true
-    return isShowVectorSpaceFull
-  }, [fileList, isShowVectorSpaceFull])
 
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
     if (datasource.type === DatasourceType.localFile)
-      return nextDisabled
+      return isShowVectorSpaceFull || !fileList.length || fileList.some(file => !file.file.id)
     if (datasource.type === DatasourceType.onlineDocument)
       return isShowVectorSpaceFull || !notionPages.length
     if (datasource.type === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     return false
-  }, [datasource, nextDisabled, isShowVectorSpaceFull, notionPages.length, websitePages.length])
-
-  const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
-    const newList = produce(list, (draft) => {
-      const targetIndex = draft.findIndex(file => file.fileID === fileItem.fileID)
-      draft[targetIndex] = {
-        ...draft[targetIndex],
-        progress,
-      }
-    })
-    setFiles(newList)
-  }
-
-  const updateFileList = useCallback((preparedFiles: FileItem[]) => {
-    setFiles(preparedFiles)
-  }, [])
-
-  const updateNotionPages = useCallback((value: NotionPage[]) => {
-    setNotionPages(value)
-  }, [])
-
-  const updateCurrentFile = useCallback((file: File) => {
-    setCurrentFile(file)
-  }, [])
-
-  const hideFilePreview = useCallback(() => {
-    setCurrentFile(undefined)
-  }, [])
-
-  const updateCurrentPage = useCallback((page: NotionPage) => {
-    setCurrentNotionPage(page)
-  }, [])
-
-  const hideNotionPagePreview = useCallback(() => {
-    setCurrentNotionPage(undefined)
-  }, [])
-
-  const updateCurrentWebsite = useCallback((website: CrawlResultItem) => {
-    setCurrentWebsite(website)
-  }, [])
-
-  const hideWebsitePreview = useCallback(() => {
-    setCurrentWebsite(undefined)
-  }, [])
-
-  const handleNextStep = useCallback(() => {
-    setCurrentStep(preStep => preStep + 1)
-  }, [])
-
-  const handleBackStep = useCallback(() => {
-    setCurrentStep(preStep => preStep - 1)
-  }, [])
+  }, [datasource, isShowVectorSpaceFull, fileList, notionPages.length, websitePages.length])
 
   const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
 
@@ -176,7 +139,7 @@ const TestRunPanel = () => {
         setEstimateData(res.data.outputs as FileIndexingEstimateResponse)
       },
     })
-  }, [datasource, pipelineId, runPublishedPipeline, websiteCrawlJobId])
+  }, [datasource, pipelineId, previewFile, previewNotionPage, previewWebsitePage, runPublishedPipeline, websiteCrawlJobId])
 
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
@@ -246,17 +209,17 @@ const TestRunPanel = () => {
   const handlePreviewFileChange = useCallback((file: DocumentItem) => {
     previewFile.current = file
     onClickPreview()
-  }, [onClickPreview])
+  }, [onClickPreview, previewFile])
 
   const handlePreviewNotionPageChange = useCallback((page: NotionPage) => {
     previewNotionPage.current = page
     onClickPreview()
-  }, [onClickPreview])
+  }, [onClickPreview, previewNotionPage])
 
   const handlePreviewWebsiteChange = useCallback((website: CrawlResultItem) => {
     previewWebsitePage.current = website
     onClickPreview()
-  }, [onClickPreview])
+  }, [onClickPreview, previewWebsitePage])
 
   if (isFetchingPipelineInfo) {
     return (

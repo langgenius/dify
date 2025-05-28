@@ -1,95 +1,68 @@
 import { useStore as useWorkflowStoreWithSelector } from '@/app/components/workflow/store'
-import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
-import StepIndicator from './step-indicator'
-import { useTestRunSteps } from './hooks'
+import { useLocalFile, useNotionPages, useTestRunSteps, useWebsiteCrawl } from './hooks'
 import DataSourceOptions from './data-source-options'
-import type { CrawlResultItem, FileItem } from '@/models/datasets'
 import LocalFile from './data-source/local-file'
-import produce from 'immer'
 import { useProviderContextSelector } from '@/context/provider-context'
-import type { NotionPage } from '@/models/common'
 import Notion from './data-source/notion'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import WebsiteCrawl from './data-source/website-crawl'
 import Actions from './data-source/actions'
 import DocumentProcessing from './document-processing'
-import { useTranslation } from 'react-i18next'
 import { usePipelineRun } from '../../../hooks'
 import type { Datasource } from './types'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
-import Tooltip from '@/app/components/base/tooltip'
+import CloseButton from './close-button'
+import Header from './header'
 
 const TestRunPanel = () => {
-  const { t } = useTranslation()
   const setShowDebugAndPreviewPanel = useWorkflowStoreWithSelector(state => state.setShowDebugAndPreviewPanel)
-  const [currentStep, setCurrentStep] = useState(1)
-  const [datasource, setDatasource] = useState<Datasource>()
-  const [fileList, setFiles] = useState<FileItem[]>([])
-  const [notionPages, setNotionPages] = useState<NotionPage[]>([])
-  const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
-  const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
-
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
+  const [datasource, setDatasource] = useState<Datasource>()
 
-  const steps = useTestRunSteps()
+  const {
+    steps,
+    currentStep,
+    handleNextStep,
+    handleBackStep,
+  } = useTestRunSteps()
+  const {
+    fileList,
+    allFileLoaded,
+    updateFile,
+    updateFileList,
+  } = useLocalFile()
+  const {
+    notionPages,
+    updateNotionPages,
+  } = useNotionPages()
+  const {
+    websitePages,
+    websiteCrawlJobId,
+    setWebsitePages,
+    setWebsiteCrawlJobId,
+  } = useWebsiteCrawl()
+  const { handleRun } = usePipelineRun()
 
-  const allFileLoaded = (fileList.length > 0 && fileList.every(file => file.file.id))
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && enableBilling
-  const nextDisabled = useMemo(() => {
-    if (!fileList.length)
-      return true
-    if (fileList.some(file => !file.file.id))
-      return true
-    return isShowVectorSpaceFull
-  }, [fileList, isShowVectorSpaceFull])
 
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
     if (datasource.type === DatasourceType.localFile)
-      return nextDisabled
+      return isShowVectorSpaceFull || !fileList.length || fileList.some(file => !file.file.id)
     if (datasource.type === DatasourceType.onlineDocument)
       return isShowVectorSpaceFull || !notionPages.length
     if (datasource.type === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     return false
-  }, [datasource, nextDisabled, isShowVectorSpaceFull, notionPages.length, websitePages.length])
+  }, [datasource, isShowVectorSpaceFull, fileList, notionPages.length, websitePages.length])
 
   const handleClose = () => {
     setShowDebugAndPreviewPanel(false)
   }
-
-  const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
-    const newList = produce(list, (draft) => {
-      const targetIndex = draft.findIndex(file => file.fileID === fileItem.fileID)
-      draft[targetIndex] = {
-        ...draft[targetIndex],
-        progress,
-      }
-    })
-    setFiles(newList)
-  }
-
-  const updateFileList = (preparedFiles: FileItem[]) => {
-    setFiles(preparedFiles)
-  }
-
-  const updateNotionPages = (value: NotionPage[]) => {
-    setNotionPages(value)
-  }
-
-  const handleNextStep = useCallback(() => {
-    setCurrentStep(preStep => preStep + 1)
-  }, [])
-
-  const handleBackStep = useCallback(() => {
-    setCurrentStep(preStep => preStep - 1)
-  }, [])
-
-  const { handleRun } = usePipelineRun()
 
   const handleProcess = useCallback((data: Record<string, any>) => {
     if (!datasource)
@@ -136,23 +109,8 @@ const TestRunPanel = () => {
     <div
       className='relative flex h-full w-[480px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-1'
     >
-      <button
-        type='button'
-        className='absolute right-2.5 top-2.5 flex size-8 items-center justify-center p-1.5'
-        onClick={handleClose}
-      >
-        <RiCloseLine className='size-4 text-text-tertiary' />
-      </button>
-      <div className='flex flex-col gap-y-0.5 px-3 pb-2 pt-3.5'>
-        <div className='flex items-center gap-x-1 pl-1 pr-8'>
-          <span className='system-md-semibold-uppercase text-text-primary'>{t('datasetPipeline.testRun.title')}</span>
-          <Tooltip
-            popupContent={t('datasetPipeline.testRun.tooltip')}
-            popupClassName='max-w-[240px]'
-          />
-        </div>
-        <StepIndicator steps={steps} currentStep={currentStep} />
-      </div>
+      <CloseButton handleClose={handleClose} />
+      <Header steps={steps} currentStep={currentStep} />
       <div className='grow overflow-y-auto'>
         {
           currentStep === 1 && (
