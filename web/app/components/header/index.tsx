@@ -21,6 +21,7 @@ import { useModalContext } from '@/context/modal-context'
 import PlanBadge from './plan-badge'
 import LicenseNav from './license-env'
 import { Plan } from '../billing/type'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const navClassName = `
   flex items-center relative mr-0 sm:mr-3 px-3 h-8 rounded-xl
@@ -36,6 +37,7 @@ const Header = () => {
   const [isShowNavMenu, { toggle, setFalse: hideNavMenu }] = useBoolean(false)
   const { enableBilling, plan } = useProviderContext()
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const isFreePlan = plan.type === Plan.sandbox
   const handlePlanClick = useCallback(() => {
     if (isFreePlan)
@@ -61,7 +63,13 @@ const Header = () => {
           !isMobile
           && <div className='flex shrink-0 items-center gap-1.5 self-stretch pl-3'>
             <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center gap-2 px-0.5'>
-              <DifyLogo />
+              {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                ? <img
+                  src={systemFeatures.branding.workspace_logo}
+                  className='block h-[22px] w-auto object-contain'
+                  alt='logo'
+                />
+                : <DifyLogo />}
             </Link>
             <div className='font-light text-divider-deep'>/</div>
             <div className='flex items-center gap-0.5'>
@@ -76,7 +84,13 @@ const Header = () => {
       {isMobile && (
         <div className='flex'>
           <Link href="/apps" className='mr-4 flex items-center'>
-            <DifyLogo />
+            {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+              ? <img
+                src={systemFeatures.branding.workspace_logo}
+                className='block h-[22px] w-auto object-contain'
+                alt='logo'
+              />
+              : <DifyLogo />}
           </Link>
           <div className='font-light text-divider-deep'>/</div>
           {enableBilling ? <PlanBadge allowHover sandboxAsUpgrade plan={plan.type} onClick={handlePlanClick} /> : <LicenseNav />}
