@@ -125,8 +125,6 @@ class WebAppAuthService:
         payload = {
             "iss": site.id,
             "sub": "Web API Passport",
-            "app_id": site.app_id,
-            "app_code": site.code,
             "user_id": account.id,
             "end_user_id": end_user_id,
             "token_source": "enterprise_login",
