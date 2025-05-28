@@ -27,11 +27,13 @@ class PassportResource(Resource):
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
 
-        # logic for exchange token for enterprise logined web user
-        enterprise_user_id = decode_enterprise_webapp_user_id(enterprise_login_token)
-        if enterprise_user_id:
+        # exchange token for enterprise logined web user
+        enterprise_user_decoded = decode_enterprise_webapp_user_id(enterprise_login_token)
+        if enterprise_user_decoded:
             # a web user has already logged in, exchange a token for this app without redirecting to the login page
-            return exchange_token_for_existing_web_user(app_code=app_code, user_id=enterprise_user_id)
+            return exchange_token_for_existing_web_user(
+                app_code=app_code, enterprise_user_decoded=enterprise_user_decoded
+            )
 
         if system_features.webapp_auth.enabled:
             app_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
@@ -112,15 +114,16 @@ def decode_enterprise_webapp_user_id(auth_header: str | None):
     decoded = PassportService().verify(tk)
     source = decoded.get("token_source")
     if not source or source != "enterprise_login":
-        return None
-    user_id: str | None = decoded.get("user_id")
-    return user_id
+        raise Unauthorized("Invalid token source. Expected 'enterprise_login'.")
+    return decoded
 
 
-def exchange_token_for_existing_web_user(app_code: str, user_id: str):
+def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded: dict):
     """
     Exchange a token for an existing web user session.
     """
+    user_id = enterprise_user_decoded.get("user_id")
+    end_user_id = enterprise_user_decoded.get("end_user_id")
 
     site = db.session.query(Site).filter(Site.code == app_code, Site.status == "normal").first()
     if not site:
@@ -129,7 +132,7 @@ def exchange_token_for_existing_web_user(app_code: str, user_id: str):
     app_model = db.session.query(App).filter(App.id == site.app_id).first()
     if not app_model or app_model.status != "normal" or not app_model.enable_site:
         raise NotFound()
-    end_user = db.session.query(EndUser).filter(EndUser.app_id == app_model.id, EndUser.session_id == user_id).first()
+    end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
     if not end_user:
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
