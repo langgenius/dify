@@ -1,9 +1,8 @@
 > [!IMPORTANT]
-> Before opening a PR:
 >
 > 1. Make sure you have read our [contribution guidelines](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)
 > 2. Ensure there is an associated issue and you have been assigned to it
-> 3. Use the correct syntax to link this PR: `Fixes #<issue number>` or `Resolves #<issue number>`, see [documentation](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword) for more details.
+> 3. Use the correct syntax to link this PR: `Fixes #<issue number>`.
 
 ## Summary
 
