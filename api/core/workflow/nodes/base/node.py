@@ -99,6 +99,16 @@ class BaseNode(Generic[GenericNodeData]):
 
             {'1747829548239.#1747829667553.result#': ['1747829667553', 'result']}
 
+        For loop and iteration nodes, the mapping may look like this:
+
+            {
+                "1748332301644.input_selector": ["1748332363630", "result"],
+                "1748332325079.1748332325079.#sys.workflow_id#": ["sys", "workflow_id"],
+            }
+
+        where `1748332301644` is the ID of the loop / iteration node,
+        and `1748332325079` is the ID of the node inside the loop or iteration node.
+
         Here, the key consists of two parts: the current node ID (provided as the `node_id`
         parameter to `_extract_variable_selector_to_variable_mapping`) and the variable selector,
         enclosed in `#` symbols. These two parts are separated by a dot (`.`).
