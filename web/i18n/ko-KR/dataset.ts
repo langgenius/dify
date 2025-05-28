@@ -194,7 +194,7 @@ const translation = {
     datasetMetadata: {
       name: '이름',
       deleteTitle: '삭제 확인',
-      disabled: '장애인',
+      disabled: '사용안함',
       addMetaData: '메타데이터 추가',
       values: '{{num}} 값들',
       namePlaceholder: '메타데이터 이름',
