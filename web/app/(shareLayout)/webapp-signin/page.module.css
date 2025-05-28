@@ -1,0 +1,7 @@
+.githubIcon {
+  background: center/contain url('./assets/github.svg');
+}
+
+.googleIcon {
+  background: center/contain url('./assets/google.svg');
+}

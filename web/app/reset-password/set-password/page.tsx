@@ -32,6 +32,8 @@ const ChangePasswordForm = () => {
   }, [])
 
   const getSignInUrl = () => {
+    if (searchParams.has('from') && searchParams.get('from') === 'webapp-signin')
+      return `/webapp-signin?redirect_url=${searchParams.get('redirect_url') || ''}`
     if (searchParams.has('invite_token')) {
       const params = new URLSearchParams()
       params.set('token', searchParams.get('invite_token') as string)
