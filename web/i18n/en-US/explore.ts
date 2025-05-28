@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Explore Apps by Dify',
+    title: 'Explore Apps',
     description: 'Use these template apps instantly or customize your own apps based on the templates.',
     allCategories: 'Recommended',
   },
@@ -30,11 +30,14 @@ const translation = {
     nameRequired: 'App name is required',
   },
   category: {
+    Agent: 'Agent',
     Assistant: 'Assistant',
     Writing: 'Writing',
     Translate: 'Translate',
     Programming: 'Programming',
     HR: 'HR',
+    Workflow: 'Workflow',
+    Entertainment: 'Entertainment',
   },
 }
 

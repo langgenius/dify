@@ -3,8 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
-from werkzeug.exceptions import NotFound
+from celery import shared_task  # type: ignore
 
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
@@ -34,7 +33,9 @@ def enable_annotation_reply_task(
     app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
 
     if not app:
-        raise NotFound("App not found")
+        logging.info(click.style("App not found: {}".format(app_id), fg="red"))
+        db.session.close()
+        return
 
     annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).all()
     enable_app_annotation_key = "enable_app_annotation_{}".format(str(app_id))
@@ -49,10 +50,31 @@ def enable_annotation_reply_task(
             db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app_id).first()
         )
         if annotation_setting:
+            if dataset_collection_binding.id != annotation_setting.collection_binding_id:
+                old_dataset_collection_binding = (
+                    DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                        annotation_setting.collection_binding_id, "annotation"
+                    )
+                )
+                if old_dataset_collection_binding and annotations:
+                    old_dataset = Dataset(
+                        id=app_id,
+                        tenant_id=tenant_id,
+                        indexing_technique="high_quality",
+                        embedding_model_provider=old_dataset_collection_binding.provider_name,
+                        embedding_model=old_dataset_collection_binding.model_name,
+                        collection_binding_id=old_dataset_collection_binding.id,
+                    )
+
+                    old_vector = Vector(old_dataset, attributes=["doc_id", "annotation_id", "app_id"])
+                    try:
+                        old_vector.delete()
+                    except Exception as e:
+                        logging.info(click.style("Delete annotation index error: {}".format(str(e)), fg="red"))
             annotation_setting.score_threshold = score_threshold
             annotation_setting.collection_binding_id = dataset_collection_binding.id
             annotation_setting.updated_user_id = user_id
-            annotation_setting.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            annotation_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             db.session.add(annotation_setting)
         else:
             new_app_annotation_setting = AppAnnotationSetting(
@@ -93,10 +115,11 @@ def enable_annotation_reply_task(
             click.style("App annotations added to index: {} latency: {}".format(app_id, end_at - start_at), fg="green")
         )
     except Exception as e:
-        logging.exception("Annotation batch created index failed:{}".format(str(e)))
+        logging.exception("Annotation batch created index failed")
         redis_client.setex(enable_app_annotation_job_key, 600, "error")
         enable_app_annotation_error_key = "enable_app_annotation_error_{}".format(str(job_id))
         redis_client.setex(enable_app_annotation_error_key, 600, str(e))
         db.session.rollback()
     finally:
         redis_client.delete(enable_app_annotation_key)
+        db.session.close()

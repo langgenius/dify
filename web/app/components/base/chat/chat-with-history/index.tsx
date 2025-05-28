@@ -11,14 +11,16 @@ import {
 } from './context'
 import { useChatWithHistory } from './hooks'
 import Sidebar from './sidebar'
+import Header from './header'
 import HeaderInMobile from './header-in-mobile'
-import ConfigPanel from './config-panel'
 import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
+import cn from '@/utils/classnames'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -27,36 +29,35 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   className,
 }) => {
   const {
+    userCanAccess,
     appInfoError,
     appData,
     appInfoLoading,
-    appPrevChatList,
-    showConfigPanelBeforeChat,
     appChatListDataLoading,
     chatShouldReloadKey,
     isMobile,
     themeBuilder,
+    sidebarCollapseState,
   } = useChatWithHistoryContext()
-
-  const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
+  const isSidebarCollapsed = sidebarCollapseState
   const customConfig = appData?.custom_config
   const site = appData?.site
 
+  const [showSidePanel, setShowSidePanel] = useState(false)
+
   useEffect(() => {
     themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
-    if (site) {
-      if (customConfig)
-        document.title = `${site.title}`
-      else
-        document.title = `${site.title} - Powered by Dify`
-    }
   }, [site, customConfig, themeBuilder])
+
+  useDocumentTitle(site?.title || 'Chat')
 
   if (appInfoLoading) {
     return (
       <Loading type='app' />
     )
   }
+  if (!userCanAccess)
+    return <AppUnavailable code={403} unknownReason='no permission.' />
 
   if (appInfoError) {
     return (
@@ -65,35 +66,44 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   }
 
   return (
-    <div className={`h-full flex bg-white ${className} ${isMobile && 'flex-col'}`}>
-      {
-        !isMobile && (
+    <div className={cn(
+      'flex h-full bg-background-default-burn',
+      isMobile && 'flex-col',
+      className,
+    )}>
+      {!isMobile && (
+        <div className={cn(
+          'flex w-[236px] flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
+          isSidebarCollapsed && 'w-0 overflow-hidden !p-0',
+        )}>
           <Sidebar />
-        )
-      }
-      {
-        isMobile && (
-          <HeaderInMobile />
-        )
-      }
-      <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && !appPrevChatList.length && 'flex items-center justify-center'}`}>
-        {
-          showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length && (
-            <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
-              <ConfigPanel />
-            </div>
-          )
-        }
-        {
-          appChatListDataLoading && chatReady && (
+        </div>
+      )}
+      {isMobile && (
+        <HeaderInMobile />
+      )}
+      <div className={cn('relative grow p-2', isMobile && 'h-[calc(100%_-_56px)] p-0')}>
+        {isSidebarCollapsed && (
+          <div
+            className={cn(
+              'absolute top-0 z-20 flex h-full w-[256px] flex-col p-2 transition-all duration-500 ease-in-out',
+              showSidePanel ? 'left-0' : 'left-[-248px]',
+            )}
+            onMouseEnter={() => setShowSidePanel(true)}
+            onMouseLeave={() => setShowSidePanel(false)}
+          >
+            <Sidebar isPanel />
+          </div>
+        )}
+        <div className={cn('flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg', isMobile ? 'rounded-t-2xl' : 'rounded-2xl')}>
+          {!isMobile && <Header />}
+          {appChatListDataLoading && (
             <Loading type='app' />
-          )
-        }
-        {
-          chatReady && !appChatListDataLoading && (
+          )}
+          {!appChatListDataLoading && (
             <ChatWrapper key={chatShouldReloadKey} />
-          )
-        }
+          )}
+        </div>
       </div>
     </div>
   )
@@ -114,16 +124,17 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const {
     appInfoError,
     appInfoLoading,
+    accessMode,
+    userCanAccess,
     appData,
     appParams,
     appMeta,
     appChatListDataLoading,
     currentConversationId,
     currentConversationItem,
-    appPrevChatList,
+    appPrevChatTree,
     pinnedConversationList,
     conversationList,
-    showConfigPanelBeforeChat,
     newConversationInputs,
     newConversationInputsRef,
     handleNewConversationInputsChange,
@@ -142,6 +153,15 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appId,
     handleFeedback,
     currentChatInstanceRef,
+    sidebarCollapseState,
+    handleSidebarCollapse,
+    clearChatList,
+    setClearChatList,
+    isResponding,
+    setIsResponding,
+    currentConversationInputs,
+    setCurrentConversationInputs,
+    allInputsHidden,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -149,15 +169,16 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       appInfoError,
       appInfoLoading,
       appData,
+      accessMode,
+      userCanAccess,
       appParams,
       appMeta,
       appChatListDataLoading,
       currentConversationId,
       currentConversationItem,
-      appPrevChatList,
+      appPrevChatTree,
       pinnedConversationList,
       conversationList,
-      showConfigPanelBeforeChat,
       newConversationInputs,
       newConversationInputsRef,
       handleNewConversationInputsChange,
@@ -178,6 +199,15 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       handleFeedback,
       currentChatInstanceRef,
       themeBuilder,
+      sidebarCollapseState,
+      handleSidebarCollapse,
+      clearChatList,
+      setClearChatList,
+      isResponding,
+      setIsResponding,
+      currentConversationInputs,
+      setCurrentConversationInputs,
+      allInputsHidden,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

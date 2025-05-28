@@ -35,3 +35,9 @@ class AccountNotInitializedError(BaseHTTPException):
     error_code = "account_not_initialized"
     description = "The account has not been initialized yet. Please proceed with the initialization process first."
     code = 400
+
+
+class InvalidAccountDeletionCodeError(BaseHTTPException):
+    error_code = "invalid_account_deletion_code"
+    description = "Invalid account deletion code."
+    code = 400

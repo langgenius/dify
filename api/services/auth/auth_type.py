@@ -1,6 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class AuthType(str, Enum):
+class AuthType(StrEnum):
     FIRECRAWL = "firecrawl"
+    WATERCRAWL = "watercrawl"
     JINA = "jinareader"

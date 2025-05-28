@@ -25,6 +25,7 @@ const translation = {
       learnMore: 'Mehr erfahren',
       description: ' über die Abrufmethode.',
       longDescription: ' über die Abrufmethode, dies kann jederzeit in den Wissenseinstellungen geändert werden.',
+      method: 'Abrufmethode',
     },
     save: 'Speichern',
     permissionsInvitedMembers: 'Teilweise Teammitglieder',
@@ -32,6 +33,10 @@ const translation = {
     externalKnowledgeID: 'ID für externes Wissen',
     externalKnowledgeAPI: 'API für externes Wissen',
     retrievalSettings: 'Einstellungen für den Abruf',
+    upgradeHighQualityTip: 'Nach dem Upgrade auf den Modus "Hohe Qualität" ist das Zurücksetzen auf den Modus "Wirtschaftlich" nicht mehr möglich',
+    helpText: 'Erfahren Sie, wie Sie eine gute Datensatzbeschreibung schreiben.',
+    indexMethodChangeToEconomyDisabledTip: 'Nicht verfügbar für ein Downgrade von HQ auf ECO',
+    searchModel: 'Modell suchen',
   },
 }
 

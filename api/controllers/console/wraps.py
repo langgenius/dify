@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from functools import wraps
 
 from flask import abort, request
@@ -7,11 +8,15 @@ from flask_login import current_user
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
+from extensions.ext_database import db
+from extensions.ext_redis import redis_client
+from models.account import AccountStatus
+from models.dataset import RateLimitLog
 from models.model import DifySetup
-from services.feature_service import FeatureService
+from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
 
-from .error import NotInitValidateError, NotSetupError
+from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
 
 def account_initialization_required(view):
@@ -20,7 +25,7 @@ def account_initialization_required(view):
         # check account initialization
         account = current_user
 
-        if account.status == "uninitialized":
+        if account.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
 
         return view(*args, **kwargs)
@@ -50,6 +55,17 @@ def only_edition_self_hosted(view):
     return decorated
 
 
+def cloud_edition_billing_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_features(current_user.current_tenant_id)
+        if not features.billing.enabled:
+            abort(403, "Billing feature is not enabled.")
+        return view(*args, **kwargs)
+
+    return decorated
+
+
 def cloud_edition_billing_resource_check(resource: str):
     def interceptor(view):
         @wraps(view)
@@ -66,7 +82,9 @@ def cloud_edition_billing_resource_check(resource: str):
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
                     abort(403, "The number of apps has reached the limit of your subscription.")
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    abort(403, "The capacity of the vector space has reached the limit of your subscription.")
+                    abort(
+                        403, "The capacity of the knowledge storage space has reached the limit of your subscription."
+                    )
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
                     # The api of file upload is used in the multiple places,
                     # so we need to check the source of the request from datasets
@@ -111,6 +129,41 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
     return interceptor
 
 
+def cloud_edition_billing_rate_limit_check(resource: str):
+    def interceptor(view):
+        @wraps(view)
+        def decorated(*args, **kwargs):
+            if resource == "knowledge":
+                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_user.current_tenant_id)
+                if knowledge_rate_limit.enabled:
+                    current_time = int(time.time() * 1000)
+                    key = f"rate_limit_{current_user.current_tenant_id}"
+
+                    redis_client.zadd(key, {current_time: current_time})
+
+                    redis_client.zremrangebyscore(key, 0, current_time - 60000)
+
+                    request_count = redis_client.zcard(key)
+
+                    if request_count > knowledge_rate_limit.limit:
+                        # add ratelimit record
+                        rate_limit_log = RateLimitLog(
+                            tenant_id=current_user.current_tenant_id,
+                            subscription_plan=knowledge_rate_limit.subscription_plan,
+                            operation="knowledge",
+                        )
+                        db.session.add(rate_limit_log)
+                        db.session.commit()
+                        abort(
+                            403, "Sorry, you have reached the knowledge base request rate limit of your subscription."
+                        )
+            return view(*args, **kwargs)
+
+        return decorated
+
+    return interceptor
+
+
 def cloud_utm_record(view):
     @wraps(view)
     def decorated(*args, **kwargs):
@@ -121,8 +174,8 @@ def cloud_utm_record(view):
                 utm_info = request.cookies.get("utm_info")
 
                 if utm_info:
-                    utm_info = json.loads(utm_info)
-                    OperationService.record_utm(current_user.current_tenant_id, utm_info)
+                    utm_info_dict: dict = json.loads(utm_info)
+                    OperationService.record_utm(current_user.current_tenant_id, utm_info_dict)
         except Exception as e:
             pass
         return view(*args, **kwargs)
@@ -134,11 +187,40 @@ def setup_required(view):
     @wraps(view)
     def decorated(*args, **kwargs):
         # check setup
-        if dify_config.EDITION == "SELF_HOSTED" and os.environ.get("INIT_PASSWORD") and not DifySetup.query.first():
+        if (
+            dify_config.EDITION == "SELF_HOSTED"
+            and os.environ.get("INIT_PASSWORD")
+            and not db.session.query(DifySetup).first()
+        ):
             raise NotInitValidateError()
-        elif dify_config.EDITION == "SELF_HOSTED" and not DifySetup.query.first():
+        elif dify_config.EDITION == "SELF_HOSTED" and not db.session.query(DifySetup).first():
             raise NotSetupError()
 
         return view(*args, **kwargs)
+
+    return decorated
+
+
+def enterprise_license_required(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        settings = FeatureService.get_system_features()
+        if settings.license.status in [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]:
+            raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def email_password_login_enabled(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        features = FeatureService.get_system_features()
+        if features.enable_email_password_login:
+            return view(*args, **kwargs)
+
+        # otherwise, return 403
+        abort(403)
 
     return decorated

@@ -1,2 +1,0 @@
-class VariableAssignerNodeError(Exception):
-    pass

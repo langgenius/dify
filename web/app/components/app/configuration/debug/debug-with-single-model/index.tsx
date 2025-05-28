@@ -1,10 +1,4 @@
-import {
-  forwardRef,
-  memo,
-  useCallback,
-  useImperativeHandle,
-  useMemo,
-} from 'react'
+import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import {
   useConfigFromDebugContext,
   useFormattingChangedSubscription,
@@ -12,7 +6,7 @@ import {
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
+import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConversationMessages,
@@ -24,8 +18,10 @@ import { useAppContext } from '@/context/app-context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { getLastAnswer } from '@/app/components/base/chat/utils'
+import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
+import { canFindTool } from '@/utils'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -33,9 +29,14 @@ type DebugWithSingleModelProps = {
 export type DebugWithSingleModelRefType = {
   handleRestart: () => void
 }
-const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSingleModelProps>(({
-  checkCanSend,
-}, ref) => {
+const DebugWithSingleModel = (
+  {
+    ref,
+    checkCanSend,
+  }: DebugWithSingleModelProps & {
+    ref: React.RefObject<DebugWithSingleModelRefType>;
+  },
+) => {
   const { userProfile } = useAppContext()
   const {
     modelConfig,
@@ -68,12 +69,11 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   }, [modelConfig.configs.prompt_variables])
   const {
     chatList,
-    chatListRef,
+    setTargetMessageId,
     isResponding,
     handleSend,
     suggestedQuestions,
     handleStop,
-    handleUpdateChatList,
     handleRestart,
     handleAnnotationAdded,
     handleAnnotationEdited,
@@ -89,7 +89,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   )
   useFormattingChangedSubscription(chatList)
 
-  const doSend: OnSend = useCallback((message, files, last_answer) => {
+  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     if (checkCanSend && !checkCanSend())
       return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
@@ -110,7 +110,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       query: message,
       inputs,
       model_config: configData,
-      parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
+      parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
 
     if ((config.file_upload as any)?.enabled && files?.length && supportVision)
@@ -124,28 +124,22 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [chatListRef, appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList])
+  }, [appId, chatList, checkCanSend, completionParams, config, handleSend, inputs, modelConfig.mode, modelConfig.model_id, modelConfig.provider, textGenerationModelList])
 
-  const doRegenerate = useCallback((chatItem: ChatItem) => {
-    const index = chatList.findIndex(item => item.id === chatItem.id)
-    if (index === -1)
-      return
-
-    const prevMessages = chatList.slice(0, index)
-    const question = prevMessages.pop()
-    const lastAnswer = getLastAnswer(prevMessages)
-
-    if (!question)
-      return
-
-    handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, lastAnswer)
-  }, [chatList, handleUpdateChatList, doSend])
+  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+    const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
+    const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
+    doSend(editedQuestion ? editedQuestion.message : question.content,
+      editedQuestion ? editedQuestion.files : question.message_files,
+      true,
+      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
+    )
+  }, [chatList, doSend])
 
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
-      icons[item.tool_name] = collectionList.find((collection: any) => collection.id === item.provider_id)?.icon
+      icons[item.tool_name] = collectionList.find((collection: any) => canFindTool(collection.id, item.provider_id))?.icon
     })
     return icons
   }, [collectionList, modelConfig.agentConfig.tools])
@@ -173,9 +167,10 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       inputs={inputs}
       inputsForm={inputsForm}
       onRegenerate={doRegenerate}
+      switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       onStopResponding={handleStop}
       showPromptLog
-      questionIcon={<Avatar name={userProfile.name} size={40} />}
+      questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={40} />}
       allToolIcons={allToolIcons}
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
@@ -183,7 +178,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       noSpacing
     />
   )
-})
+}
 
 DebugWithSingleModel.displayName = 'DebugWithSingleModel'
 

@@ -7,21 +7,28 @@ import RehypeKatex from 'rehype-katex'
 import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
-import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import type { RefObject } from 'react'
+import {
+  atelierHeathDark,
+  atelierHeathLight,
+} from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import { Component, memo, useEffect, useMemo, useRef, useState } from 'react'
-import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
-import cn from '@/utils/classnames'
-import CopyBtn from '@/app/components/base/copy-btn'
+import { flow } from 'lodash-es'
+import ActionButton from '@/app/components/base/action-button'
+import CopyIcon from '@/app/components/base/copy-icon'
 import SVGBtn from '@/app/components/base/svg'
 import Flowchart from '@/app/components/base/mermaid'
 import ImageGallery from '@/app/components/base/image-gallery'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
-import SVGRenderer from '@/app/components/base/svg-gallery'
 import MarkdownButton from '@/app/components/base/markdown-blocks/button'
 import MarkdownForm from '@/app/components/base/markdown-blocks/form'
+import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
+import ThinkBlock from '@/app/components/base/markdown-blocks/think-block'
+import { Theme } from '@/types/app'
+import useTheme from '@/hooks/use-theme'
+import cn from '@/utils/classnames'
+import SVGRenderer from './svg-gallery'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -45,6 +52,7 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   json: 'JSON',
   latex: 'Latex',
   svg: 'SVG',
+  abc: 'ABC',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
@@ -59,9 +67,32 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
     return content
-  return content.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`)
-    .replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`)
-    .replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`)
+
+  const codeBlockRegex = /```[\s\S]*?```/g
+  const codeBlocks = content.match(codeBlockRegex) || []
+  let processedContent = content.replace(codeBlockRegex, 'CODE_BLOCK_PLACEHOLDER')
+
+  processedContent = flow([
+    (str: string) => str.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`),
+    (str: string) => str.replace(/\\\[([\s\S]*?)\\\]/g, (_, equation) => `$$${equation}$$`),
+    (str: string) => str.replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`),
+    (str: string) => str.replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`),
+  ])(processedContent)
+
+  codeBlocks.forEach((block) => {
+    processedContent = processedContent.replace('CODE_BLOCK_PLACEHOLDER', block)
+  })
+
+  return processedContent
+}
+
+const preprocessThinkTag = (content: string) => {
+  const thinkOpenTagRegex = /<think>\n/g
+  const thinkCloseTagRegex = /\n<\/think>/g
+  return flow([
+    (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
+    (str: string) => str.replace(thinkCloseTagRegex, '\n[ENDTHINKFLAG]</details>'),
+  ])(content)
 }
 
 export function PreCode(props: { children: any }) {
@@ -77,29 +108,6 @@ export function PreCode(props: { children: any }) {
   )
 }
 
-// eslint-disable-next-line unused-imports/no-unused-vars
-const useLazyLoad = (ref: RefObject<Element>): boolean => {
-  const [isIntersecting, setIntersecting] = useState<boolean>(false)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIntersecting(true)
-        observer.disconnect()
-      }
-    })
-
-    if (ref.current)
-      observer.observe(ref.current)
-
-    return () => {
-      observer.disconnect()
-    }
-  }, [ref])
-
-  return isIntersecting
-}
-
 // **Add code block
 // Avoid error #185 (Maximum update depth exceeded.
 // This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate.
@@ -113,80 +121,321 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
-const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }) => {
+const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
+  const { theme } = useTheme()
   const [isSVG, setIsSVG] = useState(true)
+  const [chartState, setChartState] = useState<'loading' | 'success' | 'error'>('loading')
+  const [finalChartOption, setFinalChartOption] = useState<any>(null)
+  const echartsRef = useRef<any>(null)
+  const contentRef = useRef<string>('')
+  const processedRef = useRef<boolean>(false) // Track if content was successfully processed
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-  const chartData = useMemo(() => {
-    if (language === 'echarts') {
-      try {
-        return JSON.parse(String(children).replace(/\n$/, ''))
-      }
-      catch (error) {}
+  const isDarkMode = theme === Theme.dark
+
+  const echartsStyle = useMemo(() => ({
+    height: '350px',
+    width: '100%',
+  }), [])
+
+  const echartsOpts = useMemo(() => ({
+    renderer: 'canvas',
+    width: 'auto',
+  }) as any, [])
+
+  const echartsOnEvents = useMemo(() => ({
+    finished: () => {
+      const instance = echartsRef.current?.getEchartsInstance?.()
+      if (instance)
+        instance.resize()
+    },
+  }), [echartsRef]) // echartsRef is stable, so this effectively runs once.
+
+  // Handle container resize for echarts
+  useEffect(() => {
+    if (language !== 'echarts' || !echartsRef.current) return
+
+    const handleResize = () => {
+      // This gets the echarts instance from the component
+      const instance = echartsRef.current?.getEchartsInstance?.()
+      if (instance)
+        instance.resize()
     }
-    return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
+
+    window.addEventListener('resize', handleResize)
+
+    // Also manually trigger resize after a short delay to ensure proper sizing
+    const resizeTimer = setTimeout(handleResize, 200)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      clearTimeout(resizeTimer)
+    }
+  }, [language, echartsRef.current])
+
+  // Process chart data when content changes
+  useEffect(() => {
+    // Only process echarts content
+    if (language !== 'echarts') return
+
+    // Reset state when new content is detected
+    if (!contentRef.current) {
+      setChartState('loading')
+      processedRef.current = false
+    }
+
+    const newContent = String(children).replace(/\n$/, '')
+
+    // Skip if content hasn't changed
+    if (contentRef.current === newContent) return
+    contentRef.current = newContent
+
+    const trimmedContent = newContent.trim()
+    if (!trimmedContent) return
+
+    // Detect if this is historical data (already complete)
+    // Historical data typically comes as a complete code block with complete JSON
+    const isCompleteJson
+      = (trimmedContent.startsWith('{') && trimmedContent.endsWith('}')
+        && trimmedContent.split('{').length === trimmedContent.split('}').length)
+      || (trimmedContent.startsWith('[') && trimmedContent.endsWith(']')
+        && trimmedContent.split('[').length === trimmedContent.split(']').length)
+
+    // If the JSON structure looks complete, try to parse it right away
+    if (isCompleteJson && !processedRef.current) {
+      try {
+        const parsed = JSON.parse(trimmedContent)
+        if (typeof parsed === 'object' && parsed !== null) {
+          setFinalChartOption(parsed)
+          setChartState('success')
+          processedRef.current = true
+          return
+        }
+      }
+      catch {
+        try {
+          // eslint-disable-next-line no-new-func, sonarjs/code-eval
+          const result = new Function(`return ${trimmedContent}`)()
+          if (typeof result === 'object' && result !== null) {
+            setFinalChartOption(result)
+            setChartState('success')
+            processedRef.current = true
+            return
+          }
+        }
+        catch {
+          // If we have a complete JSON structure but it doesn't parse,
+          // it's likely an error rather than incomplete data
+          setChartState('error')
+          processedRef.current = true
+          return
+        }
+      }
+    }
+
+    // If we get here, either the JSON isn't complete yet, or we failed to parse it
+    // Check more conditions for streaming data
+    const isIncomplete
+      = trimmedContent.length < 5
+      || (trimmedContent.startsWith('{')
+        && (!trimmedContent.endsWith('}')
+          || trimmedContent.split('{').length !== trimmedContent.split('}').length))
+      || (trimmedContent.startsWith('[')
+        && (!trimmedContent.endsWith(']')
+          || trimmedContent.split('[').length !== trimmedContent.split('}').length))
+      || (trimmedContent.split('"').length % 2 !== 1)
+      || (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
+
+    // Only try to parse streaming data if it looks complete and hasn't been processed
+    if (!isIncomplete && !processedRef.current) {
+      let isValidOption = false
+
+      try {
+        const parsed = JSON.parse(trimmedContent)
+        if (typeof parsed === 'object' && parsed !== null) {
+          setFinalChartOption(parsed)
+          isValidOption = true
+        }
+      }
+      catch {
+        try {
+          // eslint-disable-next-line no-new-func, sonarjs/code-eval
+          const result = new Function(`return ${trimmedContent}`)()
+          if (typeof result === 'object' && result !== null) {
+            setFinalChartOption(result)
+            isValidOption = true
+          }
+        }
+        catch {
+          // Both parsing methods failed, but content looks complete
+          setChartState('error')
+          processedRef.current = true
+        }
+      }
+
+      if (isValidOption) {
+        setChartState('success')
+        processedRef.current = true
+      }
+    }
   }, [language, children])
 
   const renderCodeContent = useMemo(() => {
     const content = String(children).replace(/\n$/, '')
-    if (language === 'mermaid' && isSVG) {
-      return <Flowchart PrimitiveCode={content} />
-    }
-    else if (language === 'echarts') {
-      return (
-        <div style={{ minHeight: '350px', minWidth: '700px' }}>
+    switch (language) {
+      case 'mermaid':
+        if (isSVG)
+          return <Flowchart PrimitiveCode={content} />
+        break
+      case 'echarts': {
+        // Loading state: show loading indicator
+        if (chartState === 'loading') {
+          return (
+            <div style={{
+              minHeight: '350px',
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderBottomLeftRadius: '10px',
+              borderBottomRightRadius: '10px',
+              backgroundColor: isDarkMode ? 'var(--color-components-input-bg-normal)' : 'transparent',
+              color: 'var(--color-text-secondary)',
+            }}>
+              <div style={{
+                marginBottom: '12px',
+                width: '24px',
+                height: '24px',
+              }}>
+                {/* Rotating spinner that works in both light and dark modes */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ animation: 'spin 1.5s linear infinite' }}>
+                  <style>
+                    {`
+                      @keyframes spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                      }
+                    `}
+                  </style>
+                  <circle opacity="0.2" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                  <path d="M12 2C6.47715 2 2 6.47715 2 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div style={{
+                fontFamily: 'var(--font-family)',
+                fontSize: '14px',
+              }}>Chart loading...</div>
+            </div>
+          )
+        }
+
+        // Success state: show the chart
+        if (chartState === 'success' && finalChartOption) {
+          return (
+            <div style={{
+              minWidth: '300px',
+              minHeight: '350px',
+              width: '100%',
+              overflowX: 'auto',
+              borderBottomLeftRadius: '10px',
+              borderBottomRightRadius: '10px',
+              transition: 'background-color 0.3s ease',
+            }}>
+              <ErrorBoundary>
+                <ReactEcharts
+                  ref={echartsRef}
+                  option={finalChartOption}
+                  style={echartsStyle}
+                  theme={isDarkMode ? 'dark' : undefined}
+                  opts={echartsOpts}
+                  notMerge={true}
+                  onEvents={echartsOnEvents}
+                />
+              </ErrorBoundary>
+            </div>
+          )
+        }
+
+        // Error state: show error message
+        const errorOption = {
+          title: {
+            text: 'ECharts error - Wrong option.',
+          },
+        }
+
+        return (
+          <div style={{
+            minWidth: '300px',
+            minHeight: '350px',
+            width: '100%',
+            overflowX: 'auto',
+            borderBottomLeftRadius: '10px',
+            borderBottomRightRadius: '10px',
+            transition: 'background-color 0.3s ease',
+          }}>
+            <ErrorBoundary>
+              <ReactEcharts
+                ref={echartsRef}
+                option={errorOption}
+                style={echartsStyle}
+                theme={isDarkMode ? 'dark' : undefined}
+                opts={echartsOpts}
+                notMerge={true}
+              />
+            </ErrorBoundary>
+          </div>
+        )
+      }
+      case 'svg':
+        if (isSVG) {
+          return (
+            <ErrorBoundary>
+              <SVGRenderer content={content} />
+            </ErrorBoundary>
+          )
+        }
+        break
+      case 'abc':
+        return (
           <ErrorBoundary>
-            <ReactEcharts option={chartData} />
+            <MarkdownMusic children={content} />
           </ErrorBoundary>
-        </div>
-      )
+        )
+      default:
+        return (
+          <SyntaxHighlighter
+            {...props}
+            style={theme === Theme.light ? atelierHeathLight : atelierHeathDark}
+            customStyle={{
+              paddingLeft: 12,
+              borderBottomLeftRadius: '10px',
+              borderBottomRightRadius: '10px',
+              backgroundColor: 'var(--color-components-input-bg-normal)',
+            }}
+            language={match?.[1]}
+            showLineNumbers
+            PreTag="div"
+          >
+            {content}
+          </SyntaxHighlighter>
+        )
     }
-    else if (language === 'svg' && isSVG) {
-      return (
-        <ErrorBoundary>
-          <SVGRenderer content={content} />
-        </ErrorBoundary>
-      )
-    }
-    else {
-      return (
-        <SyntaxHighlighter
-          {...props}
-          style={atelierHeathLight}
-          customStyle={{
-            paddingLeft: 12,
-            backgroundColor: '#fff',
-          }}
-          language={match?.[1]}
-          showLineNumbers
-          PreTag="div"
-        >
-          {content}
-        </SyntaxHighlighter>
-      )
-    }
-  }, [language, match, props, children, chartData, isSVG])
+  }, [children, language, isSVG, finalChartOption, props, theme, match, chartState, isDarkMode, echartsStyle, echartsOpts, echartsOnEvents])
 
   if (inline || !match)
     return <code {...props} className={className}>{children}</code>
 
   return (
-    <div>
-      <div
-        className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-        style={{
-          borderColor: 'rgba(0, 0, 0, 0.05)',
-        }}
-      >
-        <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-        <div style={{ display: 'flex' }}>
-          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
-          <CopyBtn
-            className='mr-1'
-            value={String(children).replace(/\n$/, '')}
-            isPlain
-          />
+    <div className='relative'>
+      <div className='flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3'>
+        <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
+        <div className='flex items-center gap-1'>
+          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
+          <ActionButton>
+            <CopyIcon content={String(children).replace(/\n$/, '')} />
+          </ActionButton>
         </div>
       </div>
       {renderCodeContent}
@@ -195,59 +444,85 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
 })
 CodeBlock.displayName = 'CodeBlock'
 
-const VideoBlock: CodeComponent = memo(({ node }) => {
-  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
-  if (srcs.length === 0)
+const VideoBlock: any = memo(({ node }: any) => {
+  const srcs = node.children.filter((child: any) => 'properties' in child).map((child: any) => (child as any).properties.src)
+  if (srcs.length === 0) {
+    const src = node.properties?.src
+    if (src)
+      return <VideoGallery key={src} srcs={[src]} />
     return null
+  }
   return <VideoGallery key={srcs.join()} srcs={srcs} />
 })
 VideoBlock.displayName = 'VideoBlock'
 
-const AudioBlock: CodeComponent = memo(({ node }) => {
-  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
-  if (srcs.length === 0)
+const AudioBlock: any = memo(({ node }: any) => {
+  const srcs = node.children.filter((child: any) => 'properties' in child).map((child: any) => (child as any).properties.src)
+  if (srcs.length === 0) {
+    const src = node.properties?.src
+    if (src)
+      return <AudioGallery key={src} srcs={[src]} />
     return null
+  }
   return <AudioGallery key={srcs.join()} srcs={srcs} />
 })
 AudioBlock.displayName = 'AudioBlock'
+
+const ScriptBlock = memo(({ node }: any) => {
+  const scriptContent = node.children[0]?.value || ''
+  return `<script>${scriptContent}</script>`
+})
+ScriptBlock.displayName = 'ScriptBlock'
 
 const Paragraph = (paragraph: any) => {
   const { node }: any = paragraph
   const children_node = node.children
   if (children_node && children_node[0] && 'tagName' in children_node[0] && children_node[0].tagName === 'img') {
     return (
-      <>
+      <div className="markdown-img-wrapper">
         <ImageGallery srcs={[children_node[0].properties.src]} />
-        <p>{paragraph.children.slice(1)}</p>
-      </>
+        {
+          Array.isArray(paragraph.children) && paragraph.children.length > 1 && (
+            <div className="mt-2">{paragraph.children.slice(1)}</div>
+          )
+        }
+      </div>
     )
   }
   return <p>{paragraph.children}</p>
 }
 
 const Img = ({ src }: any) => {
-  return (<ImageGallery srcs={[src]} />)
+  return <div className="markdown-img-wrapper"><ImageGallery srcs={[src]} /></div>
 }
 
-const Link = ({ node, ...props }: any) => {
+const Link = ({ node, children, ...props }: any) => {
   if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { onSend } = useChatContext()
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
-    return <abbr className="underline decoration-dashed !decoration-primary-700 cursor-pointer" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
+    return <abbr className="cursor-pointer underline !decoration-primary-700 decoration-dashed" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value || ''}>{node.children[0]?.value || ''}</abbr>
   }
   else {
-    return <a {...props} target="_blank" className="underline decoration-dashed !decoration-primary-700 cursor-pointer">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
+    return <a {...props} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{children || 'Download'}</a>
   }
 }
 
-export function Markdown(props: { content: string; className?: string }) {
-  const latexContent = preprocessLaTeX(props.content)
+export function Markdown(props: { content: string; className?: string; customDisallowedElements?: string[] }) {
+  const latexContent = flow([
+    preprocessThinkTag,
+    preprocessLaTeX,
+  ])(props.content)
+
   return (
-    <div className={cn(props.className, 'markdown-body')}>
+    <div className={cn('markdown-body', '!text-text-primary', props.className)}>
       <ReactMarkdown
-        remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
+        remarkPlugins={[
+          RemarkGfm,
+          [RemarkMath, { singleDollarTextMath: false }],
+          RemarkBreaks,
+        ]}
         rehypePlugins={[
           RehypeKatex,
           RehypeRaw as any,
@@ -255,8 +530,13 @@ export function Markdown(props: { content: string; className?: string }) {
           () => {
             return (tree) => {
               const iterate = (node: any) => {
-                if (node.type === 'element' && !node.properties?.src && node.properties?.ref && node.properties.ref.startsWith('{') && node.properties.ref.endsWith('}'))
+                if (node.type === 'element' && node.properties?.ref)
                   delete node.properties.ref
+
+                if (node.type === 'element' && !/^[a-z][a-z0-9]*$/i.test(node.tagName)) {
+                  node.type = 'text'
+                  node.value = `<${node.tagName}`
+                }
 
                 if (node.children)
                   node.children.forEach(iterate)
@@ -265,7 +545,7 @@ export function Markdown(props: { content: string; className?: string }) {
             }
           },
         ]}
-        disallowedElements={['script', 'iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
+        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', ...(props.customDisallowedElements || [])]}
         components={{
           code: CodeBlock,
           img: Img,
@@ -275,8 +555,9 @@ export function Markdown(props: { content: string; className?: string }) {
           p: Paragraph,
           button: MarkdownButton,
           form: MarkdownForm,
+          script: ScriptBlock as any,
+          details: ThinkBlock,
         }}
-        linkTarget='_blank'
       >
         {/* Markdown detect has problem. */}
         {latexContent}
@@ -301,11 +582,11 @@ export default class ErrorBoundary extends Component {
   }
 
   render() {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     if (this.state.hasError)
       return <div>Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content. <br />(see the browser console for more information)</div>
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     return this.props.children
   }

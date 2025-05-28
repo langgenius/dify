@@ -1,8 +1,9 @@
 from abc import ABC
-from enum import Enum
-from typing import Optional
+from collections.abc import Mapping, Sequence
+from enum import Enum, StrEnum
+from typing import Annotated, Any, Literal, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator
 
 
 class PromptMessageRole(Enum):
@@ -48,7 +49,7 @@ class PromptMessageFunction(BaseModel):
     function: PromptMessageTool
 
 
-class PromptMessageContentType(Enum):
+class PromptMessageContentType(StrEnum):
     """
     Enum class for prompt message content type.
     """
@@ -56,15 +57,16 @@ class PromptMessageContentType(Enum):
     TEXT = "text"
     IMAGE = "image"
     AUDIO = "audio"
+    VIDEO = "video"
+    DOCUMENT = "document"
 
 
-class PromptMessageContent(BaseModel):
+class PromptMessageContent(ABC, BaseModel):
     """
     Model class for prompt message content.
     """
 
     type: PromptMessageContentType
-    data: str
 
 
 class TextPromptMessageContent(PromptMessageContent):
@@ -72,26 +74,69 @@ class TextPromptMessageContent(PromptMessageContent):
     Model class for text prompt message content.
     """
 
-    type: PromptMessageContentType = PromptMessageContentType.TEXT
+    type: Literal[PromptMessageContentType.TEXT] = PromptMessageContentType.TEXT
+    data: str
 
 
-class AudioPromptMessageContent(PromptMessageContent):
-    type: PromptMessageContentType = PromptMessageContentType.AUDIO
-    data: str = Field(..., description="Base64 encoded audio data")
-    format: str = Field(..., description="Audio format")
+class MultiModalPromptMessageContent(PromptMessageContent):
+    """
+    Model class for multi-modal prompt message content.
+    """
+
+    format: str = Field(default=..., description="the format of multi-modal file")
+    base64_data: str = Field(default="", description="the base64 data of multi-modal file")
+    url: str = Field(default="", description="the url of multi-modal file")
+    mime_type: str = Field(default=..., description="the mime type of multi-modal file")
+
+    @property
+    def data(self):
+        return self.url or f"data:{self.mime_type};base64,{self.base64_data}"
 
 
-class ImagePromptMessageContent(PromptMessageContent):
+class VideoPromptMessageContent(MultiModalPromptMessageContent):
+    type: Literal[PromptMessageContentType.VIDEO] = PromptMessageContentType.VIDEO
+
+
+class AudioPromptMessageContent(MultiModalPromptMessageContent):
+    type: Literal[PromptMessageContentType.AUDIO] = PromptMessageContentType.AUDIO
+
+
+class ImagePromptMessageContent(MultiModalPromptMessageContent):
     """
     Model class for image prompt message content.
     """
 
-    class DETAIL(str, Enum):
+    class DETAIL(StrEnum):
         LOW = "low"
         HIGH = "high"
 
-    type: PromptMessageContentType = PromptMessageContentType.IMAGE
+    type: Literal[PromptMessageContentType.IMAGE] = PromptMessageContentType.IMAGE
     detail: DETAIL = DETAIL.LOW
+
+
+class DocumentPromptMessageContent(MultiModalPromptMessageContent):
+    type: Literal[PromptMessageContentType.DOCUMENT] = PromptMessageContentType.DOCUMENT
+
+
+PromptMessageContentUnionTypes = Annotated[
+    Union[
+        TextPromptMessageContent,
+        ImagePromptMessageContent,
+        DocumentPromptMessageContent,
+        AudioPromptMessageContent,
+        VideoPromptMessageContent,
+    ],
+    Field(discriminator="type"),
+]
+
+
+CONTENT_TYPE_MAPPING: Mapping[PromptMessageContentType, type[PromptMessageContent]] = {
+    PromptMessageContentType.TEXT: TextPromptMessageContent,
+    PromptMessageContentType.IMAGE: ImagePromptMessageContent,
+    PromptMessageContentType.AUDIO: AudioPromptMessageContent,
+    PromptMessageContentType.VIDEO: VideoPromptMessageContent,
+    PromptMessageContentType.DOCUMENT: DocumentPromptMessageContent,
+}
 
 
 class PromptMessage(ABC, BaseModel):
@@ -100,7 +145,7 @@ class PromptMessage(ABC, BaseModel):
     """
 
     role: PromptMessageRole
-    content: Optional[str | list[PromptMessageContent]] = None
+    content: Optional[str | list[PromptMessageContentUnionTypes]] = None
     name: Optional[str] = None
 
     def is_empty(self) -> bool:
@@ -110,6 +155,33 @@ class PromptMessage(ABC, BaseModel):
         :return: True if prompt message is empty, False otherwise
         """
         return not self.content
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def validate_content(cls, v):
+        if isinstance(v, list):
+            prompts = []
+            for prompt in v:
+                if isinstance(prompt, PromptMessageContent):
+                    if not isinstance(prompt, TextPromptMessageContent | MultiModalPromptMessageContent):
+                        prompt = CONTENT_TYPE_MAPPING[prompt.type].model_validate(prompt.model_dump())
+                elif isinstance(prompt, dict):
+                    prompt = CONTENT_TYPE_MAPPING[prompt["type"]].model_validate(prompt)
+                else:
+                    raise ValueError(f"invalid prompt message {prompt}")
+                prompts.append(prompt)
+            return prompts
+        return v
+
+    @field_serializer("content")
+    def serialize_content(
+        self, content: Optional[Union[str, Sequence[PromptMessageContent]]]
+    ) -> Optional[str | list[dict[str, Any] | PromptMessageContent] | Sequence[PromptMessageContent]]:
+        if content is None or isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            return [item.model_dump() if hasattr(item, "model_dump") else item for item in content]
+        return content
 
 
 class UserPromptMessage(PromptMessage):

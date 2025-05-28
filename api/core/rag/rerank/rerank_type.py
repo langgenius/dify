@@ -1,6 +1,6 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class RerankMode(str, Enum):
+class RerankMode(StrEnum):
     RERANKING_MODEL = "reranking_model"
     WEIGHTED_SCORE = "weighted_score"

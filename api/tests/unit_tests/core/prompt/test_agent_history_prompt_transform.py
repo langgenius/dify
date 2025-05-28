@@ -64,12 +64,10 @@ def test_get_prompt():
     transform._calculate_rest_token = MagicMock(return_value=max_token_limit)
     result = transform.get_prompt()
 
-    assert len(result) <= max_token_limit
     assert len(result) == 4
 
     max_token_limit = 20
     transform._calculate_rest_token = MagicMock(return_value=max_token_limit)
     result = transform.get_prompt()
 
-    assert len(result) <= max_token_limit
     assert len(result) == 12

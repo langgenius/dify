@@ -1,13 +1,13 @@
 import copy
 import json
 import logging
-from collections.abc import Iterable
+import time
 from typing import Any, Optional
 
-from opensearchpy import OpenSearch
-from opensearchpy.helpers import bulk
+from opensearchpy import OpenSearch, helpers
+from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
-from tenacity import retry, stop_after_attempt, wait_fixed
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from configs import dify_config
 from core.rag.datasource.vdb.field import Field
@@ -23,11 +23,16 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger("lindorm").setLevel(logging.WARN)
 
+ROUTING_FIELD = "routing_field"
+UGC_INDEX_PREFIX = "ugc_index"
+
 
 class LindormVectorStoreConfig(BaseModel):
     hosts: str
     username: Optional[str] = None
     password: Optional[str] = None
+    using_ugc: Optional[bool] = False
+    request_timeout: Optional[float] = 1.0  # timeout units: s
 
     @model_validator(mode="before")
     @classmethod
@@ -41,19 +46,29 @@ class LindormVectorStoreConfig(BaseModel):
         return values
 
     def to_opensearch_params(self) -> dict[str, Any]:
-        params = {
-            "hosts": self.hosts,
-        }
+        params: dict[str, Any] = {"hosts": self.hosts}
         if self.username and self.password:
             params["http_auth"] = (self.username, self.password)
         return params
 
 
 class LindormVectorStore(BaseVector):
-    def __init__(self, collection_name: str, config: LindormVectorStoreConfig, **kwargs):
-        super().__init__(collection_name.lower())
+    def __init__(self, collection_name: str, config: LindormVectorStoreConfig, using_ugc: bool, **kwargs):
+        self._routing = None
+        self._routing_field = None
+        if using_ugc:
+            routing_value: str | None = kwargs.get("routing_value")
+            if routing_value is None:
+                raise ValueError("UGC index should init vector with valid 'routing_value' parameter value")
+            self._routing = routing_value.lower()
+            self._routing_field = ROUTING_FIELD
+            ugc_index_name = collection_name
+            super().__init__(ugc_index_name.lower())
+        else:
+            super().__init__(collection_name.lower())
         self._client_config = config
         self._client = OpenSearch(**config.to_opensearch_params())
+        self._using_ugc = using_ugc
         self.kwargs = kwargs
 
     def get_type(self) -> str:
@@ -66,89 +81,81 @@ class LindormVectorStore(BaseVector):
     def refresh(self):
         self._client.indices.refresh(index=self._collection_name)
 
-    def __filter_existed_ids(
+    def add_texts(
         self,
-        texts: list[str],
-        metadatas: list[dict],
-        ids: list[str],
-        bulk_size: int = 1024,
-    ) -> tuple[Iterable[str], Optional[list[dict]], Optional[list[str]]]:
-        @retry(stop=stop_after_attempt(3), wait=wait_fixed(60))
-        def __fetch_existing_ids(batch_ids: list[str]) -> set[str]:
-            try:
-                existing_docs = self._client.mget(index=self._collection_name, body={"ids": batch_ids}, _source=False)
-                return {doc["_id"] for doc in existing_docs["docs"] if doc["found"]}
-            except Exception as e:
-                logger.error(f"Error fetching batch {batch_ids}: {e}")
-                return set()
-
-        @retry(stop=stop_after_attempt(3), wait=wait_fixed(60))
-        def __fetch_existing_routing_ids(batch_ids: list[str], route_ids: list[str]) -> set[str]:
-            try:
-                existing_docs = self._client.mget(
-                    body={
-                        "docs": [
-                            {"_index": self._collection_name, "_id": id, "routing": routing}
-                            for id, routing in zip(batch_ids, route_ids)
-                        ]
-                    },
-                    _source=False,
-                )
-                return {doc["_id"] for doc in existing_docs["docs"] if doc["found"]}
-            except Exception as e:
-                logger.error(f"Error fetching batch {batch_ids}: {e}")
-                return set()
-
-        if ids is None:
-            return texts, metadatas, ids
-
-        if len(texts) != len(ids):
-            raise RuntimeError(f"texts {len(texts)} != {ids}")
-
-        filtered_texts = []
-        filtered_metadatas = []
-        filtered_ids = []
-
-        def batch(iterable, n):
-            length = len(iterable)
-            for idx in range(0, length, n):
-                yield iterable[idx : min(idx + n, length)]
-
-        for ids_batch, texts_batch, metadatas_batch in zip(
-            batch(ids, bulk_size),
-            batch(texts, bulk_size),
-            batch(metadatas, bulk_size) if metadatas is not None else batch([None] * len(ids), bulk_size),
-        ):
-            existing_ids_set = __fetch_existing_ids(ids_batch)
-            for text, metadata, doc_id in zip(texts_batch, metadatas_batch, ids_batch):
-                if doc_id not in existing_ids_set:
-                    filtered_texts.append(text)
-                    filtered_ids.append(doc_id)
-                    if metadatas is not None:
-                        filtered_metadatas.append(metadata)
-
-        return filtered_texts, metadatas if metadatas is None else filtered_metadatas, filtered_ids
-
-    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
-        actions = []
+        documents: list[Document],
+        embeddings: list[list[float]],
+        batch_size: int = 64,
+        timeout: int = 60,
+        **kwargs,
+    ):
+        logger.info(f"Total documents to add: {len(documents)}")
         uuids = self._get_uuids(documents)
-        for i in range(len(documents)):
-            action = {
-                "_op_type": "index",
-                "_index": self._collection_name.lower(),
-                "_id": uuids[i],
-                "_source": {
+
+        total_docs = len(documents)
+        num_batches = (total_docs + batch_size - 1) // batch_size
+
+        @retry(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=1, min=4, max=10),
+        )
+        def _bulk_with_retry(actions):
+            try:
+                response = self._client.bulk(actions, timeout=timeout)
+                if response["errors"]:
+                    error_items = [item for item in response["items"] if "error" in item["index"]]
+                    error_msg = f"Bulk indexing had {len(error_items)} errors"
+                    logger.exception(error_msg)
+                    raise Exception(error_msg)
+                return response
+            except Exception:
+                logger.exception("Bulk indexing error")
+                raise
+
+        for batch_num in range(num_batches):
+            start_idx = batch_num * batch_size
+            end_idx = min((batch_num + 1) * batch_size, total_docs)
+
+            actions = []
+            for i in range(start_idx, end_idx):
+                action_header = {
+                    "index": {
+                        "_index": self.collection_name.lower(),
+                        "_id": uuids[i],
+                    }
+                }
+                action_values: dict[str, Any] = {
                     Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i],  # Make sure you pass an array here
+                    Field.VECTOR.value: embeddings[i],
                     Field.METADATA_KEY.value: documents[i].metadata,
-                },
-            }
-            actions.append(action)
-        bulk(self._client, actions)
-        self.refresh()
+                }
+                if self._using_ugc:
+                    action_header["index"]["routing"] = self._routing
+                    if self._routing_field is not None:
+                        action_values[self._routing_field] = self._routing
+
+                actions.append(action_header)
+                actions.append(action_values)
+
+            # logger.info(f"Processing batch {batch_num + 1}/{num_batches} (documents {start_idx + 1} to {end_idx})")
+
+            try:
+                _bulk_with_retry(actions)
+                # logger.info(f"Successfully processed batch {batch_num + 1}")
+                # simple latency to avoid too many requests in a short time
+                if batch_num < num_batches - 1:
+                    time.sleep(0.5)
+
+            except Exception:
+                logger.exception(f"Failed to process batch {batch_num + 1}")
+                raise
 
     def get_ids_by_metadata_field(self, key: str, value: str):
-        query = {"query": {"term": {f"{Field.METADATA_KEY.value}.{key}.keyword": value}}}
+        query: dict[str, Any] = {
+            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY.value}.{key}.keyword": value}}]}}
+        }
+        if self._using_ugc:
+            query["query"]["bool"]["must"].append({"term": {f"{self._routing_field}.keyword": self._routing}})
         response = self._client.search(index=self._collection_name, body=query)
         if response["hits"]["hits"]:
             return [hit["_id"] for hit in response["hits"]["hits"]]
@@ -156,52 +163,101 @@ class LindormVectorStore(BaseVector):
             return None
 
     def delete_by_metadata_field(self, key: str, value: str):
-        query_str = {"query": {"match": {f"metadata.{key}": f"{value}"}}}
-        results = self._client.search(index=self._collection_name, body=query_str)
-        ids = [hit["_id"] for hit in results["hits"]["hits"]]
+        ids = self.get_ids_by_metadata_field(key, value)
         if ids:
             self.delete_by_ids(ids)
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        """Delete documents by their IDs in batch.
+
+        Args:
+            ids: List of document IDs to delete
+        """
+        if not ids:
+            return
+
+        params = {"routing": self._routing} if self._using_ugc else {}
+
+        # 1. First check if collection exists
+        if not self._client.indices.exists(index=self._collection_name):
+            logger.warning(f"Collection {self._collection_name} does not exist")
+            return
+
+        # 2. Batch process deletions
+        actions = []
         for id in ids:
-            if self._client.exists(index=self._collection_name, id=id):
-                self._client.delete(index=self._collection_name, id=id)
+            if self._client.exists(index=self._collection_name, id=id, params=params):
+                actions.append(
+                    {
+                        "_op_type": "delete",
+                        "_index": self._collection_name,
+                        "_id": id,
+                        **params,  # Include routing if using UGC
+                    }
+                )
             else:
                 logger.warning(f"DELETE BY ID: ID {id} does not exist in the index.")
 
+        # 3. Perform bulk deletion if there are valid documents to delete
+        if actions:
+            try:
+                helpers.bulk(self._client, actions)
+            except BulkIndexError as e:
+                for error in e.errors:
+                    delete_error = error.get("delete", {})
+                    status = delete_error.get("status")
+                    doc_id = delete_error.get("_id")
+
+                    if status == 404:
+                        logger.warning(f"Document not found for deletion: {doc_id}")
+                    else:
+                        logger.exception(f"Error deleting document: {error}")
+
     def delete(self) -> None:
-        try:
+        if self._using_ugc:
+            routing_filter_query = {
+                "query": {"bool": {"must": [{"term": {f"{self._routing_field}.keyword": self._routing}}]}}
+            }
+            self._client.delete_by_query(self._collection_name, body=routing_filter_query)
+            self.refresh()
+        else:
             if self._client.indices.exists(index=self._collection_name):
                 self._client.indices.delete(index=self._collection_name, params={"timeout": 60})
                 logger.info("Delete index success")
             else:
                 logger.warning(f"Index '{self._collection_name}' does not exist. No deletion performed.")
-        except Exception as e:
-            logger.error(f"Error occurred while deleting the index: {e}")
-            raise e
 
     def text_exists(self, id: str) -> bool:
         try:
-            self._client.get(index=self._collection_name, id=id)
+            params = {}
+            if self._using_ugc:
+                params["routing"] = self._routing
+            self._client.get(index=self._collection_name, id=id, params=params)
             return True
         except:
             return False
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        # Make sure query_vector is a list
         if not isinstance(query_vector, list):
             raise ValueError("query_vector should be a list of floats")
 
-        # Check whether query_vector is a floating-point number list
         if not all(isinstance(x, float) for x in query_vector):
             raise ValueError("All elements in query_vector should be floats")
 
-        top_k = kwargs.get("top_k", 10)
-        query = default_vector_search_query(query_vector=query_vector, k=top_k, **kwargs)
+        top_k = kwargs.get("top_k", 3)
+        document_ids_filter = kwargs.get("document_ids_filter")
+        filters = []
+        if document_ids_filter:
+            filters.append({"terms": {"metadata.document_id.keyword": document_ids_filter}})
+        query = default_vector_search_query(query_vector=query_vector, k=top_k, filters=filters, **kwargs)
+
         try:
-            response = self._client.search(index=self._collection_name, body=query)
-        except Exception as e:
-            logger.error(f"Error executing search: {e}")
+            params = {"timeout": self._client_config.request_timeout}
+            if self._using_ugc:
+                params["routing"] = self._routing  # type: ignore
+            response = self._client.search(index=self._collection_name, body=query, params=params)
+        except Exception:
+            logger.exception(f"Error executing vector search, query: {query}")
             raise
 
         docs_and_scores = []
@@ -220,7 +276,8 @@ class LindormVectorStore(BaseVector):
         for doc, score in docs_and_scores:
             score_threshold = kwargs.get("score_threshold", 0.0) or 0.0
             if score > score_threshold:
-                doc.metadata["score"] = score
+                if doc.metadata is not None:
+                    doc.metadata["score"] = score
                 docs.append(doc)
 
         return docs
@@ -230,9 +287,12 @@ class LindormVectorStore(BaseVector):
         must_not = kwargs.get("must_not")
         should = kwargs.get("should")
         minimum_should_match = kwargs.get("minimum_should_match", 0)
-        top_k = kwargs.get("top_k", 10)
-        filters = kwargs.get("filter")
-        routing = kwargs.get("routing")
+        top_k = kwargs.get("top_k", 3)
+        filters = kwargs.get("filter", [])
+        document_ids_filter = kwargs.get("document_ids_filter")
+        if document_ids_filter:
+            filters.append({"terms": {"metadata.document_id.keyword": document_ids_filter}})
+        routing = self._routing
         full_text_query = default_text_search_query(
             query_text=query,
             k=top_k,
@@ -243,8 +303,10 @@ class LindormVectorStore(BaseVector):
             minimum_should_match=minimum_should_match,
             filters=filters,
             routing=routing,
+            routing_field=self._routing_field,
         )
-        response = self._client.search(index=self._collection_name, body=full_text_query)
+        params = {"timeout": self._client_config.request_timeout}
+        response = self._client.search(index=self._collection_name, body=full_text_query, params=params)
         docs = []
         for hit in response["hits"]["hits"]:
             docs.append(
@@ -265,33 +327,34 @@ class LindormVectorStore(BaseVector):
                 logger.info(f"Collection {self._collection_name} already exists.")
                 return
             if self._client.indices.exists(index=self._collection_name):
-                logger.info("{self._collection_name.lower()} already exists.")
+                logger.info(f"{self._collection_name.lower()} already exists.")
+                redis_client.set(collection_exist_cache_key, 1, ex=3600)
                 return
             if len(self.kwargs) == 0 and len(kwargs) != 0:
                 self.kwargs = copy.deepcopy(kwargs)
             vector_field = kwargs.pop("vector_field", Field.VECTOR.value)
-            shards = kwargs.pop("shards", 2)
+            shards = kwargs.pop("shards", 4)
 
             engine = kwargs.pop("engine", "lvector")
-            method_name = kwargs.pop("method_name", "hnsw")
+            method_name = kwargs.pop("method_name", dify_config.DEFAULT_INDEX_TYPE)
+            space_type = kwargs.pop("space_type", dify_config.DEFAULT_DISTANCE_TYPE)
             data_type = kwargs.pop("data_type", "float")
-            space_type = kwargs.pop("space_type", "cosinesimil")
 
             hnsw_m = kwargs.pop("hnsw_m", 24)
             hnsw_ef_construction = kwargs.pop("hnsw_ef_construction", 500)
             ivfpq_m = kwargs.pop("ivfpq_m", dimension)
             nlist = kwargs.pop("nlist", 1000)
-            centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", True if nlist >= 5000 else False)
+            centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", nlist >= 5000)
             centroids_hnsw_m = kwargs.pop("centroids_hnsw_m", 24)
             centroids_hnsw_ef_construct = kwargs.pop("centroids_hnsw_ef_construct", 500)
             centroids_hnsw_ef_search = kwargs.pop("centroids_hnsw_ef_search", 100)
             mapping = default_text_mapping(
                 dimension,
                 method_name,
+                space_type=space_type,
                 shards=shards,
                 engine=engine,
                 data_type=data_type,
-                space_type=space_type,
                 vector_field=vector_field,
                 hnsw_m=hnsw_m,
                 hnsw_ef_construction=hnsw_ef_construction,
@@ -301,6 +364,7 @@ class LindormVectorStore(BaseVector):
                 centroids_hnsw_m=centroids_hnsw_m,
                 centroids_hnsw_ef_construct=centroids_hnsw_ef_construct,
                 centroids_hnsw_ef_search=centroids_hnsw_ef_search,
+                using_ugc=self._using_ugc,
                 **kwargs,
             )
             self._client.indices.create(index=self._collection_name.lower(), body=mapping)
@@ -309,20 +373,25 @@ class LindormVectorStore(BaseVector):
 
 
 def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dict:
-    routing_field = kwargs.get("routing_field")
-    excludes_from_source = kwargs.get("excludes_from_source")
+    excludes_from_source = kwargs.get("excludes_from_source", False)
     analyzer = kwargs.get("analyzer", "ik_max_word")
     text_field = kwargs.get("text_field", Field.CONTENT_KEY.value)
     engine = kwargs["engine"]
     shard = kwargs["shards"]
-    space_type = kwargs["space_type"]
+    space_type = kwargs.get("space_type")
+    if space_type is None:
+        if method_name == "hnsw":
+            space_type = "l2"
+        else:
+            space_type = "cosine"
     data_type = kwargs["data_type"]
     vector_field = kwargs.get("vector_field", Field.VECTOR.value)
+    using_ugc = kwargs.get("using_ugc", False)
 
     if method_name == "ivfpq":
         ivfpq_m = kwargs["ivfpq_m"]
         nlist = kwargs["nlist"]
-        centroids_use_hnsw = True if nlist > 10000 else False
+        centroids_use_hnsw = nlist > 10000
         centroids_hnsw_m = 24
         centroids_hnsw_ef_construct = 500
         centroids_hnsw_ef_search = 100
@@ -364,15 +433,14 @@ def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dic
     }
 
     if excludes_from_source:
-        mapping["mappings"]["_source"] = {"excludes": excludes_from_source}  # e.g. {"excludes": ["vector_field"]}
+        # e.g. {"excludes": ["vector_field"]}
+        mapping["mappings"]["_source"] = {"excludes": [vector_field]}
 
-    if method_name == "ivfpq" and routing_field is not None:
+    if using_ugc and method_name == "ivfpq":
         mapping["settings"]["index"]["knn_routing"] = True
         mapping["settings"]["index"]["knn.offline.construction"] = True
-
-    if method_name == "flat" and routing_field is not None:
+    elif (using_ugc and method_name == "hnsw") or (using_ugc and method_name == "flat"):
         mapping["settings"]["index"]["knn_routing"] = True
-
     return mapping
 
 
@@ -386,14 +454,13 @@ def default_text_search_query(
     minimum_should_match: int = 0,
     filters: Optional[list[dict]] = None,
     routing: Optional[str] = None,
+    routing_field: Optional[str] = None,
     **kwargs,
 ) -> dict:
+    query_clause: dict[str, Any] = {}
     if routing is not None:
-        routing_field = kwargs.get("routing_field", "routing_field")
         query_clause = {
-            "bool": {
-                "must": [{"match": {text_field: query_text}}, {"term": {f"metadata.{routing_field}.keyword": routing}}]
-            }
+            "bool": {"must": [{"match": {text_field: query_text}}, {"term": {f"{routing_field}.keyword": routing}}]}
         }
     else:
         query_clause = {"match": {text_field: query_text}}
@@ -411,7 +478,7 @@ def default_text_search_query(
     else:
         must = [query_clause]
 
-    boolean_query = {"must": must}
+    boolean_query: dict[str, Any] = {"must": must}
 
     if must_not:
         if not isinstance(must_not, list):
@@ -448,10 +515,10 @@ def default_vector_search_query(
     **kwargs,
 ) -> dict:
     if filters is not None:
-        filter_type = "post_filter" if filter_type is None else filter_type
-        if not isinstance(filter, list):
+        filter_type = "pre_filter" if filter_type is None else filter_type
+        if not isinstance(filters, list):
             raise RuntimeError(f"unexpected filter with {type(filters)}")
-    final_ext = {"lvector": {}}
+    final_ext: dict[str, Any] = {"lvector": {}}
     if min_score != "0.0":
         final_ext["lvector"]["min_score"] = min_score
     if ef_search:
@@ -463,16 +530,16 @@ def default_vector_search_query(
     if client_refactor:
         final_ext["lvector"]["client_refactor"] = client_refactor
 
-    search_query = {
+    search_query: dict[str, Any] = {
         "size": k,
         "_source": True,  # force return '_source'
         "query": {"knn": {vector_field: {"vector": query_vector, "k": k}}},
     }
 
-    if filters is not None:
+    if filters is not None and len(filters) > 0:
         # when using filter, transform filter from List[Dict] to Dict as valid format
-        filters = {"bool": {"must": filters}} if len(filters) > 1 else filters[0]
-        search_query["query"]["knn"][vector_field]["filter"] = filters  # filter should be Dict
+        filter_dict = {"bool": {"must": filters}} if len(filters) > 1 else filters[0]
+        search_query["query"]["knn"][vector_field]["filter"] = filter_dict  # filter should be Dict
         if filter_type:
             final_ext["lvector"]["filter_type"] = filter_type
 
@@ -483,16 +550,48 @@ def default_vector_search_query(
 
 class LindormVectorStoreFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> LindormVectorStore:
-        if dataset.index_struct_dict:
-            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
-            collection_name = class_prefix
-        else:
-            dataset_id = dataset.id
-            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.LINDORM, collection_name))
         lindorm_config = LindormVectorStoreConfig(
-            hosts=dify_config.LINDORM_URL,
+            hosts=dify_config.LINDORM_URL or "",
             username=dify_config.LINDORM_USERNAME,
             password=dify_config.LINDORM_PASSWORD,
+            using_ugc=dify_config.USING_UGC_INDEX,
+            request_timeout=dify_config.LINDORM_QUERY_TIMEOUT,
         )
-        return LindormVectorStore(collection_name, lindorm_config)
+        using_ugc = dify_config.USING_UGC_INDEX
+        if using_ugc is None:
+            raise ValueError("USING_UGC_INDEX is not set")
+        routing_value = None
+        if dataset.index_struct:
+            # if an existed record's index_struct_dict doesn't contain using_ugc field,
+            # it actually stores in the normal index format
+            stored_in_ugc: bool = dataset.index_struct_dict.get("using_ugc", False)
+            using_ugc = stored_in_ugc
+            if stored_in_ugc:
+                dimension = dataset.index_struct_dict["dimension"]
+                index_type = dataset.index_struct_dict["index_type"]
+                distance_type = dataset.index_struct_dict["distance_type"]
+                routing_value = dataset.index_struct_dict["vector_store"]["class_prefix"]
+                index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{index_type}_{distance_type}"
+            else:
+                index_name = dataset.index_struct_dict["vector_store"]["class_prefix"]
+        else:
+            embedding_vector = embeddings.embed_query("hello word")
+            dimension = len(embedding_vector)
+            index_type = dify_config.DEFAULT_INDEX_TYPE
+            distance_type = dify_config.DEFAULT_DISTANCE_TYPE
+            class_prefix = Dataset.gen_collection_name_by_id(dataset.id)
+            index_struct_dict = {
+                "type": VectorType.LINDORM,
+                "vector_store": {"class_prefix": class_prefix},
+                "index_type": index_type,
+                "dimension": dimension,
+                "distance_type": distance_type,
+                "using_ugc": using_ugc,
+            }
+            dataset.index_struct = json.dumps(index_struct_dict)
+            if using_ugc:
+                index_name = f"{UGC_INDEX_PREFIX}_{dimension}_{index_type}_{distance_type}"
+                routing_value = class_prefix
+            else:
+                index_name = class_prefix
+        return LindormVectorStore(index_name, lindorm_config, routing_value=routing_value, using_ugc=using_ugc)

@@ -30,6 +30,12 @@ const translation = {
     },
     tryToSolve: 'Essayez de résoudre',
     temporarySystemIssue: 'Désolé, problème temporaire du système.',
+    expand: 'Développer',
+    collapse: 'Réduire',
+    chatSettingsTitle: 'Nouvelle configuration de chat',
+    viewChatSettings: 'Voir les paramètres de chat',
+    newChatTip: 'Déjà dans une nouvelle discussion',
+    chatFormTip: 'Les paramètres de chat ne peuvent pas être modifiés une fois que le chat a commencé.',
   },
   generation: {
     tabs: {
@@ -68,6 +74,8 @@ const translation = {
       moreThanMaxLengthLine: 'Row {{rowIndex}}: {{varName}} value can not be more than {{maxLength}} characters',
       atLeastOne: 'Veuillez entrer au moins une ligne dans le fichier téléchargé.',
     },
+    executions: '{{num}} EXÉCUTIONS',
+    execution: 'EXÉCUTION',
   },
 }
 

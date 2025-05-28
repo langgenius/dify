@@ -14,7 +14,7 @@ class NotionInfo(BaseModel):
     notion_workspace_id: str
     notion_obj_id: str
     notion_page_type: str
-    document: Document = None
+    document: Optional[Document] = None
     tenant_id: str
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

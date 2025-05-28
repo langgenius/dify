@@ -1,5 +1,5 @@
 'use client'
-import { Dialog } from '@headlessui/react'
+import { Dialog, DialogBackdrop, DialogTitle } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import Button from '../button'
@@ -8,7 +8,9 @@ import cn from '@/utils/classnames'
 export type IDrawerProps = {
   title?: string
   description?: string
-  panelClassname?: string
+  dialogClassName?: string
+  dialogBackdropClassName?: string
+  panelClassName?: string
   children: React.ReactNode
   footer?: React.ReactNode
   mask?: boolean
@@ -19,12 +21,15 @@ export type IDrawerProps = {
   onClose: () => void
   onCancel?: () => void
   onOk?: () => void
+  unmount?: boolean
 }
 
 export default function Drawer({
   title = '',
   description = '',
-  panelClassname = '',
+  dialogClassName = '',
+  dialogBackdropClassName = '',
+  panelClassName = '',
   children,
   footer,
   mask = true,
@@ -35,32 +40,38 @@ export default function Drawer({
   onClose,
   onCancel,
   onOk,
+  unmount = false,
 }: IDrawerProps) {
   const { t } = useTranslation()
   return (
     <Dialog
-      unmount={false}
+      unmount={unmount}
       open={isOpen}
       onClose={() => !clickOutsideNotOpen && onClose()}
-      className="fixed z-30 inset-0 overflow-y-auto"
+      className={cn('fixed inset-0 z-[30] overflow-y-auto', dialogClassName)}
     >
-      <div className={cn('flex w-screen h-screen justify-end', positionCenter && '!justify-center')}>
+      <div className={cn('flex h-screen w-screen justify-end', positionCenter && '!justify-center')}>
         {/* mask */}
-        <Dialog.Overlay
-          className={cn('z-40 fixed inset-0', mask && 'bg-black bg-opacity-30')}
+        <DialogBackdrop
+          className={cn('fixed inset-0 z-[40]', mask && 'bg-black/30', dialogBackdropClassName)}
+          onClick={() => {
+            !clickOutsideNotOpen && onClose()
+          }}
         />
-        <div className={cn('relative z-50 flex flex-col justify-between bg-white w-full max-w-sm p-6 overflow-hidden text-left align-middle shadow-xl', panelClassname)}>
+        <div className={cn('relative z-[50] flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassName)}>
           <>
-            {title && <Dialog.Title
-              as="h3"
-              className="text-lg font-medium leading-6 text-gray-900"
-            >
-              {title}
-            </Dialog.Title>}
-            {showClose && <Dialog.Title className="flex items-center mb-4" as="div">
-              <XMarkIcon className='w-4 h-4 text-gray-500' onClick={onClose} />
-            </Dialog.Title>}
-            {description && <Dialog.Description className='text-gray-500 text-xs font-normal mt-2'>{description}</Dialog.Description>}
+            <div className='flex justify-between'>
+              {title && <DialogTitle
+                as="h3"
+                className="text-lg font-medium leading-6 text-text-primary"
+              >
+                {title}
+              </DialogTitle>}
+              {showClose && <DialogTitle className="mb-4 flex cursor-pointer items-center" as="div">
+                <XMarkIcon className='h-4 w-4 text-text-tertiary' onClick={onClose} />
+              </DialogTitle>}
+            </div>
+            {description && <div className='mt-2 text-xs font-normal text-text-tertiary'>{description}</div>}
             {children}
           </>
           {footer || (footer === null

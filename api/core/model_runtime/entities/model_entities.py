@@ -1,8 +1,8 @@
 from decimal import Decimal
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from core.model_runtime.entities.common_entities import I18nObject
 
@@ -18,7 +18,6 @@ class ModelType(Enum):
     SPEECH2TEXT = "speech2text"
     MODERATION = "moderation"
     TTS = "tts"
-    TEXT2IMG = "text2img"
 
     @classmethod
     def value_of(cls, origin_model_type: str) -> "ModelType":
@@ -37,8 +36,6 @@ class ModelType(Enum):
             return cls.SPEECH2TEXT
         elif origin_model_type in {"tts", cls.TTS.value}:
             return cls.TTS
-        elif origin_model_type in {"text2img", cls.TEXT2IMG.value}:
-            return cls.TEXT2IMG
         elif origin_model_type == cls.MODERATION.value:
             return cls.MODERATION
         else:
@@ -62,8 +59,6 @@ class ModelType(Enum):
             return "tts"
         elif self == self.MODERATION:
             return "moderation"
-        elif self == self.TEXT2IMG:
-            return "text2img"
         else:
             raise ValueError(f"invalid model type {self}")
 
@@ -87,9 +82,13 @@ class ModelFeature(Enum):
     AGENT_THOUGHT = "agent-thought"
     VISION = "vision"
     STREAM_TOOL_CALL = "stream-tool-call"
+    DOCUMENT = "document"
+    VIDEO = "video"
+    AUDIO = "audio"
+    STRUCTURED_OUTPUT = "structured-output"
 
 
-class DefaultParameterName(str, Enum):
+class DefaultParameterName(StrEnum):
     """
     Enum class for parameter template variable.
     """
@@ -198,6 +197,19 @@ class AIModelEntity(ProviderModel):
 
     parameter_rules: list[ParameterRule] = []
     pricing: Optional[PriceConfig] = None
+
+    @model_validator(mode="after")
+    def validate_model(self):
+        supported_schema_keys = ["json_schema"]
+        schema_key = next((rule.name for rule in self.parameter_rules if rule.name in supported_schema_keys), None)
+        if not schema_key:
+            return self
+        if self.features is None:
+            self.features = [ModelFeature.STRUCTURED_OUTPUT]
+        else:
+            if ModelFeature.STRUCTURED_OUTPUT not in self.features:
+                self.features.append(ModelFeature.STRUCTURED_OUTPUT)
+        return self
 
 
 class ModelUsage(BaseModel):

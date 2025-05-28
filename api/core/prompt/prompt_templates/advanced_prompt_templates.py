@@ -5,7 +5,7 @@ BAICHUAN_CONTEXT = "用户在与一个客观的助手对话。助手会尊重找
 CHAT_APP_COMPLETION_PROMPT_CONFIG = {
     "completion_prompt_config": {
         "prompt": {
-            "text": "{{#pre_prompt#}}\nHere is the chat histories between human and assistant, inside <histories></histories> XML tags.\n\n<histories>\n{{#histories#}}\n</histories>\n\n\nHuman: {{#query#}}\n\nAssistant: "  # noqa: E501
+            "text": "{{#pre_prompt#}}\nHere are the chat histories between human and assistant, inside <histories></histories> XML tags.\n\n<histories>\n{{#histories#}}\n</histories>\n\n\nHuman: {{#query#}}\n\nAssistant: "  # noqa: E501
         },
         "conversation_histories_role": {"user_prefix": "Human", "assistant_prefix": "Assistant"},
     },
@@ -28,7 +28,7 @@ BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG = {
         },
         "conversation_histories_role": {"user_prefix": "用户", "assistant_prefix": "助手"},
     },
-    "stop": ["用户:"],
+    "stop": ["用户："],
 }
 
 BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG = {
@@ -41,5 +41,5 @@ BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG = {
 
 BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG = {
     "completion_prompt_config": {"prompt": {"text": "{{#pre_prompt#}}"}},
-    "stop": ["用户:"],
+    "stop": ["用户："],
 }

@@ -1,13 +1,13 @@
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Optional
+import json
+from collections.abc import Generator, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from core.app.app_config.entities import VariableEntityType
-from core.file import File, FileExtraConfig
+from core.file import File, FileUploadConfig
 from factories import file_factory
 
 if TYPE_CHECKING:
-    from core.app.app_config.entities import AppConfig, VariableEntity
-    from models.enums import CreatedByRole
+    from core.app.app_config.entities import VariableEntity
 
 
 class BaseAppGenerator:
@@ -15,32 +15,30 @@ class BaseAppGenerator:
         self,
         *,
         user_inputs: Optional[Mapping[str, Any]],
-        app_config: "AppConfig",
-        user_id: str,
-        role: "CreatedByRole",
+        variables: Sequence["VariableEntity"],
+        tenant_id: str,
+        strict_type_validation: bool = False,
     ) -> Mapping[str, Any]:
         user_inputs = user_inputs or {}
         # Filter input variables from form configuration, handle required fields, default values, and option values
-        variables = app_config.variables
         user_inputs = {
             var.variable: self._validate_inputs(value=user_inputs.get(var.variable), variable_entity=var)
             for var in variables
         }
         user_inputs = {k: self._sanitize_value(v) for k, v in user_inputs.items()}
         # Convert files in inputs to File
-        entity_dictionary = {item.variable: item for item in app_config.variables}
+        entity_dictionary = {item.variable: item for item in variables}
         # Convert single file to File
         files_inputs = {
             k: file_factory.build_from_mapping(
                 mapping=v,
-                tenant_id=app_config.tenant_id,
-                user_id=user_id,
-                role=role,
-                config=FileExtraConfig(
+                tenant_id=tenant_id,
+                config=FileUploadConfig(
                     allowed_file_types=entity_dictionary[k].allowed_file_types,
-                    allowed_extensions=entity_dictionary[k].allowed_file_extensions,
-                    allowed_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
                 ),
+                strict_type_validation=strict_type_validation,
             )
             for k, v in user_inputs.items()
             if isinstance(v, dict) and entity_dictionary[k].type == VariableEntityType.FILE
@@ -49,13 +47,11 @@ class BaseAppGenerator:
         file_list_inputs = {
             k: file_factory.build_from_mappings(
                 mappings=v,
-                tenant_id=app_config.tenant_id,
-                user_id=user_id,
-                role=role,
-                config=FileExtraConfig(
+                tenant_id=tenant_id,
+                config=FileUploadConfig(
                     allowed_file_types=entity_dictionary[k].allowed_file_types,
-                    allowed_extensions=entity_dictionary[k].allowed_file_extensions,
-                    allowed_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
                 ),
             )
             for k, v in user_inputs.items()
@@ -98,6 +94,9 @@ class BaseAppGenerator:
             )
 
         if variable_entity.type == VariableEntityType.NUMBER and isinstance(value, str):
+            # handle empty string case
+            if not value.strip():
+                return None
             # may raise ValueError if user_input_value is not a valid number
             try:
                 if "." in value:
@@ -142,3 +141,21 @@ class BaseAppGenerator:
         if isinstance(value, str):
             return value.replace("\x00", "")
         return value
+
+    @classmethod
+    def convert_to_event_stream(cls, generator: Union[Mapping, Generator[Mapping | str, None, None]]):
+        """
+        Convert messages into event stream
+        """
+        if isinstance(generator, dict):
+            return generator
+        else:
+
+            def gen():
+                for message in generator:
+                    if isinstance(message, Mapping | dict):
+                        yield f"data: {json.dumps(message)}\n\n"
+                    else:
+                        yield f"event: {message}\n\n"
+
+            return gen()

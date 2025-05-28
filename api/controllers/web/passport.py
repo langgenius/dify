@@ -5,7 +5,7 @@ from flask_restful import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from controllers.web import api
-from controllers.web.error import WebSSOAuthRequiredError
+from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
@@ -19,13 +19,15 @@ class PassportResource(Resource):
     def get(self):
         system_features = FeatureService.get_system_features()
         app_code = request.headers.get("X-App-Code")
+        user_id = request.args.get("user_id")
+
         if app_code is None:
             raise Unauthorized("X-App-Code header is missing.")
 
-        if system_features.sso_enforced_for_web:
-            app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get("enabled", False)
-            if app_web_sso_enabled:
-                raise WebSSOAuthRequiredError()
+        if system_features.webapp_auth.enabled:
+            app_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
+            if not app_settings or not app_settings.access_mode == "public":
+                raise WebAppAuthRequiredError()
 
         # get site from db and check if it is normal
         site = db.session.query(Site).filter(Site.code == app_code, Site.status == "normal").first()
@@ -36,16 +38,33 @@ class PassportResource(Resource):
         if not app_model or app_model.status != "normal" or not app_model.enable_site:
             raise NotFound()
 
-        end_user = EndUser(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            type="browser",
-            is_anonymous=True,
-            session_id=generate_session_id(),
-        )
+        if user_id:
+            end_user = (
+                db.session.query(EndUser).filter(EndUser.app_id == app_model.id, EndUser.session_id == user_id).first()
+            )
 
-        db.session.add(end_user)
-        db.session.commit()
+            if end_user:
+                pass
+            else:
+                end_user = EndUser(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    type="browser",
+                    is_anonymous=True,
+                    session_id=user_id,
+                )
+                db.session.add(end_user)
+                db.session.commit()
+        else:
+            end_user = EndUser(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                type="browser",
+                is_anonymous=True,
+                session_id=generate_session_id(),
+            )
+            db.session.add(end_user)
+            db.session.commit()
 
         payload = {
             "iss": site.app_id,

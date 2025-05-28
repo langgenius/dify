@@ -1,11 +1,16 @@
+from typing import Any, Union
+
 import redis
+from redis.cache import CacheConfig
+from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
 
 from configs import dify_config
+from dify_app import DifyApp
 
 
-class RedisClientWrapper(redis.Redis):
+class RedisClientWrapper:
     """
     A wrapper class for the Redis client that addresses the issue where the global
     `redis_client` variable cannot be updated when a new Redis instance is returned
@@ -42,22 +47,33 @@ class RedisClientWrapper(redis.Redis):
 redis_client = RedisClientWrapper()
 
 
-def init_app(app):
+def init_app(app: DifyApp):
     global redis_client
-    connection_class = Connection
+    connection_class: type[Union[Connection, SSLConnection]] = Connection
     if dify_config.REDIS_USE_SSL:
         connection_class = SSLConnection
+    resp_protocol = dify_config.REDIS_SERIALIZATION_PROTOCOL
+    if dify_config.REDIS_ENABLE_CLIENT_SIDE_CACHE:
+        if resp_protocol >= 3:
+            clientside_cache_config = CacheConfig()
+        else:
+            raise ValueError("Client side cache is only supported in RESP3")
+    else:
+        clientside_cache_config = None
 
-    redis_params = {
+    redis_params: dict[str, Any] = {
         "username": dify_config.REDIS_USERNAME,
-        "password": dify_config.REDIS_PASSWORD,
+        "password": dify_config.REDIS_PASSWORD or None,  # Temporary fix for empty password
         "db": dify_config.REDIS_DB,
         "encoding": "utf-8",
         "encoding_errors": "strict",
         "decode_responses": False,
+        "protocol": resp_protocol,
+        "cache_config": clientside_cache_config,
     }
 
     if dify_config.REDIS_USE_SENTINEL:
+        assert dify_config.REDIS_SENTINELS is not None, "REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True"
         sentinel_hosts = [
             (node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")
         ]
@@ -71,12 +87,28 @@ def init_app(app):
         )
         master = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **redis_params)
         redis_client.initialize(master)
+    elif dify_config.REDIS_USE_CLUSTERS:
+        assert dify_config.REDIS_CLUSTERS is not None, "REDIS_CLUSTERS must be set when REDIS_USE_CLUSTERS is True"
+        nodes = [
+            ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
+            for node in dify_config.REDIS_CLUSTERS.split(",")
+        ]
+        redis_client.initialize(
+            RedisCluster(
+                startup_nodes=nodes,
+                password=dify_config.REDIS_CLUSTERS_PASSWORD,
+                protocol=resp_protocol,
+                cache_config=clientside_cache_config,
+            )
+        )
     else:
         redis_params.update(
             {
                 "host": dify_config.REDIS_HOST,
                 "port": dify_config.REDIS_PORT,
                 "connection_class": connection_class,
+                "protocol": resp_protocol,
+                "cache_config": clientside_cache_config,
             }
         )
         pool = redis.ConnectionPool(**redis_params)

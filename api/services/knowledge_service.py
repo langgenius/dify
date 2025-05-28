@@ -1,4 +1,4 @@
-import boto3
+import boto3  # type: ignore
 
 from configs import dify_config
 

@@ -3,14 +3,15 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   RiDeleteBinLine,
+  RiUploadCloud2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { formatFileSize } from '@/utils/format'
 import cn from '@/utils/classnames'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
 import { ToastContext } from '@/app/components/base/toast'
-import { UploadCloud01 } from '@/app/components/base/icons/src/vender/line/general'
-import Button from '@/app/components/base/button'
+import ActionButton from '@/app/components/base/action-button'
 
 export type Props = {
   file: File | undefined
@@ -58,8 +59,13 @@ const Uploader: FC<Props> = ({
     updateFile(files[0])
   }
   const selectHandle = () => {
-    if (fileUploader.current)
+    const originalFile = file
+    if (fileUploader.current) {
+      fileUploader.current.value = ''
       fileUploader.current.click()
+      // If no file is selected, restore the original file
+      fileUploader.current.oncancel = () => updateFile(originalFile)
+    }
   }
   const removeFile = () => {
     if (fileUploader.current)
@@ -91,35 +97,39 @@ const Uploader: FC<Props> = ({
         style={{ display: 'none' }}
         type="file"
         id="fileUploader"
-        accept='.yml'
+        accept='.yaml,.yml'
         onChange={fileChangeHandle}
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex items-center h-20 rounded-xl bg-gray-50 border border-dashed border-gray-200 text-sm font-normal', dragging && 'bg-[#F5F8FF] border border-[#B2CCFF]')}>
-            <div className='w-full flex items-center justify-center space-x-2'>
-              <UploadCloud01 className='w-6 h-6 mr-2' />
-              <div className='text-gray-500'>
+          <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
+            <div className='flex w-full items-center justify-center space-x-2'>
+              <RiUploadCloud2Line className='h-6 w-6 text-text-tertiary' />
+              <div className='text-text-tertiary'>
                 {t('datasetCreation.stepOne.uploader.button')}
-                <span className='pl-1 text-[#155eef] cursor-pointer' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
+                <span className='cursor-pointer pl-1 text-text-accent' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className='absolute w-full h-full top-0 left-0' />}
+            {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
           </div>
         )}
         {file && (
-          <div className={cn('flex items-center h-20 px-6 rounded-xl bg-gray-50 border border-gray-200 text-sm font-normal group', 'hover:bg-[#F5F8FF] hover:border-[#B2CCFF]')}>
-            <YamlIcon className="shrink-0" />
-            <div className='flex ml-2 w-0 grow'>
-              <span className='max-w-[calc(100%_-_30px)] text-ellipsis whitespace-nowrap overflow-hidden text-gray-800'>{file.name.replace(/(.yaml|.yml)$/, '')}</span>
-              <span className='shrink-0 text-gray-500'>.yml</span>
+          <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', ' hover:bg-components-panel-on-panel-item-bg-hover')}>
+            <div className='flex items-center justify-center p-3'>
+              <YamlIcon className="h-6 w-6 shrink-0" />
             </div>
-            <div className='hidden group-hover:flex items-center'>
-              <Button onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
-              <div className='mx-2 w-px h-4 bg-gray-200' />
-              <div className='p-2 cursor-pointer' onClick={removeFile}>
-                <RiDeleteBinLine className='w-4 h-4 text-gray-500' />
+            <div className='flex grow flex-col items-start gap-0.5 py-1 pr-2'>
+              <span className='font-inter max-w-[calc(100%_-_30px)] overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium leading-4 text-text-secondary'>{file.name}</span>
+              <div className='font-inter flex h-3 items-center gap-1 self-stretch text-[10px] font-medium uppercase leading-3 text-text-tertiary'>
+                <span>YAML</span>
+                <span className='text-text-quaternary'>·</span>
+                <span>{formatFileSize(file.size)}</span>
               </div>
+            </div>
+            <div className='hidden items-center pr-3 group-hover:flex'>
+              <ActionButton onClick={removeFile}>
+                <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
+              </ActionButton>
             </div>
           </div>
         )}

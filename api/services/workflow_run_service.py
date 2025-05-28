@@ -1,12 +1,21 @@
+import threading
+from collections.abc import Sequence
+from typing import Optional
+
+import contexts
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.repository.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import WorkflowRunTriggeredFrom
-from models.model import App
-from models.workflow import (
+from models import (
+    Account,
+    App,
+    EndUser,
     WorkflowNodeExecution,
-    WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
+    WorkflowRunTriggeredFrom,
 )
+from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 
 class WorkflowRunService:
@@ -92,7 +101,7 @@ class WorkflowRunService:
 
         return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 
-    def get_workflow_run(self, app_model: App, run_id: str) -> WorkflowRun:
+    def get_workflow_run(self, app_model: App, run_id: str) -> Optional[WorkflowRun]:
         """
         Get workflow run detail
 
@@ -111,26 +120,34 @@ class WorkflowRunService:
 
         return workflow_run
 
-    def get_workflow_run_node_executions(self, app_model: App, run_id: str) -> list[WorkflowNodeExecution]:
+    def get_workflow_run_node_executions(
+        self,
+        app_model: App,
+        run_id: str,
+        user: Account | EndUser,
+    ) -> Sequence[WorkflowNodeExecution]:
         """
         Get workflow run node execution list
         """
         workflow_run = self.get_workflow_run(app_model, run_id)
 
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+
         if not workflow_run:
             return []
 
-        node_executions = (
-            db.session.query(WorkflowNodeExecution)
-            .filter(
-                WorkflowNodeExecution.tenant_id == app_model.tenant_id,
-                WorkflowNodeExecution.app_id == app_model.id,
-                WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
-                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-                WorkflowNodeExecution.workflow_run_id == run_id,
-            )
-            .order_by(WorkflowNodeExecution.index.desc())
-            .all()
+        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=db.engine,
+            user=user,
+            app_id=app_model.id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
-        return node_executions
+        # Use the repository to get the database models directly
+        order_config = OrderConfig(order_by=["index"], order_direction="desc")
+        workflow_node_executions = repository.get_db_models_by_workflow_run(
+            workflow_run_id=run_id, order_config=order_config
+        )
+
+        return workflow_node_executions

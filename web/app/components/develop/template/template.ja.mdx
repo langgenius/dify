@@ -1,0 +1,706 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+
+# Completion アプリ API
+
+テキスト生成アプリケーションはセッションレスをサポートし、翻訳、記事作成、要約AI等に最適です。
+
+<div>
+  ### ベースURL
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
+    ```javascript
+    ```
+  </CodeGroup>
+
+  ### 認証
+
+  サービスAPIは`API-Key`認証を使用します。
+  <i>**APIキーの漏洩による重大な結果を避けるため、APIキーはサーバーサイドに保存し、クライアントサイドでは共有や保存しないことを強く推奨します。**</i>
+
+  すべてのAPIリクエストで、以下のように`Authorization` HTTPヘッダーにAPIキーを含めてください：
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
+<Heading
+  url='/completion-messages'
+  method='POST'
+  title='完了メッセージの作成'
+  name='#Create-Completion-Message'
+/>
+<Row>
+  <Col>
+    テキスト生成アプリケーションにリクエストを送信します。
+
+    ### リクエストボディ
+
+    <Properties>
+      
+      <Property name='inputs' type='object' key='inputs'>
+          アプリで定義された各種変数値を入力できます。
+          `inputs`パラメータには複数のキー/値ペアが含まれ、各キーは特定の変数に対応し、各値はその変数の具体的な値となります。
+          テキスト生成アプリケーションでは、少なくとも1つのキー/値ペアの入力が必要です。
+          - `query` (string) 必須
+            入力テキスト、処理される内容。
+      </Property>
+      <Property name='response_mode' type='string' key='response_mode'>
+        レスポンス返却モード、以下をサポート：
+        - `streaming` ストリーミングモード（推奨）、SSE（[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)）によるタイプライター風の出力を実装。
+        - `blocking` ブロッキングモード、実行完了後に結果を返却。（処理が長い場合はリクエストが中断される可能性があります）
+        <i>Cloudflareの制限により、100秒後に返却なしで中断されます。</i>
+      </Property>
+      <Property name='user' type='string' key='user'>
+          ユーザー識別子、エンドユーザーの身元を定義し、取得や統計に使用します。
+          アプリケーション内で開発者が一意に定義する必要があります。
+      </Property>
+      <Property name='files' type='array[object]' key='files'>
+          ファイルリスト、モデルがVision機能をサポートしている場合のみ、テキスト理解と質問応答を組み合わせたファイル（画像）の入力に適しています。
+          - `type` (string) サポートされるタイプ：`image`（現在は画像タイプのみサポート）
+          - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
+          - `url` (string) 画像URL（転送方法が`remote_url`の場合）
+          - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じてアップロードする必要があります（転送方法が`local_file`の場合）
+      </Property>
+    </Properties>
+
+    ### レスポンス
+    `response_mode`が`blocking`の場合、CompletionResponseオブジェクトを返却します。
+    `response_mode`が`streaming`の場合、ChunkCompletionResponseストリームを返却します。
+
+    ### ChatCompletionResponse
+    アプリの完全な結果を返却、`Content-Type`は`application/json`です。
+    - `message_id` (string) 一意のメッセージID
+    - `mode` (string) アプリモード、固定で`chat`
+    - `answer` (string) 完全な応答内容
+    - `metadata` (object) メタデータ
+      - `usage` (Usage) モデル使用情報
+      - `retriever_resources` (array[RetrieverResource]) 引用と帰属のリスト
+    - `created_at` (int) メッセージ作成タイムスタンプ、例：1705395332
+
+    ### ChunkChatCompletionResponse
+    アプリが出力するストリームチャンクを返却、`Content-Type`は`text/event-stream`です。
+    各ストリーミングチャンクは`data:`で始まり、2つの改行文字`\n\n`で区切られます：
+    <CodeGroup>
+    ```streaming {{ title: 'Response' }}
+    data: {"event": "message", "task_id": "900bbd43-dc0b-4383-a372-aa6e6c414227", "id": "663c5084-a254-4040-8ad3-51f2a3c1a77c", "answer": "Hi", "created_at": 1705398420}\n\n
+    ```
+    </CodeGroup>
+    ストリーミングチャンクの構造は`event`によって異なります：
+    - `event: message` LLMがテキストチャンクを返すイベント、つまり完全なテキストがチャンク形式で出力されます。
+      - `task_id` (string) タスクID、リクエストの追跡と以下の生成停止APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `answer` (string) LLMが返したテキストチャンクの内容
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: message_end` メッセージ終了イベント、このイベントを受信するとストリーミングが終了したことを意味します。
+      - `task_id` (string) タスクID、リクエストの追跡と以下の生成停止APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `metadata` (object) メタデータ
+        - `usage` (Usage) モデル使用情報
+        - `retriever_resources` (array[RetrieverResource]) 引用と帰属のリスト
+    - `event: tts_message` TTS音声ストリームイベント、つまり音声合成出力。内容はMp3形式の音声ブロックで、base64文字列としてエンコードされています。再生時は単にbase64をデコードしてプレーヤーに供給するだけです。（このメッセージは自動再生が有効な場合のみ利用可能）
+      - `task_id` (string) タスクID、リクエストの追跡と以下の応答停止インターフェースに使用
+      - `message_id` (string) 一意のメッセージID
+      - `audio` (string) 音声合成後の音声、base64テキストコンテンツとしてエンコード、再生時は単にbase64をデコードしてプレーヤーに供給
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: tts_message_end` TTS音声ストリーム終了イベント、このイベントを受信すると音声ストリームが終了したことを示します。
+      - `task_id` (string) タスクID、リクエストの追跡と以下の応答停止インターフェースに使用
+      - `message_id` (string) 一意のメッセージID
+      - `audio` (string) 終了イベントには音声がないため、空文字列
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: message_replace` メッセージ内容置換イベント。
+      出力内容のモデレーションが有効な場合、コンテンツがフラグ付けされると、このイベントを通じてメッセージ内容が事前設定された返信に置き換えられます。
+      - `task_id` (string) タスクID、リクエストの追跡と以下の生成停止APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `answer` (string) 置換内容（LLMの返信テキストすべてを直接置換）
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: error`
+      ストリーミング処理中に発生した例外は、ストリームイベントの形式で出力され、エラーイベントを受信するとストリームが終了します。
+      - `task_id` (string) タスクID、リクエストの追跡と以下の生成停止APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `status` (int) HTTPステータスコード
+      - `code` (string) エラーコード
+      - `message` (string) エラーメッセージ
+    - `event: ping` 接続を維持するため10秒ごとのPingイベント。
+
+    ### エラー
+    - 404, 会話が存在しません
+    - 400, `invalid_param`, パラメータ入力異常
+    - 400, `app_unavailable`, アプリ設定が利用できません
+    - 400, `provider_not_initialize`, 利用可能なモデル認証情報設定がありません
+    - 400, `provider_quota_exceeded`, モデル呼び出しクォータ不足
+    - 400, `model_currently_not_support`, 現在のモデルは利用できません
+    - 400, `completion_request_error`, テキスト生成に失敗しました
+    - 500, 内部サーバーエラー
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": {"query": "Hello, world!"},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/completion-messages' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {
+          "query": "Hello, world!"
+        },
+        "response_mode": "streaming",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+    ### ブロッキングモード
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "event": "message",
+      "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+      "mode": "completion",
+      "answer": "Hello World!...",
+      "metadata": {
+          "usage": {
+              "prompt_tokens": 1033,
+              "prompt_unit_price": "0.001",
+              "prompt_price_unit": "0.001",
+              "prompt_price": "0.0010330",
+              "completion_tokens": 128,
+              "completion_unit_price": "0.002",
+              "completion_price_unit": "0.001",
+              "completion_price": "0.0002560",
+              "total_tokens": 1161,
+              "total_price": "0.0012890",
+              "currency": "USD",
+              "latency": 0.7682376249867957
+          }
+      },
+      "created_at": 1705407629
+  }
+    ```
+    </CodeGroup>
+    ### ストリーミングモード
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": "'m", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " glad", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " to", "created_at": 1679586595}
+      data: {"event": "message", "message_id" : "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " meet", "created_at": 1679586595}
+      data: {"event": "message", "message_id" : "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " you", "created_at": 1679586595}
+      data: {"event": "message_end", "id": "5e52ce04-874b-4d27-9045-b3bc80def685", "metadata": {"usage": {"prompt_tokens": 1033, "prompt_unit_price": "0.001", "prompt_price_unit": "0.001", "prompt_price": "0.0010330", "completion_tokens": 135, "completion_unit_price": "0.002", "completion_price_unit": "0.001", "completion_price": "0.0002700", "total_tokens": 1168, "total_price": "0.0013030", "currency": "USD", "latency": 1.381760165997548}}}
+      data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+      data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+<Heading
+  url='/files/upload'
+  method='POST'
+  title='ファイルアップロード'
+  name='#file-upload'
+/>
+<Row>
+  <Col>
+  メッセージ送信時に使用するファイル（現在は画像のみ対応）をアップロードし、画像とテキストのマルチモーダルな理解を可能にします。
+  png、jpg、jpeg、webp、gif形式に対応しています。
+  <i>アップロードされたファイルは、現在のエンドユーザーのみが使用できます。</i>
+
+  ### リクエストボディ
+  このインターフェースは`multipart/form-data`リクエストが必要です。
+  - `file` (File) 必須
+    アップロードするファイル。
+  - `user` (string) 必須
+    開発者のルールで定義されたユーザー識別子。アプリケーション内で一意である必要があります。
+
+  ### レスポンス
+  アップロードが成功すると、サーバーはファイルのIDと関連情報を返します。
+  - `id` (uuid) ID
+  - `name` (string) ファイル名
+  - `size` (int) ファイルサイズ（バイト）
+  - `extension` (string) ファイル拡張子
+  - `mime_type` (string) ファイルのMIMEタイプ
+  - `created_by` (uuid) エンドユーザーID
+  - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+
+  ### エラー
+  - 400, `no_file_uploaded`, ファイルを提供する必要があります
+  - 400, `too_many_files`, 現在は1つのファイルのみ受け付けています
+  - 400, `unsupported_preview`, ファイルがプレビューに対応していません
+  - 400, `unsupported_estimate`, ファイルが推定に対応していません
+  - 413, `file_too_large`, ファイルが大きすぎます
+  - 415, `unsupported_file_type`, サポートされていない拡張子です。現在はドキュメントファイルのみ受け付けています
+  - 503, `s3_connection_failed`, S3サービスに接続できません
+  - 503, `s3_permission_denied`, S3へのファイルアップロード権限がありません
+  - 503, `s3_file_too_large`, ファイルがS3のサイズ制限を超えています
+  - 500, 内部サーバーエラー
+
+  </Col>
+  <Col sticky>
+  ### リクエスト例
+  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
+    --header 'Authorization: Bearer {api_key}' \
+    --form 'file=@"/path/to/file"'
+    ```
+
+    </CodeGroup>
+
+
+  ### レスポンス例
+  <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "name": "example.png",
+      "size": 1024,
+      "extension": "png",
+      "mime_type": "image/png",
+      "created_by": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",
+      "created_at": 1577836800,
+    }
+  ```
+  </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/completion-messages/:task_id/stop'
+  method='POST'
+  title='生成の停止'
+  name='#stop-generatebacks'
+/>
+<Row>
+  <Col>
+  ストリーミングモードでのみサポートされています。
+  ### パス
+  - `task_id` (string) タスクID、ストリーミングチャンクの返信から取得可能
+  リクエストボディ
+  - `user` (string) 必須
+    ユーザー識別子。エンドユーザーの身元を定義するために使用され、メッセージ送信インターフェースで渡されたユーザーと一致する必要があります。
+  ### レスポンス
+  - `result` (string) 常に"success"を返します
+  </Col>
+  <Col sticky>
+  ### リクエスト例
+  <CodeGroup title="Request" tag="POST" label="/completion-messages/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/completion-messages/:task_id/stop' \
+    -H 'Authorization: Bearer {api_key}' \
+    -H 'Content-Type: application/json' \
+    --data-raw '{
+        "user": "abc-123"
+    }'
+    ```
+    </CodeGroup>
+
+    ### レスポンス例
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages/:message_id/feedbacks'
+  method='POST'
+  title='メッセージフィードバック'
+  name='#feedbacks'
+/>
+<Row>
+  <Col>
+    エンドユーザーはフィードバックメッセージを提供でき、アプリケーション開発者が期待される出力を最適化するのに役立ちます。
+
+    ### パス
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+       メッセージID
+      </Property>
+    </Properties>
+
+    ### リクエストボディ
+
+    <Properties>
+      <Property name='rating' type='string' key='rating'>
+        高評価は`like`、低評価は`dislike`、高評価の取り消しは`null`
+      </Property>
+      <Property name='user' type='string' key='user'>
+        開発者のルールで定義されたユーザー識別子。アプリケーション内で一意である必要があります。
+      </Property>
+      <Property name='content' type='string' key='content'>
+        メッセージのフィードバックです。
+      </Property>
+    </Properties>
+
+    ### レスポンス
+    - `result` (string) 常に"success"を返します
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123",\n    "content": "message feedback information"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "rating": "like",
+        "user": "abc-123",
+        "content": "message feedback information"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/app/feedbacks'
+  method='GET'
+  title='アプリのメッセージの「いいね」とフィードバックを取得'
+  name='#app-feedbacks'
+/>
+<Row>
+  <Col>
+    アプリのエンドユーザーからのフィードバックや「いいね」を取得します。
+
+    ### クエリ
+    <Properties>
+      <Property name='page' type='string' key='page'>
+       （任意）ページ番号。デフォルト値：1
+      </Property>
+    </Properties>
+
+    <Properties>
+      <Property name='limit' type='string' key='limit'>
+       （任意）1ページあたりの件数。デフォルト値：20
+      </Property>
+    </Properties>
+
+    ### レスポンス
+    - `data` (リスト) このアプリの「いいね」とフィードバックの一覧を返します。
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/app/feedbacks" targetCode={`curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+        {
+        "data": [
+            {
+                "id": "8c0fbed8-e2f9-49ff-9f0e-15a35bdd0e25",
+                "app_id": "f252d396-fe48-450e-94ec-e184218e7346",
+                "conversation_id": "2397604b-9deb-430e-b285-4726e51fd62d",
+                "message_id": "709c0b0f-0a96-4a4e-91a4-ec0889937b11",
+                "rating": "like",
+                "content": "message feedback information-3",
+                "from_source": "user",
+                "from_end_user_id": "74286412-9a1a-42c1-929c-01edb1d381d5",
+                "from_account_id": null,
+                "created_at": "2025-04-24T09:24:38",
+                "updated_at": "2025-04-24T09:24:38"
+            }
+        ]
+        }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/text-to-audio'
+  method='POST'
+  title='テキストから音声'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    テキストを音声に変換します。
+
+    ### リクエストボディ
+
+    <Properties>
+      <Property name='message_id' type='str' key='message_id'>
+        Difyが生成したテキストメッセージの場合、生成されたmessage-idを直接渡すだけです。バックエンドはmessage-idを使用して対応するコンテンツを検索し、音声情報を直接合成します。message_idとtextの両方が同時に提供された場合、message_idが優先されます。
+      </Property>
+      <Property name='text' type='str' key='text'>
+        音声生成コンテンツ。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        開発者が定義したユーザー識別子。アプリ内で一意性を確保する必要があります。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "Hello Dify",\n    "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
+        "text": "Hello Dify",
+        "user": "abc-123"
+    }'
+    ```
+    
+    </CodeGroup>
+
+    <CodeGroup title="headers">
+    ```json {{ title: 'headers' }}
+    {
+      "Content-Type": "audio/wav"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='アプリケーションの基本情報を取得'
+  name='#info'
+/>
+<Row>
+  <Col>
+  このアプリケーションの基本情報を取得するために使用されます
+
+  ### Response
+  - `name` (string) アプリケーションの名前
+  - `description` (string) アプリケーションの説明
+  - `tags` (array[string]) アプリケーションのタグ
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='アプリケーションのパラメータ情報を取得'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    ページ開始時に、機能、入力パラメータ名、タイプ、デフォルト値などの情報を取得するために使用されます。
+
+    ### レスポンス
+    - `opening_statement` (string) 開始文
+    - `suggested_questions` (array[string]) 開始時の提案質問リスト
+    - `suggested_questions_after_answer` (object) 回答後の提案質問を有効にします。
+      - `enabled` (bool) 有効かどうか
+    - `speech_to_text` (object) 音声からテキスト
+      - `enabled` (bool) 有効かどうか
+    - `retriever_resource` (object) 引用と帰属
+      - `enabled` (bool) 有効かどうか
+    - `annotation_reply` (object) 注釈付き返信
+      - `enabled` (bool) 有効かどうか
+    - `user_input_form` (array[object]) ユーザー入力フォーム設定
+      - `text-input` (object) テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `paragraph` (object) 段落テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `select` (object) ドロップダウンコントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+        - `options` (array[string]) オプション値
+    - `file_upload` (object) ファイルアップロード設定
+      - `image` (object) 画像設定
+        現在は画像タイプのみ対応：`png`、`jpg`、`jpeg`、`webp`、`gif`
+        - `enabled` (bool) 有効かどうか
+        - `number_limits` (int) 画像数制限、デフォルトは3
+        - `transfer_methods` (array[string]) 転送方法リスト、remote_url、local_file、いずれかを選択
+    - `system_parameters` (object) システムパラメータ
+      - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
+      - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）
+      - `audio_file_size_limit` (int) 音声ファイルアップロードサイズ制限（MB）
+      - `video_file_size_limit` (int) 動画ファイルアップロードサイズ制限（MB）
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "opening_statement": "Hello!",
+      "suggested_questions_after_answer": {
+          "enabled": true
+      },
+      "speech_to_text": {
+          "enabled": true
+      },
+      "retriever_resource": {
+          "enabled": true
+      },
+      "annotation_reply": {
+          "enabled": true
+      },
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/site'
+  method='GET'
+  title='アプリのWebApp設定を取得'
+  name='#site'
+/>
+<Row>
+  <Col>
+  アプリのWebApp設定を取得するために使用します。
+  ### レスポンス
+  - `title` (string) WebApp名
+  - `chat_color_theme` (string) チャットの色テーマ、16進数形式
+  - `chat_color_theme_inverted` (bool) チャットの色テーマを反転するかどうか
+  - `icon_type` (string) アイコンタイプ、`emoji`-絵文字、`image`-画像
+  - `icon` (string) アイコン。`emoji`タイプの場合は絵文字、`image`タイプの場合は画像URL
+  - `icon_background` (string) 16進数形式の背景色
+  - `icon_url` (string) アイコンのURL
+  - `description` (string) 説明
+  - `copyright` (string) 著作権情報
+  - `privacy_policy` (string) プライバシーポリシーのリンク
+  - `custom_disclaimer` (string) カスタム免責事項
+  - `default_language` (string) デフォルト言語
+  - `show_workflow_steps` (bool) ワークフローの詳細を表示するかどうか
+  - `use_icon_as_answer_icon` (bool) WebAppのアイコンをチャット内の🤖に置き換えるかどうか
+  </Col>
+  <Col>
+  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/site' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "title": "My App",
+      "chat_color_theme": "#ff4a4a",
+      "chat_color_theme_inverted": false,
+      "icon_type": "emoji",
+      "icon": "😄",
+      "icon_background": "#FFEAD5",
+      "icon_url": null,
+      "description": "This is my app.",
+      "copyright": "all rights reserved",
+      "privacy_policy": "",
+      "custom_disclaimer": "All generated by AI",
+      "default_language": "en-US",
+      "show_workflow_steps": false,
+      "use_icon_as_answer_icon": false,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___

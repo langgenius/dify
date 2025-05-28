@@ -38,8 +38,8 @@ class Extensible:
 
     @classmethod
     def scan_extensions(cls):
-        extensions: list[ModuleExtension] = []
-        position_map = {}
+        extensions = []
+        position_map: dict[str, int] = {}
 
         # get the path of the current class
         current_path = os.path.abspath(cls.__module__.replace(".", os.path.sep) + ".py")
@@ -58,7 +58,8 @@ class Extensible:
                 # is builtin extension, builtin extension
                 # in the front-end page and business logic, there are special treatments.
                 builtin = False
-                position = None
+                # default position is 0 can not be None for sort_to_dict_by_position_map
+                position = 0
                 if "__builtin__" in file_names:
                     builtin = True
 
@@ -89,7 +90,7 @@ class Extensible:
                     logging.warning(f"Missing subclass of {cls.__name__} in {py_path}, Skip.")
                     continue
 
-                json_data = {}
+                json_data: dict[str, Any] = {}
                 if not builtin:
                     if "schema.json" not in file_names:
                         logging.warning(f"Missing schema.json file in {subdir_path}, Skip.")

@@ -59,7 +59,8 @@ const RetrievalConfig: FC<Props> = ({
   }, [onOpenFromPropsChange])
 
   const {
-    defaultModel: rerankDefaultModel,
+    currentProvider: validRerankDefaultProvider,
+    currentModel: validRerankDefaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const { multiple_retrieval_config } = payload
@@ -75,18 +76,18 @@ const RetrievalConfig: FC<Props> = ({
         ? undefined
         : (!configs.reranking_model?.reranking_provider_name
           ? {
-            provider: rerankDefaultModel?.provider?.provider || '',
-            model: rerankDefaultModel?.model || '',
+            provider: validRerankDefaultProvider?.provider || '',
+            model: validRerankDefaultModel?.model || '',
           }
           : {
             provider: configs.reranking_model?.reranking_provider_name,
             model: configs.reranking_model?.reranking_model_name,
           }),
       reranking_mode: configs.reranking_mode,
-      weights: configs.weights as any,
+      weights: configs.weights,
       reranking_enable: configs.reranking_enable,
     })
-  }, [onMultipleRetrievalConfigChange, payload.retrieval_mode, rerankDefaultModel?.provider?.provider, rerankDefaultModel?.model, onRetrievalModeChange])
+  }, [onMultipleRetrievalConfigChange, payload.retrieval_mode, validRerankDefaultProvider, validRerankDefaultModel, onRetrievalModeChange])
 
   return (
     <PortalToFollowElem
@@ -110,12 +111,12 @@ const RetrievalConfig: FC<Props> = ({
           disabled={readonly}
           className={cn(open && 'bg-components-button-ghost-bg-hover')}
         >
-          <RiEqualizer2Line className='mr-1 w-3.5 h-3.5' />
+          <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
           {t('dataset.retrievalSettings')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div className='w-[404px] pt-3 pb-4 px-4 shadow-xl  rounded-2xl border border-gray-200  bg-white'>
+        <div className='w-[404px] rounded-2xl border border-components-panel-border bg-components-panel-bg  px-4 pb-4 pt-3  shadow-xl'>
           <ConfigRetrievalContent
             datasetConfigs={
               {

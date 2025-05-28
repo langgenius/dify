@@ -7,9 +7,6 @@ from collections.abc import Generator
 class BaseStorage(ABC):
     """Interface for file storage."""
 
-    def __init__(self):  # noqa: B027
-        pass
-
     @abstractmethod
     def save(self, filename, data):
         raise NotImplementedError
@@ -33,3 +30,11 @@ class BaseStorage(ABC):
     @abstractmethod
     def delete(self, filename):
         raise NotImplementedError
+
+    def scan(self, path, files=True, directories=False) -> list[str]:
+        """
+        Scan files and directories in the given path.
+        This method is implemented only in some storage backends.
+        If a storage backend doesn't support scanning, it will raise NotImplementedError.
+        """
+        raise NotImplementedError("This storage backend doesn't support scanning")

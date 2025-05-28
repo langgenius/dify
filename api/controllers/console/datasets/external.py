@@ -21,12 +21,6 @@ def _validate_name(name):
     return name
 
 
-def _validate_description_length(description):
-    if description and len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
-
-
 class ExternalApiTemplateListApi(Resource):
     @setup_required
     @login_required
@@ -141,7 +135,7 @@ class ExternalApiTemplateApi(Resource):
             raise Forbidden()
 
         ExternalDatasetService.delete_external_knowledge_api(current_user.current_tenant_id, external_knowledge_api_id)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class ExternalApiUseCheckApi(Resource):
@@ -215,6 +209,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("query", type=str, location="json")
         parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
+        parser.add_argument("metadata_filtering_conditions", type=dict, required=False, location="json")
         args = parser.parse_args()
 
         HitTestingService.hit_testing_args_check(args)
@@ -225,6 +220,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
                 query=args["query"],
                 account=current_user,
                 external_retrieval_model=args["external_retrieval_model"],
+                metadata_filtering_conditions=args["metadata_filtering_conditions"],
             )
 
             return response

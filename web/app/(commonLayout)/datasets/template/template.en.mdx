@@ -1,12 +1,17 @@
+{/**
+  * @typedef Props
+  * @property {string} apiBaseUrl
+  */}
+
 import { CodeGroup } from '@/app/components/develop/code.tsx'
-import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstruction, Paragraph } from '@/app/components/develop/md.tsx'
 
 # Knowledge API
 
 <div>
   ### Authentication
 
-  Service API of Dify authenticates using an `API-Key`.
+  Service API authenticates using an `API-Key`.
 
   It is suggested that developers store the `API-Key` in the backend instead of sharing or storing it in the client side to avoid the leakage of the `API-Key`, which may lead to property loss.
 
@@ -32,7 +37,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     This API is based on an existing knowledge and creates a new document through text based on this knowledge.
 
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -52,9 +57,18 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
           - <code>economy</code> Economy: Build using inverted index of keyword table index
       </Property>
+      <Property name='doc_form' type='string' key='doc_form'>
+        Format of indexed content
+          - <code>text_model</code> Text documents are directly embedded; `economy` mode defaults to using this form
+          - <code>hierarchical_model</code> Parent-child mode
+          - <code>qa_model</code> Q&A Mode: Generates Q&A pairs for segmented documents and then embeds the questions
+      </Property>
+      <Property name='doc_language' type='string' key='doc_language'>
+        In Q&A mode, specify the language of the document, for example: <code>English</code>, <code>Chinese</code>
+      </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         Processing rules
-          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
+          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom / hierarchical
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
             - <code>pre_processing_rules</code> (array[object]) Preprocessing rules
               - <code>id</code> (string) Unique identifier for the preprocessing rule
@@ -65,6 +79,32 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
+      </Property>
+      <PropertyInstruction>When no parameters are set for the knowledge base, the first upload requires the following parameters to be provided; if not provided, the default parameters will be used.</PropertyInstruction>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model
+          - <code>search_method</code> (string) Search method
+            - <code>hybrid_search</code> Hybrid search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking
+          - <code>reranking_mode</code> (object) Rerank model configuration
+            - <code>reranking_provider_name</code> (string) Rerank model provider
+            - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>top_k</code> (int) Number of results to return
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Embedding model name
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Embedding model provider
       </Property>
     </Properties>
   </Col>
@@ -135,7 +175,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     This API is based on an existing knowledge and creates a new document through a file based on this knowledge.
 
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -155,8 +195,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>high_quality</code> High quality: embedding using embedding model, built as vector database index
           - <code>economy</code> Economy: Build using inverted index of keyword table index
 
+        - <code>doc_form</code> Format of indexed content
+          - <code>text_model</code> Text documents are directly embedded; `economy` mode defaults to using this form
+          - <code>hierarchical_model</code> Parent-child mode
+          - <code>qa_model</code> Q&A Mode: Generates Q&A pairs for segmented documents and then embeds the questions
+
+        - <code>doc_language</code> In Q&A mode, specify the language of the document, for example: <code>English</code>, <code>Chinese</code>
+
         - <code>process_rule</code> Processing rules
-          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
+          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom / hierarchical
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
             - <code>pre_processing_rules</code> (array[object]) Preprocessing rules
               - <code>id</code> (string) Unique identifier for the preprocessing rule
@@ -167,9 +214,35 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         Files that need to be uploaded.
+      </Property>
+      <PropertyInstruction>When no parameters are set for the knowledge base, the first upload requires the following parameters to be provided; if not provided, the default parameters will be used.</PropertyInstruction>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model
+          - <code>search_method</code> (string) Search method
+            - <code>hybrid_search</code> Hybrid search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking
+          - <code>reranking_mode</code> (object) Rerank model configuration
+            - <code>reranking_provider_name</code> (string) Rerank model provider
+            - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>top_k</code> (int) Number of results to return
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Embedding model name
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Embedding model provider
       </Property>
     </Properties>
   </Col>
@@ -241,6 +314,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         Index technique (optional)
+        If this is not set, embedding_model, embedding_model_provider and retrieval_model will be set to null
           - <code>high_quality</code> High quality
           - <code>economy</code> Economy
       </Property>
@@ -260,6 +334,26 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='external_knowledge_id' type='str' key='external_knowledge_id'>
         External knowledge ID (optional)
+      </Property>
+      <Property name='embedding_model' type='str' key='embedding_model'>
+        Embedding model name (optional)
+      </Property>
+      <Property name='embedding_model_provider' type='str' key='embedding_model_provider'>
+        Embedding model provider name (optional)
+      </Property>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model (optional)
+          - <code>search_method</code> (string) Search method
+            - <code>hybrid_search</code> Hybrid search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking
+          - <code>reranking_model</code> (object) Rerank model configuration
+              - <code>reranking_provider_name</code> (string) Rerank model provider
+              - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>top_k</code> (int) Number of results to return
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
       </Property>
     </Properties>
   </Col>
@@ -318,18 +412,27 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     ### Query
     <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        Search keyword, optional
+      </Property>
+      <Property name='tag_ids' type='array[string]' key='tag_ids'>
+        Tag ID list, optional
+      </Property>
       <Property name='page' type='string' key='page'>
-        Page number
+        Page number, optional, default 1
       </Property>
       <Property name='limit' type='string' key='limit'>
-        Number of items returned, default 20, range 1-100
+        Number of items returned, optional, default 20, range 1-100
+      </Property>
+      <Property name='include_all' type='boolean' key='include_all'>
+        Whether to include all datasets (only effective for owners), optional, defaults to false
       </Property>
     </Properties>
   </Col>
   <Col sticky>
     <CodeGroup
       title="Request"
-      tag="POST"
+      tag="GET"
       label="/datasets"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
@@ -373,13 +476,255 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 <Heading
   url='/datasets/{dataset_id}'
+  method='GET'
+  title='Get knowledge base details by knowledge base ID'
+  name='#view_dataset'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge Base ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "eaedb485-95ac-4ffd-ab1e-18da6d676a2f",
+      "name": "Test Knowledge Base",
+      "description": "",
+      "provider": "vendor",
+      "permission": "only_me",
+      "data_source_type": null,
+      "indexing_technique": null,
+      "app_count": 0,
+      "document_count": 0,
+      "word_count": 0,
+      "created_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "created_at": 1735620612,
+      "updated_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "updated_at": 1735620612,
+      "embedding_model": null,
+      "embedding_model_provider": null,
+      "embedding_available": true,
+      "retrieval_model_dict": {
+        "search_method": "semantic_search",
+        "reranking_enable": false,
+        "reranking_mode": null,
+        "reranking_model": {
+          "reranking_provider_name": "",
+          "reranking_model_name": ""
+        },
+        "weights": null,
+        "top_k": 2,
+        "score_threshold_enabled": false,
+        "score_threshold": null
+      },
+      "tags": [],
+      "doc_form": null,
+      "external_knowledge_info": {
+        "external_knowledge_id": null,
+        "external_knowledge_api_id": null,
+        "external_knowledge_api_name": null,
+        "external_knowledge_api_endpoint": null
+      },
+      "external_retrieval_model": {
+        "top_k": 2,
+        "score_threshold": 0.0,
+        "score_threshold_enabled": null
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}'
+  method='PATCH'
+  title='Update knowledge base'
+  name='#update_dataset'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge Base ID
+      </Property>
+      <Property name='indexing_technique' type='string' key='indexing_technique'>
+        Index technique (optional)
+          - <code>high_quality</code> High quality
+          - <code>economy</code> Economy
+      </Property>
+      <Property name='permission' type='string' key='permission'>
+        Permission
+          - <code>only_me</code> Only me
+          - <code>all_team_members</code> All team members
+          - <code>partial_members</code> Partial members
+      </Property>
+      <Property name='embedding_model_provider' type='string' key='embedding_model_provider'>
+        Specified embedding model provider, must be set up in the system first, corresponding to the provider field(Optional)
+      </Property>
+      <Property name='embedding_model' type='string' key='embedding_model'>
+        Specified embedding model, corresponding to the model field(Optional)
+      </Property>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        Retrieval model (optional, if not filled, it will be recalled according to the default method)
+        - <code>search_method</code> (text) Search method: One of the following four keywords is required
+          - <code>keyword_search</code> Keyword search
+          - <code>semantic_search</code> Semantic search
+          - <code>full_text_search</code> Full-text search
+          - <code>hybrid_search</code> Hybrid search
+        - <code>reranking_enable</code> (bool) Whether to enable reranking, required if the search mode is semantic_search or hybrid_search (optional)
+        - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
+            - <code>reranking_provider_name</code> (string) Rerank model provider
+            - <code>reranking_model_name</code> (string) Rerank model name
+        - <code>weights</code> (float) Semantic search weight setting in hybrid search mode
+        - <code>top_k</code> (integer) Number of results to return (optional)
+        - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+        - <code>score_threshold</code> (float) Score threshold
+      </Property>
+      <Property name='partial_member_list' type='array' key='partial_member_list'>
+        Partial member list(Optional)
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/{dataset_id}"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{
+        "name": "Test Knowledge Base", 
+        "indexing_technique": "high_quality", 
+        "permission": "only_me", 
+        "embedding_model_provider": "zhipuai", 
+        "embedding_model": "embedding-3", 
+        "retrieval_model": {
+          "search_method": "keyword_search",
+          "reranking_enable": false,
+          "reranking_mode": null,
+          "reranking_model": {
+              "reranking_provider_name": "",
+              "reranking_model_name": ""
+          },
+          "weights": null,
+          "top_k": 1,
+          "score_threshold_enabled": false,
+          "score_threshold": null
+        }, 
+        "partial_member_list": []
+      }'
+    `}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+      "name": "Test Knowledge Base", 
+      "indexing_technique": "high_quality", 
+      "permission": "only_me", 
+      "embedding_model_provider": "zhipuai", 
+      "embedding_model": "embedding-3", 
+      "retrieval_model": {
+        "search_method": "keyword_search",
+        "reranking_enable": false,
+        "reranking_mode": null,
+        "reranking_model": {
+            "reranking_provider_name": "",
+            "reranking_model_name": ""
+        },
+        "weights": null,
+        "top_k": 1,
+        "score_threshold_enabled": false,
+        "score_threshold": null
+      }, 
+      "partial_member_list": []
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "eaedb485-95ac-4ffd-ab1e-18da6d676a2f",
+      "name": "Test Knowledge Base",
+      "description": "",
+      "provider": "vendor",
+      "permission": "only_me",
+      "data_source_type": null,
+      "indexing_technique": "high_quality",
+      "app_count": 0,
+      "document_count": 0,
+      "word_count": 0,
+      "created_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "created_at": 1735620612,
+      "updated_by": "e99a1635-f725-4951-a99a-1daaaa76cfc6",
+      "updated_at": 1735622679,
+      "embedding_model": "embedding-3",
+      "embedding_model_provider": "zhipuai",
+      "embedding_available": null,
+      "retrieval_model_dict": {
+          "search_method": "semantic_search",
+          "reranking_enable": false,
+          "reranking_mode": null,
+          "reranking_model": {
+              "reranking_provider_name": "",
+              "reranking_model_name": ""
+          },
+          "weights": null,
+          "top_k": 2,
+          "score_threshold_enabled": false,
+          "score_threshold": null
+      },
+      "tags": [],
+      "doc_form": null,
+      "external_knowledge_info": {
+          "external_knowledge_id": null,
+          "external_knowledge_api_id": null,
+          "external_knowledge_api_name": null,
+          "external_knowledge_api_endpoint": null
+      },
+      "external_retrieval_model": {
+          "top_k": 2,
+          "score_threshold": 0.0,
+          "score_threshold_enabled": null
+      },
+      "partial_member_list": []
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}'
   method='DELETE'
   title='Delete a Knowledge Base'
   name='#delete_dataset'
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -418,7 +763,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     This API is based on an existing knowledge and updates the document through text based on this knowledge.
 
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -438,7 +783,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         Processing rules
-          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
+          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom / hierarchical
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
             - <code>pre_processing_rules</code> (array[object]) Preprocessing rules
               - <code>id</code> (string) Unique identifier for the preprocessing rule
@@ -449,6 +794,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
     </Properties>
   </Col>
@@ -515,7 +865,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     This API is based on an existing knowledge, and updates documents through files based on this knowledge
 
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -535,7 +885,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         Processing rules
-          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom
+          - <code>mode</code> (string) Cleaning, segmentation mode, automatic / custom / hierarchical
           - <code>rules</code> (object) Custom rules (in automatic mode, this field is empty)
             - <code>pre_processing_rules</code> (array[object]) Preprocessing rules
               - <code>id</code> (string) Unique identifier for the preprocessing rule
@@ -546,6 +896,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
             - <code>segmentation</code> (object) Segmentation rules
               - <code>separator</code> Custom segment identifier, currently only allows one delimiter to be set. Default is \n
               - <code>max_tokens</code> Maximum length (token) defaults to 1000
+            - <code>parent_mode</code> Retrieval mode of parent chunks: <code>full-doc</code> full text retrieval / <code>paragraph</code> paragraph retrieval
+            - <code>subchunk_segmentation</code> (object) Child chunk rules
+              - <code>separator</code> Segmentation identifier. Currently, only one delimiter is allowed. The default is <code>***</code>
+              - <code>max_tokens</code> The maximum length (tokens) must be validated to be shorter than the length of the parent chunk
+              - <code>chunk_overlap</code> Define the overlap between adjacent chunks (optional)
       </Property>
     </Properties>
   </Col>
@@ -607,7 +962,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -662,7 +1017,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -685,10 +1040,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -704,7 +1057,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -779,7 +1132,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    ### Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
@@ -883,6 +1236,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='status' type='string' key='status'>
         Search status, completed
       </Property>
+      <Property name='page' type='string' key='page'>
+        Page number (optional)
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        Number of items returned, default 20, range 1-100 (optional)
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -926,7 +1285,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "error": null,
         "stopped_at": null
       }],
-      "doc_form": "text_model"
+      "doc_form": "text_model",
+      "has_more": false,
+      "limit": 20,
+      "total": 9,
+      "page": 1
     }
     ```
     </CodeGroup>
@@ -961,19 +1324,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       title="Request"
       tag="DELETE"
       label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
-      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}' \
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json'
     ```
     </CodeGroup>
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -984,7 +1345,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='POST'
-  title='Update a Chunk in a Document '
+  title='Update a Chunk in a Document'
   name='#update_segment'
 />
 <Row>
@@ -1009,6 +1370,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - <code>answer</code> (text) Answer content, passed if the knowledge is in Q&A mode (optional)
         - <code>keywords</code> (list) Keyword (optional)
         - <code>enabled</code> (bool) False / true (optional)
+        - <code>regenerate_child_chunks</code> (bool) Whether to regenerate child chunks (optional)
       </Property>
     </Properties>
   </Col>
@@ -1035,7 +1397,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "data": [{
+      "data": {
         "id": "",
         "position": 1,
         "document_id": "",
@@ -1059,8 +1421,327 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "completed_at": 1695312007,
         "error": null,
         "stopped_at": null
-      }],
+      },
       "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
+  method='POST'
+  title='Create Child Chunk'
+  name='#create_child_chunk'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        Segment ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='content' type='string' key='content'>
+        Child chunk content
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"content": "Child chunk content"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "content": "Child chunk content"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "",
+        "segment_id": "",
+        "content": "Child chunk content",
+        "word_count": 25,
+        "tokens": 0,
+        "index_node_id": "",
+        "index_node_hash": "",
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks'
+  method='GET'
+  title='Get Child Chunks'
+  name='#get_child_chunks'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        Segment ID
+      </Property>
+    </Properties>
+
+    ### Query
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        Search keyword (optional)
+      </Property>
+      <Property name='page' type='integer' key='page'>
+        Page number (optional, default: 1)
+      </Property>
+      <Property name='limit' type='integer' key='limit'>
+        Items per page (optional, default: 20, max: 100)
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [{
+        "id": "",
+        "segment_id": "",
+        "content": "Child chunk content",
+        "word_count": 25,
+        "tokens": 0,
+        "index_node_id": "",
+        "index_node_hash": "",
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }],
+      "total": 1,
+      "total_pages": 1,
+      "page": 1,
+      "limit": 20
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
+  method='DELETE'
+  title='Delete Child Chunk'
+  name='#delete_child_chunk'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        Segment ID
+      </Property>
+      <Property name='child_chunk_id' type='string' key='child_chunk_id'>
+        Child Chunk ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```text {{ title: 'Response' }}
+    204 No Content
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}'
+  method='PATCH'
+  title='Update Child Chunk'
+  name='#update_child_chunk'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        Segment ID
+      </Property>
+      <Property name='child_chunk_id' type='string' key='child_chunk_id'>
+        Child Chunk ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='content' type='string' key='content'>
+        Child chunk content
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"content": "Updated child chunk content"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "content": "Updated child chunk content"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "",
+        "segment_id": "",
+        "content": "Updated child chunk content",
+        "word_count": 25,
+        "tokens": 0,
+        "index_node_id": "",
+        "index_node_hash": "",
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/upload-file'
+  method='GET'
+  title='Get Upload File'
+  name='#get_upload_file'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/upload-file"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/upload-file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/upload-file' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "file_id",
+      "name": "file_name",
+      "size": 1024,
+      "extension": "txt",
+      "url": "preview_url",
+      "download_url": "download_url",
+      "mime_type": "text/plain",
+      "created_by": "user_id",
+      "created_at": 1728734540,
     }
     ```
     </CodeGroup>
@@ -1100,10 +1781,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
             - <code>reranking_provider_name</code> (string) Rerank model provider
             - <code>reranking_model_name</code> (string) Rerank model name
-        - <code>weights</code> (double) Semantic search weight setting in hybrid search mode
+        - <code>weights</code> (float) Semantic search weight setting in hybrid search mode
         - <code>top_k</code> (integer) Number of results to return (optional)
         - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
-        - <code>score_threshold</code> (double) Score threshold
+        - <code>score_threshold</code> (float) Score threshold
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           Unused field
@@ -1115,7 +1796,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       title="Request"
       tag="POST"
       label="/datasets/{dataset_id}/retrieve"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
     "query": "test",
     "retrieval_model": {
         "search_method": "keyword_search",
@@ -1199,7 +1880,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               "id": "a8c6c36f-9f5d-4d7a-8472-f5d7b75d71d2",
               "data_source_type": "upload_file",
               "name": "readme.txt",
-              "doc_type": null
             }
           },
           "score": 3.730463140527718e-05,
@@ -1210,6 +1890,359 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ```
     </CodeGroup>
   </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='POST'
+  title='Create a Knowledge Metadata'
+  name='#create_metadata'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>type</code> (string) Metadata type, required
+        - <code>name</code> (string) Metadata name, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"type": "string", "name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='PATCH'
+  title='Update a Knowledge Metadata'
+  name='#update_metadata'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        Metadata ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object' key='segment'>
+        - <code>name</code> (string) Metadata name, required
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"name": "test"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "abc",
+      "type": "string",
+      "name": "test",
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/{metadata_id}'
+  method='DELETE'
+  title='Delete a Knowledge Metadata'
+  name='#delete_metadata'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='metadata_id' type='string' key='metadata_id'>
+        Metadata ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/metadata/{metadata_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/{metadata_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata/built-in/{action}'
+  method='POST'
+  title='Disable Or Enable Built-in Metadata'
+  name='#toggle_metadata'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+      <Property name='action' type='string' key='action'>
+        disable/enable
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/metadata/built-in/{action}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/metadata/built-in/{action}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/metadata'
+  method='POST'
+  title='Update Documents Metadata'
+  name='#update_documents_metadata'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='operation_data' type='object list' key='segments'>
+        - <code>document_id</code> (string) Document ID
+        - <code>metadata_list</code> (list) Metadata list
+          - <code>id</code> (string) Metadata ID
+          - <code>value</code> (string) Metadata value
+          - <code>name</code> (string) Metadata name
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/metadata"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"operation_data": [{"document_id": "document_id", "metadata_list": [{"id": "id", "value": "value", "name": "name"}]}]}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/metadata'
+  method='GET'
+  title='Get Knowledge Metadata List'
+  name='#dataset_metadata_list'
+/>
+<Row>
+  <Col>
+    ### Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/metadata"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/metadata' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "doc_metadata": [
+        {
+          "id": "",
+          "name": "name",
+          "type": "string",
+          "use_count": 0,
+        },
+        ...
+      ],
+      "built_in_field_enabled": true
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+ 
+<Heading
+ url='/workspaces/current/models/model-types/text-embedding'
+ method='GET'
+ title='Get available embedding models'
+ name='#model_type_list'
+/>
+<Row>
+   <Col>
+     ### Query
+     <Properties>
+     </Properties>
+   </Col>
+   <Col sticky>
+     <CodeGroup
+       title="Request"
+       tag="GET"
+       label="/datasets/{dataset_id}"
+       targetCode={`curl --location --location --request GET '${props.apiBaseUrl}/workspaces/current/models/model-types/text-embedding' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' `}
+     >
+     ```bash {{ title: 'cURL' }}
+     curl --location --request GET '${props.apiBaseUrl}/workspaces/current/models/model-types/text-embedding' \
+     --header 'Authorization: Bearer {api_key}' \
+     --header 'Content-Type: application/json' \
+     ```
+     </CodeGroup>
+     <CodeGroup title="Response">
+     ```json {{ title: 'Response' }}
+     {
+       "data": [
+           {
+               "provider": "zhipuai",
+               "label": {
+                   "zh_Hans": "智谱 AI",
+                   "en_US": "ZHIPU AI"
+               },
+               "icon_small": {
+                   "zh_Hans": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_small/zh_Hans",
+                   "en_US": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_small/en_US"
+               },
+               "icon_large": {
+                   "zh_Hans": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_large/zh_Hans",
+                   "en_US": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_large/en_US"
+               },
+               "status": "active",
+               "models": [
+                   {
+                       "model": "embedding-3",
+                       "label": {
+                           "zh_Hans": "embedding-3",
+                           "en_US": "embedding-3"
+                       },
+                       "model_type": "text-embedding",
+                       "features": null,
+                       "fetch_from": "predefined-model",
+                       "model_properties": {
+                           "context_size": 8192
+                       },
+                       "deprecated": false,
+                       "status": "active",
+                       "load_balancing_enabled": false
+                   },
+                   {
+                       "model": "embedding-2",
+                       "label": {
+                           "zh_Hans": "embedding-2",
+                           "en_US": "embedding-2"
+                       },
+                       "model_type": "text-embedding",
+                       "features": null,
+                       "fetch_from": "predefined-model",
+                       "model_properties": {
+                           "context_size": 8192
+                       },
+                       "deprecated": false,
+                       "status": "active",
+                       "load_balancing_enabled": false
+                   },
+                   {
+                       "model": "text_embedding",
+                       "label": {
+                           "zh_Hans": "text_embedding",
+                           "en_US": "text_embedding"
+                       },
+                       "model_type": "text-embedding",
+                       "features": null,
+                       "fetch_from": "predefined-model",
+                       "model_properties": {
+                           "context_size": 512
+                       },
+                       "deprecated": false,
+                       "status": "active",
+                       "load_balancing_enabled": false
+                   }
+               ]
+           }
+       ]
+     }
+     ```
+     </CodeGroup>
+   </Col>
 </Row>
 
 <hr className='ml-0 mr-0' />

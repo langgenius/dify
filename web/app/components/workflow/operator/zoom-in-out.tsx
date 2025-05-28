@@ -18,10 +18,9 @@ import {
   useNodesSyncDraft,
   useWorkflowReadOnly,
 } from '../hooks'
-import {
-  getKeyboardKeyNameBySystem,
-} from '../utils'
+
 import ShortcutsName from '../shortcuts-name'
+import Divider from '../../base/divider'
 import TipPopup from './tip-popup'
 import cn from '@/utils/classnames'
 import {
@@ -130,55 +129,62 @@ const ZoomInOut: FC = () => {
         crossAxis: -2,
       }}
     >
-      <PortalToFollowElemTrigger asChild onClick={handleTrigger}>
+      <PortalToFollowElemTrigger asChild>
         <div className={`
-          p-0.5 h-9 cursor-pointer text-[13px] text-gray-500 font-medium rounded-lg bg-white shadow-lg border-[0.5px] border-gray-100
+          h-9 cursor-pointer rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg
+          p-0.5 text-[13px] shadow-lg backdrop-blur-[5px]
+          hover:bg-state-base-hover
           ${workflowReadOnly && '!cursor-not-allowed opacity-50'}
         `}>
           <div className={cn(
-            'flex items-center justify-between w-[98px] h-8 hover:bg-gray-50 rounded-lg',
-            open && 'bg-gray-50',
+            'flex h-8 w-[98px] items-center justify-between rounded-lg',
           )}>
             <TipPopup
               title={t('workflow.operator.zoomOut')}
               shortcuts={['ctrl', '-']}
             >
               <div
-                className='flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-black/5'
+                className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom <= 0.25 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
                 onClick={(e) => {
+                  if (zoom <= 0.25)
+                    return
+
                   e.stopPropagation()
                   zoomOut()
                 }}
               >
-                <RiZoomOutLine className='w-4 h-4' />
+                <RiZoomOutLine className='h-4 w-4 text-text-tertiary hover:text-text-secondary' />
               </div>
             </TipPopup>
-            <div className='w-[34px]'>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
+            <div onClick={handleTrigger} className={cn('system-sm-medium w-[34px] text-text-tertiary hover:text-text-secondary')}>{Number.parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
             <TipPopup
               title={t('workflow.operator.zoomIn')}
               shortcuts={['ctrl', '+']}
             >
               <div
-                className='flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer hover:bg-black/5'
+                className={`flex h-8 w-8 items-center justify-center rounded-lg ${zoom >= 2 ? 'cursor-not-allowed' : 'cursor-pointer hover:bg-black/5'}`}
                 onClick={(e) => {
+                  if (zoom >= 2)
+                    return
+
                   e.stopPropagation()
                   zoomIn()
                 }}
               >
-                <RiZoomInLine className='w-4 h-4' />
+                <RiZoomInLine className='h-4 w-4 text-text-tertiary hover:text-text-secondary' />
               </div>
             </TipPopup>
           </div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='w-[145px] rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg'>
+        <div className='w-[145px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
           {
             ZOOM_IN_OUT_OPTIONS.map((options, i) => (
               <Fragment key={i}>
                 {
                   i !== 0 && (
-                    <div className='h-[1px] bg-gray-100' />
+                    <Divider className='m-0' />
                   )
                 }
                 <div className='p-1'>
@@ -186,25 +192,27 @@ const ZoomInOut: FC = () => {
                     options.map(option => (
                       <div
                         key={option.key}
-                        className='flex items-center justify-between px-3 h-8 rounded-lg hover:bg-gray-50 cursor-pointer text-sm text-gray-700'
+                        className='system-md-regular flex h-8 cursor-pointer items-center justify-between space-x-1 rounded-lg py-1.5 pl-3 pr-2 text-text-secondary hover:bg-state-base-hover'
                         onClick={() => handleZoom(option.key)}
                       >
-                        {option.text}
-                        {
-                          option.key === ZoomType.zoomToFit && (
-                            <ShortcutsName keys={[`${getKeyboardKeyNameBySystem('ctrl')}`, '1']} />
-                          )
-                        }
-                        {
-                          option.key === ZoomType.zoomTo50 && (
-                            <ShortcutsName keys={['shift', '5']} />
-                          )
-                        }
-                        {
-                          option.key === ZoomType.zoomTo100 && (
-                            <ShortcutsName keys={['shift', '1']} />
-                          )
-                        }
+                        <span>{option.text}</span>
+                        <div className='flex items-center space-x-0.5'>
+                          {
+                            option.key === ZoomType.zoomToFit && (
+                              <ShortcutsName keys={['ctrl', '1']} />
+                            )
+                          }
+                          {
+                            option.key === ZoomType.zoomTo50 && (
+                              <ShortcutsName keys={['shift', '5']} />
+                            )
+                          }
+                          {
+                            option.key === ZoomType.zoomTo100 && (
+                              <ShortcutsName keys={['shift', '1']} />
+                            )
+                          }
+                        </div>
                       </div>
                     ))
                   }

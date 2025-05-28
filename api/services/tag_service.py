@@ -20,8 +20,8 @@ class TagService:
         )
         if keyword:
             query = query.filter(db.and_(Tag.name.ilike(f"%{keyword}%")))
-        query = query.group_by(Tag.id)
-        results = query.order_by(Tag.created_at.desc()).all()
+        query = query.group_by(Tag.id, Tag.type, Tag.name, Tag.created_at)
+        results: list = query.order_by(Tag.created_at.desc()).all()
         return results
 
     @staticmethod

@@ -99,6 +99,12 @@ const translation = {
   back: '返回',
   resetPasswordDesc: '輸入您用於註冊 Dify 的電子郵件，我們將向您發送一封密碼重置電子郵件。',
   usePassword: '使用密碼',
+  licenseExpiredTip: '您的工作區的 Dify Enterprise 許可證已過期。請聯繫您的管理員以繼續使用 Dify。',
+  licenseExpired: '許可證已過期',
+  licenseLost: '許可證丟失',
+  licenseInactive: '許可證處於非活動狀態',
+  licenseInactiveTip: '您的工作區的 Dify Enterprise 許可證處於非活動狀態。請聯繫您的管理員以繼續使用 Dify。',
+  licenseLostTip: '無法連接 Dify 許可證伺服器。請聯繫您的管理員以繼續使用 Dify。',
 }
 
 export default translation

@@ -5,13 +5,24 @@ import classNames from '@/utils/classnames'
 
 type SwitchProps = {
   onChange?: (value: boolean) => void
-  size?: 'sm' | 'md' | 'lg' | 'l'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'l'
   defaultValue?: boolean
   disabled?: boolean
   className?: string
 }
 
-const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false, className }: SwitchProps) => {
+const Switch = (
+  {
+    ref: propRef,
+    onChange,
+    size = 'md',
+    defaultValue = false,
+    disabled = false,
+    className,
+  }: SwitchProps & {
+    ref?: React.RefObject<HTMLButtonElement>;
+  },
+) => {
   const [enabled, setEnabled] = useState(defaultValue)
   useEffect(() => {
     setEnabled(defaultValue)
@@ -21,6 +32,7 @@ const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false,
     l: 'h-5 w-9',
     md: 'h-4 w-7',
     sm: 'h-3 w-5',
+    xs: 'h-2.5 w-3.5',
   }
 
   const circleStyle = {
@@ -28,6 +40,7 @@ const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false,
     l: 'h-4 w-4',
     md: 'h-3 w-3',
     sm: 'h-2 w-2',
+    xs: 'h-1.5 w-1',
   }
 
   const translateLeft = {
@@ -35,9 +48,11 @@ const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false,
     l: 'translate-x-4',
     md: 'translate-x-3',
     sm: 'translate-x-2',
+    xs: 'translate-x-1.5',
   }
   return (
     <OriginalSwitch
+      ref={propRef}
       checked={enabled}
       onChange={(checked: boolean) => {
         if (disabled)
@@ -50,6 +65,7 @@ const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false,
         enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
         'relative inline-flex  flex-shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out',
         disabled ? '!opacity-50 !cursor-not-allowed' : '',
+        size === 'xs' && 'rounded-sm',
         className,
       )}
     >
@@ -58,10 +74,14 @@ const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false,
         className={classNames(
           circleStyle[size],
           enabled ? translateLeft[size] : 'translate-x-0',
+          size === 'xs' && 'rounded-[1px]',
           'pointer-events-none inline-block transform rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out',
         )}
       />
     </OriginalSwitch>
   )
 }
+
+Switch.displayName = 'Switch'
+
 export default React.memo(Switch)

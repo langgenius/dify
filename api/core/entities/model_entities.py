@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from enum import Enum
 from typing import Optional
 
@@ -72,7 +73,7 @@ class DefaultModelProviderEntity(BaseModel):
     label: I18nObject
     icon_small: Optional[I18nObject] = None
     icon_large: Optional[I18nObject] = None
-    supported_model_types: list[ModelType]
+    supported_model_types: Sequence[ModelType] = []
 
 
 class DefaultModelEntity(BaseModel):

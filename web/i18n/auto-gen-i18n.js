@@ -29,9 +29,22 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
         await translateMissingKeyDeeply(sourceObj[key], targetObject[key], toLanguage)
       }
       else {
-        const { translation } = await translate(sourceObj[key], null, languageKeyMap[toLanguage])
-        targetObject[key] = translation
-        // console.log(translation)
+        try {
+          const source = sourceObj[key]
+          if (!source) {
+            targetObject[key] = ''
+            return
+          }
+          // not support translate with '(' or ')'
+          if (source.includes('(') || source.includes(')'))
+            return
+
+          const { translation } = await translate(sourceObj[key], null, languageKeyMap[toLanguage])
+          targetObject[key] = translation
+        }
+        catch {
+          console.error(`Error translating "${sourceObj[key]}" to ${toLanguage}. Key: ${key}`)
+        }
       }
     }
     else if (typeof sourceObj[key] === 'object') {
@@ -44,7 +57,16 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
 async function autoGenTrans(fileName, toGenLanguage) {
   const fullKeyFilePath = path.join(__dirname, targetLanguage, `${fileName}.ts`)
   const toGenLanguageFilePath = path.join(__dirname, toGenLanguage, `${fileName}.ts`)
+  // eslint-disable-next-line sonarjs/code-eval
   const fullKeyContent = eval(transpile(fs.readFileSync(fullKeyFilePath, 'utf8')))
+  // if toGenLanguageFilePath is not exist, create it
+  if (!fs.existsSync(toGenLanguageFilePath)) {
+    fs.writeFileSync(toGenLanguageFilePath, `const translation = {
+}
+
+export default translation
+`)
+  }
   // To keep object format and format it for magicast to work: const translation = { ... } => export default {...}
   const readContent = await loadFile(toGenLanguageFilePath)
   const { code: toGenContent } = generateCode(readContent)
@@ -74,7 +96,12 @@ async function main() {
 
   await Promise.all(files.map(async (file) => {
     await Promise.all(Object.keys(languageKeyMap).map(async (language) => {
-      await autoGenTrans(file, language)
+      try {
+        await autoGenTrans(file, language)
+      }
+      catch (e) {
+        console.error(`Error translating ${file} to ${language}`, e)
+      }
     }))
   }))
 }

@@ -99,6 +99,12 @@ const translation = {
   noLoginMethodTip: 'Bir kimlik doğrulama yöntemi eklemek için lütfen sistem yöneticisine başvurun.',
   sendVerificationCode: 'Doğrulama Kodu Gönder',
   back: 'Geri',
+  licenseExpiredTip: 'Çalışma alanınız için Dify Enterprise lisansının süresi doldu. Dify\'ı kullanmaya devam etmek için lütfen yöneticinizle iletişime geçin.',
+  licenseLostTip: 'Dify lisans sunucusuna bağlanılamadı. Dify\'ı kullanmaya devam etmek için lütfen yöneticinizle iletişime geçin.',
+  licenseInactiveTip: 'Çalışma alanınız için Dify Enterprise lisansı etkin değil. Dify\'ı kullanmaya devam etmek için lütfen yöneticinizle iletişime geçin.',
+  licenseExpired: 'Lisansın Süresi Doldu',
+  licenseLost: 'Lisans Kaybedildi',
+  licenseInactive: 'Lisans Etkin Değil',
 }
 
 export default translation

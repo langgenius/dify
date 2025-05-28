@@ -4,7 +4,7 @@ const translation = {
   customToolTip: 'Difyカスタムツールの詳細',
   type: {
     all: 'すべて',
-    builtIn: '組み込み',
+    builtIn: 'ツール',
     custom: 'カスタム',
     workflow: 'ワークフロー',
   },
@@ -13,9 +13,8 @@ const translation = {
     line2: 'Difyへのツールの貢献に興味があります。',
     viewGuide: 'ガイドを見る',
   },
-  author: '著者',
+  author: '著者：',
   auth: {
-    unauthorized: '認証する',
     authorized: '認証済み',
     setup: '使用するための認証を設定する',
     setupModalTitle: '認証の設定',
@@ -27,10 +26,12 @@ const translation = {
     type: 'タイプ',
     category: 'カテゴリー',
     add: '追加',
-    added: '追加されだ',
+    added: '追加済',
     manageInTools: 'ツールリストに移動して管理する',
     emptyTitle: '利用可能なワークフローツールはありません',
     emptyTip: '追加するには、「ワークフロー -> ツールとして公開 」に移動する',
+    emptyTitleCustom: 'カスタムツールはありません',
+    emptyTipCustom: 'カスタムツールの作成',
   },
   createTool: {
     title: 'カスタムツールを作成する',
@@ -104,9 +105,9 @@ const translation = {
     customDisclaimer: 'カスタム免責事項',
     customDisclaimerPlaceholder: 'カスタム免責事項を入力してください',
     confirmTitle: '保存しますか？',
-    confirmTip: '新しバージョン保存すると、このツールを使用されているアプリは影響を受けます',
+    confirmTip: 'このツールを使用しているアプリは影響を受けます',
     deleteToolConfirmTitle: 'このツールを削除しますか？',
-    deleteToolConfirmContent: 'ツールの削除は取り消しできません。ユーザーはもうあなた様のツールにアクセスできません。',
+    deleteToolConfirmContent: 'ツールの削除は取り消しできません。ユーザーはもうあなたのツールにアクセスできません。',
   },
   test: {
     title: 'テスト',
@@ -131,6 +132,7 @@ const translation = {
     number: '数',
     required: '必須',
     infoAndSetting: '情報と設定',
+    file: 'ファイル',
   },
   noCustomTool: {
     title: 'カスタムツールがありません！',
@@ -148,6 +150,8 @@ const translation = {
   howToGet: '取得方法',
   openInStudio: 'スタジオで開く',
   toolNameUsageTip: 'ツール呼び出し名、エージェントの推論とプロンプトの単語に使用されます',
+  copyToolName: '名前をコピー',
+  noTools: 'ツールが見つかりませんでした',
 }
 
 export default translation

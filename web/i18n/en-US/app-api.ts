@@ -78,6 +78,7 @@ const translation = {
     requestBody: 'Request Body',
     pathParams: 'Path Params',
     query: 'Query',
+    toc: 'Contents',
   },
 }
 

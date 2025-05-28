@@ -273,8 +273,7 @@ FROM
             messages m
             ON c.id = m.conversation_id
         WHERE
-            c.override_model_configs IS NULL
-            AND c.app_id = :app_id"""
+            c.app_id = :app_id"""
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
 
         timezone = pytz.timezone(account.timezone)

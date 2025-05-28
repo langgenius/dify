@@ -99,6 +99,17 @@ const translation = {
   back: '返回',
   noLoginMethod: '未配置身份认证方式',
   noLoginMethodTip: '请联系系统管理员添加身份认证方式',
+  licenseExpired: '许可证已过期',
+  licenseExpiredTip: '您所在空间的 Dify Enterprise 许可证已过期，请联系管理员以继续使用 Dify。',
+  licenseLost: '许可证丢失',
+  licenseLostTip: '无法连接 Dify 许可证服务器，请联系管理员以继续使用 Dify。',
+  licenseInactive: '许可证未激活',
+  licenseInactiveTip: '您所在空间的 Dify Enterprise 许可证尚未激活，请联系管理员以继续使用 Dify。',
+  webapp: {
+    noLoginMethod: 'Web 应用未配置身份认证方式',
+    noLoginMethodTip: '请联系系统管理员添加身份认证方式',
+    disabled: 'Web 应用身份认证已禁用，请联系系统管理员启用。您也可以尝试直接使用应用。',
+  },
 }
 
 export default translation

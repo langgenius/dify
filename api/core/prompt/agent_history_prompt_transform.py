@@ -31,7 +31,7 @@ class AgentHistoryPromptTransform(PromptTransform):
         self.memory = memory
 
     def get_prompt(self) -> list[PromptMessage]:
-        prompt_messages = []
+        prompt_messages: list[PromptMessage] = []
         num_system = 0
         for prompt_message in self.history_messages:
             if isinstance(prompt_message, SystemPromptMessage):

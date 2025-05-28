@@ -26,6 +26,12 @@ const translation = {
     },
     tryToSolve: 'Thử giải quyết',
     temporarySystemIssue: 'Xin lỗi, hệ thống đang gặp sự cố tạm thời.',
+    expand: 'Mở rộng',
+    collapse: 'Thu gọn',
+    chatFormTip: 'Cài đặt trò chuyện không thể được thay đổi sau khi cuộc trò chuyện đã bắt đầu.',
+    newChatTip: 'Đã ở trong một cuộc trò chuyện mới',
+    viewChatSettings: 'Xem cài đặt trò chuyện',
+    chatSettingsTitle: 'Cài đặt trò chuyện mới',
   },
   generation: {
     tabs: {
@@ -64,6 +70,8 @@ const translation = {
       moreThanMaxLengthLine: 'Dòng {{rowIndex}}: {{varName}} không thể chứa quá {{maxLength}} ký tự',
       atLeastOne: 'Vui lòng nhập ít nhất một dòng vào tệp đã tải lên.',
     },
+    executions: '{{num}} ÁN TỬ HÌNH',
+    execution: 'THI HÀNH',
   },
 }
 

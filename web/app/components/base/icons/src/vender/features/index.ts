@@ -1,5 +1,6 @@
 export { default as Citations } from './Citations'
 export { default as ContentModeration } from './ContentModeration'
+export { default as Document } from './Document'
 export { default as FolderUpload } from './FolderUpload'
 export { default as LoveMessage } from './LoveMessage'
 export { default as MessageFast } from './MessageFast'

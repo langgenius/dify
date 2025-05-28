@@ -1,11 +1,13 @@
 const translation = {
   custom: '定制',
   upgradeTip: {
+    title: '升级您的计划',
+    des: '升级您的计划来定制您的品牌。',
     prefix: '升级您的计划以',
     suffix: '定制您的品牌。',
   },
   webapp: {
-    title: '定制 WebApp 品牌',
+    title: '定制 web app 品牌',
     removeBrand: '移除 Powered by Dify',
     changeLogo: '更改 Powered by Brand 图片',
     changeLogoTip: 'SVG 或 PNG 格式，最小尺寸为 40x40px',

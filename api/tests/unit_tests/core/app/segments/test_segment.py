@@ -1,5 +1,5 @@
 from core.helper import encrypter
-from core.variables import SecretVariable, StringSegment
+from core.variables import SecretVariable, StringVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 
@@ -54,4 +54,5 @@ def test_convert_variable_to_segment_group():
     segments_group = variable_pool.convert_template(template)
     assert segments_group.text == "fake-user-id"
     assert segments_group.log == "fake-user-id"
-    assert segments_group.value == [StringSegment(value="fake-user-id")]
+    assert isinstance(segments_group.value[0], StringVariable)
+    assert segments_group.value[0].value == "fake-user-id"

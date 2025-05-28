@@ -60,6 +60,7 @@ const translation = {
     requestBody: 'Тіло запиту',
     pathParams: 'Параметри шляху',
     query: 'Запит',
+    toc: 'Вміст',
   },
   completionMode: {
     messageIDTip: 'Ідентифікатор повідомлення',

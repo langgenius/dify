@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'Ver GRÁFICO VECTORIAL',
   viewDetail: 'Ver Detalle',
   settingTitle: 'Configuración de recuperación',
+  open: 'Abrir',
+  records: 'Archivo',
+  chunkDetail: 'Detalle de fragmentos',
+  keyword: 'Palabras clave',
+  hitChunks: 'Golpea {{num}} fragmentos secundarios',
 }
 
 export default translation

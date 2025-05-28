@@ -29,7 +29,7 @@ const translation = {
       noOutput: '无输出',
       element: {
         title: '这里有人吗',
-        content: '在这里观测和标注最终用户和 AI 应用程序之间的交互，以不断提高 AI 的准确性。您可以<testLink>试试</testLink> WebApp 或<shareLink>分享</shareLink>出去，然后返回此页面。',
+        content: '在这里观测和标注最终用户和 AI 应用程序之间的交互，以不断提高 AI 的准确性。您可以<testLink>试试</testLink> web app 或<shareLink>分享</shareLink>出去，然后返回此页面。',
       },
     },
   },
@@ -52,6 +52,7 @@ const translation = {
     },
     variables: '变量',
     uploadImages: '上传的图片',
+    modelParams: '模型参数',
   },
   filter: {
     period: {
@@ -79,6 +80,8 @@ const translation = {
   runDetail: {
     title: '对话日志',
     workflowTitle: '日志详情',
+    fileListLabel: '文件详情',
+    fileListDetail: '详情',
   },
   promptLog: 'Prompt 日志',
   agentLog: 'Agent 日志',

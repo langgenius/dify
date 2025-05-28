@@ -1,3 +1,4 @@
+import json
 import logging
 
 from flask_restful import Resource, fields, marshal_with, reqparse
@@ -10,6 +11,8 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
+from fields.message_fields import agent_thought_fields, feedback_fields
+from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
 from services.errors.message import SuggestedQuestionsAfterAnswerDisabledError
@@ -17,50 +20,20 @@ from services.message_service import MessageService
 
 
 class MessageListApi(Resource):
-    feedback_fields = {"rating": fields.String}
-    retriever_resource_fields = {
-        "id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "dataset_id": fields.String,
-        "dataset_name": fields.String,
-        "document_id": fields.String,
-        "document_name": fields.String,
-        "data_source_type": fields.String,
-        "segment_id": fields.String,
-        "score": fields.Float,
-        "hit_count": fields.Integer,
-        "word_count": fields.Integer,
-        "segment_position": fields.Integer,
-        "index_node_hash": fields.String,
-        "content": fields.String,
-        "created_at": TimestampField,
-    }
-
-    agent_thought_fields = {
-        "id": fields.String,
-        "chain_id": fields.String,
-        "message_id": fields.String,
-        "position": fields.Integer,
-        "thought": fields.String,
-        "tool": fields.String,
-        "tool_labels": fields.Raw,
-        "tool_input": fields.String,
-        "created_at": TimestampField,
-        "observation": fields.String,
-        "message_files": fields.List(fields.Nested(message_file_fields)),
-    }
-
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,
         "parent_message_id": fields.String,
-        "inputs": fields.Raw,
+        "inputs": FilesContainedField,
         "query": fields.String,
         "answer": fields.String(attribute="re_sign_file_url_answer"),
         "message_files": fields.List(fields.Nested(message_file_fields)),
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-        "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
+        "retriever_resources": fields.Raw(
+            attribute=lambda obj: json.loads(obj.message_metadata).get("retriever_resources", [])
+            if obj.message_metadata
+            else []
+        ),
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
         "status": fields.String,
@@ -103,14 +76,33 @@ class MessageFeedbackApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
+        parser.add_argument("content", type=str, location="json")
         args = parser.parse_args()
 
         try:
-            MessageService.create_feedback(app_model, message_id, end_user, args["rating"])
+            MessageService.create_feedback(
+                app_model=app_model,
+                message_id=message_id,
+                user=end_user,
+                rating=args.get("rating"),
+                content=args.get("content"),
+            )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
         return {"result": "success"}
+
+
+class AppGetFeedbacksApi(Resource):
+    @validate_app_token
+    def get(self, app_model: App):
+        """Get All Feedbacks of an app"""
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, default=1, location="args")
+        parser.add_argument("limit", type=int_range(1, 101), required=False, default=20, location="args")
+        args = parser.parse_args()
+        feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=args["page"], limit=args["limit"])
+        return {"data": feedbacks}
 
 
 class MessageSuggestedApi(Resource):
@@ -139,3 +131,4 @@ class MessageSuggestedApi(Resource):
 api.add_resource(MessageListApi, "/messages")
 api.add_resource(MessageFeedbackApi, "/messages/<uuid:message_id>/feedbacks")
 api.add_resource(MessageSuggestedApi, "/messages/<uuid:message_id>/suggested")
+api.add_resource(AppGetFeedbacksApi, "/app/feedbacks")

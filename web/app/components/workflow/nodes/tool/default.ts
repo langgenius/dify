@@ -2,7 +2,7 @@ import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { ToolNodeType } from './types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
+import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 
 const i18nPrefix = 'workflow.errorMsg'
 

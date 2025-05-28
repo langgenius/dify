@@ -1,7 +1,8 @@
 from collections.abc import Mapping
 from typing import Any
 
-from core.file import FileExtraConfig
+from constants import DEFAULT_FILE_NUMBER_LIMITS
+from core.file import FileUploadConfig
 
 
 class FileUploadConfigManager:
@@ -16,32 +17,27 @@ class FileUploadConfigManager:
         file_upload_dict = config.get("file_upload")
         if file_upload_dict:
             if file_upload_dict.get("enabled"):
-                transform_methods = file_upload_dict.get("allowed_file_upload_methods") or file_upload_dict.get(
-                    "allowed_upload_methods", []
-                )
-                data = {
-                    "image_config": {
-                        "number_limits": file_upload_dict["number_limits"],
-                        "transfer_methods": transform_methods,
-                    }
+                transform_methods = file_upload_dict.get("allowed_file_upload_methods", [])
+                file_upload_dict["image_config"] = {
+                    "number_limits": file_upload_dict.get("number_limits", DEFAULT_FILE_NUMBER_LIMITS),
+                    "transfer_methods": transform_methods,
                 }
 
                 if is_vision:
-                    data["image_config"]["detail"] = file_upload_dict.get("image", {}).get("detail", "low")
+                    file_upload_dict["image_config"]["detail"] = file_upload_dict.get("image", {}).get("detail", "high")
 
-                return FileExtraConfig.model_validate(data)
+                return FileUploadConfig.model_validate(file_upload_dict)
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict, is_vision: bool = True) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for file upload feature
 
         :param config: app model config args
-        :param is_vision: if True, the feature is vision feature
         """
         if not config.get("file_upload"):
             config["file_upload"] = {}
         else:
-            FileExtraConfig.model_validate(config["file_upload"])
+            FileUploadConfig.model_validate(config["file_upload"])
 
         return config, ["file_upload"]

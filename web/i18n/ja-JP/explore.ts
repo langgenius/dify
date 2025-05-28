@@ -16,9 +16,9 @@ const translation = {
     },
   },
   apps: {
-    title: 'Difyによるアプリの探索',
+    title: 'アプリを探索',
     description: 'これらのテンプレートアプリを即座に使用するか、テンプレートに基づいて独自のアプリをカスタマイズしてください。',
-    allCategories: 'おすすめ',
+    allCategories: '推奨',
   },
   appCard: {
     addToWorkspace: 'ワークスペースに追加',
@@ -35,6 +35,9 @@ const translation = {
     Translate: '翻訳',
     Programming: 'プログラミング',
     HR: '人事',
+    Workflow: 'ワークフロー',
+    Agent: 'エージェント',
+    Entertainment: 'エンターテイメント',
   },
 }
 

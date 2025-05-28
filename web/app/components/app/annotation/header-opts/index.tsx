@@ -4,17 +4,17 @@ import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
+  RiMoreFill,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import {
   useCSVDownloader,
 } from 'react-papaparse'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
 import type { AnnotationItemBasic } from '../type'
 import BatchAddModal from '../batch-add-annotation-modal'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 import CustomPopover from '@/app/components/base/popover'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
@@ -80,18 +80,18 @@ const HeaderOptions: FC<Props> = ({
   const Operations = () => {
     return (
       <div className="w-full py-1">
-        <button className={s.actionItem} onClick={() => {
+        <button className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50' onClick={() => {
           setShowBulkImportModal(true)
         }}>
-          <FilePlus02 className={s.actionItemIcon} />
-          <span className={s.actionName}>{t('appAnnotation.table.header.bulkImport')}</span>
+          <FilePlus02 className='h-4 w-4 text-text-tertiary' />
+          <span className='system-sm-regular grow text-left text-text-secondary'>{t('appAnnotation.table.header.bulkImport')}</span>
         </button>
-        <Menu as="div" className="relative w-full h-full">
-          <Menu.Button className={s.actionItem}>
-            <FileDownload02 className={s.actionItemIcon} />
-            <span className={s.actionName}>{t('appAnnotation.table.header.bulkExport')}</span>
-            <ChevronRight className='shrink-0 w-[14px] h-[14px] text-gray-500' />
-          </Menu.Button>
+        <Menu as="div" className="relative h-full w-full">
+          <MenuButton className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50'>
+            <FileDownload02 className='h-4 w-4 text-text-tertiary' />
+            <span className='system-sm-regular grow text-left text-text-secondary'>{t('appAnnotation.table.header.bulkExport')}</span>
+            <ChevronRight className='h-[14px] w-[14px] shrink-0 text-text-tertiary' />
+          </MenuButton>
           <Transition
             as={Fragment}
             enter="transition ease-out duration-100"
@@ -101,13 +101,9 @@ const HeaderOptions: FC<Props> = ({
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <Menu.Items
+            <MenuItems
               className={cn(
-                `
-                  absolute top-[1px] py-1 min-w-[100px] z-10 bg-white border-[0.5px] border-gray-200
-                  divide-y divide-gray-100 origin-top-right rounded-xl
-                `,
-                s.popup,
+                'absolute left-1 top-[1px] z-10 min-w-[100px] origin-top-right -translate-x-full rounded-xl border-[0.5px] border-components-panel-on-panel-item-bg bg-components-panel-bg py-1 shadow-xs',
               )}
             >
               <CSVDownloader
@@ -119,14 +115,14 @@ const HeaderOptions: FC<Props> = ({
                   ...list.map(item => [item.question, item.answer]),
                 ]}
               >
-                <button disabled={annotationUnavailable} className={s.actionItem}>
-                  <span className={s.actionName}>CSV</span>
+                <button disabled={annotationUnavailable} className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50'>
+                  <span className='system-sm-regular grow text-left text-text-secondary'>CSV</span>
                 </button>
               </CSVDownloader>
-              <button disabled={annotationUnavailable} className={cn(s.actionItem, '!border-0')} onClick={JSONLOutput}>
-                <span className={s.actionName}>JSONL</span>
+              <button disabled={annotationUnavailable} className={cn('mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', '!border-0')} onClick={JSONLOutput}>
+                <span className='system-sm-regular grow text-left text-text-secondary'>JSONL</span>
               </button>
-            </Menu.Items>
+            </MenuItems>
           </Transition>
         </Menu>
       </div>
@@ -137,22 +133,21 @@ const HeaderOptions: FC<Props> = ({
 
   return (
     <div className='flex space-x-2'>
-      <Button variant='primary' onClick={() => setShowAddModal(true)} className='flex items-center !h-8 !px-3 !text-[13px] space-x-2'>
-        <RiAddLine className='w-4 h-4' />
+      <Button variant='primary' onClick={() => setShowAddModal(true)}>
+        <RiAddLine className='mr-0.5 h-4 w-4' />
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>
       <CustomPopover
         htmlContent={<Operations />}
         position="br"
         trigger="click"
-        btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
-        btnClassName={open =>
-          cn(
-            open ? 'border-gray-300 !bg-gray-100 !shadow-none' : 'border-gray-200',
-            s.actionIconWrapper,
-          )
+        btnElement={
+          <Button variant='secondary' className='w-8 p-0'>
+            <RiMoreFill className='h-4 w-4' />
+          </Button>
         }
-        className={'!w-[155px] h-fit !z-20'}
+        btnClassName='p-0 border-0'
+        className={'!z-20 h-fit !w-[155px]'}
         popupClassName='!w-full !overflow-visible'
         manualClose
       />

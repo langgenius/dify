@@ -41,7 +41,7 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
             Path(path.join(root_path, "constants", "recommended_apps.json")).read_text(encoding="utf-8")
         )
 
-        return cls.builtin_data
+        return cls.builtin_data or {}
 
     @classmethod
     def fetch_recommended_apps_from_builtin(cls, language: str) -> dict:
@@ -50,8 +50,8 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
         :param language: language
         :return:
         """
-        builtin_data = cls._get_builtin_data()
-        return builtin_data.get("recommended_apps", {}).get(language)
+        builtin_data: dict[str, dict[str, dict]] = cls._get_builtin_data()
+        return builtin_data.get("recommended_apps", {}).get(language, {})
 
     @classmethod
     def fetch_recommended_app_detail_from_builtin(cls, app_id: str) -> Optional[dict]:
@@ -60,5 +60,5 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
         :param app_id: App ID
         :return:
         """
-        builtin_data = cls._get_builtin_data()
+        builtin_data: dict[str, dict[str, dict]] = cls._get_builtin_data()
         return builtin_data.get("app_details", {}).get(app_id)

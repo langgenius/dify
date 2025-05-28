@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'Voir GRAPHIQUE VECTORIEL',
   settingTitle: 'Réglage de récupération',
   viewDetail: 'Voir les détails',
+  hitChunks: 'Appuyez sur {{num}} morceaux enfants',
+  records: 'Archives',
+  chunkDetail: 'Détail du morceau',
+  open: 'Ouvrir',
+  keyword: 'Mots-clés',
 }
 
 export default translation

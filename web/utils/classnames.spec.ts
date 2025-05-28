@@ -18,6 +18,7 @@ describe('classnames', () => {
   })
 
   test('tailwind-merge', () => {
+    /* eslint-disable tailwindcss/classnames-order */
     expect(cn('p-0')).toBe('p-0')
     expect(cn('text-right text-center text-left')).toBe('text-left')
     expect(cn('pl-4 p-8')).toBe('p-8')

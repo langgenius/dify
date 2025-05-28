@@ -17,8 +17,9 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
-    TESTING: bool = Field(
-        description="Enable testing mode for running automated tests",
+    # Request logging configuration
+    ENABLE_REQUEST_LOGGING: bool = Field(
+        description="Enable request and response body logging",
         default=False,
     )
 

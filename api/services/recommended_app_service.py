@@ -33,5 +33,5 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result = retrieval_instance.get_recommend_app_detail(app_id)
+        result: dict = retrieval_instance.get_recommend_app_detail(app_id)
         return result

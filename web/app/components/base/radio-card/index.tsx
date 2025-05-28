@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import cn from '@/utils/classnames'
+import { noop } from 'lodash-es'
 
 type Props = {
   className?: string
@@ -23,37 +24,42 @@ const RadioCard: FC<Props> = ({
   description,
   noRadio,
   isChosen,
-  onChosen = () => { },
+  onChosen = noop,
   chosenConfig,
   chosenConfigWrapClassName,
+  className,
 }) => {
   return (
     <div
       className={cn(
-        'border border-components-option-card-option-border bg-components-option-card-option-bg rounded-xl hover:shadow-xs cursor-pointer',
-        isChosen && 'bg-components-option-card-option-selected-bg border-components-panel-border shadow-xs',
+        'relative cursor-pointer rounded-xl border-[0.5px] border-components-option-card-option-border bg-components-option-card-option-bg p-3',
+        isChosen && 'border-[1.5px] bg-components-option-card-option-selected-bg',
+        className,
       )}
     >
-      <div className='flex py-3 pl-3 pr-4' onClick={onChosen}>
-        <div className={cn(iconBgClassName, 'mr-3 shrink-0 flex w-8 justify-center h-8 items-center rounded-lg')}>
+      <div className='flex gap-x-2' onClick={onChosen}>
+        <div className={cn(iconBgClassName, 'flex size-8 shrink-0 items-center justify-center rounded-lg shadow-md')}>
           {icon}
         </div>
         <div className='grow'>
-          <div className='leading-5 text-sm font-medium text-gray-900'>{title}</div>
-          <div className='leading-[18px] text-xs font-normal text-[#667085]'>{description}</div>
+          <div className='system-sm-semibold mb-1 text-text-secondary'>{title}</div>
+          <div className='system-xs-regular text-text-tertiary'>{description}</div>
         </div>
         {!noRadio && (
-          <div className='shrink-0 flex items-center h-8'>
+          <div className='absolute right-3 top-3'>
             <div className={cn(
-              'w-4 h-4 border border-components-radio-border bg-components-radio-bg shadow-xs rounded-full',
+              'h-4 w-4 rounded-full border border-components-radio-border bg-components-radio-bg shadow-xs',
               isChosen && 'border-[5px] border-components-radio-border-checked',
             )}></div>
           </div>
         )}
       </div>
       {((isChosen && chosenConfig) || noRadio) && (
-        <div className={cn(chosenConfigWrapClassName, 'p-3 border-t border-gray-200')}>
-          {chosenConfig}
+        <div className='mt-2 flex gap-x-2'>
+          <div className='size-8 shrink-0'></div>
+          <div className={cn(chosenConfigWrapClassName, 'grow')}>
+            {chosenConfig}
+          </div>
         </div>
       )}
     </div>

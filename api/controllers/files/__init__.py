@@ -6,4 +6,4 @@ bp = Blueprint("files", __name__)
 api = ExternalApi(bp)
 
 
-from . import image_preview, tool_files
+from . import image_preview, tool_files, upload

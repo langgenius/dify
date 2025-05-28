@@ -42,6 +42,7 @@ message_file_fields = {
     "size": fields.Integer,
     "transfer_method": fields.String,
     "belongs_to": fields.String(default="user"),
+    "upload_file_id": fields.String(default=None),
 }
 
 agent_thought_fields = {
@@ -85,7 +86,7 @@ message_detail_fields = {
 }
 
 feedback_stat_fields = {"like": fields.Integer, "dislike": fields.Integer}
-
+status_count_fields = {"success": fields.Integer, "failed": fields.Integer, "partial_success": fields.Integer}
 model_config_fields = {
     "opening_statement": fields.String,
     "suggested_questions": fields.Raw,
@@ -93,10 +94,6 @@ model_config_fields = {
     "user_input_form": fields.Raw,
     "pre_prompt": fields.String,
     "agent_mode": fields.Raw,
-}
-
-simple_configs_fields = {
-    "prompt_template": fields.String,
 }
 
 simple_model_config_fields = {
@@ -166,6 +163,7 @@ conversation_with_summary_fields = {
     "message_count": fields.Integer,
     "user_feedback_stats": fields.Nested(feedback_stat_fields),
     "admin_feedback_stats": fields.Nested(feedback_stat_fields),
+    "status_count": fields.Nested(status_count_fields),
 }
 
 conversation_with_summary_pagination_fields = {
@@ -202,19 +200,12 @@ simple_conversation_fields = {
     "updated_at": TimestampField,
 }
 
+conversation_delete_fields = {
+    "result": fields.String,
+}
+
 conversation_infinite_scroll_pagination_fields = {
     "limit": fields.Integer,
     "has_more": fields.Boolean,
     "data": fields.List(fields.Nested(simple_conversation_fields)),
-}
-
-conversation_with_model_config_fields = {
-    **simple_conversation_fields,
-    "model_config": fields.Raw,
-}
-
-conversation_with_model_config_infinite_scroll_pagination_fields = {
-    "limit": fields.Integer,
-    "has_more": fields.Boolean,
-    "data": fields.List(fields.Nested(conversation_with_model_config_fields)),
 }

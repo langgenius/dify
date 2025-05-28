@@ -99,6 +99,12 @@ const translation = {
   usePassword: 'Sử dụng mật khẩu',
   resetPassword: 'Đặt lại mật khẩu',
   sendVerificationCode: 'Gửi mã xác minh',
+  licenseInactive: 'Giấy phép không hoạt động',
+  licenseLost: 'Mất giấy phép',
+  licenseInactiveTip: 'Giấy phép Dify Enterprise cho không gian làm việc của bạn không hoạt động. Vui lòng liên hệ với quản trị viên của bạn để tiếp tục sử dụng Dify.',
+  licenseExpired: 'Giấy phép đã hết hạn',
+  licenseExpiredTip: 'Giấy phép Dify Enterprise cho không gian làm việc của bạn đã hết hạn. Vui lòng liên hệ với quản trị viên của bạn để tiếp tục sử dụng Dify.',
+  licenseLostTip: 'Không thể kết nối máy chủ cấp phép Dify. Vui lòng liên hệ với quản trị viên của bạn để tiếp tục sử dụng Dify.',
 }
 
 export default translation

@@ -24,6 +24,8 @@ const translation = {
     link: 'panneau de détail',
     tipRight: ' visualisez-le.',
   },
+  actionLogs: 'Journaux d’actions',
+  circularInvocationTip: 'Il y a un appel circulaire d’outils/nœuds dans le flux de travail actuel.',
 }
 
 export default translation

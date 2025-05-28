@@ -42,6 +42,22 @@ const translation = {
     openInNewTab: 'Otwórz w nowej karcie',
     zoomIn: 'Powiększenie',
     zoomOut: 'Pomniejszanie',
+    saveAndRegenerate: 'Zapisywanie i regeneracja fragmentów podrzędnych',
+    view: 'Widok',
+    regenerate: 'Ponownie wygenerować',
+    viewMore: 'ZOBACZ WIĘCEJ',
+    close: 'Zamykać',
+    submit: 'Prześlij',
+    skip: 'Statek',
+    imageCopied: 'Skopiowany obraz',
+    deleteApp: 'Usuń aplikację',
+    copied: 'Kopiowane',
+    in: 'w',
+    viewDetails: 'Wyświetl szczegóły',
+    format: 'Format',
+    downloadFailed: 'Pobieranie nie powiodło się. Proszę spróbować ponownie później.',
+    more: 'Więcej',
+    downloadSuccess: 'Pobieranie zakończone.',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -117,6 +133,8 @@ const translation = {
       Custom: 'Niestandardowy',
     },
     addMoreModel: 'Przejdź do ustawień, aby dodać więcej modeli',
+    settingsLink: 'Ustawienia dostawcy modelu',
+    capabilities: 'Możliwości multimodalne',
   },
   menus: {
     status: 'beta',
@@ -131,6 +149,7 @@ const translation = {
     newApp: 'Nowa aplikacja',
     newDataset: 'Utwórz Wiedzę',
     tools: 'Narzędzia',
+    exploreMarketplace: 'Zapoznaj się z Marketplace',
   },
   userProfile: {
     settings: 'Ustawienia',
@@ -143,6 +162,9 @@ const translation = {
     community: 'Społeczność',
     about: 'O',
     logout: 'Wyloguj się',
+    support: 'Wsparcie',
+    github: 'GitHub',
+    compliance: 'Zgodność',
   },
   settings: {
     accountGroup: 'KONTO',
@@ -156,6 +178,7 @@ const translation = {
     dataSource: 'Źródło danych',
     plugin: 'Pluginy',
     apiBasedExtension: 'Rozszerzenie API',
+    generalGroup: 'OGÓLNE',
   },
   account: {
     avatar: 'Awatar',
@@ -180,6 +203,21 @@ const translation = {
     myAccount: 'Moje konto',
     studio: 'Dify Studio',
     account: 'Rachunek',
+    deletePrivacyLinkTip: 'Aby uzyskać więcej informacji o tym, jak postępujemy z Twoimi danymi, zapoznaj się z naszą',
+    deletePrivacyLink: 'Polityka prywatności.',
+    deleteSuccessTip: 'Twoje konto potrzebuje czasu na dokończenie usuwania. Wyślemy Ci wiadomość e-mail, gdy wszystko będzie gotowe.',
+    deleteLabel: 'Aby potwierdzić, wpisz poniżej swój adres e-mail',
+    deletePlaceholder: 'Podaj swój adres e-mail',
+    sendVerificationButton: 'Wyślij kod weryfikacyjny',
+    verificationLabel: 'Kod weryfikacyjny',
+    verificationPlaceholder: 'Wklej 6-cyfrowy kod',
+    permanentlyDeleteButton: 'Trwale usuń konto',
+    feedbackTitle: 'Sprzężenie zwrotne',
+    feedbackLabel: 'Powiedz nam, dlaczego usunąłeś swoje konto?',
+    feedbackPlaceholder: 'Fakultatywny',
+    workspaceIcon: 'Ikona robocza',
+    workspaceName: 'Nazwa miejsca pracy',
+    editWorkspaceInfo: 'Edytuj informacje o przestrzeni roboczej',
   },
   members: {
     team: 'Zespół',
@@ -198,6 +236,7 @@ const translation = {
     inviteTeamMember: 'Dodaj członka zespołu',
     inviteTeamMemberTip:
       'Mogą uzyskać bezpośredni dostęp do danych Twojego zespołu po zalogowaniu.',
+    emailNotSetup: 'Serwer poczty nie jest skonfigurowany, więc nie można wysyłać zaproszeń e-mail. Proszę powiadomić użytkowników o linku do zaproszenia, który zostanie wydany po zaproszeniu.',
     email: 'Email',
     emailInvalid: 'Nieprawidłowy format e-maila',
     emailPlaceholder: 'Proszę podać adresy e-mail',
@@ -274,6 +313,7 @@ const translation = {
       usedUp: 'Limit próbny został wyczerpany. Dodaj własnego dostawcę modeli.',
       useYourModel: 'Aktualnie używany jest własny dostawca modeli.',
       close: 'Zamknij',
+      trialQuotaTip: 'Twój limit próbny Anthropic wygaśnie w dniu 11.03.2025 i nie będzie już dostępny po tym czasie. Prosimy o skorzystanie z niego w odpowiednim czasie.',
     },
     anthropic: {
       using: 'Zdolność do osadzania jest używana',
@@ -389,6 +429,12 @@ const translation = {
     editConfig: 'Edytuj konfigurację',
     addConfig: 'Dodaj konfigurację',
     apiKeyRateLimit: 'Osiągnięto limit szybkości, dostępny po {{sekund}}s',
+    installProvider: 'Instalowanie dostawców modeli',
+    emptyProviderTip: 'Najpierw zainstaluj dostawcę modeli.',
+    discoverMore: 'Dowiedz się więcej w',
+    toBeConfigured: 'Do skonfigurowania',
+    configureTip: 'Konfigurowanie klucza interfejsu API lub dodawanie modelu do użycia',
+    emptyProviderTitle: 'Dostawca modelu nie jest skonfigurowany',
   },
   dataSource: {
     add: 'Dodaj źródło danych',
@@ -433,7 +479,7 @@ const translation = {
     title:
       'Rozszerzenia oparte na interfejsie API zapewniają scentralizowane zarządzanie interfejsami API, upraszczając konfigurację dla łatwego użytkowania w aplikacjach Dify.',
     link: 'Dowiedz się, jak opracować własne rozszerzenie interfejsu API.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Dodaj rozszerzenie interfejsu API',
     selector: {
       title: 'Rozszerzenie interfejsu API',
@@ -488,6 +534,7 @@ const translation = {
       'Wiedza nie została powiązana, przejdź do aplikacji lub wtyczki, aby ukończyć powiązanie.',
     viewDoc: 'Zobacz dokumentację',
     relatedApp: 'powiązane aplikacje',
+    noRelatedApp: 'Brak połączonych aplikacji',
   },
   voiceInput: {
     speaking: 'Mów teraz...',
@@ -519,6 +566,9 @@ const translation = {
       hitScore: 'Wynik trafień:',
     },
     inputPlaceholder: 'Porozmawiaj z botem',
+    thought: 'Myśl',
+    thinking: 'Myślenie...',
+    resend: 'Prześlij ponownie',
   },
   promptEditor: {
     placeholder:
@@ -608,6 +658,32 @@ const translation = {
     uploadFromComputerReadError: 'Odczyt pliku nie powiódł się, spróbuj ponownie.',
     fileExtensionNotSupport: 'Rozszerzenie pliku nie jest obsługiwane',
     uploadFromComputer: 'Przesyłanie lokalne',
+  },
+  license: {
+    expiring_plural: 'Wygasa za {{count}} dni',
+    expiring: 'Wygasa w ciągu jednego dnia',
+  },
+  pagination: {
+    perPage: 'Ilość elementów na stronie',
+  },
+  theme: {
+    light: 'światło',
+    theme: 'Temat',
+    dark: 'ciemny',
+    auto: 'system',
+  },
+  compliance: {
+    soc2Type2: 'Raport SOC 2 Typ II',
+    sandboxUpgradeTooltip: 'Dostępne tylko w planie Professional lub Team.',
+    professionalUpgradeTooltip: 'Dostępne tylko w planie zespołowym lub wyższym.',
+    iso27001: 'Certyfikacja ISO 27001:2022',
+    soc2Type1: 'Raport SOC 2 Typ I',
+    gdpr: 'GDPR DPA',
+  },
+  imageInput: {
+    dropImageHere: 'Upuść swój obraz tutaj, lub',
+    browse: 'przeglądaj',
+    supportedFormats: 'Obsługuje PNG, JPG, JPEG, WEBP i GIF',
   },
 }
 

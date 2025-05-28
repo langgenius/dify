@@ -1,108 +1,41 @@
 import os
-
-from configs import dify_config
-
-if os.environ.get("DEBUG", "false").lower() != "true":
-    from gevent import monkey
-
-    monkey.patch_all()
-
-    import grpc.experimental.gevent
-
-    grpc.experimental.gevent.init_gevent()
-
-import json
-import threading
-import time
-import warnings
-
-from flask import Response
-
-from app_factory import create_app
-
-# DO NOT REMOVE BELOW
-from events import event_handlers  # noqa: F401
-from extensions.ext_database import db
-
-# TODO: Find a way to avoid importing models here
-from models import account, dataset, model, source, task, tool, tools, web  # noqa: F401
-
-# DO NOT REMOVE ABOVE
+import sys
 
 
-warnings.simplefilter("ignore", ResourceWarning)
-
-os.environ["TZ"] = "UTC"
-# windows platform not support tzset
-if hasattr(time, "tzset"):
-    time.tzset()
+def is_db_command():
+    if len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db":
+        return True
+    return False
 
 
 # create app
-app = create_app()
-celery = app.extensions["celery"]
+if is_db_command():
+    from app_factory import create_migrations_app
 
-if dify_config.TESTING:
-    print("App is running in TESTING mode")
+    app = create_migrations_app()
+else:
+    # It seems that JetBrains Python debugger does not work well with gevent,
+    # so we need to disable gevent in debug mode.
+    # If you are using debugpy and set GEVENT_SUPPORT=True, you can debug with gevent.
+    if (flask_debug := os.environ.get("FLASK_DEBUG", "0")) and flask_debug.lower() in {"false", "0", "no"}:
+        from gevent import monkey
 
+        # gevent
+        monkey.patch_all()
 
-@app.after_request
-def after_request(response):
-    """Add Version headers to the response."""
-    response.set_cookie("remember_token", "", expires=0)
-    response.headers.add("X-Version", dify_config.CURRENT_VERSION)
-    response.headers.add("X-Env", dify_config.DEPLOY_ENV)
-    return response
+        from grpc.experimental import gevent as grpc_gevent  # type: ignore
 
+        # grpc gevent
+        grpc_gevent.init_gevent()
 
-@app.route("/health")
-def health():
-    return Response(
-        json.dumps({"pid": os.getpid(), "status": "ok", "version": dify_config.CURRENT_VERSION}),
-        status=200,
-        content_type="application/json",
-    )
+        import psycogreen.gevent  # type: ignore
 
+        psycogreen.gevent.patch_psycopg()
 
-@app.route("/threads")
-def threads():
-    num_threads = threading.active_count()
-    threads = threading.enumerate()
+    from app_factory import create_app
 
-    thread_list = []
-    for thread in threads:
-        thread_name = thread.name
-        thread_id = thread.ident
-        is_alive = thread.is_alive()
-
-        thread_list.append(
-            {
-                "name": thread_name,
-                "id": thread_id,
-                "is_alive": is_alive,
-            }
-        )
-
-    return {
-        "pid": os.getpid(),
-        "thread_num": num_threads,
-        "threads": thread_list,
-    }
-
-
-@app.route("/db-pool-stat")
-def pool_stat():
-    engine = db.engine
-    return {
-        "pid": os.getpid(),
-        "pool_size": engine.pool.size(),
-        "checked_in_connections": engine.pool.checkedin(),
-        "checked_out_connections": engine.pool.checkedout(),
-        "overflow_connections": engine.pool.overflow(),
-        "connection_timeout": engine.pool.timeout(),
-        "recycle_time": db.engine.pool._recycle,
-    }
-
+    app = create_app()
+    celery = app.extensions["celery"]
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)

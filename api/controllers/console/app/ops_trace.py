@@ -1,4 +1,5 @@
 from flask_restful import Resource, reqparse
+from werkzeug.exceptions import BadRequest
 
 from controllers.console import api
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
@@ -26,7 +27,7 @@ class TraceAppConfigApi(Resource):
                 return {"has_not_configured": True}
             return trace_config
         except Exception as e:
-            raise e
+            raise BadRequest(str(e))
 
     @setup_required
     @login_required
@@ -48,7 +49,7 @@ class TraceAppConfigApi(Resource):
                 raise TracingConfigCheckError()
             return result
         except Exception as e:
-            raise e
+            raise BadRequest(str(e))
 
     @setup_required
     @login_required
@@ -68,7 +69,7 @@ class TraceAppConfigApi(Resource):
                 raise TracingConfigNotExist()
             return {"result": "success"}
         except Exception as e:
-            raise e
+            raise BadRequest(str(e))
 
     @setup_required
     @login_required
@@ -83,9 +84,9 @@ class TraceAppConfigApi(Resource):
             result = OpsService.delete_tracing_app_config(app_id=app_id, tracing_provider=args["tracing_provider"])
             if not result:
                 raise TracingConfigNotExist()
-            return {"result": "success"}
+            return {"result": "success"}, 204
         except Exception as e:
-            raise e
+            raise BadRequest(str(e))
 
 
 api.add_resource(TraceAppConfigApi, "/apps/<uuid:app_id>/trace-config")

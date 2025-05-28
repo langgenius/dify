@@ -1,6 +1,11 @@
+import React, { useEffect, useState } from 'react'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
+import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
+import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
+import Checkbox from '@/app/components/base/checkbox'
+import Select from '@/app/components/base/select'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 
 enum DATA_FORMAT {
@@ -18,34 +23,40 @@ enum SUPPORTED_TYPES {
   PASSWORD = 'password',
   EMAIL = 'email',
   NUMBER = 'number',
+  DATE = 'date',
+  TIME = 'time',
+  DATETIME = 'datetime',
+  CHECKBOX = 'checkbox',
+  SELECT = 'select',
 }
 const MarkdownForm = ({ node }: any) => {
-  // const supportedTypes = ['text', 'password', 'email', 'number']
-  //   <form data-format="text">
-  //      <label for="username">Username:</label>
-  //      <input type="text" name="username" />
-  //      <label for="password">Password:</label>
-  //      <input type="password" name="password" />
-  //      <label for="content">Content:</label>
-  //      <textarea name="content"></textarea>
-  //      <button data-size="small" data-variant="primary">Login</button>
-  //   </form>
   const { onSend } = useChatContext()
 
-  const getFormValues = (children: any) => {
-    const formValues: { [key: string]: any } = {}
-    children.forEach((child: any) => {
-      if (child.tagName === SUPPORTED_TAGS.INPUT)
-        formValues[child.properties.name] = child.properties.value
-      if (child.tagName === SUPPORTED_TAGS.TEXTAREA)
-        formValues[child.properties.name] = child.properties.value
+  const [formValues, setFormValues] = useState<{ [key: string]: any }>({})
+
+  useEffect(() => {
+    const initialValues: { [key: string]: any } = {}
+    node.children.forEach((child: any) => {
+      if ([SUPPORTED_TAGS.INPUT, SUPPORTED_TAGS.TEXTAREA].includes(child.tagName))
+        initialValues[child.properties.name] = child.properties.value
     })
-    return formValues
+    setFormValues(initialValues)
+  }, [node.children])
+
+  const getFormValues = (children: any) => {
+    const values: { [key: string]: any } = {}
+    children.forEach((child: any) => {
+      if ([SUPPORTED_TAGS.INPUT, SUPPORTED_TAGS.TEXTAREA].includes(child.tagName))
+        values[child.properties.name] = formValues[child.properties.name]
+    })
+    return values
   }
+
   const onSubmit = (e: any) => {
     e.preventDefault()
     const format = node.properties.dataFormat || DATA_FORMAT.TEXT
     const result = getFormValues(node.children)
+
     if (format === DATA_FORMAT.JSON) {
       onSend?.(JSON.stringify(result))
     }
@@ -71,31 +82,119 @@ const MarkdownForm = ({ node }: any) => {
             <label
               key={index}
               htmlFor={child.properties.for}
-              className="my-2 system-md-semibold text-text-secondary"
+              className="system-md-semibold my-2 text-text-secondary"
             >
               {child.children[0]?.value || ''}
             </label>
           )
         }
-        if (child.tagName === SUPPORTED_TAGS.INPUT) {
-          if (Object.values(SUPPORTED_TYPES).includes(child.properties.type)) {
+        if (child.tagName === SUPPORTED_TAGS.INPUT && Object.values(SUPPORTED_TYPES).includes(child.properties.type)) {
+          if (child.properties.type === SUPPORTED_TYPES.DATE || child.properties.type === SUPPORTED_TYPES.DATETIME) {
             return (
-              <Input
+              <DatePicker
                 key={index}
-                type={child.properties.type}
-                name={child.properties.name}
-                placeholder={child.properties.placeholder}
-                value={child.properties.value}
-                onChange={(e) => {
-                  e.preventDefault()
-                  child.properties.value = e.target.value
+                value={formValues[child.properties.name]}
+                needTimePicker={child.properties.type === SUPPORTED_TYPES.DATETIME}
+                onChange={(date) => {
+                  setFormValues(prevValues => ({
+                    ...prevValues,
+                    [child.properties.name]: date,
+                  }))
+                }}
+                onClear={() => {
+                  setFormValues(prevValues => ({
+                    ...prevValues,
+                    [child.properties.name]: undefined,
+                  }))
                 }}
               />
             )
           }
-          else {
-            return <p key={index}>Unsupported input type: {child.properties.type}</p>
+          if (child.properties.type === SUPPORTED_TYPES.TIME) {
+            return (
+              <TimePicker
+                key={index}
+                value={formValues[child.properties.name]}
+                onChange={(time) => {
+                  setFormValues(prevValues => ({
+                    ...prevValues,
+                    [child.properties.name]: time,
+                  }))
+                }}
+                onClear={() => {
+                  setFormValues(prevValues => ({
+                    ...prevValues,
+                    [child.properties.name]: undefined,
+                  }))
+                }}
+              />
+            )
           }
+          if (child.properties.type === SUPPORTED_TYPES.CHECKBOX) {
+            return (
+              <div className='mt-2 flex h-6 items-center space-x-2' key={index}>
+                <Checkbox
+                  key={index}
+                  checked={formValues[child.properties.name]}
+                  onCheck={() => {
+                    setFormValues(prevValues => ({
+                      ...prevValues,
+                      [child.properties.name]: !prevValues[child.properties.name],
+                    }))
+                  }}
+                />
+                <span>{child.properties.dataTip || child.properties['data-tip'] || ''}</span>
+              </div>
+            )
+          }
+          if (child.properties.type === SUPPORTED_TYPES.SELECT) {
+            return (
+              <Select
+                key={index}
+                allowSearch={false}
+                className="w-full"
+                items={(() => {
+                  let options = child.properties.dataOptions || child.properties['data-options'] || []
+                  if (typeof options === 'string') {
+                    try {
+                      options = JSON.parse(options)
+                    }
+                    catch (e) {
+                      console.error('Failed to parse options:', e)
+                      options = []
+                    }
+                  }
+                  return options.map((option: string) => ({
+                    name: option,
+                    value: option,
+                  }))
+                })()}
+                defaultValue={formValues[child.properties.name]}
+                onSelect={(item) => {
+                  setFormValues(prevValues => ({
+                    ...prevValues,
+                    [child.properties.name]: item.value,
+                  }))
+                }}
+              />
+            )
+          }
+
+          return (
+            <Input
+              key={index}
+              type={child.properties.type}
+              name={child.properties.name}
+              placeholder={child.properties.placeholder}
+              value={formValues[child.properties.name]}
+              onChange={(e) => {
+                setFormValues(prevValues => ({
+                  ...prevValues,
+                  [child.properties.name]: e.target.value,
+                }))
+              }}
+            />
+          )
         }
         if (child.tagName === SUPPORTED_TAGS.TEXTAREA) {
           return (
@@ -103,10 +202,12 @@ const MarkdownForm = ({ node }: any) => {
               key={index}
               name={child.properties.name}
               placeholder={child.properties.placeholder}
-              value={child.properties.value}
+              value={formValues[child.properties.name]}
               onChange={(e) => {
-                e.preventDefault()
-                child.properties.value = e.target.value
+                setFormValues(prevValues => ({
+                  ...prevValues,
+                  [child.properties.name]: e.target.value,
+                }))
               }}
             />
           )

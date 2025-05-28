@@ -47,8 +47,8 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
             return None
-
-        return response.json()
+        data: dict = response.json()
+        return data
 
     @classmethod
     def fetch_recommended_apps_from_dify_official(cls, language: str) -> dict:
@@ -63,7 +63,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         if response.status_code != 200:
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
 
-        result = response.json()
+        result: dict = response.json()
 
         if "categories" in result:
             result["categories"] = sorted(result["categories"])

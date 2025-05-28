@@ -28,13 +28,13 @@ export type UserInputFormTextInput = {
 }
 
 export type UserInputFormSelect = {
-  'select': UserInputForm & {
+  select: UserInputForm & {
     options: string[]
   }
 }
 
 export type UserInputFormParagraph = {
-  'paragraph': UserInputForm
+  paragraph: UserInputForm
 }
 
 export type VisionConfig = VisionSettings
@@ -46,6 +46,7 @@ export type EnableType = {
 export type ChatConfig = Omit<ModelConfig, 'model'> & {
   supportAnnotation?: boolean
   appId?: string
+  questionEditEnable?: boolean
   supportFeedback?: boolean
   supportCitationHitInfo?: boolean
 }
@@ -67,9 +68,12 @@ export type ChatItem = IChatItem & {
 
 export type ChatItemInTree = {
   children?: ChatItemInTree[]
-} & IChatItem
+} & ChatItem
 
-export type OnSend = (message: string, files?: FileEntity[], last_answer?: ChatItem | null) => void
+export type OnSend = {
+  (message: string, files?: FileEntity[]): void
+  (message: string, files: FileEntity[] | undefined, isRegenerate: boolean, lastAnswer?: ChatItem | null): void
+}
 
 export type OnRegenerate = (chatItem: ChatItem) => void
 

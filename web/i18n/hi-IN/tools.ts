@@ -15,7 +15,6 @@ const translation = {
   },
   author: 'द्वारा',
   auth: {
-    unauthorized: 'अधिकृत करने के लिए',
     authorized: 'अधिकृत',
     setup: 'उपयोग करने के लिए अधिकृति सेटअप करें',
     setupModalTitle: 'अधिकृति सेटअप करें',
@@ -32,6 +31,8 @@ const translation = {
     manageInTools: 'उपकरणों में प्रबंधित करें',
     emptyTitle: 'कोई कार्यप्रवाह उपकरण उपलब्ध नहीं',
     emptyTip: 'कार्यप्रवाह -> उपकरण के रूप में प्रकाशित पर जाएं',
+    emptyTipCustom: 'एक कस्टम टूल बनाएं',
+    emptyTitleCustom: 'कोई कस्टम टूल उपलब्ध नहीं है',
   },
   createTool: {
     title: 'कस्टम उपकरण बनाएं',
@@ -135,6 +136,7 @@ const translation = {
     number: 'नंबर',
     required: 'आवश्यक',
     infoAndSetting: 'जानकारी और सेटिंग्स',
+    file: 'फाइल',
   },
   noCustomTool: {
     title: 'कोई कस्टम उपकरण नहीं!',
@@ -153,6 +155,8 @@ const translation = {
   howToGet: 'कैसे प्राप्त करें',
   openInStudio: 'स्टूडियो में खोलें',
   toolNameUsageTip: 'एजेंट तर्क और प्रेरण के लिए उपकरण कॉल नाम',
+  noTools: 'कोई उपकरण नहीं मिला',
+  copyToolName: 'नाम कॉपी करें',
 }
 
 export default translation

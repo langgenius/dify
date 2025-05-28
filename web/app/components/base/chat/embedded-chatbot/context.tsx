@@ -14,8 +14,12 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
+import { noop } from 'lodash-es'
+import { AccessMode } from '@/models/access-control'
 
 export type EmbeddedChatbotContextValue = {
+  accessMode?: AccessMode
+  userCanAccess?: boolean
   appInfoError?: any
   appInfoLoading?: boolean
   appMeta?: AppMeta
@@ -27,42 +31,58 @@ export type EmbeddedChatbotContextValue = {
   appPrevChatList: ChatItem[]
   pinnedConversationList: AppConversationData['data']
   conversationList: AppConversationData['data']
-  showConfigPanelBeforeChat: boolean
   newConversationInputs: Record<string, any>
   newConversationInputsRef: RefObject<Record<string, any>>
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
-  handleStartChat: () => void
+  handleStartChat: (callback?: any) => void
   handleChangeConversation: (conversationId: string) => void
   handleNewConversationCompleted: (newConversationId: string) => void
   chatShouldReloadKey: string
   isMobile: boolean
   isInstalledApp: boolean
+  allowResetChat: boolean
   appId?: string
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
   themeBuilder?: ThemeBuilder
+  clearChatList?: boolean
+  setClearChatList: (state: boolean) => void
+  isResponding?: boolean
+  setIsResponding: (state: boolean) => void,
+  currentConversationInputs: Record<string, any> | null,
+  setCurrentConversationInputs: (v: Record<string, any>) => void,
+  allInputsHidden: boolean
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
+  userCanAccess: false,
+  accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
   currentConversationId: '',
   appPrevChatList: [],
   pinnedConversationList: [],
   conversationList: [],
-  showConfigPanelBeforeChat: false,
   newConversationInputs: {},
   newConversationInputsRef: { current: {} },
-  handleNewConversationInputsChange: () => {},
+  handleNewConversationInputsChange: noop,
   inputsForms: [],
-  handleNewConversation: () => {},
-  handleStartChat: () => {},
-  handleChangeConversation: () => {},
-  handleNewConversationCompleted: () => {},
+  handleNewConversation: noop,
+  handleStartChat: noop,
+  handleChangeConversation: noop,
+  handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
   isMobile: false,
   isInstalledApp: false,
-  handleFeedback: () => {},
-  currentChatInstanceRef: { current: { handleStop: () => {} } },
+  allowResetChat: true,
+  handleFeedback: noop,
+  currentChatInstanceRef: { current: { handleStop: noop } },
+  clearChatList: false,
+  setClearChatList: noop,
+  isResponding: false,
+  setIsResponding: noop,
+  currentConversationInputs: {},
+  setCurrentConversationInputs: noop,
+  allInputsHidden: false,
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

@@ -8,7 +8,7 @@ const Loading = (
   { type = 'area' }: ILoadingProps = { type: 'area' },
 ) => {
   return (
-    <div className={`flex w-full justify-center items-center ${type === 'app' ? 'h-full' : ''}`}>
+    <div className={`flex w-full items-center justify-center ${type === 'app' ? 'h-full' : ''}`}>
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className='spin-animation'>
         <g clipPath="url(#clip0_324_2488)">
           <path d="M15 0H10C9.44772 0 9 0.447715 9 1V6C9 6.55228 9.44772 7 10 7H15C15.5523 7 16 6.55228 16 6V1C16 0.447715 15.5523 0 15 0Z" fill="#1C64F2" />

@@ -23,7 +23,7 @@ class TagListApi(Resource):
     @account_initialization_required
     @marshal_with(tag_fields)
     def get(self):
-        tag_type = request.args.get("type", type=str)
+        tag_type = request.args.get("type", type=str, default="")
         keyword = request.args.get("keyword", default=None, type=str)
         tags = TagService.get_tags(tag_type, current_user.current_tenant_id, keyword)
 
@@ -86,7 +86,7 @@ class TagUpdateDeleteApi(Resource):
 
         TagService.delete_tag(tag_id)
 
-        return 200
+        return 204
 
 
 class TagBindingCreateApi(Resource):

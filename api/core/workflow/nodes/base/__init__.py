@@ -1,4 +1,11 @@
-from .entities import BaseIterationNodeData, BaseIterationState, BaseNodeData
+from .entities import BaseIterationNodeData, BaseIterationState, BaseLoopNodeData, BaseLoopState, BaseNodeData
 from .node import BaseNode
 
-__all__ = ["BaseNode", "BaseNodeData", "BaseIterationNodeData", "BaseIterationState"]
+__all__ = [
+    "BaseIterationNodeData",
+    "BaseIterationState",
+    "BaseLoopNodeData",
+    "BaseLoopState",
+    "BaseNode",
+    "BaseNodeData",
+]

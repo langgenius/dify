@@ -1,4 +1,5 @@
 from core.app.app_config.entities import (
+    AdvancedChatMessageEntity,
     AdvancedChatPromptTemplateEntity,
     AdvancedCompletionPromptTemplateEntity,
     PromptTemplateEntity,
@@ -25,7 +26,9 @@ class PromptTemplateConfigManager:
                 chat_prompt_messages = []
                 for message in chat_prompt_config.get("prompt", []):
                     chat_prompt_messages.append(
-                        {"text": message["text"], "role": PromptMessageRole.value_of(message["role"])}
+                        AdvancedChatMessageEntity(
+                            **{"text": message["text"], "role": PromptMessageRole.value_of(message["role"])}
+                        )
                     )
 
                 advanced_chat_prompt_template = AdvancedChatPromptTemplateEntity(messages=chat_prompt_messages)

@@ -99,6 +99,12 @@ const translation = {
   noLoginMethod: 'روش احراز هویت پیکربندی نشده است',
   noLoginMethodTip: 'لطفا برای افزودن روش احراز هویت با مدیر سیستم تماس بگیرید.',
   resetPasswordDesc: 'ایمیلی را که برای ثبت نام در Dify استفاده کرده اید تایپ کنید و ما یک ایمیل بازنشانی رمز عبور برای شما ارسال خواهیم کرد.',
+  licenseInactive: 'مجوز غیر فعال',
+  licenseLost: 'مجوز گم شده است',
+  licenseExpired: 'مجوز منقضی شده است',
+  licenseExpiredTip: 'مجوز Dify Enterprise برای فضای کاری شما منقضی شده است. لطفا برای ادامه استفاده از Dify با سرپرست خود تماس بگیرید.',
+  licenseInactiveTip: 'مجوز Dify Enterprise برای فضای کاری شما غیرفعال است. لطفا برای ادامه استفاده از Dify با سرپرست خود تماس بگیرید.',
+  licenseLostTip: 'اتصال سرور مجوز Dify انجام نشد. لطفا برای ادامه استفاده از Dify با سرپرست خود تماس بگیرید.',
 }
 
 export default translation

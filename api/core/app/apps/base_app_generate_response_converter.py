@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -15,18 +15,14 @@ class AppGenerateResponseConverter(ABC):
     @classmethod
     def convert(
         cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]], invoke_from: InvokeFrom
-    ) -> dict[str, Any] | Generator[str, Any, None]:
+    ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(response)
             else:
 
-                def _generate_full_response() -> Generator[str, Any, None]:
-                    for chunk in cls.convert_stream_full_response(response):
-                        if chunk == "ping":
-                            yield f"event: {chunk}\n\n"
-                        else:
-                            yield f"data: {chunk}\n\n"
+                def _generate_full_response() -> Generator[dict | str, Any, None]:
+                    yield from cls.convert_stream_full_response(response)
 
                 return _generate_full_response()
         else:
@@ -34,12 +30,8 @@ class AppGenerateResponseConverter(ABC):
                 return cls.convert_blocking_simple_response(response)
             else:
 
-                def _generate_simple_response() -> Generator[str, Any, None]:
-                    for chunk in cls.convert_stream_simple_response(response):
-                        if chunk == "ping":
-                            yield f"event: {chunk}\n\n"
-                        else:
-                            yield f"data: {chunk}\n\n"
+                def _generate_simple_response() -> Generator[dict | str, Any, None]:
+                    yield from cls.convert_stream_simple_response(response)
 
                 return _generate_simple_response()
 
@@ -57,14 +49,14 @@ class AppGenerateResponseConverter(ABC):
     @abstractmethod
     def convert_stream_full_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[dict | str, None, None]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def convert_stream_simple_response(
         cls, stream_response: Generator[AppStreamResponse, None, None]
-    ) -> Generator[str, None, None]:
+    ) -> Generator[dict | str, None, None]:
         raise NotImplementedError
 
     @classmethod
@@ -80,7 +72,7 @@ class AppGenerateResponseConverter(ABC):
             for resource in metadata["retriever_resources"]:
                 updated_resources.append(
                     {
-                        "segment_id": resource["segment_id"],
+                        "segment_id": resource.get("segment_id", ""),
                         "position": resource["position"],
                         "document_name": resource["document_name"],
                         "score": resource["score"],

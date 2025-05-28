@@ -1,0 +1,67 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"xmlns": "http://www.w3.org/2000/svg",
+			"width": "46",
+			"height": "24",
+			"viewBox": "0 0 46 24",
+			"fill": "none"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"opacity": "0.5",
+					"d": "M-6.5 8C-6.5 3.58172 -2.91828 0 1.5 0H45.5L33.0248 24H1.49999C-2.91829 24 -6.5 20.4183 -6.5 16V8Z",
+					"fill": "url(#paint0_linear_6333_42118)"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint0_linear_6333_42118",
+							"x1": "1.81679",
+							"y1": "5.47784e-07",
+							"x2": "101.257",
+							"y2": "30.3866",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "white",
+									"stop-opacity": "0.12"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "white",
+									"stop-opacity": "0.3"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "Highlight"
+}

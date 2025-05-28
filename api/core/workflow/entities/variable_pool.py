@@ -7,14 +7,13 @@ from pydantic import BaseModel, Field
 
 from core.file import File, FileAttribute, file_manager
 from core.variables import Segment, SegmentGroup, Variable
-from core.variables.segments import FileSegment
+from core.variables.segments import FileSegment, NoneSegment
 from factories import variable_factory
 
 from ..constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from ..enums import SystemVariableKey
 
 VariableValue = Union[str, int, float, dict, list, File]
-
 
 VARIABLE_PATTERN = re.compile(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}")
 
@@ -95,13 +94,16 @@ class VariablePool(BaseModel):
         if len(selector) < 2:
             raise ValueError("Invalid selector")
 
+        if isinstance(value, Variable):
+            variable = value
         if isinstance(value, Segment):
-            v = value
+            variable = variable_factory.segment_to_variable(segment=value, selector=selector)
         else:
-            v = variable_factory.build_segment(value)
+            segment = variable_factory.build_segment(value)
+            variable = variable_factory.segment_to_variable(segment=segment, selector=selector)
 
         hash_key = hash(tuple(selector[1:]))
-        self.variable_dictionary[selector[0]][hash_key] = v
+        self.variable_dictionary[selector[0]][hash_key] = variable
 
     def get(self, selector: Sequence[str], /) -> Segment | None:
         """
@@ -128,11 +130,13 @@ class VariablePool(BaseModel):
             if attr not in {item.value for item in FileAttribute}:
                 return None
             value = self.get(selector)
-            if not isinstance(value, FileSegment):
+            if not isinstance(value, FileSegment | NoneSegment):
                 return None
-            attr = FileAttribute(attr)
-            attr_value = file_manager.get_attr(file=value.value, attr=attr)
-            return variable_factory.build_segment(attr_value)
+            if isinstance(value, FileSegment):
+                attr = FileAttribute(attr)
+                attr_value = file_manager.get_attr(file=value.value, attr=attr)
+                return variable_factory.build_segment(attr_value)
+            return value
 
         return value
 

@@ -48,7 +48,10 @@ class ApiExternalDataTool(ExternalDataTool):
         :return: the tool query result
         """
         # get params from config
+        if not self.config:
+            raise ValueError("config is required, config: {}".format(self.config))
         api_based_extension_id = self.config.get("api_based_extension_id")
+        assert api_based_extension_id is not None, "api_based_extension_id is required"
 
         # get api_based_extension
         api_based_extension = (
@@ -59,8 +62,9 @@ class ApiExternalDataTool(ExternalDataTool):
 
         if not api_based_extension:
             raise ValueError(
-                "[External data tool] API query failed, variable: {}, "
-                "error: api_based_extension_id is invalid".format(self.variable)
+                "[External data tool] API query failed, variable: {}, error: api_based_extension_id is invalid".format(
+                    self.variable
+                )
             )
 
         # decrypt api_key

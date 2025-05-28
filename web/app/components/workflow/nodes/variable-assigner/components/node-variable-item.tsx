@@ -1,52 +1,109 @@
-import { memo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
+import Badge from '@/app/components/base/badge'
 import type { Node } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
 
 type NodeVariableItemProps = {
   isEnv: boolean
   isChatVar: boolean
   node: Node
   varName: string
+  writeMode?: string
   showBorder?: boolean
   className?: string
+  isException?: boolean
 }
+
+const i18nPrefix = 'workflow.nodes.assigner'
+
 const NodeVariableItem = ({
   isEnv,
   isChatVar,
   node,
   varName,
+  writeMode,
   showBorder,
   className,
+  isException,
 }: NodeVariableItemProps) => {
+  const { t } = useTranslation()
+
+  const VariableIcon = useMemo(() => {
+    if (isEnv) {
+      return (
+        <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />
+      )
+    }
+
+    if (isChatVar) {
+      return (
+        <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />
+      )
+    }
+
+    return (
+      <Variable02
+        className={cn(
+          'h-3.5 w-3.5 shrink-0 text-text-accent',
+          isException && 'text-text-warning',
+        )}
+      />
+    )
+  }, [isEnv, isChatVar, isException])
+
+  const VariableName = useMemo(() => {
+    return (
+      <div
+        className={cn(
+          'system-xs-medium ml-0.5 shrink truncate text-text-accent',
+          isEnv && 'text-text-primary',
+          isException && 'text-text-warning',
+          isChatVar && 'text-util-colors-teal-teal-700',
+        )}
+        title={varName}
+      >
+        {varName}
+      </div>
+    )
+  }, [isEnv, isChatVar, varName, isException])
   return (
     <div className={cn(
-      'relative flex items-center mt-0.5 h-6 bg-gray-100 rounded-md  px-1 text-xs font-normal text-gray-700',
-      showBorder && '!bg-black/[0.02]',
+      'relative flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg p-[3px] pl-[5px]',
+      showBorder && '!bg-state-base-hover',
       className,
     )}>
-      {!isEnv && !isChatVar && (
-        <div className='flex items-center'>
-          <div className='p-[1px]'>
-            <VarBlockIcon
-              className='!text-gray-900'
-              type={node?.data.type || BlockEnum.Start}
-            />
-          </div>
-          <div className='max-w-[85px] truncate mx-0.5 text-xs font-medium text-gray-700' title={node?.data.title}>{node?.data.title}</div>
-          <Line3 className='mr-0.5'></Line3>
-        </div>
-      )}
-      <div className='flex items-center text-primary-600'>
-        {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />}
-        {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-        {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
-        <div className={cn('max-w-[75px] truncate ml-0.5 text-xs font-medium', (isEnv || isChatVar) && 'text-gray-900')} title={varName}>{varName}</div>
+      <div className='flex w-0 grow items-center'>
+        {
+          node && (
+            <>
+              <div className='shrink-0 p-[1px]'>
+                <VarBlockIcon
+                  className='!text-text-primary'
+                  type={node.data.type}
+                />
+              </div>
+              <div
+                className='mx-0.5 shrink-[1000] truncate text-xs font-medium text-text-secondary'
+                title={node?.data.title}
+              >
+                {node?.data.title}
+              </div>
+              <Line3 className='mr-0.5 shrink-0'></Line3>
+            </>
+          )
+        }
+        {VariableIcon}
+        {VariableName}
       </div>
+      {writeMode && <Badge className='shrink-0' text={t(`${i18nPrefix}.operations.${writeMode}`)} />}
     </div>
   )
 }

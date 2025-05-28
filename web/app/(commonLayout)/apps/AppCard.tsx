@@ -2,14 +2,13 @@
 
 import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiMoreFill } from '@remixicon/react'
-import s from './style.module.css'
+import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
-import { ToastContext } from '@/app/components/base/toast'
+import Toast, { ToastContext } from '@/app/components/base/toast'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
@@ -18,11 +17,10 @@ import AppsContext, { useAppContext } from '@/context/app-context'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
+import { basePath } from '@/utils/var'
 import { getRedirection } from '@/utils/app-redirection'
 import { useProviderContext } from '@/context/provider-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
-import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import EditAppModal from '@/app/components/explore/create-app-modal'
 import SwitchAppModal from '@/app/components/app/switch-app-modal'
@@ -31,6 +29,13 @@ import TagSelector from '@/app/components/base/tag-management/selector'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { fetchInstalledAppList } from '@/service/explore'
+import { AppTypeIcon } from '@/app/components/app/type-selector'
+import Tooltip from '@/app/components/base/tooltip'
+import AccessControl from '@/app/components/app/app-access-control'
+import { AccessMode } from '@/models/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { formatTime } from '@/utils/time'
 
 export type AppCardProps = {
   app: App
@@ -40,6 +45,7 @@ export type AppCardProps = {
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
@@ -53,6 +59,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [showAccessControl, setShowAccessControl] = useState(false)
   const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const onConfirmDelete = useCallback(async () => {
@@ -71,7 +78,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       })
     }
     setShowConfirmDelete(false)
-  }, [app.id])
+  }, [app.id, mutateApps, notify, onPlanInfoChanged, onRefresh, t])
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
@@ -100,7 +107,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         onRefresh()
       mutateApps()
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.editFailed') })
     }
   }, [app.id, mutateApps, notify, onRefresh, t])
@@ -127,7 +134,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       onPlanInfoChanged()
       getRedirection(isCurrentWorkspaceEditor, newApp, push)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }
@@ -144,7 +151,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       a.download = `${app.name}.yml`
       a.click()
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.exportFailed') })
     }
   }
@@ -163,7 +170,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       }
       setSecretEnvList(list)
     }
-    catch (e) {
+    catch {
       notify({ type: 'error', message: t('app.exportFailed') })
     }
   }
@@ -174,6 +181,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     mutateApps()
     setShowSwitchModal(false)
   }
+
+  const onUpdateAccessControl = useCallback(() => {
+    if (onRefresh)
+      onRefresh()
+    mutateApps()
+    setShowAccessControl(false)
+  }, [onRefresh, mutateApps, setShowAccessControl])
 
   const Operations = (props: HtmlContentProps) => {
     const onMouseLeave = async () => {
@@ -197,50 +211,83 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       exportCheck()
     }
-    const onClickSwitch = async (e: React.MouseEvent<HTMLDivElement>) => {
+    const onClickSwitch = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
       setShowSwitchModal(true)
     }
-    const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
+    const onClickDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
       setShowConfirmDelete(true)
     }
+    const onClickAccessControl = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      setShowAccessControl(true)
+    }
+    const onClickInstalledApp = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      try {
+        const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
+        if (installed_apps?.length > 0)
+          window.open(`${basePath}/explore/installed/${installed_apps[0].id}`, '_blank')
+        else
+          throw new Error('No app found in Explore')
+      }
+      catch (e: any) {
+        Toast.notify({ type: 'error', message: `${e.message || e}` })
+      }
+    }
     return (
-      <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
-        <button className={s.actionItem} onClick={onClickSettings}>
-          <span className={s.actionName}>{t('app.editApp')}</span>
+      <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickSettings}>
+          <span className='system-sm-regular text-text-secondary'>{t('app.editApp')}</span>
         </button>
-        <Divider className="!my-1" />
-        <button className={s.actionItem} onClick={onClickDuplicate}>
-          <span className={s.actionName}>{t('app.duplicate')}</span>
+        <Divider className="my-1" />
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickDuplicate}>
+          <span className='system-sm-regular text-text-secondary'>{t('app.duplicate')}</span>
         </button>
-        <button className={s.actionItem} onClick={onClickExport}>
-          <span className={s.actionName}>{t('app.export')}</span>
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickExport}>
+          <span className='system-sm-regular text-text-secondary'>{t('app.export')}</span>
         </button>
         {(app.mode === 'completion' || app.mode === 'chat') && (
           <>
-            <Divider className="!my-1" />
-            <div
-              className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
+            <Divider className="my-1" />
+            <button
+              className='mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
               onClick={onClickSwitch}
             >
-              <span className='text-gray-700 text-sm leading-5'>{t('app.switch')}</span>
-            </div>
+              <span className='text-sm leading-5 text-text-secondary'>{t('app.switch')}</span>
+            </button>
           </>
         )}
-        <Divider className="!my-1" />
-        <div
-          className={cn(s.actionItem, s.deleteActionItem, 'group')}
+        <Divider className="my-1" />
+        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+          <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
+        </button>
+        <Divider className="my-1" />
+        {
+          systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor && <>
+            <button className='mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickAccessControl}>
+              <span className='text-sm leading-5 text-text-secondary'>{t('app.accessControl')}</span>
+            </button>
+            <Divider className='my-1' />
+          </>
+        }
+        <button
+          className='group mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-destructive-hover'
           onClick={onClickDelete}
         >
-          <span className={cn(s.actionName, 'group-hover:text-red-500')}>
+          <span className='system-sm-regular text-text-secondary group-hover:text-text-destructive'>
             {t('common.operation.delete')}
           </span>
-        </div>
+        </button>
       </div>
     )
   }
@@ -250,6 +297,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     setTags(app.tags)
   }, [app.tags])
 
+  const EditTimeText = useMemo(() => {
+    const timeText = formatTime({
+      date: (app.updated_at || app.created_at) * 1000,
+      dateFormat: 'MM/DD/YYYY h:mm',
+    })
+    return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.updated_at, app.created_at])
+
   return (
     <>
       <div
@@ -257,9 +313,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className='relative group col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='group relative col-span-1 inline-flex h-[160px] cursor-pointer flex-col rounded-xl border-[1px] border-solid border-components-card-border bg-components-card-bg shadow-sm transition-all duration-200 ease-in-out hover:shadow-lg'
       >
-        <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
+        <div className='flex h-[66px] shrink-0 grow-0 items-center gap-3 px-[14px] pb-3 pt-[14px]'>
           <div className='relative shrink-0'>
             <AppIcon
               size="large"
@@ -268,38 +324,31 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               background={app.icon_background}
               imageUrl={app.icon_url}
             />
-            <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
-              {app.mode === 'advanced-chat' && (
-                <ChatBot className='w-3 h-3 text-[#1570EF]' />
-              )}
-              {app.mode === 'agent-chat' && (
-                <CuteRobot className='w-3 h-3 text-indigo-600' />
-              )}
-              {app.mode === 'chat' && (
-                <ChatBot className='w-3 h-3 text-[#1570EF]' />
-              )}
-              {app.mode === 'completion' && (
-                <AiText className='w-3 h-3 text-[#0E9384]' />
-              )}
-              {app.mode === 'workflow' && (
-                <Route className='w-3 h-3 text-[#f79009]' />
-              )}
-            </span>
+            <AppTypeIcon type={app.mode} wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm' className='h-3 w-3' />
           </div>
-          <div className='grow w-0 py-[1px]'>
-            <div className='flex items-center text-sm leading-5 font-semibold text-gray-800'>
+          <div className='w-0 grow py-[1px]'>
+            <div className='flex items-center text-sm font-semibold leading-5 text-text-secondary'>
               <div className='truncate' title={app.name}>{app.name}</div>
             </div>
-            <div className='flex items-center text-[10px] leading-[18px] text-gray-500 font-medium'>
-              {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-              {app.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-              {app.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
-              {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
-              {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
+            <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
+              <div className='truncate' title={app.author_name}>{app.author_name}</div>
+              <div>·</div>
+              <div className='truncate'>{EditTimeText}</div>
             </div>
           </div>
+          <div className='flex h-5 w-5 shrink-0 items-center justify-center'>
+            {app.access_mode === AccessMode.PUBLIC && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.anyone')}>
+              <RiGlobalLine className='h-4 w-4 text-text-accent' />
+            </Tooltip>}
+            {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.specific')}>
+              <RiLockLine className='h-4 w-4 text-text-quaternary' />
+            </Tooltip>}
+            {app.access_mode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.organization')}>
+              <RiBuildingLine className='h-4 w-4 text-text-quaternary' />
+            </Tooltip>}
+          </div>
         </div>
-        <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-gray-500'>
+        <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
           <div
             className={cn(tags.length ? 'line-clamp-2' : 'line-clamp-4', 'group-hover:line-clamp-2')}
             title={app.description}
@@ -308,17 +357,17 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </div>
         </div>
         <div className={cn(
-          'absolute bottom-1 left-0 right-0 items-center shrink-0 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
+          'absolute bottom-1 left-0 right-0 h-[42px] shrink-0 items-center pb-[6px] pl-[14px] pr-[6px] pt-1',
           tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
           {isCurrentWorkspaceEditor && (
             <>
-              <div className={cn('grow flex items-center gap-1 w-0')} onClick={(e) => {
+              <div className={cn('flex w-0 grow items-center gap-1')} onClick={(e) => {
                 e.stopPropagation()
                 e.preventDefault()
               }}>
                 <div className={cn(
-                  'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
+                  'mr-[41px] w-full grow group-hover:!mr-0 group-hover:!block',
                   tags.length ? '!block' : '!hidden',
                 )}>
                   <TagSelector
@@ -332,31 +381,31 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   />
                 </div>
               </div>
-              <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200' />
-              <div className='!hidden group-hover:!flex shrink-0'>
+              <div className='mx-1 !hidden h-[14px] w-[1px] shrink-0 group-hover:!flex' />
+              <div className='!hidden shrink-0 group-hover:!flex'>
                 <CustomPopover
                   htmlContent={<Operations />}
                   position="br"
                   trigger="click"
                   btnElement={
                     <div
-                      className='flex items-center justify-center w-8 h-8 cursor-pointer rounded-md'
+                      className='flex h-8 w-8 cursor-pointer items-center justify-center rounded-md'
                     >
-                      <RiMoreFill className='w-4 h-4 text-gray-700' />
+                      <RiMoreFill className='h-4 w-4 text-text-tertiary' />
                     </div>
                   }
                   btnClassName={open =>
                     cn(
                       open ? '!bg-black/5 !shadow-none' : '!bg-transparent',
-                      'h-8 w-8 !p-2 rounded-md border-none hover:!bg-black/5',
+                      'h-8 w-8 rounded-md border-none !p-2 hover:!bg-black/5',
                     )
                   }
                   popupClassName={
                     (app.mode === 'completion' || app.mode === 'chat')
-                      ? '!w-[238px] translate-x-[-110px]'
-                      : ''
+                      ? '!w-[256px] translate-x-[-224px]'
+                      : '!w-[216px] translate-x-[-128px]'
                   }
-                  className={'!w-[128px] h-fit !z-20'}
+                  className={'!z-20 h-fit'}
                 />
               </div>
             </>
@@ -414,6 +463,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           onConfirm={onExport}
           onClose={() => setSecretEnvList([])}
         />
+      )}
+      {showAccessControl && (
+        <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
       )}
     </>
   )

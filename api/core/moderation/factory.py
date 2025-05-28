@@ -22,7 +22,8 @@ class ModerationFactory:
         """
         code_based_extension.validate_form_schema(ExtensionModule.MODERATION, name, config)
         extension_class = code_based_extension.extension_class(ExtensionModule.MODERATION, name)
-        extension_class.validate_config(tenant_id, config)
+        # FIXME: mypy error, try to fix it instead of using type: ignore
+        extension_class.validate_config(tenant_id, config)  # type: ignore
 
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         """

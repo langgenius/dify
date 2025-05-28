@@ -1,7 +1,7 @@
 from typing import Optional
 
 
-class InvokeError(Exception):
+class InvokeError(ValueError):
     """Base class for all LLM exceptions."""
 
     description: Optional[str] = None

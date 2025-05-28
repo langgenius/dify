@@ -17,7 +17,7 @@ const RemoveIcon = ({
   const computedIsHovered = isHoverStatus || isHovered
   return (
     <div
-      className={cn(className, computedIsHovered && 'bg-[#FEE4E2]', 'flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-[#FEE4E2]')}
+      className={cn(className, computedIsHovered && 'bg-[#FEE4E2]', 'flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-[#FEE4E2]')}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}

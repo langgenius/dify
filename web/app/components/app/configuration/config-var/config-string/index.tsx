@@ -28,7 +28,7 @@ const ConfigString: FC<IConfigStringProps> = ({
         min={1}
         value={value || ''}
         onChange={(e) => {
-          let value = parseInt(e.target.value, 10)
+          let value = Number.parseInt(e.target.value, 10)
           if (value > maxLength)
             value = maxLength
 

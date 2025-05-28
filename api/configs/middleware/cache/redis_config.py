@@ -68,3 +68,28 @@ class RedisConfig(BaseSettings):
         description="Socket timeout in seconds for Redis Sentinel connections",
         default=0.1,
     )
+
+    REDIS_USE_CLUSTERS: bool = Field(
+        description="Enable Redis Clusters mode for high availability",
+        default=False,
+    )
+
+    REDIS_CLUSTERS: Optional[str] = Field(
+        description="Comma-separated list of Redis Clusters nodes (host:port)",
+        default=None,
+    )
+
+    REDIS_CLUSTERS_PASSWORD: Optional[str] = Field(
+        description="Password for Redis Clusters authentication (if required)",
+        default=None,
+    )
+
+    REDIS_SERIALIZATION_PROTOCOL: int = Field(
+        description="Redis serialization protocol (RESP) version",
+        default=3,
+    )
+
+    REDIS_ENABLE_CLIENT_SIDE_CACHE: bool = Field(
+        description="Enable client side cache in redis",
+        default=False,
+    )

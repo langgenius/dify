@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -39,7 +40,7 @@ def validate_input_output(v, field_name):
     return v
 
 
-class LevelEnum(str, Enum):
+class LevelEnum(StrEnum):
     DEBUG = "DEBUG"
     WARNING = "WARNING"
     ERROR = "ERROR"
@@ -155,10 +156,10 @@ class LangfuseSpan(BaseModel):
         description="The status message of the span. Additional field for context of the event. E.g. the error "
         "message of an error event.",
     )
-    input: Optional[Union[str, dict[str, Any], list, None]] = Field(
+    input: Optional[Union[str, Mapping[str, Any], list, None]] = Field(
         default=None, description="The input of the span. Can be any JSON object."
     )
-    output: Optional[Union[str, dict[str, Any], list, None]] = Field(
+    output: Optional[Union[str, Mapping[str, Any], list, None]] = Field(
         default=None, description="The output of the span. Can be any JSON object."
     )
     version: Optional[str] = Field(
@@ -178,7 +179,7 @@ class LangfuseSpan(BaseModel):
         return validate_input_output(v, field_name)
 
 
-class UnitEnum(str, Enum):
+class UnitEnum(StrEnum):
     CHARACTERS = "CHARACTERS"
     TOKENS = "TOKENS"
     SECONDS = "SECONDS"

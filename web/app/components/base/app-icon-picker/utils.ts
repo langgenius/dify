@@ -116,12 +116,12 @@ export default async function getCroppedImg(
   })
 }
 
-export function checkIsAnimatedImage(file) {
+export function checkIsAnimatedImage(file: File): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const fileReader = new FileReader()
 
     fileReader.onload = function (e) {
-      const arr = new Uint8Array(e.target.result)
+      const arr = new Uint8Array(e.target?.result as ArrayBuffer)
 
       // Check file extension
       const fileName = file.name.toLowerCase()
@@ -148,7 +148,7 @@ export function checkIsAnimatedImage(file) {
 }
 
 // Function to check for WebP signature
-function isWebP(arr) {
+function isWebP(arr: Uint8Array) {
   return (
     arr[0] === 0x52 && arr[1] === 0x49 && arr[2] === 0x46 && arr[3] === 0x46
     && arr[8] === 0x57 && arr[9] === 0x45 && arr[10] === 0x42 && arr[11] === 0x50
@@ -156,7 +156,7 @@ function isWebP(arr) {
 }
 
 // Function to check if the WebP is animated (contains ANIM chunk)
-function checkWebPAnimation(arr) {
+function checkWebPAnimation(arr: Uint8Array) {
   // Search for the ANIM chunk in WebP to determine if it's animated
   for (let i = 12; i < arr.length - 4; i++) {
     if (arr[i] === 0x41 && arr[i + 1] === 0x4E && arr[i + 2] === 0x49 && arr[i + 3] === 0x4D)

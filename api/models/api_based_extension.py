@@ -1,7 +1,9 @@
 import enum
 
-from extensions.ext_database import db
+from sqlalchemy import func
 
+from .base import Base
+from .engine import db
 from .types import StringUUID
 
 
@@ -12,7 +14,7 @@ class APIBasedExtensionPoint(enum.Enum):
     APP_MODERATION_OUTPUT = "app.moderation.output"
 
 
-class APIBasedExtension(db.Model):
+class APIBasedExtension(Base):
     __tablename__ = "api_based_extensions"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="api_based_extension_pkey"),
@@ -24,4 +26,4 @@ class APIBasedExtension(db.Model):
     name = db.Column(db.String(255), nullable=False)
     api_endpoint = db.Column(db.String(255), nullable=False)
     api_key = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

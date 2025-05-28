@@ -14,6 +14,7 @@ import Nav from '../nav'
 import type { NavItem } from '../nav/nav-selector'
 import { fetchDatasetDetail, fetchDatasets } from '@/service/datasets'
 import type { DataSetListResponse } from '@/models/datasets'
+import { basePath } from '@/utils/var'
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -42,8 +43,8 @@ const DatasetNav = () => {
 
   return (
     <Nav
-      icon={<RiBook2Line className='w-4 h-4' />}
-      activeIcon={<RiBook2Fill className='w-4 h-4' />}
+      icon={<RiBook2Line className='h-4 w-4' />}
+      activeIcon={<RiBook2Fill className='h-4 w-4' />}
       text={t('common.menus.datasets')}
       activeSegment='datasets'
       link='/datasets'
@@ -56,7 +57,7 @@ const DatasetNav = () => {
         icon_background: dataset.icon_background,
       })) as NavItem[]}
       createText={t('common.menus.newDataset')}
-      onCreate={() => router.push('/datasets/create')}
+      onCreate={() => router.push(`${basePath}/datasets/create`)}
       onLoadmore={handleLoadmore}
     />
   )

@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import Field
@@ -6,7 +6,7 @@ from pydantic import Field
 from core.workflow.nodes.base import BaseIterationNodeData, BaseIterationState, BaseNodeData
 
 
-class ErrorHandleMode(str, Enum):
+class ErrorHandleMode(StrEnum):
     TERMINATED = "terminated"
     CONTINUE_ON_ERROR = "continue-on-error"
     REMOVE_ABNORMAL_OUTPUT = "remove-abnormal-output"

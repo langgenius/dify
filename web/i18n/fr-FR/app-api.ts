@@ -76,6 +76,7 @@ const translation = {
     requestBody: 'Corps de la Requête',
     pathParams: 'Params de chemin',
     query: 'Requête',
+    toc: 'Contenu',
   },
   loading: 'Chargement',
   regenerate: 'Régénérer',

@@ -15,7 +15,6 @@ const translation = {
   },
   author: '저자',
   auth: {
-    unauthorized: '인증되지 않음',
     authorized: '인증됨',
     setup: '사용을 위한 인증 설정',
     setupModalTitle: '인증 설정',
@@ -31,6 +30,8 @@ const translation = {
     manageInTools: '도구에서 관리',
     emptyTitle: '사용 가능한 워크플로우 도구 없음',
     emptyTip: '"워크플로우 -> 도구로 등록하기"로 이동',
+    emptyTipCustom: '사용자 지정 도구 만들기',
+    emptyTitleCustom: '사용 가능한 사용자 지정 도구가 없습니다.',
   },
   createTool: {
     title: '커스텀 도구 만들기',
@@ -131,6 +132,7 @@ const translation = {
     number: '숫자',
     required: '필수',
     infoAndSetting: '정보 및 설정',
+    file: '파일',
   },
   noCustomTool: {
     title: '커스텀 도구가 없습니다!',
@@ -148,6 +150,8 @@ const translation = {
   howToGet: '획득 방법',
   openInStudio: '스튜디오에서 열기',
   toolNameUsageTip: 'Agent 추리와 프롬프트를 위한 도구 호출 이름',
+  noTools: '도구를 찾을 수 없습니다.',
+  copyToolName: '이름 복사',
 }
 
 export default translation

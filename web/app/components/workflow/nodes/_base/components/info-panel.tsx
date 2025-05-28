@@ -1,10 +1,10 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React from 'react'
 
 type Props = {
   title: string
-  content: string | JSX.Element
+  content: ReactNode
 }
 
 const InfoPanel: FC<Props> = ({
@@ -13,11 +13,11 @@ const InfoPanel: FC<Props> = ({
 }) => {
   return (
     <div>
-      <div className='px-[5px] py-[3px] bg-workflow-block-parma-bg rounded-md'>
-        <div className='text-text-secondary system-2xs-semibold-uppercase uppercase'>
+      <div className='flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-[5px] py-[3px]'>
+        <div className='system-2xs-semibold-uppercase uppercase text-text-secondary'>
           {title}
         </div>
-        <div className='text-text-tertiary system-xs-regular break-words'>
+        <div className='system-xs-regular break-words text-text-tertiary'>
           {content}
         </div>
       </div>

@@ -1,7 +1,7 @@
 const translation = {
   title: 'Abruf-Test',
   desc: 'Testen Sie die Treffereffektivität des Wissens anhand des gegebenen Abfragetextes.',
-  dateTimeFormat: 'MM/TT/JJJJ hh:mm A',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   recents: 'Kürzlich',
   table: {
     header: {
@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'VEKTORDIAGRAMM ansehen',
   viewDetail: 'Im Detail sehen',
   settingTitle: 'Einstellung für den Abruf',
+  records: 'Aufzeichnungen',
+  open: 'Offen',
+  hitChunks: 'Klicken Sie auf {{num}} untergeordnete Chunks',
+  keyword: 'Schlüsselwörter',
+  chunkDetail: 'Chunk-Detail',
 }
 
 export default translation

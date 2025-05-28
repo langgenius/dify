@@ -1,9 +1,10 @@
 import datetime
 import uuid
+from typing import cast
 
 import pandas as pd
 from flask_login import current_user
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
@@ -71,7 +72,7 @@ class AppAnnotationService:
                 app_id,
                 annotation_setting.collection_binding_id,
             )
-        return annotation
+        return cast(MessageAnnotation, annotation)
 
     @classmethod
     def enable_app_annotation(cls, args: dict, app_id: str) -> dict:
@@ -123,8 +124,8 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
         if keyword:
-            annotations = (
-                db.session.query(MessageAnnotation)
+            stmt = (
+                select(MessageAnnotation)
                 .filter(MessageAnnotation.app_id == app_id)
                 .filter(
                     or_(
@@ -133,15 +134,14 @@ class AppAnnotationService:
                     )
                 )
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
-                .paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
             )
         else:
-            annotations = (
-                db.session.query(MessageAnnotation)
+            stmt = (
+                select(MessageAnnotation)
                 .filter(MessageAnnotation.app_id == app_id)
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
-                .paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
             )
+        annotations = db.paginate(select=stmt, page=page, per_page=limit, max_per_page=100, error_out=False)
         return annotations.items, annotations.total
 
     @classmethod
@@ -287,7 +287,7 @@ class AppAnnotationService:
             df = pd.read_csv(file)
             result = []
             for index, row in df.iterrows():
-                content = {"question": row[0], "answer": row[1]}
+                content = {"question": row.iloc[0], "answer": row.iloc[1]}
                 result.append(content)
             if len(result) == 0:
                 raise ValueError("The CSV file is empty.")
@@ -326,14 +326,16 @@ class AppAnnotationService:
         if not annotation:
             raise NotFound("Annotation not found")
 
-        annotation_hit_histories = (
-            db.session.query(AppAnnotationHitHistory)
+        stmt = (
+            select(AppAnnotationHitHistory)
             .filter(
                 AppAnnotationHitHistory.app_id == app_id,
                 AppAnnotationHitHistory.annotation_id == annotation_id,
             )
             .order_by(AppAnnotationHitHistory.created_at.desc())
-            .paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+        )
+        annotation_hit_histories = db.paginate(
+            select=stmt, page=page, per_page=limit, max_per_page=100, error_out=False
         )
         return annotation_hit_histories.items, annotation_hit_histories.total
 
@@ -429,7 +431,7 @@ class AppAnnotationService:
             raise NotFound("App annotation not found")
         annotation_setting.score_threshold = args["score_threshold"]
         annotation_setting.updated_user_id = current_user.id
-        annotation_setting.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        annotation_setting.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         db.session.add(annotation_setting)
         db.session.commit()
 

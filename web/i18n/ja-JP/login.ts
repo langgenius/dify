@@ -58,15 +58,15 @@ const translation = {
     registrationNotAllowed: 'アカウントが見つかりません。登録するためにシステム管理者に連絡してください。',
   },
   license: {
-    tip: 'Dify Community Editionを開始する前に、GitHubの',
+    tip: 'GitHubのオープンソースライセンスを確認してから、Dify Community Editionを開始してください。',
     link: 'オープンソースライセンス',
   },
   join: '参加する',
-  joinTipStart: 'あなた様を招待します',
+  joinTipStart: 'あなたを招待します',
   joinTipEnd: 'チームに参加する',
   invalid: 'リンクの有効期限が切れています',
   explore: 'Difyを探索する',
-  activatedTipStart: 'あなた様は',
+  activatedTipStart: 'あなたは',
   activatedTipEnd: 'チームに参加しました',
   activated: '今すぐサインイン',
   adminInitPassword: '管理者初期化パスワード',
@@ -99,6 +99,17 @@ const translation = {
   sendVerificationCode: '確認コードの送信',
   enterYourName: 'ユーザー名を入力してください',
   resetPasswordDesc: 'Difyへのサインアップに使用したメールアドレスを入力すると、パスワードリセットメールが送信されます。',
+  licenseLost: 'ライセンスを失った',
+  licenseExpiredTip: 'ワークスペースの Dify Enterprise ライセンスの有効期限が切れています。Difyを引き続き使用するには、管理者に連絡してください。',
+  licenseInactive: 'ライセンスが非アクティブです',
+  licenseInactiveTip: 'ワークスペースの Dify Enterprise ライセンスが非アクティブです。Difyを引き続き使用するには、管理者に連絡してください。',
+  licenseExpired: 'ライセンスの有効期限が切れています',
+  licenseLostTip: 'Difyライセンスサーバーへの接続に失敗しました。続けてDifyを使用するために管理者に連絡してください。',
+  webapp: {
+    noLoginMethod: 'Webアプリに対して認証方法が構成されていません',
+    noLoginMethodTip: 'システム管理者に連絡して、認証方法を追加してください。',
+    disabled: 'Webアプリの認証が無効になっています。システム管理者に連絡して有効にしてください。直接アプリを使用してみてください。',
+  },
 }
 
 export default translation

@@ -56,6 +56,7 @@ const translation = {
     },
     variables: 'Zmienne',
     uploadImages: 'Przesłane obrazy',
+    modelParams: 'Parametry modelu',
   },
   filter: {
     period: {
@@ -83,6 +84,8 @@ const translation = {
   runDetail: {
     title: 'Dziennik rozmowy',
     workflowTitle: 'Szczegół dziennika',
+    fileListDetail: 'Detal',
+    fileListLabel: 'Szczegóły pliku',
   },
   promptLog: 'Dziennik monitów',
   agentLog: 'Dziennik agenta',

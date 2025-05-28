@@ -2,9 +2,10 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from core.rag.datasource.vdb.vector_factory import Vector
+from extensions.ext_database import db
 from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -38,4 +39,6 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
             click.style("App annotations index deleted : {} latency: {}".format(app_id, end_at - start_at), fg="green")
         )
     except Exception as e:
-        logging.exception("Annotation deleted index failed:{}".format(str(e)))
+        logging.exception("Annotation deleted index failed")
+    finally:
+        db.session.close()

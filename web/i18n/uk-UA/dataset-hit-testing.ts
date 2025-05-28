@@ -25,6 +25,11 @@ const translation = {
   viewChart: 'ПЕРЕГЛЯНУТИ ВЕКТОРНУ ДІАГРАМУ',
   settingTitle: 'Налаштування отримання',
   viewDetail: 'Переглянути деталі',
+  chunkDetail: 'Деталізація фрагмента',
+  hitChunks: 'Натисніть {{num}} на дочірні шматки',
+  open: 'Відкривати',
+  keyword: 'Ключові слова',
+  records: 'Записи',
 }
 
 export default translation

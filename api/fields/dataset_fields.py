@@ -24,6 +24,7 @@ vector_setting_fields = {
 }
 
 weighted_score_fields = {
+    "weight_type": fields.String,
     "keyword_setting": fields.Nested(keyword_setting_fields),
     "vector_setting": fields.Nested(vector_setting_fields),
 }
@@ -41,6 +42,7 @@ dataset_retrieval_model_fields = {
 external_retrieval_model_fields = {
     "top_k": fields.Integer,
     "score_threshold": fields.Float,
+    "score_threshold_enabled": fields.Boolean,
 }
 
 tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
@@ -51,6 +53,8 @@ external_knowledge_info_fields = {
     "external_knowledge_api_name": fields.String,
     "external_knowledge_api_endpoint": fields.String,
 }
+
+doc_metadata_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
 
 dataset_detail_fields = {
     "id": fields.String,
@@ -72,8 +76,11 @@ dataset_detail_fields = {
     "embedding_available": fields.Boolean,
     "retrieval_model_dict": fields.Nested(dataset_retrieval_model_fields),
     "tags": fields.List(fields.Nested(tag_fields)),
+    "doc_form": fields.String,
     "external_knowledge_info": fields.Nested(external_knowledge_info_fields),
     "external_retrieval_model": fields.Nested(external_retrieval_model_fields, allow_null=True),
+    "doc_metadata": fields.List(fields.Nested(doc_metadata_fields)),
+    "built_in_field_enabled": fields.Boolean,
 }
 
 dataset_query_detail_fields = {
@@ -84,4 +91,10 @@ dataset_query_detail_fields = {
     "created_by_role": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
+}
+
+dataset_metadata_fields = {
+    "id": fields.String,
+    "type": fields.String,
+    "name": fields.String,
 }

@@ -42,6 +42,22 @@ const translation = {
     zoomIn: '확대',
     copyImage: '이미지 복사',
     zoomOut: '축소',
+    close: '닫다',
+    viewMore: '더보기',
+    regenerate: '재생성',
+    view: '보기',
+    saveAndRegenerate: '저장 및 자식 청크 재생성',
+    submit: '전송',
+    skip: '배',
+    imageCopied: '복사된 이미지',
+    deleteApp: '앱 삭제',
+    copied: '복사',
+    viewDetails: '세부 정보보기',
+    in: '안으로',
+    downloadFailed: '다운로드 실패했습니다. 나중에 다시 시도하십시오.',
+    format: '형식',
+    more: '더 많은',
+    downloadSuccess: '다운로드 완료.',
   },
   placeholder: {
     input: '입력해주세요',
@@ -110,6 +126,8 @@ const translation = {
       Custom: '사용자 정의',
     },
     addMoreModel: '설정에서 다른 모델을 추가하세요',
+    capabilities: '멀티모달 기능',
+    settingsLink: '모델 공급자 설정',
   },
   menus: {
     status: '베타 버전',
@@ -122,6 +140,7 @@ const translation = {
     newApp: '새로운 앱',
     newDataset: '지식 만들기',
     tools: '도구',
+    exploreMarketplace: 'Marketplace 둘러보기',
   },
   userProfile: {
     settings: '설정',
@@ -134,6 +153,9 @@ const translation = {
     community: '커뮤니티',
     about: 'Dify 소개',
     logout: '로그아웃',
+    github: '깃허브',
+    compliance: '컴플라이언스',
+    support: '지원',
   },
   settings: {
     accountGroup: '계정',
@@ -147,6 +169,7 @@ const translation = {
     dataSource: '데이터 소스',
     plugin: '플러그인',
     apiBasedExtension: 'API 확장',
+    generalGroup: '일반',
   },
   account: {
     avatar: '아바타',
@@ -170,6 +193,24 @@ const translation = {
     myAccount: '내 계정',
     studio: '디파이 스튜디오',
     account: '계정',
+<<<<<<< HEAD
+=======
+    deletePrivacyLink: '개인 정보 보호 정책.',
+    deleteSuccessTip: '계정 삭제를 완료하는 데 시간이 필요합니다. 모든 작업이 완료되면 이메일로 연락드리겠습니다.',
+    deleteLabel: '확인하려면 아래 이메일을 입력하십시오.',
+    deletePlaceholder: '이메일을 입력해 주세요',
+    sendVerificationButton: '인증 코드 보내기',
+    verificationLabel: '인증 코드',
+    verificationPlaceholder: '6자리 코드를 붙여넣습니다.',
+    permanentlyDeleteButton: '계정 영구 삭제',
+    feedbackTitle: '피드백',
+    feedbackLabel: '계정을 삭제한 이유를 알려주시겠습니까?',
+    feedbackPlaceholder: '선택적',
+    deletePrivacyLinkTip: '당사가 귀하의 데이터를 처리하는 방법에 대한 자세한 내용은 다음을 참조하십시오.',
+    workspaceIcon: '작업 공간 아이콘',
+    editWorkspaceInfo: '작업 공간 정보 편집',
+    workspaceName: '작업 공간 이름',
+>>>>>>> f233a64eb56213a7c74960284b424928d857d38a
   },
   members: {
     team: '팀',
@@ -187,6 +228,7 @@ const translation = {
     editorTip: '앱 빌드만 가능하고 팀 설정 관리 불가능',
     inviteTeamMember: '팀 멤버 초대',
     inviteTeamMemberTip: '로그인 후에 바로 팀 데이터에 액세스할 수 있습니다.',
+    emailNotSetup: '이메일 서버가 설정되지 않아 초대 이메일을 보낼 수 없습니다. 대신 초대 후 발급되는 초대 링크를 사용자에게 알려주세요.',
     email: '이메일',
     emailInvalid: '유효하지 않은 이메일 형식',
     emailPlaceholder: '이메일 입력',
@@ -261,6 +303,7 @@ const translation = {
       usedUp: '트라이얼 할당량이 다 사용되었습니다. 다른 모델 제공자를 추가하세요.',
       useYourModel: '현재 사용자 정의 모델 제공자를 사용 중입니다.',
       close: '닫기',
+      trialQuotaTip: 'Anthropic 평가판 할당량은 2025/03/11에 만료되며 그 이후에는 더 이상 사용할 수 없습니다. 제때 활용하시기 바랍니다.',
     },
     anthropic: {
       using: '임베드 기능을 사용 중입니다',
@@ -372,6 +415,12 @@ const translation = {
     loadBalancingInfo: '기본적으로 부하 분산은 라운드 로빈 전략을 사용합니다. 속도 제한이 트리거되면 1분의 휴지 기간이 적용됩니다.',
     loadBalancingLeastKeyWarning: '로드 밸런싱을 사용하려면 최소 2개의 키를 사용하도록 설정해야 합니다.',
     providerManagedDescription: '모델 공급자가 제공하는 단일 자격 증명 집합을 사용합니다.',
+    installProvider: '모델 공급자 설치',
+    discoverMore: '더 알아보기',
+    emptyProviderTitle: '모델 공급자가 설정되지 않음',
+    configureTip: 'api-key 설정 또는 사용할 모델 추가',
+    emptyProviderTip: '먼저 모델 공급자를 설치하십시오.',
+    toBeConfigured: '구성 예정',
   },
   dataSource: {
     add: '데이터 소스 추가하기',
@@ -415,7 +464,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API 기반 확장은 Dify 애플리케이션 전체에서 간편한 사용을 위한 설정을 단순화하고 집중적인 API 관리를 제공합니다.',
     link: '사용자 정의 API 기반 확장을 개발하는 방법 배우기',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API 기반 확장 추가',
     selector: {
       title: 'API 기반 확장',
@@ -469,6 +518,7 @@ const translation = {
     emptyTip: '연결된 지식이 없습니다. 애플리케이션 또는 플러그인으로 이동하여 연결을 완료하세요.',
     viewDoc: '문서 보기',
     relatedApp: '관련 앱',
+    noRelatedApp: '연결된 앱 없음',
   },
   voiceInput: {
     speaking: '지금 말하고 있습니다...',
@@ -500,6 +550,9 @@ const translation = {
       hitScore: '검색 점수:',
     },
     inputPlaceholder: '봇과 대화',
+    thought: '생각',
+    thinking: '생각...',
+    resend: '재전송',
   },
   promptEditor: {
     placeholder: '여기에 프롬프트 단어를 입력하세요. 변수를 삽입하려면 "{{"를 입력하고, 프롬프트 컨텐츠 블록을 삽입하려면 "/"를 입력하세요.',
@@ -586,6 +639,32 @@ const translation = {
     fileExtensionNotSupport: '지원되지 않는 파일 확장자',
     uploadFromComputerLimit: '업로드 파일은 {{size}}를 초과할 수 없습니다.',
     uploadFromComputerUploadError: '파일 업로드에 실패했습니다. 다시 업로드하십시오.',
+  },
+  license: {
+    expiring_plural: '{{count}}일 후에 만료',
+    expiring: '하루 후에 만료',
+  },
+  pagination: {
+    perPage: '페이지당 항목 수',
+  },
+  theme: {
+    theme: '주제',
+    light: '빛',
+    dark: '어둠',
+    auto: '시스템',
+  },
+  compliance: {
+    iso27001: 'ISO 27001:2022 인증',
+    soc2Type1: 'SOC 2 유형 I 보고서',
+    soc2Type2: 'SOC 2 유형 II 보고서',
+    gdpr: 'GDPR DPA',
+    professionalUpgradeTooltip: '팀 플랜 이상에서만 사용할 수 있습니다.',
+    sandboxUpgradeTooltip: '전문가 또는 팀 플랜에서만 사용할 수 있습니다.',
+  },
+  imageInput: {
+    supportedFormats: 'PNG, JPG, JPEG, WEBP 및 GIF를 지원합니다.',
+    browse: '브라우즈',
+    dropImageHere: '여기에 이미지를 드롭하거나',
   },
 }
 

@@ -100,14 +100,14 @@ class Moderation(Extensible, ABC):
             if not inputs_config.get("preset_response"):
                 raise ValueError("inputs_config.preset_response is required")
 
-            if len(inputs_config.get("preset_response")) > 100:
+            if len(inputs_config.get("preset_response", 0)) > 100:
                 raise ValueError("inputs_config.preset_response must be less than 100 characters")
 
         if outputs_config_enabled:
             if not outputs_config.get("preset_response"):
                 raise ValueError("outputs_config.preset_response is required")
 
-            if len(outputs_config.get("preset_response")) > 100:
+            if len(outputs_config.get("preset_response", 0)) > 100:
                 raise ValueError("outputs_config.preset_response must be less than 100 characters")
 
 

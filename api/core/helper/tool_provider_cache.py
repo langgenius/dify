@@ -8,6 +8,7 @@ from extensions.ext_redis import redis_client
 
 class ToolProviderCredentialsCacheType(Enum):
     PROVIDER = "tool_provider"
+    ENDPOINT = "endpoint"
 
 
 class ToolProviderCredentialsCache:
@@ -28,7 +29,7 @@ class ToolProviderCredentialsCache:
             except JSONDecodeError:
                 return None
 
-            return cached_provider_credentials
+            return dict(cached_provider_credentials)
         else:
             return None
 

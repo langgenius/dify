@@ -6,14 +6,13 @@ import { Markdown } from '@/app/components/base/markdown'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { FileList } from '@/app/components/base/file-uploader'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 type ResultTextProps = {
   isRunning?: boolean
   outputs?: any
   error?: string
   onClick?: () => void
-  allFiles?: FileEntity[]
+  allFiles?: any[]
 }
 
 const ResultText: FC<ResultTextProps> = ({
@@ -25,22 +24,22 @@ const ResultText: FC<ResultTextProps> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='bg-background-section-burn py-2'>
+    <div className='bg-background-section-burn'>
       {isRunning && !outputs && (
-        <div className='pt-4 pl-[26px]'>
+        <div className='pl-[26px] pt-4'>
           <LoadingAnim type='text' />
         </div>
       )}
       {!isRunning && error && (
-        <div className='px-4'>
+        <div className='px-4 py-2'>
           <StatusContainer status='failed'>
             {error}
           </StatusContainer>
         </div>
       )}
-      {!isRunning && !outputs && !error && (
-        <div className='mt-[120px] px-4 py-2 flex flex-col items-center text-[13px] leading-[18px] text-gray-500'>
-          <ImageIndentLeft className='w-6 h-6 text-gray-400' />
+      {!isRunning && !outputs && !error && !allFiles?.length && (
+        <div className='mt-[120px] flex flex-col items-center px-4 py-2 text-[13px] leading-[18px] text-gray-500'>
+          <ImageIndentLeft className='h-6 w-6 text-gray-400' />
           <div className='mr-2'>{t('runLog.resultEmpty.title')}</div>
           <div>
             {t('runLog.resultEmpty.tipLeft')}
@@ -49,18 +48,25 @@ const ResultText: FC<ResultTextProps> = ({
           </div>
         </div>
       )}
-      {outputs && (
-        <div className='px-4 py-2'>
-          <Markdown content={outputs} />
-          {!!allFiles?.length && (
-            <FileList
-              files={allFiles}
-              showDeleteAction={false}
-              showDownloadAction
-              canPreview
-            />
+      {(outputs || !!allFiles?.length) && (
+        <>
+          {outputs && (
+            <div className='px-4 py-2'>
+              <Markdown content={outputs} />
+            </div>
           )}
-        </div>
+          {!!allFiles?.length && allFiles.map(item => (
+            <div key={item.varName} className='system-xs-regular flex flex-col gap-1 px-4 py-2'>
+              <div className='py-1 text-text-tertiary '>{item.varName}</div>
+              <FileList
+                files={item.list}
+                showDeleteAction={false}
+                showDownloadAction
+                canPreview
+              />
+            </div>
+          ))}
+        </>
       )}
     </div>
   )

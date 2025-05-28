@@ -42,6 +42,22 @@ const translation = {
     zoomIn: 'Ingrandisci',
     openInNewTab: 'Apri in una nuova scheda',
     copyImage: 'Copia immagine',
+    close: 'Chiudere',
+    view: 'Vista',
+    saveAndRegenerate: 'Salva e rigenera i blocchi figlio',
+    regenerate: 'Rigenerare',
+    viewMore: 'SCOPRI DI PIÙ',
+    submit: 'Invia',
+    skip: 'Nave',
+    imageCopied: 'Immagine copiata',
+    deleteApp: 'Elimina app',
+    in: 'in',
+    viewDetails: 'Visualizza dettagli',
+    copied: 'Copiato',
+    downloadSuccess: 'Download completato.',
+    downloadFailed: 'Download non riuscito. Per favore riprova più tardi.',
+    more: 'Di più',
+    format: 'Formato',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -121,6 +137,8 @@ const translation = {
       Custom: 'Personalizzato',
     },
     addMoreModel: 'Vai alle impostazioni per aggiungere altri modelli',
+    capabilities: 'Funzionalità multimodali',
+    settingsLink: 'Impostazioni del fornitore del modello',
   },
   menus: {
     status: 'beta',
@@ -135,6 +153,7 @@ const translation = {
     newApp: 'Nuova App',
     newDataset: 'Crea Conoscenza',
     tools: 'Strumenti',
+    exploreMarketplace: 'Esplora il Marketplace',
   },
   userProfile: {
     settings: 'Impostazioni',
@@ -147,6 +166,9 @@ const translation = {
     community: 'Comunità',
     about: 'Informazioni',
     logout: 'Esci',
+    support: 'Supporto',
+    compliance: 'Conformità',
+    github: 'GitHub',
   },
   settings: {
     accountGroup: 'ACCOUNT',
@@ -160,6 +182,7 @@ const translation = {
     dataSource: 'Fonte Dati',
     plugin: 'Plugin',
     apiBasedExtension: 'Estensione API',
+    generalGroup: 'GENERALE',
   },
   account: {
     avatar: 'Avatar',
@@ -186,6 +209,21 @@ const translation = {
     myAccount: 'Il mio account',
     account: 'Conto',
     studio: 'Dify Studio',
+    deletePrivacyLinkTip: 'Per ulteriori informazioni su come gestiamo i tuoi dati, consulta il nostro',
+    deletePrivacyLink: 'Informativa sulla privacy.',
+    deleteSuccessTip: 'Il tuo account ha bisogno di tempo per completare l\'eliminazione. Ti invieremo un\'e-mail quando tutto sarà finito.',
+    deleteLabel: 'Per confermare, digita la tua email qui sotto',
+    deletePlaceholder: 'Inserisci la tua email',
+    sendVerificationButton: 'Invia codice di verifica',
+    verificationLabel: 'Codice di verifica',
+    verificationPlaceholder: 'Incolla il codice a 6 cifre',
+    permanentlyDeleteButton: 'Elimina definitivamente l\'account',
+    feedbackTitle: 'Valutazione',
+    feedbackLabel: 'Dicci perché hai cancellato il tuo account?',
+    feedbackPlaceholder: 'Opzionale',
+    workspaceIcon: 'Icona della workspace',
+    editWorkspaceInfo: 'Modifica informazioni dello spazio di lavoro',
+    workspaceName: 'Nome del Workspace',
   },
   members: {
     team: 'Team',
@@ -208,6 +246,7 @@ const translation = {
     inviteTeamMember: 'Aggiungi membro del team',
     inviteTeamMemberTip:
       'Potranno accedere ai dati del tuo team direttamente dopo aver effettuato l\'accesso.',
+    emailNotSetup: 'Il server email non è configurato, quindi non è possibile inviare email di invito. Si prega di notificare agli utenti il link di invito che verrà emesso dopo l\'invito.',
     email: 'Email',
     emailInvalid: 'Formato Email non valido',
     emailPlaceholder: 'Per favore inserisci le email',
@@ -281,6 +320,7 @@ const translation = {
       usedUp: 'Quota di prova esaurita. Aggiungi il tuo fornitore di modelli.',
       useYourModel: 'Attualmente utilizzando il proprio fornitore di modelli.',
       close: 'Chiudi',
+      trialQuotaTip: 'La tua quota di prova di Anthropic scadrà l\'11/03/2025 e non sarà più disponibile in seguito. Sfruttalo in tempo.',
     },
     anthropic: {
       using: 'La capacità di embedding è in uso',
@@ -403,6 +443,12 @@ const translation = {
       'Per impostazione predefinita, il bilanciamento del carico utilizza la strategia Round-robin. Se viene attivato il rate limiting, verrà applicato un periodo di cooldown di 1 minuto.',
     upgradeForLoadBalancing:
       'Aggiorna il tuo piano per abilitare il Bilanciamento del Carico.',
+    configureTip: 'Configura la chiave API o aggiungi il modello da utilizzare',
+    installProvider: 'Installare i provider di modelli',
+    toBeConfigured: 'Da configurare',
+    emptyProviderTip: 'Si prega di installare prima un fornitore di modelli.',
+    discoverMore: 'Scopri di più in',
+    emptyProviderTitle: 'Provider di modelli non configurato',
   },
   dataSource: {
     add: 'Aggiungi una fonte di dati',
@@ -447,7 +493,7 @@ const translation = {
     title:
       'Le estensioni API forniscono una gestione centralizzata delle API, semplificando la configurazione per un facile utilizzo nelle applicazioni di Dify.',
     link: 'Scopri come sviluppare la tua estensione API.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Aggiungi Estensione API',
     selector: {
       title: 'Estensione API',
@@ -503,6 +549,7 @@ const translation = {
       'La Conoscenza non è stata associata, per favore vai all\'applicazione o al plug-in per completare l\'associazione.',
     viewDoc: 'Visualizza documentazione',
     relatedApp: 'app collegate',
+    noRelatedApp: 'Nessuna app collegata',
   },
   voiceInput: {
     speaking: 'Parla ora...',
@@ -535,6 +582,9 @@ const translation = {
       hitScore: 'Punteggio di recupero:',
     },
     inputPlaceholder: 'Parla con il bot',
+    thinking: 'Pensante...',
+    thought: 'Pensiero',
+    resend: 'Reinvia',
   },
   promptEditor: {
     placeholder:
@@ -621,6 +671,32 @@ const translation = {
     uploadFromComputerUploadError: 'Caricamento del file non riuscito, carica di nuovo.',
     pasteFileLink: 'Incolla il collegamento del file',
     uploadFromComputerReadError: 'Lettura del file non riuscita, riprovare.',
+  },
+  license: {
+    expiring_plural: 'Scadenza tra {{count}} giorni',
+    expiring: 'Scadenza in un giorno',
+  },
+  pagination: {
+    perPage: 'Articoli per pagina',
+  },
+  theme: {
+    light: 'luce',
+    auto: 'sistema',
+    dark: 'scuro',
+    theme: 'Tema',
+  },
+  compliance: {
+    gdpr: 'GDPR DPA',
+    professionalUpgradeTooltip: 'Disponibile solo con un piano Team o superiore.',
+    sandboxUpgradeTooltip: 'Disponibile solo con un piano Professionale o Team.',
+    soc2Type2: 'Rapporto SOC 2 di Tipo II',
+    iso27001: 'Certificazione ISO 27001:2022',
+    soc2Type1: 'Rapporto SOC 2 Tipo I',
+  },
+  imageInput: {
+    supportedFormats: 'Supporta PNG, JPG, JPEG, WEBP e GIF',
+    browse: 'sfogliare',
+    dropImageHere: 'Trascina la tua immagine qui, oppure',
   },
 }
 

@@ -99,6 +99,12 @@ const translation = {
   or: 'SAU',
   resetPasswordDesc: 'Tastați e-mailul pe care l-ați folosit pentru a vă înscrie pe Dify și vă vom trimite un e-mail de resetare a parolei.',
   changePasswordBtn: 'Setați o parolă',
+  licenseLostTip: 'Nu s-a reușit conectarea serverului de licențe Dify. Contactați administratorul pentru a continua să utilizați Dify.',
+  licenseInactive: 'Licență inactivă',
+  licenseInactiveTip: 'Licența Dify Enterprise pentru spațiul de lucru este inactivă. Contactați administratorul pentru a continua să utilizați Dify.',
+  licenseExpired: 'Licență expirată',
+  licenseLost: 'Licență pierdută',
+  licenseExpiredTip: 'Licența Dify Enterprise pentru spațiul de lucru a expirat. Contactați administratorul pentru a continua să utilizați Dify.',
 }
 
 export default translation

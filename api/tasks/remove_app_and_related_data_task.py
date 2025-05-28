@@ -3,16 +3,16 @@ import time
 from collections.abc import Callable
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions.ext_database import db
-from models.dataset import AppDatasetJoin
-from models.model import (
+from models import (
     ApiToken,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
+    AppDatasetJoin,
     AppModelConfig,
     Conversation,
     EndUser,

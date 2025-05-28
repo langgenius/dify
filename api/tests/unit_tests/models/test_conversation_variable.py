@@ -6,7 +6,7 @@ from models import ConversationVariable
 
 
 def test_from_variable_and_to_variable():
-    variable = variable_factory.build_variable_from_mapping(
+    variable = variable_factory.build_conversation_variable_from_mapping(
         {
             "id": str(uuid4()),
             "name": "name",

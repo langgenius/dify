@@ -1,18 +1,18 @@
+from collections.abc import Sequence
 from typing import Optional
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
-from core.file.models import FileType
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
-    PromptMessageContent,
     PromptMessageRole,
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
 from factories import file_factory
@@ -27,7 +27,7 @@ class TokenBufferMemory:
 
     def get_history_prompt_messages(
         self, max_token_limit: int = 2000, message_limit: Optional[int] = None
-    ) -> list[PromptMessage]:
+    ) -> Sequence[PromptMessage]:
         """
         Get history prompt messages.
         :param max_token_limit: max token limit
@@ -44,6 +44,7 @@ class TokenBufferMemory:
                 Message.created_at,
                 Message.workflow_run_id,
                 Message.parent_message_id,
+                Message.answer_tokens,
             )
             .filter(
                 Message.conversation_id == self.conversation.id,
@@ -63,12 +64,12 @@ class TokenBufferMemory:
         thread_messages = extract_thread_messages(messages)
 
         # for newly created message, its answer is temporarily empty, we don't need to add it to memory
-        if thread_messages and not thread_messages[0].answer:
+        if thread_messages and not thread_messages[0].answer and thread_messages[0].answer_tokens == 0:
             thread_messages.pop(0)
 
         messages = list(reversed(thread_messages))
 
-        prompt_messages = []
+        prompt_messages: list[PromptMessage] = []
         for message in messages:
             files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
             if files:
@@ -81,29 +82,35 @@ class TokenBufferMemory:
                             db.session.query(WorkflowRun).filter(WorkflowRun.id == message.workflow_run_id).first()
                         )
 
-                        if workflow_run:
+                        if workflow_run and workflow_run.workflow:
                             file_extra_config = FileUploadConfigManager.convert(
                                 workflow_run.workflow.features_dict, is_vision=False
                             )
 
+                detail = ImagePromptMessageContent.DETAIL.LOW
                 if file_extra_config and app_record:
                     file_objs = file_factory.build_from_message_files(
                         message_files=files, tenant_id=app_record.tenant_id, config=file_extra_config
                     )
+                    if file_extra_config.image_config and file_extra_config.image_config.detail:
+                        detail = file_extra_config.image_config.detail
                 else:
                     file_objs = []
 
                 if not file_objs:
                     prompt_messages.append(UserPromptMessage(content=message.query))
                 else:
-                    prompt_message_contents: list[PromptMessageContent] = []
+                    prompt_message_contents: list[PromptMessageContentUnionTypes] = []
                     prompt_message_contents.append(TextPromptMessageContent(data=message.query))
-                    for file_obj in file_objs:
-                        if file_obj.type in {FileType.IMAGE, FileType.AUDIO}:
-                            prompt_message = file_manager.to_prompt_message_content(file_obj)
-                            prompt_message_contents.append(prompt_message)
+                    for file in file_objs:
+                        prompt_message = file_manager.to_prompt_message_content(
+                            file,
+                            image_detail_config=detail,
+                        )
+                        prompt_message_contents.append(prompt_message)
 
                     prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
+
             else:
                 prompt_messages.append(UserPromptMessage(content=message.query))
 

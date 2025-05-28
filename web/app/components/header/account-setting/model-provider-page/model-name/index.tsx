@@ -7,7 +7,7 @@ import { useLanguage } from '../hooks'
 import type { ModelItem } from '../declarations'
 import ModelBadge from '../model-badge'
 import FeatureIcon from '../model-selector/feature-icon'
-import classNames from '@/utils/classnames'
+import cn from '@/utils/classnames'
 
 type ModelNameProps = PropsWithChildren<{
   modelItem: ModelItem
@@ -37,48 +37,45 @@ const ModelName: FC<ModelNameProps> = ({
   if (!modelItem)
     return null
   return (
-    <div
-      className={`
-        flex items-center truncate text-[13px] font-medium text-gray-800
-        ${className}
-      `}
-    >
+    <div className={cn('system-sm-regular flex items-center gap-0.5 overflow-hidden truncate text-ellipsis text-components-input-text-filled', className)}>
       <div
         className='truncate'
         title={modelItem.label[language] || modelItem.label.en_US}
       >
         {modelItem.label[language] || modelItem.label.en_US}
       </div>
-      {
-        showModelType && modelItem.model_type && (
-          <ModelBadge className={classNames('ml-1', modelTypeClassName)}>
-            {modelTypeFormat(modelItem.model_type)}
-          </ModelBadge>
-        )
-      }
-      {
-        modelItem.model_properties.mode && showMode && (
-          <ModelBadge className={classNames('ml-1', modeClassName)}>
-            {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
-          </ModelBadge>
-        )
-      }
-      {
-        showFeatures && modelItem.features?.map(feature => (
-          <FeatureIcon
-            key={feature}
-            feature={feature}
-            className={featuresClassName}
-          />
-        ))
-      }
-      {
-        showContextSize && modelItem.model_properties.context_size && (
-          <ModelBadge className='ml-1'>
-            {sizeFormat(modelItem.model_properties.context_size as number)}
-          </ModelBadge>
-        )
-      }
+      <div className='flex items-center gap-0.5'>
+        {
+          showModelType && modelItem.model_type && (
+            <ModelBadge className={modelTypeClassName}>
+              {modelTypeFormat(modelItem.model_type)}
+            </ModelBadge>
+          )
+        }
+        {
+          modelItem.model_properties.mode && showMode && (
+            <ModelBadge className={modeClassName}>
+              {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
+            </ModelBadge>
+          )
+        }
+        {
+          showFeatures && modelItem.features?.map(feature => (
+            <FeatureIcon
+              key={feature}
+              feature={feature}
+              className={featuresClassName}
+            />
+          ))
+        }
+        {
+          showContextSize && modelItem.model_properties.context_size && (
+            <ModelBadge>
+              {sizeFormat(modelItem.model_properties.context_size as number)}
+            </ModelBadge>
+          )
+        }
+      </div>
       {children}
     </div>
   )

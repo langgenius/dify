@@ -1,7 +1,7 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from oss2 import Auth
+from oss2 import Auth  # type: ignore
 
 from extensions.storage.aliyun_oss_storage import AliyunOssStorage
 from tests.unit_tests.oss.__mock.aliyun_oss import setup_aliyun_oss_mock

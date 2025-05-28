@@ -1,16 +1,23 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class CreatedByRole(str, Enum):
+class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"
 
 
-class UserFrom(str, Enum):
+class UserFrom(StrEnum):
     ACCOUNT = "account"
     END_USER = "end-user"
 
 
-class WorkflowRunTriggeredFrom(str, Enum):
+class WorkflowRunTriggeredFrom(StrEnum):
     DEBUGGING = "debugging"
     APP_RUN = "app-run"
+
+
+class DraftVariableType(StrEnum):
+    # node means that the correspond variable
+    NODE = "node"
+    SYS = "sys"
+    CONVERSATION = "conversation"

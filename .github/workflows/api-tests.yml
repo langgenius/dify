@@ -7,6 +7,7 @@ on:
     paths:
       - api/**
       - docker/**
+      - .github/workflows/api-tests.yml
 
 concurrency:
   group: api-tests-${{ github.head_ref || github.run_id }}
@@ -16,47 +17,57 @@ jobs:
   test:
     name: API Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         python-version:
-          - "3.10"
           - "3.11"
           - "3.12"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Setup UV and Python
+        uses: ./.github/actions/setup-uv
         with:
           python-version: ${{ matrix.python-version }}
-          cache-dependency-path: |
-            api/pyproject.toml
-            api/poetry.lock
+          uv-lockfile: api/uv.lock
 
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v3
-
-      - name: Check Poetry lockfile
-        run: |
-          poetry check -C api --lock
-          poetry show -C api
+      - name: Check UV lockfile
+        run: uv lock --project api --check
 
       - name: Install dependencies
-        run: poetry install -C api --with dev
-
-      - name: Check dependencies in pyproject.toml
-        run: poetry run -C api bash dev/pytest/pytest_artifacts.sh
+        run: uv sync --project api --dev
 
       - name: Run Unit tests
-        run: poetry run -C api bash dev/pytest/pytest_unit_tests.sh
+        run: |
+          uv run --project api bash dev/pytest/pytest_unit_tests.sh
+          # Extract coverage percentage and create a summary
+          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
 
-      - name: Run ModelRuntime
-        run: poetry run -C api bash dev/pytest/pytest_model_runtime.sh
+          # Create a detailed coverage summary
+          echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
+          echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          uv run --project api coverage report >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
-      - name: Run Tool
-        run: poetry run -C api bash dev/pytest/pytest_tools.sh
+      - name: Run dify config tests
+        run: uv run --project api dev/pytest/pytest_config_tests.py
+
+      - name: MyPy Cache
+        uses: actions/cache@v4
+        with:
+          path: api/.mypy_cache
+          key: mypy-${{ matrix.python-version }}-${{ runner.os }}-${{ hashFiles('api/uv.lock') }}
+
+      - name: Run MyPy Checks
+        run: dev/mypy-check
 
       - name: Set up dotenvs
         run: |
@@ -67,7 +78,7 @@ jobs:
         run: sh .github/workflows/expose_service_ports.sh
 
       - name: Set up Sandbox
-        uses: hoverkraft-tech/compose-action@v2.0.0
+        uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
@@ -76,23 +87,7 @@ jobs:
             ssrf_proxy
 
       - name: Run Workflow
-        run: poetry run -C api bash dev/pytest/pytest_workflow.sh
+        run: uv run --project api bash dev/pytest/pytest_workflow.sh
 
-      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
-        uses: hoverkraft-tech/compose-action@v2.0.0
-        with:
-          compose-file: |
-            docker/docker-compose.yaml
-          services: |
-            weaviate
-            qdrant
-            couchbase-server
-            etcd
-            minio
-            milvus-standalone
-            pgvecto-rs
-            pgvector
-            chroma
-            elasticsearch
-      - name: Test Vector Stores
-        run: poetry run -C api bash dev/pytest/pytest_vdb.sh
+      - name: Run Tool
+        run: uv run --project api bash dev/pytest/pytest_tools.sh

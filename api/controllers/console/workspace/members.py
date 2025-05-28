@@ -1,9 +1,12 @@
+from urllib import parse
+
 from flask_login import current_user
 from flask_restful import Resource, abort, marshal_with, reqparse
 
 import services
 from configs import dify_config
 from controllers.console import api
+from controllers.console.error import WorkspaceMembersLimitExceeded
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
@@ -15,6 +18,7 @@ from libs.login import login_required
 from models.account import Account, TenantAccountRole
 from services.account_service import RegisterService, TenantService
 from services.errors.account import AccountAlreadyInTenantError
+from services.feature_service import FeatureService
 
 
 class MemberListApi(Resource):
@@ -52,23 +56,29 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
         invitation_results = []
         console_web_url = dify_config.CONSOLE_WEB_URL
+
+        workspace_members = FeatureService.get_features(tenant_id=inviter.current_tenant.id).workspace_members
+
+        if not workspace_members.is_available(len(invitee_emails)):
+            raise WorkspaceMembersLimitExceeded()
+
         for invitee_email in invitee_emails:
             try:
                 token = RegisterService.invite_new_member(
                     inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter
                 )
+                encoded_invitee_email = parse.quote(invitee_email)
                 invitation_results.append(
                     {
                         "status": "success",
                         "email": invitee_email,
-                        "url": f"{console_web_url}/activate?email={invitee_email}&token={token}",
+                        "url": f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
                     }
                 )
             except AccountAlreadyInTenantError:
                 invitation_results.append(
                     {"status": "success", "email": invitee_email, "url": f"{console_web_url}/signin"}
                 )
-                break
             except Exception as e:
                 invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
 
@@ -86,19 +96,19 @@ class MemberCancelInviteApi(Resource):
     @account_initialization_required
     def delete(self, member_id):
         member = db.session.query(Account).filter(Account.id == str(member_id)).first()
-        if not member:
+        if member is None:
             abort(404)
-
-        try:
-            TenantService.remove_member_from_tenant(current_user.current_tenant, member, current_user)
-        except services.errors.account.CannotOperateSelfError as e:
-            return {"code": "cannot-operate-self", "message": str(e)}, 400
-        except services.errors.account.NoPermissionError as e:
-            return {"code": "forbidden", "message": str(e)}, 403
-        except services.errors.account.MemberNotInTenantError as e:
-            return {"code": "member-not-found", "message": str(e)}, 404
-        except Exception as e:
-            raise ValueError(str(e))
+        else:
+            try:
+                TenantService.remove_member_from_tenant(current_user.current_tenant, member, current_user)
+            except services.errors.account.CannotOperateSelfError as e:
+                return {"code": "cannot-operate-self", "message": str(e)}, 400
+            except services.errors.account.NoPermissionError as e:
+                return {"code": "forbidden", "message": str(e)}, 403
+            except services.errors.account.MemberNotInTenantError as e:
+                return {"code": "member-not-found", "message": str(e)}, 404
+            except Exception as e:
+                raise ValueError(str(e))
 
         return {"result": "success"}, 204
 
@@ -123,6 +133,7 @@ class MemberUpdateRoleApi(Resource):
             abort(404)
 
         try:
+            assert member is not None, "Member not found"
             TenantService.update_member_role(current_user.current_tenant, member, new_role, current_user)
         except Exception as e:
             raise ValueError(str(e))

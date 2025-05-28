@@ -1,7 +1,10 @@
 import uuid
+from typing import cast
 
 from flask_login import current_user
 from flask_restful import Resource, inputs, marshal, marshal_with, reqparse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, abort
 
 from controllers.console import api
@@ -9,17 +12,18 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    enterprise_license_required,
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
-from fields.app_fields import (
-    app_detail_fields,
-    app_detail_fields_with_site,
-    app_pagination_fields,
-)
+from extensions.ext_database import db
+from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
 from libs.login import login_required
-from services.app_dsl_service import AppDslService
+from models import Account, App
+from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
+from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
 
@@ -28,6 +32,7 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @enterprise_license_required
     def get(self):
         """Get app list"""
 
@@ -43,23 +48,42 @@ class AppListApi(Resource):
         parser.add_argument(
             "mode",
             type=str,
-            choices=["chat", "workflow", "agent-chat", "channel", "all"],
+            choices=[
+                "completion",
+                "chat",
+                "advanced-chat",
+                "workflow",
+                "agent-chat",
+                "channel",
+                "all",
+            ],
             default="all",
             location="args",
             required=False,
         )
         parser.add_argument("name", type=str, location="args", required=False)
         parser.add_argument("tag_ids", type=uuid_list, location="args", required=False)
+        parser.add_argument("is_created_by_me", type=inputs.boolean, location="args", required=False)
 
         args = parser.parse_args()
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.current_tenant_id, args)
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_user.current_tenant_id, args)
         if not app_pagination:
             return {"data": [], "total": 0, "page": 1, "limit": 20, "has_more": False}
 
-        return marshal(app_pagination, app_pagination_fields)
+        if FeatureService.get_system_features().webapp_auth.enabled:
+            app_ids = [str(app.id) for app in app_pagination.items]
+            res = EnterpriseService.WebAppAuth.batch_get_app_access_mode_by_id(app_ids=app_ids)
+            if len(res) != len(app_ids):
+                raise BadRequest("Invalid app id in webapp auth")
+
+            for app in app_pagination.items:
+                if str(app.id) in res:
+                    app.access_mode = res[str(app.id)].access_mode
+
+        return marshal(app_pagination, app_pagination_fields), 200
 
     @setup_required
     @login_required
@@ -90,65 +114,11 @@ class AppListApi(Resource):
         return app, 201
 
 
-class AppImportApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(app_detail_fields_with_site)
-    @cloud_edition_billing_resource_check("apps")
-    def post(self):
-        """Import app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("data", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=str, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
-        args = parser.parse_args()
-
-        app = AppDslService.import_and_create_new_app(
-            tenant_id=current_user.current_tenant_id, data=args["data"], args=args, account=current_user
-        )
-
-        return app, 201
-
-
-class AppImportFromUrlApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(app_detail_fields_with_site)
-    @cloud_edition_billing_resource_check("apps")
-    def post(self):
-        """Import app from url"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("url", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
-        args = parser.parse_args()
-
-        app = AppDslService.import_and_create_new_app_from_url(
-            tenant_id=current_user.current_tenant_id, url=args["url"], args=args, account=current_user
-        )
-
-        return app, 201
-
-
 class AppApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @enterprise_license_required
     @get_app_model
     @marshal_with(app_detail_fields_with_site)
     def get(self, app_model):
@@ -156,6 +126,10 @@ class AppApi(Resource):
         app_service = AppService()
 
         app_model = app_service.get_app(app_model)
+
+        if FeatureService.get_system_features().webapp_auth.enabled:
+            app_setting = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=str(app_model.id))
+            app_model.access_mode = app_setting.access_mode
 
         return app_model
 
@@ -176,7 +150,6 @@ class AppApi(Resource):
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
-        parser.add_argument("max_active_requests", type=int, location="json")
         parser.add_argument("use_icon_as_answer_icon", type=bool, location="json")
         args = parser.parse_args()
 
@@ -221,10 +194,24 @@ class AppCopyApi(Resource):
         parser.add_argument("icon_background", type=str, location="json")
         args = parser.parse_args()
 
-        data = AppDslService.export_dsl(app_model=app_model, include_secret=True)
-        app = AppDslService.import_and_create_new_app(
-            tenant_id=current_user.current_tenant_id, data=data, args=args, account=current_user
-        )
+        with Session(db.engine) as session:
+            import_service = AppDslService(session)
+            yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
+            account = cast(Account, current_user)
+            result = import_service.import_app(
+                account=account,
+                import_mode=ImportMode.YAML_CONTENT.value,
+                yaml_content=yaml_content,
+                name=args.get("name"),
+                description=args.get("description"),
+                icon_type=args.get("icon_type"),
+                icon=args.get("icon"),
+                icon_background=args.get("icon_background"),
+            )
+            session.commit()
+
+            stmt = select(App).where(App.id == result.app_id)
+            app = session.scalar(stmt)
 
         return app, 201
 
@@ -348,7 +335,7 @@ class AppTraceApi(Resource):
     @account_initialization_required
     def post(self, app_id):
         # add app trace
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("enabled", type=bool, required=True, location="json")
@@ -365,8 +352,6 @@ class AppTraceApi(Resource):
 
 
 api.add_resource(AppListApi, "/apps")
-api.add_resource(AppImportApi, "/apps/import")
-api.add_resource(AppImportFromUrlApi, "/apps/import/url")
 api.add_resource(AppApi, "/apps/<uuid:app_id>")
 api.add_resource(AppCopyApi, "/apps/<uuid:app_id>/copy")
 api.add_resource(AppExportApi, "/apps/<uuid:app_id>/export")

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlusCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import cn from '@/utils/classnames'
 
 type AddModelButtonProps = {
   className?: string
@@ -14,13 +15,10 @@ const AddModelButton: FC<AddModelButtonProps> = ({
 
   return (
     <span
-      className={`
-        shrink-0 flex items-center px-1.5 h-6 text-xs font-medium text-gray-500 cursor-pointer
-      hover:bg-primary-50 hover:text-primary-600 rounded-md ${className}
-      `}
+      className={cn('system-xs-medium flex h-6 shrink-0 cursor-pointer items-center rounded-md px-1.5 text-text-tertiary hover:bg-components-button-ghost-bg-hover hover:text-components-button-ghost-text', className)}
       onClick={onClick}
     >
-      <PlusCircle className='mr-1 w-3 h-3' />
+      <PlusCircle className='mr-1 h-3 w-3' />
       {t('common.modelProvider.addModel')}
     </span>
   )

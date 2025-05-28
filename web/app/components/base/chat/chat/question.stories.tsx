@@ -26,8 +26,8 @@ export const Default: Story = {
       content: 'You are a helpful assistant.',
     } satisfies ChatItem,
     theme: undefined,
-    questionIcon: <div className='w-full h-full rounded-full border-[0.5px] border-black/5'>
-      <User className='w-full h-full' />
+    questionIcon: <div className='h-full w-full rounded-full border-[0.5px] border-black/5'>
+      <User className='h-full w-full' />
     </div>,
   },
 }

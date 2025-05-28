@@ -5,6 +5,7 @@ from flask import request
 from flask_restful import Resource, reqparse
 
 import services
+from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -16,17 +17,21 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import (
     AccountBannedError,
+    AccountInFreezeError,
+    AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
-    NotAllowedRegister,
+    WorkspacesLimitExceeded,
 )
-from controllers.console.wraps import setup_required
+from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.billing_service import BillingService
+from services.errors.account import AccountRegisterError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
 
@@ -34,6 +39,7 @@ class LoginApi(Resource):
     """Resource for user login."""
 
     @setup_required
+    @email_password_login_enabled
     def post(self):
         """Authenticate user and login."""
         parser = reqparse.RequestParser()
@@ -43,6 +49,9 @@ class LoginApi(Resource):
         parser.add_argument("invite_token", type=str, required=False, default=None, location="json")
         parser.add_argument("language", type=str, required=False, default="en-US", location="json")
         args = parser.parse_args()
+
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
+            raise AccountInFreezeError()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
         if is_login_error_rate_limit:
@@ -76,14 +85,19 @@ class LoginApi(Resource):
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
                 return {"result": "fail", "data": token, "code": "account_not_found"}
             else:
-                raise NotAllowedRegister()
+                raise AccountNotFound()
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
-            return {
-                "result": "fail",
-                "data": "workspace not found, please contact system admin to invite you to join in a workspace",
-            }
+            system_features = FeatureService.get_system_features()
+
+            if system_features.is_allow_create_workspace and not system_features.license.workspaces.is_available():
+                raise WorkspacesLimitExceeded()
+            else:
+                return {
+                    "result": "fail",
+                    "data": "workspace not found, please contact system admin to invite you to join in a workspace",
+                }
 
         token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
@@ -103,6 +117,7 @@ class LogoutApi(Resource):
 
 class ResetPasswordSendEmailApi(Resource):
     @setup_required
+    @email_password_login_enabled
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
@@ -113,13 +128,15 @@ class ResetPasswordSendEmailApi(Resource):
             language = "zh-Hans"
         else:
             language = "en-US"
-
-        account = AccountService.get_user_through_email(args["email"])
+        try:
+            account = AccountService.get_user_through_email(args["email"])
+        except AccountRegisterError as are:
+            raise AccountInFreezeError()
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
-                raise NotAllowedRegister()
+                raise AccountNotFound()
         else:
             token = AccountService.send_reset_password_email(account=account, language=language)
 
@@ -142,13 +159,16 @@ class EmailCodeLoginSendEmailApi(Resource):
             language = "zh-Hans"
         else:
             language = "en-US"
+        try:
+            account = AccountService.get_user_through_email(args["email"])
+        except AccountRegisterError as are:
+            raise AccountInFreezeError()
 
-        account = AccountService.get_user_through_email(args["email"])
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_email_code_login_email(email=args["email"], language=language)
             else:
-                raise NotAllowedRegister()
+                raise AccountNotFound()
         else:
             token = AccountService.send_email_code_login_email(account=account, language=language)
 
@@ -177,17 +197,23 @@ class EmailCodeLoginApi(Resource):
             raise EmailCodeError()
 
         AccountService.revoke_email_code_login_token(args["token"])
-        account = AccountService.get_user_through_email(user_email)
+        try:
+            account = AccountService.get_user_through_email(user_email)
+        except AccountRegisterError as are:
+            raise AccountInFreezeError()
         if account:
-            tenant = TenantService.get_join_tenants(account)
-            if not tenant:
+            tenants = TenantService.get_join_tenants(account)
+            if not tenants:
+                workspaces = FeatureService.get_system_features().license.workspaces
+                if not workspaces.is_available():
+                    raise WorkspacesLimitExceeded()
                 if not FeatureService.get_system_features().is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
-                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(tenant, account, role="owner")
-                    account.current_tenant = tenant
-                    tenant_was_created.send(tenant)
+                    new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                    TenantService.create_tenant_member(new_tenant, account, role="owner")
+                    account.current_tenant = new_tenant
+                    tenant_was_created.send(new_tenant)
 
         if account is None:
             try:
@@ -196,6 +222,10 @@ class EmailCodeLoginApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 return NotAllowedCreateWorkspace()
+            except AccountRegisterError as are:
+                raise AccountInFreezeError()
+            except WorkspacesLimitExceededError:
+                raise WorkspacesLimitExceeded()
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token_pair.model_dump()}

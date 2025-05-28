@@ -1,12 +1,13 @@
 from flask_login import current_user
 from flask_restful import marshal_with, reqparse
 from flask_restful.inputs import int_range
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.console import api
 from controllers.console.explore.error import NotChatAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_database import db
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
 from libs.helper import uuid_value
 from models.model import AppMode
@@ -31,17 +32,19 @@ class ConversationListApi(InstalledAppResource):
 
         pinned = None
         if "pinned" in args and args["pinned"] is not None:
-            pinned = True if args["pinned"] == "true" else False
+            pinned = args["pinned"] == "true"
 
         try:
-            return WebConversationService.pagination_by_last_id(
-                app_model=app_model,
-                user=current_user,
-                last_id=args["last_id"],
-                limit=args["limit"],
-                invoke_from=InvokeFrom.EXPLORE,
-                pinned=pinned,
-            )
+            with Session(db.engine) as session:
+                return WebConversationService.pagination_by_last_id(
+                    session=session,
+                    app_model=app_model,
+                    user=current_user,
+                    last_id=args["last_id"],
+                    limit=args["limit"],
+                    invoke_from=InvokeFrom.EXPLORE,
+                    pinned=pinned,
+                )
         except LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 
@@ -114,28 +117,3 @@ class ConversationUnPinApi(InstalledAppResource):
         WebConversationService.unpin(app_model, conversation_id, current_user)
 
         return {"result": "success"}
-
-
-api.add_resource(
-    ConversationRenameApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/name",
-    endpoint="installed_app_conversation_rename",
-)
-api.add_resource(
-    ConversationListApi, "/installed-apps/<uuid:installed_app_id>/conversations", endpoint="installed_app_conversations"
-)
-api.add_resource(
-    ConversationApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>",
-    endpoint="installed_app_conversation",
-)
-api.add_resource(
-    ConversationPinApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin",
-    endpoint="installed_app_conversation_pin",
-)
-api.add_resource(
-    ConversationUnPinApi,
-    "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/unpin",
-    endpoint="installed_app_conversation_unpin",
-)

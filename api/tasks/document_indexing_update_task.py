@@ -3,8 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
-from werkzeug.exceptions import NotFound
+from celery import shared_task  # type: ignore
 
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -27,10 +26,12 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     document = db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
     if not document:
-        raise NotFound("Document not found")
+        logging.info(click.style("Document not found: {}".format(document_id), fg="red"))
+        db.session.close()
+        return
 
     document.indexing_status = "parsing"
-    document.processing_started_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
     db.session.commit()
 
     # delete all document segment and index
@@ -47,7 +48,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             index_node_ids = [segment.index_node_id for segment in segments]
 
             # delete from vector index
-            index_processor.clean(dataset, index_node_ids)
+            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 
             for segment in segments:
                 db.session.delete(segment)
@@ -73,3 +74,5 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         logging.info(click.style(str(ex), fg="yellow"))
     except Exception:
         pass
+    finally:
+        db.session.close()

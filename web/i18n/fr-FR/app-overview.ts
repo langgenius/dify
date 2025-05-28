@@ -30,12 +30,12 @@ const translation = {
   overview: {
     title: 'Aperçu',
     appInfo: {
-      explanation: 'WebApp AI prête à l\'emploi',
+      explanation: 'web app AI prête à l\'emploi',
       accessibleAddress: 'URL publique',
       preview: 'Aperçu',
       regenerate: 'Regénérer',
       regenerateNotice: 'Voulez-vous régénérer l\'URL publique ?',
-      preUseReminder: 'Veuillez activer WebApp avant de continuer.',
+      preUseReminder: 'Veuillez activer web app avant de continuer.',
       settings: {
         entry: 'Paramètres',
         title: 'Paramètres de l\'application Web',
@@ -48,13 +48,14 @@ const translation = {
           title: 'Étapes du workflow',
           show: 'Afficher',
           hide: 'Masquer',
-          showDesc: 'Afficher ou masquer les détails du flux de travail dans WebApp',
+          showDesc: 'Afficher ou masquer les détails du flux de travail dans web app',
           subTitle: 'Détails du flux de travail',
         },
         chatColorTheme: 'Thème de couleur du chatbot',
         chatColorThemeDesc: 'Définir le thème de couleur du chatbot',
         chatColorThemeInverted: 'Inversé',
         invalidHexMessage: 'Valeur hexadécimale invalide',
+        invalidPrivacyPolicy: 'Lien de politique de confidentialité invalide. Veuillez utiliser un lien valide commençant par http ou https',
         more: {
           entry: 'Afficher plus de paramètres',
           copyright: 'Droits d\'auteur',
@@ -65,13 +66,16 @@ const translation = {
           customDisclaimer: 'Clause de non-responsabilité personnalisée',
           customDisclaimerPlaceholder: 'Entrez le texte de la clause de non-responsabilité personnalisée',
           customDisclaimerTip: 'Le texte de la clause de non-responsabilité personnalisée sera affiché côté client, fournissant des informations supplémentaires sur l\'application',
+          copyrightTip: 'Afficher les informations de copyright dans l’application web',
+          copyrightTooltip: 'Veuillez passer à l’abonnement professionnel ou supérieur',
         },
         sso: {
           label: 'Authentification SSO',
-          title: 'WebApp SSO',
-          tooltip: 'Contactez l’administrateur pour activer l’authentification unique WebApp',
-          description: 'Tous les utilisateurs doivent se connecter avec l’authentification unique avant d’utiliser WebApp',
+          title: 'web app SSO',
+          tooltip: 'Contactez l’administrateur pour activer l’authentification unique web app',
+          description: 'Tous les utilisateurs doivent se connecter avec l’authentification unique avant d’utiliser web app',
         },
+        modalTip: 'Paramètres de l’application web côté client.',
       },
       embedded: {
         entry: 'Intégré',
@@ -109,6 +113,7 @@ const translation = {
           operation: 'Documentation',
         },
       },
+      launch: 'Lancer',
     },
     apiInfo: {
       title: 'API de service Backend',

@@ -11,8 +11,8 @@ class FirecrawlAuth(ApiKeyAuthBase):
         auth_type = credentials.get("auth_type")
         if auth_type != "bearer":
             raise ValueError("Invalid auth type, Firecrawl auth type must be Bearer")
-        self.api_key = credentials.get("config").get("api_key", None)
-        self.base_url = credentials.get("config").get("base_url", "https://api.firecrawl.dev")
+        self.api_key = credentials.get("config", {}).get("api_key", None)
+        self.base_url = credentials.get("config", {}).get("base_url", "https://api.firecrawl.dev")
 
         if not self.api_key:
             raise ValueError("No API key provided")
@@ -21,10 +21,12 @@ class FirecrawlAuth(ApiKeyAuthBase):
         headers = self._prepare_headers()
         options = {
             "url": "https://example.com",
-            "crawlerOptions": {"excludes": [], "includes": [], "limit": 1},
-            "pageOptions": {"onlyMainContent": True},
+            "includePaths": [],
+            "excludePaths": [],
+            "limit": 1,
+            "scrapeOptions": {"onlyMainContent": True},
         }
-        response = self._post_request(f"{self.base_url}/v0/crawl", options, headers)
+        response = self._post_request(f"{self.base_url}/v1/crawl", options, headers)
         if response.status_code == 200:
             return True
         else:

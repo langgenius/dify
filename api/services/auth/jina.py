@@ -11,7 +11,7 @@ class JinaAuth(ApiKeyAuthBase):
         auth_type = credentials.get("auth_type")
         if auth_type != "bearer":
             raise ValueError("Invalid auth type, Jina Reader auth type must be Bearer")
-        self.api_key = credentials.get("config").get("api_key", None)
+        self.api_key = credentials.get("config", {}).get("api_key", None)
 
         if not self.api_key:
             raise ValueError("No API key provided")

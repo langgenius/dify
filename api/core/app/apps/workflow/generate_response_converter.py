@@ -1,9 +1,9 @@
-import json
 from collections.abc import Generator
 from typing import cast
 
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.entities.task_entities import (
+    AppStreamResponse,
     ErrorStreamResponse,
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
@@ -17,16 +17,16 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
     _blocking_response_type = WorkflowAppBlockingResponse
 
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:
+    def convert_blocking_full_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]
         """
         Convert blocking full response.
         :param blocking_response: blocking response
         :return:
         """
-        return blocking_response.to_dict()
+        return dict(blocking_response.to_dict())
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:
+    def convert_blocking_simple_response(cls, blocking_response: WorkflowAppBlockingResponse) -> dict:  # type: ignore[override]
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
@@ -36,8 +36,8 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
 
     @classmethod
     def convert_stream_full_response(
-        cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]
-    ) -> Generator[str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse, None, None]
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -61,12 +61,12 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 response_chunk.update(data)
             else:
                 response_chunk.update(sub_stream_response.to_dict())
-            yield json.dumps(response_chunk)
+            yield response_chunk
 
     @classmethod
     def convert_stream_simple_response(
-        cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]
-    ) -> Generator[str, None, None]:
+        cls, stream_response: Generator[AppStreamResponse, None, None]
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response
@@ -92,4 +92,4 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 response_chunk.update(sub_stream_response.to_ignore_detail_dict())
             else:
                 response_chunk.update(sub_stream_response.to_dict())
-            yield json.dumps(response_chunk)
+            yield response_chunk

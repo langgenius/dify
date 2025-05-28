@@ -14,7 +14,6 @@ const translation = {
   },
   author: 'Von',
   auth: {
-    unauthorized: 'Zur Autorisierung',
     authorized: 'Autorisiert',
     setup: 'Autorisierung einrichten, um zu nutzen',
     setupModalTitle: 'Autorisierung einrichten',
@@ -121,6 +120,7 @@ const translation = {
     number: 'Nummer',
     required: 'Erforderlich',
     infoAndSetting: 'Info & Einstellungen',
+    file: 'Datei',
   },
   noCustomTool: {
     title: 'Keine benutzerdefinierten Werkzeuge!',
@@ -144,10 +144,14 @@ const translation = {
     emptyTitle: 'Kein Workflow-Tool verfügbar',
     type: 'Art',
     emptyTip: 'Gehen Sie zu "Workflow -> Als Tool veröffentlichen"',
+    emptyTitleCustom: 'Kein benutzerdefiniertes Tool verfügbar',
+    emptyTipCustom: 'Erstellen eines benutzerdefinierten Werkzeugs',
   },
   toolNameUsageTip: 'Name des Tool-Aufrufs für die Argumentation und Aufforderung des Agenten',
   customToolTip: 'Erfahren Sie mehr über benutzerdefinierte Dify-Tools',
   openInStudio: 'In Studio öffnen',
+  noTools: 'Keine Werkzeuge gefunden',
+  copyToolName: 'Name kopieren',
 }
 
 export default translation

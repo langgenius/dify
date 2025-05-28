@@ -57,6 +57,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   } = useIsVarFileAttribute({
     nodeId: id,
     isInIteration: payload.isInIteration,
+    isInLoop: payload.isInLoop,
   })
 
   const varsIsVarFileAttribute = useMemo(() => {
@@ -132,7 +133,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     })
     setInputs(newInputs)
     updateNodeInternals(id)
-  }, [inputs, setInputs])
+  }, [id, inputs, setInputs, updateNodeInternals])
 
   const handleAddCondition = useCallback<HandleAddCondition>((caseId, valueSelector, varItem) => {
     const newInputs = produce(inputs, (draft) => {

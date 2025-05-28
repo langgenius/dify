@@ -1,0 +1,56 @@
+@tailwind components;
+
+@layer components {
+  .premium-badge {
+    @apply shrink-0 relative inline-flex justify-center items-center rounded-md box-border border border-transparent text-white shadow-xs hover:shadow-lg bg-origin-border overflow-hidden transition-all duration-100 ease-out;
+    background-clip: padding-box, border-box;
+  }
+  .allowHover {
+    @apply cursor-pointer;
+  }
+
+  /* m is for the regular button */
+  .premium-badge-m {
+    @apply !p-1 h-6 w-auto
+  }
+
+  .premium-badge-s {
+    @apply border-[0.5px] !px-1 !py-[3px] h-[18px] w-auto
+  }
+
+  .premium-badge-blue {
+    @apply bg-util-colors-blue-blue-200;
+    background-image: linear-gradient(90deg, #5289ffe6 0%, #155aefe6 100%), linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #155aef 100%);
+  }
+  .premium-badge-blue.allowHover:hover {
+    @apply bg-util-colors-blue-blue-300;
+    background-image: linear-gradient(90deg, #296dffe6 0%, #004aebe6 100%), linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #00329e 100%);
+  }
+
+  .premium-badge-indigo {
+    @apply bg-util-colors-indigo-indigo-200;
+    background-image: linear-gradient(90deg, #8098f9e6 0%, #444ce7e6 100%), linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #6172f3 100%);
+  }
+  .premium-badge-indigo.allowHover:hover {
+    @apply bg-util-colors-indigo-indigo-300;
+    background-image: linear-gradient(90deg, #6172f3e6 0%, #2d31a6e6 100%), linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #2d31a6 100%);
+  }
+
+  .premium-badge-gray {
+    @apply bg-util-colors-gray-gray-200;
+    background-image: linear-gradient(90deg, #98a2b2e6 0%, #676f83e6 100%), linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #676f83 100%);
+  }
+  .premium-badge-gray.allowHover:hover {
+    @apply bg-util-colors-gray-gray-300;
+    background-image: linear-gradient(90deg, #676f83e6 0%, #354052e6 100%), linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #354052 100%);
+  }
+
+  .premium-badge-orange {
+    @apply bg-util-colors-orange-orange-200;
+    background-image: linear-gradient(90deg, #ff692ee6 0%, #e04f16e6 100%), linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #e62e05 100%);
+  }
+  .premium-badge-orange.allowHover:hover {
+    @apply bg-util-colors-orange-orange-300;
+    background-image: linear-gradient(90deg, #ff4405e6 0%, #b93815e6 100%), linear-gradient(135deg, var(--color-premium-badge-border-highlight-color) 0%, #e62e05 100%);
+  }
+}

@@ -1,3 +1,5 @@
+from typing import cast
+
 import requests
 
 from configs import dify_config
@@ -5,7 +7,7 @@ from models.api_based_extension import APIBasedExtensionPoint
 
 
 class APIBasedExtensionRequestor:
-    timeout: (int, int) = (5, 60)
+    timeout: tuple[int, int] = (5, 60)
     """timeout for request connect and read"""
 
     def __init__(self, api_endpoint: str, api_key: str) -> None:
@@ -51,4 +53,4 @@ class APIBasedExtensionRequestor:
                 "request error, status_code: {}, content: {}".format(response.status_code, response.text[:100])
             )
 
-        return response.json()
+        return cast(dict, response.json())

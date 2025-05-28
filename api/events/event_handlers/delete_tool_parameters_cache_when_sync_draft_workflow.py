@@ -8,7 +8,10 @@ from events.app_event import app_draft_workflow_was_synced
 @app_draft_workflow_was_synced.connect
 def handle(sender, **kwargs):
     app = sender
-    for node_data in kwargs.get("synced_draft_workflow").graph_dict.get("nodes", []):
+    synced_draft_workflow = kwargs.get("synced_draft_workflow")
+    if synced_draft_workflow is None:
+        return
+    for node_data in synced_draft_workflow.graph_dict.get("nodes", []):
         if node_data.get("data", {}).get("type") == NodeType.TOOL.value:
             try:
                 tool_entity = ToolEntity(**node_data["data"])
@@ -23,7 +26,7 @@ def handle(sender, **kwargs):
                     tool_runtime=tool_runtime,
                     provider_name=tool_entity.provider_name,
                     provider_type=tool_entity.provider_type,
-                    identity_id=f'WORKFLOW.{app.id}.{node_data.get("id")}',
+                    identity_id=f"WORKFLOW.{app.id}.{node_data.get('id')}",
                 )
                 manager.delete_tool_parameters_cache()
             except:

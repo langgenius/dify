@@ -1,11 +1,13 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ValidationInfo, field_validator
 
 
-class TracingProviderEnum(Enum):
+class TracingProviderEnum(StrEnum):
     LANGFUSE = "langfuse"
     LANGSMITH = "langsmith"
+    OPIK = "opik"
+    WEAVE = "weave"
 
 
 class BaseTracingConfig(BaseModel):
@@ -54,3 +56,59 @@ class LangSmithConfig(BaseTracingConfig):
             raise ValueError("endpoint must start with https://")
 
         return v
+
+
+class OpikConfig(BaseTracingConfig):
+    """
+    Model class for Opik tracing config.
+    """
+
+    api_key: str | None = None
+    project: str | None = None
+    workspace: str | None = None
+    url: str = "https://www.comet.com/opik/api/"
+
+    @field_validator("project")
+    @classmethod
+    def project_validator(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "Default Project"
+
+        return v
+
+    @field_validator("url")
+    @classmethod
+    def url_validator(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "https://www.comet.com/opik/api/"
+        if not v.startswith(("https://", "http://")):
+            raise ValueError("url must start with https:// or http://")
+        if not v.endswith("/api/"):
+            raise ValueError("url should ends with /api/")
+
+        return v
+
+
+class WeaveConfig(BaseTracingConfig):
+    """
+    Model class for Weave tracing config.
+    """
+
+    api_key: str
+    entity: str | None = None
+    project: str
+    endpoint: str = "https://trace.wandb.ai"
+
+    @field_validator("endpoint")
+    @classmethod
+    def set_value(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "https://trace.wandb.ai"
+        if not v.startswith("https://"):
+            raise ValueError("endpoint must start with https://")
+
+        return v
+
+
+OPS_FILE_PATH = "ops_trace/"
+OPS_TRACE_FAILED_KEY = "FAILED_OPS_TRACE"

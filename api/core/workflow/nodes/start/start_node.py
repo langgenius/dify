@@ -1,6 +1,3 @@
-from collections.abc import Mapping, Sequence
-from typing import Any
-
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
@@ -23,13 +20,3 @@ class StartNode(BaseNode[StartNodeData]):
             node_inputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=node_inputs, outputs=node_inputs)
-
-    @classmethod
-    def _extract_variable_selector_to_variable_mapping(
-        cls,
-        *,
-        graph_config: Mapping[str, Any],
-        node_id: str,
-        node_data: StartNodeData,
-    ) -> Mapping[str, Sequence[str]]:
-        return {}

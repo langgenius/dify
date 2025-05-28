@@ -30,6 +30,7 @@ const translation = {
       description: 'प्राप्ति पद्धति के बारे में。',
       longDescription:
         'प्राप्ति पद्धति के बारे में, आप इसे किसी भी समय ज्ञान सेटिंग्ज में बदल सकते हैं।',
+      method: 'प्राप्ति विधि',
     },
     save: 'सेवना',
     me: '(आप)',
@@ -37,6 +38,10 @@ const translation = {
     externalKnowledgeID: 'बाहरी ज्ञान ID',
     externalKnowledgeAPI: 'बाहरी ज्ञान एपीआई',
     retrievalSettings: 'पुनर्प्राप्ति सेटिंग्स',
+    indexMethodChangeToEconomyDisabledTip: 'मुख्यालय से ईसीओ में डाउनग्रेड करने के लिए उपलब्ध नहीं है',
+    helpText: 'एक अच्छा डेटासेट विवरण लिखना सीखें।',
+    upgradeHighQualityTip: 'एक बार उच्च गुणवत्ता मोड में अपग्रेड करने के बाद, किफायती मोड में वापस जाना उपलब्ध नहीं है',
+    searchModel: 'मॉडल खोजें',
   },
 }
 

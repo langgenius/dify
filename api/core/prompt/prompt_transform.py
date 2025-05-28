@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -42,7 +42,7 @@ class PromptTransform:
                 ):
                     max_tokens = (
                         model_config.parameters.get(parameter_rule.name)
-                        or model_config.parameters.get(parameter_rule.use_template)
+                        or model_config.parameters.get(parameter_rule.use_template or "")
                     ) or 0
 
             rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
@@ -59,7 +59,7 @@ class PromptTransform:
         ai_prefix: Optional[str] = None,
     ) -> str:
         """Get memory messages."""
-        kwargs = {"max_token_limit": max_token_limit}
+        kwargs: dict[str, Any] = {"max_token_limit": max_token_limit}
 
         if human_prefix:
             kwargs["human_prefix"] = human_prefix
@@ -76,11 +76,15 @@ class PromptTransform:
         self, memory: TokenBufferMemory, memory_config: MemoryConfig, max_token_limit: int
     ) -> list[PromptMessage]:
         """Get memory messages."""
-        return memory.get_history_prompt_messages(
-            max_token_limit=max_token_limit,
-            message_limit=memory_config.window.size
-            if (
-                memory_config.window.enabled and memory_config.window.size is not None and memory_config.window.size > 0
+        return list(
+            memory.get_history_prompt_messages(
+                max_token_limit=max_token_limit,
+                message_limit=memory_config.window.size
+                if (
+                    memory_config.window.enabled
+                    and memory_config.window.size is not None
+                    and memory_config.window.size > 0
+                )
+                else None,
             )
-            else None,
         )

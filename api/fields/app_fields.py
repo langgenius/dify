@@ -63,6 +63,7 @@ app_detail_fields = {
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,
+    "access_mode": fields.String,
 }
 
 prompt_config_fields = {
@@ -98,6 +99,9 @@ app_partial_fields = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
     "tags": fields.List(fields.Nested(tag_fields)),
+    "access_mode": fields.String,
+    "create_user_name": fields.String,
+    "author_name": fields.String,
 }
 
 
@@ -149,6 +153,12 @@ site_fields = {
     "updated_at": TimestampField,
 }
 
+deleted_tool_fields = {
+    "type": fields.String,
+    "tool_name": fields.String,
+    "provider_id": fields.String,
+}
+
 app_detail_fields_with_site = {
     "id": fields.String,
     "name": fields.String,
@@ -169,8 +179,10 @@ app_detail_fields_with_site = {
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,
-    "deleted_tools": fields.List(fields.String),
+    "deleted_tools": fields.List(fields.Nested(deleted_tool_fields)),
+    "access_mode": fields.String,
 }
+
 
 app_site_fields = {
     "app_id": fields.String,
@@ -189,4 +201,20 @@ app_site_fields = {
     "prompt_public": fields.Boolean,
     "show_workflow_steps": fields.Boolean,
     "use_icon_as_answer_icon": fields.Boolean,
+}
+
+leaked_dependency_fields = {"type": fields.String, "value": fields.Raw, "current_identifier": fields.String}
+
+app_import_fields = {
+    "id": fields.String,
+    "status": fields.String,
+    "app_id": fields.String,
+    "app_mode": fields.String,
+    "current_dsl_version": fields.String,
+    "imported_dsl_version": fields.String,
+    "error": fields.String,
+}
+
+app_import_check_dependencies_fields = {
+    "leaked_dependencies": fields.List(fields.Nested(leaked_dependency_fields)),
 }

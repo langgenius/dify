@@ -2,20 +2,19 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pagination } from 'react-headless-pagination'
-import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import type { AnnotationItem, HitHistoryItem } from '../type'
-import s from './style.module.css'
 import HitHistoryNoData from './hit-history-no-data'
-import cn from '@/utils/classnames'
+import Badge from '@/app/components/base/badge'
 import Drawer from '@/app/components/base/drawer-plus'
+import Pagination from '@/app/components/base/pagination'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import Confirm from '@/app/components/base/confirm'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { fetchHitHistoryList } from '@/service/annotation'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
+import cn from '@/utils/classnames'
 
 type Props = {
   appId: string
@@ -56,7 +55,7 @@ const ViewAnnotationModal: FC<Props> = ({
       setHitHistoryList(data as HitHistoryItem[])
       setTotal(total)
     }
-    catch (e) {
+    catch {
     }
   }
 
@@ -73,7 +72,9 @@ const ViewAnnotationModal: FC<Props> = ({
           ? (
             <div className='flex items-center space-x-1'>
               <div>{t('appAnnotation.viewModal.hitHistory')}</div>
-              <div className='flex px-1.5 item-center rounded-md border border-black/[8%] h-5 text-xs font-medium text-gray-500'>{total} {t(`appAnnotation.viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`)}</div>
+              <Badge
+                text={`${total} ${t(`appAnnotation.viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`)}`}
+              />
             </div>
           )
           : t('appAnnotation.viewModal.hitHistory')
@@ -112,73 +113,49 @@ const ViewAnnotationModal: FC<Props> = ({
     ? (<HitHistoryNoData />)
     : (
       <div>
-        <table className={cn(s.table, 'w-full min-w-[440px] border-collapse border-0 text-sm')} >
-          <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
-            <tr className='uppercase'>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.query')}</td>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.match')}</td>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.response')}</td>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.source')}</td>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.score')}</td>
-              <td className='whitespace-nowrap w-[160px]'>{t('appAnnotation.hitHistoryTable.time')}</td>
+        <table className={cn('w-full min-w-[440px] border-collapse border-0')} >
+          <thead className="system-xs-medium-uppercase text-text-tertiary">
+            <tr>
+              <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'>{t('appAnnotation.hitHistoryTable.query')}</td>
+              <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.match')}</td>
+              <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.response')}</td>
+              <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.source')}</td>
+              <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.score')}</td>
+              <td className='w-[160px] whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appAnnotation.hitHistoryTable.time')}</td>
             </tr>
           </thead>
-          <tbody className="text-gray-500">
+          <tbody className="system-sm-regular text-text-secondary">
             {hitHistoryList.map(item => (
               <tr
                 key={item.id}
-                className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
+                className={'cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover'}
               >
                 <td
-                  className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  className='max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2'
                   title={item.question}
                 >{item.question}</td>
                 <td
-                  className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  className='max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2'
                   title={item.match}
                 >{item.match}</td>
                 <td
-                  className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  className='max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2'
                   title={item.response}
                 >{item.response}</td>
-                <td>{item.source}</td>
-                <td>{item.score ? item.score.toFixed(2) : '-'}</td>
-                <td>{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
+                <td className='p-3 pr-2'>{item.source}</td>
+                <td className='p-3 pr-2'>{item.score ? item.score.toFixed(2) : '-'}</td>
+                <td className='p-3 pr-2'>{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
               </tr>
             ))}
           </tbody>
         </table>
         {(total && total > APP_PAGE_LIMIT)
           ? <Pagination
-            className="flex items-center w-full h-10 text-sm select-none mt-8"
-            currentPage={currPage}
-            edgePageCount={2}
-            middlePagesSiblingCount={1}
-            setCurrentPage={setCurrPage}
-            totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncatableClassName="w-8 px-0.5 text-center"
-            truncatableText="..."
-          >
-            <Pagination.PrevButton
-              disabled={currPage === 0}
-              className={`flex items-center mr-2 text-gray-500  focus:outline-none ${currPage === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
-              <ArrowLeftIcon className="mr-3 h-3 w-3" />
-              {t('appLog.table.pagination.previous')}
-            </Pagination.PrevButton>
-            <div className={`flex items-center justify-center flex-grow ${s.pagination}`}>
-              <Pagination.PageButton
-                activeClassName="bg-primary-50 dark:bg-opacity-0 text-primary-600 dark:text-white"
-                className="flex items-center justify-center h-8 w-8 rounded-full cursor-pointer"
-                inactiveClassName="text-gray-500"
-              />
-            </div>
-            <Pagination.NextButton
-              disabled={currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1}
-              className={`flex items-center mr-2 text-gray-500 focus:outline-none ${currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
-              {t('appLog.table.pagination.next')}
-              <ArrowRightIcon className="ml-3 h-3 w-3" />
-            </Pagination.NextButton>
-          </Pagination>
+            className='px-0'
+            current={currPage}
+            onChange={setCurrPage}
+            total={total}
+          />
           : null}
       </div>
 
@@ -189,10 +166,9 @@ const ViewAnnotationModal: FC<Props> = ({
         isShow={isShow}
         onHide={onHide}
         maxWidthClassName='!max-w-[800px]'
-        // t('appAnnotation.editModal.title') as string
         title={
           <TabSlider
-            className='shrink-0 relative top-[9px]'
+            className='relative top-[9px] shrink-0'
             value={activeTab}
             onChange={v => setActiveTab(v as TabType)}
             options={tabs}
@@ -202,7 +178,7 @@ const ViewAnnotationModal: FC<Props> = ({
         }
         body={(
           <div>
-            <div className='p-6 pb-4 space-y-6'>
+            <div className='space-y-6 p-6 pb-4'>
               {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
             </div>
             <Confirm
@@ -219,9 +195,9 @@ const ViewAnnotationModal: FC<Props> = ({
         )}
         foot={id
           ? (
-            <div className='px-4 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
+            <div className='system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary'>
               <div
-                className='flex items-center pl-3 space-x-2 cursor-pointer'
+                className='flex cursor-pointer items-center space-x-2 pl-3'
                 onClick={() => setShowModal(true)}
               >
                 <MessageCheckRemove />

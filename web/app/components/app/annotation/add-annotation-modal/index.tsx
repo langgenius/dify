@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AnnotationItemBasic } from '../type'
 import EditItem, { EditItemType } from './edit-item'
+import Checkbox from '@/app/components/base/checkbox'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
@@ -55,7 +56,7 @@ const AddAnnotationModal: FC<Props> = ({
     try {
       await onAdd(payload)
     }
-    catch (e) {
+    catch {
     }
     setIsSaving(false)
 
@@ -75,7 +76,7 @@ const AddAnnotationModal: FC<Props> = ({
         maxWidthClassName='!max-w-[480px]'
         title={t('appAnnotation.addModal.title') as string}
         body={(
-          <div className='p-6 pb-4 space-y-6'>
+          <div className='space-y-6 p-6 pb-4'>
             <EditItem
               type={EditItemType.Query}
               content={question}
@@ -92,15 +93,15 @@ const AddAnnotationModal: FC<Props> = ({
           (
             <div>
               {isAnnotationFull && (
-                <div className='mt-6 mb-4 px-6'>
+                <div className='mb-4 mt-6 px-6'>
                   <AnnotationFull />
                 </div>
               )}
-              <div className='px-6 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
+              <div className='system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary'>
                 <div
                   className='flex items-center space-x-2'
                 >
-                  <input type="checkbox" checked={isCreateNext} onChange={() => setIsCreateNext(!isCreateNext)} className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700" />
+                  <Checkbox checked={isCreateNext} onCheck={() => setIsCreateNext(!isCreateNext)} />
                   <div>{t('appAnnotation.addModal.createNext')}</div>
                 </div>
                 <div className='mt-2 flex space-x-2'>

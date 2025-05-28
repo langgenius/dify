@@ -52,6 +52,7 @@ const translation = {
     },
     variables: 'Variablen',
     uploadImages: 'Hochgeladene Bilder',
+    modelParams: 'Modellparameter',
   },
   filter: {
     period: {
@@ -79,6 +80,8 @@ const translation = {
   runDetail: {
     title: 'Konversationsprotokoll',
     workflowTitle: 'Protokolldetail',
+    fileListLabel: 'Details zur Datei',
+    fileListDetail: 'Detail',
   },
   promptLog: 'Prompt-Protokoll',
   agentLog: 'Agentenprotokoll',

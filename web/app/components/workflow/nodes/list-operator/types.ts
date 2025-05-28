@@ -25,6 +25,10 @@ export type ListFilterNodeType = CommonNodeType & {
     enabled: boolean
     conditions: Condition[]
   }
+  extract_by: {
+    enabled: boolean
+    serial?: string
+  }
   order_by: {
     enabled: boolean
     key: ValueSelector | string

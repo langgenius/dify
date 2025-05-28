@@ -3,7 +3,7 @@ const translation = {
     firstStepTip: 'はじめるには、',
     enterKeyTip: '以下にOpenAI APIキーを入力してください',
     getKeyTip: 'OpenAIダッシュボードからAPIキーを取得してください',
-    placeholder: 'あなた様のOpenAI APIキー（例：sk-xxxx）',
+    placeholder: 'OpenAI APIキー（例：sk-xxxx）',
   },
   apiKeyInfo: {
     cloud: {
@@ -55,6 +55,7 @@ const translation = {
         chatColorThemeDesc: 'チャットボットのカラーテーマを設定します',
         chatColorThemeInverted: '反転',
         invalidHexMessage: '無効な16進数値',
+        invalidPrivacyPolicy: '無効なプライバシーポリシーのリンクです。http または https で始まる有効なリンクを使用してください',
         more: {
           entry: 'その他の設定を表示',
           copyright: '著作権',
@@ -65,6 +66,8 @@ const translation = {
           customDisclaimer: 'カスタム免責事項',
           customDisclaimerPlaceholder: '免責事項を入力してください',
           customDisclaimerTip: 'アプリケーションの使用に関する免責事項を提供します。',
+          copyrightTooltip: 'プロフェッショナルプラン以上にアップグレードしてください',
+          copyrightTip: 'Webアプリに著作権情報を表示する',
         },
         sso: {
           title: 'WebアプリのSSO',
@@ -72,6 +75,7 @@ const translation = {
           label: 'SSO認証',
           description: 'すべてのユーザーは、Webアプリを使用する前にSSOでログインする必要があります',
         },
+        modalTip: 'クライアント側の Web アプリ設定。',
       },
       embedded: {
         entry: '埋め込み',
@@ -109,10 +113,11 @@ const translation = {
           operation: 'ドキュメント',
         },
       },
+      launch: '発射',
     },
     apiInfo: {
       title: 'バックエンドサービスAPI',
-      explanation: 'あなた様のアプリケーションに簡単に統合できます',
+      explanation: 'あなたのアプリケーションに簡単に統合できます',
       accessibleAddress: 'サービスAPIエンドポイント',
       doc: 'APIリファレンス',
     },

@@ -82,8 +82,6 @@ const FileUploadSetting: FC<Props> = ({
   const handleCustomFileTypesChange = useCallback((customFileTypes: string[]) => {
     const newPayload = produce(payload, (draft) => {
       draft.allowed_file_extensions = customFileTypes.map((v) => {
-        if (v.startsWith('.')) // Not start with dot
-          return v.slice(1)
         return v
       })
     })
@@ -118,7 +116,7 @@ const FileUploadSetting: FC<Props> = ({
               type={SupportUploadFileTypes.custom}
               selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
               onToggle={handleSupportFileTypeChange}
-              customFileTypes={allowed_file_extensions?.map(item => `.${item}`)}
+              customFileTypes={allowed_file_extensions}
               onCustomFileTypesChange={handleCustomFileTypesChange}
             />
           </div>
@@ -152,7 +150,7 @@ const FileUploadSetting: FC<Props> = ({
           title={t('appDebug.variableConfig.maxNumberOfUploads')!}
         >
           <div>
-            <div className='mb-1.5 text-text-tertiary body-xs-regular'>{t('appDebug.variableConfig.maxNumberTip', {
+            <div className='body-xs-regular mb-1.5 text-text-tertiary'>{t('appDebug.variableConfig.maxNumberTip', {
               imgLimit: formatFileSize(imgSizeLimit),
               docLimit: formatFileSize(docSizeLimit),
               audioLimit: formatFileSize(audioSizeLimit),

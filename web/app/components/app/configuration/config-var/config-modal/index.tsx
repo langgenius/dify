@@ -233,9 +233,14 @@ const ConfigModal: FC<IConfigModalProps> = ({
             />
           )}
 
-          <div className='!mt-5 flex items-center h-6 space-x-2'>
-            <Checkbox checked={tempPayload.required} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
-            <span className='text-text-secondary system-sm-semibold'>{t('appDebug.variableConfig.required')}</span>
+          <div className='!mt-5 flex h-6 items-center space-x-2'>
+            <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
+            <span className='system-sm-semibold text-text-secondary'>{t('appDebug.variableConfig.required')}</span>
+          </div>
+
+          <div className='!mt-5 flex h-6 items-center space-x-2'>
+            <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => handlePayloadChange('hide')(!tempPayload.hide)} />
+            <span className='system-sm-semibold text-text-secondary'>{t('appDebug.variableConfig.hide')}</span>
           </div>
         </div>
       </div>

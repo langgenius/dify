@@ -22,7 +22,6 @@ class TidbService:
         :param iam_url: The URL of the TiDB Cloud IAM API (required).
         :param public_key: The public key for the API (required).
         :param private_key: The private key for the API (required).
-        :param display_name: The user-friendly display name of the cluster (required).
         :param region: The region where the cluster will be created (required).
 
         :return: The response from the API.
@@ -146,30 +145,27 @@ class TidbService:
         iam_url: str,
         public_key: str,
         private_key: str,
-    ) -> list[dict]:
+    ):
         """
         Update the status of a new TiDB Serverless cluster.
+        :param tidb_serverless_list: The TiDB serverless list (required).
         :param project_id: The project ID of the TiDB Cloud project (required).
         :param api_url: The URL of the TiDB Cloud API (required).
         :param iam_url: The URL of the TiDB Cloud IAM API (required).
         :param public_key: The public key for the API (required).
         :param private_key: The private key for the API (required).
-        :param display_name: The user-friendly display name of the cluster (required).
-        :param region: The region where the cluster will be created (required).
 
         :return: The response from the API.
         """
-        clusters = []
         tidb_serverless_list_map = {item.cluster_id: item for item in tidb_serverless_list}
         cluster_ids = [item.cluster_id for item in tidb_serverless_list]
-        params = {"clusterIds": cluster_ids, "view": "FULL"}
+        params = {"clusterIds": cluster_ids, "view": "BASIC"}
         response = requests.get(
             f"{api_url}/clusters:batchGet", params=params, auth=HTTPDigestAuth(public_key, private_key)
         )
 
         if response.status_code == 200:
             response_data = response.json()
-            cluster_infos = []
             for item in response_data["clusters"]:
                 state = item["state"]
                 userPrefix = item["userPrefix"]
@@ -188,12 +184,12 @@ class TidbService:
     ) -> list[dict]:
         """
         Creates a new TiDB Serverless cluster.
+        :param batch_size: The batch size (required).
         :param project_id: The project ID of the TiDB Cloud project (required).
         :param api_url: The URL of the TiDB Cloud API (required).
         :param iam_url: The URL of the TiDB Cloud IAM API (required).
         :param public_key: The public key for the API (required).
         :param private_key: The private key for the API (required).
-        :param display_name: The user-friendly display name of the cluster (required).
         :param region: The region where the cluster will be created (required).
 
         :return: The response from the API.
@@ -236,16 +232,17 @@ class TidbService:
             cluster_infos = []
             for item in response_data["clusters"]:
                 cache_key = f"tidb_serverless_cluster_password:{item['displayName']}"
-                password = redis_client.get(cache_key)
-                if not password:
+                cached_password = redis_client.get(cache_key)
+                if not cached_password:
                     continue
                 cluster_info = {
                     "cluster_id": item["clusterId"],
                     "cluster_name": item["displayName"],
                     "account": "root",
-                    "password": password.decode("utf-8"),
+                    "password": cached_password.decode("utf-8"),
                 }
                 cluster_infos.append(cluster_info)
             return cluster_infos
         else:
             response.raise_for_status()
+            return []  # FIXME for mypy, This line will not be reached as raise_for_status() will raise an exception

@@ -1,10 +1,11 @@
 from collections.abc import Sequence
-from enum import Enum
-from typing import Any, Optional
+from enum import Enum, StrEnum
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.file import FileExtraConfig, FileTransferMethod, FileType
+from core.file import FileTransferMethod, FileType, FileUploadConfig
+from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode
 
@@ -17,8 +18,8 @@ class ModelConfigEntity(BaseModel):
     provider: str
     model: str
     mode: Optional[str] = None
-    parameters: dict[str, Any] = {}
-    stop: list[str] = []
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    stop: list[str] = Field(default_factory=list)
 
 
 class AdvancedChatMessageEntity(BaseModel):
@@ -88,7 +89,7 @@ class PromptTemplateEntity(BaseModel):
     advanced_completion_prompt_template: Optional[AdvancedCompletionPromptTemplateEntity] = None
 
 
-class VariableEntityType(str, Enum):
+class VariableEntityType(StrEnum):
     TEXT_INPUT = "text-input"
     SELECT = "select"
     PARAGRAPH = "paragraph"
@@ -108,6 +109,7 @@ class VariableEntity(BaseModel):
     description: str = ""
     type: VariableEntityType
     required: bool = False
+    hide: bool = False
     max_length: Optional[int] = None
     options: Sequence[str] = Field(default_factory=list)
     allowed_file_types: Sequence[FileType] = Field(default_factory=list)
@@ -132,7 +134,56 @@ class ExternalDataVariableEntity(BaseModel):
 
     variable: str
     type: str
-    config: dict[str, Any] = {}
+    config: dict[str, Any] = Field(default_factory=dict)
+
+
+SupportedComparisonOperator = Literal[
+    # for string or array
+    "contains",
+    "not contains",
+    "start with",
+    "end with",
+    "is",
+    "is not",
+    "empty",
+    "not empty",
+    # for number
+    "=",
+    "≠",
+    ">",
+    "<",
+    "≥",
+    "≤",
+    # for time
+    "before",
+    "after",
+]
+
+
+class ModelConfig(BaseModel):
+    provider: str
+    name: str
+    mode: LLMMode
+    completion_params: dict[str, Any] = {}
+
+
+class Condition(BaseModel):
+    """
+    Conditon detail
+    """
+
+    name: str
+    comparison_operator: SupportedComparisonOperator
+    value: str | Sequence[str] | None | int | float = None
+
+
+class MetadataFilteringCondition(BaseModel):
+    """
+    Metadata Filtering Condition.
+    """
+
+    logical_operator: Optional[Literal["and", "or"]] = "and"
+    conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
 
 
 class DatasetRetrieveConfigEntity(BaseModel):
@@ -171,6 +222,9 @@ class DatasetRetrieveConfigEntity(BaseModel):
     reranking_model: Optional[dict] = None
     weights: Optional[dict] = None
     reranking_enabled: Optional[bool] = True
+    metadata_filtering_mode: Optional[Literal["disabled", "automatic", "manual"]] = "disabled"
+    metadata_model_config: Optional[ModelConfig] = None
+    metadata_filtering_conditions: Optional[MetadataFilteringCondition] = None
 
 
 class DatasetEntity(BaseModel):
@@ -188,7 +242,7 @@ class SensitiveWordAvoidanceEntity(BaseModel):
     """
 
     type: str
-    config: dict[str, Any] = {}
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class TextToSpeechEntity(BaseModel):
@@ -211,7 +265,7 @@ class TracingConfigEntity(BaseModel):
 
 
 class AppAdditionalFeatures(BaseModel):
-    file_upload: Optional[FileExtraConfig] = None
+    file_upload: Optional[FileUploadConfig] = None
     opening_statement: Optional[str] = None
     suggested_questions: list[str] = []
     suggested_questions_after_answer: bool = False

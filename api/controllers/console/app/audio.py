@@ -22,7 +22,7 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
-from models.model import AppMode
+from models import App, AppMode
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -70,7 +70,7 @@ class ChatMessageAudioApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception(f"internal server error, {str(e)}.")
+            logging.exception("Failed to handle post request to ChatMessageAudioApi")
             raise InternalServerError()
 
 
@@ -79,9 +79,7 @@ class ChatMessageTextApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
-    def post(self, app_model):
-        from werkzeug.exceptions import InternalServerError
-
+    def post(self, app_model: App):
         try:
             parser = reqparse.RequestParser()
             parser.add_argument("message_id", type=str, location="json")
@@ -98,9 +96,13 @@ class ChatMessageTextApi(Resource):
                 and app_model.workflow.features_dict
             ):
                 text_to_speech = app_model.workflow.features_dict.get("text_to_speech")
+                if text_to_speech is None:
+                    raise ValueError("TTS is not enabled")
                 voice = args.get("voice") or text_to_speech.get("voice")
             else:
                 try:
+                    if app_model.app_model_config is None:
+                        raise ValueError("AppModelConfig not found")
                     voice = args.get("voice") or app_model.app_model_config.text_to_speech_dict.get("voice")
                 except Exception:
                     voice = None
@@ -128,7 +130,7 @@ class ChatMessageTextApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception(f"internal server error, {str(e)}.")
+            logging.exception("Failed to handle post request to ChatMessageTextApi")
             raise InternalServerError()
 
 
@@ -170,7 +172,7 @@ class TextModesApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception(f"internal server error, {str(e)}.")
+            logging.exception("Failed to handle get request to TextModesApi")
             raise InternalServerError()
 
 

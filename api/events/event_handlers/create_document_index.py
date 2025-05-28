@@ -14,7 +14,7 @@ from models.dataset import Document
 @document_index_created.connect
 def handle(sender, **kwargs):
     dataset_id = sender
-    document_ids = kwargs.get("document_ids")
+    document_ids = kwargs.get("document_ids", [])
     documents = []
     start_at = time.perf_counter()
     for document_id in document_ids:
@@ -33,7 +33,7 @@ def handle(sender, **kwargs):
             raise NotFound("Document not found")
 
         document.indexing_status = "parsing"
-        document.processing_started_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         documents.append(document)
         db.session.add(document)
     db.session.commit()

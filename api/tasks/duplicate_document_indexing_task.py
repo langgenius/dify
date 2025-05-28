@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
@@ -20,12 +20,16 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
     :param dataset_id:
     :param document_ids:
 
-    Usage: duplicate_document_indexing_task.delay(dataset_id, document_id)
+    Usage: duplicate_document_indexing_task.delay(dataset_id, document_ids)
     """
     documents = []
     start_at = time.perf_counter()
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if dataset is None:
+        logging.info(click.style("Dataset not found: {}".format(dataset_id), fg="red"))
+        db.session.close()
+        return
 
     # check document limit
     features = FeatureService.get_features(dataset.tenant_id)
@@ -33,6 +37,8 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
         if features.billing.enabled:
             vector_space = features.vector_space
             count = len(document_ids)
+            if features.billing.subscription.plan == "sandbox" and count > 1:
+                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -49,10 +55,12 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
             if document:
                 document.indexing_status = "error"
                 document.error = str(e)
-                document.stopped_at = datetime.datetime.utcnow()
+                document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.add(document)
         db.session.commit()
         return
+    finally:
+        db.session.close()
 
     for document_id in document_ids:
         logging.info(click.style("Start process document: {}".format(document_id), fg="green"))
@@ -71,14 +79,14 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
                 index_node_ids = [segment.index_node_id for segment in segments]
 
                 # delete from vector index
-                index_processor.clean(dataset, index_node_ids)
+                index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=True)
 
                 for segment in segments:
                     db.session.delete(segment)
                 db.session.commit()
 
             document.indexing_status = "parsing"
-            document.processing_started_at = datetime.datetime.utcnow()
+            document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             documents.append(document)
             db.session.add(document)
     db.session.commit()
@@ -92,3 +100,5 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
         logging.info(click.style(str(ex), fg="yellow"))
     except Exception:
         pass
+    finally:
+        db.session.close()

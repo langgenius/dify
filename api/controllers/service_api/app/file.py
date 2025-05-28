@@ -41,7 +41,6 @@ class FileApi(Resource):
                 content=file.read(),
                 mimetype=file.mimetype,
                 user=end_user,
-                source="datasets",
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)

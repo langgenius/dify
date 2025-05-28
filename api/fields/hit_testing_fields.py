@@ -7,6 +7,7 @@ document_fields = {
     "data_source_type": fields.String,
     "name": fields.String,
     "doc_type": fields.String,
+    "doc_metadata": fields.Raw,
 }
 
 segment_fields = {
@@ -14,6 +15,7 @@ segment_fields = {
     "position": fields.Integer,
     "document_id": fields.String,
     "content": fields.String,
+    "sign_content": fields.String,
     "answer": fields.String,
     "word_count": fields.Integer,
     "tokens": fields.Integer,
@@ -34,8 +36,16 @@ segment_fields = {
     "document": fields.Nested(document_fields),
 }
 
+child_chunk_fields = {
+    "id": fields.String,
+    "content": fields.String,
+    "position": fields.Integer,
+    "score": fields.Float,
+}
+
 hit_testing_record_fields = {
     "segment": fields.Nested(segment_fields),
+    "child_chunks": fields.List(fields.Nested(child_chunk_fields)),
     "score": fields.Float,
     "tsne_position": fields.Raw,
 }

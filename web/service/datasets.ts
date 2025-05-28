@@ -5,8 +5,6 @@ import type {
   CreateDocumentReq,
   DataSet,
   DataSetListResponse,
-  DocumentDetailResponse,
-  DocumentListResponse,
   ErrorDocsResponse,
   ExternalAPIDeleteResponse,
   ExternalAPIItem,
@@ -14,6 +12,7 @@ import type {
   ExternalAPIUsage,
   ExternalKnowledgeBaseHitTestingResponse,
   ExternalKnowledgeItem,
+  FetchDatasetsParams,
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
   HitTestingResponse,
@@ -23,10 +22,6 @@ import type {
   IndexingStatusResponse,
   ProcessRuleResponse,
   RelatedAppResponse,
-  SegmentDetailModel,
-  SegmentUpdater,
-  SegmentsQuery,
-  SegmentsResponse,
   createDocumentResponse,
 } from '@/models/datasets'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
@@ -72,7 +67,7 @@ export const fetchDatasetRelatedApps: Fetcher<RelatedAppResponse, string> = (dat
   return get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`)
 }
 
-export const fetchDatasets: Fetcher<DataSetListResponse, { url: string; params: { page: number; ids?: string[]; limit?: number } }> = ({ url, params }) => {
+export const fetchDatasets: Fetcher<DataSetListResponse, FetchDatasetsParams> = ({ url, params }) => {
   const urlParams = qs.stringify(params, { indices: false })
   return get<DataSetListResponse>(`${url}?${urlParams}`)
 }
@@ -126,10 +121,6 @@ export const fetchProcessRule: Fetcher<ProcessRuleResponse, { params: { document
   return get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } })
 }
 
-export const fetchDocuments: Fetcher<DocumentListResponse, { datasetId: string; params: { keyword: string; page: number; limit: number; sort?: SortType } }> = ({ datasetId, params }) => {
-  return get<DocumentListResponse>(`/datasets/${datasetId}/documents`, { params })
-}
-
 export const createFirstDocument: Fetcher<createDocumentResponse, { body: CreateDocumentReq }> = ({ body }) => {
   return post<createDocumentResponse>('/datasets/init', { body })
 }
@@ -153,10 +144,6 @@ export const fetchIndexingStatusBatch: Fetcher<IndexingStatusBatchResponse, Batc
   return get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`, {})
 }
 
-export const fetchDocumentDetail: Fetcher<DocumentDetailResponse, CommonDocReq & { params: { metadata?: MetadataType } }> = ({ datasetId, documentId, params }) => {
-  return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params })
-}
-
 export const renameDocumentName: Fetcher<CommonResponse, CommonDocReq & { name: string }> = ({ datasetId, documentId, name }) => {
   return post<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/rename`, {
     body: { name },
@@ -171,74 +158,12 @@ export const resumeDocIndexing: Fetcher<CommonResponse, CommonDocReq> = ({ datas
   return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/processing/resume`)
 }
 
-export const deleteDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}`)
-}
-
-export const archiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/status/archive`)
-}
-
-export const unArchiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/status/un_archive`)
-}
-
-export const enableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/status/enable`)
-}
-
-export const disableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/status/disable`)
-}
-
-export const syncDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/notion/sync`)
-}
-
-export const syncWebsite: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
-  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
-}
-
 export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
   return get<{ notion_info: DataSourceNotionWorkspace[] }>(url, { params: { dataset_id: datasetId } })
 }
 
 export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: { doc_type: string; doc_metadata: Record<string, any> } }> = ({ datasetId, documentId, body }) => {
   return put<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/metadata`, { body })
-}
-
-// apis for segments in a document
-
-export const fetchSegments: Fetcher<SegmentsResponse, CommonDocReq & { params: SegmentsQuery }> = ({ datasetId, documentId, params }) => {
-  return get<SegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments`, { params })
-}
-
-export const enableSegment: Fetcher<CommonResponse, { datasetId: string; segmentId: string }> = ({ datasetId, segmentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/segments/${segmentId}/enable`)
-}
-
-export const disableSegment: Fetcher<CommonResponse, { datasetId: string; segmentId: string }> = ({ datasetId, segmentId }) => {
-  return patch<CommonResponse>(`/datasets/${datasetId}/segments/${segmentId}/disable`)
-}
-
-export const updateSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; segmentId: string; body: SegmentUpdater }> = ({ datasetId, documentId, segmentId, body }) => {
-  return patch<{ data: SegmentDetailModel; doc_form: string }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
-}
-
-export const addSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; body: SegmentUpdater }> = ({ datasetId, documentId, body }) => {
-  return post<{ data: SegmentDetailModel; doc_form: string }>(`/datasets/${datasetId}/documents/${documentId}/segment`, { body })
-}
-
-export const deleteSegment: Fetcher<CommonResponse, { datasetId: string; documentId: string; segmentId: string }> = ({ datasetId, documentId, segmentId }) => {
-  return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`)
-}
-
-export const segmentBatchImport: Fetcher<{ job_id: string; job_status: string }, { url: string; body: FormData }> = ({ url, body }) => {
-  return post<{ job_id: string; job_status: string }>(url, { body }, { bodyStringify: false, deleteContentType: true })
-}
-
-export const checkSegmentBatchImportProgress: Fetcher<{ job_id: string; job_status: string }, { jobID: string }> = ({ jobID }) => {
-  return get<{ job_id: string; job_status: string }>(`/datasets/batch_import_status/${jobID}`)
 }
 
 // hit testing
@@ -322,6 +247,25 @@ export const checkJinaReaderTaskStatus: Fetcher<CommonResponse, string> = (jobId
   return get<CommonResponse>(`website/crawl/status/${jobId}`, {
     params: {
       provider: 'jinareader',
+    },
+  }, {
+    silent: true,
+  })
+}
+
+export const createWatercrawlTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: DataSourceProvider.waterCrawl,
+    },
+  })
+}
+
+export const checkWatercrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: DataSourceProvider.waterCrawl,
     },
   }, {
     silent: true,

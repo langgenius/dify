@@ -4,8 +4,7 @@ import time
 from typing import Optional
 
 import click
-from celery import shared_task
-from werkzeug.exceptions import NotFound
+from celery import shared_task  # type: ignore
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import Document
@@ -27,7 +26,9 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
     if not segment:
-        raise NotFound("Segment not found")
+        logging.info(click.style("Segment not found: {}".format(segment_id), fg="red"))
+        db.session.close()
+        return
 
     if segment.status != "waiting":
         return
@@ -38,9 +39,9 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         # update segment status to indexing
         update_params = {
             DocumentSegment.status: "indexing",
-            DocumentSegment.indexing_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         }
-        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
         db.session.commit()
         document = Document(
             page_content=segment.content,
@@ -75,9 +76,9 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         # update segment to completed
         update_params = {
             DocumentSegment.status: "completed",
-            DocumentSegment.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         }
-        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.query(DocumentSegment).filter_by(id=segment.id).update(update_params)
         db.session.commit()
 
         end_at = time.perf_counter()
@@ -87,9 +88,10 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
     except Exception as e:
         logging.exception("create segment to index failed")
         segment.enabled = False
-        segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         segment.status = "error"
         segment.error = str(e)
         db.session.commit()
     finally:
         redis_client.delete(indexing_cache_key)
+        db.session.close()

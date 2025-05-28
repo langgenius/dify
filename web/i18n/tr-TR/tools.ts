@@ -15,7 +15,6 @@ const translation = {
   },
   author: 'Tarafından',
   auth: {
-    unauthorized: 'Yetki Ver',
     authorized: 'Yetkilendirildi',
     setup: 'Kullanmak için yetkilendirmeyi ayarla',
     setupModalTitle: 'Yetkilendirmeyi Ayarla',
@@ -31,6 +30,8 @@ const translation = {
     manageInTools: 'Araçlarda Yönet',
     emptyTitle: 'Kullanılabilir workflow aracı yok',
     emptyTip: 'Git "Workflow -> Araç olarak Yayınla"',
+    emptyTitleCustom: 'Özel bir araç yok',
+    emptyTipCustom: 'Özel bir araç oluşturun',
   },
   createTool: {
     title: 'Özel Araç Oluştur',
@@ -131,6 +132,7 @@ const translation = {
     number: 'numara',
     required: 'Gerekli',
     infoAndSetting: 'Bilgi ve Ayarlar',
+    file: 'dosya',
   },
   noCustomTool: {
     title: 'Özel araç yok!',
@@ -148,6 +150,8 @@ const translation = {
   howToGet: 'Nasıl alınır',
   openInStudio: 'Studyoda Aç',
   toolNameUsageTip: 'Agent akıl yürütme ve prompt için araç çağrı adı',
+  copyToolName: 'Adı Kopyala',
+  noTools: 'Araç bulunamadı',
 }
 
 export default translation

@@ -1,7 +1,7 @@
 from textwrap import dedent
 
 import pytest
-from yaml import YAMLError
+from yaml import YAMLError  # type: ignore
 
 from core.tools.utils.yaml_utils import load_yaml_file
 

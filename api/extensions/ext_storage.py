@@ -1,30 +1,38 @@
 import logging
-from collections.abc import Generator
-from typing import Union
+from collections.abc import Callable, Generator
+from typing import Literal, Union, overload
 
 from flask import Flask
 
 from configs import dify_config
+from dify_app import DifyApp
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_type import StorageType
 
+logger = logging.getLogger(__name__)
+
 
 class Storage:
-    def __init__(self):
-        self.storage_runner = None
-
     def init_app(self, app: Flask):
         storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
         with app.app_context():
             self.storage_runner = storage_factory()
 
     @staticmethod
-    def get_storage_factory(storage_type: str) -> type[BaseStorage]:
+    def get_storage_factory(storage_type: str) -> Callable[[], BaseStorage]:
         match storage_type:
             case StorageType.S3:
                 from extensions.storage.aws_s3_storage import AwsS3Storage
 
                 return AwsS3Storage
+            case StorageType.OPENDAL:
+                from extensions.storage.opendal_storage import OpenDALStorage
+
+                return lambda: OpenDALStorage(dify_config.OPENDAL_SCHEME)
+            case StorageType.LOCAL:
+                from extensions.storage.opendal_storage import OpenDALStorage
+
+                return lambda: OpenDALStorage(scheme="fs", root=dify_config.STORAGE_LOCAL_PATH)
             case StorageType.AZURE_BLOB:
                 from extensions.storage.azure_blob_storage import AzureBlobStorage
 
@@ -61,66 +69,45 @@ class Storage:
                 from extensions.storage.supabase_storage import SupabaseStorage
 
                 return SupabaseStorage
-            case StorageType.LOCAL | _:
-                from extensions.storage.local_fs_storage import LocalFsStorage
-
-                return LocalFsStorage
+            case _:
+                raise ValueError(f"unsupported storage type {storage_type}")
 
     def save(self, filename, data):
-        try:
-            self.storage_runner.save(filename, data)
-        except Exception as e:
-            logging.exception("Failed to save file: %s", e)
-            raise e
+        self.storage_runner.save(filename, data)
+
+    @overload
+    def load(self, filename: str, /, *, stream: Literal[False] = False) -> bytes: ...
+
+    @overload
+    def load(self, filename: str, /, *, stream: Literal[True]) -> Generator: ...
 
     def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
-        try:
-            if stream:
-                return self.load_stream(filename)
-            else:
-                return self.load_once(filename)
-        except Exception as e:
-            logging.exception("Failed to load file: %s", e)
-            raise e
+        if stream:
+            return self.load_stream(filename)
+        else:
+            return self.load_once(filename)
 
     def load_once(self, filename: str) -> bytes:
-        try:
-            return self.storage_runner.load_once(filename)
-        except Exception as e:
-            logging.exception("Failed to load_once file: %s", e)
-            raise e
+        return self.storage_runner.load_once(filename)
 
     def load_stream(self, filename: str) -> Generator:
-        try:
-            return self.storage_runner.load_stream(filename)
-        except Exception as e:
-            logging.exception("Failed to load_stream file: %s", e)
-            raise e
+        return self.storage_runner.load_stream(filename)
 
     def download(self, filename, target_filepath):
-        try:
-            self.storage_runner.download(filename, target_filepath)
-        except Exception as e:
-            logging.exception("Failed to download file: %s", e)
-            raise e
+        self.storage_runner.download(filename, target_filepath)
 
     def exists(self, filename):
-        try:
-            return self.storage_runner.exists(filename)
-        except Exception as e:
-            logging.exception("Failed to check file exists: %s", e)
-            raise e
+        return self.storage_runner.exists(filename)
 
     def delete(self, filename):
-        try:
-            return self.storage_runner.delete(filename)
-        except Exception as e:
-            logging.exception("Failed to delete file: %s", e)
-            raise e
+        return self.storage_runner.delete(filename)
+
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        return self.storage_runner.scan(path, files=files, directories=directories)
 
 
 storage = Storage()
 
 
-def init_app(app: Flask):
+def init_app(app: DifyApp):
     storage.init_app(app)

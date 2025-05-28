@@ -1,10 +1,10 @@
-import json
 import logging
 import os
 from datetime import datetime, timedelta
 from typing import Optional
 
-from langfuse import Langfuse
+from langfuse import Langfuse  # type: ignore
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangfuseConfig
@@ -28,9 +28,10 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.utils import filter_none_values
+from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
-from models.model import EndUser
-from models.workflow import WorkflowNodeExecution
+from models import Account, App, EndUser, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +66,11 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.workflow_app_log_id or trace_info.workflow_run_id
+        trace_id = trace_info.workflow_run_id
         user_id = trace_info.metadata.get("user_id")
+        metadata = trace_info.metadata
+        metadata["workflow_app_log_id"] = trace_info.workflow_app_log_id
+
         if trace_info.message_id:
             trace_id = trace_info.message_id
             name = TraceTaskName.MESSAGE_TRACE.value
@@ -74,24 +78,22 @@ class LangFuseDataTrace(BaseTraceInstance):
                 id=trace_id,
                 user_id=user_id,
                 name=name,
-                input=trace_info.workflow_run_inputs,
-                output=trace_info.workflow_run_outputs,
-                metadata=trace_info.metadata,
+                input=dict(trace_info.workflow_run_inputs),
+                output=dict(trace_info.workflow_run_outputs),
+                metadata=metadata,
                 session_id=trace_info.conversation_id,
                 tags=["message", "workflow"],
-                created_at=trace_info.start_time,
-                updated_at=trace_info.end_time,
             )
             self.add_trace(langfuse_trace_data=trace_data)
             workflow_span_data = LangfuseSpan(
-                id=(trace_info.workflow_app_log_id or trace_info.workflow_run_id),
+                id=trace_info.workflow_run_id,
                 name=TraceTaskName.WORKFLOW_TRACE.value,
-                input=trace_info.workflow_run_inputs,
-                output=trace_info.workflow_run_outputs,
+                input=dict(trace_info.workflow_run_inputs),
+                output=dict(trace_info.workflow_run_outputs),
                 trace_id=trace_id,
                 start_time=trace_info.start_time,
                 end_time=trace_info.end_time,
-                metadata=trace_info.metadata,
+                metadata=metadata,
                 level=LevelEnum.DEFAULT if trace_info.error == "" else LevelEnum.ERROR,
                 status_message=trace_info.error or "",
             )
@@ -101,62 +103,64 @@ class LangFuseDataTrace(BaseTraceInstance):
                 id=trace_id,
                 user_id=user_id,
                 name=TraceTaskName.WORKFLOW_TRACE.value,
-                input=trace_info.workflow_run_inputs,
-                output=trace_info.workflow_run_outputs,
-                metadata=trace_info.metadata,
+                input=dict(trace_info.workflow_run_inputs),
+                output=dict(trace_info.workflow_run_outputs),
+                metadata=metadata,
                 session_id=trace_info.conversation_id,
                 tags=["workflow"],
             )
             self.add_trace(langfuse_trace_data=trace_data)
 
-        # through workflow_run_id get all_nodes_execution
-        workflow_nodes_execution_id_records = (
-            db.session.query(WorkflowNodeExecution.id)
-            .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
-            .all()
+        # through workflow_run_id get all_nodes_execution using repository
+        session_factory = sessionmaker(bind=db.engine)
+        # Find the app's creator account
+        with Session(db.engine, expire_on_commit=False) as session:
+            # Get the app to find its creator
+            app_id = trace_info.metadata.get("app_id")
+            if not app_id:
+                raise ValueError("No app_id found in trace_info metadata")
+
+            app = session.query(App).filter(App.id == app_id).first()
+            if not app:
+                raise ValueError(f"App with id {app_id} not found")
+
+            if not app.created_by:
+                raise ValueError(f"App with id {app_id} has no creator (created_by is None)")
+
+            service_account = session.query(Account).filter(Account.id == app.created_by).first()
+            if not service_account:
+                raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
+
+        workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
+            session_factory=session_factory,
+            user=service_account,
+            app_id=trace_info.metadata.get("app_id"),
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
-        for node_execution_id_record in workflow_nodes_execution_id_records:
-            node_execution = (
-                db.session.query(
-                    WorkflowNodeExecution.id,
-                    WorkflowNodeExecution.tenant_id,
-                    WorkflowNodeExecution.app_id,
-                    WorkflowNodeExecution.title,
-                    WorkflowNodeExecution.node_type,
-                    WorkflowNodeExecution.status,
-                    WorkflowNodeExecution.inputs,
-                    WorkflowNodeExecution.outputs,
-                    WorkflowNodeExecution.created_at,
-                    WorkflowNodeExecution.elapsed_time,
-                    WorkflowNodeExecution.process_data,
-                    WorkflowNodeExecution.execution_metadata,
-                )
-                .filter(WorkflowNodeExecution.id == node_execution_id_record.id)
-                .first()
-            )
+        # Get all executions for this workflow run
+        workflow_node_executions = workflow_node_execution_repository.get_by_workflow_run(
+            workflow_run_id=trace_info.workflow_run_id
+        )
 
-            if not node_execution:
-                continue
-
+        for node_execution in workflow_node_executions:
             node_execution_id = node_execution.id
-            tenant_id = node_execution.tenant_id
-            app_id = node_execution.app_id
+            tenant_id = trace_info.tenant_id  # Use from trace_info instead
+            app_id = trace_info.metadata.get("app_id")  # Use from trace_info instead
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            if node_type == "llm":
-                inputs = (
-                    json.loads(node_execution.process_data).get("prompts", {}) if node_execution.process_data else {}
-                )
+            if node_type == NodeType.LLM:
+                inputs = node_execution.process_data.get("prompts", {}) if node_execution.process_data else {}
             else:
-                inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
-            outputs = json.loads(node_execution.outputs) if node_execution.outputs else {}
+                inputs = node_execution.inputs if node_execution.inputs else {}
+            outputs = node_execution.outputs if node_execution.outputs else {}
             created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
-            metadata = json.loads(node_execution.execution_metadata) if node_execution.execution_metadata else {}
+            execution_metadata = node_execution.metadata if node_execution.metadata else {}
+            metadata = {str(k): v for k, v in execution_metadata.items()}
             metadata.update(
                 {
                     "workflow_run_id": trace_info.workflow_run_id,
@@ -168,7 +172,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     "status": status,
                 }
             )
-            process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
+            process_data = node_execution.process_data if node_execution.process_data else {}
             model_provider = process_data.get("model_provider", None)
             model_name = process_data.get("model_name", None)
             if model_provider is not None and model_name is not None:
@@ -192,7 +196,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     metadata=metadata,
                     level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
                     status_message=trace_info.error or "",
-                    parent_observation_id=(trace_info.workflow_app_log_id or trace_info.workflow_run_id),
+                    parent_observation_id=trace_info.workflow_run_id,
                 )
             else:
                 span_data = LangfuseSpan(
@@ -212,9 +216,24 @@ class LangFuseDataTrace(BaseTraceInstance):
 
             if process_data and process_data.get("model_mode") == "chat":
                 total_token = metadata.get("total_tokens", 0)
+                prompt_tokens = 0
+                completion_tokens = 0
+                try:
+                    if outputs.get("usage"):
+                        prompt_tokens = outputs.get("usage", {}).get("prompt_tokens", 0)
+                        completion_tokens = outputs.get("usage", {}).get("completion_tokens", 0)
+                    else:
+                        prompt_tokens = process_data.get("usage", {}).get("prompt_tokens", 0)
+                        completion_tokens = process_data.get("usage", {}).get("completion_tokens", 0)
+                except Exception:
+                    logger.error("Failed to extract usage", exc_info=True)
+
                 # add generation
                 generation_usage = GenerationUsage(
+                    input=prompt_tokens,
+                    output=completion_tokens,
                     total=total_token,
+                    unit=UnitEnum.TOKENS,
                 )
 
                 node_generation_data = LangfuseGeneration(
@@ -239,11 +258,13 @@ class LangFuseDataTrace(BaseTraceInstance):
         file_list = trace_info.file_list
         metadata = trace_info.metadata
         message_data = trace_info.message_data
+        if message_data is None:
+            return
         message_id = message_data.id
 
         user_id = message_data.from_account_id
         if message_data.from_end_user_id:
-            end_user_data: EndUser = (
+            end_user_data: Optional[EndUser] = (
                 db.session.query(EndUser).filter(EndUser.id == message_data.from_end_user_id).first()
             )
             if end_user_data is not None:
@@ -300,6 +321,8 @@ class LangFuseDataTrace(BaseTraceInstance):
         self.add_generation(langfuse_generation_data)
 
     def moderation_trace(self, trace_info: ModerationTraceInfo):
+        if trace_info.message_data is None:
+            return
         span_data = LangfuseSpan(
             name=TraceTaskName.MODERATION_TRACE.value,
             input=trace_info.inputs,
@@ -319,9 +342,11 @@ class LangFuseDataTrace(BaseTraceInstance):
 
     def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
         message_data = trace_info.message_data
+        if message_data is None:
+            return
         generation_usage = GenerationUsage(
             total=len(str(trace_info.suggested_question)),
-            input=len(trace_info.inputs),
+            input=len(trace_info.inputs) if trace_info.inputs else 0,
             output=len(trace_info.suggested_question),
             unit=UnitEnum.CHARACTERS,
         )
@@ -342,6 +367,8 @@ class LangFuseDataTrace(BaseTraceInstance):
         self.add_generation(langfuse_generation_data=generation_data)
 
     def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
+        if trace_info.message_data is None:
+            return
         dataset_retrieval_span_data = LangfuseSpan(
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
             input=trace_info.inputs,

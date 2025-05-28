@@ -25,7 +25,7 @@ const AddButton: FC<Props> = ({
       size='medium'
       onClick={onClick}
     >
-      <RiAddLine className='mr-1 w-3.5 h-3.5' />
+      <RiAddLine className='mr-1 h-3.5 w-3.5' />
       <div>{text}</div>
     </Button>
   )

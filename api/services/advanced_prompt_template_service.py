@@ -48,6 +48,8 @@ class AdvancedPromptTemplateService:
                 return cls.get_chat_prompt(
                     copy.deepcopy(COMPLETION_APP_CHAT_PROMPT_CONFIG), has_context, context_prompt
                 )
+        # default return empty dict
+        return {}
 
     @classmethod
     def get_completion_prompt(cls, prompt_template: dict, has_context: str, context: str) -> dict:
@@ -91,3 +93,5 @@ class AdvancedPromptTemplateService:
                 return cls.get_chat_prompt(
                     copy.deepcopy(BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG), has_context, baichuan_context_prompt
                 )
+        # default return empty dict
+        return {}

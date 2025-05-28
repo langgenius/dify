@@ -7,7 +7,7 @@ import type { PeriodParams } from '@/app/components/app/overview/appChart'
 import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/appChart'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { TIME_PERIOD_LIST } from '@/app/components/app/log/filter'
+import { TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 dayjs.extend(quarterOfYear)
@@ -28,7 +28,7 @@ export default function ChartView({ appId }: IChartViewProps) {
   const [period, setPeriod] = useState<PeriodParams>({ name: t('appLog.filter.period.last7days'), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } })
 
   const onSelect = (item: Item) => {
-    if (item.value === 'all') {
+    if (item.value === -1) {
       setPeriod({ name: item.name, query: undefined })
     }
     else if (item.value === 0) {
@@ -46,23 +46,28 @@ export default function ChartView({ appId }: IChartViewProps) {
 
   return (
     <div>
-      <div className='flex flex-row items-center mt-8 mb-4 text-gray-900 text-base'>
+      <div className='system-xl-semibold mb-4 mt-8 flex flex-row items-center text-text-primary'>
         <span className='mr-3'>{t('appOverview.analysis.title')}</span>
         <SimpleSelect
-          items={TIME_PERIOD_LIST.map(item => ({ value: item.value, name: t(`appLog.filter.period.${item.name}`) }))}
+          items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
           className='mt-0 !w-40'
-          onSelect={onSelect}
-          defaultValue={7}
+          onSelect={(item) => {
+            const id = item.value
+            const value = TIME_PERIOD_MAPPING[id]?.value ?? '-1'
+            const name = item.name || t('appLog.filter.period.allTime')
+            onSelect({ value, name })
+          }}
+          defaultValue={'2'}
         />
       </div>
       {!isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <ConversationsChart period={period} id={appId} />
           <EndUsersChart period={period} id={appId} />
         </div>
       )}
       {!isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           {isChatApp
             ? (
               <AvgSessionInteractions period={period} id={appId} />
@@ -74,24 +79,24 @@ export default function ChartView({ appId }: IChartViewProps) {
         </div>
       )}
       {!isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <UserSatisfactionRate period={period} id={appId} />
           <CostChart period={period} id={appId} />
         </div>
       )}
       {!isWorkflow && isChatApp && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <MessagesChart period={period} id={appId} />
         </div>
       )}
       {isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <WorkflowMessagesChart period={period} id={appId} />
           <WorkflowDailyTerminalsChart period={period} id={appId} />
         </div>
       )}
       {isWorkflow && (
-        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
           <WorkflowCostChart period={period} id={appId} />
           <AvgUserInteractions period={period} id={appId} />
         </div>

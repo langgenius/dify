@@ -1,6 +1,5 @@
 import base64
 
-from extensions.ext_database import db
 from libs import rsa
 
 
@@ -14,6 +13,7 @@ def obfuscated_token(token: str):
 
 def encrypt_token(tenant_id: str, token: str):
     from models.account import Tenant
+    from models.engine import db
 
     if not (tenant := db.session.query(Tenant).filter(Tenant.id == tenant_id).first()):
         raise ValueError(f"Tenant with id {tenant_id} not found")

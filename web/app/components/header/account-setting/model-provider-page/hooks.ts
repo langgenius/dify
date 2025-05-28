@@ -11,10 +11,12 @@ import type {
   DefaultModel,
   DefaultModelResponse,
   Model,
+  ModelProvider,
   ModelTypeEnum,
 } from './declarations'
 import {
   ConfigurationMethodEnum,
+  CustomConfigurationStatusEnum,
   ModelStatusEnum,
 } from './declarations'
 import I18n from '@/context/i18n'
@@ -26,6 +28,15 @@ import {
   getPayUrl,
 } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
+import {
+  useMarketplacePlugins,
+} from '@/app/components/plugins/marketplace/hooks'
+import type { Plugin } from '@/app/components/plugins/types'
+import { PluginType } from '@/app/components/plugins/types'
+import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
+import { useModalContextSelector } from '@/context/modal-context'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -232,4 +243,111 @@ export const useUpdateModelProviders = () => {
   }, [mutate])
 
   return updateModelProviders
+}
+
+export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText: string) => {
+  const exclude = useMemo(() => {
+    return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
+  }, [providers])
+  const [collectionPlugins, setCollectionPlugins] = useState<Plugin[]>([])
+
+  const {
+    plugins,
+    queryPlugins,
+    queryPluginsWithDebounced,
+    isLoading,
+  } = useMarketplacePlugins()
+
+  const getCollectionPlugins = useCallback(async () => {
+    const collectionPlugins = await getMarketplacePluginsByCollectionId('__model-settings-pinned-models')
+
+    setCollectionPlugins(collectionPlugins)
+  }, [])
+
+  useEffect(() => {
+    getCollectionPlugins()
+  }, [getCollectionPlugins])
+
+  useEffect(() => {
+    if (searchText) {
+      queryPluginsWithDebounced({
+        query: searchText,
+        category: PluginType.model,
+        exclude,
+        type: 'plugin',
+        sortBy: 'install_count',
+        sortOrder: 'DESC',
+      })
+    }
+    else {
+      queryPlugins({
+        query: '',
+        category: PluginType.model,
+        type: 'plugin',
+        pageSize: 1000,
+        exclude,
+        sortBy: 'install_count',
+        sortOrder: 'DESC',
+      })
+    }
+  }, [queryPlugins, queryPluginsWithDebounced, searchText, exclude])
+
+  const allPlugins = useMemo(() => {
+    const allPlugins = [...collectionPlugins.filter(plugin => !exclude.includes(plugin.plugin_id))]
+
+    if (plugins?.length) {
+      for (let i = 0; i < plugins.length; i++) {
+        const plugin = plugins[i]
+
+        if (plugin.type !== 'bundle' && !allPlugins.find(p => p.plugin_id === plugin.plugin_id))
+          allPlugins.push(plugin)
+      }
+    }
+
+    return allPlugins
+  }, [plugins, collectionPlugins, exclude])
+
+  return {
+    plugins: allPlugins,
+    isLoading,
+  }
+}
+
+export const useModelModalHandler = () => {
+  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
+  const updateModelProviders = useUpdateModelProviders()
+  const updateModelList = useUpdateModelList()
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  return (
+    provider: ModelProvider,
+    configurationMethod: ConfigurationMethodEnum,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  ) => {
+    setShowModelModal({
+      payload: {
+        currentProvider: provider,
+        currentConfigurationMethod: configurationMethod,
+        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
+      },
+      onSaveCallback: () => {
+        updateModelProviders()
+
+        provider.supported_model_types.forEach((type) => {
+          updateModelList(type)
+        })
+
+        if (configurationMethod === ConfigurationMethodEnum.customizableModel
+            && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+          eventEmitter?.emit({
+            type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
+            payload: provider.provider,
+          } as any)
+
+          if (CustomConfigurationModelFixedFields?.__model_type)
+            updateModelList(CustomConfigurationModelFixedFields.__model_type)
+        }
+      },
+    })
+  }
 }
