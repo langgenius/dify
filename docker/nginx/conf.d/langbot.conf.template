@@ -4,7 +4,6 @@ server {
     listen ${NGINX_PORT};
     server_name langbot.${NGINX_SERVER_NAME};
 
-    // wecom verification
     location = /WW_verify_KiDk4c0uzgf4zc8l.txt {
         default_type text/plain;
         return 200 'KiDk4c0uzgf4zc8l';
