@@ -10,11 +10,6 @@ server {
         return 200 '8906c392d82bad461896285855d73cd8';
     }
 
-    location = /WW_verify_KiDk4c0uzgf4zc8l.txt {
-        default_type text/plain;
-        return 200 'KiDk4c0uzgf4zc8l';
-    }
-
     location /console/api {
       proxy_pass http://api:5001;
       include proxy.conf;
