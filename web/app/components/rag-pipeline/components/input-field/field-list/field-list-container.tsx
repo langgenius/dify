@@ -12,7 +12,7 @@ type FieldListContainerProps = {
   className?: string
   inputFields: InputVar[]
   onListSortChange: (list: SortableItem[]) => void
-  onRemoveField: (id: string) => void
+  onRemoveField: (index: number) => void
   onEditField: (id: string) => void
   readonly?: boolean
 }
@@ -46,6 +46,7 @@ const FieldListContainer = ({
       {inputFields?.map((item, index) => (
         <FieldItem
           key={index}
+          index={index}
           readonly={readonly}
           payload={item}
           onRemove={onRemoveField}

@@ -6,11 +6,12 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { InputVar } from '@/models/pipeline'
 import type { FormData } from './form/types'
+import type { MoreInfo } from '@/app/components/workflow/types'
 
 type InputFieldEditorProps = {
   show: boolean
   onClose: () => void
-  onSubmit: (data: InputVar) => void
+  onSubmit: (data: InputVar, moreInfo?: MoreInfo) => void
   initialData?: InputVar
 }
 
@@ -23,9 +24,9 @@ const InputFieldEditor = ({
   const { t } = useTranslation()
   const formData = convertToInputFieldFormData(initialData)
 
-  const handleSubmit = useCallback((value: FormData) => {
+  const handleSubmit = useCallback((value: FormData, moreInfo?: MoreInfo) => {
     const inputFieldData = convertFormDataToINputField(value)
-    onSubmit(inputFieldData)
+    onSubmit(inputFieldData, moreInfo)
     onClose()
   }, [onSubmit, onClose])
 

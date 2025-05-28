@@ -6,6 +6,7 @@ import type { InputVar } from '@/models/pipeline'
 import ActionButton from '@/app/components/base/action-button'
 import { useFieldList } from './hooks'
 import FieldListContainer from './field-list-container'
+import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 
 type FieldListProps = {
   nodeId: string
@@ -37,7 +38,10 @@ const FieldList = ({
     handleOpenInputFieldEditor,
     showInputFieldEditor,
     editingField,
-  } = useFieldList(initialInputFields, onInputFieldsChange)
+    isShowRemoveVarConfirm,
+    hideRemoveVarConfirm,
+    onRemoveVarConfirm,
+  } = useFieldList(initialInputFields, onInputFieldsChange, nodeId)
 
   return (
     <div className='flex flex-col'>
@@ -70,6 +74,11 @@ const FieldList = ({
           onClose={handleCancelInputFieldEditor}
         />
       )}
+      <RemoveEffectVarConfirm
+        isShow={isShowRemoveVarConfirm}
+        onCancel={hideRemoveVarConfirm}
+        onConfirm={onRemoveVarConfirm}
+      />
     </div>
   )
 }

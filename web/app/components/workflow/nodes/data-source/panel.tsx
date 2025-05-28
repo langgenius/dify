@@ -37,7 +37,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
     editingField,
     handleSubmitField,
     handleCancelInputFieldEditor,
-  } = useFieldList(variables, handleInputFieldVariablesChange)
+  } = useFieldList(variables, handleInputFieldVariablesChange, id)
 
   return (
     <div >

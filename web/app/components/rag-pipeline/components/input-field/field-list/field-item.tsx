@@ -18,13 +18,15 @@ import ActionButton from '@/app/components/base/action-button'
 type FieldItemProps = {
   readonly?: boolean
   payload: InputVar
+  index: number
   onClickEdit: (id: string) => void
-  onRemove: (id: string) => void
+  onRemove: (index: number) => void
 }
 
 const FieldItem = ({
   readonly,
   payload,
+  index,
   onClickEdit,
   onRemove,
 }: FieldItemProps) => {
@@ -40,8 +42,8 @@ const FieldItem = ({
 
   const handleRemove = useCallback(() => {
     if (readonly) return
-    onRemove(payload.variable)
-  }, [onRemove, payload.variable, readonly])
+    onRemove(index)
+  }, [index, onRemove, readonly])
 
   return (
     <div
