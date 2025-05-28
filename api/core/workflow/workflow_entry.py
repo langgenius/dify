@@ -23,7 +23,7 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-from core.workflow.variable_loader import VariableLoader
+from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from factories import file_factory
 from libs import gen_utils
 from models.enums import UserFrom
@@ -31,18 +31,6 @@ from models.workflow import (
     Workflow,
     WorkflowType,
 )
-
-
-class _DummyVariableLoader(VariableLoader):
-    """A dummy implementation of VariableLoader that does not load any variables.
-    Serves as a placeholder when no variable loading is needed.
-    """
-
-    def load_variables(self, selectors: list[list[str]]) -> list[Variable]:
-        return []
-
-
-_DUMMY_VARIABLE_LOADER = _DummyVariableLoader()
 
 logger = logging.getLogger(__name__)
 
