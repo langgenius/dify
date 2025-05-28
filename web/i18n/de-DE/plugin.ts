@@ -55,7 +55,7 @@ const translation = {
       unsupportedContent: 'Die installierte Plug-in-Version bietet diese Aktion nicht.',
       unsupportedTitle: 'Nicht unterstützte Aktion',
       descriptionPlaceholder: 'Kurze Beschreibung des Zwecks des Werkzeugs, z. B. um die Temperatur für einen bestimmten Ort zu ermitteln.',
-      auto: 'Automatisch',
+      auto: 'Auto',
       params: 'KONFIGURATION DER ARGUMENTATION',
       unsupportedContent2: 'Klicken Sie hier, um die Version zu wechseln.',
       placeholder: 'Wählen Sie ein Werkzeug aus...',
