@@ -402,15 +402,23 @@ class DraftWorkflowNodeRunApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("query", type=str, required=False, location="json", default="")
+        parser.add_argument("files", type=list, location="json", default=[])
         args = parser.parse_args()
 
-        inputs = args.get("inputs")
-        if inputs == None:
+        user_inputs = args.get("inputs")
+        if user_inputs is None:
             raise ValueError("missing inputs")
 
+        # TODO(QuantumGhost): we should validate files here.
         workflow_service = WorkflowService()
         workflow_node_execution = workflow_service.run_draft_workflow_node(
-            app_model=app_model, node_id=node_id, user_inputs=inputs, account=current_user
+            app_model=app_model,
+            node_id=node_id,
+            user_inputs=user_inputs,
+            account=current_user,
+            query=args.get("query", ""),
+            files=args.get("files", []),
         )
 
         return workflow_node_execution

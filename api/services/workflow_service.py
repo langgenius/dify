@@ -1,12 +1,12 @@
 import json
 import logging
-import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, Optional
 from uuid import uuid4
 
+import time
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -45,7 +45,6 @@ from models.workflow import (
 )
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
-
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
 from .workflow_draft_variable_service import (
     DraftVariableSaver,
@@ -318,7 +317,6 @@ class WorkflowService:
         account: Account,
         query: str = "",
         files: list[File] | None = None,
-        conversation_id: str | None = None,
     ) -> WorkflowNodeExecution:
         """
         Run draft workflow node
