@@ -649,7 +649,6 @@ const translation = {
       'noAssignedVars': 'Kullanılabilir atanmış değişken yok',
     },
     tool: {
-      toAuthorize: 'Yetkilendirmek için',
       inputVars: 'Giriş Değişkenleri',
       outputVars: {
         text: 'araç tarafından oluşturulan içerik',

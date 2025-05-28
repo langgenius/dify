@@ -666,7 +666,6 @@ const translation = {
       'noVarTip': 'Fare clic sul pulsante "+" per aggiungere variabili',
     },
     tool: {
-      toAuthorize: 'Per autorizzare',
       inputVars: 'Variabili di Input',
       outputVars: {
         text: 'contenuto generato dallo strumento',

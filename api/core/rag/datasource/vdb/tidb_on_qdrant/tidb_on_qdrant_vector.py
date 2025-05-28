@@ -49,6 +49,7 @@ class TidbOnQdrantConfig(BaseModel):
     root_path: Optional[str] = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
+    replication_factor: int = 1
 
     def to_qdrant_params(self):
         if self.endpoint and self.endpoint.startswith("path:"):
@@ -134,6 +135,7 @@ class TidbOnQdrantVector(BaseVector):
                     vectors_config=vectors_config,
                     hnsw_config=hnsw_config,
                     timeout=int(self._client_config.timeout),
+                    replication_factor=self._client_config.replication_factor,
                 )
 
                 # create group_id payload index
@@ -484,6 +486,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.TIDB_ON_QDRANT_GRPC_ENABLED,
+                replication_factor=dify_config.QDRANT_REPLICATION_FACTOR,
             ),
         )
 

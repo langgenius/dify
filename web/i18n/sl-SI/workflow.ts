@@ -488,7 +488,6 @@ const translation = {
       'variable': 'Spremenljivka',
     },
     tool: {
-      toAuthorize: 'Za avtorizacijo',
       inputVars: 'Vhodne spremenljivke',
       outputVars: {
         text: 'orodje je ustvarilo vsebino',

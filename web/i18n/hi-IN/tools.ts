@@ -15,7 +15,6 @@ const translation = {
   },
   author: 'द्वारा',
   auth: {
-    unauthorized: 'अधिकृत करने के लिए',
     authorized: 'अधिकृत',
     setup: 'उपयोग करने के लिए अधिकृति सेटअप करें',
     setupModalTitle: 'अधिकृति सेटअप करें',
