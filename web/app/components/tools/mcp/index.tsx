@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import NewMCPCard from './create-card'
 import MCPCard from './provider-card'
 import MCPDetailPanel from './detail/provider-detail'
@@ -39,6 +39,8 @@ function renderDefaultCard() {
 const MCPList = ({
   searchText,
 }: Props) => {
+  const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const authCode = searchParams.get('code') || ''
   const providerID = searchParams.get('state') || ''
@@ -78,6 +80,7 @@ const MCPList = ({
 
   const handleUpdateAuthorization = async (providerID: string, code: string) => {
     const targetProvider = list.find(provider => provider.id === providerID)
+    router.replace(pathname)
     if (!targetProvider) return
     await updateMCPAuthorizationToken({
       provider_id: providerID,
