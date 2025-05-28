@@ -53,7 +53,6 @@ class AppMCPServerController(Resource):
         )
         db.session.add(server)
         db.session.commit()
-
         return server
 
     @setup_required
@@ -68,12 +67,17 @@ class AppMCPServerController(Resource):
         parser.add_argument("id", type=str, required=True, location="json")
         parser.add_argument("description", type=str, required=True, location="json")
         parser.add_argument("parameters", type=dict, required=True, location="json")
+        parser.add_argument("status", type=str, required=False, location="json")
         args = parser.parse_args()
         server = db.session.query(AppMCPServer).filter(AppMCPServer.id == args["id"]).first()
         if not server:
             raise Forbidden()
         server.description = args["description"]
         server.parameters = json.dumps(args["parameters"], ensure_ascii=False)
+        if args["status"]:
+            if args["status"] not in [status.value for status in AppMCPServerStatus]:
+                raise ValueError("Invalid status")
+            server.status = args["status"]
         db.session.commit()
         return server
 

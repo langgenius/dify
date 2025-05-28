@@ -1,5 +1,7 @@
 import json
 
+from sqlalchemy import or_
+
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
 from core.tools.entities.api_entities import ToolProviderApiEntity
@@ -30,12 +32,21 @@ class MCPToolManageService:
     def create_mcp_provider(
         tenant_id: str, name: str, server_url: str, user_id: str, icon: str, icon_type: str, icon_background: str
     ) -> dict:
-        if (
+        existing_provider = (
             db.session.query(MCPToolProvider)
-            .filter(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.name == name)
+            .filter(
+                MCPToolProvider.tenant_id == tenant_id,
+                or_(MCPToolProvider.name == name, MCPToolProvider.server_url == server_url),
+                MCPToolProvider.tenant_id == tenant_id,
+            )
             .first()
-        ):
-            raise ValueError(f"MCP tool {name} already exists")
+        )
+        if existing_provider:
+            if existing_provider.name == name:
+                raise ValueError(f"MCP tool {name} already exists")
+            else:
+                raise ValueError(f"MCP tool {server_url} already exists")
+
         mcp_tool = MCPToolProvider(
             tenant_id=tenant_id,
             name=name,

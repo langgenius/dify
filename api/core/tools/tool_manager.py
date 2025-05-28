@@ -746,7 +746,7 @@ class ToolManager:
         )
 
         if provider is None:
-            raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
+            raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
 
         controller = MCPToolProviderController._from_db(provider)
 

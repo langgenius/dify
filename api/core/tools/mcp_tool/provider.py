@@ -53,7 +53,7 @@ class MCPToolProviderController(ToolProviderController):
                     author=db_provider.user.name if db_provider.user else "Anonymous",
                     name=remote_mcp_tool.name,
                     label=I18nObject(en_US=remote_mcp_tool.name, zh_Hans=remote_mcp_tool.name),
-                    provider=db_provider.name,
+                    provider=db_provider.id,
                     icon=db_provider.icon,
                 ),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(remote_mcp_tool.inputSchema),

@@ -203,6 +203,7 @@ class MCPToolProvider(Base):
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tool_mcp_provider_pkey"),
         db.UniqueConstraint("name", "tenant_id", name="unique_mcp_tool_provider"),
+        db.UniqueConstraint("server_url", name="unique_mcp_tool_provider_server_url"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))

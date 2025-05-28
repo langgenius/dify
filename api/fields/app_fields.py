@@ -1,7 +1,20 @@
+import json
+
 from flask_restful import fields
 
 from fields.workflow_fields import workflow_partial_fields
 from libs.helper import AppIconUrlField, TimestampField
+
+
+class JsonStringField(fields.Raw):
+    def format(self, value):
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                return value
+        return value
+
 
 app_detail_kernel_fields = {
     "id": fields.String,
@@ -220,7 +233,7 @@ app_server_fields = {
     "server_code": fields.String,
     "description": fields.String,
     "status": fields.String,
-    "parameters": fields.Raw,
+    "parameters": JsonStringField,
     "created_at": TimestampField,
     "updated_at": TimestampField,
 }
