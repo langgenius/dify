@@ -1315,6 +1315,7 @@ dev = [
     { name = "types-gevent" },
     { name = "types-greenlet" },
     { name = "types-html5lib" },
+    { name = "types-jmespath" },
     { name = "types-jsonschema" },
     { name = "types-markdown" },
     { name = "types-oauthlib" },
@@ -1486,6 +1487,7 @@ dev = [
     { name = "types-gevent", specifier = "~=24.11.0" },
     { name = "types-greenlet", specifier = "~=3.1.0" },
     { name = "types-html5lib", specifier = "~=1.1.11" },
+    { name = "types-jmespath", specifier = ">=1.0.2.20240106" },
     { name = "types-jsonschema", specifier = "~=4.23.0" },
     { name = "types-markdown", specifier = "~=3.7.0" },
     { name = "types-oauthlib", specifier = "~=3.2.0" },
@@ -5724,6 +5726,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b6/9d/f6fbcc8246f5e46845b4f989c4e17e6fb3ce572f7065b185e515bf8a3be7/types-html5lib-1.1.11.20241018.tar.gz", hash = "sha256:98042555ff78d9e3a51c77c918b1041acbb7eb6c405408d8a9e150ff5beccafa", size = 11370 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/7c/f862b1dc31268ef10fe95b43dcdf216ba21a592fafa2d124445cd6b92e93/types_html5lib-1.1.11.20241018-py3-none-any.whl", hash = "sha256:3f1e064d9ed2c289001ae6392c84c93833abb0816165c6ff0abfc304a779f403", size = 17292 },
+]
+
+[[package]]
+name = "types-jmespath"
+version = "1.0.2.20240106"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/e4/1f7414dbca03975f66f1ab1b3f7b3deb7c19b104ef14dd3c99036bbc39b2/types-jmespath-1.0.2.20240106.tar.gz", hash = "sha256:b4a65a116bfc1c700a4fd9d24e2e397f4a431122e0320a77b7f1989a6b5d819e", size = 5071 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f5/30/3d6443f782601dd88820ba31e7668abfec7e19d685ac7f6fbcfd6ebba519/types_jmespath-1.0.2.20240106-py3-none-any.whl", hash = "sha256:c3e715fcaae9e5f8d74e14328fdedc4f2b3f0e18df17f3e457ae0a18e245bde0", size = 6087 },
 ]
 
 [[package]]
