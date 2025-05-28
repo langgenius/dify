@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import {
   RiArrowRightUpLine,
+  RiBracesLine,
 } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
@@ -22,6 +23,8 @@ import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
+import { useBoolean } from 'ahooks'
+import SchemaModal from './schema-modal'
 
 type Props = {
   value: Record<string, any>
@@ -133,7 +136,12 @@ const ReasoningConfigForm: React.FC<Props> = ({
     }
   }, [onChange, value])
 
-  const renderField = (schema: any) => {
+  const [isShowSchema, {
+    setTrue: showSchema,
+    setFalse: hideSchema,
+  }] = useBoolean(false)
+
+  const renderField = (schema: any, showSchema: () => void) => {
     const {
       variable,
       label,
@@ -149,26 +157,56 @@ const ReasoningConfigForm: React.FC<Props> = ({
         popupContent={<div className='w-[200px]'>
           {tooltip[language] || tooltip.en_US}
         </div>}
-        triggerClassName='ml-1 w-4 h-4'
+        triggerClassName='ml-0.5 w-4 h-4'
         asChild={false} />
     ))
     const varInput = value[variable].value
     const isNumber = type === FormTypeEnum.textNumber
     const isSelect = type === FormTypeEnum.select
     const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
+    const isObject = type === FormTypeEnum.object
+    const isArray = type === FormTypeEnum.array
+    const isShowSchemaTooltip = isObject || isArray
     const isAppSelector = type === FormTypeEnum.appSelector
     const isModelSelector = type === FormTypeEnum.modelSelector
     // const isToolSelector = type === FormTypeEnum.toolSelector
-    const isString = !isNumber && !isSelect && !isFile && !isAppSelector && !isModelSelector
+    const isString = !isNumber && !isSelect && !isFile && !isAppSelector && !isModelSelector && !isObject && !isArray
+    const valueType = (() => {
+      if (isNumber) return VarType.number
+      if (isSelect) return VarType.string
+      if (isFile) return VarType.file
+      if (isObject) return VarType.object
+      if (isArray) return VarType.array
+
+      return VarType.string
+    })()
+
     return (
       <div key={variable} className='space-y-1'>
         <div className='system-sm-semibold flex items-center justify-between py-2 text-text-secondary'>
-          <div className='flex items-center space-x-2'>
+          <div className='flex items-center'>
             <span className={cn('code-sm-semibold text-text-secondary')}>{label[language] || label.en_US}</span>
             {required && (
               <span className='ml-1 text-red-500'>*</span>
             )}
             {tooltipContent}
+            <span className='system-xs-regular mx-1 text-text-quaternary'>·</span>
+            <span className='system-xs-regular text-text-tertiary'>{valueType}</span>
+            {!isShowSchemaTooltip && (
+              <Tooltip
+                popupContent={<div className='system-xs-medium w-[200px] text-text-secondary'>
+                  Click to view parameter schema
+                </div>}
+                asChild={false}>
+                  <div
+                    className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
+                    onClick={showSchema}
+                  >
+                    <RiBracesLine className='size-3.5'/>
+                  </div>
+              </Tooltip>
+            )}
+
           </div>
           <div className='flex cursor-pointer items-center gap-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover' onClick={() => handleAutomatic(variable, !auto)}>
             <span className='system-xs-medium text-text-secondary'>{t('plugin.detailPanel.toolSelector.auto')}</span>
@@ -220,7 +258,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 schema={schema}
               />
             )}
-            {isFile && (
+            {(isFile || isObject || isArray) && (
               <VarReferencePicker
                 zIndex={1001}
                 readonly={false}
@@ -229,7 +267,15 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 value={varInput?.value || []}
                 onChange={handleFileChange(variable)}
                 defaultVarKindType={VarKindType.variable}
-                filterVar={(varPayload: Var) => varPayload.type === VarType.file || varPayload.type === VarType.arrayFile}
+                filterVar={(varPayload: Var) => {
+                  if(isFile)
+                    return varPayload.type === VarType.file || varPayload.type === VarType.arrayFile
+                  if(isObject)
+                    return varPayload.type === VarType.object
+                  if(isArray)
+                    return [VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject, VarType.arrayFile].includes(varPayload.type)
+                  return true
+                }}
               />
             )}
             {isAppSelector && (
@@ -267,7 +313,13 @@ const ReasoningConfigForm: React.FC<Props> = ({
   }
   return (
     <div className='space-y-3 px-4 py-2'>
-      {schemas.map(schema => renderField(schema))}
+      {!isShowSchema && schemas.map(schema => renderField(schema, showSchema))}
+      {isShowSchema && (
+        <SchemaModal
+          isShow={isShowSchema}
+          onClose={hideSchema}
+        />
+      )}
     </div>
   )
 }

@@ -19,6 +19,8 @@ export enum FormTypeEnum {
   toolSelector = 'tool-selector',
   multiToolSelector = 'array[tools]',
   appSelector = 'app-selector',
+  object = 'object',
+  array = 'array',
 }
 
 export type FormOption = {
