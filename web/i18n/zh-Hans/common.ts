@@ -273,6 +273,11 @@ const translation = {
     setBuilder: 'Set as builder （设置为构建器）',
     builder: '构建器',
   },
+  beta: {
+    beta: 'Beta 功能',
+    workflowVarCheck: '严格模式-变量可用性检查',
+    workflowVarCheckTip: '启用后，cahflow/workflow 将会检查节点中变量是否可用。',
+  },
   integrations: {
     connected: '登录方式',
     google: 'Google',

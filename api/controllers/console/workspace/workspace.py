@@ -48,6 +48,7 @@ tenant_fields = {
     "in_trial": fields.Boolean,
     "trial_end_reason": fields.String,
     "custom_config": fields.Raw(attribute="custom_config"),
+    "beta_config": fields.Raw(attribute="beta_config"),
 }
 
 tenants_fields = {
@@ -177,6 +178,31 @@ class CustomConfigWorkspaceApi(Resource):
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
 
+class BetaConfigWorkspaceApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("beta_config", type=dict, location="json")
+        args = parser.parse_args()
+
+        tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
+
+        db_config = tenant.beta_config_dict  
+        param_config = args["beta_config"] or {}
+
+        if not db_config:
+            tenant.beta_config_dict = param_config
+        else:
+            merged_config = {**db_config, **param_config}
+            tenant.beta_config_dict = merged_config
+
+        db.session.commit()
+
+        return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
+
+
 class WebappLogoWorkspaceApi(Resource):
     @setup_required
     @login_required
@@ -239,5 +265,6 @@ api.add_resource(TenantApi, "/workspaces/current", endpoint="workspaces_current"
 api.add_resource(TenantApi, "/info", endpoint="info")  # Deprecated
 api.add_resource(SwitchWorkspaceApi, "/workspaces/switch")  # POST for switching tenant
 api.add_resource(CustomConfigWorkspaceApi, "/workspaces/custom-config")
+api.add_resource(BetaConfigWorkspaceApi, "/workspaces/beta-config")
 api.add_resource(WebappLogoWorkspaceApi, "/workspaces/custom-config/webapp-logo/upload")
 api.add_resource(WorkspaceInfoApi, "/workspaces/info")  # POST for changing workspace info

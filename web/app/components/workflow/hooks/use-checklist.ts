@@ -34,6 +34,7 @@ import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
+import { useAppContext } from '@/context/app-context'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
@@ -45,6 +46,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const workflowTools = useStore(s => s.workflowTools)
   const { data: strategyProviders } = useStrategyProviders()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
+  const {
+    currentWorkspace,
+  } = useAppContext()
 
   const chatVarList = useStore(s => s.conversationVariables)
   const environmentVariables = useStore(s => s.environmentVariables)
@@ -72,6 +76,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
     const allVariablesMap = transformStartNodeVariables(chatVarList, environmentVariables)
     const errMessageMap = new Map()
+    const workflowVarCheck = currentWorkspace.beta_config?.workflow_var_check
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i]
@@ -120,7 +125,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             varErrorMessage: [],
           })
         }
-        if (nodesExtraData[node.data.type as BlockEnum].checkVarValid) {
+        if (workflowVarCheck && nodesExtraData[node.data.type as BlockEnum].checkVarValid) {
           const { errorMessage: varErrorMessages } = nodesExtraData[node.data.type as BlockEnum].checkVarValid(node.data, { ...allVariablesMap, ...node._parentOutputVarMap }, t)
 
           if (varErrorMessages?.length) {

@@ -7,6 +7,7 @@ import {
   ALL_CHAT_AVAILABLE_BLOCKS,
   ALL_COMPLETION_AVAILABLE_BLOCKS,
 } from '@/app/components/workflow/blocks'
+import { transformToBodyPayload } from './utils'
 
 const nodeDefault: NodeDefault<HttpNodeType> = {
   defaultValue: {
@@ -78,7 +79,9 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
     const body_warnings: string[] = []
 
     if ([BodyType.binary].includes(payload.body.type)) {
-      const body_data = payload.body.data as BodyPayload
+      let body_data = payload.body.data
+      if (typeof body_data === 'string')
+        body_data = transformToBodyPayload(body_data, false)
       body_data.forEach((item) => {
         const key_warnings = getNotExistVariablesByText(item.key || '', varMap)
         if (key_warnings.length)
@@ -89,7 +92,9 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       })
     }
     else {
-      const body_data = payload.body.data as BodyPayload
+      let body_data = payload.body.data
+      if (typeof body_data === 'string')
+        body_data = transformToBodyPayload(body_data, [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(payload.body.type))
       body_data.forEach((item) => {
         const key_warnings = getNotExistVariablesByText(item.key || '', varMap)
         if (key_warnings.length)
