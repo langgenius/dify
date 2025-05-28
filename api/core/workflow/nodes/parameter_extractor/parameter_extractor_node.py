@@ -816,7 +816,6 @@ class ParameterExtractorNode(LLMNode):
         :param node_data: node data
         :return:
         """
-        # FIXME: fix the type error later
         variable_mapping: dict[str, Sequence[str]] = {"query": node_data.query}
 
         if node_data.instruction:
