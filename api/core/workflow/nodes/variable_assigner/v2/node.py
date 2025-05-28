@@ -33,6 +33,24 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
     def version(cls) -> str:
         return "2"
 
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: VariableAssignerNodeData,
+    ) -> Mapping[str, Sequence[str]]:
+        var_mapping: dict[str, Sequence[str]] = {}
+        for item in node_data.items:
+            selector_node_id = item.variable_selector[0]
+            if selector_node_id != CONVERSATION_VARIABLE_NODE_ID:
+                continue
+            selector_str = ".".join(item.variable_selector)
+            key = f"{node_id}.#{selector_str}#"
+            var_mapping[key] = item.variable_selector
+        return var_mapping
+
     def _run(self) -> NodeRunResult:
         inputs = self.node_data.model_dump()
         process_data: dict[str, Any] = {}

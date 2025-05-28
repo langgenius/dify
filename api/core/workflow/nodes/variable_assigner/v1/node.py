@@ -18,6 +18,23 @@ class VariableAssignerNode(BaseNode[VariableAssignerData]):
     def version(cls) -> str:
         return "1"
 
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: VariableAssignerData,
+    ) -> Mapping[str, Sequence[str]]:
+        assigned_variable_node_id = node_data.assigned_variable_selector[0]
+        if assigned_variable_node_id != CONVERSATION_VARIABLE_NODE_ID:
+            return {}
+        selector_key = ".".join(node_data.assigned_variable_selector)
+        key = f"{node_id}.#{selector_key}#"
+        return {
+            key: node_data.assigned_variable_selector,
+        }
+
     def _run(self) -> NodeRunResult:
         assigned_variable_selector = self.node_data.assigned_variable_selector
         # Should be String, Number, Object, ArrayString, ArrayNumber, ArrayObject
