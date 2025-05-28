@@ -1,7 +1,9 @@
 import abc
-from typing import Protocol
+from collections.abc import Mapping
+from typing import Any, Protocol
 
 from core.variables import Variable
+from core.workflow.entities.variable_pool import VariablePool
 
 
 class VariableLoader(Protocol):
@@ -36,3 +38,42 @@ class VariableLoader(Protocol):
         :return: a list of Variable objects that match the provided selectors.
         """
         pass
+
+
+class _DummyVariableLoader(VariableLoader):
+    """A dummy implementation of VariableLoader that does not load any variables.
+    Serves as a placeholder when no variable loading is needed.
+    """
+
+    def load_variables(self, selectors: list[list[str]]) -> list[Variable]:
+        return []
+
+
+DUMMY_VARIABLE_LOADER = _DummyVariableLoader()
+
+
+def load_into_variable_pool(
+    variable_loader: VariableLoader,
+    variable_pool: VariablePool,
+    variable_mapping: Mapping[str, list[str]],
+    user_inputs: Mapping[str, Any],
+):
+    # Loading missing variable from draft var here, and set it into
+    # variable_pool.
+    variables_to_load: list[list[str]] = []
+    for key, selector in variable_mapping.items():
+        # NOTE(QuantumGhost): this logic needs to be in sync with
+        # `WorkflowEntry.mapping_user_inputs_to_variable_pool`.
+        node_variable_list = key.split(".")
+        if len(node_variable_list) < 1:
+            raise ValueError(f"Invalid variable key: {key}. It should have at least one element.")
+        if key in user_inputs:
+            continue
+        node_variable_key = ".".join(node_variable_list[1:])
+        if node_variable_key in user_inputs:
+            continue
+        if variable_pool.get(selector) is None:
+            variables_to_load.append(list(selector))
+    loaded = variable_loader.load_variables(variables_to_load)
+    for var in loaded:
+        variable_pool.add(var.selector, var.value)
