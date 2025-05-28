@@ -34,8 +34,8 @@ const NewMCPCard = ({ handleCreate }: Props) => {
   const linkUrl = useMemo(() => {
     // TODO help link
     if (language.startsWith('zh_'))
-      return 'https://docs.dify.ai/zh-hans/guides/tools#ru-he-chuang-jian-zi-ding-yi-gong-ju'
-    return 'https://docs.dify.ai/en/guides/tools#how-to-create-custom-tools'
+      return 'https://docs.dify.ai/zh-hans/guides/tools/integrate-tool/mcp'
+    return 'https://docs.dify.ai/en/guides/tools/integrate-tool/mcp'
   }, [language])
 
   const [showModal, setShowModal] = useState(false)

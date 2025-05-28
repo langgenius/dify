@@ -1,6 +1,7 @@
 'use client'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'next/navigation'
 import type { Collection } from './types'
 import Marketplace from './marketplace'
 import cn from '@/utils/classnames'
@@ -25,8 +26,12 @@ const ProviderList = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
 
+  const searchParams = useSearchParams()
+  const authCode = searchParams.get('code') || ''
+  const providerID = decodeURIComponent(searchParams.get('state') || '').split('provider_id=')[1] || ''
+
   const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'builtin',
+    defaultTab: authCode && providerID ? 'mcp' : 'builtin',
   })
   const options = [
     { value: 'builtin', text: t('tools.type.builtIn') },

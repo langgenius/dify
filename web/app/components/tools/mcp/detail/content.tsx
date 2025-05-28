@@ -1,5 +1,6 @@
 'use client'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import type { FC } from 'react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
@@ -41,9 +42,10 @@ const MCPDetailContent: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
+  const router = useRouter()
   const { isCurrentWorkspaceManager } = useAppContext()
 
-  const { data, isPending: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
+  const { data, isFetching: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
   const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
@@ -54,6 +56,7 @@ const MCPDetailContent: FC<Props> = ({
       return
     await updateTools(detail.id)
     invalidateMCPTools(detail.id)
+    onUpdate()
   }, [detail, updateTools])
 
   const { mutate: updateMCP } = useUpdateMCP({
@@ -85,11 +88,11 @@ const MCPDetailContent: FC<Props> = ({
       provider_id: detail.id,
       server_url: detail.server_url!,
     })
-    // TODO
-    if ((res as any)?.result === 'success') {
-      hideUpdateModal()
-      onUpdate()
-    }
+    if (res.result === 'success')
+      handleUpdateTools()
+
+    else if (res.authorization_url)
+      router.push(res.authorization_url)
   }, [detail, updateMCP, hideUpdateModal, onUpdate])
 
   const handleUpdate = useCallback(async (data: any) => {
@@ -116,8 +119,6 @@ const MCPDetailContent: FC<Props> = ({
       onUpdate(true)
     }
   }, [detail, showDeleting, hideDeleting, hideDeleteConfirm, onUpdate])
-
-  const [loading, setLoading] = useState(false)
 
   if (!detail)
     return null
@@ -150,7 +151,6 @@ const MCPDetailContent: FC<Props> = ({
             <Button
               variant='secondary'
               className='w-full'
-              // onClick={() => setShowSettingAuth(true)}
               disabled={!isCurrentWorkspaceManager}
             >
               <Indicator className='mr-2' color={'green'} />

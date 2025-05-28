@@ -1,9 +1,16 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import NewMCPCard from './create-card'
 import MCPCard from './provider-card'
 import MCPDetailPanel from './detail/provider-detail'
-import { useAllMCPTools, useAuthorizeMCP, useInvalidateAllMCPTools, useInvalidateMCPTools, useUpdateMCPTools } from '@/service/use-tools'
+import {
+  useAllMCPTools,
+  useAuthorizeMCP,
+  useInvalidateMCPTools,
+  useUpdateMCPAuthorizationToken,
+  useUpdateMCPTools,
+} from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
@@ -32,11 +39,15 @@ function renderDefaultCard() {
 const MCPList = ({
   searchText,
 }: Props) => {
-  const { data: list = [] } = useAllMCPTools()
-  const invalidateMCPList = useInvalidateAllMCPTools()
+  const searchParams = useSearchParams()
+  const authCode = searchParams.get('code') || ''
+  const providerID = decodeURIComponent(searchParams.get('state') || '').split('provider_id=')[1] || ''
+
+  const { data: list = [], refetch } = useAllMCPTools()
   const { mutateAsync: authorizeMcp } = useAuthorizeMCP()
   const { mutateAsync: updateTools } = useUpdateMCPTools()
   const invalidateMCPTools = useInvalidateMCPTools()
+  const { mutateAsync: updateMCPAuthorizationToken } = useUpdateMCPAuthorizationToken()
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
@@ -53,15 +64,37 @@ const MCPList = ({
   }, [list, currentProviderID])
 
   const handleCreate = async (provider: ToolWithProvider) => {
-    invalidateMCPList()
+    await refetch() // update list
     setCurrentProviderID(provider.id)
     await authorizeMcp({
       provider_id: provider.id,
       server_url: provider.server_url!,
     })
+    await refetch() // update authorization in list
     await updateTools(provider.id)
     invalidateMCPTools(provider.id)
+    await refetch() // update tool list in provider list
   }
+
+  const handleUpdateAuthorization = async (providerID: string, code: string) => {
+    const targetProvider = list.find(provider => provider.id === providerID)
+    if (!targetProvider) return
+    await updateMCPAuthorizationToken({
+      provider_id: providerID,
+      server_url: targetProvider.server_url!,
+      authorization_code: code,
+    })
+    await refetch()
+    setCurrentProviderID(providerID)
+    await updateTools(providerID)
+    invalidateMCPTools(providerID)
+    await refetch()
+  }
+
+  useEffect(() => {
+    if (authCode && providerID)
+      handleUpdateAuthorization(providerID, authCode)
+  }, [authCode, providerID])
 
   return (
     <>
@@ -78,7 +111,7 @@ const MCPList = ({
             data={provider}
             currentProvider={currentProvider}
             handleSelect={setCurrentProviderID}
-            onUpdate={() => invalidateMCPList()}
+            onUpdate={refetch}
           />
         ))}
         {!list.length && renderDefaultCard()}
@@ -87,7 +120,7 @@ const MCPList = ({
         <MCPDetailPanel
           detail={currentProvider}
           onHide={() => setCurrentProviderID(undefined)}
-          onUpdate={() => invalidateMCPList()}
+          onUpdate={refetch}
         />
       )}
     </>
