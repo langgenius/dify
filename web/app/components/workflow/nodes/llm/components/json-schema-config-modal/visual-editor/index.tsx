@@ -5,11 +5,12 @@ import { useSchemaNodeOperations } from './hooks'
 
 export type VisualEditorProps = {
   schema: SchemaRoot
-  onChange: (schema: SchemaRoot) => void
+  readOnly?: boolean
+  onChange?: (schema: SchemaRoot) => void
 }
 
 const VisualEditor: FC<VisualEditorProps> = (props) => {
-  const { schema } = props
+  const { schema, readOnly } = props
   useSchemaNodeOperations(props)
 
   return (
@@ -20,6 +21,7 @@ const VisualEditor: FC<VisualEditorProps> = (props) => {
         required={false}
         path={[]}
         depth={0}
+        readOnly={readOnly}
       />
     </div>
   )

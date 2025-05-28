@@ -113,9 +113,7 @@ const SchemaModal: FC<Props> = ({
             <VisualEditorContextProvider>
               <VisualEditor
                 schema={testSchema}
-                onChange={(schema: SchemaRoot) => {
-                  console.log('Schema changed:', schema)
-                }}
+                readOnly
               ></VisualEditor>
             </VisualEditorContextProvider>
           </MittProvider>
