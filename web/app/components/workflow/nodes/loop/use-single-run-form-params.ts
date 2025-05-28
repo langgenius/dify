@@ -2,9 +2,13 @@ import type { NodeTracing } from '@/types/workflow'
 import { useCallback, useMemo } from 'react'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import { useTranslation } from 'react-i18next'
-import type { InputVar, ValueSelector } from '../../types'
+import { useIsNodeInLoop, useWorkflow } from '../../hooks'
+import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../_base/components/variable/utils'
+import type { InputVar, ValueSelector, Variable } from '../../types'
 import type { CaseItem, Condition, LoopNodeType } from './types'
 import { ValueType } from '@/app/components/workflow/types'
+
+const DELIMITER = '@@@@@'
 
 type Params = {
   id: string
@@ -13,6 +17,7 @@ type Params = {
   runResult: NodeTracing
   loopRunResult: NodeTracing[]
   setRunInputData: (data: Record<string, any>) => void
+  toVarInputs: (variables: Variable[]) => InputVar[]
   varSelectorsToVarInputs: (variables: ValueSelector[]) => InputVar[]
 }
 
@@ -23,9 +28,68 @@ const useSingleRunFormParams = ({
   runResult,
   loopRunResult,
   setRunInputData,
+  toVarInputs,
   varSelectorsToVarInputs,
 }: Params) => {
   const { t } = useTranslation()
+
+  const { isNodeInLoop } = useIsNodeInLoop(id)
+
+  const { getLoopNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
+  const iterationChildrenNodes = getLoopNodeChildren(id)
+  const beforeNodes = getBeforeNodesInSameBranch(id)
+  const canChooseVarNodes = [...beforeNodes, ...iterationChildrenNodes]
+
+  const { usedOutVars } = (() => {
+    const vars: ValueSelector[] = []
+    const varObjs: Record<string, boolean> = {}
+    const allVarObject: Record<string, {
+      inSingleRunPassedKey: string
+    }> = {}
+    iterationChildrenNodes.forEach((node) => {
+      const nodeVars = getNodeUsedVars(node).filter(item => item && item.length > 0)
+      nodeVars.forEach((varSelector) => {
+        if (varSelector[0] === id) { // skip loop node itself variable: item, index
+          return
+        }
+        const isInLoop = isNodeInLoop(varSelector[0])
+        if (isInLoop) // not pass loop inner variable
+          return
+
+        const varSectorStr = varSelector.join('.')
+        if (!varObjs[varSectorStr]) {
+          varObjs[varSectorStr] = true
+          vars.push(varSelector)
+        }
+        let passToServerKeys = getNodeUsedVarPassToServerKey(node, varSelector)
+        if (typeof passToServerKeys === 'string')
+          passToServerKeys = [passToServerKeys]
+
+        passToServerKeys.forEach((key: string, index: number) => {
+          allVarObject[[varSectorStr, node.id, index].join(DELIMITER)] = {
+            inSingleRunPassedKey: key,
+          }
+        })
+      })
+    })
+
+    const res = toVarInputs(vars.map((item) => {
+      const varInfo = getNodeInfoById(canChooseVarNodes, item[0])
+      return {
+        label: {
+          nodeType: varInfo?.data.type,
+          nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title, // default start node title
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+        },
+        variable: `${item.join('.')}`,
+        value_selector: item,
+      }
+    }))
+    return {
+      usedOutVars: res,
+    }
+  })()
+
   const nodeInfo = useMemo(() => {
     const formattedNodeInfo = formatTracing(loopRunResult, t)[0]
 
@@ -101,7 +165,7 @@ const useSingleRunFormParams = ({
     })
     return [
       {
-        inputs: uniqueVarInputs,
+        inputs: [...usedOutVars, ...uniqueVarInputs],
         values: inputVarValues,
         onChange: setInputVarValues,
       },
@@ -131,7 +195,7 @@ const useSingleRunFormParams = ({
   }
 
   const getDependentVars = () => {
-    const vars: ValueSelector[] = []
+    const vars: ValueSelector[] = usedOutVars.map(item => item.variable.split('.'))
     payload.break_conditions?.forEach((condition) => {
       const conditionVars = getVarFromCondition(condition)
       vars.push(...conditionVars)
