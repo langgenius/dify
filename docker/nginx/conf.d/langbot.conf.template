@@ -1,5 +1,6 @@
 # Configuration for langbot.lefeng.school subdomain
 
+# HTTP server for langbot.lefeng.school
 server {
     listen ${NGINX_PORT};
     server_name langbot.${NGINX_SERVER_NAME};
@@ -10,21 +11,33 @@ server {
         return 200 'KiDk4c0uzgf4zc8l';
     }
 
-    # Main langbot service
+    # ACME challenge location
+    ${ACME_CHALLENGE_LOCATION}
+
+    # Serve langbot on HTTP temporarily for certificate generation
     location / {
         proxy_pass http://host.docker.internal:5300;
         include proxy.conf;
     }
 
-    # Callback endpoint
     location /callback {
         proxy_pass http://host.docker.internal:2290;
         include proxy.conf;
     }
+}
 
-    # placeholder for acme challenge location
-    ${ACME_CHALLENGE_LOCATION}
-
-    # placeholder for https config defined in https.conf.template
+# HTTPS server (will be added after certificate is obtained)
+server {
     ${HTTPS_CONFIG}
+    server_name langbot.${NGINX_SERVER_NAME};
+
+    location / {
+        proxy_pass http://host.docker.internal:5300;
+        include proxy.conf;
+    }
+
+    location /callback {
+        proxy_pass http://host.docker.internal:2290;
+        include proxy.conf;
+    }
 } 
