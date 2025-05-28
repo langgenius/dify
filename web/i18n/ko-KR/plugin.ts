@@ -25,7 +25,7 @@ const translation = {
   },
   source: {
     local: '로컬 패키지 파일',
-    marketplace: '시장',
+    marketplace: '마켓',
     github: '깃허브',
   },
   detailPanel: {
