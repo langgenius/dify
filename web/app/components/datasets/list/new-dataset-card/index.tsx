@@ -5,7 +5,7 @@ import {
   RiAddLine,
   RiFunctionAddLine,
 } from '@remixicon/react'
-import Link from './link'
+import Option from './option'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 
 const CreateAppCard = () => {
@@ -14,19 +14,19 @@ const CreateAppCard = () => {
   return (
     <div className='flex h-[166px] flex-col gap-y-0.5 rounded-xl bg-background-default-dimmed'>
       <div className='flex grow flex-col items-center justify-center p-2'>
-        <Link
+        <Option
           href={'/datasets/create-from-pipeline'}
           Icon={RiFunctionAddLine}
           text={t('dataset.createFromPipeline')}
         />
-        <Link
+        <Option
           href={'/datasets/create'}
           Icon={RiAddLine}
           text={t('dataset.createDataset')}
         />
       </div>
       <div className='border-t-[0.5px] border-divider-subtle p-2'>
-        <Link
+        <Option
           href={'/datasets/connect'}
           Icon={ApiConnectionMod}
           text={t('dataset.connectDataset')}

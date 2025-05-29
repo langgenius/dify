@@ -322,6 +322,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         </div>
         {isListLoading
           ? <Loading type='app' />
+          // eslint-disable-next-line sonarjs/no-nested-conditional
           : total > 0
             ? <List
               embeddingAvailable={embeddingAvailable}
