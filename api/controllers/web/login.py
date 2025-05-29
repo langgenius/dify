@@ -1,11 +1,12 @@
-from flask_restful import Resource, reqparse
-from jwt import InvalidTokenError  # type: ignore
-
 import services
-from controllers.console.auth.error import EmailCodeError, EmailOrPasswordMismatchError, InvalidEmailError
+from controllers.console.auth.error import (EmailCodeError,
+                                            EmailOrPasswordMismatchError,
+                                            InvalidEmailError)
 from controllers.console.error import AccountBannedError, AccountNotFound
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import api
+from flask_restful import Resource, reqparse
+from jwt import InvalidTokenError  # type: ignore
 from libs.helper import email
 from libs.password import valid_password
 from services.account_service import AccountService
@@ -34,7 +35,7 @@ class LoginApi(Resource):
             raise AccountNotFound()
 
         token = WebAppAuthService.login(account=account)
-        return {"result": "success", "access_token": token}
+        return {"result": "success", "data": {"access_token": token}}
 
 
 # class LogoutApi(Resource):
@@ -99,7 +100,7 @@ class EmailCodeLoginApi(Resource):
 
         token = WebAppAuthService.login(account=account)
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "access_token": token}
+        return {"result": "success", "data": {"access_token": token}}
 
 
 api.add_resource(LoginApi, "/login")
