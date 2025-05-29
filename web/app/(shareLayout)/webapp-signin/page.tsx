@@ -84,8 +84,11 @@ const WebSSOForm: FC = () => {
       <p className='system-xs-regular text-text-tertiary'>{t('login.webapp.disabled')}</p>
     </div>
   }
-  if (data && (data.accessMode === AccessMode.ORGANIZATION || data.accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS))
-    return <NormalForm />
+  if (data && (data.accessMode === AccessMode.ORGANIZATION || data.accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)) {
+    return <div className='w-[400px]'>
+      <NormalForm />
+    </div>
+  }
 
   if (data && data.accessMode === AccessMode.EXTERNAL_MEMBERS)
     return <ExternalMemberSsoAuth />

@@ -1,16 +1,15 @@
 'use client'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import Countdown from '@/app/components/signin/countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
-import { sendWebAppEMailLoginCode, webAppEmailLoginWithCode } from '@/service/common'
+import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -21,19 +20,9 @@ export default function CheckCode() {
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
   const { locale } = useContext(I18NContext)
-  const redirectUrl = searchParams.get('redirect_url')
-
-  const getAppCodeFromRedirectUrl = useCallback(() => {
-    const appCode = redirectUrl?.split('/').pop()
-    if (!appCode)
-      return null
-
-    return appCode
-  }, [redirectUrl])
 
   const verify = async () => {
     try {
-      const appCode = getAppCodeFromRedirectUrl()
       if (!code.trim()) {
         Toast.notify({
           type: 'error',
@@ -48,19 +37,12 @@ export default function CheckCode() {
         })
         return
       }
-      if (!redirectUrl || !appCode) {
-        Toast.notify({
-          type: 'error',
-          message: t('login.error.redirectUrlMissing'),
-        })
-        return
-      }
       setIsLoading(true)
-      const ret = await webAppEmailLoginWithCode({ email, code, token })
-      if (ret.result === 'success') {
-        localStorage.setItem('webAppAccessToken', ret.data.access_token)
-        await checkOrSetAccessToken()
-        router.replace(redirectUrl)
+      const ret = await verifyWebAppResetPasswordCode({ email, code, token })
+      if (ret.is_valid) {
+        const params = new URLSearchParams(searchParams)
+        params.set('token', encodeURIComponent(ret.token))
+        router.push(`/webapp-reset-password/set-password?${params.toString()}`)
       }
     }
     catch (error) { console.error(error) }
@@ -71,19 +53,19 @@ export default function CheckCode() {
 
   const resendCode = async () => {
     try {
-      const ret = await sendWebAppEMailLoginCode(email, locale)
-      if (ret.result === 'success') {
+      const res = await sendWebAppResetPasswordCode(email, locale)
+      if (res.result === 'success') {
         const params = new URLSearchParams(searchParams)
-        params.set('token', encodeURIComponent(ret.data))
-        router.replace(`/webapp-signin/check-code?${params.toString()}`)
+        params.set('token', encodeURIComponent(res.data))
+        router.replace(`/webapp-reset-password/check-code?${params.toString()}`)
       }
     }
     catch (error) { console.error(error) }
   }
 
   return <div className='flex flex-col gap-3'>
-    <div className='inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg'>
-      <RiMailSendFill className='h-6 w-6 text-2xl text-text-accent-light-mode-only' />
+    <div className='inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge text-text-accent-light-mode-only shadow-lg'>
+      <RiMailSendFill className='h-6 w-6 text-2xl' />
     </div>
     <div className='pb-4 pt-2'>
       <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.checkCode.checkYourEmail')}</h2>
@@ -95,6 +77,7 @@ export default function CheckCode() {
     </div>
 
     <form action="">
+      <input type='text' className='hidden' />
       <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
       <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
       <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>

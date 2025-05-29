@@ -6,7 +6,7 @@ import cn from 'classnames'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import Button from '@/app/components/base/button'
-import { changePasswordWithToken } from '@/service/common'
+import { changeWebAppPasswordWithToken } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Input from '@/app/components/base/input'
 
@@ -32,12 +32,7 @@ const ChangePasswordForm = () => {
   }, [])
 
   const getSignInUrl = () => {
-    if (searchParams.has('invite_token')) {
-      const params = new URLSearchParams()
-      params.set('token', searchParams.get('invite_token') as string)
-      return `/activate?${params.toString()}`
-    }
-    return '/signin'
+    return `/webapp-signin?redirect_url=${searchParams.get('redirect_url') || ''}`
   }
 
   const AUTO_REDIRECT_TIME = 5000
@@ -69,7 +64,7 @@ const ChangePasswordForm = () => {
     if (!valid())
       return
     try {
-      await changePasswordWithToken({
+      await changeWebAppPasswordWithToken({
         url: '/forgot-password/resets',
         body: {
           token,

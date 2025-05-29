@@ -99,11 +99,6 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       setIsLoading(false)
     }
   }
-  const getResetPasswordParams = () => {
-    const params = new URLSearchParams(searchParams)
-    params.set('from', 'webapp-signin')
-    return params.toString()
-  }
 
   return <form onSubmit={noop}>
     <div className='mb-3'>
@@ -127,7 +122,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       <label htmlFor="password" className="my-2 flex items-center justify-between">
         <span className='system-md-semibold text-text-secondary'>{t('login.password')}</span>
         <Link
-          href={`/reset-password?${getResetPasswordParams()}`}
+          href={`/webapp-reset-password?${searchParams.toString()}`}
           className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
           tabIndex={isEmailSetup ? 0 : -1}
           aria-disabled={!isEmailSetup}

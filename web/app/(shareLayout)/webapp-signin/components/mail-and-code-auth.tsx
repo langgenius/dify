@@ -6,7 +6,7 @@ import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import { emailRegex } from '@/config'
 import Toast from '@/app/components/base/toast'
-import { sendEMailLoginCode } from '@/service/common'
+import { sendWebAppEMailLoginCode } from '@/service/common'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
@@ -35,7 +35,7 @@ export default function MailAndCodeAuth() {
         return
       }
       setIsLoading(true)
-      const ret = await sendEMailLoginCode(email, locale)
+      const ret = await sendWebAppEMailLoginCode(email, locale)
       if (ret.result === 'success') {
         localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
