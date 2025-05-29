@@ -130,7 +130,7 @@ const CustomWebAppBrand = () => {
           <div className='system-xs-regular text-text-tertiary'>{t('custom.webapp.changeLogoTip')}</div>
         </div>
         <div className='flex items-center'>
-          {(uploadDisabled || (!webappLogo && !webappBrandRemoved)) && (
+          {(!uploadDisabled && webappLogo && !webappBrandRemoved) && (
             <>
               <Button
                 variant='ghost'

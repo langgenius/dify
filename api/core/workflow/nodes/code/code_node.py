@@ -167,8 +167,11 @@ class CodeNode(BaseNode[CodeNodeData]):
                                     value=value,
                                     variable=f"{prefix}.{output_name}[{i}]" if prefix else f"{output_name}[{i}]",
                                 )
-                        elif isinstance(first_element, dict) and all(
-                            value is None or isinstance(value, dict) for value in output_value
+                        elif (
+                            isinstance(first_element, dict)
+                            and all(value is None or isinstance(value, dict) for value in output_value)
+                            or isinstance(first_element, list)
+                            and all(value is None or isinstance(value, list) for value in output_value)
                         ):
                             for i, value in enumerate(output_value):
                                 if value is not None:
