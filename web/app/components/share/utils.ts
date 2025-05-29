@@ -10,8 +10,8 @@ export const getInitialTokenV2 = (): Record<string, any> => ({
   version: 2,
 })
 
-export const checkOrSetAccessToken = async () => {
-  const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+export const checkOrSetAccessToken = async (appCode?: string) => {
+  const sharedToken = appCode || globalThis.location.pathname.split('/').slice(-1)[0]
   const userId = (await getProcessedSystemVariablesFromUrlParams()).user_id
   const accessToken = localStorage.getItem('token') || JSON.stringify(getInitialTokenV2())
   let accessTokenJson = getInitialTokenV2()

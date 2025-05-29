@@ -84,7 +84,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
       })
       if (res.result === 'success') {
         localStorage.setItem('webAppAccessToken', res.data.access_token)
-        await checkOrSetAccessToken()
+        await checkOrSetAccessToken(appCode)
         router.replace(redirectUrl)
       }
       else {

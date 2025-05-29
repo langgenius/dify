@@ -59,7 +59,7 @@ export default function CheckCode() {
       const ret = await webAppEmailLoginWithCode({ email, code, token })
       if (ret.result === 'success') {
         localStorage.setItem('webAppAccessToken', ret.data.access_token)
-        await checkOrSetAccessToken()
+        await checkOrSetAccessToken(appCode)
         router.replace(redirectUrl)
       }
     }

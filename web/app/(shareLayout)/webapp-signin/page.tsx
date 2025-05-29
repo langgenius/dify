@@ -46,7 +46,7 @@ const WebSSOForm: FC = () => {
       const appCode = getAppCodeFromRedirectUrl()
       if (appCode && tokenFromUrl && redirectUrl) {
         localStorage.setItem('webAppAccessToken', tokenFromUrl)
-        await checkOrSetAccessToken()
+        await checkOrSetAccessToken(appCode)
         router.replace(redirectUrl)
       }
     })()
