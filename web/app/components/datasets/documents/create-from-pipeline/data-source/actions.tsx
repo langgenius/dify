@@ -3,6 +3,7 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'next/navigation'
 import { RiArrowRightLine } from '@remixicon/react'
+import Link from 'next/link'
 
 type ActionsProps = {
   disabled?: boolean
@@ -18,8 +19,9 @@ const Actions = ({
 
   return (
     <div className='flex justify-end gap-x-2'>
-      <a
+      <Link
         href={`/datasets/${datasetId}/documents`}
+        replace
       >
         <Button
           variant='ghost'
@@ -27,7 +29,7 @@ const Actions = ({
         >
           {t('common.operation.cancel')}
         </Button>
-      </a>
+      </Link>
       <Button
         disabled={disabled}
         variant='primary'
