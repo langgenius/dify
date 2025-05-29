@@ -178,6 +178,17 @@ class CodeNode(BaseNode[CodeNodeData]):
                                         prefix=f"{prefix}.{output_name}[{i}]" if prefix else f"{output_name}[{i}]",
                                         depth=depth + 1,
                                     )
+                        elif isinstance(first_element, list) and all(
+                            value is None or isinstance(value, list) for value in output_value
+                        ):
+                            for i, value in enumerate(output_value):
+                                if value is None:
+                                    self._transform_result(
+                                        result=value,
+                                        output_schema=None,
+                                        prefix=f"{prefix}.{output_name}[{i}]" if prefix else f"{output_name}[{i}]",
+                                        depth=depth + 1,
+                                    )
                         else:
                             raise OutputValidationError(
                                 f"Output {prefix}.{output_name} is not a valid array."
