@@ -1896,6 +1896,31 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         - <code>top_k</code> (integer) 返回结果数量，非必填
         - <code>score_threshold_enabled</code> (bool) 是否开启 score 阈值
         - <code>score_threshold</code> (float) Score 阈值
+        - <code>metadata_filtering_conditions</code> (object) 元数据过滤条件
+          - <code>logical_operator</code> (string) 逻辑运算符: <code>and</code> | <code>or</code>
+          - <code>conditions</code> (array[object]) 条件列表
+            - <code>name</code> (string) 元数据字段名
+            - <code>comparison_operator</code> (string) 比较运算符，可选值:
+              - 字符串比较:
+                - <code>contains</code>: 包含
+                - <code>not contains</code>: 不包含
+                - <code>start with</code>: 以...开头
+                - <code>end with</code>: 以...结尾
+                - <code>is</code>: 等于
+                - <code>is not</code>: 不等于
+                - <code>empty</code>: 为空
+                - <code>not empty</code>: 不为空
+              - 数值比较:
+                - <code>=</code>: 等于
+                - <code>≠</code>: 不等于
+                - <code>></code>: 大于
+                - <code> < </code>: 小于
+                - <code>≥</code>: 大于等于
+                - <code>≤</code>: 小于等于
+              - 时间比较:
+                - <code>before</code>: 早于
+                - <code>after</code>: 晚于
+            - <code>value</code> (string|number|null) 比较值
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           未启用字段
@@ -1920,7 +1945,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "weights": null,
         "top_k": 1,
         "score_threshold_enabled": false,
-        "score_threshold": null
+        "score_threshold": null,
+        "metadata_filtering_conditions": {
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "name": "document_name",
+                    "comparison_operator": "contains",
+                    "value": "test"
+                }
+            ]
+        }
     }
 }'`}
     >
