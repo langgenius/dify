@@ -4,89 +4,19 @@ import React from 'react'
 import Modal from '@/app/components/base/modal'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { MittProvider, VisualEditorContextProvider } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 
-const testSchema: SchemaRoot = {
-    type: Type.object,
-    properties: {
-      after: {
-          type: Type.string,
-          description: 'The ID of the existing block that the new block should be appended after. If not provided, content will be appended at the end of the page.',
-      },
-      content_block: {
-          type: Type.object,
-          properties: {
-              block_property: {
-                  type: Type.string,
-                  description: 'The block property of the block to be added. Possible property are `paragraph`,`heading_1`,`heading_2`,`heading_3`,`callout`,`todo`,`toggle`,`quote`, `bulleted_list_item`, `numbered_list_item`, other properties possible are `file`,`image`,`video` (link required).',
-              },
-              bold: {
-                  type: Type.boolean,
-                  description: 'Indicates if the text is bold.',
-              },
-              code: {
-                  type: Type.boolean,
-                  description: 'Indicates if the text is formatted as code.',
-              },
-              color: {
-                  type: Type.string,
-                  description: 'The color of the text background or text itself.',
-              },
-              content: {
-                  anyOf: [
-                      {
-                          type: Type.string,
-                      },
-                      {
-                          enum: [
-                              'null',
-                          ],
-                          nullable: true,
-                      },
-                  ],
-                  description: 'The textual content of the rich text object. Required for paragraph, heading_1, heading_2, heading_3, callout, todo, toggle, quote.',
-              },
-              italic: {
-                  type: Type.boolean,
-                  description: 'Indicates if the text is italic.',
-              },
-              link: {
-                  type: Type.string,
-                  description: 'The URL of the rich text object or the file to be uploaded or image/video link',
-              },
-              strikethrough: {
-                  type: Type.boolean,
-                  description: 'Indicates if the text has strikethrough.',
-              },
-              underline: {
-                  type: Type.boolean,
-                  description: 'Indicates if the text is underlined.',
-              },
-          },
-          additionalProperties: false,
-          description: 'Child content to append to a page.',
-      },
-      parent_block_id: {
-          type: Type.string,
-          description: 'The ID of the page which the children will be added.',
-      },
-  },
-  required: [
-      'content_block',
-      'parent_block_id',
-  ],
-  additionalProperties: false,
-}
 type Props = {
   isShow: boolean
+  schema: SchemaRoot
   onClose: () => void
 }
 
 const SchemaModal: FC<Props> = ({
   isShow,
+  schema,
   onClose,
 }) => {
   const { t } = useTranslation()
@@ -112,7 +42,7 @@ const SchemaModal: FC<Props> = ({
           <MittProvider>
             <VisualEditorContextProvider>
               <VisualEditor
-                schema={testSchema}
+                schema={schema}
                 readOnly
               ></VisualEditor>
             </VisualEditorContextProvider>

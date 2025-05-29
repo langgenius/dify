@@ -25,6 +25,7 @@ import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { useBoolean } from 'ahooks'
 import SchemaModal from './schema-modal'
+import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 
 type Props = {
   value: Record<string, any>
@@ -141,7 +142,10 @@ const ReasoningConfigForm: React.FC<Props> = ({
     setFalse: hideSchema,
   }] = useBoolean(false)
 
-  const renderField = (schema: any, showSchema: () => void) => {
+  const [schema, setSchema] = useState<SchemaRoot | null>(null)
+  console.log(schema)
+
+  const renderField = (schema: any, showSchema: (schema: SchemaRoot) => void) => {
     const {
       variable,
       label,
@@ -150,6 +154,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
       type,
       scope,
       url,
+      input_schema,
     } = schema
     const auto = value[variable]?.auto
     const tooltipContent = (tooltip && (
@@ -192,7 +197,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             {tooltipContent}
             <span className='system-xs-regular mx-1 text-text-quaternary'>·</span>
             <span className='system-xs-regular text-text-tertiary'>{valueType}</span>
-            {!isShowSchemaTooltip && (
+            {isShowSchemaTooltip && (
               <Tooltip
                 popupContent={<div className='system-xs-medium text-text-secondary'>
                   {t('workflow.nodes.agent.clickToViewParameterSchema')}
@@ -200,7 +205,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 asChild={false}>
                   <div
                     className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
-                    onClick={showSchema}
+                    onClick={() => showSchema(input_schema as SchemaRoot)}
                   >
                     <RiBracesLine className='size-3.5'/>
                   </div>
@@ -313,10 +318,14 @@ const ReasoningConfigForm: React.FC<Props> = ({
   }
   return (
     <div className='space-y-3 px-4 py-2'>
-      {!isShowSchema && schemas.map(schema => renderField(schema, showSchema))}
+      {!isShowSchema && schemas.map(schema => renderField(schema, (s: SchemaRoot) => {
+        setSchema(s)
+        showSchema()
+      }))}
       {isShowSchema && (
         <SchemaModal
           isShow={isShowSchema}
+          schema={schema!}
           onClose={hideSchema}
         />
       )}
