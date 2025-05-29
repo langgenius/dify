@@ -115,7 +115,9 @@ class WebAppAuthService:
         return token
 
     @classmethod
-    def is_app_require_permission_check(cls, app_code: str = None, app_id: str = None, access_mode: str = None) -> bool:
+    def is_app_require_permission_check(
+        cls, app_code: Optional[str] = None, app_id: Optional[str] = None, access_mode: Optional[str] = None
+    ) -> bool:
         """
         Check if the app requires permission check based on its access mode.
         """
