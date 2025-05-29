@@ -25,6 +25,8 @@ const Left = ({
   const { t } = useTranslation()
 
   const environmentVariables = useStore(s => s.environmentVariables)
+  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
+
   const {
     conversationVars,
     systemVars,
@@ -36,12 +38,22 @@ const Left = ({
 
   const showDivider = environmentVariables.length > 0 || conversationVars.length > 0 || systemVars.length > 0
 
+  const handleClearAll = () => {
+    deleteAllInspectorVars()
+    setCurrentFocusNodeId('')
+  }
+
+  const handleClearNode = (nodeId: string) => {
+    deleteNodeInspectorVars(nodeId)
+    setCurrentFocusNodeId('')
+  }
+
   return (
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
       <div className='flex shrink-0 items-center justify-between gap-1 pl-4 pr-1 pt-2'>
         <div className='system-sm-semibold-uppercase truncate text-text-primary'>{t('workflow.debug.variableInspect.title')}</div>
-        <Button variant='ghost' size='small' className='shrink-0' onClick={deleteAllInspectorVars}>{t('workflow.debug.variableInspect.clearAll')}</Button>
+        <Button variant='ghost' size='small' className='shrink-0' onClick={handleClearAll}>{t('workflow.debug.variableInspect.clearAll')}</Button>
       </div>
       {/* content */}
       <div className='grow overflow-y-auto py-1'>
@@ -88,7 +100,7 @@ const Left = ({
             currentVar={currentNodeVar}
             handleSelect={handleVarSelect}
             handleView={() => handleNodeSelect(group.nodeId)}
-            handleClear={() => deleteNodeInspectorVars(group.nodeId)}
+            handleClear={() => handleClearNode(group.nodeId)}
           />
         ))}
       </div>

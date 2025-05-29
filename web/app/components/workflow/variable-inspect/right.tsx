@@ -35,6 +35,7 @@ const Right = ({
   const { t } = useTranslation()
   const bottomPanelWidth = useStore(s => s.bottomPanelWidth)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
 
   const {
     resetToLastRunVar,
@@ -49,6 +50,11 @@ const Right = ({
   const resetValue = () => {
     if (!currentNodeVar) return
     resetToLastRunVar(currentNodeVar.nodeId, currentNodeVar.var.id)
+  }
+
+  const handleClose = () => {
+    setShowVariableInspectPanel(false)
+    setCurrentFocusNodeId('')
   }
 
   return (
@@ -109,7 +115,7 @@ const Right = ({
               )}
             </>
           )}
-          <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
+          <ActionButton onClick={handleClose}>
             <RiCloseLine className='h-4 w-4' />
           </ActionButton>
         </div>

@@ -100,12 +100,14 @@ const Group = ({
     <div className='p-0.5'>
       {/* node item */}
       <div className='group flex h-6 items-center gap-0.5'>
-        {nodeData?.isSingRunRunning && (
-          <RiLoader2Line className='h-3 w-3 animate-spin text-text-accent' />
-        )}
-        {(!nodeData || !nodeData.isSingRunRunning || visibleVarList.length > 0) && (
-          <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} onClick={() => setIsCollapsed(!isCollapsed)} />
-        )}
+        <div className='h-3 w-3 shrink-0'>
+          {nodeData?.isSingRunRunning && (
+            <RiLoader2Line className='h-3 w-3 animate-spin text-text-accent' />
+          )}
+          {(!nodeData || !nodeData.isSingRunRunning) && visibleVarList.length > 0 && (
+            <RiArrowRightSLine className={cn('h-3 w-3 text-text-tertiary', !isCollapsed && 'rotate-90')} onClick={() => setIsCollapsed(!isCollapsed)} />
+          )}
+        </div>
         <div className='flex grow cursor-pointer items-center gap-1' onClick={() => setIsCollapsed(!isCollapsed)}>
           {nodeData && (
             <>
