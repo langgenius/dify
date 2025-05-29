@@ -15,7 +15,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import UploadFile
 
 class PdfExtractor(BaseExtractor):
@@ -121,7 +121,7 @@ class PdfExtractor(BaseExtractor):
                                     extension=image_ext,
                                     mime_type=mime_type or "",
                                     created_by=self._user_id,
-                                    created_by_role=CreatedByRole.ACCOUNT,
+                                    created_by_role=CreatorUserRole.ACCOUNT,
                                     created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
                                     used=True,
                                     used_by=self._user_id,
