@@ -1,27 +1,32 @@
+import { useRouter } from 'next/navigation'
 import React from 'react'
 
 type LinkProps = {
   Icon: React.ComponentType<{ className?: string }>
   text: string
   href: string
-  ref?: React.RefObject<HTMLAnchorElement>
 }
 
 const Link = ({
   Icon,
   text,
   href,
-  ref,
 }: LinkProps) => {
+  const { push } = useRouter()
+
+  const navigateTo = () => {
+    push(href)
+  }
+
   return (
-    <a
-      ref={ref}
+    <button
+      type='button'
       className='flex w-full items-center gap-x-2 rounded-lg bg-transparent px-4 py-2 text-text-tertiary shadow-shadow-shadow-3 hover:bg-background-default-dodge hover:text-text-secondary hover:shadow-xs'
-      href={href}
+      onClick={navigateTo}
     >
       <Icon className='h-4 w-4 shrink-0' />
-      <span className='system-sm-medium grow'>{text}</span>
-    </a>
+      <span className='system-sm-medium grow text-left'>{text}</span>
+    </button>
   )
 }
 
