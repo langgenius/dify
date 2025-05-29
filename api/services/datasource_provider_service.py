@@ -92,7 +92,7 @@ class DatasourceProviderService:
         return secret_input_form_variables
 
 
-    def get_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> Optional[dict]:
+    def get_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> list[dict]:
         """
         get datasource credentials.
 
@@ -102,22 +102,30 @@ class DatasourceProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        datasource_provider: DatasourceProvider | None = db.session.query(DatasourceProvider).filter_by(tenant_id=tenant_id,
+        datasource_providers: list[DatasourceProvider] = db.session.query(DatasourceProvider).filter_by(tenant_id=tenant_id,
                                                                             provider=provider,
-                                                                            plugin_id=plugin_id).first()
-        if not datasource_provider:
-            return None
-        encrypted_credentials = datasource_provider.encrypted_credentials
-        # Get provider credential secret variables
-        credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider=provider)
+                                                                            plugin_id=plugin_id).all()
+        if not datasource_providers:
+            return []
+        copy_credentials_list = []
+        for datasource_provider in datasource_providers:
+            encrypted_credentials = datasource_provider.encrypted_credentials
+            # Get provider credential secret variables
+            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider=provider)
 
-        # Obfuscate provider credentials
-        copy_credentials = encrypted_credentials.copy()
-        for key, value in copy_credentials.items():
-            if key in credential_secret_variables:
-                copy_credentials[key] = encrypter.obfuscated_token(value)
+            # Obfuscate provider credentials
+            copy_credentials = encrypted_credentials.copy()
+            for key, value in copy_credentials.items():
+                if key in credential_secret_variables:
+                    copy_credentials[key] = encrypter.obfuscated_token(value)
+            copy_credentials_list.append(
+                {
+                    "credentials": copy_credentials,
+                    "type": datasource_provider.auth_type,
+                }
+            )
 
-        return copy_credentials
+        return copy_credentials_list
 
 
     def remove_datasource_credentials(self,

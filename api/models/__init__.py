@@ -56,6 +56,7 @@ from .model import (
     TraceAppConfig,
     UploadFile,
 )
+from .oauth import DatasourceOauthParamConfig, DatasourceProvider
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -123,6 +124,8 @@ __all__ = [
     "DatasetProcessRule",
     "DatasetQuery",
     "DatasetRetrieverResource",
+    "DatasourceOauthParamConfig",
+    "DatasourceProvider",
     "DifySetup",
     "Document",
     "DocumentSegment",

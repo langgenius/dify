@@ -108,6 +108,18 @@ class DatasourceAuth(Resource):
             raise ValueError(str(ex))
 
         return {"result": "success"}, 201
+    
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider, plugin_id):
+        datasource_provider_service = DatasourceProviderService()
+        datasources = datasource_provider_service.get_datasource_credentials(
+            tenant_id=current_user.current_tenant_id, 
+            provider=provider, 
+            plugin_id=plugin_id
+        )
+        return {"result": datasources}, 200
         
 class DatasourceAuthDeleteApi(Resource):
     @setup_required

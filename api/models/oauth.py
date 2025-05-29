@@ -28,6 +28,7 @@ class DatasourceProvider(Base):
         db.UniqueConstraint("plugin_id", "provider", name="datasource_provider_plugin_id_provider_idx"),
     )
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     provider: Mapped[str] = db.Column(db.String(255), nullable=False)
     auth_type: Mapped[str] = db.Column(db.String(255), nullable=False)
