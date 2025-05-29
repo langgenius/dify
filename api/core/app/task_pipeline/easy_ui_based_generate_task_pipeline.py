@@ -43,7 +43,7 @@ from core.app.entities.task_entities import (
     StreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
-from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
+from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -63,7 +63,7 @@ from models.model import AppMode, Conversation, Message, MessageAgentThought
 logger = logging.getLogger(__name__)
 
 
-class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleManage):
+class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
     """
     EasyUIBasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
@@ -104,6 +104,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             )
         )
 
+        self._message_cycle_manager = MessageCycleManager(
+            application_generate_entity=application_generate_entity,
+            task_state=self._task_state,
+        )
+
         self._conversation_name_generate_thread: Optional[Thread] = None
 
     def process(
@@ -115,7 +120,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
     ]:
         if self._application_generate_entity.app_config.app_mode != AppMode.COMPLETION:
             # start generate conversation name thread
-            self._conversation_name_generate_thread = self._generate_conversation_name(
+            self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
                 conversation_id=self._conversation_id, query=self._application_generate_entity.query or ""
             )
 
@@ -277,7 +282,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 )
                 if output_moderation_answer:
                     self._task_state.llm_result.message.content = output_moderation_answer
-                    yield self._message_replace_to_stream_response(answer=output_moderation_answer)
+                    yield self._message_cycle_manager.message_replace_to_stream_response(
+                        answer=output_moderation_answer
+                    )
 
                 with Session(db.engine) as session:
                     # Save message
@@ -286,9 +293,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 message_end_resp = self._message_end_to_stream_response()
                 yield message_end_resp
             elif isinstance(event, QueueRetrieverResourcesEvent):
-                self._handle_retriever_resources(event)
+                self._message_cycle_manager.handle_retriever_resources(event)
             elif isinstance(event, QueueAnnotationReplyEvent):
-                annotation = self._handle_annotation_reply(event)
+                annotation = self._message_cycle_manager.handle_annotation_reply(event)
                 if annotation:
                     self._task_state.llm_result.message.content = annotation.content
             elif isinstance(event, QueueAgentThoughtEvent):
@@ -296,7 +303,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 if agent_thought_response is not None:
                     yield agent_thought_response
             elif isinstance(event, QueueMessageFileEvent):
-                response = self._message_file_to_stream_response(event)
+                response = self._message_cycle_manager.message_file_to_stream_response(event)
                 if response:
                     yield response
             elif isinstance(event, QueueLLMChunkEvent | QueueAgentMessageEvent):
@@ -318,7 +325,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 self._task_state.llm_result.message.content = current_content
 
                 if isinstance(event, QueueLLMChunkEvent):
-                    yield self._message_to_stream_response(
+                    yield self._message_cycle_manager.message_to_stream_response(
                         answer=cast(str, delta_text),
                         message_id=self._message_id,
                     )
@@ -328,7 +335,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                         message_id=self._message_id,
                     )
             elif isinstance(event, QueueMessageReplaceEvent):
-                yield self._message_replace_to_stream_response(answer=event.text)
+                yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
             elif isinstance(event, QueuePingEvent):
                 yield self._ping_stream_response()
             else:

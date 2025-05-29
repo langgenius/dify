@@ -30,7 +30,7 @@ from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
 
 
-class MessageCycleManage:
+class MessageCycleManager:
     def __init__(
         self,
         *,
@@ -45,7 +45,7 @@ class MessageCycleManage:
         self._application_generate_entity = application_generate_entity
         self._task_state = task_state
 
-    def _generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
+    def generate_conversation_name(self, *, conversation_id: str, query: str) -> Optional[Thread]:
         """
         Generate conversation name.
         :param conversation_id: conversation id
@@ -102,7 +102,7 @@ class MessageCycleManage:
                 db.session.commit()
                 db.session.close()
 
-    def _handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> Optional[MessageAnnotation]:
+    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> Optional[MessageAnnotation]:
         """
         Handle annotation reply.
         :param event: event
@@ -120,7 +120,7 @@ class MessageCycleManage:
 
         return None
 
-    def _handle_retriever_resources(self, event: QueueRetrieverResourcesEvent) -> None:
+    def handle_retriever_resources(self, event: QueueRetrieverResourcesEvent) -> None:
         """
         Handle retriever resources.
         :param event: event
@@ -129,7 +129,7 @@ class MessageCycleManage:
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
             self._task_state.metadata["retriever_resources"] = event.retriever_resources
 
-    def _message_file_to_stream_response(self, event: QueueMessageFileEvent) -> Optional[MessageFileStreamResponse]:
+    def message_file_to_stream_response(self, event: QueueMessageFileEvent) -> Optional[MessageFileStreamResponse]:
         """
         Message file to stream response.
         :param event: event
@@ -166,7 +166,7 @@ class MessageCycleManage:
 
         return None
 
-    def _message_to_stream_response(
+    def message_to_stream_response(
         self, answer: str, message_id: str, from_variable_selector: Optional[list[str]] = None
     ) -> MessageStreamResponse:
         """
@@ -182,7 +182,7 @@ class MessageCycleManage:
             from_variable_selector=from_variable_selector,
         )
 
-    def _message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:
+    def message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:
         """
         Message replace to stream response.
         :param answer: answer

@@ -57,7 +57,7 @@ from core.app.entities.task_entities import (
     WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
-from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
+from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -141,7 +141,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         )
 
         self._task_state = WorkflowTaskState()
-        self._message_cycle_manager = MessageCycleManage(
+        self._message_cycle_manager = MessageCycleManager(
             application_generate_entity=application_generate_entity, task_state=self._task_state
         )
 
@@ -162,7 +162,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         :return:
         """
         # start generate conversation name thread
-        self._conversation_name_generate_thread = self._message_cycle_manager._generate_conversation_name(
+        self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
             conversation_id=self._conversation_id, query=self._application_generate_entity.query
         )
 
@@ -605,7 +605,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 yield self._message_end_to_stream_response()
                 break
             elif isinstance(event, QueueRetrieverResourcesEvent):
-                self._message_cycle_manager._handle_retriever_resources(event)
+                self._message_cycle_manager.handle_retriever_resources(event)
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     message = self._get_message(session=session)
@@ -614,7 +614,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     )
                     session.commit()
             elif isinstance(event, QueueAnnotationReplyEvent):
-                self._message_cycle_manager._handle_annotation_reply(event)
+                self._message_cycle_manager.handle_annotation_reply(event)
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     message = self._get_message(session=session)
@@ -637,12 +637,12 @@ class AdvancedChatAppGenerateTaskPipeline:
                     tts_publisher.publish(queue_message)
 
                 self._task_state.answer += delta_text
-                yield self._message_cycle_manager._message_to_stream_response(
+                yield self._message_cycle_manager.message_to_stream_response(
                     answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
                 )
             elif isinstance(event, QueueMessageReplaceEvent):
                 # published by moderation
-                yield self._message_cycle_manager._message_replace_to_stream_response(
+                yield self._message_cycle_manager.message_replace_to_stream_response(
                     answer=event.text, reason=event.reason
                 )
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
@@ -654,7 +654,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
                 if output_moderation_answer:
                     self._task_state.answer = output_moderation_answer
-                    yield self._message_cycle_manager._message_replace_to_stream_response(
+                    yield self._message_cycle_manager.message_replace_to_stream_response(
                         answer=output_moderation_answer,
                         reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
