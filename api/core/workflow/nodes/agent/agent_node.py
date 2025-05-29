@@ -159,7 +159,15 @@ class AgentNode(ToolNode):
                 # variable_pool.convert_template returns a string,
                 # so we need to convert it back to a dictionary
                 try:
-                    parameter_value = json.loads(parameter_value)
+                    import re
+
+                    def sanitize_json_string(s):
+                        # Replace smart quotes, sanitize control characters if needed
+                        s = s.replace("\x00", "")  # Null byte
+                        s = re.sub(r"[\x01-\x1F]+", "", s)  # Strip most control characters
+                        return s
+
+                    parameter_value = json.loads(sanitize_json_string(parameter_value))
                 except json.JSONDecodeError:
                     parameter_value = parameter_value
             else:
