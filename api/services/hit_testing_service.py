@@ -41,6 +41,7 @@ class HitTestingService:
             dataset_retrieval = DatasetRetrieval()
 
             from core.app.app_config.entities import MetadataFilteringCondition
+
             metadata_filtering_conditions = MetadataFilteringCondition(**metadata_filtering_conditions)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
@@ -51,7 +52,7 @@ class HitTestingService:
                 inputs={},
                 tenant_id=None,
                 user_id=None,
-                metadata_model_config=None
+                metadata_model_config=None,
             )
             if metadata_filter_document_ids:
                 document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
@@ -70,7 +71,7 @@ class HitTestingService:
             else None,
             reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
             weights=retrieval_model.get("weights", None),
-            document_ids_filter=document_ids_filter
+            document_ids_filter=document_ids_filter,
         )
 
         end = time.perf_counter()

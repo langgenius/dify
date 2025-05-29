@@ -411,7 +411,6 @@ class DatasetChildChunkApi(DatasetApiResource):
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
 
 
-
 api.add_resource(SegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 api.add_resource(
     DatasetSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>"
