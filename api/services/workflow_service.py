@@ -13,7 +13,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import NodeExecution, NodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes import NodeType

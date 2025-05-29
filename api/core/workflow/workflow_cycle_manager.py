@@ -4,8 +4,6 @@ from datetime import UTC, datetime
 from typing import Any, Optional, Union
 from uuid import uuid4
 
-from sqlalchemy.orm import Session
-
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueNodeExceptionEvent,
@@ -20,11 +18,11 @@ from core.app.task_pipeline.exc import WorkflowRunNotFoundError
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.workflow.entities.node_entities import NodeRunMetadataKey
-from core.workflow.entities.node_execution_entities import (
+from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
+from core.workflow.entities.workflow_node_execution import (
     NodeExecution,
     NodeExecutionStatus,
 )
-from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
@@ -32,11 +30,11 @@ from core.workflow.workflow_entry import WorkflowEntry
 
 
 @dataclass
-class TempWorkflowEntity:
-    id_: str
-    type_: WorkflowType
+class CycleManagerWorkflowInfo:
+    workflow_id: str
+    workflow_type: WorkflowType
     version: str
-    graph: Mapping[str, Any]
+    graph_data: Mapping[str, Any]
 
 
 class WorkflowCycleManager:
@@ -45,22 +43,17 @@ class WorkflowCycleManager:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         workflow_system_variables: dict[SystemVariableKey, Any],
-        workflow_entity: TempWorkflowEntity,
+        workflow_info: CycleManagerWorkflowInfo,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
         self._application_generate_entity = application_generate_entity
         self._workflow_system_variables = workflow_system_variables
+        self._workflow_info = workflow_info
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
-        self._temp_workflow_entity = workflow_entity
 
-    def handle_workflow_run_start(
-        self,
-        *,
-        session: Session,
-        workflow_id: str,
-    ) -> WorkflowExecution:
+    def handle_workflow_run_start(self) -> WorkflowExecution:
         inputs = {**self._application_generate_entity.inputs}
         for key, value in (self._workflow_system_variables or {}).items():
             if key.value == "conversation":
@@ -74,11 +67,11 @@ class WorkflowCycleManager:
         # TODO: This workflow_run_id should always not be None, maybe we can use a more elegant way to handle this
         execution_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
         execution = WorkflowExecution.new(
-            id=execution_id,
-            workflow_id=self._temp_workflow_entity.id_,
-            type=self._temp_workflow_entity.type_,
-            workflow_version=self._temp_workflow_entity.version,
-            graph=self._temp_workflow_entity.graph,
+            id_=execution_id,
+            workflow_id=self._workflow_info.workflow_id,
+            workflow_type=self._workflow_info.workflow_type,
+            workflow_version=self._workflow_info.version,
+            graph=self._workflow_info.graph_data,
             inputs=inputs,
             started_at=datetime.now(UTC).replace(tzinfo=None),
         )
@@ -177,7 +170,7 @@ class WorkflowCycleManager:
 
         # Use the instance repository to find running executions for a workflow run
         running_node_executions = self._workflow_node_execution_repository.get_running_executions(
-            workflow_run_id=workflow_execution.id
+            workflow_run_id=workflow_execution.id_
         )
 
         # Update the domain models
@@ -225,7 +218,7 @@ class WorkflowCycleManager:
         domain_execution = NodeExecution(
             id=str(uuid4()),
             workflow_id=workflow_execution.workflow_id,
-            workflow_run_id=workflow_execution.id,
+            workflow_run_id=workflow_execution.id_,
             predecessor_node_id=event.predecessor_node_id,
             index=event.node_run_index,
             node_execution_id=event.node_execution_id,
@@ -354,7 +347,7 @@ class WorkflowCycleManager:
         domain_execution = NodeExecution(
             id=str(uuid4()),
             workflow_id=workflow_execution.workflow_id,
-            workflow_run_id=workflow_execution.id,
+            workflow_run_id=workflow_execution.id_,
             predecessor_node_id=event.predecessor_node_id,
             node_execution_id=event.node_execution_id,
             node_id=event.node_id,

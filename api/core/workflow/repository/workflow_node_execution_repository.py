@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Optional, Protocol
 
-from core.workflow.entities.node_execution_entities import NodeExecution
+from core.workflow.entities.workflow_node_execution import NodeExecution
 
 
 @dataclass

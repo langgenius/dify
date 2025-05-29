@@ -13,20 +13,16 @@ from core.app.entities.queue_entities import (
     QueueNodeSucceededEvent,
 )
 from core.workflow.entities.node_entities import NodeRunMetadataKey
-from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
-from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
+from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
+from core.workflow.entities.workflow_node_execution import NodeExecution, NodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_cycle_manager import TempWorkflowEntity, WorkflowCycleManager
+from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from models.workflow import (
-    Workflow,
-    WorkflowRun,
-    WorkflowRunStatus,
-)
+from models.workflow import Workflow, WorkflowRun
 
 
 @pytest.fixture
@@ -95,11 +91,11 @@ def mock_workflow_execution_repository():
 
 @pytest.fixture
 def real_workflow_entity():
-    return TempWorkflowEntity(
-        id_="test-workflow-id",  # Matches ID used in other fixtures
-        type_=WorkflowType.CHAT,
+    return CycleManagerWorkflowInfo(
+        workflow_id="test-workflow-id",  # Matches ID used in other fixtures
+        workflow_type=WorkflowType.CHAT,
         version="1.0.0",
-        graph={
+        graph_data={
             "nodes": [
                 {
                     "id": "node1",
@@ -124,7 +120,7 @@ def workflow_cycle_manager(
     return WorkflowCycleManager(
         application_generate_entity=real_app_generate_entity,
         workflow_system_variables=real_workflow_system_variables,
-        workflow_entity=real_workflow_entity,
+        workflow_info=real_workflow_entity,
         workflow_execution_repository=mock_workflow_execution_repository,
         workflow_node_execution_repository=mock_node_execution_repository,
     )
@@ -170,7 +166,7 @@ def real_workflow_run():
     workflow_run.version = "1.0"
     workflow_run.graph = json.dumps({"nodes": [], "edges": []})
     workflow_run.inputs = json.dumps({"query": "test query"})
-    workflow_run.status = WorkflowRunStatus.RUNNING
+    workflow_run.status = WorkflowExecutionStatus.RUNNING
     workflow_run.outputs = json.dumps({"answer": "test answer"})
     workflow_run.created_by_role = CreatorUserRole.ACCOUNT
     workflow_run.created_by = "test-user-id"
@@ -193,19 +189,13 @@ def test_init(
     assert workflow_cycle_manager._workflow_node_execution_repository == mock_node_execution_repository
 
 
-def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, real_workflow):
+def test_handle_workflow_run_start(workflow_cycle_manager):
     """Test handle_workflow_run_start method"""
-    # Mock session.scalar to return the workflow and max sequence
-    mock_session.scalar.side_effect = [real_workflow, 5]
-
     # Call the method
-    workflow_execution = workflow_cycle_manager.handle_workflow_run_start(
-        session=mock_session,
-        workflow_id="test-workflow-id",
-    )
+    workflow_execution = workflow_cycle_manager.handle_workflow_run_start()
 
     # Verify the result
-    assert workflow_execution.workflow_id == real_workflow.id
+    assert workflow_execution.workflow_id == "test-workflow-id"
 
     # Verify the workflow_execution_repository.save was called
     workflow_cycle_manager._workflow_execution_repository.save.assert_called_once_with(workflow_execution)
@@ -216,10 +206,10 @@ def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execu
     # Create a real WorkflowExecution
 
     workflow_execution = WorkflowExecution(
-        id="test-workflow-run-id",
+        id_="test-workflow-run-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        type=WorkflowType.CHAT,
+        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
         started_at=datetime.now(UTC).replace(tzinfo=None),
@@ -250,10 +240,10 @@ def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execut
     # Create a real WorkflowExecution
 
     workflow_execution = WorkflowExecution(
-        id="test-workflow-run-id",
+        id_="test-workflow-run-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        type=WorkflowType.CHAT,
+        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
         started_at=datetime.now(UTC).replace(tzinfo=None),
@@ -270,13 +260,13 @@ def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execut
         workflow_run_id="test-workflow-run-id",
         total_tokens=50,
         total_steps=3,
-        status=WorkflowRunStatus.FAILED,
+        status=WorkflowExecutionStatus.FAILED,
         error_message="Test error message",
     )
 
     # Verify the result
     assert result == workflow_execution
-    assert result.status == WorkflowExecutionStatus(WorkflowRunStatus.FAILED.value)
+    assert result.status == WorkflowExecutionStatus.FAILED
     assert result.error_message == "Test error message"
     assert result.total_tokens == 50
     assert result.total_steps == 3
@@ -288,10 +278,10 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
     # Create a real WorkflowExecution
 
     workflow_execution = WorkflowExecution(
-        id="test-workflow-execution-id",
+        id_="test-workflow-execution-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        type=WorkflowType.CHAT,
+        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
         started_at=datetime.now(UTC).replace(tzinfo=None),
@@ -319,13 +309,13 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
 
     # Call the method
     result = workflow_cycle_manager.handle_node_execution_start(
-        workflow_execution_id=workflow_execution.id,
+        workflow_execution_id=workflow_execution.id_,
         event=event,
     )
 
     # Verify the result
     assert result.workflow_id == workflow_execution.workflow_id
-    assert result.workflow_run_id == workflow_execution.id
+    assert result.workflow_run_id == workflow_execution.id_
     assert result.node_execution_id == event.node_execution_id
     assert result.node_id == event.node_id
     assert result.node_type == event.node_type
@@ -341,10 +331,10 @@ def test_get_workflow_execution_or_raise_error(workflow_cycle_manager, mock_work
     # Create a real WorkflowExecution
 
     workflow_execution = WorkflowExecution(
-        id="test-workflow-run-id",
+        id_="test-workflow-run-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        type=WorkflowType.CHAT,
+        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
         started_at=datetime.now(UTC).replace(tzinfo=None),
@@ -413,10 +403,10 @@ def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_workfl
     # Create a real WorkflowExecution
 
     workflow_execution = WorkflowExecution(
-        id="test-workflow-run-id",
+        id_="test-workflow-run-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        type=WorkflowType.CHAT,
+        workflow_type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
         started_at=datetime.now(UTC).replace(tzinfo=None),

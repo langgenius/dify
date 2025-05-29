@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.entities.node_entities import NodeRunMetadataKey
-from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import NodeExecution, NodeExecutionStatus
 from core.workflow.nodes.enums import NodeType
 from core.workflow.repository.workflow_node_execution_repository import OrderConfig
 from models.account import Account, Tenant

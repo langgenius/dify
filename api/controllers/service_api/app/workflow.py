@@ -24,7 +24,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
-from core.workflow.entities.workflow_execution_entities import WorkflowExecutionStatus
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
