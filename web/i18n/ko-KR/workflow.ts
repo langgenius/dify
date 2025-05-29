@@ -200,7 +200,7 @@ const translation = {
       code: '코드',
       model: '모델',
       rerankModel: '재정렬 모델',
-      visionVariable: '시력 변수',
+      visionVariable: '비전 변수',
     },
     invalidVariable: '잘못된 변수',
     rerankModelRequired: 'Rerank Model을 켜기 전에 설정에서 모델이 성공적으로 구성되었는지 확인하십시오.',
@@ -463,7 +463,7 @@ const translation = {
       metadata: {
         options: {
           disabled: {
-            title: '장애인',
+            title: '사용안함',
             subTitle: '메타데이터 필터링을 활성화하지 않음',
           },
           automatic: {
@@ -648,7 +648,6 @@ const translation = {
       'varNotSet': '변수가 설정되지 않음',
     },
     tool: {
-      toAuthorize: '승인하기',
       inputVars: '입력 변수',
       outputVars: {
         text: '도구가 생성한 내용',

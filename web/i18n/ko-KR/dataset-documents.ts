@@ -301,7 +301,7 @@ const translation = {
         designDocument: '디자인 문서',
         productSpecification: '제품 사양서',
         financialReport: '재무 보고서',
-        marketAnalysis: '시장 분석',
+        marketAnalysis: '마켓 분석',
         projectPlan: '프로젝트 계획서',
         teamStructure: '팀 구조',
         policiesProcedures: '정책 및 절차',
