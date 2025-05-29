@@ -541,7 +541,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     WORKFLOW_RUN = "workflow-run"
 
 
-class WorkflowNodeExecution(Base):
+class WorkflowNodeExecutionModel(Base):
     """
     Workflow Node Execution
 

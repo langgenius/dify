@@ -19,7 +19,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.entities.workflow_node_execution import (
-    NodeExecution,
+    WorkflowNodeExecution,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -204,7 +204,7 @@ class WorkflowCycleManager:
         *,
         workflow_execution_id: str,
         event: QueueNodeStartedEvent,
-    ) -> NodeExecution:
+    ) -> WorkflowNodeExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_execution_id)
 
         # Create a domain model
@@ -215,7 +215,7 @@ class WorkflowCycleManager:
             WorkflowNodeExecutionMetadataKey.LOOP_ID: event.in_loop_id,
         }
 
-        domain_execution = NodeExecution(
+        domain_execution = WorkflowNodeExecution(
             id=str(uuid4()),
             workflow_id=workflow_execution.workflow_id,
             workflow_execution_id=workflow_execution.id_,
@@ -235,7 +235,7 @@ class WorkflowCycleManager:
 
         return domain_execution
 
-    def handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> NodeExecution:
+    def handle_workflow_node_execution_success(self, *, event: QueueNodeSucceededEvent) -> WorkflowNodeExecution:
         # Get the domain model from repository
         domain_execution = self._workflow_node_execution_repository.get_by_node_execution_id(event.node_execution_id)
         if not domain_execution:
@@ -275,7 +275,7 @@ class WorkflowCycleManager:
         | QueueNodeInIterationFailedEvent
         | QueueNodeInLoopFailedEvent
         | QueueNodeExceptionEvent,
-    ) -> NodeExecution:
+    ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
         :param event: queue node failed event
@@ -320,7 +320,7 @@ class WorkflowCycleManager:
 
     def handle_workflow_node_execution_retried(
         self, *, workflow_execution_id: str, event: QueueNodeRetryEvent
-    ) -> NodeExecution:
+    ) -> WorkflowNodeExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_execution_id)
         created_at = event.start_at
         finished_at = datetime.now(UTC).replace(tzinfo=None)
@@ -344,7 +344,7 @@ class WorkflowCycleManager:
         merged_metadata = {**execution_metadata_dict, **origin_metadata} if execution_metadata_dict else origin_metadata
 
         # Create a domain model
-        domain_execution = NodeExecution(
+        domain_execution = WorkflowNodeExecution(
             id=str(uuid4()),
             workflow_id=workflow_execution.workflow_id,
             workflow_execution_id=workflow_execution.id_,

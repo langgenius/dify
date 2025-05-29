@@ -14,7 +14,7 @@ from core.app.entities.queue_entities import (
 )
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.entities.workflow_node_execution import (
-    NodeExecution,
+    WorkflowNodeExecution,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
@@ -373,7 +373,7 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
 
     # Create a real node execution
 
-    node_execution = NodeExecution(
+    node_execution = WorkflowNodeExecution(
         id="test-node-execution-record-id",
         node_execution_id="test-node-execution-id",
         workflow_id="test-workflow-id",
@@ -451,7 +451,7 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
 
     # Create a real node execution
 
-    node_execution = NodeExecution(
+    node_execution = WorkflowNodeExecution(
         id="test-node-execution-record-id",
         node_execution_id="test-node-execution-id",
         workflow_id="test-workflow-id",

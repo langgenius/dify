@@ -45,7 +45,7 @@ from core.app.entities.task_entities import (
 from core.file import FILE_MODEL_IDENTITY, File
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.workflow_execution import WorkflowExecution
-from core.workflow.entities.workflow_node_execution import NodeExecution, WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from models import (
@@ -143,7 +143,7 @@ class WorkflowResponseConverter:
         *,
         event: QueueNodeStartedEvent,
         task_id: str,
-        workflow_node_execution: NodeExecution,
+        workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeStartStreamResponse]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
@@ -193,7 +193,7 @@ class WorkflowResponseConverter:
         | QueueNodeInLoopFailedEvent
         | QueueNodeExceptionEvent,
         task_id: str,
-        workflow_node_execution: NodeExecution,
+        workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeFinishStreamResponse]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
@@ -236,7 +236,7 @@ class WorkflowResponseConverter:
         *,
         event: QueueNodeRetryEvent,
         task_id: str,
-        workflow_node_execution: NodeExecution,
+        workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
