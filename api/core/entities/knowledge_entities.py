@@ -25,15 +25,15 @@ class PipelineDataset(BaseModel):
     description: str
     chunk_structure: str
 
+
 class PipelineDocument(BaseModel):
     id: str
     position: int
-    data_source_info: dict
+    data_source_info: Optional[dict] = None
     name: str
     indexing_status: str
-    error: str
+    error: Optional[str] = None
     enabled: bool
-
 
 
 class PipelineGenerateResponse(BaseModel):
