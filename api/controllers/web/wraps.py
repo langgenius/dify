@@ -44,9 +44,7 @@ def decode_jwt_token():
         if auth_scheme != "bearer":
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
         decoded = PassportService().verify(tk)
-        decoded_app_code = decoded.get("app_code")
-        if not decoded_app_code or decoded_app_code != app_code:
-            raise Unauthorized("Invalid app code in token.")
+        app_code = decoded.get("app_code")
         app_model = db.session.query(App).filter(App.id == decoded["app_id"]).first()
         site = db.session.query(Site).filter(Site.code == app_code).first()
         if not app_model:
