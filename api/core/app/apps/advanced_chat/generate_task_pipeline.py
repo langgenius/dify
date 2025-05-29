@@ -315,6 +315,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
                     )
+                    session.commit()
 
                 yield workflow_start_resp
             elif isinstance(

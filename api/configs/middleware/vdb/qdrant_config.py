@@ -33,3 +33,8 @@ class QdrantConfig(BaseSettings):
         description="Port number for gRPC connection to Qdrant server (default is 6334)",
         default=6334,
     )
+
+    QDRANT_REPLICATION_FACTOR: PositiveInt = Field(
+        description="Replication factor for Qdrant collections (default is 1)",
+        default=1,
+    )

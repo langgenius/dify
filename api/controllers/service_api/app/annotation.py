@@ -3,7 +3,7 @@ from flask_restful import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.service_api import api
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     annotation_fields,
@@ -14,7 +14,7 @@ from services.annotation_service import AppAnnotationService
 
 
 class AnnotationReplyActionApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @validate_app_token
     def post(self, app_model: App, end_user: EndUser, action):
         parser = reqparse.RequestParser()
         parser.add_argument("score_threshold", required=True, type=float, location="json")
@@ -31,7 +31,7 @@ class AnnotationReplyActionApi(Resource):
 
 
 class AnnotationReplyActionStatusApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @validate_app_token
     def get(self, app_model: App, end_user: EndUser, job_id, action):
         job_id = str(job_id)
         app_annotation_job_key = "{}_app_annotation_job_{}".format(action, str(job_id))
@@ -49,7 +49,7 @@ class AnnotationReplyActionStatusApi(Resource):
 
 
 class AnnotationListApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @validate_app_token
     def get(self, app_model: App, end_user: EndUser):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
@@ -65,7 +65,7 @@ class AnnotationListApi(Resource):
         }
         return response, 200
 
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @validate_app_token
     @marshal_with(annotation_fields)
     def post(self, app_model: App, end_user: EndUser):
         parser = reqparse.RequestParser()
@@ -77,7 +77,7 @@ class AnnotationListApi(Resource):
 
 
 class AnnotationUpdateDeleteApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @validate_app_token
     @marshal_with(annotation_fields)
     def put(self, app_model: App, end_user: EndUser, annotation_id):
         if not current_user.is_editor:
@@ -91,7 +91,7 @@ class AnnotationUpdateDeleteApi(Resource):
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_model.id, annotation_id)
         return annotation
 
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @validate_app_token
     def delete(self, app_model: App, end_user: EndUser, annotation_id):
         if not current_user.is_editor:
             raise Forbidden()

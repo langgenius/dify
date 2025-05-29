@@ -648,7 +648,6 @@ const translation = {
       'variables': 'Variáveis',
     },
     tool: {
-      toAuthorize: 'Autorizar',
       inputVars: 'Variáveis de entrada',
       outputVars: {
         text: 'conteúdo gerado pela ferramenta',

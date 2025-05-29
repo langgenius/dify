@@ -15,7 +15,6 @@ const translation = {
   },
   author: 'โดย',
   auth: {
-    unauthorized: 'การอนุญาต',
     authorized: 'อนุญาต',
     setup: 'ตั้งค่าการให้สิทธิ์เพื่อใช้',
     setupModalTitle: 'ตั้งค่าการให้สิทธิ์',

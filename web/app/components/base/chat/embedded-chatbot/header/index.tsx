@@ -13,6 +13,7 @@ import Divider from '@/app/components/base/divider'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type IHeaderProps = {
   isMobile?: boolean
@@ -42,6 +43,7 @@ const Header: FC<IHeaderProps> = ({
   const [parentOrigin, setParentOrigin] = useState('')
   const [showToggleExpandButton, setShowToggleExpandButton] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
   const handleMessageReceived = useCallback((event: MessageEvent) => {
     let currentParentOrigin = parentOrigin
@@ -85,12 +87,13 @@ const Header: FC<IHeaderProps> = ({
                 'flex shrink-0 items-center gap-1.5 px-2',
               )}>
                 <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-                {appData?.custom_config?.replace_webapp_logo && (
-                  <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
-                )}
-                {!appData?.custom_config?.replace_webapp_logo && (
-                  <DifyLogo size='small' />
-                )}
+                {
+                  systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                    ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                    : appData?.custom_config?.replace_webapp_logo
+                      ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
+                      : <DifyLogo size='small' />
+                }
               </div>
             )}
           </div>

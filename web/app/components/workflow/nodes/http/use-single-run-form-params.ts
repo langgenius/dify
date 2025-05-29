@@ -36,7 +36,7 @@ const useSingleRunFormParams = ({
     inputs.url,
     inputs.headers,
     inputs.params,
-    typeof inputs.body.data === 'string' ? inputs.body.data : inputs.body.data.map(item => item.value).join(''),
+    typeof inputs.body.data === 'string' ? inputs.body.data : inputs.body.data?.map(item => item.value).join(''),
     fileVarInputs,
   ])
   const setInputVarValues = useCallback((newPayload: Record<string, any>) => {

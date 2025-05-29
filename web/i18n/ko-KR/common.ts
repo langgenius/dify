@@ -645,9 +645,9 @@ const translation = {
     perPage: '페이지당 항목 수',
   },
   theme: {
-    theme: '주제',
-    light: '빛',
-    dark: '어둠',
+    theme: '테마',
+    light: '밝은',
+    dark: '어두운',
     auto: '시스템',
   },
   compliance: {
