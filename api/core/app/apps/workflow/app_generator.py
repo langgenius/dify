@@ -132,7 +132,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=invoke_from,
             call_depth=call_depth,
             trace_manager=trace_manager,
-            workflow_run_id=workflow_run_id,
+            workflow_execution_id=workflow_run_id,
         )
 
         contexts.plugin_tool_providers.set({})
@@ -279,7 +279,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
-            workflow_run_id=str(uuid.uuid4()),
+            workflow_execution_id=str(uuid.uuid4()),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -355,7 +355,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
             single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
-            workflow_run_id=str(uuid.uuid4()),
+            workflow_execution_id=str(uuid.uuid4()),
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
