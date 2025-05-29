@@ -2,6 +2,8 @@ import logging
 import time
 from typing import Any
 
+from core.app.app_config.entities import ModelConfig
+from core.model_runtime.entities import LLMMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -50,9 +52,14 @@ class HitTestingService:
                 metadata_filtering_mode="manual",
                 metadata_filtering_conditions=metadata_filtering_conditions,
                 inputs={},
-                tenant_id=None,
-                user_id=None,
-                metadata_model_config=None,
+                tenant_id="",
+                user_id="",
+                metadata_model_config=ModelConfig(
+                    provider="",
+                    name="",
+                    mode=LLMMode.CHAT,
+                    completion_params={}
+                )
             )
             if metadata_filter_document_ids:
                 document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
@@ -123,7 +130,7 @@ class HitTestingService:
         return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
 
     @classmethod
-    def compact_retrieve_response(cls, query: str, documents: list[Document]):
+    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> dict[Any, Any]:
         records = RetrievalService.format_retrieval_documents(documents)
 
         return {
