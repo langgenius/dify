@@ -487,6 +487,7 @@ class TraceTask:
                 "file_list": file_list,
                 "triggered_from": workflow_run.triggered_from,
                 "user_id": user_id,
+                "app_id": workflow_run.app_id,
             }
 
             workflow_trace_info = WorkflowTraceInfo(
