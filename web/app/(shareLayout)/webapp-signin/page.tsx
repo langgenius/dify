@@ -68,15 +68,15 @@ const WebSSOForm: FC = () => {
   }
 
   if (message) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable code={'App Unavailable'} unknownReason={message} />
-      <Link href={getSigninUrl()}>{t('share.login.backToHome')}</Link>
+    return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
+      <AppUnavailable className='h-auto w-auto' code={t('share.common.appUnavailable')} unknownReason={message} />
+      <Link className='system-body-regular text-text-tertiary' href={getSigninUrl()}>{t('share.login.backToHome')}</Link>
     </div>
   }
   if (!redirectUrl) {
     showErrorToast('redirect url is invalid.')
     return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable code={'App Unavailable'} unknownReason='redirect url is invalid.' />
+      <AppUnavailable code={t('share.common.appUnavailable')} unknownReason='redirect url is invalid.' />
     </div>
   }
   if (webAppAccessMode && webAppAccessMode === AccessMode.PUBLIC) {
@@ -98,9 +98,9 @@ const WebSSOForm: FC = () => {
   if (webAppAccessMode && webAppAccessMode === AccessMode.EXTERNAL_MEMBERS)
     return <ExternalMemberSsoAuth />
 
-  return <div className='flex h-full items-center justify-center'>
-    <AppUnavailable code={'App Unavailable'} isUnknownReason={true} />
-    <Link href={getSigninUrl()}>{t('share.login.backToHome')}</Link>
+  return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
+    <AppUnavailable className='h-auto w-auto' code={t('share.common.appUnavailable')} isUnknownReason={true} />
+    <Link className='system-body-regular text-text-tertiary' href={getSigninUrl()}>{t('share.login.backToHome')}</Link>
   </div>
 }
 
