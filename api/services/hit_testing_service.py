@@ -54,12 +54,7 @@ class HitTestingService:
                 inputs={},
                 tenant_id="",
                 user_id="",
-                metadata_model_config=ModelConfig(
-                    provider="",
-                    name="",
-                    mode=LLMMode.CHAT,
-                    completion_params={}
-                )
+                metadata_model_config=ModelConfig(provider="", name="", mode=LLMMode.CHAT, completion_params={}),
             )
             if metadata_filter_document_ids:
                 document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
