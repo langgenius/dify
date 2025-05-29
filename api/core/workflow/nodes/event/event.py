@@ -1,8 +1,10 @@
+from collections.abc import Sequence
 from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 from core.model_runtime.entities.llm_entities import LLMUsage
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 
@@ -17,7 +19,7 @@ class RunStreamChunkEvent(BaseModel):
 
 
 class RunRetrieverResourceEvent(BaseModel):
-    retriever_resources: list[dict] = Field(..., description="retriever resources")
+    retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")
 
 

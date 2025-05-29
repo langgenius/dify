@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from collections.abc import Generator
@@ -51,7 +50,6 @@ from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -141,9 +139,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             if isinstance(stream_response, ErrorStreamResponse):
                 raise stream_response.err
             elif isinstance(stream_response, MessageEndStreamResponse):
-                extras = {"usage": jsonable_encoder(self._task_state.llm_result.usage)}
+                extras = {"usage": self._task_state.llm_result.usage.model_dump()}
                 if self._task_state.metadata:
-                    extras["metadata"] = self._task_state.metadata
+                    extras["metadata"] = self._task_state.metadata.model_dump()
                 response: Union[ChatbotAppBlockingResponse, CompletionAppBlockingResponse]
                 if self._conversation_mode == AppMode.COMPLETION.value:
                     response = CompletionAppBlockingResponse(
@@ -379,9 +377,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.provider_response_latency = time.perf_counter() - self._start_at
         message.total_price = usage.total_price
         message.currency = usage.currency
-        message.message_metadata = (
-            json.dumps(jsonable_encoder(self._task_state.metadata)) if self._task_state.metadata else None
-        )
+        message.message_metadata = self._task_state.metadata.model_dump_json()
 
         if trace_manager:
             trace_manager.add_trace_task(
@@ -430,16 +426,12 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         Message end to stream response.
         :return:
         """
-        self._task_state.metadata["usage"] = jsonable_encoder(self._task_state.llm_result.usage)
-
-        extras = {}
-        if self._task_state.metadata:
-            extras["metadata"] = self._task_state.metadata
-
+        self._task_state.metadata.usage = self._task_state.llm_result.usage
+        metadata_dict = self._task_state.metadata.model_dump()
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,
-            metadata=extras.get("metadata", {}),
+            metadata=metadata_dict,
         )
 
     def _agent_message_to_stream_response(self, answer: str, message_id: str) -> AgentMessageStreamResponse:

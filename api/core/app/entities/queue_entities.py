@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum, StrEnum
 from typing import Any, Optional
@@ -6,6 +6,7 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
@@ -283,7 +284,7 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
     """
 
     event: QueueEvent = QueueEvent.RETRIEVER_RESOURCES
-    retriever_resources: list[dict]
+    retriever_resources: Sequence[RetrievalSourceMetadata]
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
     in_loop_id: Optional[str] = None

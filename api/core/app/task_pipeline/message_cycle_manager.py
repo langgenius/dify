@@ -17,6 +17,8 @@ from core.app.entities.queue_entities import (
     QueueRetrieverResourcesEvent,
 )
 from core.app.entities.task_entities import (
+    AnnotationReply,
+    AnnotationReplyAccount,
     EasyUITaskState,
     MessageFileStreamResponse,
     MessageReplaceStreamResponse,
@@ -111,10 +113,13 @@ class MessageCycleManager:
         annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id)
         if annotation:
             account = annotation.account
-            self._task_state.metadata["annotation_reply"] = {
-                "id": annotation.id,
-                "account": {"id": annotation.account_id, "name": account.name if account else "Dify user"},
-            }
+            self._task_state.metadata.annotation_reply = AnnotationReply(
+                id=annotation.id,
+                account=AnnotationReplyAccount(
+                    id=annotation.account_id,
+                    name=account.name if account else "Dify user",
+                ),
+            )
 
             return annotation
 
@@ -127,7 +132,7 @@ class MessageCycleManager:
         :return:
         """
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
-            self._task_state.metadata["retriever_resources"] = event.retriever_resources
+            self._task_state.metadata.retriever_resources = event.retriever_resources
 
     def message_file_to_stream_response(self, event: QueueMessageFileEvent) -> Optional[MessageFileStreamResponse]:
         """
