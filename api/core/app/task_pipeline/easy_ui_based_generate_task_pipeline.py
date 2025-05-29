@@ -455,8 +455,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         agent_thought: Optional[MessageAgentThought] = (
             db.session.query(MessageAgentThought).filter(MessageAgentThought.id == event.agent_thought_id).first()
         )
-        db.session.refresh(agent_thought)
-        db.session.close()
 
         if agent_thought:
             return AgentThoughtStreamResponse(

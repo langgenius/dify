@@ -356,7 +356,9 @@ class AgentNode(ToolNode):
 
     def _remove_unsupported_model_features_for_old_version(self, model_schema: AIModelEntity) -> AIModelEntity:
         if model_schema.features:
-            for feature in model_schema.features:
-                if feature.value not in AgentOldVersionModelFeatures:
+            for feature in model_schema.features[:]:  # Create a copy to safely modify during iteration
+                try:
+                    AgentOldVersionModelFeatures(feature.value)  # Try to create enum member from value
+                except ValueError:
                     model_schema.features.remove(feature)
         return model_schema
