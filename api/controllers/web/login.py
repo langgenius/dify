@@ -37,7 +37,7 @@ class LoginApi(Resource):
             raise AccountNotFound()
 
         token = WebAppAuthService.login(account=account)
-        return {"result": "success", "access_token": token}
+        return {"result": "success", "data": {"access_token": token}}
 
 
 # class LogoutApi(Resource):
@@ -102,7 +102,7 @@ class EmailCodeLoginApi(Resource):
 
         token = WebAppAuthService.login(account=account)
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "access_token": token}
+        return {"result": "success", "data": {"access_token": token}}
 
 
 api.add_resource(LoginApi, "/login")
