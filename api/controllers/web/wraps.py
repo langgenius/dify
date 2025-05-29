@@ -1,15 +1,17 @@
 from functools import wraps
 
+from controllers.web.error import (WebAppAuthAccessDeniedError,
+                                   WebAppAuthRequiredError)
+from extensions.ext_database import db
 from flask import request
 from flask_restful import Resource
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
-
-from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
-from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
-from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
+from services.enterprise.enterprise_service import (EnterpriseService,
+                                                    WebAppSettings)
 from services.feature_service import FeatureService
+from services.webapp_auth_service import WebAppAuthService
+from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 
 def validate_jwt_token(view=None):
@@ -45,7 +47,8 @@ def decode_jwt_token():
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
-        app_model = db.session.query(App).filter(App.id == decoded["app_id"]).first()
+        app_id = decoded.get("app_id")
+        app_model = db.session.query(App).filter(App.id == app_id).first()
         site = db.session.query(Site).filter(Site.code == app_code).first()
         if not app_model:
             raise NotFound()
@@ -53,7 +56,8 @@ def decode_jwt_token():
             raise BadRequest("Site URL is no longer valid.")
         if app_model.enable_site is False:
             raise BadRequest("Site is disabled.")
-        end_user = db.session.query(EndUser).filter(EndUser.id == decoded["end_user_id"]).first()
+        end_user_id = decoded.get("end_user_id")
+        end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
         if not end_user:
             raise NotFound()
 
@@ -115,9 +119,7 @@ def _validate_user_accessibility(
         if not webapp_settings:
             raise WebAppAuthRequiredError("Web app settings not found.")
 
-        access_modes_require_permission_check = ["private", "private_all"]
-
-        if webapp_settings.access_mode in access_modes_require_permission_check:
+        if WebAppAuthService.is_app_require_permission_check(access_mode=webapp_settings.access_mode):
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
                 raise WebAppAuthAccessDeniedError()
 
