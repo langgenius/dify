@@ -1,11 +1,11 @@
-from flask import request
 from flask_restful import Resource, reqparse
 from jwt import InvalidTokenError  # type: ignore
 from web import api
-from werkzeug.exceptions import BadRequest
 
 import services
-from controllers.console.auth.error import EmailCodeError, EmailOrPasswordMismatchError, InvalidEmailError
+from controllers.console.auth.error import (EmailCodeError,
+                                            EmailOrPasswordMismatchError,
+                                            InvalidEmailError)
 from controllers.console.error import AccountBannedError, AccountNotFound
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import api
@@ -27,10 +27,6 @@ class LoginApi(Resource):
         parser.add_argument("password", type=valid_password, required=True, location="json")
         args = parser.parse_args()
 
-        app_code = request.headers.get("X-App-Code")
-        if app_code is None:
-            raise BadRequest("X-App-Code header is missing.")
-
         try:
             account = WebAppAuthService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError:
@@ -40,9 +36,7 @@ class LoginApi(Resource):
         except services.errors.account.AccountNotFoundError:
             raise AccountNotFound()
 
-        end_user = WebAppAuthService.create_end_user(email=args["email"], app_code=app_code)
-
-        token = WebAppAuthService.login(account=account, app_code=app_code, end_user_id=end_user.id)
+        token = WebAppAuthService.login(account=account)
         return {"result": "success", "token": token}
 
 
@@ -90,9 +84,6 @@ class EmailCodeLoginApi(Resource):
         args = parser.parse_args()
 
         user_email = args["email"]
-        app_code = request.headers.get("X-App-Code")
-        if app_code is None:
-            raise BadRequest("X-App-Code header is missing.")
 
         token_data = WebAppAuthService.get_email_code_login_data(args["token"])
         if token_data is None:
@@ -109,9 +100,7 @@ class EmailCodeLoginApi(Resource):
         if not account:
             raise AccountNotFound()
 
-        end_user = WebAppAuthService.create_end_user(email=user_email, app_code=app_code)
-
-        token = WebAppAuthService.login(account=account, app_code=app_code, end_user_id=end_user.id)
+        token = WebAppAuthService.login(account=account)
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "token": token}
 
