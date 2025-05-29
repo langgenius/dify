@@ -9,13 +9,13 @@ from fields.annotation_fields import (
     annotation_fields,
 )
 from libs.login import current_user
-from models.model import App, EndUser
+from models.model import App
 from services.annotation_service import AppAnnotationService
 
 
 class AnnotationReplyActionApi(Resource):
     @validate_app_token
-    def post(self, app_model: App, end_user: EndUser, action):
+    def post(self, app_model: App, action):
         parser = reqparse.RequestParser()
         parser.add_argument("score_threshold", required=True, type=float, location="json")
         parser.add_argument("embedding_provider_name", required=True, type=str, location="json")
@@ -32,7 +32,7 @@ class AnnotationReplyActionApi(Resource):
 
 class AnnotationReplyActionStatusApi(Resource):
     @validate_app_token
-    def get(self, app_model: App, end_user: EndUser, job_id, action):
+    def get(self, app_model: App, job_id, action):
         job_id = str(job_id)
         app_annotation_job_key = "{}_app_annotation_job_{}".format(action, str(job_id))
         cache_result = redis_client.get(app_annotation_job_key)
@@ -50,7 +50,7 @@ class AnnotationReplyActionStatusApi(Resource):
 
 class AnnotationListApi(Resource):
     @validate_app_token
-    def get(self, app_model: App, end_user: EndUser):
+    def get(self, app_model: App):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         keyword = request.args.get("keyword", default="", type=str)
@@ -67,7 +67,7 @@ class AnnotationListApi(Resource):
 
     @validate_app_token
     @marshal_with(annotation_fields)
-    def post(self, app_model: App, end_user: EndUser):
+    def post(self, app_model: App):
         parser = reqparse.RequestParser()
         parser.add_argument("question", required=True, type=str, location="json")
         parser.add_argument("answer", required=True, type=str, location="json")
@@ -79,7 +79,7 @@ class AnnotationListApi(Resource):
 class AnnotationUpdateDeleteApi(Resource):
     @validate_app_token
     @marshal_with(annotation_fields)
-    def put(self, app_model: App, end_user: EndUser, annotation_id):
+    def put(self, app_model: App, annotation_id):
         if not current_user.is_editor:
             raise Forbidden()
 
@@ -92,7 +92,7 @@ class AnnotationUpdateDeleteApi(Resource):
         return annotation
 
     @validate_app_token
-    def delete(self, app_model: App, end_user: EndUser, annotation_id):
+    def delete(self, app_model: App, annotation_id):
         if not current_user.is_editor:
             raise Forbidden()
 
