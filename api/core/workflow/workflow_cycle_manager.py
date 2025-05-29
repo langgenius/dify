@@ -1,9 +1,9 @@
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Optional, Union
 from uuid import uuid4
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
@@ -30,9 +30,16 @@ from core.workflow.repository.workflow_execution_repository import WorkflowExecu
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
 from models import (
-    Workflow,
     WorkflowRunStatus,
 )
+
+
+@dataclass
+class TempWorkflowEntity:
+    id_: str
+    type_: WorkflowType
+    version: str
+    graph: Mapping[str, Any]
 
 
 class WorkflowCycleManager:
@@ -41,6 +48,7 @@ class WorkflowCycleManager:
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
         workflow_system_variables: dict[SystemVariableKey, Any],
+        workflow_entity: TempWorkflowEntity,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
     ) -> None:
@@ -48,6 +56,7 @@ class WorkflowCycleManager:
         self._workflow_system_variables = workflow_system_variables
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._temp_workflow_entity = workflow_entity
 
     def handle_workflow_run_start(
         self,
@@ -55,11 +64,6 @@ class WorkflowCycleManager:
         session: Session,
         workflow_id: str,
     ) -> WorkflowExecution:
-        workflow_stmt = select(Workflow).where(Workflow.id == workflow_id)
-        workflow = session.scalar(workflow_stmt)
-        if not workflow:
-            raise ValueError(f"Workflow not found: {workflow_id}")
-
         inputs = {**self._application_generate_entity.inputs}
         for key, value in (self._workflow_system_variables or {}).items():
             if key.value == "conversation":
@@ -74,10 +78,10 @@ class WorkflowCycleManager:
         execution_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
         execution = WorkflowExecution.new(
             id=execution_id,
-            workflow_id=workflow.id,
-            type=WorkflowType(workflow.type),
-            workflow_version=workflow.version,
-            graph=workflow.graph_dict,
+            workflow_id=self._temp_workflow_entity.id_,
+            type=self._temp_workflow_entity.type_,
+            workflow_version=self._temp_workflow_entity.version,
+            graph=self._temp_workflow_entity.graph,
             inputs=inputs,
             started_at=datetime.now(UTC).replace(tzinfo=None),
         )

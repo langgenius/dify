@@ -19,7 +19,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_cycle_manager import WorkflowCycleManager
+from core.workflow.workflow_cycle_manager import TempWorkflowEntity, WorkflowCycleManager
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from models.workflow import (
@@ -94,15 +94,37 @@ def mock_workflow_execution_repository():
 
 
 @pytest.fixture
+def real_workflow_entity():
+    return TempWorkflowEntity(
+        id_="test-workflow-id",  # Matches ID used in other fixtures
+        type_=WorkflowType.CHAT,
+        version="1.0.0",
+        graph={
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "chat",  # NodeType is a string enum
+                    "name": "Chat Node",
+                    "data": {"model": "gpt-3.5-turbo", "prompt": "test prompt"},
+                }
+            ],
+            "edges": [],
+        },
+    )
+
+
+@pytest.fixture
 def workflow_cycle_manager(
     real_app_generate_entity,
     real_workflow_system_variables,
     mock_workflow_execution_repository,
     mock_node_execution_repository,
+    real_workflow_entity,
 ):
     return WorkflowCycleManager(
         application_generate_entity=real_app_generate_entity,
         workflow_system_variables=real_workflow_system_variables,
+        workflow_entity=real_workflow_entity,
         workflow_execution_repository=mock_workflow_execution_repository,
         workflow_node_execution_repository=mock_node_execution_repository,
     )

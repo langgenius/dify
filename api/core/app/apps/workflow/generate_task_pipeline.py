@@ -55,11 +55,11 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.workflow_execution_entities import WorkflowExecution
+from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_cycle_manager import WorkflowCycleManager
+from core.workflow.workflow_cycle_manager import TempWorkflowEntity, WorkflowCycleManager
 from extensions.ext_database import db
 from models.account import Account
 from models.enums import CreatorUserRole
@@ -116,6 +116,12 @@ class WorkflowAppGenerateTaskPipeline:
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
                 SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_execution_id,
             },
+            workflow_entity=TempWorkflowEntity(
+                id_=workflow.id,
+                type_=WorkflowType(workflow.type),
+                version=workflow.version,
+                graph=workflow.graph_dict,
+            ),
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
         )
