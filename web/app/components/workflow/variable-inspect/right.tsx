@@ -48,7 +48,7 @@ const Right = ({
 
   const resetValue = () => {
     if (!currentNodeVar) return
-    resetToLastRunVar(currentNodeVar.nodeId, currentNodeVar.var.name)
+    resetToLastRunVar(currentNodeVar.nodeId, currentNodeVar.var.id)
   }
 
   return (
