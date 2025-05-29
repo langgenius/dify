@@ -125,6 +125,7 @@ const Popup = () => {
           className='mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent'
           variant='tertiary'
           onClick={goToAddDocuments}
+          disabled={!published}
         >
           <div className='flex grow items-center'>
             <RiPlayCircleLine className='mr-2 h-4 w-4' />
@@ -135,6 +136,7 @@ const Popup = () => {
         <Button
           className='w-full hover:bg-state-accent-hover hover:text-text-accent'
           variant='tertiary'
+          disabled={!published}
         >
           <div className='flex grow items-center'>
             <RiTerminalBoxLine className='mr-2 h-4 w-4' />

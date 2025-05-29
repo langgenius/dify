@@ -120,10 +120,32 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   const { data: relatedApps } = useDatasetRelatedApps(datasetId)
 
+  const isButtonDisabledWithPipeline = useMemo(() => {
+    if (!datasetRes)
+      return true
+    if (datasetRes.provider === 'external')
+      return false
+    if (!datasetRes.pipeline_id)
+      return false
+    return !datasetRes.is_published
+  }, [datasetRes])
+
   const navigation = useMemo(() => {
     const baseNavigation = [
-      { name: t('common.datasetMenus.hitTesting'), href: `/datasets/${datasetId}/hitTesting`, icon: RiFocus2Line, selectedIcon: RiFocus2Fill },
-      { name: t('common.datasetMenus.settings'), href: `/datasets/${datasetId}/settings`, icon: RiEqualizer2Line, selectedIcon: RiEqualizer2Fill },
+      {
+        name: t('common.datasetMenus.hitTesting'),
+        href: `/datasets/${datasetId}/hitTesting`,
+        icon: RiFocus2Line,
+        selectedIcon: RiFocus2Fill,
+        disabled: isButtonDisabledWithPipeline,
+      },
+      {
+        name: t('common.datasetMenus.settings'),
+        href: `/datasets/${datasetId}/settings`,
+        icon: RiEqualizer2Line,
+        selectedIcon: RiEqualizer2Fill,
+        disabled: false,
+      },
     ]
 
     if (datasetRes?.provider !== 'external') {
@@ -132,15 +154,17 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         href: `/datasets/${datasetId}/documents`,
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
+        disabled: isButtonDisabledWithPipeline,
       }, {
         name: t('common.datasetMenus.pipeline'),
         href: `/datasets/${datasetId}/pipeline`,
         icon: PipelineLine as RemixiconComponentType,
         selectedIcon: PipelineFill as RemixiconComponentType,
+        disabled: false,
       }])
     }
     return baseNavigation
-  }, [datasetRes?.provider, datasetId, t])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
 
   useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 

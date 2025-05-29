@@ -67,13 +67,12 @@ const Form = () => {
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
-  const [chunkStructure, setChunkStructure] = useState(currentDataset?.doc_form ?? ChunkingMode.text)
   const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
-  const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique ?? IndexingType.QUALIFIED)
+  const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
   const [keywordNumber, setKeywordNumber] = useState(currentDataset?.keyword_number ?? 10)
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
@@ -164,7 +163,7 @@ const Form = () => {
         body: {
           name,
           icon_info: iconInfo,
-          doc_form: chunkStructure,
+          doc_form: currentDataset?.doc_form,
           description,
           permission,
           indexing_technique: indexMethod,
@@ -209,7 +208,7 @@ const Form = () => {
     }
   }
 
-  const isShowIndexMethod = chunkStructure !== ChunkingMode.parentChild && currentDataset && currentDataset.indexing_technique
+  const isShowIndexMethod = currentDataset && currentDataset.doc_form !== ChunkingMode.parentChild && currentDataset.indexing_technique && indexMethod
 
   return (
     <div className='flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]'>
@@ -268,7 +267,7 @@ const Form = () => {
         </div>
       </div>
       {
-        !currentDataset?.doc_form && (
+        currentDataset?.doc_form && (
           <>
             <Divider
               type='horizontal'
@@ -294,8 +293,7 @@ const Form = () => {
               </div>
               <div className='grow'>
                 <ChunkStructure
-                  chunkStructure={chunkStructure!}
-                  onChunkStructureChange={setChunkStructure}
+                  chunkStructure={currentDataset?.doc_form}
                 />
               </div>
             </div>

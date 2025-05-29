@@ -5,12 +5,10 @@ import OptionCard from '../option-card'
 
 type ChunkStructureProps = {
   chunkStructure: ChunkingMode
-  onChunkStructureChange: (value: ChunkingMode) => void
 }
 
 const ChunkStructure = ({
   chunkStructure,
-  onChunkStructureChange,
 }: ChunkStructureProps) => {
   const {
     options,
@@ -27,9 +25,6 @@ const ChunkStructure = ({
             iconActiveColor={option.iconActiveColor}
             title={option.title}
             description={option.description}
-            onClick={() => {
-              onChunkStructureChange(option.id)
-            }}
             isActive={chunkStructure === option.id}
             effectColor={option.effectColor}
             showEffectColor

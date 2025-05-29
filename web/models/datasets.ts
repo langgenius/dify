@@ -81,6 +81,7 @@ export type DataSet = {
   doc_metadata?: MetadataInDoc[]
   keyword_number?: number
   pipeline_id?: string
+  is_published?: boolean // Indicates if the pipeline is published
 }
 
 export type ExternalAPIItem = {

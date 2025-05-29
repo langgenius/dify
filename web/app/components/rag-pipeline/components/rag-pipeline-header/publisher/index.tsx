@@ -36,8 +36,11 @@ const Publisher = () => {
       }}
     >
       <PortalToFollowElemTrigger onClick={() => handleOpenChange(!open)}>
-        <Button variant='primary'>
-          {t('workflow.common.publish')}
+        <Button
+          className='px-2'
+          variant='primary'
+        >
+          <span className='pl-1'>{t('workflow.common.publish')}</span>
           <RiArrowDownSLine className='h-4 w-4' />
         </Button>
       </PortalToFollowElemTrigger>

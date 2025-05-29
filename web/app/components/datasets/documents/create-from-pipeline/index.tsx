@@ -27,7 +27,7 @@ import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
 import { useAddDocumentsSteps, useLocalFile, useNotionsPages, useWebsiteCrawl } from './hooks'
 
-const TestRunPanel = () => {
+const CreateFormPipeline = () => {
   const { t } = useTranslation()
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
@@ -348,4 +348,4 @@ const TestRunPanel = () => {
   )
 }
 
-export default TestRunPanel
+export default CreateFormPipeline

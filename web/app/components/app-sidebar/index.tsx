@@ -16,6 +16,7 @@ export type IAppDetailNavProps = {
     href: string
     icon: NavIcon
     selectedIcon: NavIcon
+    disabled?: boolean
   }>
   extraInfo?: (modeState: string) => React.ReactNode
 }
@@ -78,7 +79,14 @@ const AppDetailNav = ({
       >
         {navigation.map((item, index) => {
           return (
-            <NavLink key={index} mode={appSidebarExpand} iconMap={{ selected: item.selectedIcon, normal: item.icon }} name={item.name} href={item.href} />
+            <NavLink
+              key={index}
+              mode={appSidebarExpand}
+              iconMap={{ selected: item.selectedIcon, normal: item.icon }}
+              name={item.name}
+              href={item.href}
+              disabled={!!item.disabled}
+            />
           )
         })}
       </nav>
