@@ -11,6 +11,7 @@ from libs.passport import PassportService
 from models.model import App, AppMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.webapp_auth_service import WebAppAuthService
 
 
 class AppParameterApi(WebApiResource):
@@ -93,7 +94,9 @@ class AppWebAuthPermission(Resource):
         app_id = args["appId"]
         app_code = AppService.get_app_code_by_id(app_id)
 
-        res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
+        res = True
+        if WebAppAuthService.is_app_require_permission_check(app_id=app_id):
+            res = EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(str(user_id), app_code)
         return {"result": res}
 
 
