@@ -14,14 +14,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.entities.workflow_node_execution import (
-    NodeExecution,
     WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.nodes.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from models.account import Account, Tenant
-from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 
 def configure_mock_execution(mock_execution):
@@ -85,7 +85,7 @@ def test_save(repository, session):
     """Test save method."""
     session_obj, _ = session
     # Create a mock execution
-    execution = MagicMock(spec=WorkflowNodeExecution)
+    execution = MagicMock(spec=WorkflowNodeExecutionModel)
     execution.tenant_id = None
     execution.app_id = None
     execution.inputs = None
@@ -111,7 +111,7 @@ def test_save_with_existing_tenant_id(repository, session):
     """Test save method with existing tenant_id."""
     session_obj, _ = session
     # Create a mock execution with existing tenant_id
-    execution = MagicMock(spec=WorkflowNodeExecution)
+    execution = MagicMock(spec=WorkflowNodeExecutionModel)
     execution.tenant_id = "existing-tenant"
     execution.app_id = None
     execution.inputs = None
@@ -120,7 +120,7 @@ def test_save_with_existing_tenant_id(repository, session):
     execution.metadata = None
 
     # Create a modified execution that will be returned by _to_db_model
-    modified_execution = MagicMock(spec=WorkflowNodeExecution)
+    modified_execution = MagicMock(spec=WorkflowNodeExecutionModel)
     modified_execution.tenant_id = "existing-tenant"  # Tenant ID should not change
     modified_execution.app_id = repository._app_id  # App ID should be set
 
@@ -147,7 +147,7 @@ def test_get_by_node_execution_id(repository, session, mocker: MockerFixture):
     mock_stmt.where.return_value = mock_stmt
 
     # Create a properly configured mock execution
-    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecution)
+    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecutionModel)
     configure_mock_execution(mock_execution)
     session_obj.scalar.return_value = mock_execution
 
@@ -179,7 +179,7 @@ def test_get_by_workflow_run(repository, session, mocker: MockerFixture):
     mock_stmt.order_by.return_value = mock_stmt
 
     # Create a properly configured mock execution
-    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecution)
+    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecutionModel)
     configure_mock_execution(mock_execution)
     session_obj.scalars.return_value.all.return_value = [mock_execution]
 
@@ -212,7 +212,7 @@ def test_get_running_executions(repository, session, mocker: MockerFixture):
     mock_stmt.where.return_value = mock_stmt
 
     # Create a properly configured mock execution
-    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecution)
+    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecutionModel)
     configure_mock_execution(mock_execution)
     session_obj.scalars.return_value.all.return_value = [mock_execution]
 
@@ -238,7 +238,7 @@ def test_update_via_save(repository, session):
     """Test updating an existing record via save method."""
     session_obj, _ = session
     # Create a mock execution
-    execution = MagicMock(spec=WorkflowNodeExecution)
+    execution = MagicMock(spec=WorkflowNodeExecutionModel)
     execution.tenant_id = None
     execution.app_id = None
     execution.inputs = None
@@ -278,7 +278,7 @@ def test_clear(repository, session, mocker: MockerFixture):
     repository.clear()
 
     # Assert delete was called with correct parameters
-    mock_delete.assert_called_once_with(WorkflowNodeExecution)
+    mock_delete.assert_called_once_with(WorkflowNodeExecutionModel)
     mock_stmt.where.assert_called()
     session_obj.execute.assert_called_once_with(mock_stmt)
     session_obj.commit.assert_called_once()
@@ -287,7 +287,7 @@ def test_clear(repository, session, mocker: MockerFixture):
 def test_to_db_model(repository):
     """Test to_db_model method."""
     # Create a domain model
-    domain_model = NodeExecution(
+    domain_model = WorkflowNodeExecution(
         id="test-id",
         workflow_id="test-workflow-id",
         node_execution_id="test-node-execution-id",
@@ -315,7 +315,7 @@ def test_to_db_model(repository):
     db_model = repository.to_db_model(domain_model)
 
     # Assert DB model has correct values
-    assert isinstance(db_model, WorkflowNodeExecution)
+    assert isinstance(db_model, WorkflowNodeExecutionModel)
     assert db_model.id == domain_model.id
     assert db_model.tenant_id == repository._tenant_id
     assert db_model.app_id == repository._app_id
@@ -352,7 +352,7 @@ def test_to_domain_model(repository):
     metadata_dict = {str(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS): 100}
 
     # Create a DB model using our custom subclass
-    db_model = WorkflowNodeExecution()
+    db_model = WorkflowNodeExecutionModel()
     db_model.id = "test-id"
     db_model.tenant_id = "test-tenant-id"
     db_model.app_id = "test-app-id"
@@ -381,7 +381,7 @@ def test_to_domain_model(repository):
     domain_model = repository._to_domain_model(db_model)
 
     # Assert domain model has correct values
-    assert isinstance(domain_model, NodeExecution)
+    assert isinstance(domain_model, WorkflowNodeExecution)
     assert domain_model.id == db_model.id
     assert domain_model.workflow_id == db_model.workflow_id
     assert domain_model.workflow_execution_id == db_model.workflow_run_id

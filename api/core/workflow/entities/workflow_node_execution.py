@@ -53,7 +53,7 @@ class WorkflowNodeExecutionStatus(StrEnum):
     RETRY = "retry"
 
 
-class NodeExecution(BaseModel):
+class WorkflowNodeExecution(BaseModel):
     """
     Domain model for workflow node execution.
 

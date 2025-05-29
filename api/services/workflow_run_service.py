@@ -11,7 +11,7 @@ from models import (
     Account,
     App,
     EndUser,
-    WorkflowNodeExecution,
+    WorkflowNodeExecutionModel,
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
@@ -125,7 +125,7 @@ class WorkflowRunService:
         app_model: App,
         run_id: str,
         user: Account | EndUser,
-    ) -> Sequence[WorkflowNodeExecution]:
+    ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Get workflow run node execution list
         """
