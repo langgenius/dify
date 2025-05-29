@@ -35,7 +35,7 @@ const SearchBox = ({
       className='z-[11] flex items-center'
     >
       <div className={
-        cn('flex grow items-center',
+        cn('flex items-center',
           size === 'large' && 'rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-md',
           size === 'small' && 'rounded-lg bg-components-input-bg-normal p-0.5',
           inputClassName,
