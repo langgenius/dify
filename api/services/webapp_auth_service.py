@@ -2,8 +2,6 @@ import random
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional, cast
 
-from werkzeug.exceptions import NotFound, Unauthorized
-
 from configs import dify_config
 from extensions.ext_database import db
 from libs.helper import TokenManager
@@ -11,8 +9,10 @@ from libs.passport import PassportService
 from libs.password import compare_password
 from models.account import Account, AccountStatus
 from models.model import App, EndUser, Site
-from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
+from services.errors.account import (AccountLoginError, AccountNotFoundError,
+                                     AccountPasswordError)
 from tasks.mail_email_code_login import send_email_code_login_mail_task
+from werkzeug.exceptions import NotFound, Unauthorized
 
 
 class WebAppAuthService:
@@ -34,12 +34,8 @@ class WebAppAuthService:
         return cast(Account, account)
 
     @classmethod
-    def login(cls, account: Account, app_code: str, end_user_id: str) -> str:
-        site = db.session.query(Site).filter(Site.code == app_code).first()
-        if not site:
-            raise NotFound("Site not found.")
-
-        access_token = cls._get_account_jwt_token(account=account, site=site, end_user_id=end_user_id)
+    def login(cls, account: Account) -> str:
+        access_token = cls._get_account_jwt_token(account=account)
 
         return access_token
 
@@ -105,14 +101,13 @@ class WebAppAuthService:
         return end_user
 
     @classmethod
-    def _get_account_jwt_token(cls, account: Account, site: Site, end_user_id: str) -> str:
+    def _get_account_jwt_token(cls, account: Account) -> str:
         exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
         exp = int(exp_dt.timestamp())
 
         payload = {
             "sub": "Web API Passport",
             "user_id": account.id,
-            "end_user_id": end_user_id,
             "token_source": "webapp_login_token",
             "exp": exp,
         }

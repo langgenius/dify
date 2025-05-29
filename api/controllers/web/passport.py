@@ -1,18 +1,17 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from flask import request
-from flask_restful import Resource
-from werkzeug.exceptions import NotFound, Unauthorized
-
 from configs import dify_config
 from controllers.web import api
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
+from flask import request
+from flask_restful import Resource
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from werkzeug.exceptions import NotFound, Unauthorized
 
 
 class PassportResource(Resource):
