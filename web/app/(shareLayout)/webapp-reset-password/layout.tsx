@@ -17,7 +17,7 @@ export default function SignInLayout({ children }: any) {
             'md:px-[108px]',
           )
         }>
-          <div className='flex flex-col md:w-[400px]'>
+          <div className='flex w-[400px] flex-col'>
             {children}
           </div>
         </div>

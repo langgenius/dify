@@ -1,5 +1,5 @@
 'use client'
-import Header from './_header'
+import Header from '@/app/signin/_header'
 
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
