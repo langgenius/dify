@@ -68,13 +68,18 @@ const MCPList = ({
   const handleCreate = async (provider: ToolWithProvider) => {
     await refetch() // update list
     setCurrentProviderID(provider.id)
-    await authorizeMcp({
+    const res = await authorizeMcp({
       provider_id: provider.id,
     })
-    await refetch() // update authorization in list
-    await updateTools(provider.id)
-    invalidateMCPTools(provider.id)
-    await refetch() // update tool list in provider list
+    if (res.result === 'success') {
+      await refetch() // update authorization in list
+      await updateTools(provider.id)
+      invalidateMCPTools(provider.id)
+      await refetch() // update tool list in provider list
+    }
+    else if (res.authorization_url) {
+      router.push(res.authorization_url)
+    }
   }
 
   const handleUpdateAuthorization = async (providerID: string, code: string) => {
