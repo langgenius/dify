@@ -86,8 +86,8 @@ def decode_enterprise_webapp_user_id(jwt_token: str | None):
 
     decoded = PassportService().verify(jwt_token)
     source = decoded.get("token_source")
-    if not source or source != "enterprise_login":
-        raise Unauthorized("Invalid token source. Expected 'enterprise_login'.")
+    if not source or source != "webapp_login_token":
+        raise Unauthorized("Invalid token source. Expected 'webapp_login_token'.")
     return decoded
 
 

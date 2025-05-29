@@ -106,11 +106,10 @@ class WebAppAuthService:
         exp = int(exp_dt.timestamp())
 
         payload = {
-            "iss": site.id,
             "sub": "Web API Passport",
             "user_id": account.id,
             "end_user_id": end_user_id,
-            "token_source": "enterprise_login",
+            "token_source": "webapp_login_token",
             "exp": exp,
         }
 
