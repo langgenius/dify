@@ -9,7 +9,7 @@ import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import WebsiteCrawl from './data-source/website-crawl'
 import Actions from './data-source/actions'
 import DocumentProcessing from './document-processing'
-import { usePipelineRun } from '../../../hooks'
+import { useWorkflowRun } from '@/app/components/workflow/hooks'
 import type { Datasource } from './types'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
@@ -44,7 +44,7 @@ const TestRunPanel = () => {
     setWebsitePages,
     setWebsiteCrawlJobId,
   } = useWebsiteCrawl()
-  const { handleRun } = usePipelineRun()
+  const { handleRun } = useWorkflowRun()
 
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && enableBilling

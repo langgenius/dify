@@ -3,6 +3,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { HeaderProps } from '@/app/components/workflow/header'
 import Header from '@/app/components/workflow/header'
 import { fetchWorkflowRunHistory } from '@/service/workflow'
@@ -14,6 +15,7 @@ import InputFieldButton from './input-field-button'
 import Publisher from './publisher'
 
 const RagPipelineHeader = () => {
+  const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const pipelineId = useStore(s => s.pipelineId)
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
@@ -39,7 +41,7 @@ const RagPipelineHeader = () => {
         },
         runAndHistoryProps: {
           showRunButton: true,
-          runButtonText: 'Test Run',
+          runButtonText: t('workflow.singleRun.testRun'),
           viewHistoryProps,
           isRunning: showDebugAndPreviewPanel,
           onStopRun: handleStopRun,
@@ -49,7 +51,7 @@ const RagPipelineHeader = () => {
         viewHistoryProps,
       },
     }
-  }, [viewHistoryProps, showDebugAndPreviewPanel, handleStopRun])
+  }, [viewHistoryProps, showDebugAndPreviewPanel, handleStopRun, t])
 
   return (
     <Header {...headerProps} />
