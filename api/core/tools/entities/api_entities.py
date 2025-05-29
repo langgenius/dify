@@ -40,7 +40,7 @@ class ToolProviderApiEntity(BaseModel):
     labels: list[str] = Field(default_factory=list)
     # MCP
     server_url: Optional[str] = Field(default="", description="The server url of the tool")
-    updated_at: datetime = Field(default_factory=datetime.now)
+    updated_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
 
     @field_validator("tools", mode="before")
     @classmethod
@@ -56,8 +56,12 @@ class ToolProviderApiEntity(BaseModel):
                 for parameter in tool.get("parameters"):
                     if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES.value:
                         parameter["type"] = "files"
+                    if parameter.get("input_schema") is None:
+                        parameter.pop("input_schema", None)
         # -------------
         optional_fields = self.optional_field("server_url", self.server_url)
+        if self.type == ToolProviderType.MCP.value:
+            optional_fields.update(self.optional_field("updated_at", self.updated_at))
         return {
             "id": self.id,
             "author": self.author,

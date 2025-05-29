@@ -161,10 +161,14 @@ class BaseAgentRunner(AppRunner):
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options] if parameter.options else []
 
-            message_tool.parameters["properties"][parameter.name] = {
-                "type": parameter_type,
-                "description": parameter.llm_description or "",
-            }
+            message_tool.parameters["properties"][parameter.name] = (
+                {
+                    "type": parameter_type,
+                    "description": parameter.llm_description or "",
+                }
+                if parameter.input_schema is None
+                else parameter.input_schema
+            )
 
             if len(enum) > 0:
                 message_tool.parameters["properties"][parameter.name]["enum"] = enum

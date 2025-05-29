@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 from yarl import URL
 
@@ -201,7 +201,7 @@ class ToolTransformService:
             tools=ToolTransformService.mcp_tool_to_user_tool(
                 db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
             ),
-            updated_at=db_provider.updated_at,
+            updated_at=int(db_provider.updated_at.timestamp()),
             label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
             description=I18nObject(en_US="", zh_Hans=""),
         )
@@ -347,8 +347,11 @@ class ToolTransformService:
         :return: list of ToolParameter instances
         """
 
-        def create_parameter(name: str, description: str, param_type: str, required: bool) -> ToolParameter:
+        def create_parameter(
+            name: str, description: str, param_type: str, required: bool, input_schema: dict | None = None
+        ) -> ToolParameter:
             """Create a ToolParameter instance with given attributes"""
+            input_schema_dict: dict[str, Any] = {"input_schema": input_schema} if input_schema else {}
             return ToolParameter(
                 name=name,
                 llm_description=description,
@@ -357,36 +360,27 @@ class ToolTransformService:
                 required=required,
                 type=ToolParameter.ToolParameterType(param_type),
                 human_description=I18nObject(en_US=description),
+                **input_schema_dict,
             )
-
-        def process_array(name: str, description: str, items: dict, required: bool) -> list[ToolParameter]:
-            """Process array type properties"""
-            item_type = items.get("type", "string")
-            if item_type == "object" and "properties" in items:
-                return process_properties(items["properties"], items.get("required", []), f"{name}[0]")
-
-            return [create_parameter(name, description, item_type, required)]
 
         def process_properties(props: dict, required: list, prefix: str = "") -> list[ToolParameter]:
             """Process properties recursively"""
+            TYPE_MAPPING = {"integer": "number"}
+            COMPLEX_TYPES = ["array", "object"]
+
             parameters = []
             for name, prop in props.items():
-                current_name = f"{prefix}.{name}" if prefix else name
                 current_description = prop.get("description", "")
                 prop_type = prop.get("type", "string")
 
                 if isinstance(prop_type, list):
                     prop_type = prop_type[0]
-                if prop_type == "integer":
-                    prop_type = "number"
-                if prop_type == "array":
-                    parameters.extend(
-                        process_array(current_name, current_description, prop.get("items", {}), name in required)
-                    )
-                elif prop_type == "object" and "properties" in prop:
-                    parameters.extend(process_properties(prop["properties"], prop.get("required", []), current_name))
-                else:
-                    parameters.append(create_parameter(current_name, current_description, prop_type, name in required))
+                if prop_type in TYPE_MAPPING:
+                    prop_type = TYPE_MAPPING[prop_type]
+                input_schema = prop if prop_type in COMPLEX_TYPES else None
+                parameters.append(
+                    create_parameter(name, current_description, prop_type, name in required, input_schema)
+                )
 
             return parameters
 

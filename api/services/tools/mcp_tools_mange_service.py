@@ -88,7 +88,7 @@ class MCPToolManageService:
             icon=mcp_provider.icon,
             author=mcp_provider.user.name if mcp_provider.user else "Anonymous",
             server_url=mcp_provider.server_url,
-            updated_at=mcp_provider.updated_at,
+            updated_at=int(mcp_provider.updated_at.timestamp()),
             description=I18nObject(en_US="", zh_Hans=""),
             label=I18nObject(en_US=mcp_provider.name, zh_Hans=mcp_provider.name),
         )
@@ -119,7 +119,6 @@ class MCPToolManageService:
         icon: str,
         icon_type: str,
         icon_background: str,
-        encrypted_credentials: dict,
     ):
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         if mcp_provider is None:
@@ -129,7 +128,6 @@ class MCPToolManageService:
         mcp_provider.icon = (
             json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon
         )
-        mcp_provider.encrypted_credentials = json.dumps({**mcp_provider.credentials, **encrypted_credentials})
         db.session.commit()
         return {"result": "success"}
 

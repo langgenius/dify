@@ -655,18 +655,16 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        return jsonable_encoder(
-            MCPToolManageService.update_mcp_provider(
-                tenant_id=current_user.current_tenant_id,
-                name=args["name"],
-                server_url=args["server_url"],
-                icon=args["icon"],
-                icon_type=args["icon_type"],
-                icon_background=args["icon_background"],
-                provider_id=args["provider_id"],
-                encrypted_credentials={},
-            )
+        MCPToolManageService.update_mcp_provider(
+            tenant_id=current_user.current_tenant_id,
+            name=args["name"],
+            server_url=args["server_url"],
+            icon=args["icon"],
+            icon_type=args["icon_type"],
+            icon_background=args["icon_background"],
+            provider_id=args["provider_id"],
         )
+        return {"result": "success"}
 
     @setup_required
     @login_required
@@ -675,11 +673,8 @@ class ToolProviderMCPApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        return jsonable_encoder(
-            MCPToolManageService.delete_mcp_tool(
-                tenant_id=current_user.current_tenant_id, provider_id=args["provider_id"]
-            )
-        )
+        MCPToolManageService.delete_mcp_tool(tenant_id=current_user.current_tenant_id, provider_id=args["provider_id"])
+        return {"result": "success"}
 
 
 class ToolMCPAuthApi(Resource):
@@ -739,7 +734,9 @@ class ToolMCPListAllApi(Resource):
         user = current_user
         tenant_id = user.current_tenant_id
 
-        return jsonable_encoder(MCPToolManageService.retrieve_mcp_tools(tenant_id=tenant_id))
+        tools = MCPToolManageService.retrieve_mcp_tools(tenant_id=tenant_id)
+
+        return [tool.to_dict() for tool in tools]
 
 
 class ToolMCPUpdateApi(Resource):
@@ -762,12 +759,16 @@ class ToolMCPTokenApi(Resource):
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="args")
-        parser.add_argument("server_url", type=str, required=True, nullable=False, location="args")
         parser.add_argument("authorization_code", type=str, required=False, nullable=True, location="args")
         args = parser.parse_args()
+        provider = MCPToolManageService.get_mcp_provider_by_provider_id(
+            args["provider_id"], current_user.current_tenant_id
+        )
+        if not provider:
+            raise ValueError("provider not found")
         return auth(
             OAuthClientProvider(args["provider_id"], current_user.current_tenant_id),
-            server_url=args["server_url"],
+            provider.server_url,
             authorization_code=args["authorization_code"],
         )
 
