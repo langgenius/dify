@@ -147,12 +147,12 @@ class WorkflowResponseConverter:
     ) -> Optional[NodeStartStreamResponse]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
-        if not workflow_node_execution.workflow_run_id:
+        if not workflow_node_execution.workflow_execution_id:
             return None
 
         response = NodeStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_node_execution.workflow_run_id,
+            workflow_run_id=workflow_node_execution.workflow_execution_id,
             data=NodeStartStreamResponse.Data(
                 id=workflow_node_execution.id,
                 node_id=workflow_node_execution.node_id,
@@ -197,14 +197,14 @@ class WorkflowResponseConverter:
     ) -> Optional[NodeFinishStreamResponse]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
-        if not workflow_node_execution.workflow_run_id:
+        if not workflow_node_execution.workflow_execution_id:
             return None
         if not workflow_node_execution.finished_at:
             return None
 
         return NodeFinishStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_node_execution.workflow_run_id,
+            workflow_run_id=workflow_node_execution.workflow_execution_id,
             data=NodeFinishStreamResponse.Data(
                 id=workflow_node_execution.id,
                 node_id=workflow_node_execution.node_id,
@@ -240,14 +240,14 @@ class WorkflowResponseConverter:
     ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
-        if not workflow_node_execution.workflow_run_id:
+        if not workflow_node_execution.workflow_execution_id:
             return None
         if not workflow_node_execution.finished_at:
             return None
 
         return NodeRetryStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_node_execution.workflow_run_id,
+            workflow_run_id=workflow_node_execution.workflow_execution_id,
             data=NodeRetryStreamResponse.Data(
                 id=workflow_node_execution.id,
                 node_id=workflow_node_execution.node_id,

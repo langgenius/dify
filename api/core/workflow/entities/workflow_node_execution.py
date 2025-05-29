@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from core.workflow.nodes.enums import NodeType
 
 
-class NodeRunMetadataKey(StrEnum):
+class WorkflowNodeExecutionMetadataKey(StrEnum):
     """
     Node Run Metadata Key.
     """
@@ -70,7 +70,7 @@ class NodeExecution(BaseModel):
     id: str  # Unique identifier for this execution record
     node_execution_id: Optional[str] = None  # Optional secondary ID for cross-referencing
     workflow_id: str  # ID of the workflow this node belongs to
-    workflow_run_id: Optional[str] = None  # ID of the specific workflow run (null for single-step debugging)
+    workflow_execution_id: Optional[str] = None  # ID of the specific workflow run (null for single-step debugging)
 
     # Execution positioning and flow
     index: int  # Sequence number for ordering in trace visualization
@@ -90,7 +90,7 @@ class NodeExecution(BaseModel):
     elapsed_time: float = Field(default=0.0)  # Time taken for execution in seconds
 
     # Additional metadata
-    metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None  # Execution metadata (tokens, cost, etc.)
+    metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None  # Execution metadata (tokens, cost, etc.)
 
     # Timing information
     created_at: datetime  # When execution started
@@ -101,7 +101,7 @@ class NodeExecution(BaseModel):
         inputs: Optional[Mapping[str, Any]] = None,
         process_data: Optional[Mapping[str, Any]] = None,
         outputs: Optional[Mapping[str, Any]] = None,
-        metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None,
+        metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None,
     ) -> None:
         """
         Update the model from mappings.

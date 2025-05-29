@@ -15,7 +15,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.entities.workflow_node_execution import (
     NodeExecution,
-    NodeRunMetadataKey,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.nodes.enums import NodeType
@@ -291,7 +291,7 @@ def test_to_db_model(repository):
         id="test-id",
         workflow_id="test-workflow-id",
         node_execution_id="test-node-execution-id",
-        workflow_run_id="test-workflow-run-id",
+        workflow_execution_id="test-workflow-run-id",
         index=1,
         predecessor_node_id="test-predecessor-id",
         node_id="test-node-id",
@@ -303,7 +303,10 @@ def test_to_db_model(repository):
         status=WorkflowNodeExecutionStatus.RUNNING,
         error=None,
         elapsed_time=1.5,
-        metadata={NodeRunMetadataKey.TOTAL_TOKENS: 100, NodeRunMetadataKey.TOTAL_PRICE: Decimal("0.0")},
+        metadata={
+            WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 100,
+            WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: Decimal("0.0"),
+        },
         created_at=datetime.now(),
         finished_at=None,
     )
@@ -318,7 +321,7 @@ def test_to_db_model(repository):
     assert db_model.app_id == repository._app_id
     assert db_model.workflow_id == domain_model.workflow_id
     assert db_model.triggered_from == repository._triggered_from
-    assert db_model.workflow_run_id == domain_model.workflow_run_id
+    assert db_model.workflow_run_id == domain_model.workflow_execution_id
     assert db_model.index == domain_model.index
     assert db_model.predecessor_node_id == domain_model.predecessor_node_id
     assert db_model.node_execution_id == domain_model.node_execution_id
@@ -346,7 +349,7 @@ def test_to_domain_model(repository):
     inputs_dict = {"input_key": "input_value"}
     process_data_dict = {"process_key": "process_value"}
     outputs_dict = {"output_key": "output_value"}
-    metadata_dict = {str(NodeRunMetadataKey.TOTAL_TOKENS): 100}
+    metadata_dict = {str(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS): 100}
 
     # Create a DB model using our custom subclass
     db_model = WorkflowNodeExecution()
@@ -381,7 +384,7 @@ def test_to_domain_model(repository):
     assert isinstance(domain_model, NodeExecution)
     assert domain_model.id == db_model.id
     assert domain_model.workflow_id == db_model.workflow_id
-    assert domain_model.workflow_run_id == db_model.workflow_run_id
+    assert domain_model.workflow_execution_id == db_model.workflow_run_id
     assert domain_model.index == db_model.index
     assert domain_model.predecessor_node_id == db_model.predecessor_node_id
     assert domain_model.node_execution_id == db_model.node_execution_id
