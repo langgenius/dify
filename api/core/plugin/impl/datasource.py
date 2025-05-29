@@ -22,11 +22,12 @@ class PluginDatasourceManager(BasePluginClient):
         """
 
         def transformer(json_response: dict[str, Any]) -> dict:
-            for provider in json_response.get("data", []):
-                declaration = provider.get("declaration", {}) or {}
-                provider_name = declaration.get("identity", {}).get("name")
-                for datasource in declaration.get("datasources", []):
-                    datasource["identity"]["provider"] = provider_name
+            if json_response.get("data"):
+                for provider in json_response.get("data", []):
+                    declaration = provider.get("declaration", {}) or {}
+                    provider_name = declaration.get("identity", {}).get("name")
+                    for datasource in declaration.get("datasources", []):
+                        datasource["identity"]["provider"] = provider_name
 
             return json_response
 

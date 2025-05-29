@@ -462,18 +462,6 @@ class PublishedRagPipelineApi(Resource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("knowledge_base_setting", type=dict, location="json", help="Invalid knowledge base setting.")
-        args = parser.parse_args()
-
-        if not args.get("knowledge_base_setting"):
-            raise ValueError("Missing knowledge base setting.")
-
-        knowledge_base_setting_data = args.get("knowledge_base_setting")
-        if not knowledge_base_setting_data:
-            raise ValueError("Missing knowledge base setting.")
-        
-        knowledge_base_setting = KnowledgeBaseUpdateConfiguration(**knowledge_base_setting_data)
         rag_pipeline_service = RagPipelineService()
         with Session(db.engine) as session:
             pipeline = session.merge(pipeline)
@@ -481,7 +469,6 @@ class PublishedRagPipelineApi(Resource):
                 session=session,
                 pipeline=pipeline,
                 account=current_user,
-                knowledge_base_setting=knowledge_base_setting,
             )
             pipeline.is_published = True
             pipeline.workflow_id = workflow.id

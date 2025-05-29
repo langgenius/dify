@@ -9,6 +9,7 @@ from core.datasource.entities.datasource_entities import (
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.file import File
+from core.file.enums import FileTransferMethod, FileType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.variables.segments import ArrayAnySegment, FileSegment
 from core.variables.variables import ArrayAnyVariable
@@ -118,7 +119,12 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                         },
                     )
                 case DatasourceProviderType.LOCAL_FILE:
-                    upload_file = db.session.query(UploadFile).filter(UploadFile.id == datasource_info["related_id"]).first()
+                    related_id = datasource_info.get("related_id")
+                    if not related_id:
+                        raise DatasourceNodeError(
+                            "File is not exist"
+                        )
+                    upload_file = db.session.query(UploadFile).filter(UploadFile.id == related_id).first()
                     if not upload_file:
                         raise ValueError("Invalid upload file Info")
 
@@ -128,14 +134,14 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                         extension="." + upload_file.extension,
                         mime_type=upload_file.mime_type,
                         tenant_id=self.tenant_id,
-                        type=datasource_info.get("type", ""),
-                        transfer_method=datasource_info.get("transfer_method", ""),
+                        type=FileType.CUSTOM,
+                        transfer_method=FileTransferMethod.LOCAL_FILE,
                         remote_url=upload_file.source_url,
                         related_id=upload_file.id,
                         size=upload_file.size,
                         storage_key=upload_file.key,
                     )
-                    variable_pool.add([self.node_id, "file"], [FileSegment(value=file_info)])
+                    variable_pool.add([self.node_id, "file"], [file_info])
                     for key, value in datasource_info.items():
                         # construct new key list
                         new_key_list = ["file", key]
@@ -147,7 +153,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                         inputs=parameters_for_log,
                         metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
                         outputs={
-                                "file_info": file_info,
+                                "file_info": datasource_info,
                                 "datasource_type": datasource_type,
                             },
                         )
@@ -220,7 +226,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         variable = variable_pool.get(["sys", SystemVariableKey.FILES.value])
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
-    
+
 
     def _append_variables_recursively(self, variable_pool: VariablePool, node_id: str, variable_key_list: list[str], variable_value: VariableValue):
         """

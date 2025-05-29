@@ -47,7 +47,7 @@ from models.workflow import (
     WorkflowType,
 )
 from services.dataset_service import DatasetService
-from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeBaseUpdateConfiguration, PipelineTemplateInfoEntity
+from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeBaseUpdateConfiguration, KnowledgeConfiguration, PipelineTemplateInfoEntity
 from services.errors.app import WorkflowHashNotEqualError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 
@@ -262,7 +262,6 @@ class RagPipelineService:
         session: Session,
         pipeline: Pipeline,
         account: Account,
-        knowledge_base_setting: KnowledgeBaseUpdateConfiguration,
     ) -> Workflow:
         draft_workflow_stmt = select(Workflow).where(
             Workflow.tenant_id == pipeline.tenant_id,
@@ -291,16 +290,23 @@ class RagPipelineService:
         # commit db session changes
         session.add(workflow)
 
-        # update dataset
-        dataset = pipeline.dataset
-        if not dataset:
-            raise ValueError("Dataset not found")
-        DatasetService.update_rag_pipeline_dataset_settings(
-            session=session,
-            dataset=dataset, 
-            knowledge_base_setting=knowledge_base_setting, 
-            has_published=pipeline.is_published
-        )
+        graph = workflow.graph_dict
+        nodes = graph.get("nodes", [])
+        for node in nodes:
+            if node.get("data", {}).get("type") == "knowledge_index":
+                knowledge_configuration = node.get("data", {}).get("knowledge_configuration", {})
+                knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
+
+                # update dataset
+                dataset = pipeline.dataset
+                if not dataset:
+                    raise ValueError("Dataset not found")
+                DatasetService.update_rag_pipeline_dataset_settings(
+                    session=session,
+                    dataset=dataset, 
+                    knowledge_configuration=knowledge_configuration, 
+                    has_published=pipeline.is_published
+                )
         # return new workflow
         return workflow
 

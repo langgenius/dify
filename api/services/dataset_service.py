@@ -53,6 +53,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
 )
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeBaseUpdateConfiguration,
+    KnowledgeConfiguration,
     RagPipelineDatasetCreateEntity,
 )
 from services.errors.account import InvalidActionError, NoPermissionError
@@ -495,11 +496,11 @@ class DatasetService:
     @staticmethod
     def update_rag_pipeline_dataset_settings(session: Session,
                                              dataset: Dataset, 
-                                             knowledge_base_setting: KnowledgeBaseUpdateConfiguration, 
+                                             knowledge_configuration: KnowledgeConfiguration, 
                                              has_published: bool = False):
         if not has_published:
-            dataset.chunk_structure = knowledge_base_setting.chunk_structure
-            index_method = knowledge_base_setting.index_method
+            dataset.chunk_structure = knowledge_configuration.chunk_structure
+            index_method = knowledge_configuration.index_method
             dataset.indexing_technique = index_method.indexing_technique
             if index_method == "high_quality":
                 model_manager = ModelManager()
@@ -519,26 +520,26 @@ class DatasetService:
                 dataset.keyword_number = index_method.economy_setting.keyword_number
             else:
                 raise ValueError("Invalid index method")
-            dataset.retrieval_model = knowledge_base_setting.retrieval_setting.model_dump()
+            dataset.retrieval_model = knowledge_configuration.retrieval_setting.model_dump()
             session.add(dataset)
         else:
-            if dataset.chunk_structure and dataset.chunk_structure != knowledge_base_setting.chunk_structure:
+            if dataset.chunk_structure and dataset.chunk_structure != knowledge_configuration.chunk_structure:
                 raise ValueError("Chunk structure is not allowed to be updated.")
             action = None
-            if dataset.indexing_technique != knowledge_base_setting.index_method.indexing_technique:
+            if dataset.indexing_technique != knowledge_configuration.index_method.indexing_technique:
                 # if update indexing_technique
-                if knowledge_base_setting.index_method.indexing_technique == "economy":
+                if knowledge_configuration.index_method.indexing_technique == "economy":
                     raise ValueError("Knowledge base indexing technique is not allowed to be updated to economy.")
-                elif knowledge_base_setting.index_method.indexing_technique == "high_quality":
+                elif knowledge_configuration.index_method.indexing_technique == "high_quality":
                     action = "add"
                     # get embedding model setting
                     try:
                         model_manager = ModelManager()
                         embedding_model = model_manager.get_model_instance(
                             tenant_id=current_user.current_tenant_id,
-                            provider=knowledge_base_setting.index_method.embedding_setting.embedding_provider_name,
+                            provider=knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
                             model_type=ModelType.TEXT_EMBEDDING,
-                            model=knowledge_base_setting.index_method.embedding_setting.embedding_model_name,
+                            model=knowledge_configuration.index_method.embedding_setting.embedding_model_name,
                         )
                         dataset.embedding_model = embedding_model.model
                         dataset.embedding_model_provider = embedding_model.provider
@@ -607,9 +608,9 @@ class DatasetService:
                     except ProviderTokenNotInitError as ex:
                         raise ValueError(ex.description)
                 elif dataset.indexing_technique == "economy":
-                    if dataset.keyword_number != knowledge_base_setting.index_method.economy_setting.keyword_number:
-                        dataset.keyword_number = knowledge_base_setting.index_method.economy_setting.keyword_number
-            dataset.retrieval_model = knowledge_base_setting.retrieval_setting.model_dump()
+                    if dataset.keyword_number != knowledge_configuration.index_method.economy_setting.keyword_number:
+                        dataset.keyword_number = knowledge_configuration.index_method.economy_setting.keyword_number
+            dataset.retrieval_model = knowledge_configuration.retrieval_setting.model_dump()
             session.add(dataset) 
             session.commit()
             if action:
