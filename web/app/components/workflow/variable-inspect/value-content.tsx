@@ -207,6 +207,7 @@ const ValueContent = ({
                 number_limits: currentVar.value_type === 'file' ? 1 : (fileFeature as any).fileUploadConfig?.workflow_file_upload_limit || 5,
                 fileUploadConfig: (fileFeature as any).fileUploadConfig,
               }}
+              isDisabled={textEditorDisabled}
             />
           </div>
         )}
