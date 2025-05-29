@@ -49,6 +49,9 @@ const DatasetCard = ({
   const isExternalProvider = useMemo(() => {
     return dataset.provider === EXTERNAL_PROVIDER
   }, [dataset.provider])
+  const isPipelineUnpublished = useMemo(() => {
+    return !!dataset.pipeline_id && !dataset.is_published
+  }, [dataset.pipeline_id, dataset.is_published])
   const chunkingModeIcon = dataset.doc_form ? DOC_FORM_ICON_WITH_BG[dataset.doc_form] : React.Fragment
   const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : chunkingModeIcon
   const iconInfo = dataset.icon_info || {
@@ -116,7 +119,10 @@ const DatasetCard = ({
           e.preventDefault()
           isExternalProvider
             ? push(`/datasets/${dataset.id}/hitTesting`)
-            : push(`/datasets/${dataset.id}/documents`)
+            // eslint-disable-next-line sonarjs/no-nested-conditional
+            : isPipelineUnpublished
+              ? push(`/datasets/${dataset.id}/pipeline`)
+              : push(`/datasets/${dataset.id}/documents`)
         }}
       >
         {!dataset.embedding_available && (
