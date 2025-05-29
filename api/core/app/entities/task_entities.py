@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunMetadataKey
-from models.workflow import WorkflowNodeExecutionStatus
+from core.workflow.entities.node_entities import AgentNodeStrategyInit
+from core.workflow.entities.workflow_node_execution import NodeRunMetadataKey, WorkflowNodeExecutionStatus
 
 
 class TaskState(BaseModel):

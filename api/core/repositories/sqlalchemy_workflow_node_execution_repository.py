@@ -12,10 +12,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.workflow_node_execution import (
     NodeExecution,
-    NodeExecutionStatus,
+    NodeRunMetadataKey,
+    WorkflowNodeExecutionStatus,
 )
 from core.workflow.nodes.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
@@ -24,7 +24,6 @@ from models import (
     CreatorUserRole,
     EndUser,
     WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
     WorkflowNodeExecutionTriggeredFrom,
 )
 
@@ -106,7 +105,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         metadata = {NodeRunMetadataKey(k): v for k, v in db_model.execution_metadata_dict.items()}
 
         # Convert status to domain enum
-        status = NodeExecutionStatus(db_model.status)
+        status = WorkflowNodeExecutionStatus(db_model.status)
 
         return NodeExecution(
             id=db_model.id,

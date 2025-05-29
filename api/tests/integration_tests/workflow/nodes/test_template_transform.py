@@ -11,7 +11,7 @@ from core.workflow.graph_engine.entities.graph_init_params import GraphInitParam
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
 

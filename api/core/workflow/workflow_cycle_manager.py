@@ -17,11 +17,11 @@ from core.app.entities.queue_entities import (
 from core.app.task_pipeline.exc import WorkflowRunNotFoundError
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
-from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.entities.workflow_node_execution import (
     NodeExecution,
-    NodeExecutionStatus,
+    NodeRunMetadataKey,
+    WorkflowNodeExecutionStatus,
 )
 from core.workflow.enums import SystemVariableKey
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -178,7 +178,7 @@ class WorkflowCycleManager:
         for node_execution in running_node_executions:
             if node_execution.node_execution_id:
                 # Update the domain model
-                node_execution.status = NodeExecutionStatus.FAILED
+                node_execution.status = WorkflowNodeExecutionStatus.FAILED
                 node_execution.error = error_message
                 node_execution.finished_at = now
                 node_execution.elapsed_time = (now - node_execution.created_at).total_seconds()
@@ -225,7 +225,7 @@ class WorkflowCycleManager:
             node_id=event.node_id,
             node_type=event.node_type,
             title=event.node_data.title,
-            status=NodeExecutionStatus.RUNNING,
+            status=WorkflowNodeExecutionStatus.RUNNING,
             metadata=metadata,
             created_at=created_at,
         )
@@ -256,7 +256,7 @@ class WorkflowCycleManager:
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
         # Update domain model
-        domain_execution.status = NodeExecutionStatus.SUCCEEDED
+        domain_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
         domain_execution.update_from_mapping(
             inputs=inputs, process_data=process_data, outputs=outputs, metadata=execution_metadata_dict
         )
@@ -302,9 +302,9 @@ class WorkflowCycleManager:
 
         # Update domain model
         domain_execution.status = (
-            NodeExecutionStatus.FAILED
+            WorkflowNodeExecutionStatus.FAILED
             if not isinstance(event, QueueNodeExceptionEvent)
-            else NodeExecutionStatus.EXCEPTION
+            else WorkflowNodeExecutionStatus.EXCEPTION
         )
         domain_execution.error = event.error
         domain_execution.update_from_mapping(
@@ -353,7 +353,7 @@ class WorkflowCycleManager:
             node_id=event.node_id,
             node_type=event.node_type,
             title=event.node_data.title,
-            status=NodeExecutionStatus.RETRY,
+            status=WorkflowNodeExecutionStatus.RETRY,
             created_at=created_at,
             finished_at=finished_at,
             elapsed_time=elapsed_time,

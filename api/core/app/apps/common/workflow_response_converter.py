@@ -45,14 +45,13 @@ from core.app.entities.task_entities import (
 from core.file import FILE_MODEL_IDENTITY, File
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.workflow_execution import WorkflowExecution
-from core.workflow.entities.workflow_node_execution import NodeExecution
+from core.workflow.entities.workflow_node_execution import NodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from models import (
     Account,
     CreatorUserRole,
     EndUser,
-    WorkflowNodeExecutionStatus,
     WorkflowRun,
 )
 

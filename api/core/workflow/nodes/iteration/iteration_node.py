@@ -12,10 +12,10 @@ from flask import Flask, current_app, has_request_context
 from configs import dify_config
 from core.variables import ArrayVariable, IntegerVariable, NoneVariable
 from core.workflow.entities.node_entities import (
-    NodeRunMetadataKey,
     NodeRunResult,
 )
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import NodeRunMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
     BaseNodeEvent,
@@ -37,7 +37,6 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .exc import (
     InvalidIteratorValueError,

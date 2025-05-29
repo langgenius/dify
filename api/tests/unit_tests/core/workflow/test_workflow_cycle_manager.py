@@ -12,9 +12,12 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
-from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
-from core.workflow.entities.workflow_node_execution import NodeExecution, NodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import (
+    NodeExecution,
+    NodeRunMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -320,7 +323,7 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
     assert result.node_id == event.node_id
     assert result.node_type == event.node_type
     assert result.title == event.node_data.title
-    assert result.status == NodeExecutionStatus.RUNNING
+    assert result.status == WorkflowNodeExecutionStatus.RUNNING
 
     # Verify save was called
     workflow_cycle_manager._workflow_node_execution_repository.save.assert_called_once_with(result)
@@ -392,7 +395,7 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
 
     # Verify the result
     assert result == node_execution
-    assert result.status == NodeExecutionStatus.SUCCEEDED
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
 
     # Verify save was called
     workflow_cycle_manager._workflow_node_execution_repository.save.assert_called_once_with(node_execution)
@@ -470,7 +473,7 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
 
     # Verify the result
     assert result == node_execution
-    assert result.status == NodeExecutionStatus.FAILED
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
     assert result.error == "Test error message"
 
     # Verify save was called

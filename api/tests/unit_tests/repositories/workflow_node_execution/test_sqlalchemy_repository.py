@@ -13,12 +13,15 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.node_entities import NodeRunMetadataKey
-from core.workflow.entities.workflow_node_execution import NodeExecution, NodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import (
+    NodeExecution,
+    NodeRunMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.nodes.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from models.account import Account, Tenant
-from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionStatus, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionTriggeredFrom
 
 
 def configure_mock_execution(mock_execution):
@@ -297,7 +300,7 @@ def test_to_db_model(repository):
         inputs={"input_key": "input_value"},
         process_data={"process_key": "process_value"},
         outputs={"output_key": "output_value"},
-        status=NodeExecutionStatus.RUNNING,
+        status=WorkflowNodeExecutionStatus.RUNNING,
         error=None,
         elapsed_time=1.5,
         metadata={NodeRunMetadataKey.TOTAL_TOKENS: 100, NodeRunMetadataKey.TOTAL_PRICE: Decimal("0.0")},
@@ -388,7 +391,7 @@ def test_to_domain_model(repository):
     assert domain_model.inputs == inputs_dict
     assert domain_model.process_data == process_data_dict
     assert domain_model.outputs == outputs_dict
-    assert domain_model.status == NodeExecutionStatus(db_model.status)
+    assert domain_model.status == WorkflowNodeExecutionStatus(db_model.status)
     assert domain_model.error == db_model.error
     assert domain_model.elapsed_time == db_model.elapsed_time
     assert domain_model.metadata == metadata_dict

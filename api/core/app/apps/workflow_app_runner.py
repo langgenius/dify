@@ -29,8 +29,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import NodeRunMetadataKey
 from core.workflow.graph_engine.entities.event import (
     AgentLogEvent,
     GraphEngineEvent,

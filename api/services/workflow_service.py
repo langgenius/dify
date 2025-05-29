@@ -13,7 +13,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import NodeExecution, NodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import NodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes import NodeType
@@ -31,7 +31,6 @@ from models.tools import WorkflowToolProvider
 from models.workflow import (
     Workflow,
     WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowType,
 )
@@ -404,13 +403,13 @@ class WorkflowService:
 
             # Map status from WorkflowNodeExecutionStatus to NodeExecutionStatus
             if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
-                node_execution.status = NodeExecutionStatus.SUCCEEDED
+                node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
             elif node_run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
-                node_execution.status = NodeExecutionStatus.EXCEPTION
+                node_execution.status = WorkflowNodeExecutionStatus.EXCEPTION
                 node_execution.error = node_run_result.error
         else:
             # Set failed status and error
-            node_execution.status = NodeExecutionStatus.FAILED
+            node_execution.status = WorkflowNodeExecutionStatus.FAILED
             node_execution.error = error
 
         return node_execution

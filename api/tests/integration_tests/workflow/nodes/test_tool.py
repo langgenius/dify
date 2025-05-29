@@ -12,7 +12,7 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.nodes.event.event import RunCompletedEvent
 from core.workflow.nodes.tool.tool_node import ToolNode
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 def init_tool_node(config: dict):

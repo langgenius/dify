@@ -24,6 +24,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.variables import StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event.event import ModelInvokeCompletedEvent
 from core.workflow.nodes.knowledge_retrieval.template_prompts import (
@@ -41,7 +42,6 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
-from models.workflow import WorkflowNodeExecutionStatus
 from services.feature_service import FeatureService
 
 from .entities import KnowledgeRetrievalNodeData, ModelConfig
