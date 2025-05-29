@@ -20,7 +20,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.entities.workflow_node_execution import (
     NodeExecution,
-    NodeRunMetadataKey,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.enums import SystemVariableKey
@@ -210,15 +210,15 @@ class WorkflowCycleManager:
         # Create a domain model
         created_at = datetime.now(UTC).replace(tzinfo=None)
         metadata = {
-            NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
-            NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
-            NodeRunMetadataKey.LOOP_ID: event.in_loop_id,
+            WorkflowNodeExecutionMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+            WorkflowNodeExecutionMetadataKey.ITERATION_ID: event.in_iteration_id,
+            WorkflowNodeExecutionMetadataKey.LOOP_ID: event.in_loop_id,
         }
 
         domain_execution = NodeExecution(
             id=str(uuid4()),
             workflow_id=workflow_execution.workflow_id,
-            workflow_run_id=workflow_execution.id_,
+            workflow_execution_id=workflow_execution.id_,
             predecessor_node_id=event.predecessor_node_id,
             index=event.node_run_index,
             node_execution_id=event.node_execution_id,
@@ -330,13 +330,13 @@ class WorkflowCycleManager:
 
         # Convert metadata keys to strings
         origin_metadata = {
-            NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
-            NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
-            NodeRunMetadataKey.LOOP_ID: event.in_loop_id,
+            WorkflowNodeExecutionMetadataKey.ITERATION_ID: event.in_iteration_id,
+            WorkflowNodeExecutionMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+            WorkflowNodeExecutionMetadataKey.LOOP_ID: event.in_loop_id,
         }
 
         # Convert execution metadata keys to strings
-        execution_metadata_dict: dict[NodeRunMetadataKey, str | None] = {}
+        execution_metadata_dict: dict[WorkflowNodeExecutionMetadataKey, str | None] = {}
         if event.execution_metadata:
             for key, value in event.execution_metadata.items():
                 execution_metadata_dict[key] = value
@@ -347,7 +347,7 @@ class WorkflowCycleManager:
         domain_execution = NodeExecution(
             id=str(uuid4()),
             workflow_id=workflow_execution.workflow_id,
-            workflow_run_id=workflow_execution.id_,
+            workflow_execution_id=workflow_execution.id_,
             predecessor_node_id=event.predecessor_node_id,
             node_execution_id=event.node_execution_id,
             node_id=event.node_id,

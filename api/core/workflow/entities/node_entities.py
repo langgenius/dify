@@ -4,7 +4,7 @@ from typing import Any, Optional
 from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.entities.workflow_node_execution import NodeRunMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class NodeRunResult(BaseModel):
@@ -17,7 +17,7 @@ class NodeRunResult(BaseModel):
     inputs: Optional[Mapping[str, Any]] = None  # node inputs
     process_data: Optional[Mapping[str, Any]] = None  # process data
     outputs: Optional[Mapping[str, Any]] = None  # node outputs
-    metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None  # node metadata
+    metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None  # node metadata
     llm_usage: Optional[LLMUsage] = None  # llm usage
 
     edge_source_handle: Optional[str] = None  # source handle id of node with multiple branches

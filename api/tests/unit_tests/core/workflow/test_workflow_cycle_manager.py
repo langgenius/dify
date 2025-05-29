@@ -15,7 +15,7 @@ from core.app.entities.queue_entities import (
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.entities.workflow_node_execution import (
     NodeExecution,
-    NodeRunMetadataKey,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.enums import SystemVariableKey
@@ -318,7 +318,7 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
 
     # Verify the result
     assert result.workflow_id == workflow_execution.workflow_id
-    assert result.workflow_run_id == workflow_execution.id_
+    assert result.workflow_execution_id == workflow_execution.id_
     assert result.node_execution_id == event.node_execution_id
     assert result.node_id == event.node_id
     assert result.node_type == event.node_type
@@ -368,7 +368,7 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
     event.inputs = {"input": "test input"}
     event.process_data = {"process": "test process"}
     event.outputs = {"output": "test output"}
-    event.execution_metadata = {NodeRunMetadataKey.TOTAL_TOKENS: 100}
+    event.execution_metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 100}
     event.start_at = datetime.now(UTC).replace(tzinfo=None)
 
     # Create a real node execution
@@ -377,7 +377,7 @@ def test_handle_workflow_node_execution_success(workflow_cycle_manager):
         id="test-node-execution-record-id",
         node_execution_id="test-node-execution-id",
         workflow_id="test-workflow-id",
-        workflow_run_id="test-workflow-run-id",
+        workflow_execution_id="test-workflow-run-id",
         index=1,
         node_id="test-node-id",
         node_type=NodeType.LLM,
@@ -445,7 +445,7 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
     event.inputs = {"input": "test input"}
     event.process_data = {"process": "test process"}
     event.outputs = {"output": "test output"}
-    event.execution_metadata = {NodeRunMetadataKey.TOTAL_TOKENS: 100}
+    event.execution_metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 100}
     event.start_at = datetime.now(UTC).replace(tzinfo=None)
     event.error = "Test error message"
 
@@ -455,7 +455,7 @@ def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
         id="test-node-execution-record-id",
         node_execution_id="test-node-execution-id",
         workflow_id="test-workflow-id",
-        workflow_run_id="test-workflow-run-id",
+        workflow_execution_id="test-workflow-run-id",
         index=1,
         node_id="test-node-id",
         node_type=NodeType.LLM,

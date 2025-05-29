@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.workflow_node_execution import (
     NodeExecution,
-    NodeRunMetadataKey,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.nodes.enums import NodeType
@@ -102,7 +102,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         inputs = db_model.inputs_dict
         process_data = db_model.process_data_dict
         outputs = db_model.outputs_dict
-        metadata = {NodeRunMetadataKey(k): v for k, v in db_model.execution_metadata_dict.items()}
+        metadata = {WorkflowNodeExecutionMetadataKey(k): v for k, v in db_model.execution_metadata_dict.items()}
 
         # Convert status to domain enum
         status = WorkflowNodeExecutionStatus(db_model.status)
@@ -111,7 +111,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             id=db_model.id,
             node_execution_id=db_model.node_execution_id,
             workflow_id=db_model.workflow_id,
-            workflow_run_id=db_model.workflow_run_id,
+            workflow_execution_id=db_model.workflow_run_id,
             index=db_model.index,
             predecessor_node_id=db_model.predecessor_node_id,
             node_id=db_model.node_id,
@@ -153,7 +153,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             db_model.app_id = self._app_id
         db_model.workflow_id = domain_model.workflow_id
         db_model.triggered_from = self._triggered_from
-        db_model.workflow_run_id = domain_model.workflow_run_id
+        db_model.workflow_run_id = domain_model.workflow_execution_id
         db_model.index = domain_model.index
         db_model.predecessor_node_id = domain_model.predecessor_node_id
         db_model.node_execution_id = domain_model.node_execution_id

@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import AgentNodeStrategyInit
-from core.workflow.entities.workflow_node_execution import NodeRunMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 
 
 class TaskState(BaseModel):
@@ -305,7 +305,7 @@ class NodeFinishStreamResponse(StreamResponse):
         status: str
         error: Optional[str] = None
         elapsed_time: float
-        execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
+        execution_metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None
         created_at: int
         finished_at: int
         files: Optional[Sequence[Mapping[str, Any]]] = []
@@ -374,7 +374,7 @@ class NodeRetryStreamResponse(StreamResponse):
         status: str
         error: Optional[str] = None
         elapsed_time: float
-        execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
+        execution_metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None
         created_at: int
         finished_at: int
         files: Optional[Sequence[Mapping[str, Any]]] = []

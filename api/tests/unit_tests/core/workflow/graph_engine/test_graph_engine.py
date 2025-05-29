@@ -4,7 +4,7 @@ import pytest
 from flask import Flask
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult, WorkflowNodeExecutionMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
@@ -202,9 +202,9 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
                 process_data={},
                 outputs={},
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: 1,
-                    NodeRunMetadataKey.TOTAL_PRICE: 1,
-                    NodeRunMetadataKey.CURRENCY: "USD",
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 1,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: "USD",
                 },
             )
         )
@@ -837,9 +837,9 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
                 process_data={},
                 outputs={"class_name": "financial", "class_id": "1"},
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: 1,
-                    NodeRunMetadataKey.TOTAL_PRICE: 1,
-                    NodeRunMetadataKey.CURRENCY: "USD",
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 1,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: "USD",
                 },
                 edge_source_handle="1",
             )
@@ -853,9 +853,9 @@ def test_condition_parallel_correct_output(mock_close, mock_remove, app):
                 process_data={},
                 outputs={"result": "dify 123"},
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: 1,
-                    NodeRunMetadataKey.TOTAL_PRICE: 1,
-                    NodeRunMetadataKey.CURRENCY: "USD",
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 1,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: "USD",
                 },
             )
         )

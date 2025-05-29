@@ -16,7 +16,7 @@ from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
-from core.workflow.entities.workflow_node_execution import NodeRunMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
     BaseAgentEvent,
@@ -760,10 +760,12 @@ class GraphEngine:
                                     and node_instance.node_data.error_strategy is ErrorStrategy.FAIL_BRANCH
                                 ):
                                     run_result.edge_source_handle = FailBranchSourceHandle.SUCCESS
-                                if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
+                                if run_result.metadata and run_result.metadata.get(
+                                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS
+                                ):
                                     # plus state total_tokens
                                     self.graph_runtime_state.total_tokens += int(
-                                        run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)  # type: ignore[arg-type]
+                                        run_result.metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS)  # type: ignore[arg-type]
                                     )
 
                                 if run_result.llm_usage:
@@ -786,13 +788,17 @@ class GraphEngine:
 
                                 if parallel_id and parallel_start_node_id:
                                     metadata_dict = dict(run_result.metadata)
-                                    metadata_dict[NodeRunMetadataKey.PARALLEL_ID] = parallel_id
-                                    metadata_dict[NodeRunMetadataKey.PARALLEL_START_NODE_ID] = parallel_start_node_id
+                                    metadata_dict[WorkflowNodeExecutionMetadataKey.PARALLEL_ID] = parallel_id
+                                    metadata_dict[WorkflowNodeExecutionMetadataKey.PARALLEL_START_NODE_ID] = (
+                                        parallel_start_node_id
+                                    )
                                     if parent_parallel_id and parent_parallel_start_node_id:
-                                        metadata_dict[NodeRunMetadataKey.PARENT_PARALLEL_ID] = parent_parallel_id
-                                        metadata_dict[NodeRunMetadataKey.PARENT_PARALLEL_START_NODE_ID] = (
-                                            parent_parallel_start_node_id
+                                        metadata_dict[WorkflowNodeExecutionMetadataKey.PARENT_PARALLEL_ID] = (
+                                            parent_parallel_id
                                         )
+                                        metadata_dict[
+                                            WorkflowNodeExecutionMetadataKey.PARENT_PARALLEL_START_NODE_ID
+                                        ] = parent_parallel_start_node_id
                                     run_result.metadata = metadata_dict
 
                                 yield NodeRunSucceededEvent(
@@ -924,7 +930,7 @@ class GraphEngine:
             "error": error_result.error,
             "inputs": error_result.inputs,
             "metadata": {
-                NodeRunMetadataKey.ERROR_STRATEGY: node_instance.node_data.error_strategy,
+                WorkflowNodeExecutionMetadataKey.ERROR_STRATEGY: node_instance.node_data.error_strategy,
             },
         }
 
