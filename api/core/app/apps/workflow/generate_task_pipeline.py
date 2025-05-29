@@ -113,7 +113,7 @@ class WorkflowAppGenerateTaskPipeline:
                 SystemVariableKey.USER_ID: user_session_id,
                 SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
-                SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_execution_id,
+                SystemVariableKey.WORKFLOW_EXECUTION_ID: application_generate_entity.workflow_execution_id,
             },
             workflow_info=CycleManagerWorkflowInfo(
                 workflow_id=workflow.id,

@@ -65,7 +65,7 @@ class WorkflowCycleManager:
 
         # init workflow run
         # TODO: This workflow_run_id should always not be None, maybe we can use a more elegant way to handle this
-        execution_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_RUN_ID) or uuid4())
+        execution_id = str(self._workflow_system_variables.get(SystemVariableKey.WORKFLOW_EXECUTION_ID) or uuid4())
         execution = WorkflowExecution.new(
             id_=execution_id,
             workflow_id=self._workflow_info.workflow_id,
