@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import Any, Optional, Union
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
@@ -31,7 +31,6 @@ from core.workflow.repository.workflow_node_execution_repository import Workflow
 from core.workflow.workflow_entry import WorkflowEntry
 from models import (
     Workflow,
-    WorkflowRun,
     WorkflowRunStatus,
 )
 
@@ -61,13 +60,6 @@ class WorkflowCycleManager:
         if not workflow:
             raise ValueError(f"Workflow not found: {workflow_id}")
 
-        max_sequence_stmt = select(func.max(WorkflowRun.sequence_number)).where(
-            WorkflowRun.tenant_id == workflow.tenant_id,
-            WorkflowRun.app_id == workflow.app_id,
-        )
-        max_sequence = session.scalar(max_sequence_stmt) or 0
-        new_sequence_number = max_sequence + 1
-
         inputs = {**self._application_generate_entity.inputs}
         for key, value in (self._workflow_system_variables or {}).items():
             if key.value == "conversation":
@@ -83,7 +75,6 @@ class WorkflowCycleManager:
         execution = WorkflowExecution.new(
             id=execution_id,
             workflow_id=workflow.id,
-            sequence_number=new_sequence_number,
             type=WorkflowType(workflow.type),
             workflow_version=workflow.version,
             graph=workflow.graph_dict,

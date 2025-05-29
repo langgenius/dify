@@ -106,7 +106,6 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         return WorkflowExecution(
             id=db_model.id,
             workflow_id=db_model.workflow_id,
-            sequence_number=db_model.sequence_number,
             type=WorkflowType(db_model.type),
             workflow_version=db_model.version,
             graph=graph,
@@ -146,7 +145,22 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             db_model.app_id = self._app_id
         db_model.workflow_id = domain_model.workflow_id
         db_model.triggered_from = self._triggered_from
-        db_model.sequence_number = domain_model.sequence_number
+
+        # Check if this is a new record
+        with self._session_factory() as session:
+            existing = session.scalar(select(WorkflowRun).where(WorkflowRun.id == domain_model.id))
+            if not existing:
+                # For new records, get the next sequence number
+                stmt = select(WorkflowRun.sequence_number).where(
+                    WorkflowRun.app_id == self._app_id,
+                    WorkflowRun.tenant_id == self._tenant_id,
+                )
+                max_sequence = session.scalar(stmt.order_by(WorkflowRun.sequence_number.desc()))
+                db_model.sequence_number = (max_sequence or 0) + 1
+            else:
+                # For updates, keep the existing sequence number
+                db_model.sequence_number = existing.sequence_number
+
         db_model.type = domain_model.type
         db_model.version = domain_model.workflow_version
         db_model.graph = json.dumps(domain_model.graph) if domain_model.graph else None

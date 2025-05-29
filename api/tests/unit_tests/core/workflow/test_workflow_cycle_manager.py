@@ -184,7 +184,6 @@ def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, real_wo
 
     # Verify the result
     assert workflow_execution.workflow_id == real_workflow.id
-    assert workflow_execution.sequence_number == 6  # max_sequence + 1
 
     # Verify the workflow_execution_repository.save was called
     workflow_cycle_manager._workflow_execution_repository.save.assert_called_once_with(workflow_execution)
@@ -198,7 +197,6 @@ def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execu
         id="test-workflow-run-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        sequence_number=1,
         type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
@@ -233,7 +231,6 @@ def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execut
         id="test-workflow-run-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        sequence_number=1,
         type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
@@ -272,7 +269,6 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execu
         id="test-workflow-execution-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        sequence_number=1,
         type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
@@ -326,7 +322,6 @@ def test_get_workflow_execution_or_raise_error(workflow_cycle_manager, mock_work
         id="test-workflow-run-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        sequence_number=1,
         type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},
@@ -399,7 +394,6 @@ def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_workfl
         id="test-workflow-run-id",
         workflow_id="test-workflow-id",
         workflow_version="1.0",
-        sequence_number=1,
         type=WorkflowType.CHAT,
         graph={"nodes": [], "edges": []},
         inputs={"query": "test query"},

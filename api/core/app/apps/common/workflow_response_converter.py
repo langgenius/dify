@@ -77,7 +77,6 @@ class WorkflowResponseConverter:
             data=WorkflowStartStreamResponse.Data(
                 id=workflow_execution.id,
                 workflow_id=workflow_execution.workflow_id,
-                sequence_number=workflow_execution.sequence_number,
                 inputs=workflow_execution.inputs,
                 created_at=int(workflow_execution.started_at.timestamp()),
             ),
@@ -126,7 +125,6 @@ class WorkflowResponseConverter:
             data=WorkflowFinishStreamResponse.Data(
                 id=workflow_execution.id,
                 workflow_id=workflow_execution.workflow_id,
-                sequence_number=workflow_execution.sequence_number,
                 status=workflow_execution.status,
                 outputs=workflow_execution.outputs,
                 error=workflow_execution.error_message,

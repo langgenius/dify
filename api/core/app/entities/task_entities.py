@@ -189,7 +189,6 @@ class WorkflowStartStreamResponse(StreamResponse):
 
         id: str
         workflow_id: str
-        sequence_number: int
         inputs: Mapping[str, Any]
         created_at: int
 
@@ -210,7 +209,6 @@ class WorkflowFinishStreamResponse(StreamResponse):
 
         id: str
         workflow_id: str
-        sequence_number: int
         status: str
         outputs: Optional[Mapping[str, Any]] = None
         error: Optional[str] = None
