@@ -23,7 +23,7 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.node_entities import NodeRunMetadataKey
+from core.workflow.entities.workflow_node_execution import NodeRunMetadataKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models import Account, App, EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom

@@ -15,7 +15,8 @@ from core.variables import (
     SegmentType,
     StringSegment,
 )
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import NodeRunMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
     BaseNodeEvent,
@@ -37,7 +38,6 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.loop.entities import LoopNodeData
 from core.workflow.utils.condition.processor import ConditionProcessor
-from models.workflow import WorkflowNodeExecutionStatus
 
 if TYPE_CHECKING:
     from core.workflow.entities.variable_pool import VariablePool

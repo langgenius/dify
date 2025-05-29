@@ -62,21 +62,19 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
-from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_cycle_manager import WorkflowCycleManager
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatorUserRole
-from models.workflow import (
-    Workflow,
-    WorkflowRunStatus,
-)
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +126,12 @@ class AdvancedChatAppGenerateTaskPipeline:
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
                 SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
             },
+            workflow_info=CycleManagerWorkflowInfo(
+                workflow_id=workflow.id,
+                workflow_type=WorkflowType(workflow.type),
+                version=workflow.version,
+                graph_data=workflow.graph_dict,
+            ),
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
         )
@@ -302,15 +306,12 @@ class AdvancedChatAppGenerateTaskPipeline:
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     # init workflow run
-                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_start(
-                        session=session,
-                        workflow_id=self._workflow_id,
-                    )
-                    self._workflow_run_id = workflow_execution.id
+                    workflow_execution = self._workflow_cycle_manager.handle_workflow_run_start()
+                    self._workflow_run_id = workflow_execution.id_
                     message = self._get_message(session=session)
                     if not message:
                         raise ValueError(f"Message not found: {self._message_id}")
-                    message.workflow_run_id = workflow_execution.id
+                    message.workflow_run_id = workflow_execution.id_
                     workflow_start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
@@ -550,7 +551,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         workflow_run_id=self._workflow_run_id,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
-                        status=WorkflowRunStatus.FAILED,
+                        status=WorkflowExecutionStatus.FAILED,
                         error_message=event.error,
                         conversation_id=self._conversation_id,
                         trace_manager=trace_manager,
@@ -576,7 +577,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                             workflow_run_id=self._workflow_run_id,
                             total_tokens=graph_runtime_state.total_tokens,
                             total_steps=graph_runtime_state.node_run_steps,
-                            status=WorkflowRunStatus.STOPPED,
+                            status=WorkflowExecutionStatus.STOPPED,
                             error_message=event.get_stop_reason(),
                             conversation_id=self._conversation_id,
                             trace_manager=trace_manager,

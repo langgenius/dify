@@ -36,12 +36,10 @@ class WorkflowExecution(BaseModel):
     user, tenant, and app attributes.
     """
 
-    id: str = Field(...)
+    id_: str = Field(...)
     workflow_id: str = Field(...)
     workflow_version: str = Field(...)
-    sequence_number: int = Field(...)
-
-    type: WorkflowType = Field(...)
+    workflow_type: WorkflowType = Field(...)
     graph: Mapping[str, Any] = Field(...)
 
     inputs: Mapping[str, Any] = Field(...)
@@ -69,20 +67,18 @@ class WorkflowExecution(BaseModel):
     def new(
         cls,
         *,
-        id: str,
+        id_: str,
         workflow_id: str,
-        sequence_number: int,
-        type: WorkflowType,
+        workflow_type: WorkflowType,
         workflow_version: str,
         graph: Mapping[str, Any],
         inputs: Mapping[str, Any],
         started_at: datetime,
     ) -> "WorkflowExecution":
         return WorkflowExecution(
-            id=id,
+            id_=id_,
             workflow_id=workflow_id,
-            sequence_number=sequence_number,
-            type=type,
+            workflow_type=workflow_type,
             workflow_version=workflow_version,
             graph=graph,
             inputs=inputs,

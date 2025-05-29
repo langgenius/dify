@@ -13,11 +13,35 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.nodes.enums import NodeType
 
 
-class NodeExecutionStatus(StrEnum):
+class NodeRunMetadataKey(StrEnum):
+    """
+    Node Run Metadata Key.
+    """
+
+    TOTAL_TOKENS = "total_tokens"
+    TOTAL_PRICE = "total_price"
+    CURRENCY = "currency"
+    TOOL_INFO = "tool_info"
+    AGENT_LOG = "agent_log"
+    ITERATION_ID = "iteration_id"
+    ITERATION_INDEX = "iteration_index"
+    LOOP_ID = "loop_id"
+    LOOP_INDEX = "loop_index"
+    PARALLEL_ID = "parallel_id"
+    PARALLEL_START_NODE_ID = "parallel_start_node_id"
+    PARENT_PARALLEL_ID = "parent_parallel_id"
+    PARENT_PARALLEL_START_NODE_ID = "parent_parallel_start_node_id"
+    PARALLEL_MODE_RUN_ID = "parallel_mode_run_id"
+    ITERATION_DURATION_MAP = "iteration_duration_map"  # single iteration duration if iteration node runs
+    LOOP_DURATION_MAP = "loop_duration_map"  # single loop duration if loop node runs
+    ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
+    LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
+
+
+class WorkflowNodeExecutionStatus(StrEnum):
     """
     Node Execution Status Enum.
     """
@@ -61,7 +85,7 @@ class NodeExecution(BaseModel):
     outputs: Optional[Mapping[str, Any]] = None  # Output variables produced by this node
 
     # Execution state
-    status: NodeExecutionStatus = NodeExecutionStatus.RUNNING  # Current execution status
+    status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RUNNING  # Current execution status
     error: Optional[str] = None  # Error message if execution failed
     elapsed_time: float = Field(default=0.0)  # Time taken for execution in seconds
 
