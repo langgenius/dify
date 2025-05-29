@@ -14,8 +14,8 @@ from core.app.entities.queue_entities import (
 )
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecution,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.enums import SystemVariableKey

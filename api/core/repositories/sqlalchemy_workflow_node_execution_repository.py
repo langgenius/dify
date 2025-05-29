@@ -13,8 +13,8 @@ from sqlalchemy.orm import sessionmaker
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecution,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.nodes.enums import NodeType

@@ -19,8 +19,8 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecution,
+    WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.enums import SystemVariableKey
