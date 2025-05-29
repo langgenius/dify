@@ -33,10 +33,10 @@ const Popup = () => {
   const { t } = useTranslation()
   const { datasetId } = useParams()
   const { push } = useRouter()
-  const [published, setPublished] = useState(false)
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const pipelineId = useStore(s => s.pipelineId)
+  const [published, setPublished] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
@@ -125,7 +125,7 @@ const Popup = () => {
           className='mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent'
           variant='tertiary'
           onClick={goToAddDocuments}
-          disabled={!published}
+          disabled={!publishedAt}
         >
           <div className='flex grow items-center'>
             <RiPlayCircleLine className='mr-2 h-4 w-4' />
@@ -136,7 +136,7 @@ const Popup = () => {
         <Button
           className='w-full hover:bg-state-accent-hover hover:text-text-accent'
           variant='tertiary'
-          disabled={!published}
+          disabled={!publishedAt}
         >
           <div className='flex grow items-center'>
             <RiTerminalBoxLine className='mr-2 h-4 w-4' />
