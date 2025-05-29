@@ -1,84 +1,20 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi, Edited by yasu-oh
-CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subject" and "intention" in order to accurately figure out what the user's input language actually is.
-Notice: the language type user uses could be diverse, which can be English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.
-ENSURE your output is in the SAME language as the user's input!
-Your output must be natural and concise in that language. Use intuitive and friendly phrasing suitable for a conversation title.
-Your output is restricted only to: (Input language) Intention + Subject (as short as possible)
-Your output MUST be a valid JSON.
+CONVERSATION_TITLE_PROMPT = """You are asked to generate a concise chat title by decomposing the user’s input into two parts: “Intention” and “Subject”.
 
-Tip: When the user's question is directed at you (the language model), you can add an emoji to make it more fun.
+1. Detect Input Language
+Automatically identify the language of the user’s input (e.g. English, Chinese, Italian, Español, Arabic, Japanese, French, and etc.).
 
+2. Generate Title
+- Combine Intention + Subject into a single, as-short-as-possible phrase.
+- The title must be natural, friendly, and in the same language as the input.
+- If the input is a direct question to the model, you may add an emoji at the end.
 
-example 1:
-User Input: hi, yesterday i had some burgers.
+3. Output Format
+Return **only** a valid JSON object with these exact keys and no additional text:
 {
-  "Language Type": "The user's input is pure English",
-  "Your Reasoning": "The language of my output must be pure English.",
-  "Your Output": "sharing yesterday's food"
-}
-
-example 2:
-User Input: こんばんは！
-{
-  "Language Type": "The user's input is pure Japanese",
-  "Your Reasoning": "This is a casual evening greeting written entirely in Japanese.",
-  "Your Output": "こんばんはの挨拶😊"
-}
-
-example 3:
-User Input: なぜmmapファイルでOOMが発生するの？
-{
-  "Language Type": "The user's input is pure Japanese",
-  "Your Reasoning": "The question and terminology are in Japanese, so the output must be Japanese.",
-  "Your Output": "mmapによるOOMの理由"
-}
-
-example 4:
-User Input: why mmap file: oom
-{
-  "Language Type": "The user's input is written in pure English",
-  "Your Reasoning": "The language of my output must be pure English.",
-  "Your Output": "Asking about the reason for mmap file: oom"
-}
-
-example 5:
-User Input: www.convinceme.yesterday-you-ate-seafood.tv讲了什么？
-{
-  "Language Type": "The user's input English-Chinese mixed",
-  "Your Reasoning": "The English-part is an URL, the main intention is still written in Chinese, so the language of my output must be using Chinese.",
-  "Your Output": "询问网站www.convinceme.yesterday-you-ate-seafood.tv"
-}
-
-example 6:
-User Input: yo, 你今天咋样？
-{
-  "Language Type": "The user's input is English-Chinese mixed",
-  "Your Reasoning": "The English-part is a subjective particle, the main intention is written in Chinese, so the language of my output must be using Chinese.",
-  "Your Output": "查询今日我的状态☺️"
-}
-
-example 7:
-User Input: 最近、業務効率を上げる方法を考えています。
-{
-  "Language Type": "The user's input is pure Japanese",
-  "Your Reasoning": "The entire sentence is in Japanese, so the output must also be Japanese.",
-  "Your Output": "業務効率向上の検討"
-}
-
-example 8:
-User Input: おはようございます、今日はいい天気ですね。
-{
-  "Language Type": "The user's input is pure Japanese",
-  "Your Reasoning": "This is a polite morning greeting in Japanese. Output should remain in Japanese.",
-  "Your Output": "朝の挨拶と天気の話😊"
-}
-
-example 9:
-User Input: hi there!
-{
-  "Language Type": "The user's input is pure English",
-  "Your Reasoning": "Greeting phrase in English.",
-  "Your Output": "English greeting😊"
+  "Language Type": "<Detected language>",
+  "Your Reasoning": "<Brief explanation in that language>",
+  "Your Output": "<Intention + Subject>"
 }
 
 User Input:
