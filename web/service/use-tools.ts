@@ -140,7 +140,7 @@ export const useDeleteMCP = ({
 export const useAuthorizeMCP = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'authorize-mcp'],
-    mutationFn: (payload: { provider_id: string; server_url: string }) => {
+    mutationFn: (payload: { provider_id: string; }) => {
       return post<{ result?: string; authorization_url?: string }>('/workspaces/current/tool-provider/mcp/auth', {
         body: payload,
       })
@@ -151,7 +151,7 @@ export const useAuthorizeMCP = () => {
 export const useUpdateMCPAuthorizationToken = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
-    mutationFn: (payload: { provider_id: string; server_url: string; authorization_code: string }) => {
+    mutationFn: (payload: { provider_id: string; authorization_code: string }) => {
       return get<MCPServerDetail>('/workspaces/current/tool-provider/mcp/token', {
         params: {
           ...payload,

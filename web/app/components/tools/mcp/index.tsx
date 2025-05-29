@@ -70,7 +70,6 @@ const MCPList = ({
     setCurrentProviderID(provider.id)
     await authorizeMcp({
       provider_id: provider.id,
-      server_url: provider.server_url!,
     })
     await refetch() // update authorization in list
     await updateTools(provider.id)
@@ -84,7 +83,6 @@ const MCPList = ({
     if (!targetProvider) return
     await updateMCPAuthorizationToken({
       provider_id: providerID,
-      server_url: targetProvider.server_url!,
       authorization_code: code,
     })
     await refetch()

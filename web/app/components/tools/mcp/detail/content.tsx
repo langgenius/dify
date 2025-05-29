@@ -86,7 +86,6 @@ const MCPDetailContent: FC<Props> = ({
       return
     const res = await authorizeMcp({
       provider_id: detail.id,
-      server_url: detail.server_url!,
     })
     if (res.result === 'success')
       handleUpdateTools()
