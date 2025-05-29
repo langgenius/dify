@@ -17,3 +17,26 @@ class IndexingEstimate(BaseModel):
     total_segments: int
     preview: list[PreviewDetail]
     qa_preview: Optional[list[QAPreviewDetail]] = None
+
+
+class PipelineDataset(BaseModel):
+    id: str
+    name: str
+    description: str
+    chunk_structure: str
+
+class PipelineDocument(BaseModel):
+    id: str
+    position: int
+    data_source_info: dict
+    name: str
+    indexing_status: str
+    error: str
+    enabled: bool
+
+
+
+class PipelineGenerateResponse(BaseModel):
+    batch: str
+    dataset: PipelineDataset
+    documents: list[PipelineDocument]

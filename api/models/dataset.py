@@ -152,6 +152,8 @@ class Dataset(Base):
 
     @property
     def doc_form(self):
+        if self.chunk_structure:
+            return self.chunk_structure
         document = db.session.query(Document).filter(Document.dataset_id == self.id).first()
         if document:
             return document.doc_form
@@ -206,6 +208,13 @@ class Dataset(Base):
             "external_knowledge_api_name": external_knowledge_api.name,
             "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
         }
+    @property
+    def is_published(self):
+        if self.pipeline_id:
+            pipeline = db.session.query(Pipeline).filter(Pipeline.id == self.pipeline_id).first()
+            if pipeline:
+                return pipeline.is_published
+        return False
 
     @property
     def doc_metadata(self):
@@ -1154,10 +1163,11 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     __table_args__ = (db.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    pipeline_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
+    chunk_structure = db.Column(db.String(255), nullable=False)
     icon = db.Column(db.JSON, nullable=False)
+    yaml_content = db.Column(db.Text, nullable=False)
     copyright = db.Column(db.String(255), nullable=False)
     privacy_policy = db.Column(db.String(255), nullable=False)
     position = db.Column(db.Integer, nullable=False)
@@ -1166,9 +1176,6 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
-    @property
-    def pipeline(self):
-        return db.session.query(Pipeline).filter(Pipeline.id == self.pipeline_id).first()
 
 
 class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
@@ -1180,11 +1187,12 @@ class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
-    pipeline_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False)
+    chunk_structure = db.Column(db.String(255), nullable=False)
     icon = db.Column(db.JSON, nullable=False)
     position = db.Column(db.Integer, nullable=False)
+    yaml_content = db.Column(db.Text, nullable=False)
     install_count = db.Column(db.Integer, nullable=False, default=0)
     language = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

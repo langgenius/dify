@@ -1,4 +1,5 @@
 from services.rag_pipeline.pipeline_template.built_in.built_in_retrieval import BuiltInPipelineTemplateRetrieval
+from services.rag_pipeline.pipeline_template.customized.customized_retrieval import CustomizedPipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
@@ -12,7 +13,7 @@ class PipelineTemplateRetrievalFactory:
             case PipelineTemplateType.REMOTE:
                 return RemotePipelineTemplateRetrieval
             case PipelineTemplateType.CUSTOMIZED:
-                return DatabasePipelineTemplateRetrieval
+                return CustomizedPipelineTemplateRetrieval
             case PipelineTemplateType.DATABASE:
                 return DatabasePipelineTemplateRetrieval
             case PipelineTemplateType.BUILTIN:

@@ -87,6 +87,7 @@ dataset_detail_fields = {
     "runtime_mode": fields.String,
     "chunk_structure": fields.String,
     "icon_info": fields.Nested(icon_info_fields),
+    "is_published": fields.Boolean,
 }
 
 dataset_query_detail_fields = {

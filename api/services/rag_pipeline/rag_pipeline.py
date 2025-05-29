@@ -7,7 +7,7 @@ from typing import Any, Optional, cast
 from uuid import uuid4
 
 from flask_login import current_user
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 import contexts
@@ -47,16 +47,19 @@ from models.workflow import (
     WorkflowType,
 )
 from services.dataset_service import DatasetService
-from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeBaseUpdateConfiguration, KnowledgeConfiguration, PipelineTemplateInfoEntity
+from services.entities.knowledge_entities.rag_pipeline_entities import (
+    KnowledgeConfiguration,
+    PipelineTemplateInfoEntity,
+)
 from services.errors.app import WorkflowHashNotEqualError
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 
 
 class RagPipelineService:
-    @staticmethod
+    @classmethod
     def get_pipeline_templates(
-        type: str = "built-in", language: str = "en-US"
-    ) -> list[PipelineBuiltInTemplate | PipelineCustomizedTemplate]:
+        cls, type: str = "built-in", language: str = "en-US"
+    ) -> dict:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
@@ -64,14 +67,14 @@ class RagPipelineService:
             if not result.get("pipeline_templates") and language != "en-US":
                 template_retrieval = PipelineTemplateRetrievalFactory.get_built_in_pipeline_template_retrieval()
                 result = template_retrieval.fetch_pipeline_templates_from_builtin("en-US")
-            return [PipelineBuiltInTemplate(**template) for template in result.get("pipeline_templates", [])]
+            return result
         else:
             mode = "customized"
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
             result = retrieval_instance.get_pipeline_templates(language)
-            return [PipelineCustomizedTemplate(**template) for template in result.get("pipeline_templates", [])]
+            return result
 
-    @classmethod
+    @classmethod   
     def get_pipeline_template_detail(cls, template_id: str) -> Optional[dict]:
         """
         Get pipeline template detail.
@@ -684,7 +687,10 @@ class RagPipelineService:
         base_query = db.session.query(WorkflowRun).filter(
             WorkflowRun.tenant_id == pipeline.tenant_id,
             WorkflowRun.app_id == pipeline.id,
-            WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.DEBUGGING.value,
+            or_(
+                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN.value,
+                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value
+            )
         )
 
         if args.get("last_id"):
@@ -765,8 +771,26 @@ class RagPipelineService:
 
         # Use the repository to get the node executions with ordering
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id, order_config=order_config)
+        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id, 
+                                                         order_config=order_config, 
+                                                         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN)
       # Convert domain models to database models
         workflow_node_executions = [repository.to_db_model(node_execution) for node_execution in node_executions]
 
         return workflow_node_executions
+    
+    @classmethod
+    def publish_customized_pipeline_template(cls, pipeline_id: str, args: dict):
+        """
+        Publish customized pipeline template
+        """
+        pipeline = db.session.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
+        if not pipeline:
+            raise ValueError("Pipeline not found")
+        if not pipeline.workflow_id:
+            raise ValueError("Pipeline workflow not found")
+        workflow = db.session.query(Workflow).filter(Workflow.id == pipeline.workflow_id).first()
+        if not workflow:
+            raise ValueError("Workflow not found")
+        
+        db.session.commit()

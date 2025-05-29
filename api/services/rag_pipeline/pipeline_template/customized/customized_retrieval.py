@@ -1,12 +1,13 @@
 from typing import Optional
 
 from flask_login import current_user
+import yaml
 
 from extensions.ext_database import db
-from models.dataset import Pipeline, PipelineCustomizedTemplate
-from services.app_dsl_service import AppDslService
+from models.dataset import PipelineCustomizedTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
+from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
 class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
@@ -35,13 +36,26 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param language: language
         :return:
         """
-        pipeline_templates = (
+        pipeline_customized_templates = (
             db.session.query(PipelineCustomizedTemplate)
             .filter(PipelineCustomizedTemplate.tenant_id == tenant_id, PipelineCustomizedTemplate.language == language)
             .all()
         )
+        recommended_pipelines_results = []
+        for pipeline_customized_template in pipeline_customized_templates:
 
-        return {"pipeline_templates": pipeline_templates}
+            recommended_pipeline_result = {
+                "id": pipeline_customized_template.id,
+                "name": pipeline_customized_template.name,
+                "description": pipeline_customized_template.description,
+                "icon": pipeline_customized_template.icon,
+                "position": pipeline_customized_template.position,
+                "chunk_structure": pipeline_customized_template.chunk_structure,
+            }
+            recommended_pipelines_results.append(recommended_pipeline_result)
+
+        return {"pipeline_templates": recommended_pipelines_results}
+
 
     @classmethod
     def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> Optional[dict]:
@@ -57,15 +71,9 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         if not pipeline_template:
             return None
 
-        # get pipeline detail
-        pipeline = db.session.query(Pipeline).filter(Pipeline.id == pipeline_template.pipeline_id).first()
-        if not pipeline or not pipeline.is_public:
-            return None
-
         return {
-            "id": pipeline.id,
-            "name": pipeline.name,
-            "icon": pipeline.icon,
-            "mode": pipeline.mode,
-            "export_data": AppDslService.export_dsl(app_model=pipeline),
+            "id": pipeline_template.id,
+            "name": pipeline_template.name,
+            "icon": pipeline_template.icon,
+            "export_data": yaml.safe_load(pipeline_template.yaml_content),
         }

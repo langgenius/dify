@@ -1,7 +1,9 @@
 from typing import Optional
 
+import yaml
+
 from extensions.ext_database import db
-from models.dataset import Dataset, Pipeline, PipelineBuiltInTemplate
+from models.dataset import PipelineBuiltInTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
@@ -36,24 +38,18 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
 
         recommended_pipelines_results = []
         for pipeline_built_in_template in pipeline_built_in_templates:
-            pipeline_model: Pipeline | None = pipeline_built_in_template.pipeline
-            if not pipeline_model:
-                continue
 
             recommended_pipeline_result = {
                 "id": pipeline_built_in_template.id,
                 "name": pipeline_built_in_template.name,
-                "pipeline_id": pipeline_model.id,
                 "description": pipeline_built_in_template.description,
                 "icon": pipeline_built_in_template.icon,
                 "copyright": pipeline_built_in_template.copyright,
                 "privacy_policy": pipeline_built_in_template.privacy_policy,
                 "position": pipeline_built_in_template.position,
+                "chunk_structure": pipeline_built_in_template.chunk_structure,
             }
-            dataset: Dataset | None = pipeline_model.dataset
-            if dataset:
-                recommended_pipeline_result["chunk_structure"] = dataset.chunk_structure
-                recommended_pipelines_results.append(recommended_pipeline_result)
+            recommended_pipelines_results.append(recommended_pipeline_result)
 
         return {"pipeline_templates": recommended_pipelines_results}
 
@@ -64,8 +60,6 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         :param pipeline_id: Pipeline ID
         :return:
         """
-        from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
-
         # is in public recommended list
         pipeline_template = (
             db.session.query(PipelineBuiltInTemplate).filter(PipelineBuiltInTemplate.id == pipeline_id).first()
@@ -74,19 +68,10 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         if not pipeline_template:
             return None
 
-        # get pipeline detail
-        pipeline = db.session.query(Pipeline).filter(Pipeline.id == pipeline_template.pipeline_id).first()
-        if not pipeline or not pipeline.is_public:
-            return None
-
-        dataset: Dataset | None = pipeline.dataset
-        if not dataset:
-            return None
-
         return {
-            "id": pipeline.id,
-            "name": pipeline.name,
+            "id": pipeline_template.id,
+            "name": pipeline_template.name,
             "icon": pipeline_template.icon,
-            "chunk_structure": dataset.chunk_structure,
-            "export_data": RagPipelineDslService.export_rag_pipeline_dsl(pipeline=pipeline),
+            "chunk_structure": pipeline_template.chunk_structure,
+            "export_data": yaml.safe_load(pipeline_template.yaml_content),
         }

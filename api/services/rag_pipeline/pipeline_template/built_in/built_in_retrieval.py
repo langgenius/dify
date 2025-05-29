@@ -23,8 +23,8 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         result = self.fetch_pipeline_templates_from_builtin(language)
         return result
 
-    def get_pipeline_template_detail(self, pipeline_id: str):
-        result = self.fetch_pipeline_template_detail_from_builtin(pipeline_id)
+    def get_pipeline_template_detail(self, template_id: str):
+        result = self.fetch_pipeline_template_detail_from_builtin(template_id)
         return result
 
     @classmethod
@@ -54,11 +54,11 @@ class BuiltInPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return builtin_data.get("pipeline_templates", {}).get(language, {})
 
     @classmethod
-    def fetch_pipeline_template_detail_from_builtin(cls, pipeline_id: str) -> Optional[dict]:
+    def fetch_pipeline_template_detail_from_builtin(cls, template_id: str) -> Optional[dict]:
         """
         Fetch pipeline template detail from builtin.
-        :param pipeline_id: Pipeline ID
+        :param template_id: Template ID
         :return:
         """
         builtin_data: dict[str, dict[str, dict]] = cls._get_builtin_data()
-        return builtin_data.get("pipeline_templates", {}).get(pipeline_id)
+        return builtin_data.get("pipeline_templates", {}).get(template_id)

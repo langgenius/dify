@@ -20,11 +20,11 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskSt
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfigManager
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
-from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.entities.knowledge_entities import PipelineDataset, PipelineDocument
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
@@ -32,6 +32,7 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
+from fields.document_fields import dataset_and_document_fields
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
@@ -54,7 +55,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
-    ) -> Generator[Mapping | str, None, None] | None: ...
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None: ...
 
     @overload
     def generate(
@@ -101,23 +102,18 @@ class PipelineGenerator(BaseAppGenerator):
             pipeline=pipeline,
             workflow=workflow,
         )
-
+        # Add null check for dataset
+        dataset = pipeline.dataset
+        if not dataset:
+            raise ValueError("Pipeline dataset is required")
         inputs: Mapping[str, Any] = args["inputs"]
         start_node_id: str = args["start_node_id"]
         datasource_type: str = args["datasource_type"]
         datasource_info_list: list[Mapping[str, Any]] = args["datasource_info_list"]
         batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
-
-        for datasource_info in datasource_info_list:
-            workflow_run_id = str(uuid.uuid4())
-            document_id = None
-
-            # Add null check for dataset
-            dataset = pipeline.dataset
-            if not dataset:
-                raise ValueError("Pipeline dataset is required")
-
-            if invoke_from == InvokeFrom.PUBLISHED:
+        documents = []
+        if invoke_from == InvokeFrom.PUBLISHED:
+            for datasource_info in datasource_info_list:
                 position = DocumentService.get_documents_position(dataset.id)
                 document = self._build_document(
                     tenant_id=pipeline.tenant_id,
@@ -132,9 +128,15 @@ class PipelineGenerator(BaseAppGenerator):
                     document_form=dataset.chunk_structure,
                 )
                 db.session.add(document)
-                db.session.commit()
-                document_id = document.id
-            # init application generate entity
+                documents.append(document)
+            db.session.commit()
+
+        # run in child thread
+        for i, datasource_info in enumerate(datasource_info_list):
+            workflow_run_id = str(uuid.uuid4())
+            document_id = None
+            if invoke_from == InvokeFrom.PUBLISHED:
+                document_id = documents[i].id
             application_generate_entity = RagPipelineGenerateEntity(
                 task_id=str(uuid.uuid4()),
                 app_config=pipeline_config,
@@ -159,7 +161,6 @@ class PipelineGenerator(BaseAppGenerator):
                 workflow_run_id=workflow_run_id,
             )
 
-            contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
             contexts.plugin_tool_providers.set({})
             contexts.plugin_tool_providers_lock.set(threading.Lock())
             if invoke_from == InvokeFrom.DEBUGGER:
@@ -183,6 +184,7 @@ class PipelineGenerator(BaseAppGenerator):
             )
             if invoke_from == InvokeFrom.DEBUGGER:
                 return self._generate(
+                    flask_app=current_app._get_current_object(),# type: ignore
                     pipeline=pipeline,
                     workflow=workflow,
                     user=user,
@@ -194,21 +196,47 @@ class PipelineGenerator(BaseAppGenerator):
                     workflow_thread_pool_id=workflow_thread_pool_id,
                 )
             else:
-                self._generate(
-                    pipeline=pipeline,
-                    workflow=workflow,
-                    user=user,
-                    application_generate_entity=application_generate_entity,
-                    invoke_from=invoke_from,
-                    workflow_execution_repository=workflow_execution_repository,
-                    workflow_node_execution_repository=workflow_node_execution_repository,
-                    streaming=streaming,
-                    workflow_thread_pool_id=workflow_thread_pool_id,
+                # run in child thread
+                thread = threading.Thread(
+                    target=self._generate,
+                    kwargs={
+                        "flask_app": current_app._get_current_object(),  # type: ignore
+                        "pipeline": pipeline,
+                        "workflow": workflow,
+                        "user": user,
+                        "application_generate_entity": application_generate_entity,
+                        "invoke_from": invoke_from,
+                        "workflow_execution_repository": workflow_execution_repository,
+                        "workflow_node_execution_repository": workflow_node_execution_repository,
+                        "streaming": streaming,
+                        "workflow_thread_pool_id": workflow_thread_pool_id,
+                    },
                 )
-
+                thread.start()
+        # return batch, dataset, documents
+        return {
+                "batch": batch,
+                "dataset": PipelineDataset(
+                    id=dataset.id,
+                    name=dataset.name,
+                    description=dataset.description,
+                    chunk_structure=dataset.chunk_structure,
+                ).model_dump(),
+                "documents": [PipelineDocument(
+                    id=document.id,
+                    position=document.position,
+                    data_source_info=document.data_source_info,
+                    name=document.name,
+                    indexing_status=document.indexing_status,
+                    error=document.error,
+                    enabled=document.enabled,
+                ).model_dump() for document in documents
+                ]
+            }
     def _generate(
         self,
         *,
+        flask_app: Flask,
         pipeline: Pipeline,
         workflow: Workflow,
         user: Union[Account, EndUser],
@@ -232,40 +260,42 @@ class PipelineGenerator(BaseAppGenerator):
         :param streaming: is stream
         :param workflow_thread_pool_id: workflow thread pool id
         """
-        # init queue manager
-        queue_manager = PipelineQueueManager(
-            task_id=application_generate_entity.task_id,
-            user_id=application_generate_entity.user_id,
-            invoke_from=application_generate_entity.invoke_from,
-            app_mode=AppMode.RAG_PIPELINE,
-        )
+        print(user.id)
+        with flask_app.app_context():
+            # init queue manager
+            queue_manager = PipelineQueueManager(
+                task_id=application_generate_entity.task_id,
+                user_id=application_generate_entity.user_id,
+                invoke_from=application_generate_entity.invoke_from,
+                app_mode=AppMode.RAG_PIPELINE,
+            )
 
-        # new thread
-        worker_thread = threading.Thread(
-            target=self._generate_worker,
-            kwargs={
-                "flask_app": current_app._get_current_object(),  # type: ignore
-                "application_generate_entity": application_generate_entity,
-                "queue_manager": queue_manager,
-                "context": contextvars.copy_context(),
-                "workflow_thread_pool_id": workflow_thread_pool_id,
-            },
-        )
+            # new thread
+            worker_thread = threading.Thread(
+                target=self._generate_worker,
+                kwargs={
+                    "flask_app": current_app._get_current_object(),  # type: ignore
+                    "application_generate_entity": application_generate_entity,
+                    "queue_manager": queue_manager,
+                    "context": contextvars.copy_context(),
+                    "workflow_thread_pool_id": workflow_thread_pool_id,
+                },
+            )
 
-        worker_thread.start()
+            worker_thread.start()
 
-        # return response or stream generator
-        response = self._handle_response(
-            application_generate_entity=application_generate_entity,
-            workflow=workflow,
-            queue_manager=queue_manager,
-            user=user,
-            workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
-            stream=streaming,
-        )
+            # return response or stream generator
+            response = self._handle_response(
+                application_generate_entity=application_generate_entity,
+                workflow=workflow,
+                queue_manager=queue_manager,
+                user=user,
+                workflow_execution_repository=workflow_execution_repository,
+                workflow_node_execution_repository=workflow_node_execution_repository,
+                stream=streaming,
+            )
 
-        return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
+            return WorkflowAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
     def single_iteration_generate(
         self,
@@ -317,7 +347,6 @@ class PipelineGenerator(BaseAppGenerator):
             call_depth=0,
             workflow_run_id=str(uuid.uuid4()),
         )
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
         # Create workflow node execution repository
@@ -338,6 +367,7 @@ class PipelineGenerator(BaseAppGenerator):
         )
 
         return self._generate(
+            flask_app=current_app._get_current_object(),# type: ignore
             pipeline=pipeline,
             workflow=workflow,
             user=user,
@@ -399,7 +429,6 @@ class PipelineGenerator(BaseAppGenerator):
             single_loop_run=RagPipelineGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
             workflow_run_id=str(uuid.uuid4()),
         )
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
@@ -421,6 +450,7 @@ class PipelineGenerator(BaseAppGenerator):
         )
 
         return self._generate(
+            flask_app=current_app._get_current_object(),# type: ignore
             pipeline=pipeline,
             workflow=workflow,
             user=user,
