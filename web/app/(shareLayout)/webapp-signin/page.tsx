@@ -11,6 +11,7 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import NormalForm from './normalForm'
 import { AccessMode } from '@/models/access-control'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
+import Link from 'next/link'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
@@ -23,10 +24,16 @@ const WebSSOForm: FC = () => {
   const tokenFromUrl = searchParams.get('web_sso_token')
   const message = searchParams.get('message')
 
-  const showErrorToast = (message: string) => {
+  const getSigninUrl = useCallback(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('message')
+    return `/webapp-signin?${params.toString()}`
+  }, [searchParams])
+
+  const showErrorToast = (msg: string) => {
     Toast.notify({
       type: 'error',
-      message,
+      message: msg,
     })
   }
 
@@ -63,6 +70,7 @@ const WebSSOForm: FC = () => {
   if (message) {
     return <div className='flex h-full items-center justify-center'>
       <AppUnavailable code={'App Unavailable'} unknownReason={message} />
+      <Link href={getSigninUrl()}>{t('share.login.backToHome')}</Link>
     </div>
   }
   if (!redirectUrl) {
@@ -92,6 +100,7 @@ const WebSSOForm: FC = () => {
 
   return <div className='flex h-full items-center justify-center'>
     <AppUnavailable code={'App Unavailable'} isUnknownReason={true} />
+    <Link href={getSigninUrl()}>{t('share.login.backToHome')}</Link>
   </div>
 }
 
