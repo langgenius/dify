@@ -15,7 +15,7 @@ from core.workflow.entities.workflow_execution import (
     WorkflowExecutionStatus,
     WorkflowType,
 )
-from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from models import (
     Account,
     CreatorUserRole,

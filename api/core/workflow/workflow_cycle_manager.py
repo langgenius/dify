@@ -24,8 +24,8 @@ from core.workflow.entities.workflow_node_execution import (
     NodeExecutionStatus,
 )
 from core.workflow.enums import SystemVariableKey
-from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
 
 

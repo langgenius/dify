@@ -66,8 +66,8 @@ from core.workflow.entities.workflow_execution import WorkflowExecutionStatus, W
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
-from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from events.message_event import message_was_created
 from extensions.ext_database import db

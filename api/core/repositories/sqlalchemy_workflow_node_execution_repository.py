@@ -18,7 +18,7 @@ from core.workflow.entities.workflow_node_execution import (
     NodeExecutionStatus,
 )
 from core.workflow.nodes.enums import NodeType
-from core.workflow.repository.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from models import (
     Account,
     CreatorUserRole,
