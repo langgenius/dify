@@ -1,17 +1,16 @@
 from functools import wraps
 
-from controllers.web.error import (WebAppAuthAccessDeniedError,
-                                   WebAppAuthRequiredError)
-from extensions.ext_database import db
 from flask import request
 from flask_restful import Resource
+from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
+
+from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequiredError
+from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
-from services.enterprise.enterprise_service import (EnterpriseService,
-                                                    WebAppSettings)
+from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 
 def validate_jwt_token(view=None):
