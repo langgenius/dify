@@ -1,0 +1,60 @@
+# Please do not directly edit this file. Instead, modify the .env variables related to NGINX configuration.
+
+upstream dify_api_servers {
+    server api:5001;
+}
+
+upstream dify_web_servers {
+    server web:3000;
+}
+
+upstream dify_plugin_daemon_servers {
+    server plugin_daemon:5002;
+}
+
+server {
+    listen ${NGINX_PORT};
+    server_name ${NGINX_SERVER_NAME};
+
+    location /console/api {
+      proxy_pass http://dify_api_servers;
+      include proxy.conf;
+    }
+
+    location /api {
+      proxy_pass http://dify_api_servers;
+      include proxy.conf;
+    }
+
+    location /v1 {
+      proxy_pass http://dify_api_servers;
+      include proxy.conf;
+    }
+
+    location /files {
+      proxy_pass http://dify_api_servers;
+      include proxy.conf;
+    }
+
+    location /explore {
+      proxy_pass http://dify_web_servers;
+      include proxy.conf;
+    }
+
+    location /e/ {
+      proxy_pass http://dify_plugin_daemon_servers;
+      proxy_set_header Dify-Hook-Url $scheme://$host$request_uri;
+      include proxy.conf;
+    }
+
+    location / {
+      proxy_pass http://dify_web_servers;
+      include proxy.conf;
+    }
+
+    # placeholder for acme challenge location
+    ${ACME_CHALLENGE_LOCATION}
+
+    # placeholder for https config defined in https.conf.template
+    ${HTTPS_CONFIG}
+}
