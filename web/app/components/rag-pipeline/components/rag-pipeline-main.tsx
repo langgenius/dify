@@ -6,6 +6,7 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import RagPipelineChildren from './rag-pipeline-children'
 import {
   useAvailableNodesMetaData,
+  useGetRunAndTraceUrl,
   useNodesSyncDraft,
   usePipelineRefreshDraft,
   usePipelineRun,
@@ -35,6 +36,7 @@ const RagPipelineMain = ({
     handleWorkflowStartRunInWorkflow,
   } = usePipelineStartRun()
   const availableNodesMetaData = useAvailableNodesMetaData()
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
 
   const hooksStore = useMemo(() => {
     return {
@@ -49,6 +51,7 @@ const RagPipelineMain = ({
       handleStopRun,
       handleStartWorkflowRun,
       handleWorkflowStartRunInWorkflow,
+      getWorkflowRunAndTraceUrl,
     }
   }, [
     availableNodesMetaData,
@@ -62,6 +65,7 @@ const RagPipelineMain = ({
     handleStopRun,
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
+    getWorkflowRunAndTraceUrl,
   ])
 
   return (

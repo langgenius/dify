@@ -36,6 +36,7 @@ export type CommonHooksFnMap = {
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
   availableNodesMetaData?: AvailableNodesMetaData
+  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
 }
 
 export type Shape = {
@@ -57,6 +58,10 @@ export const createHooksStore = ({
   availableNodesMetaData = {
     nodes: [],
   },
+  getWorkflowRunAndTraceUrl = () => ({
+    runUrl: '',
+    traceUrl: '',
+  }),
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
@@ -72,6 +77,7 @@ export const createHooksStore = ({
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
     availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
   }))
 }
 

@@ -8,6 +8,7 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
 import {
   useAvailableNodesMetaData,
+  useGetRunAndTraceUrl,
   useNodesSyncDraft,
   useWorkflowRefreshDraft,
   useWorkflowRun,
@@ -48,6 +49,7 @@ const WorkflowMain = ({
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
   const availableNodesMetaData = useAvailableNodesMetaData()
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
 
   const hooksStore = useMemo(() => {
     return {
@@ -63,6 +65,7 @@ const WorkflowMain = ({
       handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow,
       availableNodesMetaData,
+      getWorkflowRunAndTraceUrl,
     }
   }, [
     syncWorkflowDraftWhenPageClose,
@@ -77,6 +80,7 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
     availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
   ])
 
   return (

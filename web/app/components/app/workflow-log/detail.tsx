@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import Run from '@/app/components/workflow/run'
+import { useStore } from '@/app/components/app/store'
 
 type ILogDetail = {
   runID: string
@@ -11,6 +12,7 @@ type ILogDetail = {
 
 const DetailPanel: FC<ILogDetail> = ({ runID, onClose }) => {
   const { t } = useTranslation()
+  const appDetail = useStore(state => state.appDetail)
 
   return (
     <div className='relative flex grow flex-col pt-3'>
@@ -18,7 +20,10 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose }) => {
         <RiCloseLine className='h-4 w-4 text-text-tertiary' />
       </span>
       <h1 className='system-xl-semibold shrink-0 px-4 py-1 text-text-primary'>{t('appLog.runDetail.workflowTitle')}</h1>
-      <Run runID={runID}/>
+      <Run
+        runDetailUrl={`/apps/${appDetail?.id}/workflow-runs/${runID}`}
+        tracingListUrl={`/apps/${appDetail?.id}/workflow-runs/${runID}/node-executions`}
+      />
     </div>
   )
 }
