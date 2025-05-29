@@ -9,14 +9,13 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import Loading from '@/app/components/base/loading'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import NormalForm from './normalForm'
-import { useAppAccessModeByCode } from '@/service/use-share'
 import { AccessMode } from '@/models/access-control'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const isGettingSystemFeatures = useGlobalPublicStore(s => s.isPending)
+  const webAppAccessMode = useGlobalPublicStore(s => s.webAppAccessMode)
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -39,8 +38,6 @@ const WebSSOForm: FC = () => {
     return appCode
   }, [redirectUrl])
 
-  const { isLoading, data } = useAppAccessModeByCode(getAppCodeFromRedirectUrl())
-
   useEffect(() => {
     (async () => {
       const appCode = getAppCodeFromRedirectUrl()
@@ -53,11 +50,11 @@ const WebSSOForm: FC = () => {
   }, [getAppCodeFromRedirectUrl, redirectUrl, router, tokenFromUrl])
 
   useEffect(() => {
-    if (data && data.accessMode === AccessMode.PUBLIC && redirectUrl)
+    if (webAppAccessMode && webAppAccessMode === AccessMode.PUBLIC && redirectUrl)
       router.replace(redirectUrl)
-  }, [data, router, redirectUrl])
+  }, [webAppAccessMode, router, redirectUrl])
 
-  if (isGettingSystemFeatures || isLoading || tokenFromUrl) {
+  if (tokenFromUrl) {
     return <div className='flex h-full items-center justify-center'>
       <Loading />
     </div>
@@ -74,7 +71,7 @@ const WebSSOForm: FC = () => {
       <AppUnavailable code={'App Unavailable'} unknownReason='redirect url is invalid.' />
     </div>
   }
-  if (data && data.accessMode === AccessMode.PUBLIC) {
+  if (webAppAccessMode && webAppAccessMode === AccessMode.PUBLIC) {
     return <div className='flex h-full items-center justify-center'>
       <Loading />
     </div>
@@ -84,13 +81,13 @@ const WebSSOForm: FC = () => {
       <p className='system-xs-regular text-text-tertiary'>{t('login.webapp.disabled')}</p>
     </div>
   }
-  if (data && (data.accessMode === AccessMode.ORGANIZATION || data.accessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)) {
+  if (webAppAccessMode && (webAppAccessMode === AccessMode.ORGANIZATION || webAppAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)) {
     return <div className='w-[400px]'>
       <NormalForm />
     </div>
   }
 
-  if (data && data.accessMode === AccessMode.EXTERNAL_MEMBERS)
+  if (webAppAccessMode && webAppAccessMode === AccessMode.EXTERNAL_MEMBERS)
     return <ExternalMemberSsoAuth />
 
   return <div className='flex h-full items-center justify-center'>

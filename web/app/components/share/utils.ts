@@ -70,6 +70,7 @@ export const removeAccessToken = () => {
   }
 
   localStorage.removeItem(CONVERSATION_ID_INFO)
+  localStorage.removeItem('webAppAccessToken')
 
   delete accessTokenJson[sharedToken]
   localStorage.setItem('token', JSON.stringify(accessTokenJson))
