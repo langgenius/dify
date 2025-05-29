@@ -29,9 +29,6 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
-from models import (
-    WorkflowRunStatus,
-)
 
 
 @dataclass
@@ -163,7 +160,7 @@ class WorkflowCycleManager:
         workflow_run_id: str,
         total_tokens: int,
         total_steps: int,
-        status: WorkflowRunStatus,
+        status: WorkflowExecutionStatus,
         error_message: str,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,

@@ -88,7 +88,6 @@ from .workflow import (
     WorkflowNodeExecutionStatus,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
-    WorkflowRunStatus,
     WorkflowType,
 )
 

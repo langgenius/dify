@@ -55,7 +55,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowType
+from core.workflow.entities.workflow_execution_entities import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
@@ -69,7 +69,6 @@ from models.workflow import (
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
     WorkflowRun,
-    WorkflowRunStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -517,9 +516,9 @@ class WorkflowAppGenerateTaskPipeline:
                         workflow_run_id=self._workflow_run_id,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
-                        status=WorkflowRunStatus.FAILED
+                        status=WorkflowExecutionStatus.FAILED
                         if isinstance(event, QueueWorkflowFailedEvent)
-                        else WorkflowRunStatus.STOPPED,
+                        else WorkflowExecutionStatus.STOPPED,
                         error_message=event.error
                         if isinstance(event, QueueWorkflowFailedEvent)
                         else event.get_stop_reason(),

@@ -377,18 +377,6 @@ class Workflow(Base):
         )
 
 
-class WorkflowRunStatus(StrEnum):
-    """
-    Workflow Run Status Enum
-    """
-
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    STOPPED = "stopped"
-    PARTIAL_SUCCEEDED = "partial-succeeded"
-
-
 class WorkflowRun(Base):
     """
     Workflow Run

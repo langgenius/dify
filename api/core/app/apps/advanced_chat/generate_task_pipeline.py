@@ -62,7 +62,7 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.workflow_execution_entities import WorkflowType
+from core.workflow.entities.workflow_execution_entities import WorkflowExecutionStatus, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
@@ -74,10 +74,7 @@ from extensions.ext_database import db
 from models import Conversation, EndUser, Message, MessageFile
 from models.account import Account
 from models.enums import CreatorUserRole
-from models.workflow import (
-    Workflow,
-    WorkflowRunStatus,
-)
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -557,7 +554,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         workflow_run_id=self._workflow_run_id,
                         total_tokens=graph_runtime_state.total_tokens,
                         total_steps=graph_runtime_state.node_run_steps,
-                        status=WorkflowRunStatus.FAILED,
+                        status=WorkflowExecutionStatus.FAILED,
                         error_message=event.error,
                         conversation_id=self._conversation_id,
                         trace_manager=trace_manager,
@@ -583,7 +580,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                             workflow_run_id=self._workflow_run_id,
                             total_tokens=graph_runtime_state.total_tokens,
                             total_steps=graph_runtime_state.node_run_steps,
-                            status=WorkflowRunStatus.STOPPED,
+                            status=WorkflowExecutionStatus.STOPPED,
                             error_message=event.get_stop_reason(),
                             conversation_id=self._conversation_id,
                             trace_manager=trace_manager,
