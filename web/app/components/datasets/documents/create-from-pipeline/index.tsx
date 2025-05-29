@@ -44,6 +44,7 @@ const TestRunPanel = () => {
   const { data: pipelineInfo, isFetching: isFetchingPipelineInfo } = usePublishedPipelineInfo(pipelineId || '')
 
   const {
+    steps,
     currentStep,
     handleNextStep,
     handleBackStep,
@@ -233,6 +234,7 @@ const TestRunPanel = () => {
     >
       <div className='flex h-full min-w-[760px] flex-1 flex-col px-14'>
         <LeftHeader
+          steps={steps}
           title={t('datasetPipeline.addDocuments.title')}
           currentStep={currentStep}
         />

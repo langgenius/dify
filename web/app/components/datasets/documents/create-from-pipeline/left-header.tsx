@@ -3,20 +3,21 @@ import { RiArrowLeftLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import { useParams } from 'next/navigation'
 import Effect from '@/app/components/base/effect'
-import { useAddDocumentsSteps } from './hooks'
+import type { Step } from './step-indicator'
 import StepIndicator from './step-indicator'
 
 type LeftHeaderProps = {
+  steps: Array<Step>
   title: string
   currentStep: number
 }
 
 const LeftHeader = ({
+  steps,
   title,
   currentStep,
 }: LeftHeaderProps) => {
   const { datasetId } = useParams()
-  const steps = useAddDocumentsSteps()
 
   return (
     <div className='relative flex flex-col gap-y-0.5 pb-2 pt-4'>

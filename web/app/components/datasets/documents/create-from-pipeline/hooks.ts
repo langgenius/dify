@@ -80,7 +80,7 @@ export const useLocalFile = () => {
   const [fileList, setFileList] = useState<FileItem[]>([])
   const [currentFile, setCurrentFile] = useState<File | undefined>()
 
-  const previewFile = useRef<DocumentItem>(fileList[0]?.file as DocumentItem)
+  const previewFile = useRef<DocumentItem>()
 
   const allFileLoaded = useMemo(() => (fileList.length > 0 && fileList.every(file => file.file.id)), [fileList])
 
@@ -93,6 +93,7 @@ export const useLocalFile = () => {
       }
     })
     setFileList(newList)
+    previewFile.current = newList[0].file as DocumentItem
   }
 
   const updateFileList = useCallback((preparedFiles: FileItem[]) => {

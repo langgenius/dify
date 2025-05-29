@@ -1,7 +1,7 @@
 import cn from '@/utils/classnames'
 import React from 'react'
 
-type Step = {
+export type Step = {
   label: string
   value: string
 }
