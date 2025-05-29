@@ -1,5 +1,4 @@
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
-import type { RAGPipelineVariables } from '@/models/pipeline'
 
 export enum VarType {
   variable = 'variable',
@@ -13,7 +12,6 @@ export type ToolVarInputs = Record<string, {
 }>
 
 export type DataSourceNodeType = CommonNodeType & {
-  variables: RAGPipelineVariables
   fileExtensions?: string[]
   provider_id: string
   provider_type: string

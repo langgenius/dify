@@ -90,7 +90,7 @@ const RunPanel: FC<RunProps> = ({
     // fetch data
     if (runDetailUrl && tracingListUrl)
       getData()
-  }, [getData, runDetailUrl, tracingListUrl])
+  }, [runDetailUrl, tracingListUrl])
 
   const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
