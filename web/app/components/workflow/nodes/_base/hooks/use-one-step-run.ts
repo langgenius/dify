@@ -168,6 +168,7 @@ const useOneStepRun = <T>({
   const {
     appendNodeInspectVars,
     invalidateSysVarValues,
+    invalidateConversationVarValues,
   } = useInspectVarsCrud()
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
     doSetRunResult(data)
@@ -179,8 +180,9 @@ const useOneStepRun = <T>({
       appendNodeInspectVars(id, vars, nodes)
       if(isStartNode)
         invalidateSysVarValues()
+      invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [invalidLastRun, appId, id, store, appendNodeInspectVars, isStartNode, invalidateSysVarValues])
+  }, [invalidLastRun, appId, id, store, appendNodeInspectVars, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)

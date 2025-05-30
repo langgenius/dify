@@ -229,6 +229,7 @@ const useInspectVarsCrud = () => {
     isInspectVarEdited,
     resetToLastRunVar,
     invalidateSysVarValues,
+    invalidateConversationVarValues,
   }
 }
 
