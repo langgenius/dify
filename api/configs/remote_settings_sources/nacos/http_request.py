@@ -60,8 +60,7 @@ class NacosHttpClient:
             sign_str = tenant + "+"
         if group:
             sign_str = sign_str + group + "+"
-        if sign_str:
-            sign_str += ts
+        sign_str += ts  # Directly concatenate ts without conditional checks, because the nacos auth header forced it.
         return sign_str
 
     def get_access_token(self, force_refresh=False):
