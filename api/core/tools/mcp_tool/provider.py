@@ -86,7 +86,7 @@ class MCPToolProviderController(ToolProviderController):
             ),
             provider_id=db_provider.id or "",
             tenant_id=db_provider.tenant_id or "",
-            server_url=MCPToolManageService.get_masked_mcp_provider_server_url(db_provider.tenant_id, db_provider.id),
+            server_url=MCPToolManageService.get_mcp_provider_server_url(db_provider.tenant_id, db_provider.id),
         )
 
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
