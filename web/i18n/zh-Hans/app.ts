@@ -199,9 +199,9 @@ const translation = {
   accessControl: 'Web 应用访问控制',
   accessItemsDescription: {
     anyone: '任何人都可以访问该 web 应用（无需登录）',
-    specific: '仅特定的内部成员可以访问该 web 应用',
-    organization: '所有内部成员可以访问该 web 应用',
-    external: '经过认证的外部用户可以访问该 web 应用',
+    specific: '仅指定的平台内成员可访问该 Web 应用',
+    organization: '平台内所有成员均可访问该 Web 应用',
+    external: '仅经认证的外部用户可访问该 Web 应用',
   },
   accessControlDialog: {
     title: 'Web 应用访问权限',
@@ -209,8 +209,8 @@ const translation = {
     accessLabel: '谁可以访问',
     accessItems: {
       anyone: '任何人',
-      specific: '指定内部成员',
-      organization: '所有内部成员',
+      specific: '平台内指定成员',
+      organization: '平台内所有成员',
       external: '经认证的外部用户',
     },
     groups_one: '{{count}} 个组',
@@ -218,7 +218,7 @@ const translation = {
     members_one: '{{count}} 个成员',
     members_other: '{{count}} 个成员',
     noGroupsOrMembers: '未选择分组或成员',
-    webAppSSONotEnabledTip: '请联系企业管理员配置 web 应用的身份认证方式。',
+    webAppSSONotEnabledTip: '请联系企业管理员配置 Web 应用外部认证方式。',
     operateGroupAndMember: {
       searchPlaceholder: '搜索组或成员',
       allMembers: '所有成员',

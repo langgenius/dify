@@ -80,7 +80,6 @@ export default function AccessControl(props: AccessControlProps) {
               <RiBuildingLine className='h-4 w-4 text-text-primary' />
               <p className='system-sm-medium text-text-primary'>{t('app.accessControlDialog.accessItems.organization')}</p>
             </div>
-            {!hideTip && <WebAppSSONotEnabledTip />}
           </div>
         </AccessControlItem>
         <AccessControlItem type={AccessMode.SPECIFIC_GROUPS_MEMBERS}>
