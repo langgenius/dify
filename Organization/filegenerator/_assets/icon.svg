@@ -1,0 +1,6 @@
+<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+  <path d="M20 20 V80 M20 20 H60 Q80 20 80 40 T60 60 H20" 
+        fill="none" 
+        stroke="black" 
+        stroke-width="5"/>
+</svg>
