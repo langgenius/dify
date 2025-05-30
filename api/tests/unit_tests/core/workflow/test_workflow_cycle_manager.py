@@ -73,7 +73,7 @@ def real_workflow_system_variables():
         SystemVariableKey.USER_ID: "test-user-id",
         SystemVariableKey.APP_ID: "test-app-id",
         SystemVariableKey.WORKFLOW_ID: "test-workflow-id",
-        SystemVariableKey.WORKFLOW_RUN_ID: "test-workflow-run-id",
+        SystemVariableKey.WORKFLOW_EXECUTION_ID: "test-workflow-run-id",
     }
 
 
