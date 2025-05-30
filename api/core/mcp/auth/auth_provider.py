@@ -42,7 +42,9 @@ class OAuthClientProvider:
         mcp_provider = MCPToolManageService.get_mcp_provider_by_provider_id(self.provider_id, self.tenant_id)
         if not mcp_provider:
             return None
-        client_information = mcp_provider.credentials.get("client_information", {})
+        client_information = MCPToolManageService.get_mcp_provider_decrypted_credentials(
+            self.tenant_id, self.provider_id
+        ).get("client_information", {})
         if not client_information:
             return None
         return OAuthClientInformation.model_validate(client_information)
@@ -58,13 +60,13 @@ class OAuthClientProvider:
         mcp_provider = MCPToolManageService.get_mcp_provider_by_provider_id(self.provider_id, self.tenant_id)
         if not mcp_provider:
             return None
-        credentials = mcp_provider.credentials
+        credentials = MCPToolManageService.get_mcp_provider_decrypted_credentials(self.tenant_id, self.provider_id)
         if not credentials:
             return None
         return OAuthTokens(
             access_token=credentials.get("access_token", ""),
             token_type=credentials.get("token_type", "Bearer"),
-            expires_in=credentials.get("expires_in", 3600),
+            expires_in=int(credentials.get("expires_in", "3600")),
             refresh_token=credentials.get("refresh_token", ""),
         )
 
@@ -87,4 +89,5 @@ class OAuthClientProvider:
         mcp_provider = MCPToolManageService.get_mcp_provider_by_provider_id(self.provider_id, self.tenant_id)
         if not mcp_provider:
             return ""
-        return mcp_provider.credentials.get("code_verifier", "")
+        credentials = MCPToolManageService.get_mcp_provider_decrypted_credentials(self.tenant_id, self.provider_id)
+        return credentials.get("code_verifier", "")

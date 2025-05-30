@@ -1,5 +1,6 @@
 import io
 
+import validators
 from flask import send_file
 from flask_login import current_user
 from flask_restful import Resource, reqparse
@@ -631,6 +632,8 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
         args = parser.parse_args()
         user = current_user
+        if not validators.url(args["server_url"]):
+            raise ValueError("Server URL is not valid.")
         return jsonable_encoder(
             MCPToolManageService.create_mcp_provider(
                 tenant_id=user.current_tenant_id,
@@ -655,6 +658,8 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
+        if not validators.url(args["server_url"]):
+            raise ValueError("Server URL is not valid.")
         MCPToolManageService.update_mcp_provider(
             tenant_id=current_user.current_tenant_id,
             name=args["name"],
@@ -691,9 +696,10 @@ class ToolMCPAuthApi(Resource):
         provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         if not provider:
             raise ValueError("provider not found")
+        server_url = MCPToolManageService.get_mcp_provider_server_url(tenant_id, provider_id)
         try:
             with MCPClient(
-                provider.server_url,
+                server_url,
                 provider_id,
                 tenant_id,
                 authed=False,
@@ -702,14 +708,14 @@ class ToolMCPAuthApi(Resource):
                 MCPToolManageService.update_mcp_provider_credentials(
                     tenant_id=tenant_id,
                     provider_id=provider_id,
-                    credentials={},
+                    credentials=MCPToolManageService.get_mcp_provider_decrypted_credentials(tenant_id, provider_id),
                     authed=True,
                 )
                 return {"result": "success"}
 
         except MCPAuthError:
             auth_provider = OAuthClientProvider(provider_id, tenant_id)
-            return auth(auth_provider, provider.server_url, args["authorization_code"])
+            return auth(auth_provider, server_url, args["authorization_code"])
 
 
 class ToolMCPDetailApi(Resource):
@@ -761,6 +767,9 @@ class ToolMCPTokenApi(Resource):
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="args")
         parser.add_argument("authorization_code", type=str, required=False, nullable=True, location="args")
         args = parser.parse_args()
+        server_url = MCPToolManageService.get_mcp_provider_server_url(
+            current_user.current_tenant_id, args["provider_id"]
+        )
         provider = MCPToolManageService.get_mcp_provider_by_provider_id(
             args["provider_id"], current_user.current_tenant_id
         )
@@ -768,7 +777,7 @@ class ToolMCPTokenApi(Resource):
             raise ValueError("provider not found")
         return auth(
             OAuthClientProvider(args["provider_id"], current_user.current_tenant_id),
-            provider.server_url,
+            server_url,
             authorization_code=args["authorization_code"],
         )
 
