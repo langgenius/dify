@@ -9,9 +9,9 @@ export { RETRIEVE_METHOD as RetrievalSearchMethodEnum } from '@/types/app'
 export { RerankingModeEnum as HybridSearchModeEnum } from '@/models/datasets'
 
 export enum ChunkStructureEnum {
-  general = 'general',
-  parent_child = 'parent-child',
-  question_answer = 'question-answer',
+  general = 'text_model',
+  parent_child = 'hierarchical_model',
+  question_answer = 'qa_model',
 }
 
 export type RerankingModel = {
