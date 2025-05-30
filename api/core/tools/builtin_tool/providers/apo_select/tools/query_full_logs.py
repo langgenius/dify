@@ -41,9 +41,20 @@ class QueryFullLogsTool(BuiltinTool):
             json=params,
         )  
 
+        raw_logs = resp.json().get('logs', [])
+        contents = []
+        for raw_log in raw_logs:
+            content = raw_log.get('content','')
+            timestamp = raw_log.get('timestamp')
+            contents.append({'body': content, 'timestamp':timestamp})
+
         list = json.dumps({
             'type': 'log',
             'display': True,
-            'data': resp.json(),
+            'data': {
+                "logContents": {
+                    "contents": contents
+                }
+            },
         })
         yield self.create_text_message(list)
