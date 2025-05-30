@@ -149,6 +149,8 @@ const translation = {
     newDataset: 'Crear Conocimiento',
     tools: 'Herramientas',
     exploreMarketplace: 'Explora el mercado',
+    appDetail: 'Detalles de la aplicación',
+    account: 'Cuenta',
   },
   userProfile: {
     settings: 'Configuraciones',
@@ -666,6 +668,7 @@ const translation = {
     browse: 'navegar',
     dropImageHere: 'Deja tu imagen aquí, o',
   },
+  you: 'Tú',
 }
 
 export default translation

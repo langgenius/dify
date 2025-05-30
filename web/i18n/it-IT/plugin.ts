@@ -62,6 +62,7 @@ const translation = {
       descriptionLabel: 'Descrizione dell\'utensile',
       auto: 'Automatico',
       paramsTip2: 'Quando \'Automatico\' è disattivato, viene utilizzato il valore predefinito.',
+      toolSetting: 'Impostazioni degli strumenti',
     },
     modelNum: '{{num}} MODELLI INCLUSI',
     endpointModalTitle: 'Endpoint di configurazione',
@@ -210,6 +211,7 @@ const translation = {
     title: 'Plugin',
   },
   difyVersionNotCompatible: 'L\'attuale versione di Dify non è compatibile con questo plugin, si prega di aggiornare alla versione minima richiesta: {{minimalDifyVersion}}',
+  requestAPlugin: 'Richiedi un plugin',
 }
 
 export default translation

@@ -203,6 +203,7 @@ const translation = {
       values: '{{num}} Valeurs',
       deleteContent: 'Êtes-vous sûr de vouloir supprimer les métadonnées "{{name}}" ?',
       name: 'Nom',
+      disabled: 'handicapés',
     },
     documentMetadata: {
       technicalParameters: 'Paramètres techniques',
