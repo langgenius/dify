@@ -5,6 +5,7 @@ import { useSchemaNodeOperations } from './hooks'
 
 export type VisualEditorProps = {
   schema: SchemaRoot
+  rootName?: string
   readOnly?: boolean
   onChange?: (schema: SchemaRoot) => void
 }
@@ -16,7 +17,7 @@ const VisualEditor: FC<VisualEditorProps> = (props) => {
   return (
     <div className='h-full overflow-auto rounded-xl bg-background-section-burn p-1 pl-2'>
       <SchemaNode
-        name='structured_output'
+        name={props.rootName || 'structured_output'}
         schema={schema}
         required={false}
         path={[]}

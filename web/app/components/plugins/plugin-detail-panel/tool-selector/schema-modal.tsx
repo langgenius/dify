@@ -11,12 +11,14 @@ import { RiCloseLine } from '@remixicon/react'
 type Props = {
   isShow: boolean
   schema: SchemaRoot
+  rootName: string
   onClose: () => void
 }
 
 const SchemaModal: FC<Props> = ({
   isShow,
   schema,
+  rootName,
   onClose,
 }) => {
   const { t } = useTranslation()
@@ -43,6 +45,7 @@ const SchemaModal: FC<Props> = ({
             <VisualEditorContextProvider>
               <VisualEditor
                 schema={schema}
+                rootName={rootName}
                 readOnly
               ></VisualEditor>
             </VisualEditorContextProvider>

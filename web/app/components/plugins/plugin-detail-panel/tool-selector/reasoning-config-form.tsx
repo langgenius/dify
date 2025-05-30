@@ -143,9 +143,9 @@ const ReasoningConfigForm: React.FC<Props> = ({
   }] = useBoolean(false)
 
   const [schema, setSchema] = useState<SchemaRoot | null>(null)
-  console.log(schema)
+  const [schemaRootName, setSchemaRootName] = useState<string>('')
 
-  const renderField = (schema: any, showSchema: (schema: SchemaRoot) => void) => {
+  const renderField = (schema: any, showSchema: (schema: SchemaRoot, rootName: string) => void) => {
     const {
       variable,
       label,
@@ -205,7 +205,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
                 asChild={false}>
                   <div
                     className='ml-0.5 cursor-pointer rounded-[4px] p-px text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'
-                    onClick={() => showSchema(input_schema as SchemaRoot)}
+                    onClick={() => showSchema(input_schema as SchemaRoot, label[language] || label.en_US)}
                   >
                     <RiBracesLine className='size-3.5'/>
                   </div>
@@ -318,14 +318,16 @@ const ReasoningConfigForm: React.FC<Props> = ({
   }
   return (
     <div className='space-y-3 px-4 py-2'>
-      {!isShowSchema && schemas.map(schema => renderField(schema, (s: SchemaRoot) => {
+      {!isShowSchema && schemas.map(schema => renderField(schema, (s: SchemaRoot, rootName: string) => {
         setSchema(s)
+        setSchemaRootName(rootName)
         showSchema()
       }))}
       {isShowSchema && (
         <SchemaModal
           isShow={isShowSchema}
           schema={schema!}
+          rootName={schemaRootName}
           onClose={hideSchema}
         />
       )}
