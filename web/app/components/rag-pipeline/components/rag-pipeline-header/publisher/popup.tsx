@@ -26,6 +26,7 @@ import { usePublishWorkflow } from '@/service/use-workflow'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { useToastContext } from '@/app/components/base/toast'
 import { useParams, useRouter } from 'next/navigation'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 
 const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
 
@@ -36,6 +37,7 @@ const Popup = () => {
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const pipelineId = useStore(s => s.pipelineId)
+  const mutateDatasetRes = useDatasetDetailContextWithSelector(s => s.mutateDatasetRes)
   const [published, setPublished] = useState(false)
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
@@ -55,12 +57,13 @@ const Popup = () => {
       if (res) {
         notify({ type: 'success', message: t('common.api.actionSuccess') })
         workflowStore.getState().setPublishedAt(res.created_at)
+        mutateDatasetRes?.()
       }
     }
     else {
       throw new Error('Checklist failed')
     }
-  }, [workflowStore, notify, t, publishWorkflow, pipelineId, handleCheckBeforePublish])
+  }, [handleCheckBeforePublish, publishWorkflow, pipelineId, notify, t, workflowStore, mutateDatasetRes])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
