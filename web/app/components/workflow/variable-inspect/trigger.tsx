@@ -15,17 +15,8 @@ const VariableInspectTrigger: FC = () => {
   const showVariableInspectPanel = useStore(s => s.showVariableInspectPanel)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
 
-  const workflowRunningData = useStore(s => s.workflowRunningData)
-  const isRunning = useMemo(() => {
-    if (!workflowRunningData)
-      return false
-    if (workflowRunningData.result.status === WorkflowRunningStatus.Running)
-      return true
-    // TODO: step running state use data in inspector
-    return (workflowRunningData.tracing || []).some(tracingData => tracingData.status === NodeRunningStatus.Running)
-  }, [workflowRunningData])
-
   const environmentVariables = useStore(s => s.environmentVariables)
+  const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
   const {
     conversationVars,
     systemVars,
@@ -38,6 +29,21 @@ const VariableInspectTrigger: FC = () => {
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   // ##TODD stop handle
+
+  const workflowRunningData = useStore(s => s.workflowRunningData)
+  const isRunning = useMemo(() => {
+    if (!workflowRunningData)
+      return false
+    if (workflowRunningData.result.status === WorkflowRunningStatus.Running)
+      return true
+    // TODO: step running state use data in inspector
+    return (workflowRunningData.tracing || []).some(tracingData => tracingData.status === NodeRunningStatus.Running)
+  }, [workflowRunningData])
+
+  const handleClearAll = () => {
+    deleteAllInspectorVars()
+    setCurrentFocusNodeId('')
+  }
 
   if (showVariableInspectPanel)
     return null
@@ -62,7 +68,7 @@ const VariableInspectTrigger: FC = () => {
           </div>
           <div
             className='system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent hover:text-text-accent'
-            onClick={deleteAllInspectorVars}
+            onClick={handleClearAll}
           >
             {t('workflow.debug.variableInspect.trigger.clear')}
           </div>

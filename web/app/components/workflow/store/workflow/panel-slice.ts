@@ -31,6 +31,6 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
   setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
   panelMenu: undefined,
   setPanelMenu: panelMenu => set(() => ({ panelMenu })),
-  showVariableInspectPanel: true,
+  showVariableInspectPanel: false,
   setShowVariableInspectPanel: showVariableInspectPanel => set(() => ({ showVariableInspectPanel })),
 })
