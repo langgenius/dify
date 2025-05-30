@@ -14,7 +14,7 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
 )
 from controllers.console.error import AccountNotFound, EmailSendIpLimitError
-from controllers.console.wraps import email_password_login_enabled, setup_required
+from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
 from controllers.web import api
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
@@ -24,6 +24,7 @@ from services.account_service import AccountService
 
 
 class ForgotPasswordSendEmailApi(Resource):
+    @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
     def post(self):
@@ -53,6 +54,7 @@ class ForgotPasswordSendEmailApi(Resource):
 
 
 class ForgotPasswordCheckApi(Resource):
+    @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
     def post(self):
@@ -92,6 +94,7 @@ class ForgotPasswordCheckApi(Resource):
 
 
 class ForgotPasswordResetApi(Resource):
+    @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
     def post(self):
