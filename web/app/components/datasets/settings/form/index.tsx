@@ -232,7 +232,7 @@ const Form = () => {
                 <div className='p-1'>
                   <AlertTriangle className='size-4 text-text-warning-secondary' />
                 </div>
-                <span className='system-xs-medium'>{t('datasetSettings.form.upgradeHighQualityTip')}</span>
+                <span className='system-xs-medium text-text-warning-secondary'>{t('datasetSettings.form.upgradeHighQualityTip')}</span>
               </div>}
             </div>
           </div>
