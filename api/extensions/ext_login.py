@@ -35,6 +35,9 @@ def load_user_from_request(request_from_flask_login):
 
     decoded = PassportService().verify(auth_token)
     user_id = decoded.get("user_id")
+    source = decoded.get("token_source")
+    if source:
+        raise Unauthorized("Invalid Authorization token.")
 
     logged_in_account = AccountService.load_logged_in_account(account_id=user_id)
     return logged_in_account
