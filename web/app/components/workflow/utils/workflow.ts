@@ -35,6 +35,7 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.Start
     || nodeType === BlockEnum.IfElse
     || nodeType === BlockEnum.VariableAggregator
+    || nodeType === BlockEnum.Assigner
 }
 
 type ConnectedSourceOrTargetNodesChange = {
