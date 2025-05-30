@@ -22,9 +22,9 @@ class MCPServerReuqestHandler:
     def __init__(self, app: App, request: types.ClientRequest, user_input_form: list[VariableEntity]):
         self.app = app
         self.request = request
-        self.mcp_server: AppMCPServer = self.app.mcp_server
-        if not self.mcp_server:
+        if not self.app.mcp_server:
             raise ValueError("MCP server not found")
+        self.mcp_server: AppMCPServer = self.app.mcp_server
         self.end_user = self.retrieve_end_user()
         self.user_input_form = user_input_form
 
@@ -47,12 +47,8 @@ class MCPServerReuqestHandler:
                     "required": required,
                 },
             },
-            "required": "query",
+            "required": ["query", "inputs"],
         }
-
-    @property
-    def output_parameters(self):
-        return self.app.output_schema
 
     @property
     def capabilities(self):
@@ -160,6 +156,7 @@ class MCPServerReuqestHandler:
         parameters = {}
         required = []
         for item in user_input_form:
+            parameters[item.variable] = {}
             if item.type in (
                 VariableEntityType.FILE,
                 VariableEntityType.FILE_LIST,
@@ -168,12 +165,13 @@ class MCPServerReuqestHandler:
                 continue
             if item.required:
                 required.append(item.variable)
-            parameters[item.variable]["description"] = self.mcp_server.parameters_dict[item.label]["description"]
+            description = self.mcp_server.parameters_dict[item.label]
+            parameters[item.variable]["description"] = description
             if item.type in (VariableEntityType.TEXT_INPUT, VariableEntityType.PARAGRAPH):
                 parameters[item.variable]["type"] = "string"
             elif item.type == VariableEntityType.SELECT:
                 parameters[item.variable]["type"] = "string"
                 parameters[item.variable]["enum"] = item.options
             elif item.type == VariableEntityType.NUMBER:
-                parameters[item.variable]["type"] = "number"
+                parameters[item.variable]["type"] = "float"
         return parameters, required
