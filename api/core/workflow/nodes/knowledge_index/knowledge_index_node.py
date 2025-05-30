@@ -61,7 +61,7 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Chunks is required."
             )
-        outputs = self._get_preview_output(dataset.chunk_structure, chunks)
+        outputs = self._get_preview_output(node_data.chunk_structure, chunks)
 
         # retrieve knowledge
         try:
