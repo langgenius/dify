@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
+import { setAccessToken } from '@/app/components/share/utils'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import Loading from '@/app/components/base/loading'
 import AppUnavailable from '@/app/components/base/app-unavailable'
@@ -12,6 +12,7 @@ import NormalForm from './normalForm'
 import { AccessMode } from '@/models/access-control'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
 import Link from 'next/link'
+import { fetchAccessToken } from '@/service/share'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
@@ -49,8 +50,8 @@ const WebSSOForm: FC = () => {
     (async () => {
       const appCode = getAppCodeFromRedirectUrl()
       if (appCode && tokenFromUrl && redirectUrl) {
-        localStorage.setItem('webAppAccessToken', tokenFromUrl)
-        await checkOrSetAccessToken(appCode)
+        const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: tokenFromUrl })
+        await setAccessToken(appCode, tokenResp.access_token)
         router.replace(redirectUrl)
       }
     })()

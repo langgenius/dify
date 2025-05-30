@@ -23,9 +23,9 @@ export const checkOrSetAccessToken = async (appCode?: string) => {
   catch {
 
   }
-  const webAppAccessToken = localStorage.getItem('webAppAccessToken')
+
   if (!accessTokenJson[sharedToken]?.[userId || 'DEFAULT']) {
-    const res = await fetchAccessToken({ appCode: sharedToken, userId, webAppAccessToken })
+    const res = await fetchAccessToken({ appCode: sharedToken, userId })
     accessTokenJson[sharedToken] = {
       ...accessTokenJson[sharedToken],
       [userId || 'DEFAULT']: res.access_token,
@@ -70,7 +70,6 @@ export const removeAccessToken = () => {
   }
 
   localStorage.removeItem(CONVERSATION_ID_INFO)
-  localStorage.removeItem('webAppAccessToken')
 
   delete accessTokenJson[sharedToken]
   localStorage.setItem('token', JSON.stringify(accessTokenJson))
