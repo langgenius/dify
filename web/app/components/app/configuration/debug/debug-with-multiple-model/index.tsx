@@ -133,6 +133,7 @@ const DebugWithMultipleModel = () => {
       {isChatMode && (
         <div className='shrink-0 px-6 pb-0'>
           <ChatInputArea
+            botName='Bot'
             showFeatureBar
             showFileUpload={false}
             onFeatureBarClick={setShowAppConfigureFeaturesModal}

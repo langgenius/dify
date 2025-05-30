@@ -550,7 +550,7 @@ const translation = {
       vectorHash: 'Hash vector:',
       hitScore: 'Scor de recuperare:',
     },
-    inputPlaceholder: 'Vorbește cu Bot',
+    inputPlaceholder: 'Vorbește cu {{botName}}',
     thinking: 'Gândire...',
     thought: 'Gând',
     resend: 'Reexpediați',
