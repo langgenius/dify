@@ -602,6 +602,16 @@ class ToolConfig(BaseSettings):
         default=3600,
     )
 
+    TOOL_FILE_CHUNK_SIZE_LIMIT: PositiveInt = Field(
+        description="Maximum bytes for a single file chunk of tool generated files",
+        default=8 * 1024,
+    )
+
+    TOOL_FILE_SIZE_LIMIT: PositiveInt = Field(
+        description="Maximum bytes for a single file of tool generated files",
+        default=30 * 1024 * 1024,
+    )
+
 
 class MailConfig(BaseSettings):
     """

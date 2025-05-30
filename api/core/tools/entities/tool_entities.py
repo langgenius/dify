@@ -1,7 +1,7 @@
 import base64
 import enum
 from collections.abc import Mapping
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator, model_validator
@@ -176,7 +176,7 @@ class ToolInvokeMessage(BaseModel):
         data: Mapping[str, Any] = Field(..., description="Detailed log data")
         metadata: Optional[Mapping[str, Any]] = Field(default=None, description="The metadata of the log")
 
-    class MessageType(Enum):
+    class MessageType(StrEnum):
         TEXT = "text"
         IMAGE = "image"
         LINK = "link"
