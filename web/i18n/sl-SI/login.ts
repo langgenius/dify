@@ -105,6 +105,11 @@ const translation = {
   withSSO: 'Nadaljujte z enotno prijavo',
   licenseLostTip: 'Povezava z licenčnim strežnikom Dify ni uspela. Če želite še naprej uporabljati Dify, se obrnite na skrbnika.',
   licenseInactiveTip: 'Licenca Dify Enterprise za vaš delovni prostor je neaktivna. Če želite še naprej uporabljati Dify, se obrnite na skrbnika.',
+  webapp: {
+    noLoginMethod: 'Metoda overjanja ni nastavljena za spletno aplikacijo',
+    noLoginMethodTip: 'Prosimo, da se obrnete na sistemskega skrbnika, da dodate metodo za avtentikacijo.',
+    disabled: 'Avtentikacija v spletni aplikaciji je onemogočena. Prosimo, kontaktirajte skrbnika sistema, da jo omogoči. Poskusite lahko neposredno uporabljati aplikacijo.',
+  },
 }
 
 export default translation

@@ -105,6 +105,11 @@ const translation = {
   licenseInactive: '許可證處於非活動狀態',
   licenseInactiveTip: '您的工作區的 Dify Enterprise 許可證處於非活動狀態。請聯繫您的管理員以繼續使用 Dify。',
   licenseLostTip: '無法連接 Dify 許可證伺服器。請聯繫您的管理員以繼續使用 Dify。',
+  webapp: {
+    noLoginMethod: '未為網絡應用程序配置身份驗證方法',
+    noLoginMethodTip: '請聯絡系統管理員以添加身份驗證方法。',
+    disabled: '網頁應用程序身份驗證已被禁用。請聯繫系統管理員以啟用它。您可以嘗試直接使用應用程序。',
+  },
 }
 
 export default translation

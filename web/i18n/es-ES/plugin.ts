@@ -62,6 +62,7 @@ const translation = {
       unsupportedTitle: 'Acción no admitida',
       params: 'CONFIGURACIÓN DE RAZONAMIENTO',
       uninstalledLink: 'Administrar en Plugins',
+      toolSetting: 'Configuraciones de la herramienta',
     },
     endpointDeleteContent: '¿Te gustaría eliminar {{nombre}}?',
     endpointDisableTip: 'Deshabilitar punto de conexión',
@@ -210,6 +211,7 @@ const translation = {
     title: 'Complementos',
   },
   difyVersionNotCompatible: 'La versión actual de Dify no es compatible con este plugin, por favor actualiza a la versión mínima requerida: {{minimalDifyVersion}}',
+  requestAPlugin: 'Solicitar un plugin',
 }
 
 export default translation

@@ -145,6 +145,8 @@ const translation = {
     newDataset: 'Creează Cunoștințe',
     tools: 'Instrumente',
     exploreMarketplace: 'Explorați Marketplace',
+    appDetail: 'Detalii aplicație',
+    account: 'Cont',
   },
   userProfile: {
     settings: 'Setări',
@@ -644,6 +646,7 @@ const translation = {
   license: {
     expiring: 'Expiră într-o zi',
     expiring_plural: 'Expiră în {{count}} zile',
+    unlimited: 'Nelimitat',
   },
   pagination: {
     perPage: 'Articole pe pagină',
@@ -667,6 +670,7 @@ const translation = {
     browse: 'naviga',
     dropImageHere: 'Trageți imaginea aici sau',
   },
+  you: 'Tu',
 }
 
 export default translation

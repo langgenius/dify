@@ -679,6 +679,7 @@ const translation = {
         },
         json: 'json generato dallo strumento',
       },
+      authorize: 'Autorizza',
     },
     questionClassifiers: {
       model: 'modello',
