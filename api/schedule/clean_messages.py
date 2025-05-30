@@ -34,9 +34,8 @@ def clean_messages():
     while True:
         try:
             # Main query with join and filter
-            # FIXME:for mypy no paginate method error
             messages = (
-                db.session.query(Message)  # type: ignore
+                db.session.query(Message)
                 .filter(Message.created_at < plan_sandbox_clean_message_day)
                 .order_by(Message.created_at.desc())
                 .limit(100)
