@@ -164,7 +164,10 @@ class PluginToolManager(BasePluginClient):
                 # If this is the final chunk, yield a complete blob message
                 if is_end:
                     if file_chunk.bytes_written != file_chunk.total_length:
-                        raise ValueError("File length doesn't match expected size")
+                        raise ValueError(
+                            f"File length {file_chunk.bytes_written} doesn't match"
+                            f" expected size {file_chunk.total_length}"
+                        )
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.BLOB,
                         message=ToolInvokeMessage.BlobMessage(blob=bytes(file_chunk.data)),
