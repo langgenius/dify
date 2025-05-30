@@ -1,4 +1,4 @@
-import { del, get, patch, post } from './base'
+import { del, get, patch, post, put } from './base'
 import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
 import type {
   FetchWorkflowDraftPageParams,
@@ -125,6 +125,15 @@ export const useConversationVarValues = (appId: string) => {
 
 export const useInvalidateConversationVarValues = (appId: string) => {
   return useInvalid([...useConversationVarValuesKey, appId])
+}
+
+export const useResetConversationVar = (appId: string) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'reset conversation var', appId],
+    mutationFn: async (varId: string) => {
+      return put(`apps/${appId}/workflows/draft/variables/${varId}/reset`)
+    },
+  })
 }
 
 export const useSysVarValuesKey = [NAME_SPACE, 'sys-variable']

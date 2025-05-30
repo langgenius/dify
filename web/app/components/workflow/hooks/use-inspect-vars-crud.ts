@@ -12,6 +12,7 @@ import {
   useInvalidateConversationVarValues,
   useInvalidateSysVarValues,
   useLastRun,
+  useResetConversationVar,
   useSysVarValues,
 } from '@/service/use-workflow'
 import { useCallback, useEffect, useState } from 'react'
@@ -37,6 +38,7 @@ const useInspectVarsCrud = () => {
 
   const { data: conversationVars } = useConversationVarValues(appId)
   const invalidateConversationVarValues = useInvalidateConversationVarValues(appId)
+  const { mutateAsync: doResetConversationVar } = useResetConversationVar(appId)
   const { data: systemVars } = useSysVarValues(appId)
   const invalidateSysVarValues = useInvalidateSysVarValues(appId)
 
@@ -143,6 +145,11 @@ const useInspectVarsCrud = () => {
     }
   }
 
+  const resetConversationVar = async (varId: string) => {
+    await doResetConversationVar(varId)
+    invalidateConversationVarValues()
+  }
+
   const deleteNodeInspectorVars = async (nodeId: string) => {
     if (hasNodeInspectVars(nodeId)) {
       await doDeleteNodeInspectorVars(nodeId)
@@ -229,6 +236,7 @@ const useInspectVarsCrud = () => {
     isInspectVarEdited,
     resetToLastRunVar,
     invalidateSysVarValues,
+    resetConversationVar,
     invalidateConversationVarValues,
   }
 }
