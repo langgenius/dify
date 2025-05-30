@@ -45,12 +45,11 @@ class BaseDocumentTransformer(ABC):
         .. code-block:: python
 
             class EmbeddingsRedundantFilter(BaseDocumentTransformer, BaseModel):
+                model_config = ConfigDict(arbitrary_types_allowed=True)
+
                 embeddings: Embeddings
                 similarity_fn: Callable = cosine_similarity
                 similarity_threshold: float = 0.95
-
-                class Config:
-                    arbitrary_types_allowed = True
 
                 def transform_documents(
                     self, documents: Sequence[Document], **kwargs: Any

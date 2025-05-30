@@ -32,6 +32,7 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models import Account, App, EndUser, WorkflowNodeExecutionTriggeredFrom
+from models.account import TenantAccountJoin
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +131,12 @@ class LangFuseDataTrace(BaseTraceInstance):
             service_account = session.query(Account).filter(Account.id == app.created_by).first()
             if not service_account:
                 raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
+            current_tenant = (
+                session.query(TenantAccountJoin).filter_by(account_id=service_account.id, current=True).first()
+            )
+            if not current_tenant:
+                raise ValueError(f"Current tenant not found for account {service_account.id}")
+            service_account.set_tenant_id(current_tenant.tenant_id)
 
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,

@@ -209,6 +209,41 @@ const translation = {
     modelNotSupportedTip: 'Trenutni model ne podpira te funkcije in se samodejno zniža na vbrizgavanje pozivov.',
     structuredTip: 'Strukturirani izhodi so funkcija, ki zagotavlja, da bo model vedno generiral odgovore, ki se držijo vašega posredovanega JSON sheme.',
   },
+  accessItemsDescription: {
+    anyone: 'Vsakdo lahko dostopa do spletne aplikacije',
+    specific: 'Samo določenim skupinam ali članom je omogočen dostop do spletne aplikacije',
+    organization: 'Vsakdo v organizaciji lahko dostopa do spletne aplikacije',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: 'Kdorkoli s povezavo',
+      specific: 'Specifične skupine ali člani',
+      organization: 'Samo člani znotraj podjetja',
+    },
+    operateGroupAndMember: {
+      searchPlaceholder: 'Išči skupine in člane',
+      allMembers: 'Vsi člani',
+      expand: 'Razširi',
+      noResult: 'Brez rezultata',
+    },
+    title: 'Nadzor dostopa do spletne aplikacije',
+    description: 'Nastavite dovoljenja za dostop do spletne aplikacije',
+    accessLabel: 'Kdo ima dostop',
+    groups_one: '{{count}} SKUPINA',
+    groups_other: '{{count}} SKUPIN',
+    members_one: '{{count}} ČLAN',
+    members_other: '{{count}} ČLANOV',
+    updateSuccess: 'Posodobitev uspešna',
+    noGroupsOrMembers: 'Nobene skupine ali članov ni izbranih',
+    webAppSSONotEnabledTip: 'Prosimo, da se obrnete na skrbnika podjetja, da konfigurira način avtentikacije spletne aplikacije.',
+  },
+  publishApp: {
+    title: 'Kdo lahko dostopa do spletne aplikacije',
+    notSet: 'Ni nastavljeno',
+    notSetDesc: 'Trenutno nihče ne more dostopati do spletne aplikacije. Prosimo, nastavite dovoljenja.',
+  },
+  accessControl: 'Nadzor dostopa do spletne aplikacije',
+  noAccessPermission: 'Brez dovoljenja za dostop do spletne aplikacije',
 }
 
 export default translation

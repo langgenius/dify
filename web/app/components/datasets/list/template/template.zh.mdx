@@ -1351,6 +1351,75 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+  method='GET'
+  title='查看文档分段详情'
+  name='#view_document_segment'
+/>
+<Row>
+  <Col>
+    查看指定知识库中特定文档的分段详情
+
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        分段 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "分段唯一ID",
+        "position": 2,
+        "document_id": "所属文档ID",
+        "content": "分段内容文本",
+        "sign_content": "签名内容文本",
+        "answer": "答案内容(如果有)",
+        "word_count": 470,
+        "tokens": 382,
+        "keywords": ["关键词1", "关键词2"],
+        "index_node_id": "索引节点ID",
+        "index_node_hash": "索引节点哈希值",
+        "hit_count": 0,
+        "enabled": true,
+        "status": "completed",
+        "created_by": "创建者ID",
+        "created_at": 创建时间戳,
+        "updated_at": 更新时间戳,
+        "indexing_at": 索引时间戳,
+        "completed_at": 完成时间戳,
+        "error": null,
+        "child_chunks": []
+      },
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
   method='POST'
   title='更新文档分段'
   name='#update_segment'
@@ -1827,6 +1896,31 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         - <code>top_k</code> (integer) 返回结果数量，非必填
         - <code>score_threshold_enabled</code> (bool) 是否开启 score 阈值
         - <code>score_threshold</code> (float) Score 阈值
+        - <code>metadata_filtering_conditions</code> (object) 元数据过滤条件
+          - <code>logical_operator</code> (string) 逻辑运算符: <code>and</code> | <code>or</code>
+          - <code>conditions</code> (array[object]) 条件列表
+            - <code>name</code> (string) 元数据字段名
+            - <code>comparison_operator</code> (string) 比较运算符，可选值:
+              - 字符串比较:
+                - <code>contains</code>: 包含
+                - <code>not contains</code>: 不包含
+                - <code>start with</code>: 以...开头
+                - <code>end with</code>: 以...结尾
+                - <code>is</code>: 等于
+                - <code>is not</code>: 不等于
+                - <code>empty</code>: 为空
+                - <code>not empty</code>: 不为空
+              - 数值比较:
+                - <code>=</code>: 等于
+                - <code>≠</code>: 不等于
+                - <code>></code>: 大于
+                - <code> < </code>: 小于
+                - <code>≥</code>: 大于等于
+                - <code>≤</code>: 小于等于
+              - 时间比较:
+                - <code>before</code>: 早于
+                - <code>after</code>: 晚于
+            - <code>value</code> (string|number|null) 比较值
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           未启用字段
@@ -1851,7 +1945,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "weights": null,
         "top_k": 1,
         "score_threshold_enabled": false,
-        "score_threshold": null
+        "score_threshold": null,
+        "metadata_filtering_conditions": {
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "name": "document_name",
+                    "comparison_operator": "contains",
+                    "value": "test"
+                }
+            ]
+        }
     }
 }'`}
     >
@@ -2286,6 +2390,314 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
      </CodeGroup>
    </Col>
 </Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags'
+  method='POST'
+  title='新增知识库类型标签'
+  name='#create_new_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string'>
+        (text) 新标签名称，必填，最大长度为50
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/tags"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "testtag1"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"name": "testtag1"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "id": "eddb66c2-04a1-4e3a-8cb2-75abd01e12a6", 
+        "name": "testtag1", 
+        "type": "knowledge", 
+        "binding_count": 0
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags'
+  method='GET'
+  title='获取知识库类型标签'
+  name='#get_knowledge_type_tags'
+/>
+<Row>
+  <Col>
+    ### Request Body
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/tags"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' 
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    [
+        {
+            "id": "39d6934c-ed36-463d-b4a7-377fa1503dc0", 
+            "name": "testtag1", 
+            "type": "knowledge", 
+            "binding_count": "0"
+        }, 
+        ...
+    ]
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags'
+  method='PATCH'
+  title='修改知识库类型标签名称'
+  name='#modify_knowledge_tag_name'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string'>
+        (text) 修改后的标签名称，必填，最大长度为50
+      </Property>
+      <Property name='tag_id' type='string'>
+        (text) 标签ID，必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/tags"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "testtag2", "tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"name": "testtag2", "tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "id": "eddb66c2-04a1-4e3a-8cb2-75abd01e12a6", 
+        "name": "tag-renamed", 
+        "type": "knowledge", 
+        "binding_count": 0
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+
+<Heading
+  url='/datasets/tags'
+  method='DELETE'
+  title='删除知识库类型标签'
+  name='#delete_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='tag_id' type='string'>
+        (text) 标签ID，必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/tags"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ "tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"tag_id": "e1a0a3db-ee34-4e04-842a-81555d5316fd"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+ 
+    {"result": "success"}
+    
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags/binding'
+  method='POST'
+  title='绑定知识库到知识库类型标签'
+  name='#bind_dataset_to_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='tag_ids' type='list'>
+        (list) 标签ID列表，必填
+      </Property>
+      <Property name='target_id' type='string'>
+        (text) 知识库ID，必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/tags/binding"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/tags/binding' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"tag_ids": ["65cc29be-d072-4e26-adf4-2f727644da29","1e5348f3-d3ff-42b8-a1b7-0a86d518001a"], "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/tags/binding' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"tag_ids": ["65cc29be-d072-4e26-adf4-2f727644da29","1e5348f3-d3ff-42b8-a1b7-0a86d518001a"], "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {"result": "success"}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/tags/unbinding'
+  method='POST'
+  title='解绑知识库和知识库类型标签'
+  name='#unbind_dataset_and_knowledge_tag'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='tag_id' type='string'>
+        (text) 标签ID，必填
+      </Property>
+      <Property name='target_id' type='string'>
+        (text) 知识库ID，必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/tags/unbinding"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/tags/unbinding' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"tag_id": "1e5348f3-d3ff-42b8-a1b7-0a86d518001a", "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/tags/unbinding' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{"tag_id": "1e5348f3-d3ff-42b8-a1b7-0a86d518001a", "target_id": "a932ea9f-fae1-4b2c-9b65-71c56e2cacd6"}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {"result": "success"}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/<uuid:dataset_id>/tags'
+  method='POST'
+  title='查询知识库已绑定的标签'
+  name='#query_dataset_tags'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string'>
+        (text) 知识库ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/<uuid:dataset_id>/tags"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/<uuid:dataset_id>/tags' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/<uuid:dataset_id>/tags' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": 
+        [
+          {"id": "4a601f4f-f8a2-4166-ae7c-58c3b252a524", 
+          "name": "123"
+          }, 
+          ...
+        ], 
+      "total": 3
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
 
 <hr className='ml-0 mr-0' />
 

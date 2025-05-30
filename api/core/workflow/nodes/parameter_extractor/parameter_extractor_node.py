@@ -25,13 +25,13 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.llm import LLMNode, ModelConfig
 from core.workflow.utils import variable_template_parser
 from extensions.ext_database import db
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import ParameterExtractorNodeData
 from .exc import (
@@ -244,9 +244,9 @@ class ParameterExtractorNode(LLMNode):
             process_data=process_data,
             outputs={"__is_success": 1 if not error else 0, "__reason": error, **result},
             metadata={
-                NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                NodeRunMetadataKey.CURRENCY: usage.currency,
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
             },
             llm_usage=usage,
         )
@@ -816,7 +816,6 @@ class ParameterExtractorNode(LLMNode):
         :param node_data: node data
         :return:
         """
-        # FIXME: fix the type error later
         variable_mapping: dict[str, Sequence[str]] = {"query": node_data.query}
 
         if node_data.instruction:

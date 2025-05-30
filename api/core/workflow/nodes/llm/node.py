@@ -43,6 +43,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.variables import (
     ArrayAnySegment,
     ArrayFileSegment,
@@ -53,9 +54,10 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base import BaseNode
@@ -77,7 +79,6 @@ from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import (
     LLMNodeChatModelMessage,
@@ -267,9 +268,9 @@ class LLMNode(BaseNode[LLMNodeData]):
                     process_data=process_data,
                     outputs=outputs,
                     metadata={
-                        NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                        NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                        NodeRunMetadataKey.CURRENCY: usage.currency,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                        WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
                     },
                     llm_usage=usage,
                 )
@@ -474,7 +475,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 yield RunRetrieverResourceEvent(retriever_resources=[], context=context_value_variable.value)
             elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
-                original_retriever_resource = []
+                original_retriever_resource: list[RetrievalSourceMetadata] = []
                 for item in context_value_variable.value:
                     if isinstance(item, str):
                         context_str += item + "\n"
@@ -492,7 +493,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     retriever_resources=original_retriever_resource, context=context_str.strip()
                 )
 
-    def _convert_to_original_retriever_resource(self, context_dict: dict) -> Optional[dict]:
+    def _convert_to_original_retriever_resource(self, context_dict: dict):
         if (
             "metadata" in context_dict
             and "_source" in context_dict["metadata"]
@@ -500,24 +501,24 @@ class LLMNode(BaseNode[LLMNodeData]):
         ):
             metadata = context_dict.get("metadata", {})
 
-            source = {
-                "position": metadata.get("position"),
-                "dataset_id": metadata.get("dataset_id"),
-                "dataset_name": metadata.get("dataset_name"),
-                "document_id": metadata.get("document_id"),
-                "document_name": metadata.get("document_name"),
-                "data_source_type": metadata.get("data_source_type"),
-                "segment_id": metadata.get("segment_id"),
-                "retriever_from": metadata.get("retriever_from"),
-                "score": metadata.get("score"),
-                "hit_count": metadata.get("segment_hit_count"),
-                "word_count": metadata.get("segment_word_count"),
-                "segment_position": metadata.get("segment_position"),
-                "index_node_hash": metadata.get("segment_index_node_hash"),
-                "content": context_dict.get("content"),
-                "page": metadata.get("page"),
-                "doc_metadata": metadata.get("doc_metadata"),
-            }
+            source = RetrievalSourceMetadata(
+                position=metadata.get("position"),
+                dataset_id=metadata.get("dataset_id"),
+                dataset_name=metadata.get("dataset_name"),
+                document_id=metadata.get("document_id"),
+                document_name=metadata.get("document_name"),
+                data_source_type=metadata.get("data_source_type"),
+                segment_id=metadata.get("segment_id"),
+                retriever_from=metadata.get("retriever_from"),
+                score=metadata.get("score"),
+                hit_count=metadata.get("segment_hit_count"),
+                word_count=metadata.get("segment_word_count"),
+                segment_position=metadata.get("segment_position"),
+                index_node_hash=metadata.get("segment_index_node_hash"),
+                content=context_dict.get("content"),
+                page=metadata.get("page"),
+                doc_metadata=metadata.get("doc_metadata"),
+            )
 
             return source
 

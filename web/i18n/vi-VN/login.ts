@@ -105,6 +105,11 @@ const translation = {
   licenseExpired: 'Giấy phép đã hết hạn',
   licenseExpiredTip: 'Giấy phép Dify Enterprise cho không gian làm việc của bạn đã hết hạn. Vui lòng liên hệ với quản trị viên của bạn để tiếp tục sử dụng Dify.',
   licenseLostTip: 'Không thể kết nối máy chủ cấp phép Dify. Vui lòng liên hệ với quản trị viên của bạn để tiếp tục sử dụng Dify.',
+  webapp: {
+    noLoginMethod: 'Phương thức xác thực chưa được cấu hình cho ứng dụng web',
+    noLoginMethodTip: 'Vui lòng liên hệ với quản trị viên hệ thống để thêm phương thức xác thực.',
+    disabled: 'Xác thực webapp đã bị vô hiệu hóa. Vui lòng liên hệ với quản trị hệ thống để kích hoạt nó. Bạn có thể thử sử dụng ứng dụng trực tiếp.',
+  },
 }
 
 export default translation

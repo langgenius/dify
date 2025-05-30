@@ -208,6 +208,41 @@ const translation = {
     structuredTip: '結構化輸出是一項功能，確保模型始終生成符合您提供的 JSON 架構的響應。',
     notConfiguredTip: '結構化輸出尚未配置',
   },
+  accessItemsDescription: {
+    anyone: '任何人都可以訪問這個網絡應用程式',
+    specific: '只有特定的群體或成員可以訪問這個網絡應用程序',
+    organization: '組織中的任何人都可以訪問該網絡應用程序',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: '擁有鏈接的人',
+      specific: '特定群體或成員',
+      organization: '只有企業內部成員',
+    },
+    operateGroupAndMember: {
+      searchPlaceholder: '搜尋群組和成員',
+      allMembers: '所有成員',
+      expand: '擴大',
+      noResult: '沒有結果',
+    },
+    title: '網頁應用程式存取控制',
+    description: '設定網頁應用程式訪問權限',
+    accessLabel: '誰可以訪問',
+    groups_one: '{{count}} 群組',
+    groups_other: '{{count}} 組',
+    members_one: '{{count}} 成員',
+    members_other: '{{count}} 成員',
+    noGroupsOrMembers: '未選擇任何群組或成員',
+    webAppSSONotEnabledTip: '請聯絡企業管理員配置網頁應用程式的身份驗證方法。',
+    updateSuccess: '更新成功',
+  },
+  publishApp: {
+    title: '誰可以訪問網絡應用程序',
+    notSet: '未設定',
+    notSetDesc: '目前沒有人能夠訪問網絡應用程序。請設置權限。',
+  },
+  accessControl: '網頁應用程式存取控制',
+  noAccessPermission: '沒有權限訪問網絡應用程式',
 }
 
 export default translation
