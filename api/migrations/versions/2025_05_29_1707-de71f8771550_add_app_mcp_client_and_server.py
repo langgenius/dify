@@ -35,7 +35,7 @@ def upgrade():
     op.create_table('tool_mcp_providers',
     sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
     sa.Column('name', sa.String(length=40), nullable=False),
-    sa.Column('server_url', sa.String(length=512), nullable=False),
+    sa.Column('server_url', sa.Text(), nullable=False),
     sa.Column('server_url_hash', sa.String(length=64), nullable=False),
     sa.Column('icon', sa.String(length=255), nullable=True),
     sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
