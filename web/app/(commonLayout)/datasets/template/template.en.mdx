@@ -1300,6 +1300,76 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+  method='GET'
+  title='Get a Chunk Details in a Document'
+  name='#view_document_chunk'
+/>
+<Row>
+  <Col>
+    Get details of a specific document segment in the specified knowledge base
+
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Knowledge Base ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        Segment ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": {
+        "id": "chunk_id",
+        "position": 2,
+        "document_id": "document_id",
+        "content": "Segment content text",
+        "sign_content": "Signature content text",
+        "answer": "Answer content (if in Q&A mode)",
+        "word_count": 470,
+        "tokens": 382,
+        "keywords": ["keyword1", "keyword2"],
+        "index_node_id": "index_node_id",
+        "index_node_hash": "index_node_hash",
+        "hit_count": 0,
+        "enabled": true,
+        "status": "completed",
+        "created_by": "creator_id",
+        "created_at": creation_timestamp,
+        "updated_at": update_timestamp,
+        "indexing_at": indexing_timestamp,
+        "completed_at": completion_timestamp,
+        "error": null,
+        "child_chunks": []
+      },
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='DELETE'
   title='Delete a Chunk in a Document'
   name='#delete_segment'
@@ -1771,20 +1841,45 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         Query keyword
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
-        Retrieval model (optional, if not filled, it will be recalled according to the default method)
-        - <code>search_method</code> (text) Search method: One of the following four keywords is required
-          - <code>keyword_search</code> Keyword search
-          - <code>semantic_search</code> Semantic search
-          - <code>full_text_search</code> Full-text search
-          - <code>hybrid_search</code> Hybrid search
-        - <code>reranking_enable</code> (bool) Whether to enable reranking, required if the search mode is semantic_search or hybrid_search (optional)
-        - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
-            - <code>reranking_provider_name</code> (string) Rerank model provider
-            - <code>reranking_model_name</code> (string) Rerank model name
-        - <code>weights</code> (float) Semantic search weight setting in hybrid search mode
-        - <code>top_k</code> (integer) Number of results to return (optional)
-        - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
-        - <code>score_threshold</code> (float) Score threshold
+        Retrieval parameters (optional, if not filled, it will be recalled according to the default method)
+          - <code>search_method</code> (text) Search method: One of the following four keywords is required
+            - <code>keyword_search</code> Keyword search
+            - <code>semantic_search</code> Semantic search
+            - <code>full_text_search</code> Full-text search
+            - <code>hybrid_search</code> Hybrid search
+          - <code>reranking_enable</code> (bool) Whether to enable reranking, required if the search mode is semantic_search or hybrid_search (optional)
+          - <code>reranking_mode</code> (object) Rerank model configuration, required if reranking is enabled
+              - <code>reranking_provider_name</code> (string) Rerank model provider
+              - <code>reranking_model_name</code> (string) Rerank model name
+          - <code>weights</code> (float) Semantic search weight setting in hybrid search mode
+          - <code>top_k</code> (integer) Number of results to return (optional)
+          - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+          - <code>score_threshold</code> (float) Score threshold
+          - <code>metadata_filtering_conditions</code> (object) Metadata filtering conditions
+            - <code>logical_operator</code> (string) Logical operator: <code>and</code> | <code>or</code>
+            - <code>conditions</code> (array[object]) Conditions list
+              - <code>name</code> (string) Metadata field name
+              - <code>comparison_operator</code> (string) Comparison operator, allowed values:
+                - String comparison:
+                  - <code>contains</code>: Contains
+                  - <code>not contains</code>: Does not contain
+                  - <code>start with</code>: Starts with
+                  - <code>end with</code>: Ends with
+                  - <code>is</code>: Equals
+                  - <code>is not</code>: Does not equal
+                  - <code>empty</code>: Is empty
+                  - <code>not empty</code>: Is not empty
+                - Numeric comparison:
+                  - <code>=</code>: Equals
+                  - <code>≠</code>: Does not equal
+                  - <code>></code>: Greater than
+                  - <code>< </code>: Less than
+                  - <code>≥</code>: Greater than or equal
+                  - <code>≤</code>: Less than or equal
+                - Time comparison:
+                  - <code>before</code>: Before
+                  - <code>after</code>: After
+              - <code>value</code> (string|number|null) Comparison value
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           Unused field
@@ -1809,7 +1904,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "weights": null,
         "top_k": 1,
         "score_threshold_enabled": false,
-        "score_threshold": null
+        "score_threshold": null,
+        "metadata_filtering_conditions": {
+            "logical_operator": "and",
+            "conditions": [
+                {
+                    "name": "document_name",
+                    "comparison_operator": "contains",
+                    "value": "test"
+                }
+            ]
+        }
     }
 }'`}
     >
@@ -2089,9 +2194,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       label="/datasets/{dataset_id}/documents/metadata"
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/metadata' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{"operation_data": [{"document_id": "document_id", "metadata_list": [{"id": "id", "value": "value", "name": "name"}]}]}'`}
     >
-    ```bash {{ title: 'cURL' }}
-    ```
-    </CodeGroup>
+    ```bash {{ title: 'cURL' }}    </CodeGroup>
   </Col>
 </Row>
 

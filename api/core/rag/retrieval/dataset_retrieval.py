@@ -937,6 +937,9 @@ class DatasetRetrieval:
         return metadata_filter_document_ids, metadata_condition
 
     def _replace_metadata_filter_value(self, text: str, inputs: dict) -> str:
+        if not inputs:
+            return text
+
         def replacer(match):
             key = match.group(1)
             return str(inputs.get(key, f"{{{{{key}}}}}"))
