@@ -550,7 +550,7 @@ const translation = {
       vectorHash: 'Vektorhash:',
       hitScore: 'Abrufwertung:',
     },
-    inputPlaceholder: 'Sprechen Sie mit dem Bot',
+    inputPlaceholder: 'Sprechen Sie mit dem {{botName}}',
     thought: 'Gedanke',
     thinking: 'Denken...',
     resend: 'Erneut senden',

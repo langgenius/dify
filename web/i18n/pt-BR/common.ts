@@ -550,7 +550,7 @@ const translation = {
       vectorHash: 'Hash de vetor:',
       hitScore: 'Pontuação de recuperação:',
     },
-    inputPlaceholder: 'Fale com o bot',
+    inputPlaceholder: 'Fale com o {{botName}}',
     thinking: 'Pensante...',
     thought: 'Pensamento',
     resend: 'Reenviar',

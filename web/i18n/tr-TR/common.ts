@@ -554,7 +554,7 @@ const translation = {
       vectorHash: 'Vektör Hash:',
       hitScore: 'Geri Alım Skoru:',
     },
-    inputPlaceholder: 'Bot ile konuş',
+    inputPlaceholder: '{{botName}} ile konuş',
     thought: 'Düşünce',
     thinking: 'Düşünü...',
     resend: 'Yeniden gönder',

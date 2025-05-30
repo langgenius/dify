@@ -570,7 +570,7 @@ const translation = {
       vectorHash: 'ベクトルハッシュ:',
       hitScore: '検索スコア:',
     },
-    inputPlaceholder: 'ボットと話す',
+    inputPlaceholder: '{{botName}} と話す',
     thought: '思考',
     thinking: '考え中...',
     resend: '再送信してください',
