@@ -175,7 +175,7 @@ class Executor:
                 case "json":
                     if len(data) != 1:
                         raise RequestBodyError("json body type should have exactly one item")
-                    json_string = self.variable_pool.convert_template(data[0].value).text
+                    json_string = self.variable_pool.convert_template_escape(data[0].value).text
                     try:
                         json_object = json.loads(json_string, strict=False)
                     except json.JSONDecodeError as e:
