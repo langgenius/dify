@@ -924,7 +924,7 @@ const translation = {
       title: 'Variable Inspect',
       emptyTip: 'After stepping through a node on the canvas or running a node step by step, you can view the current value of the node variable in Variable Inspect',
       emptyLink: 'Learn more',
-      clearAll: 'Clear all',
+      clearAll: 'Reset all',
       clearNode: 'Clear cached variable',
       view: 'View log',
       edited: 'Edited',

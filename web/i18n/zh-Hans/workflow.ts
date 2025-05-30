@@ -925,7 +925,7 @@ const translation = {
       title: '变量检查',
       emptyTip: '在画布上逐步浏览节点或逐步运行节点后，您可以在变量检查中查看节点变量的当前值',
       emptyLink: '了解更多',
-      clearAll: '清除所有',
+      clearAll: '重置所有',
       clearNode: '清除缓存',
       view: '查看记录',
       edited: '已编辑',

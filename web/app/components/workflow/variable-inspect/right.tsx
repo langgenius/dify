@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import {
   RiArrowGoBackLine,
   RiCloseLine,
+  RiDeleteBinLine,
   RiMenuLine,
 } from '@remixicon/react'
 import { useStore } from '../store'
@@ -38,6 +39,7 @@ const Right = ({
   const setCurrentFocusNodeId = useStore(s => s.setCurrentFocusNodeId)
 
   const {
+    resetConversationVar,
     resetToLastRunVar,
     editInspectVarValue,
   } = useCurrentVars()
@@ -55,6 +57,11 @@ const Right = ({
   const handleClose = () => {
     setShowVariableInspectPanel(false)
     setCurrentFocusNodeId('')
+  }
+
+  const handleClear = () => {
+    if (!currentNodeVar) return
+    resetConversationVar(currentNodeVar.var.id)
   }
 
   return (
@@ -107,6 +114,13 @@ const Right = ({
                 <Tooltip popupContent={t('workflow.debug.variableInspect.reset')}>
                   <ActionButton onClick={resetValue}>
                     <RiArrowGoBackLine className='h-4 w-4' />
+                  </ActionButton>
+                </Tooltip>
+              )}
+              {currentNodeVar.var.type === VarInInspectType.conversation && (
+                <Tooltip popupContent={t('workflow.debug.variableInspect.clearNode')}>
+                  <ActionButton onClick={handleClear}>
+                    <RiDeleteBinLine className='h-4 w-4' />
                   </ActionButton>
                 </Tooltip>
               )}
