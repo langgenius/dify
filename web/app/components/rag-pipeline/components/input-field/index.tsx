@@ -16,7 +16,7 @@ import { useNodes } from 'reactflow'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
-import { useNodesSyncDraft } from '../../hooks'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 
 type InputFieldDialogProps = {

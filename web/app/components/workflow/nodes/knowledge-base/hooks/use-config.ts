@@ -1,13 +1,10 @@
 import {
   useCallback,
-  useEffect,
 } from 'react'
 import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import type { ValueSelector } from '@/app/components/workflow/types'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
@@ -173,31 +170,6 @@ export const useConfig = (id: string) => {
       index_chunk_variable_selector: Array.isArray(inputVariable) ? inputVariable : [],
     })
   }, [handleNodeDataUpdate])
-
-  const {
-    currentModel,
-    currentProvider,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textEmbedding)
-
-  const handleInitConfig = useCallback(() => {
-    const nodeData = getNodeData()
-
-    if (!nodeData?.data.embedding_model && !nodeData?.data.embedding_model_provider && currentModel && currentProvider) {
-      handleEmbeddingModelChange({
-        embeddingModel: currentModel.model,
-        embeddingModelProvider: currentProvider.provider,
-      })
-    }
-  }, [
-    getNodeData,
-    handleEmbeddingModelChange,
-    currentModel,
-    currentProvider,
-  ])
-
-  useEffect(() => {
-    handleInitConfig()
-  }, [handleInitConfig])
 
   return {
     handleChunkStructureChange,
