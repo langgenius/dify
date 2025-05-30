@@ -3,12 +3,10 @@ import { RiAlertFill, RiCloseCircleFill, RiLockLine, RiOrganizationChart } from 
 import { useTranslation } from 'react-i18next'
 import { useCallback, useEffect } from 'react'
 import Avatar from '../../base/avatar'
-import Divider from '../../base/divider'
 import Tooltip from '../../base/tooltip'
 import Loading from '../../base/loading'
 import useAccessControlStore from '../../../../context/access-control-store'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import type { AccessControlAccount, AccessControlGroup } from '@/models/access-control'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
@@ -19,11 +17,6 @@ export default function SpecificGroupsOrMembers() {
   const setSpecificGroups = useAccessControlStore(s => s.setSpecificGroups)
   const setSpecificMembers = useAccessControlStore(s => s.setSpecificMembers)
   const { t } = useTranslation()
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const hideTip = systemFeatures.webapp_auth.enabled
-    && (systemFeatures.webapp_auth.allow_sso
-      || systemFeatures.webapp_auth.allow_email_password_login
-      || systemFeatures.webapp_auth.allow_email_code_login)
 
   const { isPending, data } = useAppWhiteListSubjects(appId, Boolean(appId) && currentMenu === AccessMode.SPECIFIC_GROUPS_MEMBERS)
   useEffect(() => {
@@ -37,7 +30,6 @@ export default function SpecificGroupsOrMembers() {
         <RiLockLine className='h-4 w-4 text-text-primary' />
         <p className='system-sm-medium text-text-primary'>{t('app.accessControlDialog.accessItems.specific')}</p>
       </div>
-      {!hideTip && <WebAppSSONotEnabledTip />}
     </div>
   }
 
@@ -48,10 +40,6 @@ export default function SpecificGroupsOrMembers() {
         <p className='system-sm-medium text-text-primary'>{t('app.accessControlDialog.accessItems.specific')}</p>
       </div>
       <div className='flex items-center gap-x-1'>
-        {!hideTip && <>
-          <WebAppSSONotEnabledTip />
-          <Divider className='ml-2 mr-0 h-[14px]' type="vertical" />
-        </>}
         <AddMemberOrGroupDialog />
       </div>
     </div>

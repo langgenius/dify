@@ -6,7 +6,7 @@ import type { Placement } from '@floating-ui/react'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Divider from '../../base/divider'
 import { removeAccessToken } from '../utils'
 import InfoModal from './info-modal'
@@ -19,6 +19,8 @@ import {
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import type { SiteInfo } from '@/models/share'
 import cn from '@/utils/classnames'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { AccessMode } from '@/models/access-control'
 
 type Props = {
   data?: SiteInfo
@@ -31,7 +33,9 @@ const MenuDropdown: FC<Props> = ({
   placement,
   hideLogout,
 }) => {
+  const webAppAccessMode = useGlobalPublicStore(s => s.webAppAccessMode)
   const router = useRouter()
+  const pathname = usePathname()
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
   const openRef = useRef(open)
@@ -46,8 +50,8 @@ const MenuDropdown: FC<Props> = ({
 
   const handleLogout = useCallback(() => {
     removeAccessToken()
-    router.replace(`/webapp-signin?redirect_url=${window.location.href}`)
-  }, [router])
+    router.replace(`/webapp-signin?redirect_url=${pathname}`)
+  }, [router, pathname])
 
   const [show, setShow] = useState(false)
 
@@ -92,6 +96,16 @@ const MenuDropdown: FC<Props> = ({
                 className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
               >{t('common.userProfile.about')}</div>
             </div>
+            {!(hideLogout || webAppAccessMode === AccessMode.EXTERNAL_MEMBERS || webAppAccessMode === AccessMode.PUBLIC) && (
+              <div className='p-1'>
+                <div
+                  onClick={handleLogout}
+                  className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
+                >
+                  {t('common.userProfile.logout')}
+                </div>
+              </div>
+            )}
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>

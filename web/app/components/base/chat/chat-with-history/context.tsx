@@ -16,14 +16,12 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'lodash-es'
-import { AccessMode } from '@/models/access-control'
 
 export type ChatWithHistoryContextValue = {
   appInfoError?: any
   appInfoLoading?: boolean
   appMeta?: AppMeta
   appData?: AppData
-  accessMode?: AccessMode
   userCanAccess?: boolean
   appParams?: ChatConfig
   appChatListDataLoading?: boolean
@@ -64,7 +62,6 @@ export type ChatWithHistoryContextValue = {
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
-  accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
   userCanAccess: false,
   currentConversationId: '',
   appPrevChatTree: [],
