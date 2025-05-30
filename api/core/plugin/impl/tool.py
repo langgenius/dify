@@ -126,6 +126,8 @@ class PluginToolManager(BasePluginClient):
                 self.data = bytearray(total_length)
 
         files: dict[str, FileChunk] = {}
+        CHUNK_SIZE_LIMIT = 8192
+        FILE_SIZE_LIMIT = 30 * 1024 * 1024
         for resp in response:
             if resp.type == ToolInvokeMessage.MessageType.BLOB_CHUNK:
                 assert isinstance(resp.message, ToolInvokeMessage.BlobChunkMessage)
@@ -135,35 +137,40 @@ class PluginToolManager(BasePluginClient):
                 blob_data = resp.message.blob
                 is_end = resp.message.end
 
+                # Pre-check conditions to avoid unnecessary processing
+                if total_length > FILE_SIZE_LIMIT:
+                    raise ValueError(f"File size {total_length} exceeds limit of {FILE_SIZE_LIMIT} bytes")
+
+                if len(blob_data) > CHUNK_SIZE_LIMIT:
+                    raise ValueError(f"Chunk size {len(blob_data)} exceeds limit of {CHUNK_SIZE_LIMIT} bytes")
+
                 # Initialize buffer for this file if it doesn't exist
                 if chunk_id not in files:
                     files[chunk_id] = FileChunk(total_length)
+                file_chunk = files[chunk_id]
+
+                # Validate write boundaries
+                expected_final_size = file_chunk.bytes_written + len(blob_data)
+                if expected_final_size > file_chunk.total_length:
+                    raise ValueError(
+                        f"Chunk would exceed file size ({expected_final_size} > {file_chunk.total_length})"
+                    )
+
+                # Handle non-final chunks
+                start_pos = file_chunk.bytes_written
+                file_chunk.data[start_pos : start_pos + len(blob_data)] = blob_data
+                file_chunk.bytes_written += len(blob_data)
 
                 # If this is the final chunk, yield a complete blob message
                 if is_end:
+                    if file_chunk.bytes_written != file_chunk.total_length:
+                        raise ValueError("File length doesn't match expected size")
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.BLOB,
-                        message=ToolInvokeMessage.BlobMessage(blob=files[chunk_id].data),
+                        message=ToolInvokeMessage.BlobMessage(blob=bytes(file_chunk.data)),
                         meta=resp.meta,
                     )
-                else:
-                    # Check if file is too large (30MB limit)
-                    if files[chunk_id].bytes_written + len(blob_data) > 30 * 1024 * 1024:
-                        # Delete the file if it's too large
-                        del files[chunk_id]
-                        # Skip yielding this message
-                        raise ValueError("File is too large which reached the limit of 30MB")
-
-                    # Check if single chunk is too large (8KB limit)
-                    if len(blob_data) > 8192:
-                        # Skip yielding this message
-                        raise ValueError("File chunk is too large which reached the limit of 8KB")
-
-                    # Append the blob data to the buffer
-                    files[chunk_id].data[
-                        files[chunk_id].bytes_written : files[chunk_id].bytes_written + len(blob_data)
-                    ] = blob_data
-                    files[chunk_id].bytes_written += len(blob_data)
+                    del files[chunk_id]
             else:
                 yield resp
 
