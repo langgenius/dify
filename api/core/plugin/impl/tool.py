@@ -116,6 +116,8 @@ class PluginToolManager(BasePluginClient):
             Only used for internal processing.
             """
 
+            __slots__ = ("bytes_written", "total_length", "data")
+
             bytes_written: int
             total_length: int
             data: bytearray
