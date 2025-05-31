@@ -8,6 +8,9 @@ from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, Plugi
 from core.plugin.impl.base import BasePluginClient
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 
+CHUNK_SIZE_LIMIT = 8192
+FILE_SIZE_LIMIT = 30 * 1024 * 1024
+
 
 class PluginToolManager(BasePluginClient):
     def fetch_tool_providers(self, tenant_id: str) -> list[PluginToolProviderEntity]:
