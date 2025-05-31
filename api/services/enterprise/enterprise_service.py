@@ -5,7 +5,7 @@ from services.enterprise.base import EnterpriseRequest
 
 class WebAppSettings(BaseModel):
     access_mode: str = Field(
-        description="Access mode for the web app. Can be 'public' or 'private'",
+        description="Access mode for the web app. Can be 'public', 'private', 'private_all', 'sso_verified'",
         default="private",
         alias="accessMode",
     )
