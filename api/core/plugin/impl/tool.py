@@ -128,8 +128,6 @@ class PluginToolManager(BasePluginClient):
                 self.data = bytearray(total_length)
 
         files: dict[str, FileChunk] = {}
-        CHUNK_SIZE_LIMIT = 8192
-        FILE_SIZE_LIMIT = 30 * 1024 * 1024
         for resp in response:
             if resp.type == ToolInvokeMessage.MessageType.BLOB_CHUNK:
                 assert isinstance(resp.message, ToolInvokeMessage.BlobChunkMessage)
