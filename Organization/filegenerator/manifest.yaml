@@ -1,0 +1,48 @@
+version: 0.0.1
+type: plugin
+author: randomradio
+name: filegenerator
+label:
+  en_US: filegenerator
+  ja_JP: filegenerator
+  zh_Hans: filegenerator
+  pt_BR: filegenerator
+description:
+  en_US: generate file with extension and content
+  ja_JP: generate file with extension and content
+  zh_Hans: generate file with extension and content
+  pt_BR: generate file with extension and content
+icon: icon.svg
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+    model:
+      enabled: false
+      llm: false
+      text_embedding: false
+      rerank: false
+      tts: false
+      speech2text: false
+      moderation: false
+    node:
+      enabled: false
+    app:
+      enabled: false
+plugins:
+  tools:
+    - provider/filegenerator.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+  minimum_dify_version: null
+created_at: 2025-05-30T14:51:13.938188+08:00
+privacy: PRIVACY.md
+verified: false

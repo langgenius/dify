@@ -1,0 +1,55 @@
+identity:
+  name: filegenerator
+  author: randomradio
+  label:
+    en_US: filegenerator
+    zh_Hans: filegenerator
+    pt_BR: filegenerator
+description:
+  human:
+    en_US: Generate a TXT (or custom extension) file for download with given content and title.
+    zh_Hans: 根据输入内容和标题生成可下载的 TXT 或指定扩展名文件。
+  llm: Generate a downloadable text file with given content, title and optional extension.
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: File Content
+      zh_Hans: 文件内容
+    human_description:
+      en_US: Body content of the file to generate.
+      zh_Hans: 要生成的文件正文内容。
+    llm_description: The file body content.
+    form: llm
+  - name: title
+    type: string
+    required: true
+    label:
+      en_US: File Title
+      zh_Hans: 文件标题
+    human_description:
+      en_US: File name (without extension).
+      zh_Hans: 文件名称（不含扩展名）。
+    llm_description: The name of the file, not including extension.
+    form: llm
+  - name: ext
+    type: string
+    required: false
+    label:
+      en_US: File Extension
+      zh_Hans: 文件扩展名
+    human_description:
+      en_US: File extension (default is .txt, e.g. .md/.csv).
+      zh_Hans: 文件扩展名（默认为 .txt，可自定义，如 .md/.csv）。
+    llm_description: File extension to use, include the leading dot, e.g. ".txt" or ".md". Optional.
+    form: llm
+extra:
+  python:
+    source: tools/filegenerator.py
+output_schema:
+  type: object
+  properties:
+    download_url:
+      type: string
+      description: URL to download the generated file.

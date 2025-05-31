@@ -1,0 +1,17 @@
+identity:
+  author: randomradio
+  name: filegenerator
+  label:
+    en_US: filegenerator
+    zh_Hans: filegenerator
+    pt_BR: filegenerator
+  description:
+    en_US: generate file with extension and content
+    zh_Hans: generate file with extension and content
+    pt_BR: generate file with extension and content
+  icon: icon.svg
+tools:
+  - tools/filegenerator.yaml
+extra:
+  python:
+    source: provider/filegenerator.py
