@@ -114,7 +114,6 @@ export default function AppSelector() {
                         target='_self' rel='noopener noreferrer'>
                         <RiAccountCircleLine className='size-4 shrink-0 text-text-tertiary' />
                         <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.account.account')}</div>
-                        <RiArrowRightUpLine className='size-[14px] shrink-0 text-text-tertiary' />
                       </Link>
                     </MenuItem>
                     <MenuItem>
