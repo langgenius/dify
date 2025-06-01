@@ -375,8 +375,15 @@ class KnowledgeRetrievalNode(LLMNode):
                                     expected_value = expected_value.value  # type: ignore
                                 elif expected_value.value_type == "string":  # type: ignore
                                     expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
+                                elif expected_value.value_type in (
+                                    "array[number]", "array[string]", "array[object]", "array"
+                                ):  # type: ignore
+                                    expected_value = expected_value.value  # type: ignore
                                 else:
                                     raise ValueError("Invalid expected metadata value type")
+                            elif isinstance(expected_value, list):
+                                # For constant array values
+                                pass
                         conditions.append(
                             Condition(
                                 name=metadata_name,
@@ -515,6 +522,62 @@ class KnowledgeRetrievalNode(LLMNode):
                     filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
                 else:
                     filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) != value)
+            case "in":
+                if isinstance(value, list | tuple):
+                    # For arrays: check if metadata field contains any value from the input array
+                    or_conditions = []
+                    for i, v in enumerate(value):
+                        param_key = f"{key_value}_{i}"
+                        if isinstance(v, str):
+                            or_conditions.append(
+                                (text(f"documents.doc_metadata ->> :{key} LIKE :{param_key}")).params(
+                                    **{key: metadata_name, param_key: f'%"{v}"%'}
+                                )
+                            )
+                        else:
+                            or_conditions.append(
+                                (text(f"documents.doc_metadata ->> :{key} = :{param_key}")).params(
+                                    **{key: metadata_name, param_key: str(v)}
+                                )
+                            )
+                    if or_conditions:
+                        filters.append(or_(*or_conditions))
+                else:
+                    # Single value case
+                    if isinstance(value, str):
+                        filters.append(
+                            (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
+                                **{key: metadata_name, key_value: f'%"{value}"%'}
+                            )
+                        )
+            case "not in":
+                if isinstance(value, list | tuple):
+                    # For arrays: check if metadata field does not contain any value from the input array
+                    and_conditions = []
+                    for i, v in enumerate(value):
+                        param_key = f"{key_value}_{i}"
+                        if isinstance(v, str):
+                            and_conditions.append(
+                                (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{param_key}")).params(
+                                    **{key: metadata_name, param_key: f'%"{v}"%'}
+                                )
+                            )
+                        else:
+                            and_conditions.append(
+                                (text(f"documents.doc_metadata ->> :{key} != :{param_key}")).params(
+                                    **{key: metadata_name, param_key: str(v)}
+                                )
+                            )
+                    if and_conditions:
+                        filters.append(and_(*and_conditions))
+                else:
+                    # Single value case
+                    if isinstance(value, str):
+                        filters.append(
+                            (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{key_value}")).params(
+                                **{key: metadata_name, key_value: f'%"{value}"%'}
+                            )
+                        )
             case "empty":
                 filters.append(Document.doc_metadata[metadata_name].is_(None))
             case "not empty":

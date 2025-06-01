@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import {
   RiHashtag,
+  RiListUnordered,
   RiTextSnippet,
   RiTimeLine,
 } from '@remixicon/react'
@@ -30,6 +31,11 @@ const MetadataIcon = ({
       {
         type === MetadataFilteringVariableType.time && (
           <RiTimeLine className={cn('h-3.5 w-3.5', className)} />
+        )
+      }
+      {
+        type === MetadataFilteringVariableType.array && (
+          <RiListUnordered className={cn('h-3.5 w-3.5', className)} />
         )
       }
     </>

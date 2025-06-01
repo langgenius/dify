@@ -81,13 +81,14 @@ export enum MetadataFilteringVariableType {
   number = 'number',
   time = 'time',
   select = 'select',
+  array = 'array',
 }
 
 export type MetadataFilteringCondition = {
   id: string
   name: string
   comparison_operator: ComparisonOperator
-  value?: string | number
+  value?: string | number | string[]
 }
 
 export type MetadataFilteringConditions = {
@@ -127,7 +128,10 @@ export type MetadataShape = {
   availableStringNodesWithParent?: Node[]
   availableNumberVars?: NodeOutPutVar[]
   availableNumberNodesWithParent?: Node[]
+  availableArrayVars?: NodeOutPutVar[]
+  availableArrayNodesWithParent?: Node[]
   isCommonVariable?: boolean
   availableCommonStringVars?: { name: string; type: string; }[]
   availableCommonNumberVars?: { name: string; type: string; }[]
+  availableCommonArrayVars?: { name: string; type: string; }[]
 }

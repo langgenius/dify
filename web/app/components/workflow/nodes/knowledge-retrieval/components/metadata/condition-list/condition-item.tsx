@@ -16,14 +16,14 @@ import ConditionOperator from './condition-operator'
 import ConditionString from './condition-string'
 import ConditionNumber from './condition-number'
 import ConditionDate from './condition-date'
+import ConditionArray from './condition-array'
 import type {
-  ComparisonOperator,
   HandleRemoveCondition,
   HandleUpdateCondition,
   MetadataFilteringCondition,
   MetadataShape,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { ComparisonOperator, MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import cn from '@/utils/classnames'
 
 type ConditionItemProps = {
@@ -32,7 +32,7 @@ type ConditionItemProps = {
   condition: MetadataFilteringCondition // condition may the condition of case or condition of sub variable
   onRemoveCondition?: HandleRemoveCondition
   onUpdateCondition?: HandleUpdateCondition
-} & Pick<MetadataShape, 'metadataList' | 'availableStringVars' | 'availableStringNodesWithParent' | 'availableNumberVars' | 'availableNumberNodesWithParent' | 'isCommonVariable' | 'availableCommonStringVars' | 'availableCommonNumberVars'>
+} & Pick<MetadataShape, 'metadataList' | 'availableStringVars' | 'availableStringNodesWithParent' | 'availableNumberVars' | 'availableNumberNodesWithParent' | 'availableArrayVars' | 'availableArrayNodesWithParent' | 'isCommonVariable' | 'availableCommonStringVars' | 'availableCommonNumberVars' | 'availableCommonArrayVars'>
 const ConditionItem = ({
   className,
   disabled,
@@ -44,9 +44,12 @@ const ConditionItem = ({
   availableStringNodesWithParent = [],
   availableNumberVars = [],
   availableNumberNodesWithParent = [],
+  availableArrayVars = [],
+  availableArrayNodesWithParent = [],
   isCommonVariable,
   availableCommonStringVars = [],
   availableCommonNumberVars = [],
+  availableCommonArrayVars = [],
 }: ConditionItemProps) => {
   const [isHovered, setIsHovered] = useState(false)
 
@@ -100,6 +103,35 @@ const ConditionItem = ({
       }
     }
 
+    // For array type, handle both string and array values
+    if (currentMetadata?.type === MetadataFilteringVariableType.array) {
+      if (typeof condition.value === 'string') {
+        const regex = isCommonVariable ? COMMON_VARIABLE_REGEX : VARIABLE_REGEX
+        const matchedStartNumber = isCommonVariable ? 2 : 3
+        const matched = condition.value.match(regex)
+
+        if (matched?.length) {
+          return {
+            value: matched[0].slice(matchedStartNumber, -matchedStartNumber),
+            valueMethod: 'variable',
+          }
+        }
+ else {
+          return {
+            value: condition.value,
+            valueMethod: 'constant',
+          }
+        }
+      }
+ else {
+        // Array value
+        return {
+          value: condition.value,
+          valueMethod: 'constant',
+        }
+      }
+    }
+
     return {
       value: condition.value,
       valueMethod: 'constant',
@@ -144,7 +176,8 @@ const ConditionItem = ({
           {
             !comparisonOperatorNotRequireValue(condition.comparison_operator)
             && (currentMetadata?.type === MetadataFilteringVariableType.string
-             || currentMetadata?.type === MetadataFilteringVariableType.select) && (
+             || currentMetadata?.type === MetadataFilteringVariableType.select)
+            && ![ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator) && (
               <ConditionString
                 valueMethod={localValueMethod}
                 onValueMethodChange={handleValueMethodChange}
@@ -158,7 +191,8 @@ const ConditionItem = ({
             )
           }
           {
-            !comparisonOperatorNotRequireValue(condition.comparison_operator) && currentMetadata?.type === MetadataFilteringVariableType.number && (
+            !comparisonOperatorNotRequireValue(condition.comparison_operator) && currentMetadata?.type === MetadataFilteringVariableType.number
+            && ![ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator) && (
               <ConditionNumber
                 valueMethod={localValueMethod}
                 onValueMethodChange={handleValueMethodChange}
@@ -168,6 +202,22 @@ const ConditionItem = ({
                 onChange={handleValueChange}
                 isCommonVariable={isCommonVariable}
                 commonVariables={availableCommonNumberVars}
+              />
+            )
+          }
+          {
+            !comparisonOperatorNotRequireValue(condition.comparison_operator)
+            && ([ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
+                || currentMetadata?.type === MetadataFilteringVariableType.array) && (
+              <ConditionArray
+                valueMethod={localValueMethod}
+                onValueMethodChange={handleValueMethodChange}
+                nodesOutputVars={availableArrayVars}
+                availableNodes={availableArrayNodesWithParent}
+                value={valueAndValueMethod.value}
+                onChange={handleValueChange}
+                isCommonVariable={isCommonVariable}
+                commonVariables={availableCommonArrayVars}
               />
             )
           }

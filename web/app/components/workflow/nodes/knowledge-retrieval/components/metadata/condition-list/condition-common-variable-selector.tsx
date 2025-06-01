@@ -24,6 +24,21 @@ const ConditionCommonVariableSelector = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
+  // 添加调试日志
+  console.log('ConditionCommonVariableSelector - variables:', variables)
+  console.log('ConditionCommonVariableSelector - varType:', varType)
+
+  // 过滤变量，支持数组类型
+  const filteredVariables = variables.filter((v) => {
+    // 如果是数组类型变量，始终显示
+    const isArrayType = v.type === 'array' || v.type.startsWith('array')
+
+    // 如果是指定类型或数组类型，则显示
+    return v.type === varType || isArrayType
+  })
+
+  console.log('ConditionCommonVariableSelector - filteredVariables:', filteredVariables)
+
   const selected = variables.find(v => v.name === value)
   const handleChange = useCallback((v: string) => {
     onChange(v)
@@ -41,7 +56,7 @@ const ConditionCommonVariableSelector = ({
       }}
     >
       <PortalToFollowElemTrigger asChild onClick={() => {
-        if (!variables.length) return
+        if (!filteredVariables.length) return
         setOpen(!open)
       }}>
         <div className="flex h-6 grow cursor-pointer items-center">
@@ -71,16 +86,22 @@ const ConditionCommonVariableSelector = ({
       <PortalToFollowElemContent className='z-[1000]'>
         <div className='w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
           {
-            variables.map(v => (
-              <div
-                key={v.name}
-                className='system-xs-medium flex h-6 cursor-pointer items-center rounded-md px-2 text-text-secondary hover:bg-state-base-hover'
-                onClick={() => handleChange(v.name)}
-              >
-                <Variable02 className='mr-1 h-4 w-4 text-text-accent' />
-                {v.name}
+            filteredVariables.length > 0 ? (
+              filteredVariables.map(v => (
+                <div
+                  key={v.name}
+                  className='system-xs-medium flex h-6 cursor-pointer items-center rounded-md px-2 text-text-secondary hover:bg-state-base-hover'
+                  onClick={() => handleChange(v.name)}
+                >
+                  <Variable02 className='mr-1 h-4 w-4 text-text-accent' />
+                  {v.name}
+                </div>
+              ))
+            ) : (
+              <div className='system-xs-medium flex h-6 items-center px-2 text-text-tertiary'>
+                {t('workflow.nodes.knowledgeRetrieval.metadata.panel.noVariables')}
               </div>
-            ))
+            )
           }
         </div>
       </PortalToFollowElemContent>

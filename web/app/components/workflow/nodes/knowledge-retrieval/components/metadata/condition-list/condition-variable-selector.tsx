@@ -18,7 +18,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 
 type ConditionVariableSelectorProps = {
   valueSelector?: ValueSelector
-  varType?: VarType
+  varType?: VarType | string
   availableNodes?: Node[]
   nodesOutputVars?: NodeOutPutVar[]
   onChange: (valueSelector: ValueSelector, varItem: Var) => void
@@ -34,10 +34,21 @@ const ConditionVariableSelector = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
+  // 添加调试日志
+  console.log('🔍 ConditionVariableSelector Debug:')
+  console.log('  - varType:', varType)
+  console.log('  - nodesOutputVars:', nodesOutputVars)
+  console.log('  - availableNodes:', availableNodes)
+
   const handleChange = useCallback((valueSelector: ValueSelector, varItem: Var) => {
     onChange(valueSelector, varItem)
     setOpen(false)
   }, [onChange])
+
+  const isArrayType = varType === 'array' || varType === VarType.array
+                     || varType === VarType.arrayString || varType === VarType.arrayNumber
+                     || varType === VarType.arrayObject || varType === VarType.arrayFile
+                     || (typeof varType === 'string' && varType.startsWith('array'))
 
   return (
     <PortalToFollowElem
@@ -55,7 +66,7 @@ const ConditionVariableSelector = ({
             !!valueSelector.length && (
               <VariableTag
                 valueSelector={valueSelector}
-                varType={varType}
+                varType={varType as VarType}
                 availableNodes={availableNodes}
                 isShort
               />
@@ -69,7 +80,7 @@ const ConditionVariableSelector = ({
                   {t('workflow.nodes.knowledgeRetrieval.metadata.panel.select')}
                 </div>
                 <div className='system-2xs-medium flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] text-text-tertiary'>
-                  {varType}
+                  {isArrayType ? 'array' : varType}
                 </div>
               </>
             )
@@ -82,6 +93,15 @@ const ConditionVariableSelector = ({
             vars={nodesOutputVars}
             isSupportFileVar
             onChange={handleChange}
+            filterVar={(varPayload) => {
+              // If varType is array-related, filter for all array types
+              if (isArrayType) {
+                return [VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile, VarType.array].includes(varPayload.type)
+                       || varPayload.type.toString().startsWith('array')
+              }
+              // For other types, use exact match
+              return varPayload.type === varType
+            }}
           />
         </div>
       </PortalToFollowElemContent>
