@@ -7,8 +7,9 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { noop } from 'lodash-es'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type IAccountSettingProps = {
   langeniusVersionInfo: LangGeniusVersionResponse
@@ -21,6 +22,7 @@ export default function AccountAbout({
 }: IAccountSettingProps) {
   const { t } = useTranslation()
   const isLatest = langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
   return (
     <Modal
@@ -28,21 +30,28 @@ export default function AccountAbout({
       onClose={noop}
       className='!w-[480px] !max-w-[480px] !px-6 !py-4'
     >
-      <div className='relative pt-4'>
-        <div className='absolute -right-4 -top-2 flex h-8 w-8 cursor-pointer items-center justify-center' onClick={onCancel}>
+      <div>
+        <div className='absolute right-4 top-4 flex h-8 w-8 cursor-pointer items-center justify-center' onClick={onCancel}>
           <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
-        <div>
-          <LogoSite className='mx-auto mb-2' />
-          <div className='mb-3 text-center text-xs font-normal text-text-tertiary'>Version {langeniusVersionInfo?.current_version}</div>
-          <div className='mb-4 text-center text-xs font-normal text-text-secondary'>
+        <div className='flex flex-col items-center gap-4 py-8'>
+          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+            ? <img
+              src={systemFeatures.branding.workspace_logo}
+              className='block h-7 w-auto object-contain'
+              alt='logo'
+            />
+            : <DifyLogo size='large' className='mx-auto' />}
+
+          <div className='text-center text-xs font-normal text-text-tertiary'>Version {langeniusVersionInfo?.current_version}</div>
+          <div className='flex flex-col items-center gap-2 text-center text-xs font-normal text-text-secondary'>
             <div>© {dayjs().year()} LangGenius, Inc., Contributors.</div>
             <div className='text-text-accent'>
               {
                 IS_CE_EDITION
                   ? <Link href={'https://github.com/langgenius/dify/blob/main/LICENSE'} target='_blank' rel='noopener noreferrer'>Open Source License</Link>
                   : <>
-                    <Link href='https://dify.ai/privacy' target='_blank' rel='noopener noreferrer'>Privacy Policy</Link>,<span> </span>
+                    <Link href='https://dify.ai/privacy' target='_blank' rel='noopener noreferrer'>Privacy Policy</Link>,&nbsp;
                     <Link href='https://dify.ai/terms' target='_blank' rel='noopener noreferrer'>Terms of Service</Link>
                   </>
               }
@@ -51,7 +60,7 @@ export default function AccountAbout({
         </div>
         <div className='-mx-8 mb-4 h-[0.5px] bg-divider-regular' />
         <div className='flex items-center justify-between'>
-          <div className='text-xs font-medium text-text-primary'>
+          <div className='text-xs font-medium text-text-tertiary'>
             {
               isLatest
                 ? t('common.about.latestAvailable', { version: langeniusVersionInfo.latest_version })
@@ -59,7 +68,7 @@ export default function AccountAbout({
             }
           </div>
           <div className='flex items-center'>
-            <Button className='mr-2'>
+            <Button className='mr-2' size='small'>
               <Link
                 href={'https://github.com/langgenius/dify/releases'}
                 target='_blank' rel='noopener noreferrer'
@@ -69,7 +78,7 @@ export default function AccountAbout({
             </Button>
             {
               !isLatest && !IS_CE_EDITION && (
-                <Button variant='primary'>
+                <Button variant='primary' size='small'>
                   <Link
                     href={langeniusVersionInfo.release_notes}
                     target='_blank' rel='noopener noreferrer'

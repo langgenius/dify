@@ -1,5 +1,6 @@
 'use client'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { FilterState } from './filter-management'
 import FilterManagement from './filter-management'
 import List from './list'
@@ -7,14 +8,16 @@ import { useInstalledLatestVersion, useInstalledPluginList, useInvalidateInstall
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { usePluginPageContext } from './context'
 import { useDebounceFn } from 'ahooks'
+import Button from '@/app/components/base/button'
 import Empty from './empty'
 import Loading from '../../base/loading'
 import { PluginSource } from '../types'
 
 const PluginsPanel = () => {
+  const { t } = useTranslation()
   const filters = usePluginPageContext(v => v.filters) as FilterState
   const setFilters = usePluginPageContext(v => v.setFilters)
-  const { data: pluginList, isLoading: isPluginListLoading } = useInstalledPluginList()
+  const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginList()
   const { data: installedLatestVersion } = useInstalledLatestVersion(
     pluginList?.plugins
       .filter(plugin => plugin.source === PluginSource.marketplace)
@@ -64,10 +67,16 @@ const PluginsPanel = () => {
         />
       </div>
       {isPluginListLoading ? <Loading type='app' /> : (filteredList?.length ?? 0) > 0 ? (
-        <div className='flex grow flex-wrap content-start items-start gap-2 self-stretch px-12'>
+        <div className='flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch px-12'>
           <div className='w-full'>
             <List pluginList={filteredList || []} />
           </div>
+          {!isLastPage && !isFetching && (
+            <Button onClick={loadNextPage}>
+              {t('workflow.common.loadMore')}
+            </Button>
+          )}
+          {isFetching && <div className='system-md-semibold text-text-secondary'>{t('appLog.detail.loading')}</div>}
         </div>
       ) : (
         <Empty />

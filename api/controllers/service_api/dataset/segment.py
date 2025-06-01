@@ -1,6 +1,6 @@
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import marshal, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api import api
@@ -159,7 +159,7 @@ class DatasetSegmentApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
         SegmentService.delete_segment(segment, document, dataset)
-        return {"result": "success"}, 200
+        return 204
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     def post(self, tenant_id, dataset_id, document_id, segment_id):
@@ -207,6 +207,28 @@ class DatasetSegmentApi(DatasetApiResource):
             SegmentUpdateArgs(**args["segment"]), segment, document, dataset
         )
         return {"data": marshal(updated_segment, segment_fields), "doc_form": document.doc_form}, 200
+
+    def get(self, tenant_id, dataset_id, document_id, segment_id):
+        # check dataset
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        # check segment
+        segment_id = str(segment_id)
+        segment = SegmentService.get_segment_by_id(segment_id=segment_id, tenant_id=current_user.current_tenant_id)
+        if not segment:
+            raise NotFound("Segment not found.")
+
+        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
 
 class ChildChunkApi(DatasetApiResource):
@@ -344,7 +366,7 @@ class DatasetChildChunkApi(DatasetApiResource):
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
 
-        return {"result": "success"}, 200
+        return 204
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")

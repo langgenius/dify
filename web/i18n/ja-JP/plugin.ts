@@ -62,6 +62,7 @@ const translation = {
       paramsTip1: 'LLM推論パラメータを制御します。',
       toolLabel: '道具',
       unsupportedTitle: 'サポートされていないアクション',
+      toolSetting: 'ツール設定',
     },
     endpointDisableTip: 'エンドポイントを無効にする',
     endpointModalDesc: '設定が完了すると、APIエンドポイントを介してプラグインが提供する機能を使用できます。',
@@ -207,6 +208,10 @@ const translation = {
   searchInMarketplace: 'マーケットプレイスで検索',
   submitPlugin: 'プラグインを提出する',
   difyVersionNotCompatible: '現在のDifyバージョンはこのプラグインと互換性がありません。最小バージョンは{{minimalDifyVersion}}です。',
+  metadata: {
+    title: 'プラグイン',
+  },
+  requestAPlugin: 'プラグインをリクエストする',
 }
 
 export default translation

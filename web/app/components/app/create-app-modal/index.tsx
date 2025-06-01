@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
-import { RiArrowRightLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
+import { RiArrowRightLine, RiArrowRightSLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import Image from 'next/image'
@@ -43,11 +43,12 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
   const { notify } = useContext(ToastContext)
   const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
-  const [appMode, setAppMode] = useState<AppMode>('chat')
+  const [appMode, setAppMode] = useState<AppMode>('advanced-chat')
   const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [isAppTypeExpanded, setIsAppTypeExpanded] = useState(false)
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
@@ -116,57 +117,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
           </div>
           <div className='flex w-[660px] flex-col gap-4'>
             <div>
-              <div className='mb-2'>
-                <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forBeginners')}</span>
-              </div>
               <div className='flex flex-row gap-2'>
-                <AppTypeCard
-                  active={appMode === 'chat'}
-                  title={t('app.types.chatbot')}
-                  description={t('app.newApp.chatbotShortDescription')}
-                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid'>
-                    <ChatBot className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
-                  </div>}
-                  onClick={() => {
-                    setAppMode('chat')
-                  }} />
-                <AppTypeCard
-                  active={appMode === 'agent-chat'}
-                  title={t('app.types.agent')}
-                  description={t('app.newApp.agentShortDescription')}
-                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid'>
-                    <Logic className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
-                  </div>}
-                  onClick={() => {
-                    setAppMode('agent-chat')
-                  }} />
-                <AppTypeCard
-                  active={appMode === 'completion'}
-                  title={t('app.newApp.completeApp')}
-                  description={t('app.newApp.completionShortDescription')}
-                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid'>
-                    <ListSparkle className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
-                  </div>}
-                  onClick={() => {
-                    setAppMode('completion')
-                  }} />
-              </div>
-            </div>
-            <div>
-              <div className='mb-2'>
-                <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forAdvanced')}</span>
-              </div>
-              <div className='flex flex-row gap-2'>
-                <AppTypeCard
-                  active={appMode === 'advanced-chat'}
-                  title={t('app.types.advanced')}
-                  description={t('app.newApp.advancedShortDescription')}
-                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid'>
-                    <BubbleTextMod className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
-                  </div>}
-                  onClick={() => {
-                    setAppMode('advanced-chat')
-                  }} />
                 <AppTypeCard
                   active={appMode === 'workflow'}
                   title={t('app.types.workflow')}
@@ -177,7 +128,62 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   onClick={() => {
                     setAppMode('workflow')
                   }} />
+                  <AppTypeCard
+                  active={appMode === 'advanced-chat'}
+                  title={t('app.types.advanced')}
+                  description={t('app.newApp.advancedShortDescription')}
+                  icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-light-solid'>
+                    <BubbleTextMod className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
+                  </div>}
+                  onClick={() => {
+                    setAppMode('advanced-chat')
+                  }} />
               </div>
+            </div>
+            <div>
+              <div className='mb-2 flex items-center'>
+                <button
+                  className='flex cursor-pointer items-center border-0 bg-transparent p-0'
+                  onClick={() => setIsAppTypeExpanded(!isAppTypeExpanded)}
+                >
+                  <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forBeginners')}</span>
+                  <RiArrowRightSLine className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isAppTypeExpanded ? 'rotate-90' : ''}`} />
+                </button>
+              </div>
+              {isAppTypeExpanded && (
+                <div className='flex flex-row gap-2'>
+                  <AppTypeCard
+                    active={appMode === 'chat'}
+                    title={t('app.types.chatbot')}
+                    description={t('app.newApp.chatbotShortDescription')}
+                    icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-blue-solid'>
+                      <ChatBot className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
+                    </div>}
+                    onClick={() => {
+                      setAppMode('chat')
+                    }} />
+                  <AppTypeCard
+                    active={appMode === 'agent-chat'}
+                    title={t('app.types.agent')}
+                    description={t('app.newApp.agentShortDescription')}
+                    icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-violet-solid'>
+                      <Logic className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
+                    </div>}
+                    onClick={() => {
+                      setAppMode('agent-chat')
+                    }} />
+                  <AppTypeCard
+                    active={appMode === 'completion'}
+                    title={t('app.newApp.completeApp')}
+                    description={t('app.newApp.completionShortDescription')}
+                    icon={<div className='flex h-6 w-6 items-center justify-center rounded-md bg-components-icon-bg-teal-solid'>
+                      <ListSparkle className='h-4 w-4 text-components-avatar-shape-fill-stop-100' />
+                    </div>}
+                    onClick={() => {
+                      setAppMode('completion')
+                    }} />
+                </div>
+              )}
             </div>
             <Divider style={{ margin: 0 }} />
             <div className='flex items-center space-x-3'>
@@ -310,17 +316,17 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'chat': {
       title: t('app.types.chatbot'),
       description: t('app.newApp.chatbotUserDescription'),
-      link: 'https://docs.dify.ai/guides/application-orchestrate#application_type',
+      link: 'https://docs.dify.ai/guides/application-orchestrate/readme',
     },
     'advanced-chat': {
       title: t('app.types.advanced'),
       description: t('app.newApp.advancedUserDescription'),
-      link: 'https://docs.dify.ai/guides/workflow',
+      link: 'https://docs.dify.ai/en/guides/workflow/README',
     },
     'agent-chat': {
       title: t('app.types.agent'),
       description: t('app.newApp.agentUserDescription'),
-      link: 'https://docs.dify.ai/guides/application-orchestrate/agent',
+      link: 'https://docs.dify.ai/en/guides/application-orchestrate/agent',
     },
     'completion': {
       title: t('app.newApp.completeApp'),
@@ -330,7 +336,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: 'https://docs.dify.ai/guides/workflow',
+      link: 'https://docs.dify.ai/en/guides/workflow/README',
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]

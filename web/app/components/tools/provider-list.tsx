@@ -15,14 +15,14 @@ import WorkflowToolEmpty from '@/app/components/tools/add-tool-modal/empty'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useAllToolProviders } from '@/service/use-tools'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const ProviderList = () => {
   const { t } = useTranslation()
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
 
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'builtin',
@@ -53,7 +53,10 @@ const ProviderList = () => {
     })
   }, [activeTab, tagFilterValue, keywords, collectionList])
 
-  const [currentProvider, setCurrentProvider] = useState<Collection | undefined>()
+  const [currentProviderId, setCurrentProviderId] = useState<string | undefined>()
+  const currentProvider = useMemo<Collection | undefined>(() => {
+    return filteredCollectionList.find(collection => collection.id === currentProviderId)
+  }, [currentProviderId, filteredCollectionList])
   const { data: pluginList } = useInstalledPluginList()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginDetail = useMemo(() => {
@@ -70,14 +73,14 @@ const ProviderList = () => {
         >
           <div className={cn(
             'sticky top-0 z-20 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]',
-            currentProvider && 'pr-6',
+            currentProviderId && 'pr-6',
           )}>
             <TabSliderNew
               value={activeTab}
               onChange={(state) => {
                 setActiveTab(state)
                 if (state !== activeTab)
-                  setCurrentProvider(undefined)
+                  setCurrentProviderId(undefined)
               }}
               options={options}
             />
@@ -102,12 +105,12 @@ const ProviderList = () => {
               {filteredCollectionList.map(collection => (
                 <div
                   key={collection.id}
-                  onClick={() => setCurrentProvider(collection)}
+                  onClick={() => setCurrentProviderId(collection.id)}
                 >
                   <Card
                     className={cn(
                       'cursor-pointer border-[1.5px] border-transparent',
-                      currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
+                      currentProviderId === collection.id && 'border-components-option-card-option-selected-border',
                     )}
                     hideCornerMark
                     payload={{
@@ -141,19 +144,19 @@ const ProviderList = () => {
               />
             )
           }
-        </div>
-      </div>
+        </div >
+      </div >
       {currentProvider && !currentProvider.plugin_id && (
         <ProviderDetail
           collection={currentProvider}
-          onHide={() => setCurrentProvider(undefined)}
+          onHide={() => setCurrentProviderId(undefined)}
           onRefreshData={refetch}
         />
       )}
       <PluginDetailPanel
         detail={currentPluginDetail}
         onUpdate={() => invalidateInstalledPluginList()}
-        onHide={() => setCurrentProvider(undefined)}
+        onHide={() => setCurrentProviderId(undefined)}
       />
     </>
   )

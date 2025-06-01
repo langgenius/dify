@@ -25,6 +25,7 @@ const translation = {
       learnMore: '瞭解更多',
       description: '關於檢索方法。',
       longDescription: '關於檢索方法，您可以隨時在知識庫設定中更改此設定。',
+      method: '檢索方法',
     },
     save: '儲存',
     permissionsInvitedMembers: '部分團隊成員',

@@ -1,6 +1,6 @@
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
@@ -86,7 +86,7 @@ class TagUpdateDeleteApi(Resource):
 
         TagService.delete_tag(tag_id)
 
-        return 200
+        return 204
 
 
 class TagBindingCreateApi(Resource):

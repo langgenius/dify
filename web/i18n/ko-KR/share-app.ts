@@ -26,6 +26,12 @@ const translation = {
     },
     tryToSolve: '해결하려고 합니다',
     temporarySystemIssue: '죄송합니다. 일시적인 시스템 문제가 발생했습니다.',
+    expand: '확장',
+    collapse: '축소',
+    viewChatSettings: '채팅 설정 보기',
+    newChatTip: '이미 새로운 채팅 중입니다.',
+    chatFormTip: '채팅이 시작된 후에는 채팅 설정을 수정할 수 없습니다.',
+    chatSettingsTitle: '새 채팅 설정',
   },
   generation: {
     tabs: {
@@ -64,6 +70,8 @@ const translation = {
       moreThanMaxLengthLine: '줄 {{rowIndex}}: {{varName}}의 값은 {{maxLength}}자를 초과할 수 없습니다.',
       atLeastOne: '업로드된 파일에는 적어도 한 줄의 입력이 필요합니다.',
     },
+    execution: '실행',
+    executions: '{{num}} 처형',
   },
 }
 

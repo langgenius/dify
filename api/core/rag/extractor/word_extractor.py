@@ -19,7 +19,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
@@ -76,8 +76,7 @@ class WordExtractor(BaseExtractor):
         parsed = urlparse(url)
         return bool(parsed.netloc) and bool(parsed.scheme)
 
-    def _extract_images_from_docx(self, doc, image_folder):
-        os.makedirs(image_folder, exist_ok=True)
+    def _extract_images_from_docx(self, doc):
         image_count = 0
         image_map = {}
 
@@ -117,7 +116,7 @@ class WordExtractor(BaseExtractor):
                     extension=str(image_ext),
                     mime_type=mime_type or "",
                     created_by=self.user_id,
-                    created_by_role=CreatedByRole.ACCOUNT,
+                    created_by_role=CreatorUserRole.ACCOUNT,
                     created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     used=True,
                     used_by=self.user_id,
@@ -210,7 +209,7 @@ class WordExtractor(BaseExtractor):
 
         content = []
 
-        image_map = self._extract_images_from_docx(doc, image_folder)
+        image_map = self._extract_images_from_docx(doc)
 
         hyperlinks_url = None
         url_pattern = re.compile(r"http://[^\s+]+//|https://[^\s+]+")
@@ -225,7 +224,7 @@ class WordExtractor(BaseExtractor):
                         xml = ElementTree.XML(run.element.xml)
                         x_child = [c for c in xml.iter() if c is not None]
                         for x in x_child:
-                            if x_child is None:
+                            if x is None:
                                 continue
                             if x.tag.endswith("instrText"):
                                 if x.text is None:

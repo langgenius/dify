@@ -69,6 +69,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
       <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.api`)}
+          required
           operations={
             <div className='flex'>
               <div
@@ -126,6 +127,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         </Field>
         <Field
           title={t(`${i18nPrefix}.body`)}
+          required
         >
           <EditBody
             nodeId={id}

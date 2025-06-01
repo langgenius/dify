@@ -102,6 +102,9 @@ class Storage:
     def delete(self, filename):
         return self.storage_runner.delete(filename)
 
+    def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
+        return self.storage_runner.scan(path, files=files, directories=directories)
+
 
 storage = Storage()
 

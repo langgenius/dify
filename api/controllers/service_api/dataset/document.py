@@ -1,11 +1,11 @@
 import json
 
 from flask import request
-from flask_restful import marshal, reqparse  # type: ignore
-from sqlalchemy import desc
+from flask_restful import marshal, reqparse
+from sqlalchemy import desc, select
 from werkzeug.exceptions import NotFound
 
-import services.dataset_service
+import services
 from controllers.common.errors import FilenameNotExistsError
 from controllers.service_api import api
 from controllers.service_api.app.error import (
@@ -323,7 +323,7 @@ class DocumentDeleteApi(DatasetApiResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 
-        return {"result": "success"}, 200
+        return 204
 
 
 class DocumentListApi(DatasetApiResource):
@@ -337,7 +337,7 @@ class DocumentListApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        query = Document.query.filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
+        query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
 
         if search:
             search = f"%{search}%"
@@ -345,7 +345,7 @@ class DocumentListApi(DatasetApiResource):
 
         query = query.order_by(desc(Document.created_at), desc(Document.position))
 
-        paginated_documents = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
+        paginated_documents = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
 
         response = {
@@ -374,19 +374,36 @@ class DocumentIndexingStatusApi(DatasetApiResource):
             raise NotFound("Documents not found.")
         documents_status = []
         for document in documents:
-            completed_segments = DocumentSegment.query.filter(
-                DocumentSegment.completed_at.isnot(None),
-                DocumentSegment.document_id == str(document.id),
-                DocumentSegment.status != "re_segment",
-            ).count()
-            total_segments = DocumentSegment.query.filter(
-                DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment"
-            ).count()
-            document.completed_segments = completed_segments
-            document.total_segments = total_segments
-            if document.is_paused:
-                document.indexing_status = "paused"
-            documents_status.append(marshal(document, document_status_fields))
+            completed_segments = (
+                db.session.query(DocumentSegment)
+                .filter(
+                    DocumentSegment.completed_at.isnot(None),
+                    DocumentSegment.document_id == str(document.id),
+                    DocumentSegment.status != "re_segment",
+                )
+                .count()
+            )
+            total_segments = (
+                db.session.query(DocumentSegment)
+                .filter(DocumentSegment.document_id == str(document.id), DocumentSegment.status != "re_segment")
+                .count()
+            )
+            # Create a dictionary with document attributes and additional fields
+            document_dict = {
+                "id": document.id,
+                "indexing_status": "paused" if document.is_paused else document.indexing_status,
+                "processing_started_at": document.processing_started_at,
+                "parsing_completed_at": document.parsing_completed_at,
+                "cleaning_completed_at": document.cleaning_completed_at,
+                "splitting_completed_at": document.splitting_completed_at,
+                "completed_at": document.completed_at,
+                "paused_at": document.paused_at,
+                "error": document.error,
+                "stopped_at": document.stopped_at,
+                "completed_segments": completed_segments,
+                "total_segments": total_segments,
+            }
+            documents_status.append(marshal(document_dict, document_status_fields))
         data = {"data": documents_status}
         return data
 

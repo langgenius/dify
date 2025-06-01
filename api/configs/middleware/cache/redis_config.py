@@ -83,3 +83,13 @@ class RedisConfig(BaseSettings):
         description="Password for Redis Clusters authentication (if required)",
         default=None,
     )
+
+    REDIS_SERIALIZATION_PROTOCOL: int = Field(
+        description="Redis serialization protocol (RESP) version",
+        default=3,
+    )
+
+    REDIS_ENABLE_CLIENT_SIDE_CACHE: bool = Field(
+        description="Enable client side cache in redis",
+        default=False,
+    )

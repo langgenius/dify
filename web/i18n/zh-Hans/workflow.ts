@@ -307,6 +307,7 @@ const translation = {
     organizeBlocks: '整理节点',
     change: '更改',
     optional: '（选填）',
+    moveToThisNode: '定位至此节点',
   },
   nodes: {
     common: {
@@ -638,6 +639,8 @@ const translation = {
         'clear': '清空',
         'extend': '扩展',
         'append': '追加',
+        'remove-first': '移除首项',
+        'remove-last': '移除末项',
         '+=': '+=',
         '-=': '-=',
         '*=': '*=',
@@ -649,7 +652,7 @@ const translation = {
       'assignedVarsDescription': '赋值变量必须是可写入的变量，例如会话变量。',
     },
     tool: {
-      toAuthorize: '授权',
+      authorize: '授权',
       inputVars: '输入变量',
       outputVars: {
         text: '工具生成的内容',
@@ -737,6 +740,9 @@ const translation = {
       loop_one: '{{count}} 个循环',
       loop_other: '{{count}} 个循环',
       currentLoop: '当前循环',
+      comma: '，',
+      error_one: '{{count}}个失败',
+      error_other: '{{count}}个失败',
       breakCondition: '循环终止条件',
       breakConditionTip: '支持引用终止条件循环内的变量和会话变量。',
       loopMaxCount: '最大循环次数',

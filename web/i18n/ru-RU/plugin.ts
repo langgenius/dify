@@ -62,6 +62,7 @@ const translation = {
       params: 'КОНФИГУРАЦИЯ РАССУЖДЕНИЙ',
       unsupportedContent2: 'Нажмите, чтобы переключить версию.',
       uninstalledLink: 'Управление в плагинах',
+      toolSetting: 'Настройки инструмента',
     },
     configureTool: 'Инструмент настройки',
     endpointsTip: 'Этот плагин предоставляет определенные функциональные возможности через конечные точки, и вы можете настроить несколько наборов конечных точек для текущей рабочей области.',
@@ -180,6 +181,8 @@ const translation = {
     viewMore: 'Подробнее',
     and: 'и',
     discover: 'Обнаруживать',
+    verifiedTip: 'Подтверждено Dify',
+    partnerTip: 'Подтверждено партнером Dify',
   },
   task: {
     installing: 'Установка плагинов {{installingLength}}, 0 готово.',
@@ -204,6 +207,11 @@ const translation = {
   installPlugin: 'Установка плагина',
   searchPlugins: 'Плагины поиска',
   fromMarketplace: 'Из маркетплейса',
+  metadata: {
+    title: 'Плагины',
+  },
+  difyVersionNotCompatible: 'Текущая версия Dify не совместима с этим плагином, пожалуйста, обновите до минимально необходимой версии: {{minimalDifyVersion}}',
+  requestAPlugin: 'Запросите плагин',
 }
 
 export default translation

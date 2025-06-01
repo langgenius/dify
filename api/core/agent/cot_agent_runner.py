@@ -63,7 +63,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
 
         iteration_step = 1
-        max_iteration_steps = min(app_config.agent.max_iteration if app_config.agent else 5, 5) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration, 99) + 1
 
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
@@ -80,6 +80,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 llm_usage = final_llm_usage_dict["usage"]
                 llm_usage.prompt_tokens += usage.prompt_tokens
                 llm_usage.completion_tokens += usage.completion_tokens
+                llm_usage.total_tokens += usage.total_tokens
                 llm_usage.prompt_price += usage.prompt_price
                 llm_usage.completion_price += usage.completion_price
                 llm_usage.total_price += usage.total_price

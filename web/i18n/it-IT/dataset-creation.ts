@@ -27,7 +27,7 @@ const translation = {
     },
     uploader: {
       title: 'Carica file',
-      button: 'Trascina e rilascia il file, o',
+      button: 'Trascina e rilascia file o cartelle, oppure',
       browse: 'Sfoglia',
       tip: 'Supporta {{supportTypes}}. Max {{size}}MB ciascuno.',
       validation: {
@@ -94,6 +94,14 @@ const translation = {
       jinaReaderNotConfiguredDescription: 'Configura Jina Reader inserendo la tua chiave API gratuita per l\'accesso.',
       useSitemap: 'Usa la mappa del sito',
       chooseProvider: 'Seleziona un fornitore',
+      watercrawlDoc: 'Documentazione di Watercrawl',
+      waterCrawlNotConfiguredDescription: 'Configura Watercrawl con la chiave API per utilizzarlo.',
+      configureFirecrawl: 'Configura Firecrawl',
+      watercrawlTitle: 'Estrai contenuti web con Watercrawl',
+      configureJinaReader: 'Configura Jina Reader',
+      configureWatercrawl: 'Configura Watercrawl',
+      waterCrawlNotConfigured: 'Watercrawl non è configurato',
+      watercrawlDocLink: 'https://docs.dify.ai/it/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
     },
     cancel: 'Annulla',
   },
@@ -222,6 +230,11 @@ const translation = {
     learnMore: 'Ulteriori informazioni',
     title: 'Connettersi ad altre origini dati?',
     description: 'Attualmente, la knowledge base di Dify ha solo fonti di dati limitate. Contribuire con una fonte di dati alla knowledge base di Dify è un modo fantastico per migliorare la flessibilità e la potenza della piattaforma per tutti gli utenti. La nostra guida ai contributi ti aiuta a iniziare. Clicca sul link sottostante per saperne di più.',
+  },
+  watercrawl: {
+    getApiKeyLinkText: 'Ottieni la tua chiave API da watercrawl.dev',
+    apiKeyPlaceholder: 'Chiave API da watercrawl.dev',
+    configWatercrawl: 'Configura Watercrawl',
   },
 }
 

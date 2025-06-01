@@ -54,6 +54,10 @@ const translation = {
     copied: 'Kopya -lanan',
     in: 'içinde',
     viewDetails: 'Detayları Görüntüle',
+    downloadSuccess: 'İndirme Tamamlandı.',
+    format: 'Format',
+    more: 'Daha fazla',
+    downloadFailed: 'İndirme başarısız oldu. Lütfen daha sonra tekrar deneyin.',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -145,6 +149,8 @@ const translation = {
     newDataset: 'Bilgi Oluştur',
     tools: 'Araçlar',
     exploreMarketplace: 'Marketplace\'i Keşfedin',
+    appDetail: 'Uygulama Detayı',
+    account: 'Hesap',
   },
   userProfile: {
     settings: 'Ayarlar',
@@ -157,6 +163,9 @@ const translation = {
     community: 'Topluluk',
     about: 'Hakkında',
     logout: 'Çıkış Yap',
+    support: 'Destek',
+    compliance: 'Uygunluk',
+    github: 'GitHub',
   },
   settings: {
     accountGroup: 'HESAP',
@@ -206,6 +215,9 @@ const translation = {
     permanentlyDeleteButton: 'Hesabı Kalıcı Olarak Sil',
     deletePrivacyLinkTip: 'Verilerinizi nasıl işlediğimiz hakkında daha fazla bilgi için lütfen',
     sendVerificationButton: 'Doğrulama Kodu Gönder',
+    workspaceName: 'Çalışma Alanı Adı',
+    workspaceIcon: 'Çalışma Alanı İkonu',
+    editWorkspaceInfo: 'Çalışma Alanı Bilgilerini Düzenle',
   },
   members: {
     team: 'Takım',
@@ -459,7 +471,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API uzantıları merkezi API yönetimi sağlar, Dify\'nin uygulamaları arasında kolay kullanım için yapılandırmayı basitleştirir.',
     link: 'Kendi API Uzantınızı nasıl geliştireceğinizi öğrenin.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API Uzantısı Ekle',
     selector: {
       title: 'API Uzantısı',
@@ -544,9 +556,10 @@ const translation = {
       vectorHash: 'Vektör Hash:',
       hitScore: 'Geri Alım Skoru:',
     },
-    inputPlaceholder: 'Bot ile konuş',
+    inputPlaceholder: '{{botName}} ile konuş',
     thought: 'Düşünce',
     thinking: 'Düşünü...',
+    resend: 'Yeniden gönder',
   },
   promptEditor: {
     placeholder: 'Prompt kelimenizi buraya yazın, değişken eklemek için \'{\' tuşuna, prompt içerik bloğu eklemek için \'/\' tuşuna basın',
@@ -633,10 +646,31 @@ const translation = {
   license: {
     expiring_plural: '{{count}} gün içinde sona eriyor',
     expiring: 'Bir günde sona eriyor',
+    unlimited: 'Sınırsız',
   },
   pagination: {
     perPage: 'Sayfa başına öğe sayısı',
   },
+  theme: {
+    light: 'ışık',
+    dark: 'koyu',
+    auto: 'sistem',
+    theme: 'Tema',
+  },
+  compliance: {
+    soc2Type1: 'SOC 2 Tip I Raporu',
+    sandboxUpgradeTooltip: 'Yalnızca Profesyonel veya Takım planı ile kullanılabilir.',
+    iso27001: 'ISO 27001:2022 Sertifikası',
+    professionalUpgradeTooltip: 'Yalnızca Takım planı veya üstü ile mevcuttur.',
+    gdpr: 'GDPR DPA',
+    soc2Type2: 'SOC 2 Tip II Raporu',
+  },
+  imageInput: {
+    supportedFormats: 'PNG, JPG, JPEG, WEBP ve GIF\'i destekler',
+    dropImageHere: 'Görüntünüzü buraya bırakın veya',
+    browse: 'tarayıcı',
+  },
+  you: 'Sen',
 }
 
 export default translation

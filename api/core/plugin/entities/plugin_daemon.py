@@ -1,6 +1,7 @@
+from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Generic, Optional, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,7 +9,7 @@ from core.agent.plugin_entities import AgentProviderEntityWithPlugin
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
-from core.plugin.entities.plugin import PluginDeclaration
+from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 
@@ -158,3 +159,16 @@ class PluginInstallTaskStartResponse(BaseModel):
 class PluginUploadResponse(BaseModel):
     unique_identifier: str = Field(description="The unique identifier of the plugin.")
     manifest: PluginDeclaration
+
+
+class PluginOAuthAuthorizationUrlResponse(BaseModel):
+    authorization_url: str = Field(description="The URL of the authorization.")
+
+
+class PluginOAuthCredentialsResponse(BaseModel):
+    credentials: Mapping[str, Any] = Field(description="The credentials of the OAuth.")
+
+
+class PluginListResponse(BaseModel):
+    list: list[PluginEntity]
+    total: int

@@ -75,7 +75,7 @@ const translation = {
     exportJPEG: 'JPEGで出力',
     exportSVG: 'SVGで出力',
     model: 'モデル',
-    workflowAsTool: 'ワークフローをツールどして公開する',
+    workflowAsTool: 'ワークフローをツールとして公開する',
     configureRequired: '設定が必要',
     configure: '設定',
     manageInTools: 'ツールページで管理',
@@ -147,7 +147,7 @@ const translation = {
       namePlaceholder: '変数名を入力',
       type: 'タイプ',
       value: 'デフォルト値',
-      valuePlaceholder: 'デフォルト値、設定しない場合は空白にしでください',
+      valuePlaceholder: 'デフォルト値、設定しない場合は空白にしてください',
       description: '説明',
       descriptionPlaceholder: '変数の説明を入力',
       editInJSON: 'JSONで編集',
@@ -307,6 +307,7 @@ const translation = {
     organizeBlocks: 'ノード整理',
     change: '変更',
     optional: '（任意）',
+    moveToThisNode: 'このノードに移動する',
   },
   nodes: {
     common: {
@@ -581,6 +582,8 @@ const translation = {
         'all of': 'すべての',
         'exists': '存在します',
         'not exists': '存在しません',
+        'before': '前に',
+        'after': '後',
       },
       enterValue: '値を入力',
       addCondition: '条件を追加',
@@ -639,6 +642,8 @@ const translation = {
         'over-write': '上書き',
         'extend': '延ばす',
         '*=': '*=',
+        'remove-last': '最後を削除する',
+        'remove-first': '最初を削除する',
       },
       'setParameter': 'パラメータを設定...',
       'selectAssignedVariable': '代入変数を選択...',
@@ -649,7 +654,6 @@ const translation = {
       'assignedVarsDescription': '代入される変数は、会話変数などの書き込み可能な変数である必要があります。',
     },
     tool: {
-      toAuthorize: '承認するには',
       inputVars: '入力変数',
       outputVars: {
         text: 'ツールが生成したコンテンツ',
@@ -662,6 +666,7 @@ const translation = {
         },
         json: 'ツールで生成されたJSON',
       },
+      authorize: '認証する',
     },
     questionClassifiers: {
       model: 'モデル',
@@ -757,6 +762,9 @@ const translation = {
       loopNode: 'ループノード',
       currentLoopCount: '現在のループ回数: {{count}}',
       totalLoopCount: '総ループ回数: {{count}}',
+      error_other: '{{count}} エラー',
+      error_one: '{{count}} エラー',
+      comma: ',',
     },
     note: {
       addNote: 'コメントを追加',

@@ -27,6 +27,12 @@ const translation = {
     },
     tryToSolve: 'Spróbuj rozwiązać',
     temporarySystemIssue: 'Przepraszamy, tymczasowy problem systemowy.',
+    expand: 'Rozwiń',
+    collapse: 'Zwiń',
+    chatSettingsTitle: 'Nowa konfiguracja czatu',
+    viewChatSettings: 'Zobacz ustawienia czatu',
+    chatFormTip: 'Ustawienia czatu nie mogą być modyfikowane po rozpoczęciu czatu.',
+    newChatTip: 'Już w nowej czacie',
   },
   generation: {
     tabs: {
@@ -69,6 +75,8 @@ const translation = {
       atLeastOne:
         'Proszę wprowadź co najmniej jeden wiersz w załadowanym pliku.',
     },
+    executions: '{{num}} EGZEKUCJI',
+    execution: 'WYKONANIE',
   },
 }
 

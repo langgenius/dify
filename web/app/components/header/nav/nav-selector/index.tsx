@@ -6,7 +6,7 @@ import {
   RiArrowDownSLine,
   RiArrowRightSLine,
 } from '@remixicon/react'
-import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
 import cn from '@/utils/classnames'
@@ -70,15 +70,15 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
             <MenuItems
               className="
                 absolute -left-11 right-0 mt-1.5 w-60 max-w-80
-                origin-top-right divide-y divide-gray-100 rounded-lg bg-white
+                origin-top-right divide-y divide-divider-regular rounded-lg bg-components-panel-bg-blur
                 shadow-lg
               "
             >
               <div className="overflow-auto px-1 py-1" style={{ maxHeight: '50vh' }} onScroll={handleScroll}>
                 {
                   navs.map(nav => (
-                    <MenuItems key={nav.id}>
-                      <div className='flex w-full cursor-pointer items-center truncate rounded-lg px-3 py-[6px] text-[14px] font-normal text-gray-700 hover:bg-gray-100' onClick={() => {
+                    <MenuItem key={nav.id}>
+                      <div className='flex w-full cursor-pointer items-center truncate rounded-lg px-3 py-[6px] text-[14px] font-normal text-text-secondary hover:bg-state-base-hover' onClick={() => {
                         if (curNav?.id === nav.id)
                           return
                         setAppDetail()
@@ -112,21 +112,21 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                           {nav.name}
                         </div>
                       </div>
-                    </MenuItems>
+                    </MenuItem>
                   ))
                 }
               </div>
               {!isApp && isCurrentWorkspaceEditor && (
-                <MenuButton className='w-full p-1'>
+                <MenuItem as="div" className='w-full p-1'>
                   <div onClick={() => onCreate('')} className={cn(
-                    'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-gray-100',
+                    'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover ',
                   )}>
-                    <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border border-[0.5px] border-gray-200 bg-gray-50'>
-                      <RiAddLine className='h-4 w-4 text-gray-500' />
+                    <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border-[0.5px] border-divider-regular bg-background-default'>
+                      <RiAddLine className='h-4 w-4 text-text-primary' />
                     </div>
-                    <div className='grow text-left text-[14px] font-normal text-gray-700'>{createText}</div>
+                    <div className='grow text-left text-[14px] font-normal text-text-secondary'>{createText}</div>
                   </div>
-                </MenuButton>
+                </MenuItem>
               )}
               {isApp && isCurrentWorkspaceEditor && (
                 <Menu as="div" className="relative h-full w-full">
@@ -134,14 +134,14 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                     <>
                       <MenuButton className='w-full p-1'>
                         <div className={cn(
-                          'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-gray-100',
-                          open && '!bg-gray-100',
+                          'flex cursor-pointer items-center gap-2 rounded-lg px-3 py-[6px] hover:bg-state-base-hover',
+                          open && '!bg-state-base-hover',
                         )}>
-                          <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border border-[0.5px] border-gray-200 bg-gray-50'>
-                            <RiAddLine className='h-4 w-4 text-gray-500' />
+                          <div className='flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border-[0.5px] border-divider-regular bg-background-default'>
+                            <RiAddLine className='h-4 w-4 text-text-primary' />
                           </div>
-                          <div className='grow text-left text-[14px] font-normal text-gray-700'>{createText}</div>
-                          <RiArrowRightSLine className='h-3.5 w-3.5 shrink-0  text-gray-500' />
+                          <div className='grow text-left text-[14px] font-normal text-text-secondary'>{createText}</div>
+                          <RiArrowRightSLine className='h-3.5 w-3.5 shrink-0 text-text-primary' />
                         </div>
                       </MenuButton>
                       <Transition
@@ -154,21 +154,21 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                         leaveTo="transform opacity-0 scale-95"
                       >
                         <MenuItems className={cn(
-                          'absolute right-[-198px] top-[3px] z-10 min-w-[200px] rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg',
+                          'absolute right-[-198px] top-[3px] z-10 min-w-[200px] rounded-lg bg-components-panel-bg-blur shadow-lg',
                         )}>
                           <div className='p-1'>
-                            <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-gray-700 hover:bg-gray-100')} onClick={() => onCreate('blank')}>
-                              <FilePlus01 className='mr-2 h-4 w-4 shrink-0 text-gray-600' />
+                            <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('blank')}>
+                              <FilePlus01 className='mr-2 h-4 w-4 shrink-0 text-text-secondary' />
                               {t('app.newApp.startFromBlank')}
                             </div>
-                            <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-gray-700 hover:bg-gray-100')} onClick={() => onCreate('template')}>
-                              <FilePlus02 className='mr-2 h-4 w-4 shrink-0 text-gray-600' />
+                            <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('template')}>
+                              <FilePlus02 className='mr-2 h-4 w-4 shrink-0 text-text-secondary' />
                               {t('app.newApp.startFromTemplate')}
                             </div>
                           </div>
-                          <div className='border-t border-gray-100 p-1'>
-                            <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-gray-700 hover:bg-gray-100')} onClick={() => onCreate('dsl')}>
-                              <FileArrow01 className='mr-2 h-4 w-4 shrink-0 text-gray-600' />
+                          <div className='border-t border-divider-regular p-1'>
+                            <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('dsl')}>
+                              <FileArrow01 className='mr-2 h-4 w-4 shrink-0 text-text-secondary' />
                               {t('app.importDSL')}
                             </div>
                           </div>

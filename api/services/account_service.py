@@ -49,7 +49,7 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
     TenantNotFoundError,
 )
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
@@ -108,17 +108,20 @@ class AccountService:
         if account.status == AccountStatus.BANNED.value:
             raise Unauthorized("Account is banned.")
 
-        current_tenant = TenantAccountJoin.query.filter_by(account_id=account.id, current=True).first()
+        current_tenant = db.session.query(TenantAccountJoin).filter_by(account_id=account.id, current=True).first()
         if current_tenant:
-            account.current_tenant_id = current_tenant.tenant_id
+            account.set_tenant_id(current_tenant.tenant_id)
         else:
             available_ta = (
-                TenantAccountJoin.query.filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).first()
+                db.session.query(TenantAccountJoin)
+                .filter_by(account_id=account.id)
+                .order_by(TenantAccountJoin.id.asc())
+                .first()
             )
             if not available_ta:
                 return None
 
-            account.current_tenant_id = available_ta.tenant_id
+            account.set_tenant_id(available_ta.tenant_id)
             available_ta.current = True
             db.session.commit()
 
@@ -297,9 +300,9 @@ class AccountService:
         """Link account integrate"""
         try:
             # Query whether there is an existing binding record for the same provider
-            account_integrate: Optional[AccountIntegrate] = AccountIntegrate.query.filter_by(
-                account_id=account.id, provider=provider
-            ).first()
+            account_integrate: Optional[AccountIntegrate] = (
+                db.session.query(AccountIntegrate).filter_by(account_id=account.id, provider=provider).first()
+            )
 
             if account_integrate:
                 # If it exists, update the record
@@ -612,7 +615,10 @@ class TenantService:
     ):
         """Check if user have a workspace or not"""
         available_ta = (
-            TenantAccountJoin.query.filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).first()
+            db.session.query(TenantAccountJoin)
+            .filter_by(account_id=account.id)
+            .order_by(TenantAccountJoin.id.asc())
+            .first()
         )
 
         if available_ta:
@@ -621,6 +627,10 @@ class TenantService:
         """Create owner tenant if not exist"""
         if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
             raise WorkSpaceNotAllowedCreateError()
+
+        workspaces = FeatureService.get_system_features().license.workspaces
+        if not workspaces.is_available():
+            raise WorkspacesLimitExceededError()
 
         if name:
             tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
@@ -666,7 +676,7 @@ class TenantService:
         if not tenant:
             raise TenantNotFoundError("Tenant not found.")
 
-        ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
             tenant.role = ta.role
         else:
@@ -695,12 +705,12 @@ class TenantService:
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else:
-            TenantAccountJoin.query.filter(
+            db.session.query(TenantAccountJoin).filter(
                 TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id
             ).update({"current": False})
             tenant_account_join.current = True
             # Set the current tenant for the account
-            account.current_tenant_id = tenant_account_join.tenant_id
+            account.set_tenant_id(tenant_account_join.tenant_id)
             db.session.commit()
 
     @staticmethod
@@ -787,7 +797,7 @@ class TenantService:
             if operator.id == member.id:
                 raise CannotOperateSelfError("Cannot operate self.")
 
-        ta_operator = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=operator.id).first()
+        ta_operator = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=operator.id).first()
 
         if not ta_operator or ta_operator.role not in perms[action]:
             raise NoPermissionError(f"No permission to {action} member.")
@@ -800,7 +810,7 @@ class TenantService:
 
         TenantService.check_member_permission(tenant, operator, account, "remove")
 
-        ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
+        ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if not ta:
             raise MemberNotInTenantError("Member not in tenant.")
 
@@ -812,15 +822,23 @@ class TenantService:
         """Update member role"""
         TenantService.check_member_permission(tenant, operator, member, "update")
 
-        target_member_join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=member.id).first()
+        target_member_join = (
+            db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=member.id).first()
+        )
+
+        if not target_member_join:
+            raise MemberNotInTenantError("Member not in tenant.")
 
         if target_member_join.role == new_role:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
 
         if new_role == "owner":
             # Find the current owner and change their role to 'admin'
-            current_owner_join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, role="owner").first()
-            current_owner_join.role = "admin"
+            current_owner_join = (
+                db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, role="owner").first()
+            )
+            if current_owner_join:
+                current_owner_join.role = "admin"
 
         # Update the role of the target member
         target_member_join.role = new_role
@@ -837,7 +855,7 @@ class TenantService:
 
     @staticmethod
     def get_custom_config(tenant_id: str) -> dict:
-        tenant = Tenant.query.filter(Tenant.id == tenant_id).one_or_404()
+        tenant = db.get_or_404(Tenant, tenant_id)
 
         return cast(dict, tenant.custom_config_dict)
 
@@ -914,7 +932,11 @@ class RegisterService:
             if open_id is not None and provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if FeatureService.get_system_features().is_allow_create_workspace and create_workspace_required:
+            if (
+                FeatureService.get_system_features().is_allow_create_workspace
+                and create_workspace_required
+                and FeatureService.get_system_features().license.workspaces.is_available()
+            ):
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant
@@ -959,7 +981,7 @@ class RegisterService:
             TenantService.switch_tenant(account, tenant.id)
         else:
             TenantService.check_member_permission(tenant, inviter, account, "add")
-            ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
+            ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
 
             if not ta:
                 TenantService.create_tenant_member(tenant, account, role)

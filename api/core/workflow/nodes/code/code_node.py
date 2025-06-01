@@ -8,10 +8,10 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.variables.segments import ArrayFileSegment
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from core.workflow.nodes.enums import NodeType
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .exc import (
     CodeNodeError,
@@ -127,7 +127,7 @@ class CodeNode(BaseNode[CodeNodeData]):
         depth: int = 1,
     ):
         if depth > dify_config.CODE_MAX_DEPTH:
-            raise DepthLimitError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep.")
+            raise DepthLimitError(f"Depth limit {dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 
         transformed_result: dict[str, Any] = {}
         if output_schema is None:
@@ -167,8 +167,11 @@ class CodeNode(BaseNode[CodeNodeData]):
                                     value=value,
                                     variable=f"{prefix}.{output_name}[{i}]" if prefix else f"{output_name}[{i}]",
                                 )
-                        elif isinstance(first_element, dict) and all(
-                            value is None or isinstance(value, dict) for value in output_value
+                        elif (
+                            isinstance(first_element, dict)
+                            and all(value is None or isinstance(value, dict) for value in output_value)
+                            or isinstance(first_element, list)
+                            and all(value is None or isinstance(value, list) for value in output_value)
                         ):
                             for i, value in enumerate(output_value):
                                 if value is not None:

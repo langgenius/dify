@@ -36,6 +36,7 @@ export type PluginEndpointDeclaration = {
 export type EndpointItem = {
   path: string
   method: string
+  hidden?: boolean
 }
 
 export type EndpointListItem = {
@@ -322,6 +323,11 @@ export type MetaData = {
 
 export type InstalledPluginListResponse = {
   plugins: PluginDetail[]
+}
+
+export type InstalledPluginListWithTotalResponse = {
+  plugins: PluginDetail[]
+  total: number
 }
 
 export type InstalledLatestVersionResponse = {

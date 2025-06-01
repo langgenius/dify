@@ -25,6 +25,7 @@ import { LanguagesSupported } from '@/i18n/language'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import { RiPencilLine } from '@remixicon/react'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 dayjs.extend(relativeTime)
 
 const MembersPage = () => {
@@ -38,7 +39,7 @@ const MembersPage = () => {
   }
   const { locale } = useContext(I18n)
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager, systemFeatures } = useAppContext()
+  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
   const { data, mutate } = useSWR(
     {
       url: '/workspaces/current/members',
@@ -46,6 +47,7 @@ const MembersPage = () => {
     },
     fetchMembers,
   )
+  const { systemFeatures } = useGlobalPublicStore()
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)

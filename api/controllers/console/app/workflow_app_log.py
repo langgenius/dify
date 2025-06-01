@@ -1,17 +1,17 @@
 from dateutil.parser import isoparse
-from flask_restful import Resource, marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from sqlalchemy.orm import Session
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs.login import login_required
 from models import App
 from models.model import AppMode
-from models.workflow import WorkflowRunStatus
 from services.workflow_app_service import WorkflowAppService
 
 
@@ -38,7 +38,7 @@ class WorkflowAppLogApi(Resource):
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        args.status = WorkflowRunStatus(args.status) if args.status else None
+        args.status = WorkflowExecutionStatus(args.status) if args.status else None
         if args.created_at__before:
             args.created_at__before = isoparse(args.created_at__before)
 

@@ -1,8 +1,8 @@
 import io
 
 from flask import request, send_file
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
@@ -10,7 +10,7 @@ from controllers.console import api
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.manager.exc import PluginDaemonClientSideError
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import login_required
 from models.account import TenantPluginPermission
 from services.plugin.plugin_permission_service import PluginPermissionService
@@ -41,12 +41,16 @@ class PluginListApi(Resource):
     @account_initialization_required
     def get(self):
         tenant_id = current_user.current_tenant_id
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, required=False, location="args", default=1)
+        parser.add_argument("page_size", type=int, required=False, location="args", default=256)
+        args = parser.parse_args()
         try:
-            plugins = PluginService.list(tenant_id)
+            plugins_with_total = PluginService.list_with_total(tenant_id, args["page"], args["page_size"])
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
-        return jsonable_encoder({"plugins": plugins})
+        return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
 class PluginListLatestVersionsApi(Resource):
