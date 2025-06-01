@@ -134,6 +134,9 @@ export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   custom_config?: {
     remove_webapp_brand?: boolean
     replace_webapp_logo?: string
+  },
+  beta_config?: {
+    workflow_var_check?: boolean
   }
 }
 
