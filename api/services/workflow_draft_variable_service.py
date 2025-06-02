@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 import logging
 from collections.abc import Mapping, Sequence
 from typing import Any, ClassVar
@@ -193,6 +194,7 @@ class WorkflowDraftVariableService:
             variable.set_name(name)
         if value is not None:
             variable.set_value(value)
+        variable.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         self._session.flush()
         return variable
 
