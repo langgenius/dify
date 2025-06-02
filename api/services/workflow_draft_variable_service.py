@@ -33,17 +33,37 @@ class DraftVarLoader(VariableLoader):
     # This implements the VariableLoader interface for loading draft variables.
     #
     # ref: core.workflow.variable_loader.VariableLoader
-    def __init__(self, engine: Engine, app_id: str) -> None:
+
+    # Database engine used for loading variables.
+    _engine: Engine
+    # Application ID for which variables are being loaded.
+    _app_id: str
+    _fallback_variables: Sequence[Variable]
+
+    def __init__(
+        self,
+        engine: Engine,
+        app_id: str,
+        fallback_variables: Sequence[Variable] | None = None,
+    ) -> None:
         self._engine = engine
         self._app_id = app_id
+        self._fallback_variables = fallback_variables or []
+
+    def _selector_to_tuple(self, selector: Sequence[str]) -> tuple[str, str]:
+        return (selector[0], selector[1])
 
     def load_variables(self, selectors: list[list[str]]) -> list[Variable]:
         if not selectors:
             return []
+
+        # Map each selector (as a tuple via `_selector_to_tuple`) to its corresponding Variable instance.
+        variable_by_selector: dict[tuple[str, str], Variable] = {}
+
         with Session(bind=self._engine, expire_on_commit=False) as session:
             srv = WorkflowDraftVariableService(session)
             draft_vars = srv.get_draft_variables_by_selectors(self._app_id, selectors)
-        variables = []
+
         for draft_var in draft_vars:
             segment = build_segment(
                 draft_var.value,
@@ -55,8 +75,25 @@ class DraftVarLoader(VariableLoader):
                 name=draft_var.name,
                 description=draft_var.description,
             )
-            variables.append(variable)
-        return variables
+            selector_tuple = self._selector_to_tuple(variable.selector)
+            variable_by_selector[selector_tuple] = variable
+
+        # If a conversation variable is referenced but not present in the draft variables table,
+        # fall back to returning the variable with its default value.
+
+        fallback_var_by_selector = {}
+        for variable in self._fallback_variables:
+            selector_tuple = self._selector_to_tuple(variable.selector)
+            fallback_var_by_selector[selector_tuple] = variable
+
+        for selector in selectors:
+            selector_tuple = self._selector_to_tuple(selector)
+            if selector_tuple in variable_by_selector:
+                continue
+            if selector_tuple in fallback_var_by_selector:
+                variable_by_selector[selector_tuple] = fallback_var_by_selector[selector_tuple]
+
+        return list(variable_by_selector.values())
 
 
 class WorkflowDraftVariableService:
