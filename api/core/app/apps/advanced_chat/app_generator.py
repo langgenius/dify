@@ -36,7 +36,7 @@ from models import Account, App, Conversation, EndUser, Message, Workflow, Workf
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
-from services.workflow_draft_variable_service import DraftVarLoader
+from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
 
@@ -266,6 +266,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
         )
+        draft_var_srv = WorkflowDraftVariableService(db.session)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow)
 
         return self._generate(
             workflow=workflow,
@@ -346,6 +348,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
         )
+        draft_var_srv = WorkflowDraftVariableService(db.session)
+        draft_var_srv.prefill_conversation_variable_default_values(workflow)
 
         return self._generate(
             workflow=workflow,

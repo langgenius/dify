@@ -329,8 +329,10 @@ class WorkflowService:
 
         # TODO(QuantumGhost): We may get rid of the `list_conversation_variables`
         # here, and rely on `DraftVarLoader` to load conversation variables.
+
         with Session(bind=db.engine) as session:
             draft_var_srv = WorkflowDraftVariableService(session)
+            draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
 
             conv_vars_models = draft_var_srv.list_conversation_variables(app_id=app_model.id)
             conv_vars = [
@@ -343,7 +345,7 @@ class WorkflowService:
         if node_type == NodeType.START:
             with Session(bind=db.engine) as session, session.begin():
                 draft_var_srv = WorkflowDraftVariableService(session)
-                conversation_id = draft_var_srv.create_conversation_and_set_conversation_variables(
+                conversation_id = draft_var_srv.get_or_create_conversation(
                     account_id=account.id,
                     app=app_model,
                     workflow=draft_workflow,
@@ -369,7 +371,10 @@ class WorkflowService:
                 conversation_variables=[],
             )
 
-        variable_loader = DraftVarLoader(engine=db.engine, app_id=app_model.id)
+        variable_loader = DraftVarLoader(
+            engine=db.engine,
+            app_id=app_model.id,
+        )
 
         run = WorkflowEntry.single_step_run(
             workflow=draft_workflow,

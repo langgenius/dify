@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import logging
 from collections.abc import Mapping, Sequence
+from enum import StrEnum
 from typing import Any, ClassVar
 
 from sqlalchemy import Engine, orm
@@ -235,12 +236,21 @@ class WorkflowDraftVariableService:
             return None
         return segment.value
 
-    def create_conversation_and_set_conversation_variables(
+    def get_or_create_conversation(
         self,
         account_id: str,
         app: App,
         workflow: Workflow,
     ) -> str:
+        """
+        get_or_create_conversation creates and returns the ID of a conversation for debugging.
+
+        If a conversation already exists, as determined by the following criteria, its ID is returned:
+        - The system variable `sys.conversation_id` exists in the draft variable table, and
+        - A corresponding conversation record is found in the database.
+
+        If no such conversation exists, a new conversation is created and its ID is returned.
+        """
         conv_id = self._get_conversation_id_from_draft_variable(workflow.app_id)
 
         if conv_id is not None:
@@ -276,6 +286,10 @@ class WorkflowDraftVariableService:
 
         self._session.add(conversation)
         self._session.flush()
+        return conversation.id
+
+    def prefill_conversation_variable_default_values(self, workflow: Workflow):
+        """"""
         draft_conv_vars: list[WorkflowDraftVariable] = []
         for conv_var in workflow.conversation_variables:
             draft_var = WorkflowDraftVariable.new_conversation_variable(
@@ -285,14 +299,25 @@ class WorkflowDraftVariableService:
                 description=conv_var.description,
             )
             draft_conv_vars.append(draft_var)
+        _batch_upsert_draft_varaible(
+            self._session,
+            draft_conv_vars,
+            policy=_UpsertPolicy.IGNORE,
+        )
 
-        _batch_upsert_draft_varaible(self._session, draft_conv_vars)
-        return conversation.id
+
+class _UpsertPolicy(StrEnum):
+    IGNORE = "ignore"
+    OVERWRITE = "overwrite"
 
 
-def _batch_upsert_draft_varaible(session: Session, draft_vars: Sequence[WorkflowDraftVariable]):
+def _batch_upsert_draft_varaible(
+    session: Session,
+    draft_vars: Sequence[WorkflowDraftVariable],
+    policy: _UpsertPolicy = _UpsertPolicy.OVERWRITE,
+) -> None:
     if not draft_vars:
-        return
+        return None
     # Although we could use SQLAlchemy ORM operations here, we choose not to for several reasons:
     #
     # 1. The variable saving process involves writing multiple rows to the
@@ -313,18 +338,23 @@ def _batch_upsert_draft_varaible(session: Session, draft_vars: Sequence[Workflow
     # For these reasons, we use the SQLAlchemy query builder and rely on dialect-specific
     # insert operations instead of the ORM layer.
     stmt = insert(WorkflowDraftVariable).values([_model_to_insertion_dict(v) for v in draft_vars])
-    stmt = stmt.on_conflict_do_update(
-        index_elements=WorkflowDraftVariable.unique_app_id_node_id_name(),
-        set_={
-            "updated_at": stmt.excluded.updated_at,
-            "last_edited_at": stmt.excluded.last_edited_at,
-            "description": stmt.excluded.description,
-            "value_type": stmt.excluded.value_type,
-            "value": stmt.excluded.value,
-            "visible": stmt.excluded.visible,
-            "editable": stmt.excluded.editable,
-        },
-    )
+    if policy == _UpsertPolicy.OVERWRITE:
+        stmt = stmt.on_conflict_do_update(
+            index_elements=WorkflowDraftVariable.unique_app_id_node_id_name(),
+            set_={
+                "updated_at": stmt.excluded.updated_at,
+                "last_edited_at": stmt.excluded.last_edited_at,
+                "description": stmt.excluded.description,
+                "value_type": stmt.excluded.value_type,
+                "value": stmt.excluded.value,
+                "visible": stmt.excluded.visible,
+                "editable": stmt.excluded.editable,
+            },
+        )
+    elif _UpsertPolicy.IGNORE:
+        stmt = stmt.on_conflict_do_nothing(index_elements=WorkflowDraftVariable.unique_app_id_node_id_name())
+    else:
+        raise Exception("Invalid value for update policy.")
     session.execute(stmt)
 
 

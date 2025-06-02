@@ -263,6 +263,14 @@ class ConversationVariableCollectionApi(Resource):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
     def get(self, app_model: App):
+        # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
+        # so their IDs can be returned to the caller.
+        workflow_srv = WorkflowService()
+        draft_workflow = workflow_srv.get_draft_workflow(app_model)
+        if draft_workflow is None:
+            raise NotFoundError(description=f"draft workflow not found, id={app_model.id}")
+        draft_var_srv = WorkflowDraftVariableService(db.session)
+        draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
 
 
