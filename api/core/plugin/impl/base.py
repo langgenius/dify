@@ -32,7 +32,6 @@ from core.plugin.impl.exc import (
 )
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
-plugin_daemon_inner_api_key = dify_config.PLUGIN_DAEMON_KEY
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
@@ -55,7 +54,7 @@ class BasePluginClient:
         """
         url = plugin_daemon_inner_api_baseurl / path
         headers = headers or {}
-        headers["X-Api-Key"] = plugin_daemon_inner_api_key
+        headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
         headers["Accept-Encoding"] = "gzip, deflate, br"
 
         if headers.get("Content-Type") == "application/json" and isinstance(data, dict):
