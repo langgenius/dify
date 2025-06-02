@@ -985,7 +985,7 @@ class WorkflowDraftVariable(Base):
         self._set_selector([self.node_id, name])
 
     def set_value(self, value: Segment):
-        self.value = json.dumps(value.value)
+        self.value = json.dumps(value, cls=variable_utils.SegmentJSONEncoder)
         self.value_type = value.value_type
 
     def get_node_id(self) -> str | None:
