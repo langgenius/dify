@@ -103,9 +103,6 @@ def test_execute_llm(setup_model_mock):
 
     credentials = {"openai_api_key": os.environ.get("OPENAI_API_KEY")}
 
-    # Mock db.session.close()
-    db.session.close = MagicMock()
-
     node._fetch_model_config = get_mocked_fetch_model_config(
         provider="langgenius/openai/openai",
         model="gpt-3.5-turbo",
