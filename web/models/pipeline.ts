@@ -1,6 +1,6 @@
 import type { Edge, EnvironmentVariable, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { DSLImportMode, DSLImportStatus } from './app'
-import type { ChunkingMode, DatasetPermission, FileIndexingEstimateResponse, IconInfo } from './datasets'
+import type { ChunkingMode, DatasetPermission, DocumentIndexingStatus, FileIndexingEstimateResponse, IconInfo } from './datasets'
 import type { Dependency } from '@/app/components/plugins/types'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Viewport } from 'reactflow'
@@ -187,10 +187,40 @@ export type PublishedPipelineRunRequest = {
 }
 
 export type PublishedPipelineRunPreviewResponse = {
+  task_iod: string
+  workflow_run_id: string
   data: {
+    id: string
+    status: string
+    created_at: number
+    elapsed_time: number
+    error: string
+    finished_at: number
     outputs: FileIndexingEstimateResponse
+    total_steps: number
+    total_tokens: number
+    workflow_id: string
   }
 }
 
 export type PublishedPipelineRunResponse = {
+  batch: string
+  dataset: {
+    chunk_structure: ChunkingMode
+    description: string
+    id: string
+    name: string
+  }
+  documents: InitialDocumentDetail[]
+}
+
+export type InitialDocumentDetail = {
+  data_source_info: Record<string, any>
+  data_source_type: DatasourceType
+  enable: boolean
+  error: string
+  id: string
+  indexing_status: DocumentIndexingStatus
+  name: string
+  position: number
 }

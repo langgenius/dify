@@ -2,14 +2,16 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiBookOpenLine } from '@remixicon/react'
-import type { FullDocumentDetail, InitialDocumentDetail } from '@/models/datasets'
-import EmbeddingProcess from '../../../create/embedding-process'
 import { useGetDocLanguage } from '@/context/i18n'
+import EmbeddingProcess from './embedding-process'
+import type { IndexingType } from '../../../create/step-two'
+import type { RETRIEVE_METHOD } from '@/types/app'
+import type { InitialDocumentDetail } from '@/models/pipeline'
 
 type ProcessingProps = {
   datasetId: string
-  indexingType: string
-  retrievalMethod: string
+  indexingType: IndexingType
+  retrievalMethod: RETRIEVE_METHOD
   batchId: string
   documents: InitialDocumentDetail[]
 }
@@ -30,8 +32,8 @@ const Processing = ({
         <div className='max-w-[640px]'>
           <EmbeddingProcess
             datasetId={datasetId}
-            batchId={batchId || ''}
-            documents={documents as FullDocumentDetail[]}
+            batchId={batchId}
+            documents={documents}
             indexingType={indexingType}
             retrievalMethod={retrievalMethod}
           />

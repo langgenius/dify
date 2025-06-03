@@ -195,7 +195,7 @@ export const useRunPublishedPipeline = (
     mutationKey: [NAME_SPACE, 'run-published-pipeline'],
     mutationFn: (request: PublishedPipelineRunRequest) => {
       const { pipeline_id: pipelineId, is_preview, ...rest } = request
-      return post<PublishedPipelineRunPreviewResponse | PublishedPipelineRunRequest>(`/rag/pipelines/${pipelineId}/workflows/published/run`, {
+      return post<PublishedPipelineRunPreviewResponse | PublishedPipelineRunResponse>(`/rag/pipelines/${pipelineId}/workflows/published/run`, {
         body: {
           ...rest,
           is_preview,

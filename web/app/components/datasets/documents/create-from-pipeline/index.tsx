@@ -23,7 +23,7 @@ import WebsitePreview from './preview/web-preview'
 import ProcessDocuments from './process-documents'
 import ChunkPreview from './preview/chunk-preview'
 import Processing from './processing'
-import type { PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
+import type { InitialDocumentDetail, PublishedPipelineRunPreviewResponse, PublishedPipelineRunResponse } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
 import { useAddDocumentsSteps, useLocalFile, useNotionsPages, useWebsiteCrawl } from './hooks'
@@ -38,6 +38,8 @@ const CreateFormPipeline = () => {
   const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict.search_method)
   const [datasource, setDatasource] = useState<Datasource>()
   const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
+  const [batchId, setBatchId] = useState('')
+  const [documents, setDocuments] = useState<InitialDocumentDetail[]>([])
 
   const isPreview = useRef(false)
   const formRef = useRef<any>(null)
@@ -189,7 +191,8 @@ const CreateFormPipeline = () => {
       is_preview: false,
     }, {
       onSuccess: (res) => {
-        console.log('🚀 ~ handleProcess ~ res:', res)
+        setBatchId((res as PublishedPipelineRunResponse).batch || '')
+        setDocuments((res as PublishedPipelineRunResponse).documents || [])
         handleNextStep()
       },
     })
@@ -306,8 +309,8 @@ const CreateFormPipeline = () => {
             currentStep === 3 && (
               <Processing
                 datasetId={datasetId!}
-                batchId={''}
-                documents={[]}
+                batchId={batchId}
+                documents={documents}
                 indexingType={indexingType!}
                 retrievalMethod={retrievalMethod!}
               />
