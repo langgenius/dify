@@ -555,10 +555,10 @@ class KnowledgeRetrievalNode(LLMNode):
                         filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) == value)
             case "not in":
                 if isinstance(value, list | tuple):
-                    if not value:  # 空数组
+                    if not value: 
                         return filters
                     
-                    # 为每个值生成不匹配条件
+                    # generate not in conditions
                     and_conditions = []
                     for i, v in enumerate(value):
                         if isinstance(v, str):
