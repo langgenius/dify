@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 import json_repair
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -43,6 +45,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.variables import (
     ArrayAnySegment,
     ArrayFileSegment,
@@ -53,9 +56,10 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base import BaseNode
@@ -77,7 +81,6 @@ from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import (
     LLMNodeChatModelMessage,
@@ -271,9 +274,9 @@ class LLMNode(BaseNode[LLMNodeData]):
                     process_data=process_data,
                     outputs=outputs,
                     metadata={
-                        NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                        NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                        NodeRunMetadataKey.CURRENCY: usage.currency,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                        WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
                     },
                     llm_usage=usage,
                 )
@@ -306,8 +309,6 @@ class LLMNode(BaseNode[LLMNodeData]):
         prompt_messages: Sequence[PromptMessage],
         stop: Optional[Sequence[str]] = None,
     ) -> Generator[NodeEvent, None, None]:
-        db.session.close()
-
         invoke_result = model_instance.invoke_llm(
             prompt_messages=list(prompt_messages),
             model_parameters=node_data_model.completion_params,
@@ -478,7 +479,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 yield RunRetrieverResourceEvent(retriever_resources=[], context=context_value_variable.value)
             elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
-                original_retriever_resource = []
+                original_retriever_resource: list[RetrievalSourceMetadata] = []
                 for item in context_value_variable.value:
                     if isinstance(item, str):
                         context_str += item + "\n"
@@ -496,7 +497,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     retriever_resources=original_retriever_resource, context=context_str.strip()
                 )
 
-    def _convert_to_original_retriever_resource(self, context_dict: dict) -> Optional[dict]:
+    def _convert_to_original_retriever_resource(self, context_dict: dict):
         if (
             "metadata" in context_dict
             and "_source" in context_dict["metadata"]
@@ -504,24 +505,24 @@ class LLMNode(BaseNode[LLMNodeData]):
         ):
             metadata = context_dict.get("metadata", {})
 
-            source = {
-                "position": metadata.get("position"),
-                "dataset_id": metadata.get("dataset_id"),
-                "dataset_name": metadata.get("dataset_name"),
-                "document_id": metadata.get("document_id"),
-                "document_name": metadata.get("document_name"),
-                "data_source_type": metadata.get("data_source_type"),
-                "segment_id": metadata.get("segment_id"),
-                "retriever_from": metadata.get("retriever_from"),
-                "score": metadata.get("score"),
-                "hit_count": metadata.get("segment_hit_count"),
-                "word_count": metadata.get("segment_word_count"),
-                "segment_position": metadata.get("segment_position"),
-                "index_node_hash": metadata.get("segment_index_node_hash"),
-                "content": context_dict.get("content"),
-                "page": metadata.get("page"),
-                "doc_metadata": metadata.get("doc_metadata"),
-            }
+            source = RetrievalSourceMetadata(
+                position=metadata.get("position"),
+                dataset_id=metadata.get("dataset_id"),
+                dataset_name=metadata.get("dataset_name"),
+                document_id=metadata.get("document_id"),
+                document_name=metadata.get("document_name"),
+                data_source_type=metadata.get("data_source_type"),
+                segment_id=metadata.get("segment_id"),
+                retriever_from=metadata.get("retriever_from"),
+                score=metadata.get("score"),
+                hit_count=metadata.get("segment_hit_count"),
+                word_count=metadata.get("segment_word_count"),
+                segment_position=metadata.get("segment_position"),
+                index_node_hash=metadata.get("segment_index_node_hash"),
+                content=context_dict.get("content"),
+                page=metadata.get("page"),
+                doc_metadata=metadata.get("doc_metadata"),
+            )
 
             return source
 
@@ -606,15 +607,11 @@ class LLMNode(BaseNode[LLMNodeData]):
             return None
         conversation_id = conversation_id_variable.value
 
-        # get conversation
-        conversation = (
-            db.session.query(Conversation)
-            .filter(Conversation.app_id == self.app_id, Conversation.id == conversation_id)
-            .first()
-        )
-
-        if not conversation:
-            return None
+        with Session(db.engine, expire_on_commit=False) as session:
+            stmt = select(Conversation).where(Conversation.app_id == self.app_id, Conversation.id == conversation_id)
+            conversation = session.scalar(stmt)
+            if not conversation:
+                return None
 
         memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
 
@@ -850,20 +847,24 @@ class LLMNode(BaseNode[LLMNodeData]):
                 used_quota = 1
 
         if used_quota is not None and system_configuration.current_quota_type is not None:
-            db.session.query(Provider).filter(
-                Provider.tenant_id == tenant_id,
-                # TODO: Use provider name with prefix after the data migration.
-                Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
-                Provider.provider_type == ProviderType.SYSTEM.value,
-                Provider.quota_type == system_configuration.current_quota_type.value,
-                Provider.quota_limit > Provider.quota_used,
-            ).update(
-                {
-                    "quota_used": Provider.quota_used + used_quota,
-                    "last_used": datetime.now(tz=UTC).replace(tzinfo=None),
-                }
-            )
-            db.session.commit()
+            with Session(db.engine) as session:
+                stmt = (
+                    update(Provider)
+                    .where(
+                        Provider.tenant_id == tenant_id,
+                        # TODO: Use provider name with prefix after the data migration.
+                        Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
+                        Provider.provider_type == ProviderType.SYSTEM.value,
+                        Provider.quota_type == system_configuration.current_quota_type.value,
+                        Provider.quota_limit > Provider.quota_used,
+                    )
+                    .values(
+                        quota_used=Provider.quota_used + used_quota,
+                        last_used=datetime.now(tz=UTC).replace(tzinfo=None),
+                    )
+                )
+                session.execute(stmt)
+                session.commit()
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

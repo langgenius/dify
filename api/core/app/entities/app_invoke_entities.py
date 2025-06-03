@@ -91,6 +91,8 @@ class AppGenerateEntity(BaseModel):
     App Generate Entity.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     task_id: str
 
     # app config
@@ -113,9 +115,6 @@ class AppGenerateEntity(BaseModel):
 
     # tracing instance
     trace_manager: Optional[TraceQueueManager] = None
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -220,7 +219,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
 
     # app config
     app_config: WorkflowUIBasedAppConfig
-    workflow_run_id: str
+    workflow_execution_id: str
 
     class SingleIterationRunEntity(BaseModel):
         """

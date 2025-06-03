@@ -205,6 +205,41 @@ const translation = {
     modelNotSupportedTip: '현재 모델은 이 기능을 지원하지 않으며 자동으로 프롬프트 주입으로 다운그레이드됩니다.',
     structuredTip: '구조화된 출력은 모델이 제공한 JSON 스키마를 항상 준수하는 응답을 생성하도록 보장하는 기능입니다.',
   },
+  accessItemsDescription: {
+    anyone: '누구나 웹 앱에 접근할 수 있습니다.',
+    specific: '특정 그룹이나 회원만 웹 앱에 접근할 수 있습니다.',
+    organization: '조직 내 모든 사람이 웹 애플리케이션에 접근할 수 있습니다.',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: '링크가 있는 누구나',
+      specific: '특정 그룹 또는 구성원',
+      organization: '기업 내의 회원만',
+    },
+    operateGroupAndMember: {
+      searchPlaceholder: '그룹 및 구성원 검색',
+      allMembers: '모든 멤버들',
+      expand: '확장하다',
+      noResult: '결과 없음',
+    },
+    title: '웹 애플리케이션 접근 제어',
+    accessLabel: '누가 접근할 수 있습니까?',
+    groups_one: '{{count}} 그룹',
+    groups_other: '{{count}} 그룹',
+    members_one: '{{count}} 회원',
+    members_other: '{{count}} 회원',
+    noGroupsOrMembers: '선택된 그룹 또는 멤버가 없습니다.',
+    webAppSSONotEnabledTip: '웹 앱 인증 방법을 구성하려면 엔터프라이즈 관리자인에게 문의하십시오.',
+    updateSuccess: '업데이트가 성공적으로 완료되었습니다.',
+    description: '웹 앱 접근 권한 설정',
+  },
+  publishApp: {
+    title: '누가 웹 애플리케이션에 접근할 수 있나요?',
+    notSet: '설정되지 않음',
+    notSetDesc: '현재 아무도 웹 앱에 접근할 수 없습니다. 권한을 설정해 주세요.',
+  },
+  accessControl: '웹 애플리케이션 접근 제어',
+  noAccessPermission: '웹 앱에 대한 접근 권한이 없습니다.',
 }
 
 export default translation

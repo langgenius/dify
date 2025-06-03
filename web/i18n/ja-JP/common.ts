@@ -570,7 +570,7 @@ const translation = {
       vectorHash: 'ベクトルハッシュ:',
       hitScore: '検索スコア:',
     },
-    inputPlaceholder: 'ボットと話す',
+    inputPlaceholder: '{{botName}} と話す',
     thought: '思考',
     thinking: '考え中...',
     resend: '再送信してください',
@@ -660,6 +660,7 @@ const translation = {
   license: {
     expiring_plural: '有効期限 {{count}} 日',
     expiring: '1日で有効期限が切れます',
+    unlimited: '無制限',
   },
   pagination: {
     perPage: 'ページあたりのアイテム数',

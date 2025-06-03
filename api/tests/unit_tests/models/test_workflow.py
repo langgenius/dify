@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from constants import HIDDEN_VALUE
 from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from models.workflow import Workflow, WorkflowNodeExecution, is_system_variable_editable
+from models.workflow import Workflow, WorkflowNodeExecutionModel, is_system_variable_editable
 
 
 def test_environment_variables():
@@ -156,7 +156,7 @@ def test_to_dict():
 
 class TestWorkflowNodeExecution:
     def test_execution_metadata_dict(self):
-        node_exec = WorkflowNodeExecution()
+        node_exec = WorkflowNodeExecutionModel()
         node_exec.execution_metadata = None
         assert node_exec.execution_metadata_dict == {}
 

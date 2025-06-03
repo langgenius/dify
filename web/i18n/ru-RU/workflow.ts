@@ -660,6 +660,7 @@ const translation = {
         },
         json: 'json, сгенерированный инструментом',
       },
+      authorize: 'Авторизовать',
     },
     questionClassifiers: {
       model: 'модель',

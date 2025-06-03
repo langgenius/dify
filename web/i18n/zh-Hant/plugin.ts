@@ -62,6 +62,7 @@ const translation = {
       empty: '點擊 『+』 按鈕添加工具。您可以新增多個工具。',
       unsupportedContent2: '按兩下以切換版本。',
       paramsTip1: '控制 LLM 推理參數。',
+      toolSetting: '工具設定',
     },
     actionNum: '{{num}}{{作}}包括',
     switchVersion: 'Switch 版本',

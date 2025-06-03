@@ -83,7 +83,12 @@ const InstallByDSLList: FC<Props> = ({
 
   useEffect(() => {
     if (!isFetchingMarketplaceDataById && infoGetById?.data.plugins) {
-      const payloads = infoGetById?.data.plugins
+      const sortedList = allPlugins.filter(d => d.type === 'marketplace').map((d) => {
+        const p = d as GitHubItemAndMarketPlaceDependency
+        const id = p.value.marketplace_plugin_unique_identifier?.split(':')[0]
+        return infoGetById.data.plugins.find(item => item.plugin_id === id)!
+      })
+      const payloads = sortedList
       const failedIndex: number[] = []
       const nextPlugins = produce(pluginsRef.current, (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {

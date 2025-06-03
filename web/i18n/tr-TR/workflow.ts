@@ -661,6 +661,7 @@ const translation = {
         },
         json: 'araç tarafından oluşturulan json',
       },
+      authorize: 'Yetkilendirmek',
     },
     questionClassifiers: {
       model: 'model',
