@@ -23,6 +23,7 @@ import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { noop } from 'lodash-es'
+import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -67,6 +68,7 @@ const Item: FC<ItemProps> = ({
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
+  const isRagVariable = itemData.isRagVariable
 
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
     if (!isObj) return null
@@ -148,10 +150,11 @@ const Item: FC<ItemProps> = ({
           onMouseDown={e => e.preventDefault()}
         >
           <div className='flex w-0 grow items-center'>
-            {!isEnv && !isChatVar && !isLoopVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
+            {!isEnv && !isChatVar && !isLoopVar && !isRagVariable && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
             {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
             {isChatVar && <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />}
             {isLoopVar && <Loop className='h-3.5 w-3.5 shrink-0 text-util-colors-cyan-cyan-500' />}
+            {isRagVariable && <InputField className='h-3.5 w-3.5 shrink-0 text-text-accent' />}
             {!isEnv && !isChatVar && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
             )}

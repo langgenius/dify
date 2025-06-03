@@ -42,7 +42,7 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       errorMessage: '',
     }
   },
-  getOutputVars(payload) {
+  getOutputVars(payload, ragVars = []) {
     const {
       provider_type,
     } = payload
@@ -62,6 +62,7 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
           ]
           : []
       ),
+      ...ragVars,
     ]
   },
 }

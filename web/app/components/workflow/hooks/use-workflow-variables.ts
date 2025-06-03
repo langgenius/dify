@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '../store'
+import { useWorkflowStore } from '../store'
 import { getVarType, toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import type {
   Node,
@@ -13,8 +13,7 @@ import { useStoreApi } from 'reactflow'
 
 export const useWorkflowVariables = () => {
   const { t } = useTranslation()
-  const environmentVariables = useStore(s => s.environmentVariables)
-  const conversationVariables = useStore(s => s.conversationVariables)
+  const workflowStore = useWorkflowStore()
 
   const getNodeAvailableVars = useCallback(({
     parentNode,
@@ -31,6 +30,11 @@ export const useWorkflowVariables = () => {
     hideEnv?: boolean
     hideChatVar?: boolean
   }): NodeOutPutVar[] => {
+    const {
+      conversationVariables,
+      environmentVariables,
+      ragPipelineVariables,
+    } = workflowStore.getState()
     return toNodeAvailableVars({
       parentNode,
       t,
@@ -38,9 +42,10 @@ export const useWorkflowVariables = () => {
       isChatMode,
       environmentVariables: hideEnv ? [] : environmentVariables,
       conversationVariables: (isChatMode && !hideChatVar) ? conversationVariables : [],
+      ragVariables: ragPipelineVariables,
       filterVar,
     })
-  }, [conversationVariables, environmentVariables, t])
+  }, [t, workflowStore])
 
   const getCurrentVariableType = useCallback(({
     parentNode,
@@ -59,6 +64,11 @@ export const useWorkflowVariables = () => {
     isChatMode: boolean
     isConstant?: boolean
   }) => {
+    const {
+      conversationVariables,
+      environmentVariables,
+      ragPipelineVariables,
+    } = workflowStore.getState()
     return getVarType({
       parentNode,
       valueSelector,
@@ -69,8 +79,9 @@ export const useWorkflowVariables = () => {
       isConstant,
       environmentVariables,
       conversationVariables,
+      ragVariables: ragPipelineVariables,
     })
-  }, [conversationVariables, environmentVariables])
+  }, [workflowStore])
 
   return {
     getNodeAvailableVars,

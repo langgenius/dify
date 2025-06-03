@@ -288,6 +288,7 @@ export type Var = {
   isException?: boolean
   isLoopVariable?: boolean
   nodeId?: string
+  isRagVariable?: boolean
 }
 
 export type NodeOutPutVar = {
@@ -313,7 +314,7 @@ export type NodeDefault<T = {}> = {
   }
   defaultValue: Partial<T>
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
-  getOutputVars?: (payload: T) => Var[]
+  getOutputVars?: (payload: T, ragVariables?: Var[]) => Var[]
 }
 
 export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => void
