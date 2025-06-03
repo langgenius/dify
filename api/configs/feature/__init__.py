@@ -667,7 +667,6 @@ class MailConfig(BaseSettings):
 class RagEtlConfig(BaseSettings):
     """
     Configuration for RAG ETL processes
-    """
 
     # TODO: This config is not only for rag etl, it is also for file upload, we should move it to file upload config
     ETL_TYPE: str = Field(
