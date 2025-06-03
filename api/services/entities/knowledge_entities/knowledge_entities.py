@@ -101,7 +101,7 @@ class WeightModel(BaseModel):
 
 
 class RetrievalModel(BaseModel):
-    search_method: Literal["hybrid_search", "semantic_search", "full_text_search"]
+    search_method: Literal["hybrid_search", "semantic_search", "full_text_search", "keyword_search"]
     reranking_enable: bool
     reranking_model: Optional[RerankingModel] = None
     reranking_mode: Optional[str] = None
