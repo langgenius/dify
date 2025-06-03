@@ -44,17 +44,26 @@ export const fileUpload: FileUpload = ({
 
 export const getFileExtension = (fileName: string, fileMimetype: string, isRemote?: boolean) => {
   let extension = ''
+  let extensions = new Set<string>()
   if (fileMimetype)
-    extension = mime.getExtension(fileMimetype) || ''
+    extensions = mime.getAllExtensions(fileMimetype) || new Set<string>()
 
-  if (fileName && !extension) {
+  let extensionInFileName = ''
+  if (fileName) {
     const fileNamePair = fileName.split('.')
     const fileNamePairLength = fileNamePair.length
 
-    if (fileNamePairLength > 1)
-      extension = fileNamePair[fileNamePairLength - 1]
+    if (fileNamePairLength > 1) {
+      extensionInFileName = fileNamePair[fileNamePairLength - 1].toLowerCase()
+      if (extensions.has(extensionInFileName))
+        extension = extensionInFileName
+    }
+  }
+  if (!extension) {
+    if (extensions.size > 0)
+      extension = Array.from(extensions)[0].toLowerCase()
     else
-      extension = ''
+      extension = extensionInFileName
   }
 
   if (isRemote)
