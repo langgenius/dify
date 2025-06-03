@@ -1,8 +1,9 @@
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
 from core.workflow.nodes.base import BaseNodeData
+from core.variables.types import SegmentType
 
 
 class AdvancedSettings(BaseModel):
@@ -17,9 +18,7 @@ class AdvancedSettings(BaseModel):
         Group.
         """
 
-        output_type: Literal[
-            "string", "number", "object", "file", "array[string]", "array[number]", "array[object]", "array[file]"
-        ]
+        output_type: SegmentType
         variables: list[list[str]]
         group_name: str
 
