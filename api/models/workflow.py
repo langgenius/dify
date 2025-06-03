@@ -401,18 +401,6 @@ class Workflow(Base):
         )
 
 
-class WorkflowRunStatus(StrEnum):
-    """
-    Workflow Run Status Enum
-    """
-
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    STOPPED = "stopped"
-    PARTIAL_SUCCEEDED = "partial-succeeded"
-
-
 class WorkflowRun(Base):
     """
     Workflow Run
@@ -473,12 +461,12 @@ class WorkflowRun(Base):
     error: Mapped[Optional[str]] = mapped_column(db.Text)
     elapsed_time: Mapped[float] = mapped_column(db.Float, nullable=False, server_default=sa.text("0"))
     total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
-    total_steps: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"))
+    total_steps: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"), nullable=True)
     created_by_role: Mapped[str] = mapped_column(db.String(255))  # account, end_user
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
-    exceptions_count: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"))
+    exceptions_count: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"), nullable=True)
 
     @property
     def created_by_account(self):
@@ -578,19 +566,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     RAG_PIPELINE_RUN = "rag-pipeline-run"
 
 
-class WorkflowNodeExecutionStatus(StrEnum):
-    """
-    Workflow Node Execution Status Enum
-    """
-
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    EXCEPTION = "exception"
-    RETRY = "retry"
-
-
-class WorkflowNodeExecution(Base):
+class WorkflowNodeExecutionModel(Base):
     """
     Workflow Node Execution
 

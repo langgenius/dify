@@ -660,6 +660,7 @@ const translation = {
         },
         json: 'JSON được tạo bởi công cụ',
       },
+      authorize: 'Ủy quyền',
     },
     questionClassifiers: {
       model: 'mô hình',

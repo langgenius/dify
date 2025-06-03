@@ -105,6 +105,11 @@ const translation = {
   licenseExpired: 'Lisansın Süresi Doldu',
   licenseLost: 'Lisans Kaybedildi',
   licenseInactive: 'Lisans Etkin Değil',
+  webapp: {
+    disabled: 'Web uygulaması kimlik doğrulaması devre dışı. Lütfen bu özelliği etkinleştirmesi için sistem yöneticisi ile iletişime geçin. Uygulamayı doğrudan kullanmayı deneyebilirsiniz.',
+    noLoginMethod: 'Web uygulaması için kimlik doğrulama yöntemi yapılandırılmamış',
+    noLoginMethodTip: 'Lütfen bir kimlik doğrulama yöntemi eklemek için sistem yöneticisi ile iletişime geçin.',
+  },
 }
 
 export default translation

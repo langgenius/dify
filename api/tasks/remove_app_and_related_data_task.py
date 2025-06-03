@@ -30,7 +30,7 @@ from models import (
 )
 from models.tools import WorkflowToolProvider
 from models.web import PinnedConversation, SavedMessage
-from models.workflow import ConversationVariable, Workflow, WorkflowAppLog, WorkflowNodeExecution, WorkflowRun
+from models.workflow import ConversationVariable, Workflow, WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowRun
 
 
 @shared_task(queue="app_deletion", bind=True, max_retries=3)
@@ -188,9 +188,9 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
     def del_workflow_node_execution(workflow_node_execution_id: str):
-        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution_id).delete(
-            synchronize_session=False
-        )
+        db.session.query(WorkflowNodeExecutionModel).filter(
+            WorkflowNodeExecutionModel.id == workflow_node_execution_id
+        ).delete(synchronize_session=False)
 
     _delete_records(
         """select id from workflow_node_executions where tenant_id=:tenant_id and app_id=:app_id limit 1000""",

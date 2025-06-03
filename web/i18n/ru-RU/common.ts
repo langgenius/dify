@@ -149,6 +149,8 @@ const translation = {
     newDataset: 'Создать знания',
     tools: 'Инструменты',
     exploreMarketplace: 'Подробнее о Marketplace',
+    appDetail: 'Детали приложения',
+    account: 'Учетная запись',
   },
   userProfile: {
     settings: 'Настройки',
@@ -644,6 +646,7 @@ const translation = {
   license: {
     expiring: 'Срок действия истекает за один день',
     expiring_plural: 'Срок действия истекает через {{count}} дней',
+    unlimited: 'Неограниченный',
   },
   pagination: {
     perPage: 'Элементов на странице',
@@ -667,6 +670,7 @@ const translation = {
     dropImageHere: 'Перетащите ваше изображение сюда или',
     supportedFormats: 'Поддерживает PNG, JPG, JPEG, WEBP и GIF',
   },
+  you: 'Ты',
 }
 
 export default translation

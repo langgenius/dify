@@ -105,6 +105,11 @@ const translation = {
   licenseInactiveTip: 'Die Dify Enterprise-Lizenz für Ihren Arbeitsbereich ist inaktiv. Wenden Sie sich an Ihren Administrator, um Dify weiterhin zu verwenden.',
   licenseExpiredTip: 'Die Dify Enterprise-Lizenz für Ihren Arbeitsbereich ist abgelaufen. Wenden Sie sich an Ihren Administrator, um Dify weiterhin zu verwenden.',
   licenseLost: 'Lizenz verloren',
+  webapp: {
+    noLoginMethod: 'Authentifizierungsmethode ist nicht für die Webanwendung konfiguriert',
+    noLoginMethodTip: 'Bitte kontaktieren Sie den Systemadministrator, um eine Authentifizierungsmethode hinzuzufügen.',
+    disabled: 'Die Webanmeldeauthentifizierung ist deaktiviert. Bitte kontaktieren Sie den Systemadministrator, um sie zu aktivieren. Sie können versuchen, die App direkt zu verwenden.',
+  },
 }
 
 export default translation

@@ -245,4 +245,4 @@ class TidbService:
             return cluster_infos
         else:
             response.raise_for_status()
-            return []  # FIXME for mypy, This line will not be reached as raise_for_status() will raise an exception
+            return []

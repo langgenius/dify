@@ -1,6 +1,6 @@
 #!/bin/bash
 
-npm add -g pnpm@10.8.0
+npm add -g pnpm@10.11.1
 cd web && pnpm install
 pipx install uv
 
