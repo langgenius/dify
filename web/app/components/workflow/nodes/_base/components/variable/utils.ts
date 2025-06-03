@@ -527,7 +527,7 @@ const formatItem = (
     const isCurrentMatched = filterVar(v, (() => {
       const variableArr = v.variable.split('.')
       const [first] = variableArr
-      if (first === 'sys' || first === 'env' || first === 'conversation')
+      if (first === 'sys' || first === 'env' || first === 'conversation' || first === 'rag')
         return variableArr
 
       return [...selector, ...variableArr]
