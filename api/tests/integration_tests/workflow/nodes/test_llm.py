@@ -32,6 +32,14 @@ from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_co
 
 @pytest.fixture(scope="session")
 def app():
+    # Set up storage configuration
+    os.environ["STORAGE_TYPE"] = "opendal"
+    os.environ["OPENDAL_SCHEME"] = "fs"
+    os.environ["OPENDAL_FS_ROOT"] = "storage"
+
+    # Ensure storage directory exists
+    os.makedirs("storage", exist_ok=True)
+
     app = create_app()
     dify_config.LOGIN_DISABLED = True
     return app
