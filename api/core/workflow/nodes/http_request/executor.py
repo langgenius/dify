@@ -235,6 +235,10 @@ class Executor:
                                 files[key].append(file_tuple)
 
                     # convert files to list for httpx request
+                    # If there are no actual files, we still need to force httpx to use `multipart/form-data`.
+                    # This is achieved by inserting a harmless placeholder file that will be ignored by the server.
+                    if not files:
+                        self.files = [("__multipart_placeholder__", ("", b"", "application/octet-stream"))]
                     if files:
                         self.files = []
                         for key, file_tuples in files.items():
@@ -373,7 +377,10 @@ class Executor:
             raw += f"{k}: {v}\r\n"
 
         body_string = ""
-        if self.files:
+        # Only log actual files if present.
+        # '__multipart_placeholder__' is inserted to force multipart encoding but is not a real file.
+        # This prevents logging meaningless placeholder entries.
+        if self.files and not all(f[0] == "__multipart_placeholder__" for f in self.files):
             for key, (filename, content, mime_type) in self.files:
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'

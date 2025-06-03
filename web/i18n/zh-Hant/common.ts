@@ -552,7 +552,7 @@ const translation = {
       vectorHash: '向量雜湊：',
       hitScore: '召回得分：',
     },
-    inputPlaceholder: '與 Bot 對話',
+    inputPlaceholder: '與 {{botName}} 對話',
     thinking: '思維。。。',
     thought: '思想',
     resend: '重新發送',
@@ -646,6 +646,7 @@ const translation = {
   license: {
     expiring: '將在1天內過期',
     expiring_plural: '將在 {{count}} 天后過期',
+    unlimited: '無限制',
   },
   pagination: {
     perPage: '每頁項目數',
@@ -669,6 +670,7 @@ const translation = {
     browse: '瀏覽',
     dropImageHere: '將您的圖片放在這裡，或',
   },
+  you: '你',
 }
 
 export default translation

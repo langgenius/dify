@@ -648,7 +648,7 @@ const translation = {
       'varNotSet': '未設置變數',
     },
     tool: {
-      toAuthorize: '授權',
+      authorize: '授權',
       inputVars: '輸入變量',
       outputVars: {
         text: '工具生成的內容',

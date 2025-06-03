@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.4.0
+    image: langgenius/dify-api:1.4.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -31,7 +31,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.4.0
+    image: langgenius/dify-api:1.4.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -57,7 +57,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.4.0
+    image: langgenius/dify-web:1.4.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -75,7 +75,7 @@ services:
       LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
       MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
       MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
-      MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-5}
+      MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-99}
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
@@ -142,7 +142,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.0.10-local
+    image: langgenius/dify-plugin-daemon:0.1.1-local
     restart: always
     environment:
       # Use the shared environment variables.

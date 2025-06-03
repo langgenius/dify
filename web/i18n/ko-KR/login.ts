@@ -105,6 +105,11 @@ const translation = {
   licenseInactive: 'License Inactive(라이선스 비활성)',
   licenseExpired: '라이센스가 만료되었습니다.',
   licenseExpiredTip: '작업 영역에 대한 Dify Enterprise 라이선스가 만료되었습니다. Dify를 계속 사용하려면 관리자에게 문의하십시오.',
+  webapp: {
+    noLoginMethod: '웹 애플리케이션에 대한 인증 방법이 구성되어 있지 않습니다.',
+    disabled: '웹앱 인증이 비활성화되었습니다. 이를 활성화하려면 시스템 관리자에게 문의하십시오. 앱을 직접 사용해 볼 수 있습니다.',
+    noLoginMethodTip: '인증 방법을 추가하려면 시스템 관리자에게 연락하십시오.',
+  },
 }
 
 export default translation

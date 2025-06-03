@@ -4,14 +4,14 @@ from typing import Optional
 
 import contexts
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.repository.workflow_node_execution_repository import OrderConfig
+from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import (
     Account,
     App,
     EndUser,
-    WorkflowNodeExecution,
+    WorkflowNodeExecutionModel,
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
@@ -125,7 +125,7 @@ class WorkflowRunService:
         app_model: App,
         run_id: str,
         user: Account | EndUser,
-    ) -> Sequence[WorkflowNodeExecution]:
+    ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Get workflow run node execution list
         """

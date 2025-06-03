@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Literal, Optional, Union, overload
 
-from flask import Flask, current_app
+from flask import Flask, copy_current_request_context, current_app, has_request_context
 from pydantic import ValidationError
 from sqlalchemy.orm import sessionmaker
 
@@ -25,8 +25,8 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
@@ -132,10 +132,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=invoke_from,
             call_depth=call_depth,
             trace_manager=trace_manager,
-            workflow_run_id=workflow_run_id,
+            workflow_execution_id=workflow_run_id,
         )
 
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
@@ -207,17 +206,22 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_mode=app_model.mode,
         )
 
-        # new thread
-        worker_thread = threading.Thread(
-            target=self._generate_worker,
-            kwargs={
-                "flask_app": current_app._get_current_object(),  # type: ignore
-                "application_generate_entity": application_generate_entity,
-                "queue_manager": queue_manager,
-                "context": contextvars.copy_context(),
-                "workflow_thread_pool_id": workflow_thread_pool_id,
-            },
-        )
+        # new thread with request context and contextvars
+        context = contextvars.copy_context()
+
+        @copy_current_request_context
+        def worker_with_context():
+            # Run the worker within the copied context
+            return context.run(
+                self._generate_worker,
+                flask_app=current_app._get_current_object(),  # type: ignore
+                application_generate_entity=application_generate_entity,
+                queue_manager=queue_manager,
+                context=context,
+                workflow_thread_pool_id=workflow_thread_pool_id,
+            )
+
+        worker_thread = threading.Thread(target=worker_with_context)
 
         worker_thread.start()
 
@@ -275,9 +279,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
-            workflow_run_id=str(uuid.uuid4()),
+            workflow_execution_id=str(uuid.uuid4()),
         )
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
@@ -352,9 +355,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
             single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
-            workflow_run_id=str(uuid.uuid4()),
+            workflow_execution_id=str(uuid.uuid4()),
         )
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
@@ -408,8 +410,22 @@ class WorkflowAppGenerator(BaseAppGenerator):
         """
         for var, val in context.items():
             var.set(val)
+
+        # FIXME(-LAN-): Save current user before entering new app context
+        from flask import g
+
+        saved_user = None
+        if has_request_context() and hasattr(g, "_login_user"):
+            saved_user = g._login_user
+
         with flask_app.app_context():
             try:
+                # Restore user in new app context
+                if saved_user is not None:
+                    from flask import g
+
+                    g._login_user = saved_user
+
                 # workflow app
                 runner = WorkflowAppRunner(
                     application_generate_entity=application_generate_entity,

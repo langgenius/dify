@@ -9,6 +9,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
@@ -17,7 +18,7 @@ from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.llm.node import LLMNode
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 from tests.integration_tests.workflow.nodes.__mock.model import get_mocked_fetch_model_config
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""

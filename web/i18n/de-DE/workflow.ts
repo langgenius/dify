@@ -648,7 +648,6 @@ const translation = {
       'assignedVarsDescription': 'Zugewiesene Variablen müssen beschreibbare Variablen sein, z. B. Konversationsvariablen.',
     },
     tool: {
-      toAuthorize: 'Autorisieren',
       inputVars: 'Eingabevariablen',
       outputVars: {
         text: 'durch das Tool generierter Inhalt',
@@ -661,6 +660,7 @@ const translation = {
         },
         json: 'von einem Tool generiertes JSON',
       },
+      authorize: 'Autorisieren',
     },
     questionClassifiers: {
       model: 'Modell',

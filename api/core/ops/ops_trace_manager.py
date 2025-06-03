@@ -30,7 +30,7 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.ops.utils import get_message_data
-from core.workflow.entities.workflow_execution_entities import WorkflowExecution
+from core.workflow.entities.workflow_execution import WorkflowExecution
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageFile, TraceAppConfig
@@ -386,7 +386,7 @@ class TraceTask:
     ):
         self.trace_type = trace_type
         self.message_id = message_id
-        self.workflow_run_id = workflow_execution.id if workflow_execution else None
+        self.workflow_run_id = workflow_execution.id_ if workflow_execution else None
         self.conversation_id = conversation_id
         self.user_id = user_id
         self.timer = timer
@@ -487,6 +487,7 @@ class TraceTask:
                 "file_list": file_list,
                 "triggered_from": workflow_run.triggered_from,
                 "user_id": user_id,
+                "app_id": workflow_run.app_id,
             }
 
             workflow_trace_info = WorkflowTraceInfo(

@@ -25,7 +25,7 @@ const translation = {
   },
   source: {
     local: '로컬 패키지 파일',
-    marketplace: '시장',
+    marketplace: '마켓',
     github: '깃허브',
   },
   detailPanel: {
@@ -62,6 +62,7 @@ const translation = {
       placeholder: '도구 선택...',
       paramsTip2: '\'자동\'이 꺼져 있으면 기본값이 사용됩니다.',
       unsupportedContent: '설치된 플러그인 버전은 이 작업을 제공하지 않습니다.',
+      toolSetting: '도구 설정',
     },
     configureApp: '앱 구성',
     strategyNum: '{{번호}} {{전략}} 포함',
@@ -197,7 +198,7 @@ const translation = {
   endpointsEnabled: '{{num}}개의 엔드포인트 집합이 활성화되었습니다.',
   installFrom: '에서 설치',
   allCategories: '모든 카테고리',
-  submitPlugin: '제출 플러그인',
+  submitPlugin: '플러그인 제출',
   findMoreInMarketplace: 'Marketplace에서 더 알아보기',
   searchCategories: '검색 카테고리',
   search: '검색',
@@ -210,6 +211,7 @@ const translation = {
     title: '플러그인',
   },
   difyVersionNotCompatible: '현재 Dify 버전이 이 플러그인과 호환되지 않습니다. 필요한 최소 버전으로 업그레이드하십시오: {{minimalDifyVersion}}',
+  requestAPlugin: '플러그인을 요청하세요',
 }
 
 export default translation
