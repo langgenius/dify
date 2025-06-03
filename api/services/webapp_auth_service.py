@@ -2,8 +2,6 @@ import random
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional, cast
 
-from werkzeug.exceptions import NotFound, Unauthorized
-
 from configs import dify_config
 from extensions.ext_database import db
 from libs.helper import TokenManager
@@ -13,8 +11,10 @@ from models.account import Account, AccountStatus
 from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
-from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
+from services.errors.account import (AccountLoginError, AccountNotFoundError,
+                                     AccountPasswordError)
 from tasks.mail_email_code_login import send_email_code_login_mail_task
+from werkzeug.exceptions import NotFound, Unauthorized
 
 
 class WebAppAuthService:
@@ -109,7 +109,7 @@ class WebAppAuthService:
 
         payload = {
             "sub": "Web API Passport",
-            "user_id": account.id,
+            "user_id": account.email,
             "token_source": "webapp_login_token",
             "exp": exp,
         }
