@@ -376,7 +376,10 @@ class KnowledgeRetrievalNode(LLMNode):
                                 elif expected_value.value_type == "string":  # type: ignore
                                     expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
                                 elif expected_value.value_type in (
-                                    "array[number]", "array[string]", "array[object]", "array"
+                                    "array[number]",
+                                    "array[string]",
+                                    "array[object]",
+                                    "array",
                                 ):  # type: ignore
                                     expected_value = expected_value.value  # type: ignore
                                 else:
@@ -524,60 +527,48 @@ class KnowledgeRetrievalNode(LLMNode):
                     filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) != value)
             case "in":
                 if isinstance(value, list | tuple):
-                    # For arrays: check if metadata field contains any value from the input array
+                    # For arrays: check if metadata field (single value) is in the input array
                     or_conditions = []
                     for i, v in enumerate(value):
                         param_key = f"{key_value}_{i}"
                         if isinstance(v, str):
-                            or_conditions.append(
-                                (text(f"documents.doc_metadata ->> :{key} LIKE :{param_key}")).params(
-                                    **{key: metadata_name, param_key: f'%"{v}"%'}
-                                )
-                            )
+                            # For string type: exact match with quoted string
+                            or_conditions.append(Document.doc_metadata[metadata_name] == f'"{v}"')
                         else:
+                            # For number type: exact match as numeric value
                             or_conditions.append(
-                                (text(f"documents.doc_metadata ->> :{key} = :{param_key}")).params(
-                                    **{key: metadata_name, param_key: str(v)}
-                                )
+                                sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) == v
                             )
                     if or_conditions:
                         filters.append(or_(*or_conditions))
                 else:
-                    # Single value case
+                    # Single value case (backward compatibility)
                     if isinstance(value, str):
-                        filters.append(
-                            (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                                **{key: metadata_name, key_value: f'%"{value}"%'}
-                            )
-                        )
+                        filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')
+                    else:
+                        filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) == value)
             case "not in":
                 if isinstance(value, list | tuple):
-                    # For arrays: check if metadata field does not contain any value from the input array
+                    # For arrays: check if metadata field (single value) is not in the input array
                     and_conditions = []
                     for i, v in enumerate(value):
                         param_key = f"{key_value}_{i}"
                         if isinstance(v, str):
-                            and_conditions.append(
-                                (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{param_key}")).params(
-                                    **{key: metadata_name, param_key: f'%"{v}"%'}
-                                )
-                            )
+                            # For string type: not equal to quoted string
+                            and_conditions.append(Document.doc_metadata[metadata_name] != f'"{v}"')
                         else:
+                            # For number type: not equal to numeric value
                             and_conditions.append(
-                                (text(f"documents.doc_metadata ->> :{key} != :{param_key}")).params(
-                                    **{key: metadata_name, param_key: str(v)}
-                                )
+                                sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) != v
                             )
                     if and_conditions:
                         filters.append(and_(*and_conditions))
                 else:
-                    # Single value case
+                    # Single value case (backward compatibility)
                     if isinstance(value, str):
-                        filters.append(
-                            (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{key_value}")).params(
-                                **{key: metadata_name, key_value: f'%"{value}"%'}
-                            )
-                        )
+                        filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
+                    else:
+                        filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) != value)
             case "empty":
                 filters.append(Document.doc_metadata[metadata_name].is_(None))
             case "not empty":

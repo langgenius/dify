@@ -87,16 +87,19 @@ const ConditionArray = ({
       const trimmed = item.trim()
       if (trimmed === '') return null
 
-      // Try to convert to number if it's a valid number
-      const numericValue = Number(trimmed)
-      if (!isNaN(numericValue) && isFinite(numericValue))
-        return numericValue
+      // Try to convert to number if it's a valid number (only if it looks like a pure numeric value)
+      if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+        const numericValue = Number(trimmed)
+        if (!isNaN(numericValue) && isFinite(numericValue))
+          return numericValue
+      }
 
-      // Otherwise keep as string
-      return trimmed
+      // Otherwise keep as string (remove quotes if present)
+      return trimmed.replace(/^["']|["']$/g, '')
     }).filter(item => item !== null)
 
     console.log('🔧 常量数组值被设置:', arrayValues)
+    console.log('🔧 数组类型检测:', arrayValues.map(v => typeof v))
     onChange(arrayValues)
   }, [onChange])
 
