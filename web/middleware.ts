@@ -56,11 +56,6 @@ export function middleware(request: NextRequest) {
     contentSecurityPolicyHeaderValue,
   )
 
-  response.headers.set(
-    'Content-Security-Policy',
-    contentSecurityPolicyHeaderValue,
-  )
-
   return wrapResponseWithXFrameOptions(response, pathname)
 }
 
