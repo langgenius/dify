@@ -139,7 +139,7 @@ class WorkflowVariableCollectionApi(Resource):
     @_api_prerequisite
     def delete(self, app_model: App):
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session,
+            session=db.session(),
         )
         draft_var_srv.delete_workflow_variables(app_model.id)
         db.session.commit()
@@ -180,7 +180,7 @@ class NodeVariableCollectionApi(Resource):
     @_api_prerequisite
     def delete(self, app_model: App, node_id: str):
         validate_node_id(node_id)
-        srv = WorkflowDraftVariableService(db.session)
+        srv = WorkflowDraftVariableService(db.session())
         srv.delete_node_variables(app_model.id, node_id)
         db.session.commit()
         return Response("", 204)
@@ -194,7 +194,7 @@ class VariableApi(Resource):
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
     def get(self, app_model: App, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session,
+            session=db.session(),
         )
         variable = draft_var_srv.get_variable(variable_id=variable_id)
         if variable is None:
@@ -211,7 +211,7 @@ class VariableApi(Resource):
         parser.add_argument(self._PATCH_VALUE_FIELD, type=build_segment, required=False, nullable=True, location="json")
 
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session,
+            session=db.session(),
         )
         args = parser.parse_args(strict=True)
 
@@ -233,7 +233,7 @@ class VariableApi(Resource):
     @_api_prerequisite
     def delete(self, app_model: App, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
-            session=db.session,
+            session=db.session(),
         )
         variable = draft_var_srv.get_variable(variable_id=variable_id)
         if variable is None:
@@ -269,7 +269,7 @@ class ConversationVariableCollectionApi(Resource):
         draft_workflow = workflow_srv.get_draft_workflow(app_model)
         if draft_workflow is None:
             raise NotFoundError(description=f"draft workflow not found, id={app_model.id}")
-        draft_var_srv = WorkflowDraftVariableService(db.session)
+        draft_var_srv = WorkflowDraftVariableService(db.session())
         draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
 

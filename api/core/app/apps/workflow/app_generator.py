@@ -308,7 +308,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session)
+        draft_var_srv = WorkflowDraftVariableService(db.session())
         draft_var_srv.prefill_conversation_variable_default_values(workflow)
         var_loader = DraftVarLoader(
             engine=db.engine,
@@ -391,7 +391,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-        draft_var_srv = WorkflowDraftVariableService(db.session)
+        draft_var_srv = WorkflowDraftVariableService(db.session())
         draft_var_srv.prefill_conversation_variable_default_values(workflow)
         var_loader = DraftVarLoader(
             engine=db.engine,
