@@ -149,6 +149,8 @@ const translation = {
     newDataset: 'Ustvari znanje',
     tools: 'Orodja',
     exploreMarketplace: 'Raziščite Marketplace',
+    appDetail: 'Podrobnosti o aplikaciji',
+    account: 'Račun',
   },
   userProfile: {
     settings: 'Nastavitve',
@@ -843,6 +845,7 @@ const translation = {
   license: {
     expiring_plural: 'Poteče v {{count}} dneh',
     expiring: 'Poteče v enem dnevu',
+    unlimited: 'Brez omejitev',
   },
   pagination: {
     perPage: 'Elementi na stran',
@@ -866,6 +869,7 @@ const translation = {
     browse: 'brskati',
     dropImageHere: 'Tukaj spustite svojo sliko ali',
   },
+  you: 'Ti',
 }
 
 export default translation

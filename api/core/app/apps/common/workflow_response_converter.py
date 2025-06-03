@@ -44,15 +44,14 @@ from core.app.entities.task_entities import (
 )
 from core.file import FILE_MODEL_IDENTITY, File
 from core.tools.tool_manager import ToolManager
-from core.workflow.entities.node_execution_entities import NodeExecution
-from core.workflow.entities.workflow_execution_entities import WorkflowExecution
+from core.workflow.entities.workflow_execution import WorkflowExecution
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from models import (
     Account,
     CreatorUserRole,
     EndUser,
-    WorkflowNodeExecutionStatus,
     WorkflowRun,
 )
 
@@ -73,11 +72,10 @@ class WorkflowResponseConverter:
     ) -> WorkflowStartStreamResponse:
         return WorkflowStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_execution.id,
+            workflow_run_id=workflow_execution.id_,
             data=WorkflowStartStreamResponse.Data(
-                id=workflow_execution.id,
+                id=workflow_execution.id_,
                 workflow_id=workflow_execution.workflow_id,
-                sequence_number=workflow_execution.sequence_number,
                 inputs=workflow_execution.inputs,
                 created_at=int(workflow_execution.started_at.timestamp()),
             ),
@@ -91,7 +89,7 @@ class WorkflowResponseConverter:
         workflow_execution: WorkflowExecution,
     ) -> WorkflowFinishStreamResponse:
         created_by = None
-        workflow_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == workflow_execution.id))
+        workflow_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == workflow_execution.id_))
         assert workflow_run is not None
         if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
             stmt = select(Account).where(Account.id == workflow_run.created_by)
@@ -122,11 +120,10 @@ class WorkflowResponseConverter:
 
         return WorkflowFinishStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_execution.id,
+            workflow_run_id=workflow_execution.id_,
             data=WorkflowFinishStreamResponse.Data(
-                id=workflow_execution.id,
+                id=workflow_execution.id_,
                 workflow_id=workflow_execution.workflow_id,
-                sequence_number=workflow_execution.sequence_number,
                 status=workflow_execution.status,
                 outputs=workflow_execution.outputs,
                 error=workflow_execution.error_message,
@@ -146,16 +143,16 @@ class WorkflowResponseConverter:
         *,
         event: QueueNodeStartedEvent,
         task_id: str,
-        workflow_node_execution: NodeExecution,
+        workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeStartStreamResponse]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
-        if not workflow_node_execution.workflow_run_id:
+        if not workflow_node_execution.workflow_execution_id:
             return None
 
         response = NodeStartStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_node_execution.workflow_run_id,
+            workflow_run_id=workflow_node_execution.workflow_execution_id,
             data=NodeStartStreamResponse.Data(
                 id=workflow_node_execution.id,
                 node_id=workflow_node_execution.node_id,
@@ -196,18 +193,18 @@ class WorkflowResponseConverter:
         | QueueNodeInLoopFailedEvent
         | QueueNodeExceptionEvent,
         task_id: str,
-        workflow_node_execution: NodeExecution,
+        workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeFinishStreamResponse]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
-        if not workflow_node_execution.workflow_run_id:
+        if not workflow_node_execution.workflow_execution_id:
             return None
         if not workflow_node_execution.finished_at:
             return None
 
         return NodeFinishStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_node_execution.workflow_run_id,
+            workflow_run_id=workflow_node_execution.workflow_execution_id,
             data=NodeFinishStreamResponse.Data(
                 id=workflow_node_execution.id,
                 node_id=workflow_node_execution.node_id,
@@ -239,18 +236,18 @@ class WorkflowResponseConverter:
         *,
         event: QueueNodeRetryEvent,
         task_id: str,
-        workflow_node_execution: NodeExecution,
+        workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[Union[NodeRetryStreamResponse, NodeFinishStreamResponse]]:
         if workflow_node_execution.node_type in {NodeType.ITERATION, NodeType.LOOP}:
             return None
-        if not workflow_node_execution.workflow_run_id:
+        if not workflow_node_execution.workflow_execution_id:
             return None
         if not workflow_node_execution.finished_at:
             return None
 
         return NodeRetryStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_node_execution.workflow_run_id,
+            workflow_run_id=workflow_node_execution.workflow_execution_id,
             data=NodeRetryStreamResponse.Data(
                 id=workflow_node_execution.id,
                 node_id=workflow_node_execution.node_id,

@@ -85,7 +85,6 @@ class BaiduVector(BaseVector):
             end = min(start + batch_size, total_count)
             rows = []
             assert len(metadatas) == total_count, "metadatas length should be equal to total_count"
-            # FIXME do you need this assert?
             for i in range(start, end, 1):
                 row = Row(
                     id=metadatas[i].get("doc_id", str(uuid.uuid4())),

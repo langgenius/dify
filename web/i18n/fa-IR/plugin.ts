@@ -62,6 +62,7 @@ const translation = {
       uninstalledContent: 'این افزونه از مخزن local/GitHub نصب شده است. لطفا پس از نصب استفاده کنید.',
       unsupportedTitle: 'اکشن پشتیبانی نشده',
       unsupportedContent2: 'برای تغییر نسخه کلیک کنید.',
+      toolSetting: 'تنظیمات ابزار',
     },
     endpointDeleteTip: 'حذف نقطه پایانی',
     disabled: 'غیر فعال',
@@ -210,6 +211,7 @@ const translation = {
     title: 'پلاگین ها',
   },
   difyVersionNotCompatible: 'نسخه فعلی دیفی با این پلاگین سازگار نیست، لطفاً به نسخه حداقل مورد نیاز به‌روزرسانی کنید: {{minimalDifyVersion}}',
+  requestAPlugin: 'درخواست یک افزونه',
 }
 
 export default translation

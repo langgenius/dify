@@ -4,6 +4,7 @@ import pytest
 
 from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.list_operator.entities import (
     ExtractConfig,
     FilterBy,
@@ -14,7 +15,6 @@ from core.workflow.nodes.list_operator.entities import (
 )
 from core.workflow.nodes.list_operator.exc import InvalidKeyError
 from core.workflow.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 @pytest.fixture

@@ -209,6 +209,41 @@ const translation = {
     modelNotSupportedTip: 'Mô hình hiện tại không hỗ trợ tính năng này và tự động bị hạ cấp xuống việc tiêm lệnh.',
     moreFillTip: 'Hiển thị tối đa 10 cấp độ lồng ghép',
   },
+  accessItemsDescription: {
+    anyone: 'Mọi người đều có thể truy cập ứng dụng web.',
+    specific: 'Chỉ những nhóm hoặc thành viên cụ thể mới có thể truy cập ứng dụng web.',
+    organization: 'Bất kỳ ai trong tổ chức đều có thể truy cập ứng dụng web.',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: 'Ai có liên kết',
+      specific: 'Các nhóm hoặc thành viên cụ thể',
+      organization: 'Chỉ các thành viên trong doanh nghiệp',
+    },
+    operateGroupAndMember: {
+      searchPlaceholder: 'Tìm kiếm nhóm và thành viên',
+      allMembers: 'Tất cả các thành viên',
+      expand: 'Mở rộng',
+      noResult: 'Không có kết quả',
+    },
+    title: 'Kiểm soát truy cập ứng dụng web',
+    description: 'Cài đặt quyền truy cập ứng dụng web',
+    accessLabel: 'Ai có quyền truy cập',
+    groups_one: '{{count}} NHÓM',
+    groups_other: '{{count}} NHÓM',
+    members_one: '{{count}} THÀNH VIÊN',
+    members_other: '{{count}} THÀNH VIÊN',
+    noGroupsOrMembers: 'Không có nhóm hoặc thành viên nào được chọn',
+    webAppSSONotEnabledTip: 'Vui lòng liên hệ với quản trị viên doanh nghiệp để cấu hình phương thức xác thực ứng dụng web.',
+    updateSuccess: 'Cập nhật thành công',
+  },
+  publishApp: {
+    title: 'Ai có thể truy cập ứng dụng web',
+    notSet: 'Chưa đặt',
+    notSetDesc: 'Hiện tại không ai có thể truy cập ứng dụng web. Vui lòng thiết lập quyền truy cập.',
+  },
+  noAccessPermission: 'Không được phép truy cập ứng dụng web',
+  accessControl: 'Kiểm soát truy cập ứng dụng web',
 }
 
 export default translation

@@ -666,6 +666,7 @@ const translation = {
         },
         json: 'ツールで生成されたJSON',
       },
+      authorize: '認証する',
     },
     questionClassifiers: {
       model: 'モデル',

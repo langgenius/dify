@@ -73,6 +73,6 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
     except DocumentIsPausedError as ex:
         logging.info(click.style(str(ex), fg="yellow"))
     except Exception:
-        pass
+        logging.exception("document_indexing_update_task failed, document_id: {}".format(document_id))
     finally:
         db.session.close()

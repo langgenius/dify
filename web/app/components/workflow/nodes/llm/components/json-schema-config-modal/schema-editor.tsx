@@ -12,7 +12,7 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
 }) => {
   return (
     <CodeEditor
-      className='rounded-xl'
+      className='grow rounded-xl'
       editorWrapperClassName='grow'
       value={schema}
       onUpdate={onUpdate}

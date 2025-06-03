@@ -209,6 +209,41 @@ const translation = {
     structuredTip: 'संरचित आउटपुट एक विशेषता है जो यह सुनिश्चित करती है कि मॉडल हमेशा आपके प्रदान किए गए JSON स्कीमा के अनुसार प्रतिक्रियाएँ生成 करेगा।',
     modelNotSupportedTip: 'वर्तमान मॉडल इस सुविधा का समर्थन नहीं करता है और स्वचालित रूप से प्रॉम्प्ट इंजेक्शन में डाउनग्रेड किया जाता है।',
   },
+  accessItemsDescription: {
+    anyone: 'कोई भी वेब ऐप तक पहुँच सकता है',
+    organization: 'संस्थान के किसी भी व्यक्ति को वेब ऐप तक पहुंच प्राप्त है',
+    specific: 'केवल विशेष समूह या सदस्य ही वेब ऐप तक पहुंच सकते हैं',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: 'लिंक के साथ कोई भी',
+      specific: 'विशिष्ट समूह या सदस्य',
+      organization: 'केवल उद्यम के भीतर के सदस्य',
+    },
+    operateGroupAndMember: {
+      searchPlaceholder: 'समूहों और सदस्यों की खोज करें',
+      allMembers: 'सभी सदस्य',
+      expand: 'व्याप्त करें',
+      noResult: 'कोई परिणाम नहीं',
+    },
+    title: 'वेब एप्लिकेशन पहुँच नियंत्रण',
+    description: 'वेब ऐप एक्सेस अनुमतियाँ सेट करें',
+    groups_one: '{{count}} समूह',
+    groups_other: '{{count}} समूह',
+    members_one: '{{count}} सदस्य',
+    members_other: '{{count}} सदस्य',
+    noGroupsOrMembers: 'कोई समूह या सदस्य चयनित नहीं किया गया',
+    updateSuccess: 'सफलता से अपडेट किया गया',
+    accessLabel: 'किसके पास पहुँच है',
+    webAppSSONotEnabledTip: 'कृपया वेब ऐप प्रमाणीकरण विधि कॉन्फ़िगर करने के लिए उद्यम प्रशासक से संपर्क करें।',
+  },
+  publishApp: {
+    title: 'वेब ऐप तक कौन पहुँच सकता है',
+    notSet: 'अनुबंधित नहीं किया गया',
+    notSetDesc: 'वर्तमान में कोई भी वेब ऐप तक पहुंच नहीं बना सकता। कृपया अनुमतियाँ सेट करें।',
+  },
+  accessControl: 'वेब एप्लिकेशन पहुँच नियंत्रण',
+  noAccessPermission: 'वेब एप्लिकेशन तक पहुँचने की अनुमति नहीं है',
 }
 
 export default translation
