@@ -23,6 +23,10 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base.node import BaseNode
@@ -30,7 +34,7 @@ from core.workflow.nodes.enums import ErrorStrategy, NodeType
 from core.workflow.nodes.event.event import RunCompletedEvent
 from core.workflow.nodes.event.types import NodeEvent
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
-from core.workflow.repository.workflow_node_execution_repository import OrderConfig
+from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -40,8 +44,6 @@ from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
     Workflow,
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowType,

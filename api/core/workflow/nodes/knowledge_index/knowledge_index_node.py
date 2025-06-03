@@ -12,7 +12,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
-from models.workflow import WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 
 from ..base import BaseNode
 from .entities import KnowledgeIndexNodeData
