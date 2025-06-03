@@ -21,7 +21,7 @@ const Publisher = () => {
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
     if (newOpen)
-      handleSyncWorkflowDraft()
+      handleSyncWorkflowDraft(true)
     setOpen(newOpen)
   }, [handleSyncWorkflowDraft])
 

@@ -11,6 +11,28 @@ const metaData = genNodeMetaData({
 const nodeDefault: NodeDefault<DataSourceNodeType> = {
   metaData,
   defaultValue: {
+    fileExtensions: [
+      'txt',
+      'markdown',
+      'mdx',
+      'pdf',
+      'html',
+      'xlsx',
+      'xls',
+      'vtt',
+      'properties',
+      'doc',
+      'docx',
+      'csv',
+      'eml',
+      'msg',
+      'pptx',
+      'xml',
+      'epub',
+      'ppt',
+      'md',
+      'html',
+    ],
     datasource_parameters: {},
     datasource_configurations: {},
   },
@@ -20,7 +42,7 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
       errorMessage: '',
     }
   },
-  getOutputVars(payload) {
+  getOutputVars(payload, ragVars = []) {
     const {
       provider_type,
     } = payload
@@ -40,6 +62,7 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
           ]
           : []
       ),
+      ...ragVars,
     ]
   },
 }

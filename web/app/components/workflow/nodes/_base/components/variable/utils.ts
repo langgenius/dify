@@ -22,6 +22,7 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
+import type { RAGPipelineVariable } from '@/models/pipeline'
 
 import {
   HTTP_REQUEST_OUTPUT_STRUCT,
@@ -49,6 +50,10 @@ export const isENV = (valueSelector: ValueSelector) => {
 
 export const isConversationVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'conversation'
+}
+
+export const isRagVariableVar = (valueSelector: ValueSelector) => {
+  return valueSelector[0] === 'rag'
 }
 
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
@@ -170,6 +175,7 @@ const formatItem = (
   item: any,
   isChatMode: boolean,
   filterVar: (payload: Var, selector: ValueSelector) => boolean,
+  ragVars?: Var[],
 ): NodeOutPutVar => {
   const { id, data } = item
 
@@ -460,7 +466,7 @@ const formatItem = (
     }
 
     case BlockEnum.DataSource: {
-      res.vars = DataSourceNodeDefault.getOutputVars?.(data as DataSourceNodeType) || []
+      res.vars = DataSourceNodeDefault.getOutputVars?.(data as DataSourceNodeType, ragVars) || []
       break
     }
 
@@ -480,6 +486,18 @@ const formatItem = (
           variable: `conversation.${chatVar.name}`,
           type: chatVar.value_type,
           des: chatVar.description,
+        }
+      }) as Var[]
+      break
+    }
+
+    case 'rag': {
+      res.vars = data.ragVariables.map((ragVarialbe: RAGPipelineVariable) => {
+        return {
+          variable: `rag.${ragVarialbe.variable}`,
+          type: inputVarTypeToVarType(ragVarialbe.type as any),
+          des: ragVarialbe.label,
+          isRagVariable: true,
         }
       }) as Var[]
       break
@@ -564,6 +582,7 @@ export const toNodeOutputVars = (
   filterVar = (_payload: Var, _selector: ValueSelector) => true,
   environmentVariables: EnvironmentVariable[] = [],
   conversationVariables: ConversationVariable[] = [],
+  ragVariables: RAGPipelineVariable[] = [],
 ): NodeOutPutVar[] => {
   // ENV_NODE data format
   const ENV_NODE = {
@@ -583,6 +602,15 @@ export const toNodeOutputVars = (
       chatVarList: conversationVariables,
     },
   }
+  // RAG_PIPELINE_NODE data format
+  const RAG_PIPELINE_NODE = {
+    id: 'rag',
+    data: {
+      title: 'SHARED INPUTS',
+      type: 'rag',
+      ragVariables: ragVariables.filter(ragVariable => ragVariable.belong_to_node_id === 'shared'),
+    },
+  }
   // Sort nodes in reverse chronological order (most recent first)
   const sortedNodes = [...nodes].sort((a, b) => {
     if (a.data.type === BlockEnum.Start) return 1
@@ -599,9 +627,20 @@ export const toNodeOutputVars = (
     ...sortedNodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node?.data?.type)),
     ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
     ...((isChatMode && conversationVariables.length > 0) ? [CHAT_VAR_NODE] : []),
+    ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0 ? [RAG_PIPELINE_NODE] : []),
   ].map((node) => {
+    let ragVariablesInDataSource: RAGPipelineVariable[] = []
+    if (node.data.type === BlockEnum.DataSource)
+      ragVariablesInDataSource = ragVariables.filter(ragVariable => ragVariable.belong_to_node_id === node.id)
     return {
-      ...formatItem(node, isChatMode, filterVar),
+      ...formatItem(node, isChatMode, filterVar, ragVariablesInDataSource.map(
+        (ragVariable: RAGPipelineVariable) => ({
+          variable: ragVariable.variable,
+          type: inputVarTypeToVarType(ragVariable.type as any),
+          description: ragVariable.label,
+          isRagVariable: true,
+        } as Var),
+      )),
       isStartNode: node.data.type === BlockEnum.Start,
     }
   }).filter(item => item.vars.length > 0)
@@ -719,6 +758,7 @@ export const getVarType = ({
   isConstant,
   environmentVariables = [],
   conversationVariables = [],
+  ragVariables = [],
 }: {
   valueSelector: ValueSelector
   parentNode?: Node | null
@@ -729,6 +769,7 @@ export const getVarType = ({
   isConstant?: boolean
   environmentVariables?: EnvironmentVariable[]
   conversationVariables?: ConversationVariable[]
+  ragVariables?: RAGPipelineVariable[]
 }): VarType => {
   if (isConstant)
     return VarType.string
@@ -739,6 +780,7 @@ export const getVarType = ({
     undefined,
     environmentVariables,
     conversationVariables,
+    ragVariables,
   )
 
   const isIterationInnerVar = parentNode?.data.type === BlockEnum.Iteration
@@ -782,6 +824,7 @@ export const getVarType = ({
   const isSystem = isSystemVar(valueSelector)
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
+  const isRagVariable = isRagVariableVar(valueSelector)
   const startNode = availableNodes.find((node: any) => {
     return node?.data.type === BlockEnum.Start
   })
@@ -795,7 +838,7 @@ export const getVarType = ({
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
 
-  if (isSystem || isEnv || isChatVar) {
+  if (isSystem || isEnv || isChatVar || isRagVariable) {
     return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
   }
   else {
@@ -846,6 +889,7 @@ export const toNodeAvailableVars = ({
   isChatMode,
   environmentVariables,
   conversationVariables,
+  ragVariables,
   filterVar,
 }: {
   parentNode?: Node | null
@@ -857,6 +901,8 @@ export const toNodeAvailableVars = ({
   environmentVariables?: EnvironmentVariable[]
   // chat var
   conversationVariables?: ConversationVariable[]
+  // rag variables
+  ragVariables?: RAGPipelineVariable[]
   filterVar: (payload: Var, selector: ValueSelector) => boolean
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(
@@ -865,6 +911,7 @@ export const toNodeAvailableVars = ({
     filterVar,
     environmentVariables,
     conversationVariables,
+    ragVariables,
   )
   const isInIteration = parentNode?.data.type === BlockEnum.Iteration
   if (isInIteration) {
