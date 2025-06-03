@@ -85,20 +85,18 @@ class VariableAssignerNode(BaseNode[VariableAssignerData]):
         conv_var_updater = self._conv_var_updater_factory()
         conv_var_updater.update(conversation_id=conversation_id.text, variable=updated_variable)
         conv_var_updater.flush()
+        updated_variables = [common_helpers.variable_to_processed_data(assigned_variable_selector, updated_variable)]
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs={
                 "value": income_value.to_object(),
             },
-            outputs={
-                # NOTE(QuantumGhost): although only one variable is updated in `v1.VariableAssignerNode`,
-                # we still set `output_variables` as a list to ensure the schema of output is
-                # compatible with `v2.VariableAssignerNode`.
-                "updated_variables": [
-                    common_helpers.variable_to_output_mapping(assigned_variable_selector, updated_variable)
-                ]
-            },
+            # NOTE(QuantumGhost): although only one variable is updated in `v1.VariableAssignerNode`,
+            # we still set `output_variables` as a list to ensure the schema of output is
+            # compatible with `v2.VariableAssignerNode`.
+            process_data=common_helpers.set_updated_variables({}, updated_variables),
+            outputs={},
         )
 
 

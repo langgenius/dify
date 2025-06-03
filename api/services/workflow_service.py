@@ -407,6 +407,7 @@ class WorkflowService:
 
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution = repository.to_db_model(node_execution)
+        process_data = workflow_node_execution.process_data_dict or {}
         output = workflow_node_execution.outputs_dict or {}
 
         exec_metadata = workflow_node_execution.execution_metadata_dict or {}
@@ -424,7 +425,7 @@ class WorkflowService:
                 invoke_from=InvokeFrom.DEBUGGER,
                 enclosing_node_id=loop_id or iteration_id or None,
             )
-            draft_var_saver.save(output)
+            draft_var_saver.save(process_data=process_data, output=output)
             session.commit()
         return workflow_node_execution
 

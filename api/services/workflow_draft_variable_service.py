@@ -16,6 +16,7 @@ from core.variables.consts import MIN_SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
+from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
 from core.workflow.variable_loader import VariableLoader
 from factories import variable_factory
 from factories.variable_factory import build_segment, segment_to_variable
@@ -442,13 +443,11 @@ class DraftVariableSaver:
             return False
         return True
 
-    def _build_from_variable_assigner_mapping(self, output: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
+    def _build_from_variable_assigner_mapping(self, process_data: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
         draft_vars: list[WorkflowDraftVariable] = []
-        updated_variables = output.get("updated_variables", [])
+        updated_variables = get_updated_variables(process_data) or []
         for item in updated_variables:
-            selector = item.get("selector")
-            if selector is None:
-                continue
+            selector = item.selector
             if len(selector) < MIN_SELECTORS_LENGTH:
                 raise Exception("selector too short")
             # NOTE(QuantumGhost): only the following two kinds of variable could be updated by
@@ -456,21 +455,11 @@ class DraftVariableSaver:
             # We only save conversation variable here.
             if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
                 continue
-            name = item.get("name")
-            if name is None:
-                continue
-            new_value = item["new_value"]
-            value_type = item.get("type")
-            if value_type is None:
-                continue
-            var_seg = variable_factory.build_segment(new_value)
-            if var_seg.value_type != value_type:
-                raise Exception("value_type mismatch!")
             draft_vars.append(
                 WorkflowDraftVariable.new_conversation_variable(
                     app_id=self._app_id,
-                    name=name,
-                    value=var_seg,
+                    name=item.name,
+                    value=item.new_value,
                 )
             )
         return draft_vars
@@ -538,14 +527,16 @@ class DraftVariableSaver:
             )
         return draft_vars
 
-    def save(self, output: Mapping[str, Any] | None):
+    def save(self, output: Mapping[str, Any] | None, process_data: Mapping[str, Any] | None = None):
         draft_vars: list[WorkflowDraftVariable] = []
         if output is None:
             output = {}
+        if process_data is None:
+            process_data = {}
         if not self._should_save_output_variables_for_draft():
             return
         if self._node_type == NodeType.VARIABLE_ASSIGNER:
-            draft_vars = self._build_from_variable_assigner_mapping(output)
+            draft_vars = self._build_from_variable_assigner_mapping(process_data=process_data)
         elif self._node_type == NodeType.START:
             draft_vars = self._build_variables_from_start_mapping(output)
         elif self._node_type == NodeType.LOOP:

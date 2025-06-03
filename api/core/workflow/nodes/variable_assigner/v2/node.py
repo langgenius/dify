@@ -162,18 +162,18 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
                         variable=variable,
                     )
         conv_var_updater.flush()
+        updated_variables = [
+            common_helpers.variable_to_processed_data(selector, seg)
+            for selector in updated_variable_selectors
+            if (seg := self.graph_runtime_state.variable_pool.get(selector)) is not None
+        ]
 
+        common_helpers.set_updated_variables(process_data, updated_variables)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
             process_data=process_data,
-            outputs={
-                "updated_variables": [
-                    common_helpers.variable_to_output_mapping(selector, seg)
-                    for selector in updated_variable_selectors
-                    if (seg := self.graph_runtime_state.variable_pool.get(selector)) is not None
-                ],
-            },
+            outputs={},
         )
 
     def _handle_item(
