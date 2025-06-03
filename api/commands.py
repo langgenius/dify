@@ -846,6 +846,9 @@ def clear_orphaned_file_records(force: bool):
         {"type": "text", "table": "workflow_node_executions", "column": "outputs"},
         {"type": "text", "table": "conversations", "column": "introduction"},
         {"type": "text", "table": "conversations", "column": "system_instruction"},
+        {"type": "text", "table": "accounts", "column": "avatar"},
+        {"type": "text", "table": "apps", "column": "icon"},
+        {"type": "text", "table": "sites", "column": "icon"},
         {"type": "json", "table": "messages", "column": "inputs"},
         {"type": "json", "table": "messages", "column": "message"},
     ]
