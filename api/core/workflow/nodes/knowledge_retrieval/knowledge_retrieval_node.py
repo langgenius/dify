@@ -8,6 +8,7 @@ from typing import Any, Optional, cast
 
 from sqlalchemy import Float, and_, func, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -95,14 +96,15 @@ class KnowledgeRetrievalNode(LLMNode):
                 redis_client.zremrangebyscore(key, 0, current_time - 60000)
                 request_count = redis_client.zcard(key)
                 if request_count > knowledge_rate_limit.limit:
-                    # add ratelimit record
-                    rate_limit_log = RateLimitLog(
-                        tenant_id=self.tenant_id,
-                        subscription_plan=knowledge_rate_limit.subscription_plan,
-                        operation="knowledge",
-                    )
-                    db.session.add(rate_limit_log)
-                    db.session.commit()
+                    with Session(db.engine) as session:
+                        # add ratelimit record
+                        rate_limit_log = RateLimitLog(
+                            tenant_id=self.tenant_id,
+                            subscription_plan=knowledge_rate_limit.subscription_plan,
+                            operation="knowledge",
+                        )
+                        session.add(rate_limit_log)
+                        session.commit()
                     return NodeRunResult(
                         status=WorkflowNodeExecutionStatus.FAILED,
                         inputs=variables,
