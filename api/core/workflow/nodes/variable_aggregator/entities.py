@@ -17,7 +17,9 @@ class AdvancedSettings(BaseModel):
         Group.
         """
 
-        output_type: Literal["string", "number", "object", "array[string]", "array[number]", "array[object]"]
+        output_type: Literal[
+            "string", "number", "object", "file", "array[string]", "array[number]", "array[object]", "array[file]"
+        ]
         variables: list[list[str]]
         group_name: str
 
