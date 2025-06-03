@@ -286,7 +286,7 @@ const VarReferenceVars: FC<Props> = ({
   }
 
   const filteredVars = vars.filter((v) => {
-    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))
+    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.') || v.variable.startsWith('rag.'))
     return children.length > 0
   }).filter((node) => {
     if (!searchText)
@@ -297,7 +297,7 @@ const VarReferenceVars: FC<Props> = ({
     })
     return children.length > 0
   }).map((node) => {
-    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))
+    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.') || v.variable.startsWith('rag.'))
     if (searchText) {
       const searchTextLower = searchText.toLowerCase()
       if (!node.title.toLowerCase().includes(searchTextLower))
