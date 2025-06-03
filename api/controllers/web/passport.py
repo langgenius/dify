@@ -108,6 +108,16 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     end_user = None
     if end_user_id:
         end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
+    if session_id:
+        end_user = (
+            db.session.query(EndUser)
+            .filter(
+                EndUser.session_id == session_id,
+                EndUser.tenant_id == app_model.tenant_id,
+                EndUser.app_id == app_model.id,
+            )
+            .first()
+        )
     if not end_user:
         if not session_id:
             raise NotFound("Missing session_id for existing web user.")
