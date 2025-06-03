@@ -1,18 +1,17 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from flask import request
-from flask_restful import Resource
-from werkzeug.exceptions import NotFound, Unauthorized
-
 from configs import dify_config
 from controllers.web import api
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
+from flask import request
+from flask_restful import Resource
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from werkzeug.exceptions import NotFound, Unauthorized
 
 
 class PassportResource(Resource):
@@ -115,6 +114,7 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     """
     user_id = enterprise_user_decoded.get("user_id")
     end_user_id = enterprise_user_decoded.get("end_user_id")
+    session_id = enterprise_user_decoded.get("session_id")
 
     site = db.session.query(Site).filter(Site.code == app_code, Site.status == "normal").first()
     if not site:
@@ -127,12 +127,14 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     if end_user_id:
         end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
     if not end_user:
+        if not session_id:
+            raise NotFound("Missing session_id for existing web user.")
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type="browser",
             is_anonymous=True,
-            session_id=user_id,
+            session_id=session_id,
         )
         db.session.add(end_user)
         db.session.commit()
