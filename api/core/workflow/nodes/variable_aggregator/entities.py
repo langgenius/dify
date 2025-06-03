@@ -2,8 +2,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from core.workflow.nodes.base import BaseNodeData
 from core.variables.types import SegmentType
+from core.workflow.nodes.base import BaseNodeData
 
 
 class AdvancedSettings(BaseModel):
