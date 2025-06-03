@@ -12,12 +12,12 @@ class RagPipelineManageService:
 
         # get all builtin providers
         manager = PluginDatasourceManager()
-        datasources =  manager.fetch_datasource_providers(tenant_id)
+        datasources = manager.fetch_datasource_providers(tenant_id)
         for datasource in datasources:
             datasource_provider_service = DatasourceProviderService()
-            credentials = datasource_provider_service.get_datasource_credentials(tenant_id=tenant_id,
-                                                                                provider=datasource.provider,
-                                                                                plugin_id=datasource.plugin_id)
+            credentials = datasource_provider_service.get_datasource_credentials(
+                tenant_id=tenant_id, provider=datasource.provider, plugin_id=datasource.plugin_id
+            )
             if credentials:
                 datasource.is_authorized = True
         return datasources

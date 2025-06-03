@@ -107,6 +107,7 @@ class KnowledgeConfiguration(BaseModel):
     """
     Knowledge Base Configuration.
     """
+
     chunk_structure: str
     indexing_technique: Literal["high_quality", "economy"]
     embedding_model_provider: Optional[str] = ""

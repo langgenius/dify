@@ -15,7 +15,8 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document, GeneralStructureChunk
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
-from models.dataset import Dataset, Document as DatasetDocument, DatasetProcessRule
+from models.dataset import Dataset, DatasetProcessRule
+from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import Rule
 
 
@@ -152,13 +153,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
 
-
     def format_preview(self, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
         paragraph = GeneralStructureChunk(**chunks)
         preview = []
         for content in paragraph.general_chunks:
             preview.append({"content": content})
-        return {
-            "preview": preview,
-            "total_segments": len(paragraph.general_chunks)
-            }
+        return {"preview": preview, "total_segments": len(paragraph.general_chunks)}

@@ -38,7 +38,6 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
 
         recommended_pipelines_results = []
         for pipeline_built_in_template in pipeline_built_in_templates:
-
             recommended_pipeline_result = {
                 "id": pipeline_built_in_template.id,
                 "name": pipeline_built_in_template.name,

@@ -279,7 +279,11 @@ class RagPipelineDslService:
                 if node.get("data", {}).get("type") == "knowledge_index":
                     knowledge_configuration = node.get("data", {}).get("knowledge_configuration", {})
                     knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
-                    if dataset and pipeline.is_published and dataset.chunk_structure != knowledge_configuration.chunk_structure:
+                    if (
+                        dataset
+                        and pipeline.is_published
+                        and dataset.chunk_structure != knowledge_configuration.chunk_structure
+                    ):
                         raise ValueError("Chunk structure is not compatible with the published pipeline")
                     else:
                         dataset = Dataset(
@@ -304,8 +308,7 @@ class RagPipelineDslService:
                             .filter(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
-                                DatasetCollectionBinding.model_name
-                                == knowledge_configuration.embedding_model,
+                                DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
                                 DatasetCollectionBinding.type == "dataset",
                             )
                             .order_by(DatasetCollectionBinding.created_at)
@@ -323,12 +326,8 @@ class RagPipelineDslService:
                             db.session.commit()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
-                        dataset.embedding_model = (
-                            knowledge_configuration.embedding_model
-                        )
-                        dataset.embedding_model_provider = (
-                            knowledge_configuration.embedding_model_provider
-                        )
+                        dataset.embedding_model = knowledge_configuration.embedding_model
+                        dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
                     elif knowledge_configuration.indexing_technique == "economy":
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     dataset.pipeline_id = pipeline.id
@@ -443,8 +442,7 @@ class RagPipelineDslService:
                             .filter(
                                 DatasetCollectionBinding.provider_name
                                 == knowledge_configuration.embedding_model_provider,
-                                DatasetCollectionBinding.model_name
-                                == knowledge_configuration.embedding_model,
+                                DatasetCollectionBinding.model_name == knowledge_configuration.embedding_model,
                                 DatasetCollectionBinding.type == "dataset",
                             )
                             .order_by(DatasetCollectionBinding.created_at)
@@ -462,12 +460,8 @@ class RagPipelineDslService:
                             db.session.commit()
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
-                        dataset.embedding_model = (
-                            knowledge_configuration.embedding_model
-                        )
-                        dataset.embedding_model_provider = (
-                            knowledge_configuration.embedding_model_provider
-                        )
+                        dataset.embedding_model = knowledge_configuration.embedding_model
+                        dataset.embedding_model_provider = knowledge_configuration.embedding_model_provider
                     elif knowledge_configuration.indexing_technique == "economy":
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     dataset.pipeline_id = pipeline.id
@@ -538,7 +532,6 @@ class RagPipelineDslService:
             icon_type = "emoji"
         icon = str(pipeline_data.get("icon", ""))
 
-
         # Initialize pipeline based on mode
         workflow_data = data.get("workflow")
         if not workflow_data or not isinstance(workflow_data, dict):
@@ -553,7 +546,6 @@ class RagPipelineDslService:
             variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
         ]
         rag_pipeline_variables_list = workflow_data.get("rag_pipeline_variables", [])
-
 
         graph = workflow_data.get("graph", {})
         for node in graph.get("nodes", []):
@@ -576,7 +568,6 @@ class RagPipelineDslService:
             pipeline.description = pipeline_data.get("description", pipeline.description)
             pipeline.updated_by = account.id
 
-            
         else:
             if account.current_tenant_id is None:
                 raise ValueError("Current tenant is not set")
@@ -635,7 +626,6 @@ class RagPipelineDslService:
             workflow.rag_pipeline_variables = rag_pipeline_variables_list
         # commit db session changes
         db.session.commit()
-
 
         return pipeline
 
@@ -874,7 +864,6 @@ class RagPipelineDslService:
         except Exception:
             return None
 
-
     @staticmethod
     def create_rag_pipeline_dataset(
         tenant_id: str,
@@ -886,9 +875,7 @@ class RagPipelineDslService:
             .filter_by(name=rag_pipeline_dataset_create_entity.name, tenant_id=tenant_id)
             .first()
         ):
-            raise ValueError(
-                f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists."
-            )
+            raise ValueError(f"Dataset with name {rag_pipeline_dataset_create_entity.name} already exists.")
 
         with Session(db.engine) as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)

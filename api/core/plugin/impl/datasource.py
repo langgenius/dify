@@ -215,7 +215,6 @@ class PluginDatasourceManager(BasePluginClient):
                 "X-Plugin-ID": datasource_provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
-
         )
 
         for resp in response:
@@ -233,41 +232,23 @@ class PluginDatasourceManager(BasePluginClient):
                 "identity": {
                     "author": "langgenius",
                     "name": "langgenius/file/file",
-                    "label": {
-                        "zh_Hans": "File",
-                        "en_US": "File",
-                        "pt_BR": "File",
-                        "ja_JP": "File"
-                    },
+                    "label": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
                     "icon": "https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=945b4365-9d99-48c1-8c47-90593fe8b9c9&filename=13d9312f6b1352d3939b90a5257de58ff3cd619d5be4f5b266ff0298935ac328.svg",
-                    "description": {
-                        "zh_Hans": "File",
-                        "en_US": "File",
-                        "pt_BR": "File",
-                        "ja_JP": "File"
-                    }
+                    "description": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
                 },
                 "credentials_schema": [],
                 "provider_type": "local_file",
-                "datasources": [{
-                    "identity": {
-                        "author": "langgenius",
-                        "name": "upload-file",
-                        "provider": "langgenius",
-                        "label": {
-                            "zh_Hans": "File",
-                            "en_US": "File",
-                            "pt_BR": "File",
-                            "ja_JP": "File"
-                        }
-                    },
-                    "parameters": [],
-                    "description": {
-                        "zh_Hans": "File",
-                        "en_US": "File",
-                        "pt_BR": "File",
-                        "ja_JP": "File"
+                "datasources": [
+                    {
+                        "identity": {
+                            "author": "langgenius",
+                            "name": "upload-file",
+                            "provider": "langgenius",
+                            "label": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
+                        },
+                        "parameters": [],
+                        "description": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
                     }
-                }]
-            }
+                ],
+            },
         }

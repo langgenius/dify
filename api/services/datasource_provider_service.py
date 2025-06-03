@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from flask_login import current_user
 
@@ -22,11 +21,9 @@ class DatasourceProviderService:
     def __init__(self) -> None:
         self.provider_manager = PluginDatasourceManager()
 
-    def datasource_provider_credentials_validate(self,
-                                                 tenant_id: str,
-                                                 provider: str,
-                                                 plugin_id: str,
-                                                 credentials: dict) -> None:
+    def datasource_provider_credentials_validate(
+        self, tenant_id: str, provider: str, plugin_id: str, credentials: dict
+    ) -> None:
         """
         validate datasource provider credentials.
 
@@ -34,29 +31,30 @@ class DatasourceProviderService:
         :param provider:
         :param credentials:
         """
-        credential_valid = self.provider_manager.validate_provider_credentials(tenant_id=tenant_id,
-                                                                               user_id=current_user.id,
-                                                                               provider=provider,
-                                                                               credentials=credentials)
+        credential_valid = self.provider_manager.validate_provider_credentials(
+            tenant_id=tenant_id, user_id=current_user.id, provider=provider, credentials=credentials
+        )
         if credential_valid:
             # Get all provider configurations of the current workspace
-            datasource_provider = db.session.query(DatasourceProvider).filter_by(tenant_id=tenant_id,
-                                                                                 provider=provider,
-                                                                                 plugin_id=plugin_id).first()
+            datasource_provider = (
+                db.session.query(DatasourceProvider)
+                .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
+                .first()
+            )
 
-            provider_credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id,
-                                                                                 provider=provider
-                                                                                 )
+            provider_credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider=provider)
             if not datasource_provider:
                 for key, value in credentials.items():
                     if key in provider_credential_secret_variables:
                         # if send [__HIDDEN__] in secret input, it will be same as original value
                         credentials[key] = encrypter.encrypt_token(tenant_id, value)
-                datasource_provider = DatasourceProvider(tenant_id=tenant_id,
-                                                         provider=provider,
-                                                         plugin_id=plugin_id,
-                                                         auth_type="api_key",
-                                                         encrypted_credentials=credentials)
+                datasource_provider = DatasourceProvider(
+                    tenant_id=tenant_id,
+                    provider=provider,
+                    plugin_id=plugin_id,
+                    auth_type="api_key",
+                    encrypted_credentials=credentials,
+                )
                 db.session.add(datasource_provider)
                 db.session.commit()
             else:
@@ -101,11 +99,15 @@ class DatasourceProviderService:
         :return:
         """
         # Get all provider configurations of the current workspace
-        datasource_providers: list[DatasourceProvider] = db.session.query(DatasourceProvider).filter(
-            DatasourceProvider.tenant_id == tenant_id,
-            DatasourceProvider.provider == provider,
-            DatasourceProvider.plugin_id == plugin_id
-        ).all()
+        datasource_providers: list[DatasourceProvider] = (
+            db.session.query(DatasourceProvider)
+            .filter(
+                DatasourceProvider.tenant_id == tenant_id,
+                DatasourceProvider.provider == provider,
+                DatasourceProvider.plugin_id == plugin_id,
+            )
+            .all()
+        )
         if not datasource_providers:
             return []
         copy_credentials_list = []
@@ -128,10 +130,7 @@ class DatasourceProviderService:
 
         return copy_credentials_list
 
-    def remove_datasource_credentials(self,
-                                      tenant_id: str,
-                                      provider: str,
-                                      plugin_id: str) -> None:
+    def remove_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> None:
         """
         remove datasource credentials.
 
@@ -140,9 +139,11 @@ class DatasourceProviderService:
         :param plugin_id: plugin id
         :return:
         """
-        datasource_provider = db.session.query(DatasourceProvider).filter_by(tenant_id=tenant_id,
-                                                                             provider=provider,
-                                                                             plugin_id=plugin_id).first()
+        datasource_provider = (
+            db.session.query(DatasourceProvider)
+            .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
+            .first()
+        )
         if datasource_provider:
             db.session.delete(datasource_provider)
             db.session.commit()

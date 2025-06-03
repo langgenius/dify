@@ -35,7 +35,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.dataset import Pipeline, PipelineBuiltInTemplate, PipelineCustomizedTemplate  # type: ignore
+from models.dataset import Pipeline, PipelineCustomizedTemplate  # type: ignore
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
@@ -57,9 +57,7 @@ from services.rag_pipeline.pipeline_template.pipeline_template_factory import Pi
 
 class RagPipelineService:
     @classmethod
-    def get_pipeline_templates(
-        cls, type: str = "built-in", language: str = "en-US"
-    ) -> dict:
+    def get_pipeline_templates(cls, type: str = "built-in", language: str = "en-US") -> dict:
         if type == "built-in":
             mode = dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_MODE
             retrieval_instance = PipelineTemplateRetrievalFactory.get_pipeline_template_factory(mode)()
@@ -308,7 +306,7 @@ class RagPipelineService:
                     session=session,
                     dataset=dataset,
                     knowledge_configuration=knowledge_configuration,
-                    has_published=pipeline.is_published
+                    has_published=pipeline.is_published,
                 )
         # return new workflow
         return workflow
@@ -444,12 +442,10 @@ class RagPipelineService:
         )
         if datasource_runtime.datasource_provider_type() == DatasourceProviderType.ONLINE_DOCUMENT:
             datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-            online_document_result: GetOnlineDocumentPagesResponse = (
-                datasource_runtime._get_online_document_pages(
-                    user_id=account.id,
-                    datasource_parameters=user_inputs,
-                    provider_type=datasource_runtime.datasource_provider_type(),
-                )
+            online_document_result: GetOnlineDocumentPagesResponse = datasource_runtime._get_online_document_pages(
+                user_id=account.id,
+                datasource_parameters=user_inputs,
+                provider_type=datasource_runtime.datasource_provider_type(),
             )
             return {
                 "result": [page.model_dump() for page in online_document_result.result],
@@ -469,7 +465,6 @@ class RagPipelineService:
             }
         else:
             raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
-
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
@@ -689,8 +684,8 @@ class RagPipelineService:
             WorkflowRun.app_id == pipeline.id,
             or_(
                 WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN.value,
-                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value
-            )
+                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value,
+            ),
         )
 
         if args.get("last_id"):
@@ -763,18 +758,17 @@ class RagPipelineService:
 
         # Use the repository to get the node execution
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine,
-            app_id=pipeline.id,
-            user=user,
-            triggered_from=None
+            session_factory=db.engine, app_id=pipeline.id, user=user, triggered_from=None
         )
 
         # Use the repository to get the node executions with ordering
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id,
-                                                         order_config=order_config,
-                                                         triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN)
-      # Convert domain models to database models
+        node_executions = repository.get_by_workflow_run(
+            workflow_run_id=run_id,
+            order_config=order_config,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
+        )
+        # Convert domain models to database models
         workflow_node_executions = [repository.to_db_model(node_execution) for node_execution in node_executions]
 
         return workflow_node_executions

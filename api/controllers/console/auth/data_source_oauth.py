@@ -109,8 +109,6 @@ class OAuthDataSourceSync(Resource):
         return {"result": "success"}, 200
 
 
-
-
 api.add_resource(OAuthDataSource, "/oauth/data-source/<string:provider>")
 api.add_resource(OAuthDataSourceCallback, "/oauth/data-source/callback/<string:provider>")
 api.add_resource(OAuthDataSourceBinding, "/oauth/data-source/binding/<string:provider>")

@@ -3,7 +3,6 @@ from typing import Any, Union
 
 from configs import dify_config
 from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.dataset import Pipeline
 from models.model import Account, App, EndUser

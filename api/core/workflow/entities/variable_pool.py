@@ -49,7 +49,7 @@ class VariablePool(BaseModel):
     )
     rag_pipeline_variables: Mapping[str, Any] = Field(
         description="RAG pipeline variables.",
-            default_factory=dict,
+        default_factory=dict,
     )
 
     def __init__(

@@ -4,24 +4,19 @@ from typing import Optional
 
 import requests
 from flask import current_app, redirect, request
-from flask_login import current_user
 from flask_restful import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import languages
-from controllers.console.wraps import account_initialization_required, setup_required
-from core.plugin.impl.oauth import OAuthHandler
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import extract_remote_ip
-from libs.login import login_required
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models import Account
 from models.account import AccountStatus
-from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
@@ -184,7 +179,6 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     AccountService.link_account_integrate(provider, user_info.id, account)
 
     return account
-
 
 
 api.add_resource(OAuthLogin, "/oauth/login/<provider>")

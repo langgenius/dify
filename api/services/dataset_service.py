@@ -1,4 +1,3 @@
-from calendar import day_abbr
 import copy
 import datetime
 import json
@@ -7,7 +6,7 @@ import random
 import time
 import uuid
 from collections import Counter
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from flask_login import current_user
 from sqlalchemy import func, select
@@ -282,7 +281,6 @@ class DatasetService:
         db.session.commit()
         return dataset
 
-
     @staticmethod
     def get_dataset(dataset_id) -> Optional[Dataset]:
         dataset: Optional[Dataset] = db.session.query(Dataset).filter_by(id=dataset_id).first()
@@ -494,10 +492,9 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def update_rag_pipeline_dataset_settings(session: Session,
-                                             dataset: Dataset,
-                                             knowledge_configuration: KnowledgeConfiguration,
-                                             has_published: bool = False):
+    def update_rag_pipeline_dataset_settings(
+        session: Session, dataset: Dataset, knowledge_configuration: KnowledgeConfiguration, has_published: bool = False
+    ):
         dataset = session.merge(dataset)
         if not has_published:
             dataset.chunk_structure = knowledge_configuration.chunk_structure
@@ -615,7 +612,6 @@ class DatasetService:
             session.commit()
             if action:
                 deal_dataset_index_update_task.delay(dataset.id, action)
-
 
     @staticmethod
     def delete_dataset(dataset_id, user):

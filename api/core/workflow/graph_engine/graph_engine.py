@@ -317,10 +317,10 @@ class GraphEngine:
                 raise e
 
             # It may not be necessary, but it is necessary. :)
-            if (
-                self.graph.node_id_config_mapping[next_node_id].get("data", {}).get("type", "").lower()
-                in [NodeType.END.value, NodeType.KNOWLEDGE_INDEX.value]
-            ):
+            if self.graph.node_id_config_mapping[next_node_id].get("data", {}).get("type", "").lower() in [
+                NodeType.END.value,
+                NodeType.KNOWLEDGE_INDEX.value,
+            ]:
                 break
 
             previous_route_node_state = route_node_state

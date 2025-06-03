@@ -1,13 +1,12 @@
 from typing import Optional
 
-from flask_login import current_user
 import yaml
+from flask_login import current_user
 
 from extensions.ext_database import db
 from models.dataset import PipelineCustomizedTemplate
 from services.rag_pipeline.pipeline_template.pipeline_template_base import PipelineTemplateRetrievalBase
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
-from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
 class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
@@ -43,7 +42,6 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         )
         recommended_pipelines_results = []
         for pipeline_customized_template in pipeline_customized_templates:
-
             recommended_pipeline_result = {
                 "id": pipeline_customized_template.id,
                 "name": pipeline_customized_template.name,
@@ -55,7 +53,6 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             recommended_pipelines_results.append(recommended_pipeline_result)
 
         return {"pipeline_templates": recommended_pipelines_results}
-
 
     @classmethod
     def fetch_pipeline_template_detail_from_db(cls, template_id: str) -> Optional[dict]:

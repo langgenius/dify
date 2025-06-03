@@ -32,7 +32,6 @@ from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchem
 from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
-from fields.document_fields import dataset_and_document_fields
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
@@ -55,8 +54,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
-    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None:
-        ...
+    ) -> Mapping[str, Any] | Generator[Mapping | str, None, None] | None: ...
 
     @overload
     def generate(
@@ -70,8 +68,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: Literal[False],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     def generate(
@@ -85,8 +82,7 @@ class PipelineGenerator(BaseAppGenerator):
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
-    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
-        ...
+    ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
 
     def generate(
         self,
@@ -233,17 +229,19 @@ class PipelineGenerator(BaseAppGenerator):
                 description=dataset.description,
                 chunk_structure=dataset.chunk_structure,
             ).model_dump(),
-            "documents": [PipelineDocument(
-                id=document.id,
-                position=document.position,
-                data_source_type=document.data_source_type,
-                data_source_info=json.loads(document.data_source_info) if document.data_source_info else None,
-                name=document.name,
-                indexing_status=document.indexing_status,
-                error=document.error,
-                enabled=document.enabled,
-            ).model_dump() for document in documents
-                          ]
+            "documents": [
+                PipelineDocument(
+                    id=document.id,
+                    position=document.position,
+                    data_source_type=document.data_source_type,
+                    data_source_info=json.loads(document.data_source_info) if document.data_source_info else None,
+                    name=document.name,
+                    indexing_status=document.indexing_status,
+                    error=document.error,
+                    enabled=document.enabled,
+                ).model_dump()
+                for document in documents
+            ],
         }
 
     def _generate(
@@ -316,9 +314,7 @@ class PipelineGenerator(BaseAppGenerator):
                 )
 
             # new thread
-            worker_thread = threading.Thread(
-                target=worker_with_context
-            )
+            worker_thread = threading.Thread(target=worker_with_context)
 
             worker_thread.start()
 

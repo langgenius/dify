@@ -232,6 +232,7 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     """
     RAG Pipeline Application Generate Entity.
     """
+
     # pipeline config
     pipeline_config: WorkflowUIBasedAppConfig
     datasource_type: str

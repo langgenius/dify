@@ -46,7 +46,7 @@ class DatasourceManager:
             if not provider_entity:
                 raise DatasourceProviderNotFoundError(f"plugin provider {provider} not found")
 
-            match (datasource_type):
+            match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     controller = OnlineDocumentDatasourcePluginProviderController(
                         entity=provider_entity.declaration,
@@ -98,5 +98,3 @@ class DatasourceManager:
             tenant_id,
             datasource_type,
         ).get_datasource(datasource_name)
-
-

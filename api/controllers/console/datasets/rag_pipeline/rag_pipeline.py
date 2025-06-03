@@ -110,6 +110,7 @@ class CustomizedPipelineTemplateApi(Resource):
             dsl = yaml.safe_load(template.yaml_content)
         return {"data": dsl}, 200
 
+
 class CustomizedPipelineTemplateApi(Resource):
     @setup_required
     @login_required
@@ -141,6 +142,7 @@ class CustomizedPipelineTemplateApi(Resource):
         rag_pipeline_service = RagPipelineService()
         RagPipelineService.publish_customized_pipeline_template(pipeline_id, args)
         return 200
+
 
 api.add_resource(
     PipelineTemplateListApi,

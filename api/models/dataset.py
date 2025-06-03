@@ -208,6 +208,7 @@ class Dataset(Base):
             "external_knowledge_api_name": external_knowledge_api.name,
             "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
         }
+
     @property
     def is_published(self):
         if self.pipeline_id:
@@ -1175,7 +1176,6 @@ class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
     language = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
 
 
 class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]

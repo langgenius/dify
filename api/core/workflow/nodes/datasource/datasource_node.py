@@ -11,18 +11,19 @@ from core.datasource.online_document.online_document_plugin import OnlineDocumen
 from core.file import File
 from core.file.enums import FileTransferMethod, FileType
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from core.variables.segments import ArrayAnySegment, FileSegment
+from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from models.model import UploadFile
-from models.workflow import WorkflowNodeExecutionStatus
 
+from ...entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from .entities import DatasourceNodeData
 from .exc import DatasourceNodeError, DatasourceParameterError
 
@@ -54,7 +55,6 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         try:
             from core.datasource.datasource_manager import DatasourceManager
 
-
             if datasource_type is None:
                 raise DatasourceNodeError("Datasource type is not set")
 
@@ -66,13 +66,12 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
             )
         except DatasourceNodeError as e:
             return NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    inputs={},
-                    metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
-                    error=f"Failed to get datasource runtime: {str(e)}",
-                    error_type=type(e).__name__,
-                )
-
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs={},
+                metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
+                error=f"Failed to get datasource runtime: {str(e)}",
+                error_type=type(e).__name__,
+            )
 
         # get parameters
         datasource_parameters = datasource_runtime.entity.parameters
@@ -102,7 +101,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                     return NodeRunResult(
                         status=WorkflowNodeExecutionStatus.SUCCEEDED,
                         inputs=parameters_for_log,
-                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                        metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                         outputs={
                             "online_document": online_document_result.result.model_dump(),
                             "datasource_type": datasource_type,
@@ -112,18 +111,16 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                     return NodeRunResult(
                         status=WorkflowNodeExecutionStatus.SUCCEEDED,
                         inputs=parameters_for_log,
-                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                        metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                         outputs={
-                                "website": datasource_info,
-                                "datasource_type": datasource_type,
+                            "website": datasource_info,
+                            "datasource_type": datasource_type,
                         },
                     )
                 case DatasourceProviderType.LOCAL_FILE:
                     related_id = datasource_info.get("related_id")
                     if not related_id:
-                        raise DatasourceNodeError(
-                            "File is not exist"
-                        )
+                        raise DatasourceNodeError("File is not exist")
                     upload_file = db.session.query(UploadFile).filter(UploadFile.id == related_id).first()
                     if not upload_file:
                         raise ValueError("Invalid upload file Info")
@@ -146,26 +143,27 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                         # construct new key list
                         new_key_list = ["file", key]
                         self._append_variables_recursively(
-                            variable_pool=variable_pool, node_id=self.node_id, variable_key_list=new_key_list, variable_value=value
+                            variable_pool=variable_pool,
+                            node_id=self.node_id,
+                            variable_key_list=new_key_list,
+                            variable_value=value,
                         )
                     return NodeRunResult(
                         status=WorkflowNodeExecutionStatus.SUCCEEDED,
                         inputs=parameters_for_log,
-                        metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                        metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                         outputs={
-                                "file_info": datasource_info,
-                                "datasource_type": datasource_type,
-                            },
-                        )
-                case _:
-                    raise DatasourceNodeError(
-                        f"Unsupported datasource provider: {datasource_type}"
+                            "file_info": datasource_info,
+                            "datasource_type": datasource_type,
+                        },
                     )
+                case _:
+                    raise DatasourceNodeError(f"Unsupported datasource provider: {datasource_type}")
         except PluginDaemonClientSideError as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=parameters_for_log,
-                metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                 error=f"Failed to transform datasource message: {str(e)}",
                 error_type=type(e).__name__,
             )
@@ -173,7 +171,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=parameters_for_log,
-                metadata={NodeRunMetadataKey.DATASOURCE_INFO: datasource_info},
+                metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                 error=f"Failed to invoke datasource: {str(e)}",
                 error_type=type(e).__name__,
             )
@@ -227,8 +225,9 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
 
-
-    def _append_variables_recursively(self, variable_pool: VariablePool, node_id: str, variable_key_list: list[str], variable_value: VariableValue):
+    def _append_variables_recursively(
+        self, variable_pool: VariablePool, node_id: str, variable_key_list: list[str], variable_value: VariableValue
+    ):
         """
         Append variables recursively
         :param node_id: node id

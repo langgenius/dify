@@ -1,4 +1,3 @@
-
 from datetime import datetime
 
 from sqlalchemy.dialects.postgresql import JSONB
@@ -20,6 +19,7 @@ class DatasourceOauthParamConfig(Base):  # type: ignore[name-defined]
     plugin_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     provider: Mapped[str] = db.Column(db.String(255), nullable=False)
     system_credentials: Mapped[dict] = db.Column(JSONB, nullable=False)
+
 
 class DatasourceProvider(Base):
     __tablename__ = "datasource_providers"

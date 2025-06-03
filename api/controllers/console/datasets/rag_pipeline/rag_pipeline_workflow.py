@@ -540,7 +540,6 @@ class RagPipelineConfigApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, pipeline_id):
-
         return {
             "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
         }

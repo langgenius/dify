@@ -111,7 +111,10 @@ class PipelineRunner(WorkflowBasedAppRunner):
             if workflow.rag_pipeline_variables:
                 for v in workflow.rag_pipeline_variables:
                     rag_pipeline_variable = RAGPipelineVariable(**v)
-                    if rag_pipeline_variable.belong_to_node_id == self.application_generate_entity.start_node_id and rag_pipeline_variable.variable in inputs:
+                    if (
+                        rag_pipeline_variable.belong_to_node_id == self.application_generate_entity.start_node_id
+                        and rag_pipeline_variable.variable in inputs
+                    ):
                         rag_pipeline_variables[rag_pipeline_variable.variable] = inputs[rag_pipeline_variable.variable]
 
             variable_pool = VariablePool(
@@ -195,7 +198,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                     continue
             real_run_nodes.append(node)
         for edge in edges:
-            if edge.get("source") in exclude_node_ids :
+            if edge.get("source") in exclude_node_ids:
                 continue
             real_edges.append(edge)
         graph_config = dict(graph_config)

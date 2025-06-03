@@ -5,7 +5,6 @@ from pydantic import Field
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import DatasourceInvokeFrom
-from core.tools.entities.tool_entities import ToolInvokeFrom
 
 
 class DatasourceRuntime(BaseModel):

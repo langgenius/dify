@@ -6,7 +6,6 @@ from typing import Any, cast
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.variables.segments import ObjectSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
@@ -72,8 +71,9 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
                     process_data=None,
                     outputs=outputs,
                 )
-            results = self._invoke_knowledge_index(dataset=dataset, node_data=node_data, chunks=chunks,
-                                                   variable_pool=variable_pool)
+            results = self._invoke_knowledge_index(
+                dataset=dataset, node_data=node_data, chunks=chunks, variable_pool=variable_pool
+            )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, process_data=None, outputs=results
             )
@@ -96,8 +96,11 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
             )
 
     def _invoke_knowledge_index(
-        self, dataset: Dataset, node_data: KnowledgeIndexNodeData, chunks: Mapping[str, Any],
-        variable_pool: VariablePool
+        self,
+        dataset: Dataset,
+        node_data: KnowledgeIndexNodeData,
+        chunks: Mapping[str, Any],
+        variable_pool: VariablePool,
     ) -> Any:
         document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
         if not document_id:
@@ -116,7 +119,7 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
         document.indexing_status = "completed"
         document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         db.session.add(document)
-        #update document segment status
+        # update document segment status
         db.session.query(DocumentSegment).filter(
             DocumentSegment.document_id == document.id,
             DocumentSegment.dataset_id == dataset.id,
