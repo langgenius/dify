@@ -4,14 +4,13 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import { setAccessToken } from '@/app/components/share/utils'
+import { removeAccessToken, setAccessToken } from '@/app/components/share/utils'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import Loading from '@/app/components/base/loading'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import NormalForm from './normalForm'
 import { AccessMode } from '@/models/access-control'
 import ExternalMemberSsoAuth from './components/external-member-sso-auth'
-import Link from 'next/link'
 import { fetchAccessToken } from '@/service/share'
 
 const WebSSOForm: FC = () => {
@@ -31,6 +30,12 @@ const WebSSOForm: FC = () => {
     return `/webapp-signin?${params.toString()}`
   }, [searchParams])
 
+  const backToHome = useCallback(() => {
+    removeAccessToken()
+    const url = getSigninUrl()
+    router.replace(url)
+  }, [getSigninUrl, router])
+
   const showErrorToast = (msg: string) => {
     Toast.notify({
       type: 'error',
@@ -48,14 +53,24 @@ const WebSSOForm: FC = () => {
 
   useEffect(() => {
     (async () => {
+      if (message)
+        return
+
       const appCode = getAppCodeFromRedirectUrl()
       if (appCode && tokenFromUrl && redirectUrl) {
+        localStorage.setItem('webapp_access_token', tokenFromUrl)
         const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: tokenFromUrl })
+        await setAccessToken(appCode, tokenResp.access_token)
+        router.replace(redirectUrl)
+        return
+      }
+      if (appCode && redirectUrl && localStorage.getItem('webapp_access_token')) {
+        const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: localStorage.getItem('webapp_access_token') })
         await setAccessToken(appCode, tokenResp.access_token)
         router.replace(redirectUrl)
       }
     })()
-  }, [getAppCodeFromRedirectUrl, redirectUrl, router, tokenFromUrl])
+  }, [getAppCodeFromRedirectUrl, redirectUrl, router, tokenFromUrl, message])
 
   useEffect(() => {
     if (webAppAccessMode && webAppAccessMode === AccessMode.PUBLIC && redirectUrl)
@@ -71,7 +86,7 @@ const WebSSOForm: FC = () => {
   if (message) {
     return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
       <AppUnavailable className='h-auto w-auto' code={t('share.common.appUnavailable')} unknownReason={message} />
-      <Link className='system-body-regular text-text-tertiary' href={getSigninUrl()}>{t('share.login.backToHome')}</Link>
+      <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('share.login.backToHome')}</span>
     </div>
   }
   if (!redirectUrl) {
@@ -100,8 +115,8 @@ const WebSSOForm: FC = () => {
     return <ExternalMemberSsoAuth />
 
   return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
-    <AppUnavailable className='h-auto w-auto' code={t('share.common.appUnavailable')} isUnknownReason={true} />
-    <Link className='system-body-regular text-text-tertiary' href={getSigninUrl()}>{t('share.login.backToHome')}</Link>
+    <AppUnavailable className='h-auto w-auto' isUnknownReason={true} />
+    <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('share.login.backToHome')}</span>
   </div>
 }
 
