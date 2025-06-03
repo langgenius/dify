@@ -194,7 +194,7 @@ const SearchMethodOption = ({
           isScoreThresholdEnabled={isScoreThresholdEnabled}
           onScoreThresholdEnabledChange={onScoreThresholdEnabledChange}
           readonly={readonly}
-          hiddenScoreThreshold={searchMethod === RetrievalSearchMethodEnum.invertedIndex}
+          hiddenScoreThreshold={searchMethod === RetrievalSearchMethodEnum.keywordSearch}
         />
       </div>
     </OptionCard>

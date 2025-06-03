@@ -50,7 +50,7 @@ export const useConfig = (id: string) => {
       draft.indexing_technique = indexMethod
 
       if (indexMethod === IndexMethodEnum.ECONOMICAL)
-        draft.retrieval_model.search_method = RetrievalSearchMethodEnum.invertedIndex
+        draft.retrieval_model.search_method = RetrievalSearchMethodEnum.keywordSearch
       else if (indexMethod === IndexMethodEnum.QUALIFIED)
         draft.retrieval_model.search_method = RetrievalSearchMethodEnum.semantic
     }))
