@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConditionValueMethod from './condition-value-method'
 import type { ConditionValueMethodProps } from './condition-value-method'
@@ -11,14 +11,17 @@ import type {
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import Input from '@/app/components/base/input'
+import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 type ConditionArrayProps = {
-  value?: string | string[] | (string | number)[]
+  value?: string | string[] | (string | number)[] | number
   onChange: (value?: string | string[] | (string | number)[]) => void
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   isCommonVariable?: boolean
   commonVariables: { name: string, type: string }[]
+  fieldType?: MetadataFilteringVariableType
+  strictTypeChecking?: boolean
 } & ConditionValueMethodProps
 
 const ConditionArray = ({
@@ -30,22 +33,24 @@ const ConditionArray = ({
   availableNodes,
   isCommonVariable,
   commonVariables,
+  fieldType,
+  strictTypeChecking = false,
 }: ConditionArrayProps) => {
   const { t } = useTranslation()
 
-  const parseValueSelector = useCallback((value?: string | string[] | (string | number)[]): string[] => {
+  const parseValueSelector = useCallback((value?: string | string[] | (string | number)[] | number): string[] => {
     if (typeof value !== 'string')
       return []
 
-    // 支持多种格式：
-    // 1. {{#nodeId.variable#}} 格式
+    // Support multiple formats:
+    // 1. {{#nodeId.variable#}} format
     if (value.includes('#')) {
       const match = value.match(/\{\{#([^#]+)#\}\}/)
       if (match && match[1])
         return match[1].split('.')
     }
 
-    // 2. nodeId.variable 格式（直接格式）
+    // 2. nodeId.variable format (direct format)
     if (value.includes('.'))
       return value.split('.')
 
@@ -54,26 +59,54 @@ const ConditionArray = ({
 
   const currentValueSelector = parseValueSelector(value)
 
-  useEffect(() => {
-    console.log('🔍 ConditionArray Debug:')
-    console.log('  - valueMethod:', valueMethod)
-    console.log('  - isCommonVariable:', isCommonVariable)
-    console.log('  - value:', value)
-    console.log('  - currentValueSelector:', currentValueSelector)
-    console.log('  - nodesOutputVars (数组变量):', nodesOutputVars)
-    console.log('  - availableNodes:', availableNodes)
-    console.log('  - commonVariables (通用数组变量):', commonVariables)
-  }, [valueMethod, isCommonVariable, value, currentValueSelector, nodesOutputVars, availableNodes, commonVariables])
-
   const handleVariableValueChange = useCallback((v: ValueSelector) => {
-    console.log('🔧 数组变量被选择:', v)
     onChange(`{{#${v.join('.')}#}}`)
   }, [onChange])
 
   const handleCommonVariableValueChange = useCallback((v: string) => {
-    console.log('🔧 通用数组变量被选择:', v)
     onChange(`{{${v}}}`)
   }, [onChange])
+
+  // Type compatibility check
+  const checkTypeCompatibility = useCallback((selectedVariable: any) => {
+    if (!fieldType || !selectedVariable) return null
+
+    // Get variable type
+    const variableType = selectedVariable.type || selectedVariable.value_type
+
+    // Define compatibility rules
+    const compatibilityRules: Record<string, string[]> = {
+      string: ['array[string]', 'array', 'string'],
+      number: ['array[number]', 'array', 'number'],
+      select: ['array[string]', 'array', 'string'],
+      array: ['array[string]', 'array[number]', 'array[object]', 'array'],
+      time: ['array[string]', 'array', 'string'], // Time field compatibility
+    }
+
+    const compatibleTypes = compatibilityRules[fieldType as string] || []
+
+    if (!compatibleTypes.includes(variableType)) {
+      return {
+        warning: true,
+        message: `⚠️ Type mismatch: ${fieldType} field is not recommended to use ${variableType} type variables`,
+      }
+    }
+
+    return null
+  }, [fieldType])
+
+  // Check if currently selected variable is compatible
+  const typeCompatibilityCheck = useMemo(() => {
+    if (valueMethod === 'variable' && currentValueSelector.length > 0) {
+      // Find currently selected variable information
+      const selectedVar = nodesOutputVars.find(nodeVar =>
+        nodeVar.nodeId === currentValueSelector[0],
+      )?.vars.find(v => v.variable === currentValueSelector[1])
+
+      return checkTypeCompatibility(selectedVar)
+    }
+    return null
+  }, [valueMethod, currentValueSelector, nodesOutputVars, checkTypeCompatibility])
 
   const handleConstantValueChange = useCallback((inputValue: string) => {
     // Parse comma-separated values into array
@@ -87,40 +120,63 @@ const ConditionArray = ({
       const trimmed = item.trim()
       if (trimmed === '') return null
 
-      // Try to convert to number if it's a valid number (only if it looks like a pure numeric value)
+      // Keep natural type detection: pure numbers auto-convert to numbers, otherwise keep as strings
       if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
         const numericValue = Number(trimmed)
         if (!isNaN(numericValue) && isFinite(numericValue))
           return numericValue
       }
 
-      // Otherwise keep as string (remove quotes if present)
+      // Remove quotes (if any) and keep as string
       return trimmed.replace(/^["']|["']$/g, '')
     }).filter(item => item !== null)
 
-    console.log('🔧 常量数组值被设置:', arrayValues)
-    console.log('🔧 数组类型检测:', arrayValues.map(v => typeof v))
     onChange(arrayValues)
   }, [onChange])
 
   const displayValue = Array.isArray(value) ? value.map(v => String(v)).join(', ') : (value || '')
 
-  // Filter available variables to show only array types
-  const filteredNodesOutputVars = nodesOutputVars.filter(nodeVar =>
-    nodeVar.vars.some(v =>
-      v.type === VarType.arrayString
-      || v.type === VarType.arrayNumber
-      || v.type === VarType.arrayObject
-      || v.type === VarType.arrayFile
-      || v.type === VarType.array
-      || v.type.toString().startsWith('array'),
-    ),
-  )
+  // Filter variables based on strict mode
+  const filteredNodesOutputVars = useMemo(() => {
+    const basicFilter = nodesOutputVars.filter(nodeVar =>
+      nodeVar.vars.some(v =>
+        v.type === VarType.arrayString
+        || v.type === VarType.arrayNumber
+        || v.type === VarType.arrayObject
+        || v.type === VarType.arrayFile
+        || v.type === VarType.array
+        || v.type.toString().startsWith('array'),
+      ),
+    )
 
-  const filteredCommonVariables = commonVariables.filter(v =>
-    v.type === 'array'
-    || v.type.startsWith('array'),
-  )
+    if (!strictTypeChecking || !fieldType)
+      return basicFilter
+
+    // Strict mode: only show type-compatible variables
+    return basicFilter.map(nodeVar => ({
+      ...nodeVar,
+      vars: nodeVar.vars.filter((v) => {
+        const typeCheck = checkTypeCompatibility(v)
+        return !typeCheck?.warning
+      }),
+    })).filter(nodeVar => nodeVar.vars.length > 0)
+  }, [nodesOutputVars, strictTypeChecking, fieldType, checkTypeCompatibility])
+
+  const filteredCommonVariables = useMemo(() => {
+    const basicFilter = commonVariables.filter(v =>
+      v.type === 'array'
+      || v.type.startsWith('array'),
+    )
+
+    if (!strictTypeChecking || !fieldType)
+      return basicFilter
+
+    // Strict mode: only show type-compatible variables
+    return basicFilter.filter((v) => {
+      const typeCheck = checkTypeCompatibility(v)
+      return !typeCheck?.warning
+    })
+  }, [commonVariables, strictTypeChecking, fieldType, checkTypeCompatibility])
 
   return (
     <div className='flex h-8 items-center pl-1 pr-2'>
@@ -131,23 +187,37 @@ const ConditionArray = ({
       <div className='ml-1 mr-1.5 h-4 w-[1px] bg-divider-regular'></div>
       {
         valueMethod === 'variable' && !isCommonVariable && (
-          <ConditionVariableSelector
-            valueSelector={currentValueSelector}
-            onChange={handleVariableValueChange}
-            nodesOutputVars={filteredNodesOutputVars}
-            availableNodes={availableNodes}
-            varType='array'
-          />
+          <div className='flex-1'>
+            <ConditionVariableSelector
+              valueSelector={currentValueSelector}
+              onChange={handleVariableValueChange}
+              nodesOutputVars={filteredNodesOutputVars}
+              availableNodes={availableNodes}
+              varType='array'
+            />
+            {typeCompatibilityCheck?.warning && (
+              <div className='mt-1 text-xs text-text-warning'>
+                {typeCompatibilityCheck.message}
+              </div>
+            )}
+          </div>
         )
       }
       {
         valueMethod === 'variable' && isCommonVariable && (
-          <ConditionCommonVariableSelector
-            variables={filteredCommonVariables}
-            value={typeof value === 'string' ? value : ''}
-            onChange={handleCommonVariableValueChange}
-            varType={VarType.array}
-          />
+          <div className='flex-1'>
+            <ConditionCommonVariableSelector
+              variables={filteredCommonVariables}
+              value={typeof value === 'string' ? value : ''}
+              onChange={handleCommonVariableValueChange}
+              varType={VarType.array}
+            />
+            {typeCompatibilityCheck?.warning && (
+              <div className='mt-1 text-xs text-text-warning'>
+                {typeCompatibilityCheck.message}
+              </div>
+            )}
+          </div>
         )
       }
       {

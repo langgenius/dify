@@ -1048,18 +1048,22 @@ class DatasetRetrieval:
                     filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != value)
             case "in":
                 if isinstance(value, list | tuple):
-                    # For arrays: check if metadata field (single value) is in the input array
+                    if not value:  
+                        return filters
+                    
                     or_conditions = []
                     for i, v in enumerate(value):
-                        param_key = f"{key_value}_{i}"
                         if isinstance(v, str):
-                            # For string type: exact match with quoted string
                             or_conditions.append(DatasetDocument.doc_metadata[metadata_name] == f'"{v}"')
-                        else:
-                            # For number type: exact match as numeric value
+                        elif isinstance(v, int | float):
                             or_conditions.append(
                                 sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) == v
                             )
+                            or_conditions.append(DatasetDocument.doc_metadata[metadata_name] == str(v))
+                        else:
+                            v_str = str(v)
+                            or_conditions.append(DatasetDocument.doc_metadata[metadata_name] == f'"{v_str}"')
+                    
                     if or_conditions:
                         filters.append(or_(*or_conditions))
                 else:
@@ -1072,18 +1076,23 @@ class DatasetRetrieval:
                         )
             case "not in":
                 if isinstance(value, list | tuple):
-                    # For arrays: check if metadata field (single value) is not in the input array
+                    if not value:
+                        return filters
+                    
                     and_conditions = []
                     for i, v in enumerate(value):
-                        param_key = f"{key_value}_{i}"
                         if isinstance(v, str):
-                            # For string type: not equal to quoted string
                             and_conditions.append(DatasetDocument.doc_metadata[metadata_name] != f'"{v}"')
-                        else:
-                            # For number type: not equal to numeric value
+                        elif isinstance(v, int | float):
+                            
                             and_conditions.append(
                                 sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != v
                             )
+                            and_conditions.append(DatasetDocument.doc_metadata[metadata_name] != str(v))
+                        else:
+                            v_str = str(v)
+                            and_conditions.append(DatasetDocument.doc_metadata[metadata_name] != f'"{v_str}"')
+                    
                     if and_conditions:
                         filters.append(and_(*and_conditions))
                 else:

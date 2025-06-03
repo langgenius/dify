@@ -218,6 +218,8 @@ const ConditionItem = ({
                 onChange={handleValueChange}
                 isCommonVariable={isCommonVariable}
                 commonVariables={availableCommonArrayVars}
+                fieldType={currentMetadata?.type}
+                strictTypeChecking={false}
               />
             )
           }
