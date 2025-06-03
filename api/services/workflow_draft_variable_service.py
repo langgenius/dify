@@ -32,6 +32,10 @@ class WorkflowDraftVariableList:
     total: int | None = None
 
 
+class _DraftVarServiceError(Exception):
+    pass
+
+
 class DraftVarLoader(VariableLoader):
     # This implements the VariableLoader interface for loading draft variables.
     #
@@ -197,6 +201,25 @@ class WorkflowDraftVariableService:
         if value is not None:
             variable.set_value(value)
         variable.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        self._session.flush()
+        return variable
+
+    def reset_conversation_variable(
+        self, workflow: Workflow, variable: WorkflowDraftVariable
+    ) -> WorkflowDraftVariable | None:
+        conv_var_by_name = {i.name: i for i in workflow.conversation_variables}
+        conv_var = conv_var_by_name.get(variable.name)
+
+        if conv_var is None:
+            self._session.delete(instance=variable)
+            self._session.flush()
+            _logger.warning(
+                "Conversation variable not found for draft variable, id=%s, name=%s", variable.id, variable.name
+            )
+            return None
+
+        variable.set_value(conv_var)
+        self._session.add(variable)
         self._session.flush()
         return variable
 

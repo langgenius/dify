@@ -1,5 +1,4 @@
 import json
-import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
@@ -32,7 +31,6 @@ from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from factories.variable_factory import segment_to_variable
-from libs import gen_utils
 from models.account import Account
 from models.model import App, AppMode
 from models.tools import WorkflowToolProvider

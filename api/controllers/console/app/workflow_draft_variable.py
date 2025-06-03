@@ -245,6 +245,41 @@ class VariableApi(Resource):
         return Response("", 204)
 
 
+class VariableResetApi(Resource):
+    @_api_prerequisite
+    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    def put(self, app_model: App, variable_id: str):
+        draft_var_srv = WorkflowDraftVariableService(
+            session=db.session(),
+        )
+
+        workflow_srv = WorkflowService()
+        draft_workflow = workflow_srv.get_draft_workflow(app_model)
+        if draft_workflow is None:
+            raise NotFoundError(
+                f"Draft workflow not found, app_id={app_model.id}",
+            )
+        variable = draft_var_srv.get_variable(variable_id=variable_id)
+        if variable is None:
+            raise NotFoundError(description=f"variable not found, id={variable_id}")
+        if variable.app_id != app_model.id:
+            raise NotFoundError(description=f"variable not found, id={variable_id}")
+
+        if variable.node_id != CONVERSATION_VARIABLE_NODE_ID:
+            error_msg = "variable is not a conversation variable, id={}, node_id={},  name={}".format(
+                variable.id,
+                variable.node_id,
+                variable.name,
+            )
+            raise InvalidArgumentError(error_msg)
+        resetted = draft_var_srv.reset_conversation_variable(draft_workflow, variable)
+        db.session.commit()
+        if resetted is None:
+            return Response("", 204)
+        else:
+            return variable
+
+
 def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
     with Session(bind=db.engine, expire_on_commit=False) as session:
         draft_var_srv = WorkflowDraftVariableService(
@@ -321,6 +356,7 @@ api.add_resource(
 )
 api.add_resource(NodeVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/variables")
 api.add_resource(VariableApi, "/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>")
+api.add_resource(VariableApi, "/apps/<uuid:app_id>/workflows/draft/variables/<uuid:variable_id>/reset")
 
 api.add_resource(ConversationVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/conversation-variables")
 api.add_resource(SystemVariableCollectionApi, "/apps/<uuid:app_id>/workflows/draft/system-variables")
