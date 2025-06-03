@@ -142,7 +142,7 @@ const Panel: FC = () => {
     return (
       <div className={cn('flex h-full flex-col')}>
         <div className='flex shrink-0 items-center justify-between pl-4 pr-2 pt-2'>
-          <div className='system-sm-semibold-uppercase'>{t('workflow.debug.variableInspect.title')}</div>
+          <div className='system-sm-semibold-uppercase text-text-primary'>{t('workflow.debug.variableInspect.title')}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
             <RiCloseLine className='h-4 w-4' />
           </ActionButton>
