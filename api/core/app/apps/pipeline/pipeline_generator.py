@@ -236,6 +236,7 @@ class PipelineGenerator(BaseAppGenerator):
             "documents": [PipelineDocument(
                 id=document.id,
                 position=document.position,
+                data_source_type=document.data_source_type,
                 data_source_info=json.loads(document.data_source_info) if document.data_source_info else None,
                 name=document.name,
                 indexing_status=document.indexing_status,

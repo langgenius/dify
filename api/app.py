@@ -19,18 +19,18 @@ else:
     # If you are using debugpy and set GEVENT_SUPPORT=True, you can debug with gevent.
     if (flask_debug := os.environ.get("FLASK_DEBUG", "0")) and flask_debug.lower() in {"false", "0", "no"}:
         from gevent import monkey
+        #
+        # # gevent
+        # monkey.patch_all()
+        #
+        # from grpc.experimental import gevent as grpc_gevent  # type: ignore
+        #
+        # # grpc gevent
+        # grpc_gevent.init_gevent()
 
-        # gevent
-        monkey.patch_all()
-
-        from grpc.experimental import gevent as grpc_gevent  # type: ignore
-
-        # grpc gevent
-        grpc_gevent.init_gevent()
-
-        import psycogreen.gevent  # type: ignore
-
-        psycogreen.gevent.patch_psycopg()
+        # import psycogreen.gevent  # type: ignore
+        #
+        # psycogreen.gevent.patch_psycopg()
 
     from app_factory import create_app
 
