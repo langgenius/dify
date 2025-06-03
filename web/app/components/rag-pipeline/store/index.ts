@@ -29,7 +29,7 @@ export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = 
   setRagPipelineVariables: (ragPipelineVariables: RAGPipelineVariables) => set(() => ({ ragPipelineVariables })),
   dataSourceList: [],
   setDataSourceList: (dataSourceList: DataSourceItem[]) => {
-    const formatedDataSourceList = dataSourceList.map(item => transformDataSourceToTool(item))
-    set(() => ({ dataSourceList: formatedDataSourceList }))
+    const formattedDataSourceList = dataSourceList.map(item => transformDataSourceToTool(item))
+    set(() => ({ dataSourceList: formattedDataSourceList }))
   },
 })

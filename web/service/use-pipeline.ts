@@ -16,7 +16,9 @@ import type {
   PipelineTemplateListParams,
   PipelineTemplateListResponse,
   PublishedPipelineInfoResponse,
+  PublishedPipelineRunPreviewResponse,
   PublishedPipelineRunRequest,
+  PublishedPipelineRunResponse,
   UpdateTemplateInfoRequest,
   UpdateTemplateInfoResponse,
 } from '@/models/pipeline'
@@ -187,15 +189,16 @@ export const usePublishedPipelineInfo = (pipelineId: string) => {
 }
 
 export const useRunPublishedPipeline = (
-  mutationOptions: MutationOptions<any, Error, PublishedPipelineRunRequest> = {},
+  mutationOptions: MutationOptions<PublishedPipelineRunPreviewResponse | PublishedPipelineRunResponse, Error, PublishedPipelineRunRequest> = {},
 ) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'run-published-pipeline'],
     mutationFn: (request: PublishedPipelineRunRequest) => {
-      const { pipeline_id: pipelineId, ...rest } = request
-      return post<PublishedPipelineInfoResponse>(`/rag/pipelines/${pipelineId}/workflows/published/run`, {
+      const { pipeline_id: pipelineId, is_preview, ...rest } = request
+      return post<PublishedPipelineRunPreviewResponse | PublishedPipelineRunRequest>(`/rag/pipelines/${pipelineId}/workflows/published/run`, {
         body: {
           ...rest,
+          is_preview,
           response_mode: 'blocking',
         },
       })

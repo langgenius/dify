@@ -23,6 +23,7 @@ import WebsitePreview from './preview/web-preview'
 import ProcessDocuments from './process-documents'
 import ChunkPreview from './preview/chunk-preview'
 import Processing from './processing'
+import type { PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
 import { useAddDocumentsSteps, useLocalFile, useNotionsPages, useWebsiteCrawl } from './hooks'
@@ -137,7 +138,7 @@ const CreateFormPipeline = () => {
       is_preview: true,
     }, {
       onSuccess: (res) => {
-        setEstimateData(res.data.outputs as FileIndexingEstimateResponse)
+        setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
       },
     })
   }, [datasource, pipelineId, previewFile, previewNotionPage, previewWebsitePage, runPublishedPipeline, websiteCrawlJobId])
@@ -187,7 +188,8 @@ const CreateFormPipeline = () => {
       datasource_info_list: datasourceInfoList,
       is_preview: false,
     }, {
-      onSuccess: () => {
+      onSuccess: (res) => {
+        console.log('🚀 ~ handleProcess ~ res:', res)
         handleNextStep()
       },
     })
@@ -332,8 +334,8 @@ const CreateFormPipeline = () => {
                 files={fileList.map(file => file.file)}
                 notionPages={notionPages}
                 websitePages={websitePages}
-                isIdle={isIdle}
-                isPending={isPending}
+                isIdle={isIdle && isPreview.current}
+                isPending={isPending && isPreview.current}
                 estimateData={estimateData}
                 onPreview={onClickPreview}
                 handlePreviewFileChange={handlePreviewFileChange}

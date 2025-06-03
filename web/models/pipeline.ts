@@ -1,6 +1,6 @@
 import type { Edge, EnvironmentVariable, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { DSLImportMode, DSLImportStatus } from './app'
-import type { ChunkingMode, DatasetPermission, IconInfo } from './datasets'
+import type { ChunkingMode, DatasetPermission, FileIndexingEstimateResponse, IconInfo } from './datasets'
 import type { Dependency } from '@/app/components/plugins/types'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Viewport } from 'reactflow'
@@ -183,5 +183,14 @@ export type PublishedPipelineRunRequest = {
   start_node_id: string
   datasource_type: DatasourceType
   datasource_info_list: Array<Record<string, any>>
-  is_preview?: boolean
+  is_preview: boolean
+}
+
+export type PublishedPipelineRunPreviewResponse = {
+  data: {
+    outputs: FileIndexingEstimateResponse
+  }
+}
+
+export type PublishedPipelineRunResponse = {
 }
