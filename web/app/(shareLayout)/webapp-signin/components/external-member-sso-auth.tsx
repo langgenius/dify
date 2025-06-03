@@ -6,6 +6,7 @@ import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { SSOProtocol } from '@/types/feature'
 import Loading from '@/app/components/base/loading'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 
 const ExternalMemberSSOAuth = () => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
@@ -62,6 +63,12 @@ const ExternalMemberSSOAuth = () => {
   useEffect(() => {
     handleSSOLogin()
   }, [handleSSOLogin])
+
+  if (!systemFeatures.webapp_auth.sso_config.protocol) {
+    return <div className="flex h-full items-center justify-center">
+      <AppUnavailable code={403} unknownReason='sso protocol is invalid.' />
+    </div>
+  }
 
   return (
     <div className="flex h-full items-center justify-center">
