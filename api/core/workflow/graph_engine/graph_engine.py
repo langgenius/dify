@@ -53,7 +53,6 @@ from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-from extensions.ext_database import db
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
@@ -607,8 +606,6 @@ class GraphEngine:
                         error=str(e),
                     )
                 )
-            finally:
-                db.session.remove()
 
     def _run_node(
         self,
@@ -646,7 +643,6 @@ class GraphEngine:
             agent_strategy=agent_strategy,
         )
 
-        db.session.close()
         max_retries = node_instance.node_data.retry_config.max_retries
         retry_interval = node_instance.node_data.retry_config.retry_interval_seconds
         retries = 0
@@ -863,8 +859,6 @@ class GraphEngine:
             except Exception as e:
                 logger.exception(f"Node {node_instance.node_data.title} run failed")
                 raise e
-            finally:
-                db.session.close()
 
     def _append_variables_recursively(self, node_id: str, variable_key_list: list[str], variable_value: VariableValue):
         """
