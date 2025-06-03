@@ -97,7 +97,7 @@ export type PluginManifestInMarket = {
   badges: string[],
   verification: {
     authorized_category: 'langgenius' | 'partner' | 'community'
-  } | {}
+  }
 }
 
 export type PluginDetail = {

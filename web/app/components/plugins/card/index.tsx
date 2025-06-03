@@ -28,6 +28,7 @@ export type Props = {
   isLoading?: boolean
   loadingFileName?: string
   locale?: string
+  showLimitWarning?: boolean
 }
 
 const Card = ({
@@ -42,6 +43,7 @@ const Card = ({
   isLoading = false,
   loadingFileName,
   locale: localeFromProps,
+  showLimitWarning = false,
 }: Props) => {
   const defaultLocale = useGetLanguage()
   const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
@@ -89,6 +91,7 @@ const Card = ({
         text={getLocalizedText(brief)}
         descriptionLineRows={descriptionLineRows}
       />
+      {showLimitWarning && <div>{t('plugin.installModal.installWarning')}</div>}
       {footer && <div>{footer}</div>}
     </div>
   )

@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import { useState } from 'react'
 import React, { useEffect, useMemo } from 'react'
 // import { RiInformation2Line } from '@remixicon/react'
 import { type Plugin, type PluginManifestInMarket, TaskStatus } from '../../../types'
@@ -8,7 +7,7 @@ import Card from '../../../card'
 import { pluginManifestInMarketToPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
-import { RiLoader2Line, RiProhibitedLine } from '@remixicon/react'
+import { RiLoader2Line } from '@remixicon/react'
 import { useInstallPackageFromMarketPlace, usePluginDeclarationFromMarketPlace, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
@@ -16,9 +15,7 @@ import Version from '../../base/version'
 import { usePluginTaskList } from '@/service/use-plugins'
 import { gte } from 'semver'
 import { useAppContext } from '@/context/app-context'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { isEmpty } from 'lodash-es'
-import { InstallationScope } from '@/types/feature'
+import useInstallPluginLimit from '../../hooks/use-install-plugin-limit'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -130,21 +127,7 @@ const Installed: FC<Props> = ({
     return gte(langeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
   }, [langeniusVersionInfo.current_version, pluginDeclaration])
 
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-
-  const [canInstallPlugin, setCanInstallPlugin] = useState(true)
-
-  useEffect(() => {
-    const verification = (isEmpty(payload.verification) ? { authorized_category: 'langgenius' } : payload.verification) as { authorized_category: string }
-    if (systemFeatures.plugin_installation_permission.plugin_installation_scope === InstallationScope.ALL) setCanInstallPlugin(true)
-    else if (systemFeatures.plugin_installation_permission.plugin_installation_scope === InstallationScope.NONE) setCanInstallPlugin(false)
-    else if (systemFeatures.plugin_installation_permission.plugin_installation_scope === InstallationScope.OFFICIAL_ONLY)
-      setCanInstallPlugin(verification.authorized_category === 'langgenius')
-    else if (systemFeatures.plugin_installation_permission.plugin_installation_scope === InstallationScope.OFFICIAL_AND_PARTNER)
-      setCanInstallPlugin(verification.authorized_category === 'langgenius' || verification.authorized_category === 'partner')
-    else
-      setCanInstallPlugin(false)
-  }, [systemFeatures, payload])
+  const { canInstall } = useInstallPluginLimit(payload)
 
   return (
     <>
@@ -166,12 +149,9 @@ const Installed: FC<Props> = ({
               installedVersion={installedVersion}
               toInstallVersion={toInstallVersion}
             />}
+            showLimitWarning={!canInstall}
           />
         </div>
-        {!canInstallPlugin && <div className='flex gap-x-2 text-text-warning'>
-          <RiProhibitedLine className='h-4 w-4' />
-          <span className='system-sm-regular text-text-warning'>{t('plugin.installModal.installWarning')}</span>
-        </div>}
       </div>
       {/* Action Buttons */}
       <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>
@@ -183,7 +163,7 @@ const Installed: FC<Props> = ({
         <Button
           variant='primary'
           className='flex min-w-[72px] space-x-0.5'
-          disabled={isInstalling || isLoading || !canInstallPlugin}
+          disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
