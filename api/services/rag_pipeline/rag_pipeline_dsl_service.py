@@ -1,10 +1,10 @@
 import base64
-from datetime import UTC, datetime
 import hashlib
 import json
 import logging
 import uuid
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Optional, cast
 from urllib.parse import urlparse
@@ -292,20 +292,20 @@ class RagPipelineDslService:
                                 "background": icon_background,
                                 "url": icon_url,
                             },
-                            indexing_technique=knowledge_configuration.index_method.indexing_technique,
+                            indexing_technique=knowledge_configuration.indexing_technique,
                             created_by=account.id,
-                            retrieval_model=knowledge_configuration.retrieval_setting.model_dump(),
+                            retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode="rag_pipeline",
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
-                    if knowledge_configuration.index_method.indexing_technique == "high_quality":
+                    if knowledge_configuration.indexing_technique == "high_quality":
                         dataset_collection_binding = (
                             db.session.query(DatasetCollectionBinding)
                             .filter(
                                 DatasetCollectionBinding.provider_name
-                                == knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
+                                == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name
-                                == knowledge_configuration.index_method.embedding_setting.embedding_model_name,
+                                == knowledge_configuration.embedding_model,
                                 DatasetCollectionBinding.type == "dataset",
                             )
                             .order_by(DatasetCollectionBinding.created_at)
@@ -314,8 +314,8 @@ class RagPipelineDslService:
 
                         if not dataset_collection_binding:
                             dataset_collection_binding = DatasetCollectionBinding(
-                                provider_name=knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
-                                model_name=knowledge_configuration.index_method.embedding_setting.embedding_model_name,
+                                provider_name=knowledge_configuration.embedding_model_provider,
+                                model_name=knowledge_configuration.embedding_model,
                                 collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
                                 type="dataset",
                             )
@@ -324,13 +324,13 @@ class RagPipelineDslService:
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = (
-                            knowledge_configuration.index_method.embedding_setting.embedding_model_name
+                            knowledge_configuration.embedding_model
                         )
                         dataset.embedding_model_provider = (
-                            knowledge_configuration.index_method.embedding_setting.embedding_provider_name
+                            knowledge_configuration.embedding_model_provider
                         )
-                    elif knowledge_configuration.index_method.indexing_technique == "economy":
-                        dataset.keyword_number = knowledge_configuration.index_method.economy_setting.keyword_number
+                    elif knowledge_configuration.indexing_technique == "economy":
+                        dataset.keyword_number = knowledge_configuration.keyword_number
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
                     self._session.commit()
@@ -426,25 +426,25 @@ class RagPipelineDslService:
                                 "background": icon_background,
                                 "url": icon_url,
                             },
-                            indexing_technique=knowledge_configuration.index_method.indexing_technique,
+                            indexing_technique=knowledge_configuration.indexing_technique,
                             created_by=account.id,
-                            retrieval_model=knowledge_configuration.retrieval_setting.model_dump(),
+                            retrieval_model=knowledge_configuration.retrieval_model.model_dump(),
                             runtime_mode="rag_pipeline",
                             chunk_structure=knowledge_configuration.chunk_structure,
                         )
                     else:
-                        dataset.indexing_technique = knowledge_configuration.index_method.indexing_technique
-                        dataset.retrieval_model = knowledge_configuration.retrieval_setting.model_dump()
+                        dataset.indexing_technique = knowledge_configuration.indexing_technique
+                        dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
                         dataset.runtime_mode = "rag_pipeline"
                         dataset.chunk_structure = knowledge_configuration.chunk_structure
-                    if knowledge_configuration.index_method.indexing_technique == "high_quality":
+                    if knowledge_configuration.indexing_technique == "high_quality":
                         dataset_collection_binding = (
                             db.session.query(DatasetCollectionBinding)
                             .filter(
                                 DatasetCollectionBinding.provider_name
-                                == knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
+                                == knowledge_configuration.embedding_model_provider,
                                 DatasetCollectionBinding.model_name
-                                == knowledge_configuration.index_method.embedding_setting.embedding_model_name,
+                                == knowledge_configuration.embedding_model,
                                 DatasetCollectionBinding.type == "dataset",
                             )
                             .order_by(DatasetCollectionBinding.created_at)
@@ -453,8 +453,8 @@ class RagPipelineDslService:
 
                         if not dataset_collection_binding:
                             dataset_collection_binding = DatasetCollectionBinding(
-                                provider_name=knowledge_configuration.index_method.embedding_setting.embedding_provider_name,
-                                model_name=knowledge_configuration.index_method.embedding_setting.embedding_model_name,
+                                provider_name=knowledge_configuration.embedding_model_provider,
+                                model_name=knowledge_configuration.embedding_model,
                                 collection_name=Dataset.gen_collection_name_by_id(str(uuid.uuid4())),
                                 type="dataset",
                             )
@@ -463,13 +463,13 @@ class RagPipelineDslService:
                         dataset_collection_binding_id = dataset_collection_binding.id
                         dataset.collection_binding_id = dataset_collection_binding_id
                         dataset.embedding_model = (
-                            knowledge_configuration.index_method.embedding_setting.embedding_model_name
+                            knowledge_configuration.embedding_model
                         )
                         dataset.embedding_model_provider = (
-                            knowledge_configuration.index_method.embedding_setting.embedding_provider_name
+                            knowledge_configuration.embedding_model_provider
                         )
-                    elif knowledge_configuration.index_method.indexing_technique == "economy":
-                        dataset.keyword_number = knowledge_configuration.index_method.economy_setting.keyword_number
+                    elif knowledge_configuration.indexing_technique == "economy":
+                        dataset.keyword_number = knowledge_configuration.keyword_number
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
                     self._session.commit()

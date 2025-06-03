@@ -664,7 +664,7 @@ class DocumentDetailApi(DocumentResource):
             response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
         elif metadata == "without":
             dataset_process_rules = DatasetService.get_process_rules(dataset_id)
-            document_process_rules = document.dataset_process_rule.to_dict()
+            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
             data_source_info = document.data_source_detail_dict
             response = {
                 "id": document.id,

@@ -12,7 +12,7 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
-from models.dataset import Dataset, Document
+from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
 
 from ..base import BaseNode
@@ -61,11 +61,11 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Chunks is required."
             )
-        outputs = self._get_preview_output(node_data.chunk_structure, chunks)
 
-        # retrieve knowledge
+        # index knowledge
         try:
             if is_preview:
+                outputs = self._get_preview_output(node_data.chunk_structure, chunks)
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=variables,
@@ -116,6 +116,18 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
         document.indexing_status = "completed"
         document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         db.session.add(document)
+        #update document segment status
+        db.session.query(DocumentSegment).filter(
+            DocumentSegment.document_id == document.id,
+            DocumentSegment.dataset_id == dataset.id,
+        ).update(
+            {
+                DocumentSegment.status: "completed",
+                DocumentSegment.enabled: True,
+                DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+            }
+        )
+
         db.session.commit()
 
         return {

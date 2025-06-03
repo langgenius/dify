@@ -105,18 +105,11 @@ class IndexMethod(BaseModel):
 
 class KnowledgeConfiguration(BaseModel):
     """
-    Knowledge Configuration.
+    Knowledge Base Configuration.
     """
-
     chunk_structure: str
-    index_method: IndexMethod
-    retrieval_setting: RetrievalSetting
-
-
-class KnowledgeBaseUpdateConfiguration(BaseModel):
-    """
-    Knowledge Base Update Configuration.
-    """
-    index_method: IndexMethod
-    chunk_structure: str
-    retrieval_setting: RetrievalSetting
+    indexing_technique: Literal["high_quality", "economy"]
+    embedding_model_provider: Optional[str] = ""
+    embedding_model: Optional[str] = ""
+    keyword_number: Optional[int] = 10
+    retrieval_model: RetrievalSetting

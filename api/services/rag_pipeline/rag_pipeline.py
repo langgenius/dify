@@ -74,7 +74,7 @@ class RagPipelineService:
             result = retrieval_instance.get_pipeline_templates(language)
             return result
 
-    @classmethod   
+    @classmethod
     def get_pipeline_template_detail(cls, template_id: str) -> Optional[dict]:
         """
         Get pipeline template detail.
@@ -284,7 +284,7 @@ class RagPipelineService:
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
-            environment_variables=draft_workflow.environment_variables, 
+            environment_variables=draft_workflow.environment_variables,
             conversation_variables=draft_workflow.conversation_variables,
             rag_pipeline_variables=draft_workflow.rag_pipeline_variables,
             marked_name="",
@@ -296,8 +296,8 @@ class RagPipelineService:
         graph = workflow.graph_dict
         nodes = graph.get("nodes", [])
         for node in nodes:
-            if node.get("data", {}).get("type") == "knowledge_index":
-                knowledge_configuration = node.get("data", {}).get("knowledge_configuration", {})
+            if node.get("data", {}).get("type") == "knowledge-index":
+                knowledge_configuration = node.get("data", {})
                 knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
 
                 # update dataset
@@ -306,8 +306,8 @@ class RagPipelineService:
                     raise ValueError("Dataset not found")
                 DatasetService.update_rag_pipeline_dataset_settings(
                     session=session,
-                    dataset=dataset, 
-                    knowledge_configuration=knowledge_configuration, 
+                    dataset=dataset,
+                    knowledge_configuration=knowledge_configuration,
                     has_published=pipeline.is_published
                 )
         # return new workflow
@@ -771,14 +771,14 @@ class RagPipelineService:
 
         # Use the repository to get the node executions with ordering
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id, 
-                                                         order_config=order_config, 
+        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id,
+                                                         order_config=order_config,
                                                          triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN)
       # Convert domain models to database models
         workflow_node_executions = [repository.to_db_model(node_execution) for node_execution in node_executions]
 
         return workflow_node_executions
-    
+
     @classmethod
     def publish_customized_pipeline_template(cls, pipeline_id: str, args: dict):
         """
@@ -792,5 +792,5 @@ class RagPipelineService:
         workflow = db.session.query(Workflow).filter(Workflow.id == pipeline.workflow_id).first()
         if not workflow:
             raise ValueError("Workflow not found")
-        
+
         db.session.commit()

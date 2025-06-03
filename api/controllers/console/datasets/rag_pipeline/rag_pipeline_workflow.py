@@ -39,8 +39,6 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.account import Account
 from models.dataset import Pipeline
-from models.model import EndUser
-from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeBaseUpdateConfiguration
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
@@ -542,7 +540,7 @@ class RagPipelineConfigApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, pipeline_id):
-        
+
         return {
             "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
         }
