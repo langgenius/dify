@@ -459,7 +459,6 @@ class WorkflowService:
     ) -> NodeExecution:
         try:
             node_instance, generator = invoke_node_fn()
-            generator = gen_utils.inspect(generator, logging.getLogger(__name__))
 
             node_run_result: NodeRunResult | None = None
             for event in generator:

@@ -1,5 +1,5 @@
 import abc
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
 from core.variables import Variable
@@ -55,7 +55,7 @@ DUMMY_VARIABLE_LOADER = _DummyVariableLoader()
 def load_into_variable_pool(
     variable_loader: VariableLoader,
     variable_pool: VariablePool,
-    variable_mapping: Mapping[str, list[str]],
+    variable_mapping: Mapping[str, Sequence[str]],
     user_inputs: Mapping[str, Any],
 ):
     # Loading missing variable from draft var here, and set it into

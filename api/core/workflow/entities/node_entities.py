@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from enum import StrEnum
 from typing import Any, Optional
 
@@ -43,7 +43,7 @@ class NodeRunResult(BaseModel):
     inputs: Optional[Mapping[str, Any]] = None  # node inputs
     process_data: Optional[Mapping[str, Any]] = None  # process data
     outputs: Optional[Mapping[str, Any]] = None  # node outputs
-    metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None  # node metadata
+    metadata: Optional[MutableMapping[NodeRunMetadataKey, Any]] = None  # node metadata
     llm_usage: Optional[LLMUsage] = None  # llm usage
 
     edge_source_handle: Optional[str] = None  # source handle id of node with multiple branches

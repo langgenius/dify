@@ -82,7 +82,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 node_id=self.application_generate_entity.single_iteration_run.node_id,
                 user_inputs=self.application_generate_entity.single_iteration_run.inputs,
-                variable_loader=self._var_loader,
             )
         elif self.application_generate_entity.single_loop_run:
             # if only single loop run is requested

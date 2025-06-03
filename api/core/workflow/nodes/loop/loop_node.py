@@ -478,7 +478,7 @@ class LoopNode(BaseNode[LoopNodeData]):
 
             variable_mapping.update(sub_node_variable_mapping)
 
-        for loop_variable in node_data.loop_variables:
+        for loop_variable in node_data.loop_variables or []:
             if loop_variable.value_type == "variable":
                 assert loop_variable.value is not None, "Loop variable value must be provided for variable type"
                 # add loop variable to variable mapping
