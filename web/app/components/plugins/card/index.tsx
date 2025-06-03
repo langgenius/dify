@@ -15,7 +15,6 @@ import { renderI18nObject } from '@/i18n'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
-import { RiProhibitedLine } from '@remixicon/react'
 
 export type Props = {
   className?: string
@@ -90,10 +89,6 @@ const Card = ({
         text={getLocalizedText(brief)}
         descriptionLineRows={descriptionLineRows}
       />
-      <div className='flex gap-x-2 text-text-warning'>
-        <RiProhibitedLine className='h-4 w-4' />
-        <span className='system-sm-regular text-text-warning'>{t('plugin.installModal.installWarning')}</span>
-      </div>
       {footer && <div>{footer}</div>}
     </div>
   )
