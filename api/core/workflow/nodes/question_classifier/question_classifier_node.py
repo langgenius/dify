@@ -79,9 +79,13 @@ class QuestionClassifierNode(LLMNode):
             memory=memory,
             max_token_limit=rest_token,
         )
+        # Some models (e.g. Gemma, Mistral) force roles alternation (user/assistant/user/assistant...).
+        # If both self._get_prompt_template and self._fetch_prompt_messages append a user prompt,
+        # two consecutive user prompts will be generated, causing model's error.
+        # To avoid this, set sys_query to an empty string so that only one user prompt is appended at the end.
         prompt_messages, stop = self._fetch_prompt_messages(
             prompt_template=prompt_template,
-            sys_query=query,
+            sys_query="",
             memory=memory,
             model_config=model_config,
             sys_files=files,
