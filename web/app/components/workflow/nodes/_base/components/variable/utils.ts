@@ -496,11 +496,11 @@ const formatItem = (
     }
 
     case 'rag': {
-      res.vars = data.ragVariables.map((ragVarialbe: RAGPipelineVariable) => {
+      res.vars = data.ragVariables.map((ragVar: RAGPipelineVariable) => {
         return {
-          variable: `rag.${ragVarialbe.variable}`,
-          type: inputVarTypeToVarType(ragVarialbe.type as any),
-          des: ragVarialbe.label,
+          variable: `rag.${ragVar.variable}`,
+          type: inputVarTypeToVarType(ragVar.type as any),
+          des: ragVar.label,
           isRagVariable: true,
         }
       }) as Var[]
