@@ -75,7 +75,7 @@ class TagService:
 
     @staticmethod
     def save_tags(args: dict) -> Tag:
-        if TagService.get_tag_by_tag_name(args.get("type", ""), current_user.current_tenant_id, args.get("name", "")):
+        if TagService.get_tag_by_tag_name(args["type"], current_user.current_tenant_id, args["name"]):
             raise ValueError("Tag name already exists")
         tag = Tag(
             id=str(uuid.uuid4()),
