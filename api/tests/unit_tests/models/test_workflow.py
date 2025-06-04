@@ -1,10 +1,15 @@
+import dataclasses
 import json
 from unittest import mock
 from uuid import uuid4
 
 from constants import HIDDEN_VALUE
+from core.file.enums import FileTransferMethod, FileType
+from core.file.models import File
 from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from models.workflow import Workflow, WorkflowNodeExecutionModel, is_system_variable_editable
+from core.variables.segments import Segment
+from factories.variable_factory import build_segment
+from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
 
 
 def test_environment_variables():
@@ -181,3 +186,80 @@ class TestIsSystemVariableEditable:
             assert editable == is_system_variable_editable(name)
 
         assert is_system_variable_editable("invalid_or_new_system_variable") == False
+
+
+class TestWorkflowDraftVariableGetValue:
+    def test_get_value_by_case(self):
+        @dataclasses.dataclass
+        class TestCase:
+            name: str
+            value: Segment
+
+        tenant_id = "test_tenant_id"
+
+        test_file = File(
+            tenant_id=tenant_id,
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/example.jpg",
+            filename="example.jpg",
+            extension=".jpg",
+            mime_type="image/jpeg",
+            size=100,
+        )
+        cases: list[TestCase] = [
+            TestCase(
+                name="number/int",
+                value=build_segment(1),
+            ),
+            TestCase(
+                name="number/float",
+                value=build_segment(1.0),
+            ),
+            TestCase(
+                name="string",
+                value=build_segment("a"),
+            ),
+            TestCase(
+                name="object",
+                value=build_segment({}),
+            ),
+            TestCase(
+                name="file",
+                value=build_segment(test_file),
+            ),
+            TestCase(
+                name="array[any]",
+                value=build_segment([1, "a"]),
+            ),
+            TestCase(
+                name="array[string]",
+                value=build_segment(["a", "b"]),
+            ),
+            TestCase(
+                name="array[number]/int",
+                value=build_segment([1, 2]),
+            ),
+            TestCase(
+                name="array[number]/float",
+                value=build_segment([1.0, 2.0]),
+            ),
+            TestCase(
+                name="array[number]/mixed",
+                value=build_segment([1, 2.0]),
+            ),
+            TestCase(
+                name="array[object]",
+                value=build_segment([{}, {"a": 1}]),
+            ),
+            TestCase(
+                name="none",
+                value=build_segment(None),
+            ),
+        ]
+
+        for idx, c in enumerate(cases, 1):
+            fail_msg = f"test case {c.name} failed, index={idx}"
+            draft_var = WorkflowDraftVariable()
+            draft_var.set_value(c.value)
+            assert c.value == draft_var.get_value(tenant_id=tenant_id), fail_msg
