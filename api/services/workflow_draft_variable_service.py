@@ -578,7 +578,7 @@ class DraftVariableSaver:
 
     @staticmethod
     def _should_variable_be_visible(node_id: str, node_type: NodeType, name: str) -> bool:
-        if node_type in (NodeType.IF_ELSE, NodeType.START):
+        if node_type in NodeType.IF_ELSE:
             return False
         if node_id == SYSTEM_VARIABLE_NODE_ID and not is_system_variable_editable(name):
             return False

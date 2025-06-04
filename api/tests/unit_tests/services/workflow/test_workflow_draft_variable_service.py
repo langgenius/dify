@@ -1,46 +1,32 @@
 import dataclasses
 import secrets
+from unittest import mock
 
+from sqlalchemy.orm import Session
+
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes import NodeType
-from factories.variable_factory import build_segment
-from models.workflow import WorkflowDraftVariable
-from services.workflow_draft_variable_service import _DraftVariableBuilder
+from services.workflow_draft_variable_service import DraftVariableSaver
 
 
-class TestDraftVariableBuilder:
+class TestDraftVariableSaver:
     def _get_test_app_id(self):
         suffix = secrets.token_hex(6)
         return f"test_app_id_{suffix}"
 
-    def test_get_variables(self):
-        test_app_id = self._get_test_app_id()
-        builder = _DraftVariableBuilder(app_id=test_app_id)
-        variables = [
-            WorkflowDraftVariable.new_node_variable(
-                app_id=test_app_id,
-                node_id="test_node_1",
-                name="test_var_1",
-                value=build_segment("test_value_1"),
-                visible=True,
-            ),
-            WorkflowDraftVariable.new_sys_variable(
-                app_id=test_app_id,
-                name="test_sys_var",
-                value=build_segment("test_sys_value"),
-            ),
-            WorkflowDraftVariable.new_conversation_variable(
-                app_id=test_app_id,
-                name="test_conv_var",
-                value=build_segment("test_conv_value"),
-            ),
-        ]
-        builder._draft_vars = variables
-        assert builder.get_variables() == variables
-
     def test__should_variable_be_visible(self):
-        assert _DraftVariableBuilder._should_variable_be_visible(NodeType.IF_ELSE, "123_456", "output") == False
-        assert _DraftVariableBuilder._should_variable_be_visible(NodeType.START, "123", "output") == True
+        mock_session = mock.MagicMock(spec=Session)
+        test_app_id = self._get_test_app_id()
+        saver = DraftVariableSaver(
+            session=mock_session,
+            app_id=test_app_id,
+            node_id="test_node_id",
+            node_type=NodeType.START,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+        assert saver._should_variable_be_visible("123_456", NodeType.IF_ELSE, "output") == False
+        assert saver._should_variable_be_visible("123", NodeType.START, "output") == True
 
     def test__normalize_variable_for_start_node(self):
         @dataclasses.dataclass(frozen=True)
@@ -75,8 +61,18 @@ class TestDraftVariableBuilder:
                 expected_name="__dummy__",
             ),
         ]
+
+        mock_session = mock.MagicMock(spec=Session)
+        test_app_id = self._get_test_app_id()
+        saver = DraftVariableSaver(
+            session=mock_session,
+            app_id=test_app_id,
+            node_id=_NODE_ID,
+            node_type=NodeType.START,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
         for idx, c in enumerate(cases, 1):
             fail_msg = f"Test case {c.name} failed, index={idx}"
-            node_id, name = _DraftVariableBuilder._normalize_variable_for_start_node(c.input_node_id, c.input_name)
+            node_id, name = saver._normalize_variable_for_start_node(c.input_name)
             assert node_id == c.expected_node_id, fail_msg
             assert name == c.expected_name, fail_msg
