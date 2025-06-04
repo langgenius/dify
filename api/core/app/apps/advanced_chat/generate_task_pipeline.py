@@ -165,7 +165,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
-
+        print(f"generator: {generator}")
         if self._base_task_pipeline._stream:
             return self._to_stream_response(generator)
         else:
@@ -183,12 +183,13 @@ class AdvancedChatAppGenerateTaskPipeline:
                 extras = {}
                 if stream_response.metadata:
                     extras["metadata"] = stream_response.metadata
-
+                print(f"stream_response: {stream_response}")
                 return ChatbotAppBlockingResponse(
                     task_id=stream_response.task_id,
                     data=ChatbotAppBlockingResponse.Data(
                         id=self._message_id,
                         mode=self._conversation_mode,
+                        outputs=stream_response.data.outputs,
                         conversation_id=self._conversation_id,
                         message_id=self._message_id,
                         answer=self._task_state.answer,
@@ -209,6 +210,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         :return:
         """
         for stream_response in generator:
+            print(f"stream_response: {stream_response}")
             yield ChatbotAppStreamResponse(
                 conversation_id=self._conversation_id,
                 message_id=self._message_id,
@@ -501,13 +503,12 @@ class AdvancedChatAppGenerateTaskPipeline:
                         conversation_id=self._conversation_id,
                         trace_manager=trace_manager,
                     )
-
                     workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                         session=session,
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
                     )
-
+                    print(f"workflow_finish_resp: {workflow_finish_resp}")
                 yield workflow_finish_resp
                 self._base_task_pipeline._queue_manager.publish(
                     QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE

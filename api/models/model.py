@@ -898,6 +898,7 @@ class Message(Base):
     message_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     answer: Mapped[str] = db.Column(db.Text, nullable=False)
+    outputs: Mapped[Optional[str]] = mapped_column("outputs", db.Text, nullable=True, server_default=db.text("'{}'::text"))
     answer_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     answer_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
@@ -1087,6 +1088,14 @@ class Message(Base):
         return json.loads(self.message_metadata) if self.message_metadata else {}
 
     @property
+    def outputs_dict(self) -> dict:
+        return json.loads(self.outputs) if self.outputs else {}
+
+    @outputs_dict.setter
+    def outputs_dict(self, value: Mapping[str, Any]):
+        self.outputs = json.dumps(value, ensure_ascii=False) if value else "{}"
+
+    @property
     def agent_thoughts(self):
         return (
             db.session.query(MessageAgentThought)
@@ -1180,6 +1189,7 @@ class Message(Base):
             "model_id": self.model_id,
             "inputs": self.inputs,
             "query": self.query,
+            "outputs": self.outputs_dict,
             "total_price": self.total_price,
             "message": self.message,
             "answer": self.answer,
