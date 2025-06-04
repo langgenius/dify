@@ -18,7 +18,7 @@ parsed = urlparse(celery_broker_url)
 host = parsed.hostname or "localhost"
 port = parsed.port or 6379
 password = parsed.password or None
-redis_db = parsed.path.strip("/") or "1" # type: ignore
+redis_db = parsed.path.strip("/") or "1"  # type: ignore
 
 celery_redis = Redis(host=host, port=port, password=password, db=redis_db)
 
@@ -49,14 +49,14 @@ def queue_monitor_task():
                             threshold=threshold,
                             alert_time=current_time,
                         )
-                        mail.send(to=to,
-                                  subject="Alert: Dataset Queue pending tasks exceeded the limit",
-                                  html=html_content)
+                        mail.send(
+                            to=to, subject="Alert: Dataset Queue pending tasks exceeded the limit", html=html_content
+                        )
                     except Exception as e:
-                        logging.exception(click.style(f"Exception occurred during sending email", fg="red"))
+                        logging.exception(click.style("Exception occurred during sending email", fg="red"))
 
     except Exception as e:
-        logging.exception(click.style(f"Exception occurred during queue monitoring", fg="red"))
+        logging.exception(click.style("Exception occurred during queue monitoring", fg="red"))
     finally:
         if db.session.is_active:
             db.session.close()
