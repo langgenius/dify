@@ -117,6 +117,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             )
 
         # parse files
+        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
+        # for better separation of concerns.
+        #
+        # For implementation reference, see the `_parse_file` function and
+        # `DraftWorkflowNodeRunApi` class which handle this properly.
         files = args["files"] if args.get("files") else []
         file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
         if file_extra_config:

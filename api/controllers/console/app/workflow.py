@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Sequence
 from typing import cast
 
 from flask import abort, request
@@ -18,10 +19,12 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.file.models import File
 from extensions.ext_database import db
-from factories import variable_factory
+from factories import file_factory, variable_factory
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
@@ -30,12 +33,31 @@ from libs.login import current_user, login_required
 from models import App
 from models.account import Account
 from models.model import AppMode
+from models.workflow import Workflow
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
+
+
+# TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
+# at the controller level rather than in the workflow logic. This would improve separation
+# of concerns and make the code more maintainable.
+def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence[File]:
+    files = files or []
+
+    file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
+    file_objs: Sequence[File] = []
+    if file_extra_config is None:
+        return file_objs
+    file_objs = file_factory.build_from_mappings(
+        mappings=files,
+        tenant_id=workflow.tenant_id,
+        config=file_extra_config,
+    )
+    return file_objs
 
 
 class DraftWorkflowApi(Resource):
@@ -410,15 +432,21 @@ class DraftWorkflowNodeRunApi(Resource):
         if user_inputs is None:
             raise ValueError("missing inputs")
 
-        # TODO(QuantumGhost): we should validate files here.
+        workflow_srv = WorkflowService()
+        # fetch draft workflow by app_model
+        draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model)
+        if not draft_workflow:
+            raise ValueError("Workflow not initialized")
+        files = _parse_file(draft_workflow, args.get("files"))
         workflow_service = WorkflowService()
         workflow_node_execution = workflow_service.run_draft_workflow_node(
             app_model=app_model,
+            draft_workflow=draft_workflow,
             node_id=node_id,
             user_inputs=user_inputs,
             account=current_user,
             query=args.get("query", ""),
-            files=args.get("files", []),
+            files=files,
         )
 
         return workflow_node_execution

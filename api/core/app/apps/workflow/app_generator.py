@@ -95,6 +95,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
         # parse files
+        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
+        # for better separation of concerns.
+        #
+        # For implementation reference, see the `_parse_file` function and
+        # `DraftWorkflowNodeRunApi` class which handle this properly.
         file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
         system_files = file_factory.build_from_mappings(
             mappings=files,
