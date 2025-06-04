@@ -55,38 +55,33 @@ export const preprocessThinkTag = (content: string) => {
  *    signal that the URI should be removed/disallowed by react-markdown.
  */
 export const customUrlTransform = (uri: string): string | undefined => {
-  const PERMITTED_SCHEME_REGEX = /^(https?|ircs?|mailto|xmpp|abbr):$/i;
+  const PERMITTED_SCHEME_REGEX = /^(https?|ircs?|mailto|xmpp|abbr):$/i
 
-  if (uri.startsWith('#')) {
-    return uri;
-  }
+  if (uri.startsWith('#'))
+    return uri
 
-  if (uri.startsWith('//')) {
-    return uri;
-  }
+  if (uri.startsWith('//'))
+    return uri
 
-  const colonIndex = uri.indexOf(':');
+  const colonIndex = uri.indexOf(':')
 
-  if (colonIndex === -1) {
-    return uri;
-  }
+  if (colonIndex === -1)
+    return uri
 
-  const slashIndex = uri.indexOf('/');
-  const questionMarkIndex = uri.indexOf('?');
-  const hashIndex = uri.indexOf('#');
+  const slashIndex = uri.indexOf('/')
+  const questionMarkIndex = uri.indexOf('?')
+  const hashIndex = uri.indexOf('#')
 
   if (
     (slashIndex !== -1 && colonIndex > slashIndex) ||
     (questionMarkIndex !== -1 && colonIndex > questionMarkIndex) ||
     (hashIndex !== -1 && colonIndex > hashIndex)
-  ) {
-    return uri;
-  }
+  )
+    return uri
 
-  const scheme = uri.substring(0, colonIndex + 1).toLowerCase();
-  if (PERMITTED_SCHEME_REGEX.test(scheme)) {
-    return uri;
-  }
+  const scheme = uri.substring(0, colonIndex + 1).toLowerCase()
+  if (PERMITTED_SCHEME_REGEX.test(scheme))
+    return uri
 
-  return undefined;
+  return undefined
 }
