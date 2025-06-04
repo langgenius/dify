@@ -3,10 +3,12 @@ import type { WorkflowDataUpdater } from '../types'
 import Run from '../run'
 import { useStore } from '../store'
 import { useWorkflowUpdate } from '../hooks'
+import { useHooksStore } from '../hooks-store'
 
 const Record = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
+  const getWorkflowRunAndTraceUrl = useHooksStore(s => s.getWorkflowRunAndTraceUrl)
 
   const handleResultCallback = useCallback((res: any) => {
     const graph: WorkflowDataUpdater = res.graph
@@ -23,7 +25,8 @@ const Record = () => {
         {`Test Run#${historyWorkflowData?.sequence_number}`}
       </div>
       <Run
-        runID={historyWorkflowData?.id || ''}
+        runDetailUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).runUrl}
+        tracingListUrl={getWorkflowRunAndTraceUrl(historyWorkflowData?.id).traceUrl}
         getResultCallback={handleResultCallback}
       />
     </div>

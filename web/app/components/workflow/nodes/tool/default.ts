@@ -1,25 +1,21 @@
-import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeDefault } from '../../types'
 import type { ToolNodeType } from './types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/blocks'
 
 const i18nPrefix = 'workflow.errorMsg'
 
+const metaData = genNodeMetaData({
+  sort: -1,
+  type: BlockEnum.Tool,
+  helpLinkUri: 'tools',
+})
 const nodeDefault: NodeDefault<ToolNodeType> = {
+  metaData,
   defaultValue: {
     tool_parameters: {},
     tool_configurations: {},
-  },
-  getAvailablePrevNodes(isChatMode: boolean) {
-    const nodes = isChatMode
-      ? ALL_CHAT_AVAILABLE_BLOCKS
-      : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes
-  },
-  getAvailableNextNodes(isChatMode: boolean) {
-    const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes
   },
   checkValid(payload: ToolNodeType, t: any, moreDataForCheckValid: any) {
     const { toolInputsSchema, toolSettingSchema, language, notAuthed } = moreDataForCheckValid

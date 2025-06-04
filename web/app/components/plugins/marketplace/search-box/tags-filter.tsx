@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import type { ReactElement } from 'react'
 import {
   RiArrowDownSLine,
   RiCloseCircleFill,
@@ -22,12 +23,18 @@ type TagsFilterProps = {
   onTagsChange: (tags: string[]) => void
   size: 'small' | 'large'
   locale?: string
+  emptyTrigger?: ReactElement
+  className?: string
+  triggerClassName?: string
 }
 const TagsFilter = ({
   tags,
   onTagsChange,
   size,
   locale,
+  emptyTrigger,
+  className,
+  triggerClassName,
 }: TagsFilterProps) => {
   const { t } = useMixedTranslation(locale)
   const [open, setOpen] = useState(false)
@@ -62,17 +69,23 @@ const TagsFilter = ({
           size === 'small' && 'h-7 py-0.5 pl-1 pr-1.5 ',
           selectedTagsLength && 'text-text-secondary',
           open && 'bg-state-base-hover',
+          className,
         )}>
-          <div className='p-0.5'>
-            <RiFilter3Line className='h-4 w-4' />
-          </div>
+          {
+            !emptyTrigger && (
+              <div className='p-0.5'>
+                <RiFilter3Line className='h-4 w-4' />
+              </div>
+            )
+          }
           <div className={cn(
             'system-sm-medium flex items-center p-1',
             size === 'large' && 'p-1',
             size === 'small' && 'px-0.5 py-1',
+            triggerClassName,
           )}>
             {
-              !selectedTagsLength && t('pluginTags.allTags')
+              !selectedTagsLength && (emptyTrigger || t('pluginTags.allTags'))
             }
             {
               !!selectedTagsLength && tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')
@@ -94,7 +107,7 @@ const TagsFilter = ({
             )
           }
           {
-            !selectedTagsLength && (
+            !selectedTagsLength && !emptyTrigger && (
               <RiArrowDownSLine className='h-4 w-4' />
             )
           }

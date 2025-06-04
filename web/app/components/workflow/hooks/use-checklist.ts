@@ -20,15 +20,16 @@ import {
   CUSTOM_NODE,
   MAX_TREE_DEPTH,
 } from '../constants'
+import {
+  useGetToolIcon,
+  useWorkflow,
+} from '../hooks'
 import type { ToolNodeType } from '../nodes/tool/types'
-import { useIsChatMode } from './use-workflow'
-import { useNodesExtraData } from './use-nodes-data'
+import { useNodesMetaData } from './use-nodes-meta-data'
 import { useToastContext } from '@/app/components/base/toast'
-import { CollectionType } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
 import type { AgentNodeType } from '../nodes/agent/types'
 import { useStrategyProviders } from '@/service/use-strategy'
-import { canFindTool } from '@/utils'
 import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
@@ -37,13 +38,14 @@ import { fetchDatasets } from '@/service/datasets'
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
-  const nodesExtraData = useNodesExtraData()
-  const isChatMode = useIsChatMode()
+  const { nodesMap: nodesExtraData } = useNodesMetaData()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
   const { data: strategyProviders } = useStrategyProviders()
   const datasetsDetail = useDatasetsDetailStore(s => s.datasetsDetail)
+  const { getStartNodes } = useWorkflow()
+  const getToolIcon = useGetToolIcon()
 
   const getCheckData = useCallback((data: CommonNodeType<{}>) => {
     let checkData = data
@@ -64,27 +66,23 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
   const needWarningNodes = useMemo(() => {
     const list = []
-    const { validNodes } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
+    const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
+    const startNodes = getStartNodes(filteredNodes)
+    const validNodesFlattened = startNodes.map(startNode => getValidTreeNodes(startNode, filteredNodes, edges))
+    const validNodes = validNodesFlattened.reduce((acc, curr) => {
+      if (curr.validNodes)
+        acc.push(...curr.validNodes)
+      return acc
+    }, [] as Node[])
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i]
-      let toolIcon
       let moreDataForCheckValid
 
-      if (node.data.type === BlockEnum.Tool) {
-        const { provider_type } = node.data
-
+      if (node.data.type === BlockEnum.Tool)
         moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
-        if (provider_type === CollectionType.builtIn)
-          toolIcon = buildInTools.find(tool => canFindTool(tool.id, node.data.provider_id || ''))?.icon
 
-        if (provider_type === CollectionType.custom)
-          toolIcon = customTools.find(tool => tool.id === node.data.provider_id)?.icon
-
-        if (provider_type === CollectionType.workflow)
-          toolIcon = workflowTools.find(tool => tool.id === node.data.provider_id)?.icon
-      }
-
+      const toolIcon = getToolIcon(node.data)
       if (node.data.type === BlockEnum.Agent) {
         const data = node.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
@@ -100,8 +98,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
-        const { errorMessage } = nodesExtraData[node.data.type].checkValid(checkData, t, moreDataForCheckValid)
-
+        const { errorMessage } = nodesExtraData![node.data.type].checkValid(checkData, t, moreDataForCheckValid)
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {
           list.push({
             id: node.id,
@@ -115,26 +112,21 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       }
     }
 
-    if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
-      list.push({
-        id: 'answer-need-added',
-        type: BlockEnum.Answer,
-        title: t('workflow.blocks.answer'),
-        errorMessage: t('workflow.common.needAnswerNode'),
-      })
-    }
+    const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
 
-    if (!isChatMode && !nodes.find(node => node.data.type === BlockEnum.End)) {
-      list.push({
-        id: 'end-need-added',
-        type: BlockEnum.End,
-        title: t('workflow.blocks.end'),
-        errorMessage: t('workflow.common.needEndNode'),
-      })
-    }
+    isRequiredNodesType.forEach((type: string) => {
+      if (!nodes.find(node => node.data.type === type)) {
+        list.push({
+          id: `${type}-need-added`,
+          type,
+          title: t(`workflow.blocks.${type}`),
+          errorMessage: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }),
+        })
+      }
+    })
 
     return list
-  }, [nodes, edges, isChatMode, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData])
+  }, [nodes, edges, buildInTools, customTools, workflowTools, language, nodesExtraData, t, strategyProviders, getCheckData, getStartNodes, getToolIcon])
 
   return needWarningNodes
 }
@@ -146,12 +138,12 @@ export const useChecklistBeforePublish = () => {
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
   const { notify } = useToastContext()
-  const isChatMode = useIsChatMode()
   const store = useStoreApi()
-  const nodesExtraData = useNodesExtraData()
+  const { nodesMap: nodesExtraData } = useNodesMetaData()
   const { data: strategyProviders } = useStrategyProviders()
   const updateDatasetsDetail = useDatasetsDetailStore(s => s.updateDatasetsDetail)
   const updateTime = useRef(0)
+  const { getStartNodes } = useWorkflow()
 
   const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
     let checkData = data
@@ -179,15 +171,22 @@ export const useChecklistBeforePublish = () => {
       getNodes,
       edges,
     } = store.getState()
-    const nodes = getNodes().filter(node => node.type === CUSTOM_NODE)
-    const {
-      validNodes,
-      maxDepth,
-    } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
+    const nodes = getNodes()
+    const filteredNodes = nodes.filter(node => node.type === CUSTOM_NODE)
+    const startNodes = getStartNodes(filteredNodes)
+    const validNodesFlattened = startNodes.map(startNode => getValidTreeNodes(startNode, filteredNodes, edges))
+    const validNodes = validNodesFlattened.reduce((acc, curr) => {
+      if (curr.validNodes)
+        acc.push(...curr.validNodes)
+      return acc
+    }, [] as Node[])
+    const maxDepthArr = validNodesFlattened.map(item => item.maxDepth)
 
-    if (maxDepth > MAX_TREE_DEPTH) {
-      notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
-      return false
+    for (let i = 0; i < maxDepthArr.length; i++) {
+      if (maxDepthArr[i] > MAX_TREE_DEPTH) {
+        notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
+        return false
+      }
     }
     // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
     const knowledgeRetrievalNodes = nodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
@@ -228,7 +227,7 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node.data, datasets)
-      const { errorMessage } = nodesExtraData[node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
+      const { errorMessage } = nodesExtraData![node.data.type as BlockEnum].checkValid(checkData, t, moreDataForCheckValid)
 
       if (errorMessage) {
         notify({ type: 'error', message: `[${node.data.title}] ${errorMessage}` })
@@ -241,18 +240,18 @@ export const useChecklistBeforePublish = () => {
       }
     }
 
-    if (isChatMode && !nodes.find(node => node.data.type === BlockEnum.Answer)) {
-      notify({ type: 'error', message: t('workflow.common.needAnswerNode') })
-      return false
-    }
+    const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
 
-    if (!isChatMode && !nodes.find(node => node.data.type === BlockEnum.End)) {
-      notify({ type: 'error', message: t('workflow.common.needEndNode') })
-      return false
+    for(let i = 0; i < isRequiredNodesType.length; i++) {
+      const type = isRequiredNodesType[i]
+      if (!nodes.find(node => node.data.type === type)) {
+        notify({ type: 'error', message: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }) })
+        return false
+      }
     }
 
     return true
-  }, [store, isChatMode, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData])
+  }, [store, notify, t, buildInTools, customTools, workflowTools, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, getStartNodes])
 
   return {
     handleCheckBeforePublish,

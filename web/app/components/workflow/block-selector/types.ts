@@ -1,6 +1,9 @@
+import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
+
 export enum TabsEnum {
   Blocks = 'blocks',
   Tools = 'tools',
+  Sources = 'sources',
 }
 
 export enum ToolTypeEnum {
@@ -32,6 +35,14 @@ export type ToolDefaultValue = {
   output_schema: Record<string, any>
 }
 
+export type DataSourceDefaultValue = {
+  provider_id: string
+  provider_type: string
+  provider_name: string
+  datasource_name: string
+  datasource_label: string
+}
+
 export type ToolValue = {
   provider_name: string
   tool_name: string
@@ -41,4 +52,34 @@ export type ToolValue = {
   parameters?: Record<string, any>
   enabled?: boolean
   extra?: Record<string, any>
+}
+
+export type DataSourceItem = {
+  plugin_id: string
+  plugin_unique_identifier: string
+  provider: string
+  declaration: {
+    credentials_schema: any[]
+    provider_type: string
+    identity: {
+      author: string
+      description: TypeWithI18N
+      icon: string | { background: string; content: string }
+      label: TypeWithI18N
+      name: string
+      tags: string[]
+    }
+    datasources: {
+      description: TypeWithI18N
+      identity: {
+        author: string
+        icon?: string | { background: string; content: string }
+        label: TypeWithI18N
+        name: string
+        provider: string
+      }
+      parameters: any[]
+    }[]
+  }
+  is_authorized: boolean
 }

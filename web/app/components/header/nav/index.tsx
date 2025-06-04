@@ -25,10 +25,10 @@ const Nav = ({
   activeSegment,
   link,
   curNav,
-  navs,
+  navigationItems,
   createText,
   onCreate,
-  onLoadmore,
+  onLoadMore,
   isApp,
 }: INavProps) => {
   const setAppDetail = useAppStore(state => state.setAppDetail)
@@ -80,10 +80,10 @@ const Nav = ({
             <NavSelector
               isApp={isApp}
               curNav={curNav}
-              navs={navs}
+              navigationItems={navigationItems}
               createText={createText}
               onCreate={onCreate}
-              onLoadmore={onLoadmore}
+              onLoadMore={onLoadMore}
             />
           </>
         )

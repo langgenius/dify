@@ -1,6 +1,7 @@
 import { InputVarType } from '@/app/components/workflow/types'
 import { AgentStrategy } from '@/types/app'
 import { PromptRole } from '@/models/debug'
+import { PipelineInputVarType } from '@/models/pipeline'
 
 export let apiPrefix = ''
 export let publicApiPrefix = ''
@@ -142,6 +143,15 @@ export const VAR_ITEM_TEMPLATE_IN_WORKFLOW = {
   variable: '',
   label: '',
   type: InputVarType.textInput,
+  max_length: DEFAULT_VALUE_MAX_LEN,
+  required: true,
+  options: [],
+}
+
+export const VAR_ITEM_TEMPLATE_IN_PIPELINE = {
+  variable: '',
+  label: '',
+  type: PipelineInputVarType.textInput,
   max_length: DEFAULT_VALUE_MAX_LEN,
   required: true,
   options: [],

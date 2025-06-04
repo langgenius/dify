@@ -29,6 +29,7 @@ export enum CollectionType {
   custom = 'api',
   model = 'model',
   workflow = 'workflow',
+  datasource = 'datasource',
 }
 
 export type Emoji = {
@@ -43,13 +44,14 @@ export type Collection = {
   description: TypeWithI18N
   icon: string | Emoji
   label: TypeWithI18N
-  type: CollectionType
+  type: CollectionType | string
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
   plugin_id?: string
   letter?: string
+  is_authorized?: boolean
 }
 
 export type ToolParameter = {

@@ -3,7 +3,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
-import AppBasic from './basic'
 import AppInfo from './app-info'
 import DatasetInfo from './dataset-info'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -12,39 +11,39 @@ import cn from '@/utils/classnames'
 
 export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset' | 'notion'
-  title: string
-  desc: string
-  isExternal?: boolean
-  icon: string
-  icon_background: string | null
   navigation: Array<{
     name: string
     href: string
     icon: NavIcon
     selectedIcon: NavIcon
+    disabled?: boolean
   }>
   extraInfo?: (modeState: string) => React.ReactNode
 }
 
-const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
-  const { appSidebarExpand, setAppSiderbarExpand } = useAppStore(useShallow(state => ({
+const AppDetailNav = ({
+  navigation,
+  extraInfo,
+  iconType = 'app',
+}: IAppDetailNavProps) => {
+  const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
-    setAppSiderbarExpand: state.setAppSiderbarExpand,
+    setAppSidebarExpand: state.setAppSidebarExpand,
   })))
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const expand = appSidebarExpand === 'expand'
 
   const handleToggle = (state: string) => {
-    setAppSiderbarExpand(state === 'expand' ? 'collapse' : 'expand')
+    setAppSidebarExpand(state === 'expand' ? 'collapse' : 'expand')
   }
 
   useEffect(() => {
     if (appSidebarExpand) {
       localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
-      setAppSiderbarExpand(appSidebarExpand)
+      setAppSidebarExpand(appSidebarExpand)
     }
-  }, [appSidebarExpand, setAppSiderbarExpand])
+  }, [appSidebarExpand, setAppSidebarExpand])
 
   return (
     <div
@@ -62,24 +61,10 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
         {iconType === 'app' && (
           <AppInfo expand={expand} />
         )}
-        {iconType === 'dataset' && (
+        {iconType !== 'app' && (
           <DatasetInfo
-            name={title}
-            description={desc}
-            isExternal={isExternal}
             expand={expand}
             extraInfo={extraInfo && extraInfo(appSidebarExpand)}
-          />
-        )}
-        {!['app', 'dataset'].includes(iconType) && (
-          <AppBasic
-            mode={appSidebarExpand}
-            iconType={iconType}
-            icon={icon}
-            icon_background={icon_background}
-            name={title}
-            type={desc}
-            isExternal={isExternal}
           />
         )}
       </div>
@@ -94,7 +79,14 @@ const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigati
       >
         {navigation.map((item, index) => {
           return (
-            <NavLink key={index} mode={appSidebarExpand} iconMap={{ selected: item.selectedIcon, normal: item.icon }} name={item.name} href={item.href} />
+            <NavLink
+              key={index}
+              mode={appSidebarExpand}
+              iconMap={{ selected: item.selectedIcon, normal: item.icon }}
+              name={item.name}
+              href={item.href}
+              disabled={!!item.disabled}
+            />
           )
         })}
       </nav>

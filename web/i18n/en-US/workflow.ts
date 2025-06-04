@@ -46,6 +46,7 @@ const translation = {
     setVarValuePlaceholder: 'Set variable',
     needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
+    needAdd: '{{node}} block must be added',
     needEndNode: 'The End block must be added',
     needAnswerNode: 'The Answer block must be added',
     workflowProcess: 'Workflow Process',
@@ -229,6 +230,8 @@ const translation = {
     'utilities': 'Utilities',
     'noResult': 'No match found',
     'agent': 'Agent Strategy',
+    'sources': 'Sources',
+    'searchDataSource': 'Search Data Source',
   },
   blocks: {
     'start': 'Start',
@@ -253,6 +256,8 @@ const translation = {
     'loop-start': 'Loop Start',
     'loop': 'Loop',
     'loop-end': 'Exit Loop',
+    'knowledge-index': 'Knowledge Base',
+    'datasource': 'Data Source',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -275,6 +280,8 @@ const translation = {
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
     'list-operator': 'Used to filter or sort array content.',
     'agent': 'Invoking large language models to answer questions or process natural language',
+    'knowledge-index': 'Knowledge Base About',
+    'datasource': 'Data Source About',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -364,6 +371,7 @@ const translation = {
         ms: 'ms',
         retries: '{{num}} Retries',
       },
+      inputVars: 'Input Variables',
     },
     start: {
       required: 'required',
@@ -876,6 +884,16 @@ const translation = {
         install: 'Install',
         cancel: 'Cancel',
       },
+    },
+    dataSource: {
+      supportedFileFormats: 'Supported file formats',
+      supportedFileFormatsPlaceholder: 'File extension, e.g. doc',
+    },
+    knowledgeBase: {
+      chunkStructure: 'Chunk Structure',
+      chooseChunkStructure: 'Choose a chunk structure',
+      changeChunkStructure: 'Change Chunk Structure',
+      aboutRetrieval: 'about retrieval method.',
     },
   },
   tracing: {

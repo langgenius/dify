@@ -73,6 +73,9 @@ const translation = {
     input: 'Please enter',
     select: 'Please select',
   },
+  label: {
+    optional: '(optional)',
+  },
   voice: {
     language: {
       zhHans: 'Chinese',
@@ -539,6 +542,7 @@ const translation = {
     viewDoc: 'View documentation',
     relatedApp: 'linked apps',
     noRelatedApp: 'No linked apps',
+    pipeline: 'Pipeline',
   },
   voiceInput: {
     speaking: 'Speak now...',

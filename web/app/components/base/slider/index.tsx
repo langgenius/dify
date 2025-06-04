@@ -27,7 +27,7 @@ const Slider: React.FC<ISliderProps> = ({
 }) => {
   return <ReactSlider
     disabled={disabled}
-    value={isNaN(value) ? 0 : value}
+    value={Number.isNaN(value) ? 0 : value}
     min={min || 0}
     max={max || 100}
     step={step || 1}

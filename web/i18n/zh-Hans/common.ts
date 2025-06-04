@@ -73,6 +73,9 @@ const translation = {
     input: '请输入',
     select: '请选择',
   },
+  label: {
+    optional: '（可选）',
+  },
   voice: {
     language: {
       zhHans: '中文',
@@ -539,6 +542,7 @@ const translation = {
     viewDoc: '查看文档',
     relatedApp: '个关联应用',
     noRelatedApp: '无关联应用',
+    pipeline: '流水线',
   },
   voiceInput: {
     speaking: '现在讲...',

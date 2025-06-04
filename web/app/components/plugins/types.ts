@@ -74,7 +74,8 @@ export type PluginDeclaration = {
   plugins: any // useless in frontend
   verified: boolean
   endpoint: PluginEndpointDeclaration
-  tool: PluginToolDeclaration
+  tool?: PluginToolDeclaration
+  datasource?: PluginToolDeclaration
   model: any
   tags: string[]
   agent_strategy: any

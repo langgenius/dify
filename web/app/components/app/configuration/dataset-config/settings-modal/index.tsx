@@ -6,7 +6,7 @@ import { isEqual } from 'lodash-es'
 import { RiCloseLine } from '@remixicon/react'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import cn from '@/utils/classnames'
-import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
+import IndexMethod from '@/app/components/datasets/settings/index-method'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -245,11 +245,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
               <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
             </div>
             <div className='grow'>
-              <IndexMethodRadio
-                disable={!localeCurrentDataset?.embedding_available}
+              <IndexMethod
+                disabled={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
                 onChange={v => setIndexMethod(v!)}
-                docForm={currentDataset.doc_form}
                 currentValue={currentDataset.indexing_technique}
               />
             </div>

@@ -3,8 +3,26 @@ import type { MutationOptions } from '@tanstack/react-query'
 import { useMutation } from '@tanstack/react-query'
 import { createDocument, createFirstDocument, fetchDefaultProcessRule, fetchFileIndexingEstimate } from '../datasets'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { ChunkingMode, CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DataSourceType, FileIndexingEstimateResponse, IndexingEstimateParams, NotionInfo, ProcessRule, ProcessRuleResponse, createDocumentResponse } from '@/models/datasets'
+import type {
+  ChunkingMode,
+  CrawlOptions,
+  CrawlResultItem,
+  CreateDatasetReq,
+  CreateDatasetResponse,
+  CreateDocumentReq,
+  CustomFile,
+  DataSourceType,
+  FileIndexingEstimateResponse,
+  IndexingEstimateParams,
+  NotionInfo,
+  ProcessRule,
+  ProcessRuleResponse,
+  createDocumentResponse,
+} from '@/models/datasets'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
+import { post } from '../base'
+
+const NAME_SPACE = 'knowledge/create-dataset'
 
 export const getNotionInfo = (
   notionPages: NotionPage[],
@@ -217,6 +235,18 @@ export const useFetchDefaultProcessRule = (
   return useMutation({
     mutationFn: async (url: string) => {
       return fetchDefaultProcessRule({ url })
+    },
+    ...mutationOptions,
+  })
+}
+
+export const useCreatePipelineDataset = (
+  mutationOptions: MutationOptions<CreateDatasetResponse, Error, CreateDatasetReq> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'create-pipeline-empty-dataset'],
+    mutationFn: (req: CreateDatasetReq) => {
+      return post<CreateDatasetResponse>('/rag/pipeline/empty-dataset', { body: req })
     },
     ...mutationOptions,
   })

@@ -5,7 +5,10 @@ import type {
   XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type {
+  DataSourceDefaultValue,
+  ToolDefaultValue,
+} from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { FileResponse, NodeTracing } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -16,6 +19,7 @@ import type {
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -41,6 +45,8 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
+  DataSource = 'datasource',
+  KnowledgeBase = 'knowledge-index',
 }
 
 export enum ControlMode {
@@ -93,6 +99,7 @@ export type CommonNodeType<T = {}> = {
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
+  & Partial<Pick<DataSourceDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'datasource_name'>>
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -181,6 +188,7 @@ export enum InputVarType {
   singleFile = 'file',
   multiFiles = 'file-list',
   loop = 'loop', // loop input
+  checkbox = 'checkbox',
 }
 
 export type InputVar = {
@@ -193,11 +201,13 @@ export type InputVar = {
   }
   variable: string
   max_length?: number
-  default?: string
+  default?: string | number
   required: boolean
   hint?: string
   options?: string[]
   value_selector?: ValueSelector
+  placeholder?: string
+  unit?: string
   hide: boolean
 } & Partial<UploadFileSetting>
 
@@ -278,6 +288,7 @@ export type Var = {
   isException?: boolean
   isLoopVariable?: boolean
   nodeId?: string
+  isRagVariable?: boolean
 }
 
 export type NodeOutPutVar = {
@@ -288,21 +299,25 @@ export type NodeOutPutVar = {
   isLoop?: boolean
 }
 
-export type Block = {
-  classification?: string
-  type: BlockEnum
-  title: string
-  description?: string
-}
-
-export type NodeDefault<T> = {
+export type NodeDefault<T = {}> = {
+  metaData: {
+    classification: BlockClassificationEnum
+    sort: number
+    type: BlockEnum
+    title: string
+    author: string
+    description?: string
+    helpLinkUri?: string
+    isRequired?: boolean
+    isUndeletable?: boolean
+    isStart?: boolean
+  }
   defaultValue: Partial<T>
-  getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
-  getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
+  getOutputVars?: (payload: T, ragVariables?: Var[]) => Var[]
 }
 
-export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',
@@ -332,7 +347,7 @@ export type OnNodeAdd = (
     nodeType: BlockEnum
     sourceHandle?: string
     targetHandle?: string
-    toolDefaultValue?: ToolDefaultValue
+    toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue
   },
   oldNodesPayload: {
     prevNodeId?: string

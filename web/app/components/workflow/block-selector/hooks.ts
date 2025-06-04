@@ -1,34 +1,56 @@
+import {
+  useMemo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { BLOCKS } from './constants'
 import {
   TabsEnum,
   ToolTypeEnum,
 } from './types'
 
-export const useBlocks = () => {
+export const useTabs = (noBlocks?: boolean, noSources?: boolean) => {
   const { t } = useTranslation()
+  const tabs = useMemo(() => {
+    return [
+      ...(
+        noBlocks
+          ? []
+          : [
+              {
+                key: TabsEnum.Blocks,
+                name: t('workflow.tabs.blocks'),
+              },
+            ]
+      ),
+      ...(
+        noSources
+          ? []
+          : [
+            {
+              key: TabsEnum.Sources,
+              name: t('workflow.tabs.sources'),
+            },
+          ]
+      ),
+      {
+        key: TabsEnum.Tools,
+        name: t('workflow.tabs.tools'),
+      },
+    ]
+  }, [t, noBlocks, noSources])
+  const initialTab = useMemo(() => {
+    if (noBlocks)
+      return TabsEnum.Sources
 
-  return BLOCKS.map((block) => {
-    return {
-      ...block,
-      title: t(`workflow.blocks.${block.type}`),
-    }
-  })
-}
+    return TabsEnum.Blocks
+  }, [noBlocks])
+  const [activeTab, setActiveTab] = useState(initialTab)
 
-export const useTabs = () => {
-  const { t } = useTranslation()
-
-  return [
-    {
-      key: TabsEnum.Blocks,
-      name: t('workflow.tabs.blocks'),
-    },
-    {
-      key: TabsEnum.Tools,
-      name: t('workflow.tabs.tools'),
-    },
-  ]
+  return {
+    tabs,
+    activeTab,
+    setActiveTab,
+  }
 }
 
 export const useToolTabs = () => {

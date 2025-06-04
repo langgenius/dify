@@ -1,7 +1,7 @@
 import React, { type FC, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import { StatusItem } from '../../../list'
+import StatusItem from '../../../status-item'
 import { useDocumentContext } from '../../index'
 import ChildSegmentList from '../child-segment-list'
 import Tag from '../common/tag'
@@ -228,15 +228,15 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       }
       {
         isParagraphMode && child_chunks.length > 0
-          && <ChildSegmentList
-            parentChunkId={id}
-            childChunks={child_chunks}
-            enabled={enabled}
-            onDelete={onDeleteChildChunk!}
-            handleAddNewChildChunk={handleAddNewChildChunk}
-            onClickSlice={onClickSlice}
-            focused={focused.segmentContent}
-          />
+        && <ChildSegmentList
+          parentChunkId={id}
+          childChunks={child_chunks}
+          enabled={enabled}
+          onDelete={onDeleteChildChunk!}
+          handleAddNewChildChunk={handleAddNewChildChunk}
+          onClickSlice={onClickSlice}
+          focused={focused.segmentContent}
+        />
       }
       {showModal
         && <Confirm

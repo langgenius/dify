@@ -152,7 +152,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setAutoFreeze(true)
     }
   }, [])
-
   useEffect(() => {
     return () => {
       handleSyncWorkflowDraft(true, true)
