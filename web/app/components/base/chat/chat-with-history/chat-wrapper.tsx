@@ -260,7 +260,7 @@ const ChatWrapper = () => {
         onFeedback={handleFeedback}
         suggestedQuestions={suggestedQuestions}
         answerIcon={answerIcon}
-        hideProcessDetail
+        // hideProcessDetail
         themeBuilder={themeBuilder}
         switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
         inputDisabled={inputDisabled}
