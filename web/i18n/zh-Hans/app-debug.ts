@@ -361,6 +361,7 @@ const translation = {
     'inputPlaceholder': '请输入',
     'labelName': '显示名称',
     'required': '必填',
+    'hide': '隐藏',
     'file': {
       supportFileTypes: '支持的文件类型',
       image: {

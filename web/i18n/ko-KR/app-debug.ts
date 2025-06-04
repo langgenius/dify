@@ -279,6 +279,7 @@ const translation = {
     'labelName': '레이블명',
     'inputPlaceholder': '입력하세요',
     'required': '필수',
+    'hide': '숨기기',
     'errorMsg': {
       varNameRequired: '변수명은 필수입니다',
       labelNameRequired: '레이블명은 필수입니다',
