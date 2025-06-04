@@ -5,7 +5,7 @@ import uuid
 
 import click
 from celery import shared_task  # type: ignore
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from core.model_manager import ModelManager
@@ -68,11 +68,6 @@ def batch_create_segment_to_index_task(
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=dataset.embedding_model,
                 )
-            word_count_change = 0
-            segments_to_insert: list[str] = []
-            max_position_stmt = select(func.max(DocumentSegment.position)).where(
-                DocumentSegment.document_id == dataset_document.id
-            )
         word_count_change = 0
         if embedding_model:
             tokens_list = embedding_model.get_text_embedding_num_tokens(
