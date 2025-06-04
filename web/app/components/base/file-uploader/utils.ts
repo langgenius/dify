@@ -71,7 +71,7 @@ export const getFileExtension = (fileName: string, fileMimetype: string, isRemot
   }
   if (!extension) {
     if (extensions.size > 0)
-      extension = Array.from(extensions)[0].toLowerCase()
+      extension = extensions.values().next().value.toLowerCase()
     else
       extension = extensionInFileName
   }
