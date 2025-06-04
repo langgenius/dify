@@ -1,6 +1,5 @@
 import random
 from datetime import UTC, datetime, timedelta
-from time import time
 from typing import Any, Optional, cast
 
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -114,7 +113,6 @@ class WebAppAuthService:
             "session_id": account.email,
             "token_source": "webapp_login_token",
             "auth_type": "internal",
-            "granted_at": int(time()),
             "exp": exp,
         }
 
