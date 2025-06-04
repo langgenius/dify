@@ -168,7 +168,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
             if (seg := self.graph_runtime_state.variable_pool.get(selector)) is not None
         ]
 
-        common_helpers.set_updated_variables(process_data, updated_variables)
+        process_data = common_helpers.set_updated_variables(process_data, updated_variables)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,

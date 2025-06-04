@@ -28,7 +28,7 @@ def variable_to_processed_data(selector: Sequence[str], seg: Segment) -> Updated
 
 
 def set_updated_variables(m: _T, updates: Sequence[UpdatedVariable]) -> _T:
-    # m[_UPDATED_VARIABLES_KEY] = updates
+    m[_UPDATED_VARIABLES_KEY] = updates
     return m
 
 
