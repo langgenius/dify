@@ -6,8 +6,7 @@ on:
       - "main"
       - "deploy/dev"
       - "deploy/enterprise"
-      - "feat/r2"
-      - "feat/rag-pipeline"
+      - "deploy/rag-dev"
     tags:
       - "*"
 
