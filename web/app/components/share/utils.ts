@@ -25,7 +25,8 @@ export const checkOrSetAccessToken = async (appCode?: string) => {
   }
 
   if (!accessTokenJson[sharedToken]?.[userId || 'DEFAULT']) {
-    const res = await fetchAccessToken({ appCode: sharedToken, userId })
+    const webAppAccessToken = localStorage.getItem('webapp_access_token')
+    const res = await fetchAccessToken({ appCode: sharedToken, userId, webAppAccessToken })
     accessTokenJson[sharedToken] = {
       ...accessTokenJson[sharedToken],
       [userId || 'DEFAULT']: res.access_token,
