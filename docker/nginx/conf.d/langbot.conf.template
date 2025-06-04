@@ -9,6 +9,11 @@ server {
         return 200 'KiDk4c0uzgf4zc8l';
     }
 
+    location = /WW_verify_mswCnge1eFy5BhIJ.txt {
+        default_type text/plain;
+        return 200 'mswCnge1eFy5BhIJ';
+    }
+
     # Main langbot service
     location / {
         proxy_pass http://host.docker.internal:5300;
