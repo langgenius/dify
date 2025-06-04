@@ -1,0 +1,56 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "Python: Flask API",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "flask",
+            "env": {
+                "FLASK_APP": "app.py",
+                "FLASK_DEBUG": "1"
+            },
+            "args": [
+                "run",
+                "--host=0.0.0.0",
+                "--port=5001"
+            ],
+            "jinja": true,
+            "justMyCode": true,
+            "cwd": "${workspaceFolder}/api",
+            "python": "${workspaceFolder}/api/.venv/bin/python"
+        },
+        {
+            "name": "Python: Celery Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",
+            "args": [
+                "-A",
+                "app.celery",
+                "worker",
+                "-P",
+                "gevent",
+                "-c",
+                "1",
+                "-Q",
+                "dataset,generation,mail,ops_trace",
+                "--loglevel",
+                "INFO"
+            ],
+            "cwd": "${workspaceFolder}/api",
+            "python": "${workspaceFolder}/api/.venv/bin/python"
+        },
+        {
+            "name": "Web: Debug",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/web",
+            "runtimeExecutable": "pnpm",
+            "runtimeArgs": ["dev"],
+            "skipFiles": ["<node_internals>/**"],
+            "console": "integratedTerminal"
+        }
+    ]
+} 
