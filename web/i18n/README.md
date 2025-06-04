@@ -115,13 +115,13 @@ export const languages = [
   },
   {
     value: 'ja-JP',
-    name: '日本語(日本)',
+    name: '日本語 (日本)',
     example: 'こんにちは、Dify!',
     supported: false,
   },
   {
     value: 'ko-KR',
-    name: '한국어(대한민국)',
+    name: '한국어 (대한민국)',
     example: '안녕, Dify!',
     supported: true,
   },

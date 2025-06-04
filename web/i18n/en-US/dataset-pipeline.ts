@@ -27,6 +27,7 @@ const translation = {
     process: 'Process',
     dataSource: 'Data Source',
     saveAndProcess: 'Save & Process',
+    preview: 'Preview',
   },
   knowledgeNameAndIcon: 'Knowledge name & icon',
   knowledgeNameAndIconPlaceholder: 'Please enter the name of the Knowledge Base',
@@ -66,12 +67,20 @@ const translation = {
   inputFieldPanel: {
     title: 'User Input Fields',
     description: 'User input fields are used to define and collect variables required during the pipeline execution process. Users can customize the field type and flexibly configure the input value to meet the needs of different data sources or document processing steps.',
-    sharedInputs: {
-      title: 'Shared Inputs',
-      tooltip: 'Shared Inputs are available to all downstream nodes across data sources. For example, variables like delimiter and maximum chunk length can be uniformly applied when processing documents from multiple sources.',
+    uniqueInputs: {
+      title: 'Unique Inputs for Each Entrance',
+      tooltip: 'Unique Inputs are only accessible to the selected data source and its downstream nodes. Users won\'t need to fill it in when choosing other data sources. Only input fields referenced by data source variables will appear in the first step(Data Source). All other fields will be shown in the second step(Process Documents).',
+    },
+    globalInputs: {
+      title: 'Global Inputs for All Entrances',
+      tooltip: 'Global Inputs are shared across all nodes. Users will need to fill them in when selecting any data source. For example, fields like delimiter and maximum chunk length can be uniformly applied across multiple data sources. Only input fields referenced by Data Source variables appear in the first step (Data Source). All other fields show up in the second step (Process Documents).',
     },
     addInputField: 'Add Input Field',
     editInputField: 'Edit Input Field',
+    preview: {
+      stepOneTitle: 'Data Source',
+      stepTwoTitle: 'Process Documents',
+    },
   },
   addDocuments: {
     title: 'Add Documents',

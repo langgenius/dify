@@ -27,6 +27,8 @@ import type { PublishWorkflowParams } from '@/types/workflow'
 import { useToastContext } from '@/app/components/base/toast'
 import { useParams, useRouter } from 'next/navigation'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useInvalid } from '@/service/use-base'
+import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
 
 const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
 
@@ -45,6 +47,8 @@ const Popup = () => {
   const { notify } = useToastContext()
   const workflowStore = useWorkflowStore()
 
+  const invalidPublishedPipelineInfo = useInvalid([...publishedPipelineInfoQueryKeyPrefix, pipelineId])
+
   const handlePublish = useCallback(async (params?: PublishWorkflowParams) => {
     if (await handleCheckBeforePublish()) {
       const res = await publishWorkflow({
@@ -58,12 +62,13 @@ const Popup = () => {
         notify({ type: 'success', message: t('common.api.actionSuccess') })
         workflowStore.getState().setPublishedAt(res.created_at)
         mutateDatasetRes?.()
+        invalidPublishedPipelineInfo()
       }
     }
     else {
       throw new Error('Checklist failed')
     }
-  }, [handleCheckBeforePublish, publishWorkflow, pipelineId, notify, t, workflowStore, mutateDatasetRes])
+  }, [handleCheckBeforePublish, publishWorkflow, pipelineId, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()

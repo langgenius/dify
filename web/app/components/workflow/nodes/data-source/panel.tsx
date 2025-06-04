@@ -86,7 +86,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   return (
     <div >
       {
-        !isAuthorized && !showAuthModal && (
+        !isAuthorized && !showAuthModal && !isLocalFile && (
           <Group>
             <Button
               variant='primary'
@@ -100,7 +100,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
         )
       }
       {
-        isAuthorized && (
+        isAuthorized && !isLocalFile && (
           <GroupField
             groupProps={{
               withBorderBottom: true,
@@ -166,7 +166,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
         }
       </OutputVars>
       {
-        showAuthModal && (
+        showAuthModal && !isLocalFile && (
           <ConfigCredential
             dataSourceItem={currentDataSource!}
             onCancel={hideAuthModal}

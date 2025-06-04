@@ -36,9 +36,10 @@ export const useFieldList = (
 
   const handleListSortChange = useCallback((list: SortableItem[]) => {
     const newInputFields = list.map((item) => {
-      return inputFieldsRef.current.find(field => field.variable === item.name)
+      const { id, ...filed } = item
+      return filed
     })
-    handleInputFieldsChange(newInputFields as InputVar[])
+    handleInputFieldsChange(newInputFields)
   }, [handleInputFieldsChange])
 
   const [editingField, setEditingField] = useState<InputVar | undefined>()
@@ -62,12 +63,12 @@ export const useFieldList = (
       setRemoveIndex(index as number)
       return
     }
-    const newInputFields = inputFieldsRef.current.splice(index, 1)
+    const newInputFields = inputFieldsRef.current.filter((_, i) => i !== index)
     handleInputFieldsChange(newInputFields)
   }, [handleInputFieldsChange, isVarUsedInNodes, nodeId, showRemoveVarConfirm])
 
   const onRemoveVarConfirm = useCallback(() => {
-    const newInputFields = inputFieldsRef.current.splice(removedIndex, 1)
+    const newInputFields = inputFieldsRef.current.filter((_, i) => i !== removedIndex)
     handleInputFieldsChange(newInputFields)
     removeUsedVarInNodes(removedVar)
     hideRemoveVarConfirm()

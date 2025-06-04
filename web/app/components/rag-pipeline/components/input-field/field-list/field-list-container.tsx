@@ -28,7 +28,7 @@ const FieldListContainer = ({
     return inputFields.map((content) => {
       return ({
         id: content.variable,
-        name: content.variable,
+        ...content,
       })
     })
   }, [inputFields])
@@ -40,6 +40,7 @@ const FieldListContainer = ({
       setList={onListSortChange}
       handle='.handle'
       ghostClass='opacity-50'
+      group='rag-pipeline-input-field'
       animation={150}
       disabled={readonly}
     >

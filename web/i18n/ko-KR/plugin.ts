@@ -18,7 +18,7 @@ const translation = {
     source: {
       marketplace: '마켓플레이스에서 설치',
       local: '로컬 패키지 파일에서 설치',
-      github: 'GitHub에서 설치',
+      github: 'GitHub 에서 설치',
     },
     noInstalled: '설치된 플러그인이 없습니다.',
     notFound: '플러그인을 찾을 수 없습니다.',
@@ -32,7 +32,7 @@ const translation = {
     categoryTip: {
       marketplace: '마켓플레이스에서 설치됨',
       debugging: '디버깅 플러그인',
-      github: 'Github에서 설치됨',
+      github: 'Github 에서 설치됨',
       local: '로컬 플러그인',
     },
     operation: {
@@ -56,7 +56,7 @@ const translation = {
       settings: '사용자 설정',
       unsupportedContent2: '버전을 전환하려면 클릭합니다.',
       uninstalledTitle: '도구가 설치되지 않음',
-      descriptionPlaceholder: '도구의 용도에 대한 간략한 설명(예: 특정 위치의 온도 가져오기).',
+      descriptionPlaceholder: '도구의 용도에 대한 간략한 설명 (예: 특정 위치의 온도 가져오기).',
       title: '추가 도구',
       toolLabel: '도구',
       placeholder: '도구 선택...',
@@ -141,9 +141,9 @@ const translation = {
   installFromGitHub: {
     uploadFailed: '업로드 실패',
     selectVersionPlaceholder: '버전을 선택하세요.',
-    installPlugin: 'GitHub에서 플러그인 설치',
+    installPlugin: 'GitHub 에서 플러그인 설치',
     installFailed: '설치 실패',
-    updatePlugin: 'GitHub에서 플러그인 업데이트',
+    updatePlugin: 'GitHub 에서 플러그인 업데이트',
     selectPackage: '패키지 선택',
     gitHubRepo: 'GitHub 리포지토리',
     selectPackagePlaceholder: '패키지를 선택하세요.',
@@ -161,9 +161,9 @@ const translation = {
     title: '플러그인 설치',
   },
   error: {
-    noReleasesFound: '릴리스를 찾을 수 없습니다. GitHub 리포지토리 또는 입력 URL을 확인하세요.',
+    noReleasesFound: '릴리스를 찾을 수 없습니다. GitHub 리포지토리 또는 입력 URL 을 확인하세요.',
     fetchReleasesError: '릴리스를 검색할 수 없습니다. 나중에 다시 시도하십시오.',
-    inValidGitHubUrl: '잘못된 GitHub URL입니다. 유효한 URL을 https://github.com/owner/repo 형식으로 입력하십시오.',
+    inValidGitHubUrl: '잘못된 GitHub URL 입니다. 유효한 URL 을 https://github.com/owner/repo 형식으로 입력하십시오.',
   },
   marketplace: {
     sortOption: {
@@ -178,10 +178,10 @@ const translation = {
     difyMarketplace: 'Dify 마켓플레이스',
     pluginsResult: '{{num}} 결과',
     discover: '발견하다',
-    moreFrom: 'Marketplace에서 더 보기',
+    moreFrom: 'Marketplace 에서 더 보기',
     sortBy: '정렬',
     and: '그리고',
-    verifiedTip: 'Dify에 의해 확인됨',
+    verifiedTip: 'Dify 에 의해 확인됨',
     partnerTip: 'Dify 파트너에 의해 확인됨',
   },
   task: {
@@ -199,14 +199,14 @@ const translation = {
   installFrom: '에서 설치',
   allCategories: '모든 카테고리',
   submitPlugin: '플러그인 제출',
-  findMoreInMarketplace: 'Marketplace에서 더 알아보기',
+  findMoreInMarketplace: 'Marketplace 에서 더 알아보기',
   searchCategories: '검색 카테고리',
   search: '검색',
-  searchInMarketplace: 'Marketplace에서 검색',
+  searchInMarketplace: 'Marketplace 에서 검색',
   from: '보낸 사람',
   searchPlugins: '검색 플러그인',
   install: '{{num}} 설치',
-  fromMarketplace: 'Marketplace에서',
+  fromMarketplace: 'Marketplace 에서',
   metadata: {
     title: '플러그인',
   },

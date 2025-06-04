@@ -18,10 +18,16 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
       score_threshold: 0.5,
     },
   },
-  checkValid() {
+  checkValid(payload) {
+    const { chunk_structure } = payload
+    let errorMessage = ''
+
+    if (!chunk_structure)
+      errorMessage = 'Chunk structure is required.'
+
     return {
-      isValid: true,
-      errorMessage: '',
+      isValid: !errorMessage,
+      errorMessage,
     }
   },
 }

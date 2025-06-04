@@ -56,16 +56,14 @@ const FieldList = ({
           <RiAddLine className='h-4 w-4 text-text-tertiary' />
         </ActionButton>
       </div>
-      {inputFields.length > 0 && (
-        <FieldListContainer
-          className='flex flex-col gap-y-1 px-4 pb-2'
-          inputFields={inputFields}
-          onEditField={handleOpenInputFieldEditor}
-          onRemoveField={handleRemoveField}
-          onListSortChange={handleListSortChange}
-          readonly={readonly}
-        />
-      )}
+      <FieldListContainer
+        className='flex flex-col gap-y-1 px-4 pb-1'
+        inputFields={inputFields}
+        onEditField={handleOpenInputFieldEditor}
+        onRemoveField={handleRemoveField}
+        onListSortChange={handleListSortChange}
+        readonly={readonly}
+      />
       {showInputFieldEditor && (
         <InputFieldEditor
           show={showInputFieldEditor}

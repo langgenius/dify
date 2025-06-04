@@ -2,20 +2,20 @@ import Tooltip from '@/app/components/base/tooltip'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 
-const SharedInputs = () => {
+const GlobalInputs = () => {
   const { t } = useTranslation()
 
   return (
     <div className='flex items-center gap-x-1'>
       <span className='system-sm-semibold-uppercase text-text-secondary'>
-        {t('datasetPipeline.inputFieldPanel.sharedInputs.title')}
+        {t('datasetPipeline.inputFieldPanel.globalInputs.title')}
       </span>
       <Tooltip
-        popupContent={t('datasetPipeline.inputFieldPanel.sharedInputs.tooltip')}
-        popupClassName='!w-[300px]'
+        popupContent={t('datasetPipeline.inputFieldPanel.globalInputs.tooltip')}
+        popupClassName='w-[240px]'
       />
     </div>
   )
 }
 
-export default React.memo(SharedInputs)
+export default React.memo(GlobalInputs)
