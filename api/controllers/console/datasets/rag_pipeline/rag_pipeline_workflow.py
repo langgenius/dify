@@ -677,6 +677,53 @@ class PublishedRagPipelineSecondStepApi(Resource):
             "variables": variables,
         }
 
+class PublishedRagPipelineFirstStepApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def get(self, pipeline: Pipeline):
+        """
+        Get first step parameters of rag pipeline
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, location="args")
+        args = parser.parse_args()
+        node_id = args.get("node_id")
+        if not node_id:
+            raise ValueError("Node ID is required")
+        rag_pipeline_service = RagPipelineService()
+        variables = rag_pipeline_service.get_published_first_step_parameters(pipeline=pipeline, node_id=node_id)
+        return {
+            "variables": variables,
+        }
+
+class DraftRagPipelineFirstStepApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def get(self, pipeline: Pipeline):
+        """
+        Get first step parameters of rag pipeline
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument("node_id", type=str, required=True, location="args")
+        args = parser.parse_args()
+        node_id = args.get("node_id")
+        if not node_id:
+            raise ValueError("Node ID is required")
+        rag_pipeline_service = RagPipelineService()
+        variables = rag_pipeline_service.get_draft_first_step_parameters(pipeline=pipeline, node_id=node_id)
+        return {
+            "variables": variables,
+        }
 
 class DraftRagPipelineSecondStepApi(Resource):
     @setup_required
@@ -863,6 +910,14 @@ api.add_resource(
     "/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters",
 )
 api.add_resource(
+    PublishedRagPipelineFirstStepApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/pre-processing/parameters",
+)
+api.add_resource(
     DraftRagPipelineSecondStepApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/parameters",
+)
+api.add_resource(
+    DraftRagPipelineFirstStepApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/pre-processing/parameters",
 )
