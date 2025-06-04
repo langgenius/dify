@@ -8,7 +8,6 @@ import {
 } from '@remixicon/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Divider from '../../base/divider'
-import { removeAccessToken } from '../utils'
 import InfoModal from './info-modal'
 import ActionButton from '@/app/components/base/action-button'
 import {
@@ -49,7 +48,8 @@ const MenuDropdown: FC<Props> = ({
   }, [setOpen])
 
   const handleLogout = useCallback(() => {
-    removeAccessToken()
+    localStorage.removeItem('token')
+    localStorage.removeItem('webapp_access_token')
     router.replace(`/webapp-signin?redirect_url=${pathname}`)
   }, [router, pathname])
 
