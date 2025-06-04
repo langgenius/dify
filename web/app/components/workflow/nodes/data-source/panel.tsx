@@ -71,8 +71,8 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { mutateAsync } = useUpdateDataSourceCredentials()
   const handleAuth = useCallback(async (value: any) => {
     await mutateAsync({
-      provider: currentDataSourceItem?.provider,
-      pluginId: currentDataSourceItem?.plugin_id,
+      provider: currentDataSource?.provider || '',
+      pluginId: currentDataSource?.plugin_id || '',
       credentials: value,
     })
 
@@ -81,7 +81,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
       message: t('common.api.actionSuccess'),
     })
     hideAuthModal()
-  }, [currentDataSourceItem, mutateAsync, notify, t, hideAuthModal])
+  }, [currentDataSource, mutateAsync, notify, t, hideAuthModal])
 
   return (
     <div >

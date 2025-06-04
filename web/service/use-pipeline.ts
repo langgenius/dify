@@ -214,12 +214,12 @@ export const useRunPublishedPipeline = (
 }
 
 export const useDataSourceCredentials = (provider: string, pluginId: string, onSuccess: (value: ToolCredential[]) => void) => {
-  return useQuery<ToolCredential[]>({
+  return useQuery({
     queryKey: [NAME_SPACE, 'datasource-credentials', provider, pluginId],
     queryFn: async () => {
-      const result = await get<ToolCredential[]>(`/auth/plugin/datasource?provider=${provider}&plugin_id=${pluginId}`)
-      onSuccess(result)
-      return result
+      const result = await get<{ result: ToolCredential[] }>(`/auth/plugin/datasource?provider=${provider}&plugin_id=${pluginId}`)
+      onSuccess(result.result)
+      return result.result
     },
     enabled: !!provider && !!pluginId,
     retry: 2,

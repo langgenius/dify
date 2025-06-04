@@ -52,6 +52,7 @@ export type Collection = {
   plugin_id?: string
   letter?: string
   is_authorized?: boolean
+  provider?: string
 }
 
 export type ToolParameter = {
