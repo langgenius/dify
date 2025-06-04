@@ -106,7 +106,7 @@ const WebSSOForm: FC = () => {
     </div>
   }
   if (webAppAccessMode && (webAppAccessMode === AccessMode.ORGANIZATION || webAppAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)) {
-    return <div className='w-[400px]'>
+    return <div className='w-full max-w-[400px]'>
       <NormalForm />
     </div>
   }
