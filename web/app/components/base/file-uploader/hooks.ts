@@ -257,7 +257,7 @@ export const useFile = (fileConfig: FileUpload) => {
 
   const handleLocalFileUpload = useCallback((file: File) => {
     if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-      notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') + file.type })
+      notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
       return
     }
     const allowedFileTypes = fileConfig.allowed_file_types

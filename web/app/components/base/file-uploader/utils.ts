@@ -42,22 +42,11 @@ export const fileUpload: FileUpload = ({
     })
 }
 
-const additionalExtensionMap = new Map<string, string[]>([
-  ['text/plain', ['md']],
-  ['text/x-markdown', ['md']],
-])
-
 export const getFileExtension = (fileName: string, fileMimetype: string, isRemote?: boolean) => {
   let extension = ''
   let extensions = new Set<string>()
-  if (fileMimetype) {
-    const extensionsFromMimeType = mime.getAllExtensions(fileMimetype) || new Set<string>()
-    const additionalExtensions = additionalExtensionMap.get(fileMimetype) || []
-    extensions = new Set<string>([
-      ...extensionsFromMimeType,
-      ...additionalExtensions,
-    ])
-  }
+  if (fileMimetype)
+    extensions = mime.getAllExtensions(fileMimetype) || new Set<string>()
 
   let extensionInFileName = ''
   if (fileName) {
