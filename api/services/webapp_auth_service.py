@@ -112,6 +112,7 @@ class WebAppAuthService:
             "user_id": account.id,
             "session_id": account.email,
             "token_source": "webapp_login_token",
+            "auth_type": "internal",
             "exp": exp,
         }
 

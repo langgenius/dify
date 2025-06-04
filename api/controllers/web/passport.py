@@ -116,6 +116,7 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     user_id = enterprise_user_decoded.get("user_id")
     end_user_id = enterprise_user_decoded.get("end_user_id")
     session_id = enterprise_user_decoded.get("session_id")
+    auth_type = enterprise_user_decoded.get("auth_type")
 
     site = db.session.query(Site).filter(Site.code == app_code, Site.status == "normal").first()
     if not site:
@@ -124,6 +125,14 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     app_model = db.session.query(App).filter(App.id == site.app_id).first()
     if not app_model or app_model.status != "normal" or not app_model.enable_site:
         raise NotFound()
+
+    if not auth_type:
+        raise Unauthorized("Missing auth_type in the token.")
+    settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
+    if settings.access_mode == "sso_verified" and auth_type != "external":
+        raise WebAppAuthRequiredError("Please login as external user.")
+    elif settings.access_mode in ["private", "private_all"] and auth_type == "external":
+        raise WebAppAuthRequiredError("Please login as internal user.")
     end_user = None
     if end_user_id:
         end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
