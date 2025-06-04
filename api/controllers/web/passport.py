@@ -1,18 +1,17 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from flask import request
-from flask_restful import Resource
-from werkzeug.exceptions import NotFound, Unauthorized
-
 from configs import dify_config
 from controllers.web import api
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
+from flask import request
+from flask_restful import Resource
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from werkzeug.exceptions import NotFound, Unauthorized
 
 
 class PassportResource(Resource):
@@ -104,8 +103,23 @@ def decode_enterprise_webapp_user_id(jwt_token: str | None):
 
     decoded = PassportService().verify(jwt_token)
     source = decoded.get("token_source")
+    auth_type = decoded.get("auth_type")
+    granted_at = decoded.get("granted_at")
     if not source or source != "webapp_login_token":
         raise Unauthorized("Invalid token source. Expected 'webapp_login_token'.")
+    if not auth_type:
+        raise Unauthorized("Missing auth_type in the token.")
+    if not granted_at:
+        raise Unauthorized("Missing granted_at in the token.")
+    # check if sso has been updated
+    if auth_type == "external":
+        last_update_time = EnterpriseService.get_app_sso_settings_last_update_time()
+        if granted_at and datetime.fromisoformat(granted_at) < last_update_time:
+            raise Unauthorized("SSO settings have been updated. Please re-login.")
+    elif auth_type == "internal":
+        last_update_time = EnterpriseService.get_workspace_sso_settings_last_update_time()
+        if granted_at and datetime.fromisoformat(granted_at) < last_update_time:
+            raise Unauthorized("SSO settings have been updated. Please re-login.")
     return decoded
 
 
