@@ -24,7 +24,13 @@ class DatasourcePluginOauthApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider, plugin_id):
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
+        parser.add_argument("plugin_id", type=str, required=True, nullable=False, location="args")
+        args = parser.parse_args()
+        provider = args["provider"]
+        plugin_id = args["plugin_id"]
         # Check user role first
         if not current_user.is_editor:
             raise Forbidden()
@@ -35,7 +41,7 @@ class DatasourcePluginOauthApi(Resource):
         if not plugin_oauth_config:
             raise NotFound()
         oauth_handler = OAuthHandler()
-        redirect_url = f"{dify_config.CONSOLE_WEB_URL}/oauth/datasource/provider/{provider}/plugin/{plugin_id}/callback"
+        redirect_url = f"{dify_config.CONSOLE_WEB_URL}/oauth/datasource/callback?provider={provider}&plugin_id={plugin_id}"
         system_credentials = plugin_oauth_config.system_credentials
         if system_credentials:
             system_credentials["redirect_url"] = redirect_url
@@ -49,7 +55,13 @@ class DatasourceOauthCallback(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider, plugin_id):
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
+        parser.add_argument("plugin_id", type=str, required=True, nullable=False, location="args")
+        args = parser.parse_args()
+        provider = args["provider"]
+        plugin_id = args["plugin_id"]
         oauth_handler = OAuthHandler()
         plugin_oauth_config = (
             db.session.query(DatasourceOauthParamConfig).filter_by(provider=provider, plugin_id=plugin_id).first()
@@ -76,11 +88,13 @@ class DatasourceAuth(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, provider, plugin_id):
+    def post(self):
         if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("plugin_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
@@ -89,8 +103,8 @@ class DatasourceAuth(Resource):
         try:
             datasource_provider_service.datasource_provider_credentials_validate(
                 tenant_id=current_user.current_tenant_id,
-                provider=provider,
-                plugin_id=plugin_id,
+                provider=args["provider"],
+                plugin_id=args["plugin_id"],
                 credentials=args["credentials"],
             )
         except CredentialsValidateFailedError as ex:
@@ -101,10 +115,16 @@ class DatasourceAuth(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider, plugin_id):
+    def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
+        parser.add_argument("plugin_id", type=str, required=True, nullable=False, location="args")
+        args = parser.parse_args()
         datasource_provider_service = DatasourceProviderService()
         datasources = datasource_provider_service.get_datasource_credentials(
-            tenant_id=current_user.current_tenant_id, provider=provider, plugin_id=plugin_id
+            tenant_id=current_user.current_tenant_id, 
+            provider=args["provider"], 
+            plugin_id=args["plugin_id"]
         )
         return {"result": datasources}, 200
 
@@ -113,12 +133,18 @@ class DatasourceAuthDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, provider, plugin_id):
+    def delete(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
+        parser.add_argument("plugin_id", type=str, required=True, nullable=False, location="args")
+        args = parser.parse_args()
         if not current_user.is_editor:
             raise Forbidden()
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.remove_datasource_credentials(
-            tenant_id=current_user.current_tenant_id, provider=provider, plugin_id=plugin_id
+            tenant_id=current_user.current_tenant_id, 
+            provider=args["provider"], 
+            plugin_id=args["plugin_id"]
         )
         return {"result": "success"}, 200
 
@@ -126,13 +152,13 @@ class DatasourceAuthDeleteApi(Resource):
 # Import Rag Pipeline
 api.add_resource(
     DatasourcePluginOauthApi,
-    "/oauth/datasource/provider/<string:provider>/plugin/<string:plugin_id>",
+    "/oauth/plugin/datasource",
 )
 api.add_resource(
     DatasourceOauthCallback,
-    "/oauth/datasource/provider/<string:provider>/plugin/<string:plugin_id>/callback",
+    "/oauth/plugin/datasource/callback",
 )
 api.add_resource(
     DatasourceAuth,
-    "/auth/datasource/provider/<string:provider>/plugin/<string:plugin_id>",
+    "/auth/plugin/datasource",
 )

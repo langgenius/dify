@@ -38,11 +38,14 @@ class DatasourceProviderService:
             # Get all provider configurations of the current workspace
             datasource_provider = (
                 db.session.query(DatasourceProvider)
-                .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
+                .filter_by(tenant_id=tenant_id, plugin_id=plugin_id, auth_type="api_key")
                 .first()
             )
 
-            provider_credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider=provider)
+            provider_credential_secret_variables = self.extract_secret_variables(
+                                                                                tenant_id=tenant_id,
+                                                                                provider_id=f"{plugin_id}/{provider}"
+                                                                                 )
             if not datasource_provider:
                 for key, value in credentials.items():
                     if key in provider_credential_secret_variables:
@@ -73,14 +76,16 @@ class DatasourceProviderService:
         else:
             raise CredentialsValidateFailedError()
 
-    def extract_secret_variables(self, tenant_id: str, provider: str) -> list[str]:
+    def extract_secret_variables(self, tenant_id: str, provider_id: str) -> list[str]:
         """
         Extract secret input form variables.
 
         :param credential_form_schemas:
         :return:
         """
-        datasource_provider = self.provider_manager.fetch_datasource_provider(tenant_id=tenant_id, provider=provider)
+        datasource_provider = self.provider_manager.fetch_datasource_provider(tenant_id=tenant_id,
+                                                                              provider_id=provider_id
+                                                                              )
         credential_form_schemas = datasource_provider.declaration.credentials_schema
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
@@ -94,8 +99,7 @@ class DatasourceProviderService:
         get datasource credentials.
 
         :param tenant_id: workspace id
-        :param provider: provider name
-        :param plugin_id: plugin id
+        :param provider_id: provider id
         :return:
         """
         # Get all provider configurations of the current workspace
@@ -114,7 +118,7 @@ class DatasourceProviderService:
         for datasource_provider in datasource_providers:
             encrypted_credentials = datasource_provider.encrypted_credentials
             # Get provider credential secret variables
-            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider=provider)
+            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider_id=provider)
 
             # Obfuscate provider credentials
             copy_credentials = encrypted_credentials.copy()

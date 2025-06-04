@@ -40,16 +40,25 @@ class PluginDatasourceManager(BasePluginClient):
         )
         local_file_datasource_provider = PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
 
-        return [local_file_datasource_provider] + response
+        all_response = [local_file_datasource_provider] + response
 
-    def fetch_datasource_provider(self, tenant_id: str, provider: str) -> PluginDatasourceProviderEntity:
+        for provider in all_response:
+            provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"
+
+            # override the provider name for each tool to plugin_id/provider_name
+            for tool in provider.declaration.datasources:
+                tool.identity.provider = provider.declaration.identity.name
+
+        return all_response
+
+    def fetch_datasource_provider(self, tenant_id: str, provider_id: str) -> PluginDatasourceProviderEntity:
         """
         Fetch datasource provider for the given tenant and plugin.
         """
-        if provider == "langgenius/file/file":
+        if provider_id == "langgenius/file/file":
             return PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
 
-        tool_provider_id = ToolProviderID(provider)
+        tool_provider_id = ToolProviderID(provider_id)
 
         def transformer(json_response: dict[str, Any]) -> dict:
             data = json_response.get("data")
@@ -225,13 +234,13 @@ class PluginDatasourceManager(BasePluginClient):
     def _get_local_file_datasource_provider(self) -> dict[str, Any]:
         return {
             "id": "langgenius/file/file",
-            "plugin_id": "langgenius/file/file",
-            "provider": "langgenius",
+            "plugin_id": "langgenius/file",
+            "provider": "file",
             "plugin_unique_identifier": "langgenius/file:0.0.1@dify",
             "declaration": {
                 "identity": {
                     "author": "langgenius",
-                    "name": "langgenius/file/file",
+                    "name": "file",
                     "label": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
                     "icon": "https://cloud.dify.ai/console/api/workspaces/current/plugin/icon?tenant_id=945b4365-9d99-48c1-8c47-90593fe8b9c9&filename=13d9312f6b1352d3939b90a5257de58ff3cd619d5be4f5b266ff0298935ac328.svg",
                     "description": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
@@ -243,7 +252,7 @@ class PluginDatasourceManager(BasePluginClient):
                         "identity": {
                             "author": "langgenius",
                             "name": "upload-file",
-                            "provider": "langgenius",
+                            "provider": "file",
                             "label": {"zh_Hans": "File", "en_US": "File", "pt_BR": "File", "ja_JP": "File"},
                         },
                         "parameters": [],

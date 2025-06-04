@@ -24,7 +24,7 @@ class DatasourceManager:
 
     @classmethod
     def get_datasource_plugin_provider(
-        cls, provider: str, tenant_id: str, datasource_type: DatasourceProviderType
+        cls, provider_id: str, tenant_id: str, datasource_type: DatasourceProviderType
     ) -> DatasourcePluginProviderController:
         """
         get the datasource plugin provider
@@ -38,13 +38,13 @@ class DatasourceManager:
 
         with contexts.datasource_plugin_providers_lock.get():
             datasource_plugin_providers = contexts.datasource_plugin_providers.get()
-            if provider in datasource_plugin_providers:
-                return datasource_plugin_providers[provider]
+            if provider_id in datasource_plugin_providers:
+                return datasource_plugin_providers[provider_id]
 
             manager = PluginDatasourceManager()
-            provider_entity = manager.fetch_datasource_provider(tenant_id, provider)
+            provider_entity = manager.fetch_datasource_provider(tenant_id, provider_id)
             if not provider_entity:
-                raise DatasourceProviderNotFoundError(f"plugin provider {provider} not found")
+                raise DatasourceProviderNotFoundError(f"plugin provider {provider_id} not found")
 
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
@@ -71,7 +71,7 @@ class DatasourceManager:
                 case _:
                     raise ValueError(f"Unsupported datasource type: {datasource_type}")
 
-            datasource_plugin_providers[provider] = controller
+            datasource_plugin_providers[provider_id] = controller
 
         return controller
 
