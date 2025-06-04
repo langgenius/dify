@@ -56,6 +56,10 @@ export const isRagVariableVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'rag'
 }
 
+export const isSpecialVar = (prefix: string): boolean => {
+  return ['sys', 'env', 'conversation', 'rag'].includes(prefix)
+}
+
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
@@ -527,7 +531,7 @@ const formatItem = (
     const isCurrentMatched = filterVar(v, (() => {
       const variableArr = v.variable.split('.')
       const [first] = variableArr
-      if (first === 'sys' || first === 'env' || first === 'conversation' || first === 'rag')
+      if (isSpecialVar(first))
         return variableArr
 
       return [...selector, ...variableArr]

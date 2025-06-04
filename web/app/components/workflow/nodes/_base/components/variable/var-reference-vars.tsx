@@ -18,7 +18,7 @@ import { checkKeys } from '@/utils/var'
 import type { StructuredOutput } from '../../../llm/types'
 import { Type } from '../../../llm/types'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
-import { varTypeToStructType } from './utils'
+import { isSpecialVar, varTypeToStructType } from './utils'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
@@ -286,7 +286,7 @@ const VarReferenceVars: FC<Props> = ({
   }
 
   const filteredVars = vars.filter((v) => {
-    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.') || v.variable.startsWith('rag.'))
+    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
     return children.length > 0
   }).filter((node) => {
     if (!searchText)
@@ -297,7 +297,7 @@ const VarReferenceVars: FC<Props> = ({
     })
     return children.length > 0
   }).map((node) => {
-    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.') || v.variable.startsWith('rag.'))
+    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
     if (searchText) {
       const searchTextLower = searchText.toLowerCase()
       if (!node.title.toLowerCase().includes(searchTextLower))
