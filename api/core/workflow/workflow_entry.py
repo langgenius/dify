@@ -10,7 +10,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.workflow.callbacks import WorkflowCallback
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from core.workflow.entities.node_entities import NodeRunMetadataKey
+from core.workflow.entities.node_entities import WorkflowNodeExecutionMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
@@ -390,7 +390,7 @@ _NodeOrInNodeEvent: TypeAlias = NodeEvent | InNodeEvent
 
 
 def _attach_execution_metadata(
-    extra_metadata: dict[NodeRunMetadataKey, Any],
+    extra_metadata: dict[WorkflowNodeExecutionMetadataKey, Any],
 ) -> Callable[[_NodeOrInNodeEvent], _NodeOrInNodeEvent]:
     def _execution_metadata_mapper(e: NodeEvent | InNodeEvent) -> NodeEvent | InNodeEvent:
         if not isinstance(e, RunCompletedEvent):
@@ -416,7 +416,7 @@ def _attach_execution_metadata_based_on_node_config(
             raise Exception("invalid graph")
         return _attach_execution_metadata(
             {
-                NodeRunMetadataKey.LOOP_ID: loop_id,
+                WorkflowNodeExecutionMetadataKey.LOOP_ID: loop_id,
             }
         )
     elif in_iteration:
@@ -425,7 +425,7 @@ def _attach_execution_metadata_based_on_node_config(
             raise Exception("invalid graph")
         return _attach_execution_metadata(
             {
-                NodeRunMetadataKey.ITERATION_ID: iteration_id,
+                WorkflowNodeExecutionMetadataKey.ITERATION_ID: iteration_id,
             }
         )
     else:
