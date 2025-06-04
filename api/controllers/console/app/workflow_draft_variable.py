@@ -306,6 +306,7 @@ class ConversationVariableCollectionApi(Resource):
             raise NotFoundError(description=f"draft workflow not found, id={app_model.id}")
         draft_var_srv = WorkflowDraftVariableService(db.session())
         draft_var_srv.prefill_conversation_variable_default_values(draft_workflow)
+        db.session.commit()
         return _get_variable_list(app_model, CONVERSATION_VARIABLE_NODE_ID)
 
 
