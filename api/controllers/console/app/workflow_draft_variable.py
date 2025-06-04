@@ -1,5 +1,5 @@
 import logging
-from typing import NoReturn
+from typing import Any, NoReturn
 
 from flask import Response
 from flask_restful import Resource, fields, inputs, marshal_with, reqparse
@@ -13,6 +13,8 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
+from core.variables.segment_group import SegmentGroup
+from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from factories.variable_factory import build_segment
 from libs.login import current_user, login_required
@@ -22,6 +24,32 @@ from services.workflow_draft_variable_service import WorkflowDraftVariableList, 
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
+
+
+def _convert_values_to_json_serializable_object(value: Segment) -> Any:
+    if isinstance(value, FileSegment):
+        return value.value.model_dump()
+    elif isinstance(value, ArrayFileSegment):
+        return [i.model_dump() for i in value.value]
+    elif isinstance(value, SegmentGroup):
+        return [_convert_values_to_json_serializable_object(i) for i in value.value]
+    else:
+        return value.value
+
+
+def _serialize_var_value(variable: WorkflowDraftVariable) -> Any:
+    value = variable.get_value()
+    # create a copy of the value to avoid affecting the model cache.
+    value = value.model_copy(deep=True)
+    # Refresh the url signature before returning it to client.
+    if isinstance(value, FileSegment):
+        file = value.value
+        file.remote_url = file.generate_url()
+    elif isinstance(value, ArrayFileSegment):
+        files = value.value
+        for file in files:
+            file.remote_url = file.generate_url()
+    return _convert_values_to_json_serializable_object(value)
 
 
 def _create_pagination_parser():
@@ -51,7 +79,7 @@ _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS = {
 
 _WORKFLOW_DRAFT_VARIABLE_FIELDS = dict(
     _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS,
-    value=fields.Raw(attribute=lambda variable: variable.get_value().value),
+    value=fields.Raw(attribute=_serialize_var_value),
 )
 
 _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS = {

@@ -309,19 +309,17 @@ class WorkflowService:
     def run_draft_workflow_node(
         self,
         app_model: App,
+        draft_workflow: Workflow,
         node_id: str,
         user_inputs: dict,
         account: Account,
         query: str = "",
-        files: list[File] | None = None,
+        files: Sequence[File] | None = None,
     ) -> WorkflowNodeExecutionModel:
         """
         Run draft workflow node
         """
-        # fetch draft workflow by app_model
-        draft_workflow = self.get_draft_workflow(app_model=app_model)
-        if not draft_workflow:
-            raise ValueError("Workflow not initialized")
+        files = files or []
 
         with Session(bind=db.engine, expire_on_commit=False) as session, session.begin():
             draft_var_srv = WorkflowDraftVariableService(session)
