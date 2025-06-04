@@ -1,5 +1,5 @@
 import type { MutationOptions } from '@tanstack/react-query'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, patch, post } from './base'
 import type {
   DeleteTemplateResponse,
@@ -23,6 +23,7 @@ import type {
   UpdateTemplateInfoResponse,
 } from '@/models/pipeline'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
+import type { ToolCredential } from '@/app/components/tools/types'
 
 const NAME_SPACE = 'pipeline'
 
@@ -204,5 +205,41 @@ export const useRunPublishedPipeline = (
       })
     },
     ...mutationOptions,
+  })
+}
+
+export const useDataSourceCredentials = (provider: string, pluginId: string, onSuccess: (value: ToolCredential[]) => void) => {
+  return useQuery<ToolCredential[]>({
+    queryKey: [NAME_SPACE, 'datasource-credentials', provider, pluginId],
+    queryFn: async () => {
+      const result = await get<ToolCredential[]>(`/auth/datasource/provider/${provider}/plugin/${pluginId}`)
+      onSuccess(result)
+      return result
+    },
+    enabled: !!provider && !!pluginId,
+    retry: 2,
+  })
+}
+
+export const useUpdateDataSourceCredentials = (
+) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-datasource-credentials'],
+    mutationFn: ({
+      provider,
+      pluginId,
+      credentials,
+    }: { provider: string; pluginId: string; credentials: Record<string, any>; }) => {
+      return post(`/auth/datasource/provider/${provider}/plugin/${pluginId}`, {
+        body: {
+          credentials,
+        },
+      }).then(() => {
+        queryClient.invalidateQueries({
+          queryKey: [NAME_SPACE, 'datasource'],
+        })
+      })
+    },
   })
 }
