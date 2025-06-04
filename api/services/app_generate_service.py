@@ -113,6 +113,7 @@ class AppGenerateService:
                             streaming=streaming,
                             call_depth=0,
                             workflow_thread_pool_id=None,
+                            conversation_id=None,
                         ),
                     ),
                     request_id,
