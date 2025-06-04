@@ -898,7 +898,9 @@ class Message(Base):
     message_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     answer: Mapped[str] = db.Column(db.Text, nullable=False)
-    outputs: Mapped[Optional[str]] = mapped_column("outputs", db.Text, nullable=True, server_default=db.text("'{}'::text"))
+    outputs: Mapped[Optional[str]] = mapped_column(
+        "outputs", db.Text, nullable=True, server_default=db.text("'{}'::text")
+    )
     answer_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     answer_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
