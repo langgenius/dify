@@ -5,11 +5,13 @@ import {
 } from 'reactflow'
 import { v4 as uuid4 } from 'uuid'
 import {
+  clone,
   groupBy,
   isEqual,
   uniqBy,
 } from 'lodash-es'
 import type {
+  CommonNodeType,
   ConversationVariable,
   Edge,
   EnvironmentVariable,
@@ -24,6 +26,7 @@ import type { LoopNodeType } from '../nodes/loop/types'
 import { VAR_REGEX_TEXT } from '@/config'
 import { formatItem } from '../nodes/_base/components/variable/utils'
 import type { StructuredOutput } from '../nodes/llm/types'
+import { SUB_VARIABLES } from '../nodes/constants'
 
 export const canRunBySingle = (nodeType: BlockEnum) => {
   return nodeType === BlockEnum.LLM
@@ -112,6 +115,42 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[], isCollectVar?: b
     }
   }
 
+  const traverseTegionalBlock = (root: Node, blockNodes: Node[], edges: Edge[]) => {
+    const outgoers = getOutgoers(root, [root, ...blockNodes], edges)
+    outgoers.forEach((outgoer) => {
+      if (isCollectVar) {
+        const nodeObj = formatItem(root, false, () => true)
+        const varMap = {} as Record<string, Var>
+        nodeObj.vars.forEach((item) => {
+          if (item.variable.startsWith('sys.'))
+            return
+          const newPath = `${nodeObj.nodeId}.${item.variable}`
+          varMap[newPath] = item
+          getParentOutputVarMap(item, newPath, varMap)
+        })
+        outgoer._parentOutputVarMap = { ...(root._parentOutputVarMap ?? {}), ...(outgoer._parentOutputVarMap ?? {}), ...varMap }
+      }
+
+      traverseTegionalBlock(outgoer, blockNodes, edges)
+    })
+  }
+
+  const handleIterationOrLoop = (root: Node, blockNodes: Node[]) => {
+    const rootStart = clone(root) as Node<CommonNodeType<{ start_node_id: string }>>
+    rootStart.id = rootStart.data.start_node_id
+    if ([BlockEnum.Iteration].includes(root.data.type)) {
+      rootStart._parentOutputVarMap = {
+        ...(rootStart._parentOutputVarMap ?? {}),
+        [`${root.id}.index`]: {},
+        [`${root.id}.item`]: {},
+      }
+      SUB_VARIABLES.forEach((key) => {
+        rootStart._parentOutputVarMap![`${root.id}.item.${key}`] = {}
+      })
+    }
+    traverseTegionalBlock(rootStart, blockNodes, edges)
+  }
+
   const list: Node[] = [startNode]
   let maxDepth = 1
 
@@ -138,10 +177,11 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[], isCollectVar?: b
           outgoer._parentOutputVarMap = { ...(root._parentOutputVarMap ?? {}), ...(outgoer._parentOutputVarMap ?? {}), ...varMap }
         }
 
-        if (outgoer.data.type === BlockEnum.Iteration)
-          list.push(...nodes.filter(node => node.parentId === outgoer.id))
-        if (outgoer.data.type === BlockEnum.Loop)
-          list.push(...nodes.filter(node => node.parentId === outgoer.id))
+        if ([BlockEnum.Iteration, BlockEnum.Loop].includes(root.data.type)) {
+          const blockNodes = nodes.filter(node => node.parentId === root.id)
+          handleIterationOrLoop(root, blockNodes)
+          list.push(...blockNodes)
+        }
 
         traverse(outgoer, depth + 1)
       })
@@ -149,10 +189,11 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[], isCollectVar?: b
     else {
       list.push(root)
 
-      if (root.data.type === BlockEnum.Iteration)
-        list.push(...nodes.filter(node => node.parentId === root.id))
-      if (root.data.type === BlockEnum.Loop)
-        list.push(...nodes.filter(node => node.parentId === root.id))
+      if ([BlockEnum.Iteration, BlockEnum.Loop].includes(root.data.type)) {
+        const blockNodes = nodes.filter(node => node.parentId === root.id)
+        handleIterationOrLoop(root, blockNodes)
+        list.push(...blockNodes)
+      }
     }
   }
 
