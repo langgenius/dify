@@ -125,7 +125,7 @@ const Item: FC<ItemProps> = ({
     if (!isSupportFileVar && isFile)
       return
 
-    if (isSys || isEnv || isChatVar) { // system variable | environment variable | conversation variable
+    if (isSys || isEnv || isChatVar || isRagVariable) { // system variable | environment variable | conversation variable
       onChange([...objPath, ...itemData.variable.split('.')], itemData)
     }
     else {
@@ -155,7 +155,7 @@ const Item: FC<ItemProps> = ({
             {isChatVar && <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />}
             {isLoopVar && <Loop className='h-3.5 w-3.5 shrink-0 text-util-colors-cyan-cyan-500' />}
             {isRagVariable && <InputField className='h-3.5 w-3.5 shrink-0 text-text-accent' />}
-            {!isEnv && !isChatVar && (
+            {!isEnv && !isChatVar && !isRagVariable && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
             )}
             {isEnv && (
@@ -163,6 +163,9 @@ const Item: FC<ItemProps> = ({
             )}
             {isChatVar && (
               <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('conversation.', '')}</div>
+            )}
+            {isRagVariable && (
+              <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('rag.', '')}</div>
             )}
           </div>
           <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{itemData.type}</div>
