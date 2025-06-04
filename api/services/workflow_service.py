@@ -395,15 +395,12 @@ class WorkflowService:
 
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution = repository.to_db_model(node_execution)
-        process_data = workflow_node_execution.process_data_dict or {}
-        output = workflow_node_execution.outputs_dict or {}
 
         exec_metadata = workflow_node_execution.execution_metadata_dict or {}
 
         loop_id = exec_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID, None)
         iteration_id = exec_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID, None)
 
-        # TODO(QuantumGhost): single step does not include loop_id or iteration_id in execution_metadata.
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
                 session=session,
@@ -413,7 +410,7 @@ class WorkflowService:
                 invoke_from=InvokeFrom.DEBUGGER,
                 enclosing_node_id=loop_id or iteration_id or None,
             )
-            draft_var_saver.save(process_data=process_data, output=output)
+            draft_var_saver.save(process_data=node_execution.process_data, outputs=node_execution.outputs)
             session.commit()
         return workflow_node_execution
 

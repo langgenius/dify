@@ -735,7 +735,7 @@ class WorkflowBasedAppRunner(AppRunner):
                 invoke_from=self.queue_manager._invoke_from,
                 enclosing_node_id=event.in_loop_id or event.in_iteration_id or None,
             )
-            draft_var_saver.save(process_data=process_data, output=outputs)
+            draft_var_saver.save(process_data=process_data, outputs=outputs)
 
 
 def _remove_first_element_from_variable_string(key: str) -> str:

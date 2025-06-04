@@ -550,10 +550,14 @@ class DraftVariableSaver:
             )
         return draft_vars
 
-    def save(self, output: Mapping[str, Any] | None, process_data: Mapping[str, Any] | None = None):
+    def save(
+        self,
+        process_data: Mapping[str, Any] | None = None,
+        outputs: Mapping[str, Any] | None = None,
+    ):
         draft_vars: list[WorkflowDraftVariable] = []
-        if output is None:
-            output = {}
+        if outputs is None:
+            outputs = {}
         if process_data is None:
             process_data = {}
         if not self._should_save_output_variables_for_draft():
@@ -561,13 +565,13 @@ class DraftVariableSaver:
         if self._node_type == NodeType.VARIABLE_ASSIGNER:
             draft_vars = self._build_from_variable_assigner_mapping(process_data=process_data)
         elif self._node_type == NodeType.START:
-            draft_vars = self._build_variables_from_start_mapping(output)
+            draft_vars = self._build_variables_from_start_mapping(outputs)
         elif self._node_type == NodeType.LOOP:
             # Do not save output variables for loop node.
             # (since the loop variables are inaccessible outside the loop node.)
             return
         else:
-            draft_vars = self._build_variables_from_mapping(output)
+            draft_vars = self._build_variables_from_mapping(outputs)
         _batch_upsert_draft_varaible(self._session, draft_vars)
 
     @staticmethod
