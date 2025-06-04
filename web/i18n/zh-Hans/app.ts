@@ -23,7 +23,7 @@ const translation = {
   importFromDSLFile: '文件',
   importFromDSLUrl: 'URL',
   importFromDSLUrlPlaceholder: '输入 DSL 文件的 URL',
-  deleteAppConfirmTitle: '确认删除应用?',
+  deleteAppConfirmTitle: '确认删除应用？',
   deleteAppConfirmContent:
     '删除应用将无法撤销。用户将不能访问你的应用，所有 Prompt 编排配置和日志均将一并被删除。',
   appDeleted: '应用已删除',
@@ -170,12 +170,12 @@ const translation = {
       publicKey: '公钥',
       secretKey: '密钥',
       viewDocsLink: '查看 {{key}} 的文档',
-      removeConfirmTitle: '删除 {{key}} 配置?',
+      removeConfirmTitle: '删除 {{key}} 配置？',
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
     },
     weave: {
       title: '编织',
-      description: 'Weave是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
+      description: 'Weave 是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
     },
   },
   appSelector: {
