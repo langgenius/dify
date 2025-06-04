@@ -97,11 +97,11 @@ def decode_enterprise_webapp_user_id(jwt_token: str | None):
     # check if sso has been updated
     if auth_type == "external":
         last_update_time = EnterpriseService.get_app_sso_settings_last_update_time()
-        if granted_at and datetime.fromisoformat(granted_at) < last_update_time:
+        if granted_at and datetime.fromtimestamp(granted_at, tz=UTC) < last_update_time:
             raise Unauthorized("SSO settings have been updated. Please re-login.")
     elif auth_type == "internal":
         last_update_time = EnterpriseService.get_workspace_sso_settings_last_update_time()
-        if granted_at and datetime.fromisoformat(granted_at) < last_update_time:
+        if granted_at and datetime.fromtimestamp(granted_at, tz=UTC) < last_update_time:
             raise Unauthorized("SSO settings have been updated. Please re-login.")
     return decoded
 
