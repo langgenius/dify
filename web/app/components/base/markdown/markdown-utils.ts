@@ -73,9 +73,9 @@ export const customUrlTransform = (uri: string): string | undefined => {
   const hashIndex = uri.indexOf('#')
 
   if (
-    (slashIndex !== -1 && colonIndex > slashIndex) ||
-    (questionMarkIndex !== -1 && colonIndex > questionMarkIndex) ||
-    (hashIndex !== -1 && colonIndex > hashIndex)
+    (slashIndex !== -1 && colonIndex > slashIndex)
+    || (questionMarkIndex !== -1 && colonIndex > questionMarkIndex)
+    || (hashIndex !== -1 && colonIndex > hashIndex)
   )
     return uri
 
