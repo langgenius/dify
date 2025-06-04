@@ -81,4 +81,5 @@ export type DataSourceItem = {
       parameters: any[]
     }[]
   }
+  is_authorized: boolean
 }

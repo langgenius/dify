@@ -4,6 +4,7 @@ import type { DataSourceItem } from './types'
 export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
   return {
     id: dataSourceItem.plugin_id,
+    provider: dataSourceItem.provider,
     name: dataSourceItem.declaration.identity.name,
     author: dataSourceItem.declaration.identity.author,
     description: dataSourceItem.declaration.identity.description,
@@ -11,8 +12,8 @@ export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
     label: dataSourceItem.declaration.identity.label,
     type: dataSourceItem.declaration.provider_type,
     team_credentials: {},
-    is_team_authorization: false,
     allow_delete: true,
+    is_authorized: dataSourceItem.is_authorized,
     labels: dataSourceItem.declaration.identity.tags || [],
     plugin_id: dataSourceItem.plugin_id,
     tools: dataSourceItem.declaration.datasources.map((datasource) => {
@@ -26,5 +27,6 @@ export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
         output_schema: {},
       } as Tool
     }),
+    credentialsSchema: dataSourceItem.declaration.credentials_schema || [],
   }
 }

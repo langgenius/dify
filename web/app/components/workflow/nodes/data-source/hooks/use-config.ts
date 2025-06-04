@@ -1,12 +1,18 @@
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
+import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
-import type { InputVar } from '@/models/pipeline'
-import type { DataSourceNodeType } from '../types'
+import type {
+  DataSourceNodeType,
+  ToolVarInputs,
+} from '../types'
+import { useToastContext } from '@/app/components/base/toast'
 
 export const useConfig = (id: string) => {
   const store = useStoreApi()
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
+  const { notify } = useToastContext()
+  const { t } = useTranslation()
 
   const getNodeData = useCallback(() => {
     const { getNodes } = store.getState()
@@ -29,16 +35,16 @@ export const useConfig = (id: string) => {
     })
   }, [handleNodeDataUpdate, getNodeData])
 
-  const handleInputFieldVariablesChange = useCallback((variables: InputVar[]) => {
+  const handleParametersChange = useCallback((datasource_parameters: ToolVarInputs) => {
     const nodeData = getNodeData()
     handleNodeDataUpdate({
       ...nodeData?.data,
-      variables,
+      datasource_parameters,
     })
   }, [handleNodeDataUpdate, getNodeData])
 
   return {
     handleFileExtensionsChange,
-    handleInputFieldVariablesChange,
+    handleParametersChange,
   }
 }
