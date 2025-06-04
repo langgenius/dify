@@ -84,6 +84,7 @@ from .datasets import (
     website,
 )
 from .datasets.rag_pipeline import (
+    datasource_auth,
     rag_pipeline,
     rag_pipeline_datasets,
     rag_pipeline_import,
