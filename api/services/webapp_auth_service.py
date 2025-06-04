@@ -1,6 +1,5 @@
 import random
 from datetime import UTC, datetime, timedelta
-from time import time
 from typing import Any, Optional, cast
 
 from configs import dify_config
@@ -110,7 +109,6 @@ class WebAppAuthService:
             "session_id": account.email,
             "token_source": "webapp_login_token",
             "auth_type": "internal",
-            "granted_at": int(time()),
             "exp": exp,
         }
 

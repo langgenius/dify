@@ -150,6 +150,8 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
         "app_code": site.code,
         "user_id": user_id,
         "end_user_id": end_user.id,
+        "auth_type": auth_type,
+        "granted_at": int(datetime.now(UTC).timestamp()),
         "token_source": "webapp",
         "exp": exp,
     }
