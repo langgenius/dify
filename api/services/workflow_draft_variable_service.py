@@ -467,6 +467,7 @@ class DraftVariableSaver:
     def _build_from_variable_assigner_mapping(self, process_data: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
         draft_vars: list[WorkflowDraftVariable] = []
         updated_variables = get_updated_variables(process_data) or []
+
         for item in updated_variables:
             selector = item.selector
             if len(selector) < MIN_SELECTORS_LENGTH:
@@ -476,11 +477,12 @@ class DraftVariableSaver:
             # We only save conversation variable here.
             if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
                 continue
+            segment = build_segment(item.new_value)
             draft_vars.append(
                 WorkflowDraftVariable.new_conversation_variable(
                     app_id=self._app_id,
                     name=item.name,
-                    value=item.new_value,
+                    value=segment,
                 )
             )
         return draft_vars
