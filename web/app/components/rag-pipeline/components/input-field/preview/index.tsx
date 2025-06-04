@@ -1,7 +1,12 @@
+import { useState } from 'react'
 import { RiCloseLine } from '@remixicon/react'
 import DialogWrapper from './dialog-wrapper'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import DataSource from './data-source'
+import Divider from '@/app/components/base/divider'
+import ProcessDocuments from './process-documents'
+import type { Datasource } from '../../panel/test-run/types'
 
 type PreviewPanelProps = {
   show: boolean
@@ -13,6 +18,7 @@ const PreviewPanel = ({
   onClose,
 }: PreviewPanelProps) => {
   const { t } = useTranslation()
+  const [datasource, setDatasource] = useState<Datasource>()
 
   return (
     <DialogWrapper
@@ -34,6 +40,14 @@ const PreviewPanel = ({
           <RiCloseLine className='size-4 text-text-tertiary' />
         </button>
       </div>
+      <DataSource
+        onSelect={setDatasource}
+        datasourceNodeId={datasource?.nodeId || ''}
+      />
+      <div className='px-4 py-2'>
+        <Divider type='horizontal' className='bg-divider-subtle' />
+      </div>
+      <ProcessDocuments dataSourceNodeId={datasource?.nodeId || ''} />
     </DialogWrapper>
   )
 }

@@ -51,7 +51,6 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
       return {
         nodeId: node.id,
         type: node.data.provider_type as DatasourceType,
-        variables: node.data.variables || [],
         description: node.data.desc || '',
         docTitle: '', // todo: Add docTitle and docLink if needed, or remove these properties if not used
         docLink: '',
