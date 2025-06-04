@@ -1,5 +1,4 @@
 'use client'
-import Header from '@/app/signin/_header'
 
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -11,7 +10,7 @@ export default function SignInLayout({ children }: any) {
   return <>
     <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
       <div className={cn('flex w-full shrink-0 flex-col rounded-2xl border border-effects-highlight bg-background-default-subtle')}>
-        <Header />
+        {/* <Header /> */}
         <div className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-[108px]')}>
           <div className='flex flex-col md:w-[400px] lg:w-[600px]'>
             {children}
