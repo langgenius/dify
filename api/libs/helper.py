@@ -197,10 +197,11 @@ def generate_text_hash(text: str) -> str:
 
 def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
     if isinstance(response, dict):
-        return Response(response=json.dumps(response,
-                                            default=lambda x: str(x) if isinstance(x, Decimal) else x),
-                        status=200,
-                        mimetype="application/json")
+        return Response(
+            response=json.dumps(response, default=lambda x: str(x) if isinstance(x, Decimal) else x),
+            status=200,
+            mimetype="application/json",
+        )
     else:
 
         def generate() -> Generator:
