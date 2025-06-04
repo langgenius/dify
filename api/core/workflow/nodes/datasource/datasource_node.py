@@ -59,7 +59,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                 raise DatasourceNodeError("Datasource type is not set")
 
             datasource_runtime = DatasourceManager.get_datasource_runtime(
-                provider_id=node_data.provider_id,
+                provider_id=f"{node_data.plugin_id}/{node_data.provider_name}",
                 datasource_name=node_data.datasource_name or "",
                 tenant_id=self.tenant_id,
                 datasource_type=DatasourceProviderType.value_of(datasource_type),

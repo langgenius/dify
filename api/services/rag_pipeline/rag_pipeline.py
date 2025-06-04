@@ -1,4 +1,5 @@
 import json
+import re
 import threading
 import time
 from collections.abc import Callable, Generator, Sequence
@@ -434,14 +435,19 @@ class RagPipelineService:
         datasource_node_data = published_workflow.graph_dict.get("nodes", {}).get(node_id, {}).get("data", {})
         if not datasource_node_data:
             raise ValueError("Datasource node data not found")
+        datasource_parameters = datasource_node_data.get("datasource_parameters", {})
+        for key, value in datasource_parameters.items():
+            if not user_inputs.get(key):
+                user_inputs[key] = value["value"]
         from core.datasource.datasource_manager import DatasourceManager
 
         datasource_runtime = DatasourceManager.get_datasource_runtime(
-            provider_id=datasource_node_data.get("provider_id"),
+            provider_id=f"{datasource_node_data.get('plugin_id')}/{datasource_node_data.get('provider_name')}",
             datasource_name=datasource_node_data.get("datasource_name"),
             tenant_id=pipeline.tenant_id,
             datasource_type=DatasourceProviderType(datasource_type),
         )
+
         if datasource_runtime.datasource_provider_type() == DatasourceProviderType.ONLINE_DOCUMENT:
             datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
             online_document_result: GetOnlineDocumentPagesResponse = datasource_runtime._get_online_document_pages(
@@ -648,6 +654,60 @@ class RagPipelineService:
             if item.get("belong_to_node_id") == node_id or item.get("belong_to_node_id") == "shared"
         ]
         return datasource_provider_variables
+    
+    def get_published_first_step_parameters(self, pipeline: Pipeline, node_id: str) -> list[dict]:
+        """
+        Get first step parameters of rag pipeline
+        """
+
+        published_workflow = self.get_published_workflow(pipeline=pipeline)
+        if not published_workflow:
+            raise ValueError("Workflow not initialized")
+
+        # get second step node
+        datasource_node_data = published_workflow.graph_dict.get("nodes", {}).get(node_id, {}).get("data", {})
+        if not datasource_node_data:
+            raise ValueError("Datasource node data not found")
+        datasource_parameters = datasource_node_data.get("datasource_parameters", {})
+        if datasource_parameters:
+            datasource_parameters_map = {
+                item["variable"]: item for item in datasource_parameters
+            }
+        else:
+            datasource_parameters_map = {}
+        variables = datasource_node_data.get("variables", {})
+        user_input_variables = []
+        for key, value in variables.items():
+            if not re.match(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}", value["value"]):
+                user_input_variables.append(datasource_parameters_map.get(key, {}))
+        return user_input_variables
+    
+    def get_draft_first_step_parameters(self, pipeline: Pipeline, node_id: str) -> list[dict]:
+        """
+        Get first step parameters of rag pipeline
+        """
+
+        draft_workflow = self.get_draft_workflow(pipeline=pipeline)
+        if not draft_workflow:
+            raise ValueError("Workflow not initialized")
+
+        # get second step node
+        datasource_node_data = draft_workflow.graph_dict.get("nodes", {}).get(node_id, {}).get("data", {})
+        if not datasource_node_data:
+            raise ValueError("Datasource node data not found")
+        datasource_parameters = datasource_node_data.get("datasource_parameters", {})
+        if datasource_parameters:
+            datasource_parameters_map = {
+                item["variable"]: item for item in datasource_parameters
+            }
+        else:
+            datasource_parameters_map = {}
+        variables = datasource_node_data.get("variables", {})
+        user_input_variables = []
+        for key, value in variables.items():
+            if not re.match(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}", value["value"]):
+                user_input_variables.append(datasource_parameters_map.get(key, {}))
+        return user_input_variables
 
     def get_draft_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> list[dict]:
         """

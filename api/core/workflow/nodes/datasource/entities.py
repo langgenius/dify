@@ -7,7 +7,7 @@ from core.workflow.nodes.base.entities import BaseNodeData
 
 
 class DatasourceEntity(BaseModel):
-    provider_id: str
+    plugin_id: str
     provider_name: str  # redundancy
     provider_type: str
     datasource_name: Optional[str] = "local_file"
