@@ -214,7 +214,7 @@ export const useDataSourceCredentials = (provider: string, pluginId: string, onS
   return useQuery<ToolCredential[]>({
     queryKey: [NAME_SPACE, 'datasource-credentials', provider, pluginId],
     queryFn: async () => {
-      const result = await get<ToolCredential[]>(`/auth/datasource/provider/${provider}/plugin/${pluginId}`)
+      const result = await get<ToolCredential[]>(`/auth/plugin/datasource?provider=${provider}&plugin_id=${pluginId}`)
       onSuccess(result)
       return result
     },
@@ -233,8 +233,10 @@ export const useUpdateDataSourceCredentials = (
       pluginId,
       credentials,
     }: { provider: string; pluginId: string; credentials: Record<string, any>; }) => {
-      return post(`/auth/datasource/provider/${provider}/plugin/${pluginId}`, {
+      return post('/auth/plugin/datasource', {
         body: {
+          provider,
+          plugin_id: pluginId,
           credentials,
         },
       }).then(() => {
