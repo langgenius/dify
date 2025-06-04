@@ -11,14 +11,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import and_, or_
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.file.constants import maybe_file_object
+from core.file.models import File
 from core.variables import Segment, StringSegment, Variable
 from core.variables.consts import MIN_SELECTORS_LENGTH
+from core.variables.segments import ArrayFileSegment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
 from core.workflow.variable_loader import VariableLoader
-from factories import variable_factory
 from factories.variable_factory import build_segment, segment_to_variable
 from models import App, Conversation
 from models.workflow import Workflow, WorkflowDraftVariable, is_system_variable_editable
@@ -72,7 +74,7 @@ class DraftVarLoader(VariableLoader):
             draft_vars = srv.get_draft_variables_by_selectors(self._app_id, selectors)
 
         for draft_var in draft_vars:
-            segment = build_segment(
+            segment = _build_segment_for_value(
                 draft_var.value,
             )
             variable = segment_to_variable(
@@ -406,6 +408,34 @@ def _model_to_insertion_dict(model: WorkflowDraftVariable) -> dict[str, Any]:
     return d
 
 
+def _rebuild_file_types_from_dict(value: Any) -> Any:
+    # NOTE(QuantumGhost): Temporary workaround for structured data handling.
+    # By this point, `output` has been converted to dict by
+    # `WorkflowEntry.handle_special_values`, so we need to
+    # reconstruct File objects from their serialized form
+    # to maintain proper variable saving behavior.
+    #
+    # Ideally, we should work with structured data objects directly
+    # rather than their serialized forms.
+    # However, multiple components in the codebase depend on
+    # `WorkflowEntry.handle_special_values`, making a comprehensive migration challenging.
+    if isinstance(value, dict):
+        if not maybe_file_object(value):
+            return value
+        return File.model_validate(value)
+    elif isinstance(value, list) and value:
+        first = value[0]
+        if not maybe_file_object(first):
+            return value
+        return [File.model_validate(i) for i in value]
+    else:
+        return value
+
+
+def _build_segment_for_value(v: Any) -> Segment:
+    return build_segment(_rebuild_file_types_from_dict(v))
+
+
 class DraftVariableSaver:
     # _DUMMY_OUTPUT_IDENTITY is a placeholder output for workflow nodes.
     # Its sole possible value is `None`.
@@ -477,7 +507,7 @@ class DraftVariableSaver:
             # We only save conversation variable here.
             if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
                 continue
-            segment = build_segment(item.new_value)
+            segment = _build_segment_for_value(item.new_value)
             draft_vars.append(
                 WorkflowDraftVariable.new_conversation_variable(
                     app_id=self._app_id,
@@ -491,7 +521,7 @@ class DraftVariableSaver:
         draft_vars = []
         has_non_sys_variables = False
         for name, value in output.items():
-            value_seg = variable_factory.build_segment(value)
+            value_seg = _build_segment_for_value(value)
             node_id, name = self._normalize_variable_for_start_node(name)
             # If node_id is not `sys`, it means that the variable is a user-defined input field
             # in `Start` node.
@@ -508,6 +538,15 @@ class DraftVariableSaver:
                 )
                 has_non_sys_variables = True
             else:
+                if name == SystemVariableKey.FILES:
+                    # Here we know the type of variable must be `array[file]`, we
+                    # just build files from the value.
+                    files = [File.model_validate(v) for v in value]
+                    if files:
+                        value_seg = _build_segment_for_value(files)
+                    else:
+                        value_seg = ArrayFileSegment(value=[])
+
                 draft_vars.append(
                     WorkflowDraftVariable.new_sys_variable(
                         app_id=self._app_id,
@@ -522,7 +561,7 @@ class DraftVariableSaver:
                     app_id=self._app_id,
                     node_id=self._node_id,
                     name=self._DUMMY_OUTPUT_IDENTITY,
-                    value=build_segment(self._DUMMY_OUTPUT_VALUE),
+                    value=_build_segment_for_value(self._DUMMY_OUTPUT_VALUE),
                     visible=False,
                     editable=False,
                 )
@@ -538,7 +577,7 @@ class DraftVariableSaver:
     def _build_variables_from_mapping(self, output: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
         draft_vars = []
         for name, value in output.items():
-            value_seg = variable_factory.build_segment(value)
+            value_seg = _build_segment_for_value(value)
             draft_vars.append(
                 WorkflowDraftVariable.new_node_variable(
                     app_id=self._app_id,
