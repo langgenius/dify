@@ -10,6 +10,8 @@ import type {
   PipelineCheckDependenciesResponse,
   PipelineDatasourceNodeRunRequest,
   PipelineDatasourceNodeRunResponse,
+  PipelinePreProcessingParamsRequest,
+  PipelinePreProcessingParamsResponse,
   PipelineProcessingParamsRequest,
   PipelineProcessingParamsResponse,
   PipelineTemplateByIdResponse,
@@ -136,7 +138,7 @@ export const useDatasourceNodeRun = (
   })
 }
 
-export const useDraftPipelineProcessingParams = (params: PipelineProcessingParamsRequest) => {
+export const useDraftPipelineProcessingParams = (params: PipelineProcessingParamsRequest, enabled = true) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelineProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
@@ -148,7 +150,7 @@ export const useDraftPipelineProcessingParams = (params: PipelineProcessingParam
       })
     },
     staleTime: 0,
-    enabled: !!pipeline_id && !!node_id,
+    enabled,
   })
 }
 
@@ -246,5 +248,36 @@ export const useUpdateDataSourceCredentials = (
         })
       })
     },
+  })
+}
+
+export const useDraftPipelinePreProcessingParams = (params: PipelinePreProcessingParamsRequest, enabled = true) => {
+  const { pipeline_id, node_id } = params
+  return useQuery<PipelinePreProcessingParamsResponse>({
+    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
+    queryFn: () => {
+      return get<PipelinePreProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/draft/pre-processing/parameters`, {
+        params: {
+          node_id,
+        },
+      })
+    },
+    staleTime: 0,
+    enabled,
+  })
+}
+
+export const usePublishedPipelinePreProcessingParams = (params: PipelinePreProcessingParamsRequest, enabled = true) => {
+  const { pipeline_id, node_id } = params
+  return useQuery<PipelinePreProcessingParamsResponse>({
+    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
+    queryFn: () => {
+      return get<PipelinePreProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/processing/parameters`, {
+        params: {
+          node_id,
+        },
+      })
+    },
+    enabled,
   })
 }

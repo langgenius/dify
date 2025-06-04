@@ -17,7 +17,6 @@ import Datasource from './label-right-content/datasource'
 import { useNodes } from 'reactflow'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useTranslation } from 'react-i18next'
-// import produce from 'immer'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 import Button from '@/app/components/base/button'
@@ -57,8 +56,8 @@ const InputFieldDialog = ({
 
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
-  useUnmount(async () => {
-    await doSyncWorkflowDraft()
+  useUnmount(() => {
+    doSyncWorkflowDraft()
   })
 
   const { run: syncWorkflowDraft } = useDebounceFn(() => {
