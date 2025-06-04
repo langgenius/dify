@@ -12,7 +12,7 @@ import {
 } from '@remixicon/react'
 
 const i18nFileTypeMap: Record<string, string> = {
-  'number-input': 'number',
+  'number': 'number',
   'file': 'single-file',
   'file-list': 'multi-files',
 }

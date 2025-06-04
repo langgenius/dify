@@ -139,7 +139,7 @@ const TestRunPanel = () => {
                 {datasource?.type === DatasourceType.websiteCrawl && (
                   <WebsiteCrawl
                     nodeId={datasource?.nodeId || ''}
-                    variables={datasource?.variables}
+                    variables={[]} // todo: replace with actual variables if needed
                     checkedCrawlResult={websitePages}
                     headerInfo={{
                       title: datasource.description,

@@ -49,7 +49,6 @@ export const useDatasourceOptions = () => {
       return {
         nodeId: node.id,
         type: node.data.provider_type as DatasourceType,
-        variables: node.data.variables || [],
         description: '', // todo: Add description
         docTitle: '', // todo: Add docTitle and docLink
         docLink: '',

@@ -13,7 +13,7 @@ import { useReactFlow, useStoreApi } from 'reactflow'
 import RemoveButton from '../remove-button'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, isConversationVar, isENV, isSystemVar, varTypeToStructType } from './utils'
+import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar, varTypeToStructType } from './utils'
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -40,6 +40,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from './var-full-path-panel'
 import { noop } from 'lodash-es'
+import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -274,14 +275,16 @@ const VarReferencePicker: FC<Props> = ({
     isConstant: !!isConstant,
   })
 
-  const { isEnv, isChatVar, isValidVar, isException } = useMemo(() => {
+  const { isEnv, isChatVar, isRagVar, isValidVar, isException } = useMemo(() => {
     const isEnv = isENV(value as ValueSelector)
     const isChatVar = isConversationVar(value as ValueSelector)
+    const isRagVar = isRagVariableVar(value as ValueSelector)
     const isValidVar = Boolean(outputVarNode) || isEnv || isChatVar
     const isException = isExceptionVariable(varName, outputVarNode?.type)
     return {
       isEnv,
       isChatVar,
+      isRagVar,
       isValidVar,
       isException,
     }
@@ -385,7 +388,7 @@ const VarReferencePicker: FC<Props> = ({
                             {hasValue
                               ? (
                                 <>
-                                  {isShowNodeName && !isEnv && !isChatVar && (
+                                  {isShowNodeName && !isEnv && !isChatVar && !isRagVar && (
                                     <div className='flex items-center' onClick={(e) => {
                                       if (e.metaKey || e.ctrlKey) {
                                         e.stopPropagation()
@@ -414,6 +417,7 @@ const VarReferencePicker: FC<Props> = ({
                                     {!hasValue && <Variable02 className='h-3.5 w-3.5' />}
                                     {isEnv && <Env className='h-3.5 w-3.5 text-util-colors-violet-violet-600' />}
                                     {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
+                                    {isRagVar && <InputField className='h-3.5 w-3.5 text-text-accent' />}
                                     <div className={cn('ml-0.5 truncate text-xs font-medium', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning')} title={varName} style={{
                                       maxWidth: maxVarNameWidth,
                                     }}>{varName}</div>

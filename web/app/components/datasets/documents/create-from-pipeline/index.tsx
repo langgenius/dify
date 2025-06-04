@@ -274,7 +274,7 @@ const CreateFormPipeline = () => {
                 {datasource?.type === DatasourceType.websiteCrawl && (
                   <WebsiteCrawl
                     nodeId={datasource?.nodeId || ''}
-                    variables={datasource?.variables}
+                    variables={[]} // todo: replace with actual variables if needed
                     headerInfo={{
                       title: datasource.description,
                       docTitle: datasource.docTitle || '',

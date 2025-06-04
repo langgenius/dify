@@ -107,7 +107,7 @@ export enum PipelineInputVarType {
   textInput = 'text-input',
   paragraph = 'paragraph',
   select = 'select',
-  number = 'number-input',
+  number = 'number',
   singleFile = 'file',
   multiFiles = 'file-list',
   checkbox = 'checkbox',
