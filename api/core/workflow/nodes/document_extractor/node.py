@@ -396,20 +396,42 @@ def _extract_text_from_csv(file_content: bytes) -> str:
 
         if not rows:
             return ""
+        
+        # Combine multi-line text in the header row
+        header_row = [cell.replace("\n", " ").replace("\r", "") for cell in rows[0]]
 
         # Create Markdown table
-        markdown_table = "| " + " | ".join(rows[0]) + " |\n"
-        markdown_table += "| " + " | ".join(["---"] * len(rows[0])) + " |\n"
-        for row in rows[1:]:
-            markdown_table += "| " + " | ".join(row) + " |\n"
+        markdown_table = "| " + " | ".join(header_row) + " |\n"
+        markdown_table += "| " + " | ".join(["-" * len(col) for col in rows[0]])  + " |\n"
 
-        return markdown_table.strip()
+        # Process each data row and combine multi-line text in each cell
+        for row in rows[1:]:
+            processed_row = [cell.replace("\n", " ").replace("\r", "") for cell in row]
+            markdown_table += "| " + " | ".join(processed_row) + " |\n"
+
+        return markdown_table
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from CSV: {str(e)}") from e
 
-
 def _extract_text_from_excel(file_content: bytes) -> str:
     """Extract text from an Excel file using pandas."""
+    def _construct_markdown_table(df: pd.DataFrame) -> str:
+        """Manually construct a Markdown table from a DataFrame."""
+        # Construct the header row
+        header_row = "| " + " | ".join(df.columns) + " |"
+        
+        # Construct the separator row
+        separator_row = "| " + " | ".join(["-" * len(col) for col in df.columns]) + " |"
+        
+        # Construct the data rows
+        data_rows = []
+        for _, row in df.iterrows():
+            data_row = "| " + " | ".join(map(str, row)) + " |"
+            data_rows.append(data_row)
+        
+        # Combine all rows into a single string
+        markdown_table = "\n".join([header_row, separator_row] + data_rows)
+        return markdown_table
     try:
         excel_file = pd.ExcelFile(io.BytesIO(file_content))
         markdown_table = ""
@@ -417,8 +439,15 @@ def _extract_text_from_excel(file_content: bytes) -> str:
             try:
                 df = excel_file.parse(sheet_name=sheet_name)
                 df.dropna(how="all", inplace=True)
-                # Create Markdown table two times to separate tables with a newline
-                markdown_table += df.to_markdown(index=False, floatfmt="") + "\n\n"
+                
+                # Combine multi-line text in each cell into a single line
+                df = df.applymap(lambda x: ' '.join(str(x).splitlines()) if isinstance(x, str) else x)
+                
+                # Combine multi-line text in column names into a single line
+                df.columns = [' '.join(col.splitlines()) for col in df.columns]
+                
+                # Manually construct the Markdown table
+                markdown_table += _construct_markdown_table(df) + "\n\n"
             except Exception as e:
                 continue
         return markdown_table
