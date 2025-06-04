@@ -190,6 +190,6 @@ api.add_resource(
 )
 
 api.add_resource(
-    DatasourceAuth,
+    DatasourceAuthUpdateDeleteApi,
     "/auth/plugin/datasource/<string:auth_id>",
 )
