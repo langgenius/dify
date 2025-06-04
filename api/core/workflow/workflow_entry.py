@@ -308,6 +308,10 @@ class WorkflowEntry:
 
     @staticmethod
     def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+        # NOTE(QuantumGhost): Avoid using this function in new code.
+        # Keep values structured as long as possible and only convert to dict
+        # immediately before serialization (e.g., JSON serialization) to maintain
+        # data integrity and type information.
         result = WorkflowEntry._handle_special_values(value)
         return result if isinstance(result, Mapping) or result is None else dict(result)
 
