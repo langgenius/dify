@@ -38,7 +38,7 @@ class DatasourceProviderService:
             # Get all provider configurations of the current workspace
             datasource_provider = (
                 db.session.query(DatasourceProvider)
-                .filter_by(tenant_id=tenant_id, plugin_id=plugin_id, auth_type="api_key")
+                .filter_by(tenant_id=tenant_id, plugin_id=plugin_id, provider=provider, auth_type="api_key")
                 .first()
             )
 
@@ -46,33 +46,19 @@ class DatasourceProviderService:
                                                                                 tenant_id=tenant_id,
                                                                                 provider_id=f"{plugin_id}/{provider}"
                                                                                  )
-            if not datasource_provider:
-                for key, value in credentials.items():
-                    if key in provider_credential_secret_variables:
-                        # if send [__HIDDEN__] in secret input, it will be same as original value
-                        credentials[key] = encrypter.encrypt_token(tenant_id, value)
-                datasource_provider = DatasourceProvider(
-                    tenant_id=tenant_id,
-                    provider=provider,
-                    plugin_id=plugin_id,
-                    auth_type="api_key",
-                    encrypted_credentials=credentials,
-                )
-                db.session.add(datasource_provider)
-                db.session.commit()
-            else:
-                original_credentials = datasource_provider.encrypted_credentials
-                for key, value in credentials.items():
-                    if key in provider_credential_secret_variables:
-                        # if send [__HIDDEN__] in secret input, it will be same as original value
-                        if value == HIDDEN_VALUE and key in original_credentials:
-                            original_value = encrypter.encrypt_token(tenant_id, original_credentials[key])
-                            credentials[key] = encrypter.encrypt_token(tenant_id, original_value)
-                        else:
-                            credentials[key] = encrypter.encrypt_token(tenant_id, value)
-
-                datasource_provider.encrypted_credentials = credentials
-                db.session.commit()
+            for key, value in credentials.items():
+                if key in provider_credential_secret_variables:
+                    # if send [__HIDDEN__] in secret input, it will be same as original value
+                    credentials[key] = encrypter.encrypt_token(tenant_id, value)
+            datasource_provider = DatasourceProvider(
+                tenant_id=tenant_id,
+                provider=provider,
+                plugin_id=plugin_id,
+                auth_type="api_key",
+                encrypted_credentials=credentials,
+            )
+            db.session.add(datasource_provider)
+            db.session.commit()
         else:
             raise CredentialsValidateFailedError()
 
@@ -133,8 +119,45 @@ class DatasourceProviderService:
             )
 
         return copy_credentials_list
+    
+    def update_datasource_credentials(self, tenant_id: str, auth_id: str, provider: str, plugin_id: str, credentials: dict) -> None:
+        """
+        update datasource credentials.
+        """
+        credential_valid = self.provider_manager.validate_provider_credentials(
+            tenant_id=tenant_id, user_id=current_user.id, provider=provider, credentials=credentials
+        )
+        if credential_valid:
+            # Get all provider configurations of the current workspace
+            datasource_provider = (
+                db.session.query(DatasourceProvider)
+                .filter_by(tenant_id=tenant_id, id=auth_id, provider=provider, plugin_id=plugin_id)
+                .first()
+            )
 
-    def remove_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> None:
+            provider_credential_secret_variables = self.extract_secret_variables(
+                                                                                tenant_id=tenant_id,
+                                                                                provider_id=f"{plugin_id}/{provider}"
+                                                                                 )
+            if not datasource_provider:
+                raise ValueError("Datasource provider not found")
+            else:
+                original_credentials = datasource_provider.encrypted_credentials
+                for key, value in credentials.items():
+                    if key in provider_credential_secret_variables:
+                        # if send [__HIDDEN__] in secret input, it will be same as original value
+                        if value == HIDDEN_VALUE and key in original_credentials:
+                            original_value = encrypter.encrypt_token(tenant_id, original_credentials[key])
+                            credentials[key] = encrypter.encrypt_token(tenant_id, original_value)
+                        else:
+                            credentials[key] = encrypter.encrypt_token(tenant_id, value)
+
+                datasource_provider.encrypted_credentials = credentials
+                db.session.commit()
+        else:
+            raise CredentialsValidateFailedError()
+        
+    def remove_datasource_credentials(self, tenant_id: str, auth_id: str, provider: str, plugin_id: str) -> None:
         """
         remove datasource credentials.
 
@@ -145,7 +168,7 @@ class DatasourceProviderService:
         """
         datasource_provider = (
             db.session.query(DatasourceProvider)
-            .filter_by(tenant_id=tenant_id, provider=provider, plugin_id=plugin_id)
+            .filter_by(tenant_id=tenant_id, id=auth_id, provider=provider, plugin_id=plugin_id)
             .first()
         )
         if datasource_provider:
