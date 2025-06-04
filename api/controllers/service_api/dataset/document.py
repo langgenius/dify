@@ -206,12 +206,16 @@ class DocumentAddByFileApi(DatasetApiResource):
         knowledge_config = KnowledgeConfig(**args)
         DocumentService.document_create_args_validate(knowledge_config)
 
+        dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
+        if not knowledge_config.original_document_id and not dataset_process_rule and not knowledge_config.process_rule:
+            raise ValueError("process_rule is required.")
+
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 knowledge_config=knowledge_config,
                 account=dataset.created_by_account,
-                dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
+                dataset_process_rule=dataset_process_rule,
                 created_from="api",
             )
         except ProviderTokenNotInitError as ex:
