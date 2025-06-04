@@ -27,6 +27,7 @@ const translation = {
     process: '处理',
     dataSource: '数据源',
     saveAndProcess: '保存并处理',
+    preview: '预览',
   },
   knowledgeNameAndIcon: '知识库名称和图标',
   knowledgeNameAndIconPlaceholder: '请输入知识库名称',
@@ -66,12 +67,20 @@ const translation = {
   inputFieldPanel: {
     title: '用户输入字段',
     description: '用户输入字段用于定义和收集流水线执行过程中所需的变量，用户可以自定义字段类型，并灵活配置输入，以满足不同数据源或文档处理的需求。',
-    sharedInputs: {
-      title: '共享输入',
-      tooltip: '共享输入可被数据源中的所有下游节点使用。例如，在处理来自多个来源的文档时，delimiter（分隔符）和 maximum chunk length（最大分块长度）等变量可以统一应用。',
+    uniqueInputs: {
+      title: '非共享输入',
+      tooltip: '非共享输入只能被选定的数据源及其下游节点访问。用户在选择其他数据源时不需要填写它。只有数据源变量引用的输入字段才会出现在第一步（数据源）中。所有其他字段将在第二步（Process Documents）中显示。',
+    },
+    globalInputs: {
+      title: '全局共享输入',
+      tooltip: '全局共享输入在所有节点之间共享。用户在选择任何数据源时都需要填写它们。例如，像分隔符（delimiter）和最大块长度（Maximum Chunk Length）这样的字段可以跨多个数据源统一应用。只有数据源变量引用的输入字段才会出现在第一步（数据源）中。所有其他字段都显示在第二步（Process Documents）中。',
     },
     addInputField: '添加输入字段',
     editInputField: '编辑输入字段',
+    preview: {
+      stepOneTitle: '数据源',
+      stepTwoTitle: '处理文档',
+    },
   },
   addDocuments: {
     title: '添加文档',

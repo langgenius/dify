@@ -179,9 +179,11 @@ export const useDataSourceList = (enabled: boolean, onSuccess?: (v: DataSourceIt
   })
 }
 
+export const publishedPipelineInfoQueryKeyPrefix = [NAME_SPACE, 'published-pipeline']
+
 export const usePublishedPipelineInfo = (pipelineId: string) => {
   return useQuery<PublishedPipelineInfoResponse>({
-    queryKey: [NAME_SPACE, 'published-pipeline', pipelineId],
+    queryKey: [...publishedPipelineInfoQueryKeyPrefix, pipelineId],
     queryFn: () => {
       return get<PublishedPipelineInfoResponse>(`/rag/pipelines/${pipelineId}/workflows/publish`)
     },
