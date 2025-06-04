@@ -25,7 +25,7 @@ class DatasourceProvider(Base):
     __tablename__ = "datasource_providers"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="datasource_provider_pkey"),
-        db.UniqueConstraint("plugin_id", "provider", "auth_type", name="datasource_provider_auth_type_provider_idx"),
+        db.UniqueConstraint("plugin_id", "provider", name="datasource_provider_auth_type_provider_idx"),
     )
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)

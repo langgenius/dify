@@ -122,18 +122,18 @@ class DatasourceAuth(Resource):
         args = parser.parse_args()
         datasource_provider_service = DatasourceProviderService()
         datasources = datasource_provider_service.get_datasource_credentials(
-            tenant_id=current_user.current_tenant_id, 
-            provider=args["provider"], 
+            tenant_id=current_user.current_tenant_id,
+            provider=args["provider"],
             plugin_id=args["plugin_id"]
         )
         return {"result": datasources}, 200
 
 
-class DatasourceAuthDeleteApi(Resource):
+class DatasourceAuthUpdateDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self):
+    def delete(self, auth_id: str):
         parser = reqparse.RequestParser()
         parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
         parser.add_argument("plugin_id", type=str, required=True, nullable=False, location="args")
@@ -142,11 +142,37 @@ class DatasourceAuthDeleteApi(Resource):
             raise Forbidden()
         datasource_provider_service = DatasourceProviderService()
         datasource_provider_service.remove_datasource_credentials(
-            tenant_id=current_user.current_tenant_id, 
-            provider=args["provider"], 
+            tenant_id=current_user.current_tenant_id,
+            auth_id=auth_id,
+            provider=args["provider"],
             plugin_id=args["plugin_id"]
         )
         return {"result": "success"}, 200
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def patch(self, auth_id: str):
+        parser = reqparse.RequestParser()
+        parser.add_argument("provider", type=str, required=True, nullable=False, location="args")
+        parser.add_argument("plugin_id", type=str, required=True, nullable=False, location="args")
+        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+        if not current_user.is_editor:
+            raise Forbidden()
+        try:
+            datasource_provider_service = DatasourceProviderService()
+            datasource_provider_service.update_datasource_credentials(
+                tenant_id=current_user.current_tenant_id,
+                auth_id=auth_id,
+                provider=args["provider"],
+                plugin_id=args["plugin_id"],
+                credentials=args["credentials"],
+            )
+        except CredentialsValidateFailedError as ex:
+            raise ValueError(str(ex))
+
+        return {"result": "success"}, 201
 
 
 # Import Rag Pipeline
@@ -161,4 +187,9 @@ api.add_resource(
 api.add_resource(
     DatasourceAuth,
     "/auth/plugin/datasource",
+)
+
+api.add_resource(
+    DatasourceAuth,
+    "/auth/plugin/datasource/<string:auth_id>",
 )
