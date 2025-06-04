@@ -1,6 +1,6 @@
 const translation = {
   title: 'ログ',
-  description: 'ログは、アプリケーションの実行状態を記録します。ユーザーの入力やAIの応答などが含まれます。',
+  description: 'ログは、アプリケーションの実行状態を記録します。ユーザーの入力や AI の応答などが含まれます。',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
@@ -29,13 +29,13 @@ const translation = {
       noOutput: '出力がありません',
       element: {
         title: '誰かいますか？',
-        content: 'ここでは、エンドユーザーとAIアプリケーション間の相互作用を観察し、注釈を付けることで、AIの精度を継続的に向上させます。Webアプリを<shareLink>共有</shareLink>または<testLink>テスト</testLink>してみて、このページに戻ってください。',
+        content: 'ここでは、エンドユーザーと AI アプリケーション間の相互作用を観察し、注釈を付けることで、AI の精度を継続的に向上させます。Web アプリを<shareLink>共有</shareLink>または<testLink>テスト</testLink>してみて、このページに戻ってください。',
       },
     },
   },
   detail: {
     time: '時間',
-    conversationId: '会話ID',
+    conversationId: '会話 ID',
     promptTemplate: 'プロンプトテンプレート',
     promptTemplateBeforeChat: 'チャット前のプロンプトテンプレート・システムメッセージとして',
     annotationTip: '{{user}} によってマークされた改善',
@@ -48,7 +48,7 @@ const translation = {
       dislike: 'いいね解除',
       addAnnotation: '改善を追加',
       editAnnotation: '改善を編集',
-      annotationPlaceholder: '将来のモデルの微調整やテキスト生成品質の継続的改善のためにAIが返信することを期待する答えを入力してください。',
+      annotationPlaceholder: '将来のモデルの微調整やテキスト生成品質の継続的改善のために AI が返信することを期待する答えを入力してください。',
     },
     variables: '変数',
     uploadImages: 'アップロードされた画像',
@@ -57,10 +57,10 @@ const translation = {
   filter: {
     period: {
       today: '今日',
-      last7days: '過去7日間',
-      last4weeks: '過去4週間',
-      last3months: '過去3ヶ月',
-      last12months: '過去12ヶ月',
+      last7days: '過去 7 日間',
+      last4weeks: '過去 4 週間',
+      last3months: '過去 3 ヶ月',
+      last12months: '過去 12 ヶ月',
       monthToDate: '月初から今日まで',
       quarterToDate: '四半期初から今日まで',
       yearToDate: '年初から今日まで',
