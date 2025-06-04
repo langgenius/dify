@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from functools import wraps
 
 from flask import request
@@ -123,6 +124,22 @@ def _validate_user_accessibility(
         if WebAppAuthService.is_app_require_permission_check(access_mode=webapp_settings.access_mode):
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
                 raise WebAppAuthAccessDeniedError()
+
+        auth_type = decoded.get("auth_type")
+        granted_at = decoded.get("granted_at")
+        if not auth_type:
+            raise WebAppAuthAccessDeniedError("Missing auth_type in the token.")
+        if not granted_at:
+            raise WebAppAuthAccessDeniedError("Missing granted_at in the token.")
+        # check if sso has been updated
+        if auth_type == "external":
+            last_update_time = EnterpriseService.get_app_sso_settings_last_update_time()
+            if granted_at and datetime.fromtimestamp(granted_at, tz=UTC) < last_update_time:
+                raise WebAppAuthAccessDeniedError("SSO settings have been updated. Please re-login.")
+        elif auth_type == "internal":
+            last_update_time = EnterpriseService.get_workspace_sso_settings_last_update_time()
+            if granted_at and datetime.fromtimestamp(granted_at, tz=UTC) < last_update_time:
+                raise WebAppAuthAccessDeniedError("SSO settings have been updated. Please re-login.")
 
 
 class WebApiResource(Resource):
