@@ -219,6 +219,7 @@ class WorkflowDraftVariableService:
             return None
 
         variable.set_value(conv_var)
+        variable.last_edited_at = None
         self._session.add(variable)
         self._session.flush()
         return variable
@@ -437,9 +438,6 @@ class DraftVariableSaver:
     # If the current node is not nested within another node, `_enclosing_node_id` is
     # `None`.
     _enclosing_node_id: str | None
-
-    # pending variables to save.
-    _draft_vars: list[WorkflowDraftVariable]
 
     def __init__(
         self,
