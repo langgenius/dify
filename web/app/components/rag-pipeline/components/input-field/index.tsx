@@ -24,7 +24,6 @@ import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import PreviewPanel from './preview'
-import { useDebounceFn, useUnmount } from 'ahooks'
 
 type InputFieldDialogProps = {
   readonly?: boolean
@@ -54,18 +53,7 @@ const InputFieldDialog = ({
   }
   const inputFieldsMap = useRef(getInputFieldsMap())
 
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
-
-  const { run: syncWorkflowDraft, cancel: cancelSyncWorkflowDraft } = useDebounceFn(async () => {
-    await doSyncWorkflowDraft()
-  }, {
-    wait: 500,
-  })
-
-  useUnmount(() => {
-    cancelSyncWorkflowDraft()
-    doSyncWorkflowDraft()
-  })
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const datasourceNodeDataMap = useMemo(() => {
     const datasourceNodeDataMap: Record<string, DataSourceNodeType> = {}
@@ -90,8 +78,8 @@ const InputFieldDialog = ({
       })
     })
     setRagPipelineVariables?.(newRagPipelineVariables)
-    await syncWorkflowDraft()
-  }, [setRagPipelineVariables, syncWorkflowDraft])
+    handleSyncWorkflowDraft()
+  }, [setRagPipelineVariables, handleSyncWorkflowDraft])
 
   const closePanel = useCallback(() => {
     setShowInputFieldDialog?.(false)
