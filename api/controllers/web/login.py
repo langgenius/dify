@@ -1,7 +1,3 @@
-from flask_restful import Resource, reqparse
-from jwt import InvalidTokenError  # type: ignore
-from web import api
-
 import services
 from controllers.console.auth.error import (EmailCodeError,
                                             EmailOrPasswordMismatchError,
@@ -9,6 +5,8 @@ from controllers.console.auth.error import (EmailCodeError,
 from controllers.console.error import AccountBannedError, AccountNotFound
 from controllers.console.wraps import only_edition_enterprise, setup_required
 from controllers.web import api
+from flask_restful import Resource, reqparse
+from jwt import InvalidTokenError  # type: ignore
 from libs.helper import email
 from libs.password import valid_password
 from services.account_service import AccountService
