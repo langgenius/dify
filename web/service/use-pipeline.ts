@@ -141,7 +141,7 @@ export const useDatasourceNodeRun = (
 export const useDraftPipelineProcessingParams = (params: PipelineProcessingParamsRequest, enabled = true) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelineProcessingParamsResponse>({
-    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
+    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelineProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/draft/processing/parameters`, {
         params: {
@@ -157,7 +157,7 @@ export const useDraftPipelineProcessingParams = (params: PipelineProcessingParam
 export const usePublishedPipelineProcessingParams = (params: PipelineProcessingParamsRequest) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelineProcessingParamsResponse>({
-    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
+    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelineProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/processing/parameters`, {
         params: {
@@ -165,6 +165,7 @@ export const usePublishedPipelineProcessingParams = (params: PipelineProcessingP
         },
       })
     },
+    staleTime: 0,
   })
 }
 
@@ -254,7 +255,7 @@ export const useUpdateDataSourceCredentials = (
 export const useDraftPipelinePreProcessingParams = (params: PipelinePreProcessingParamsRequest, enabled = true) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelinePreProcessingParamsResponse>({
-    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
+    queryKey: [NAME_SPACE, 'pipeline-pre-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelinePreProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/draft/pre-processing/parameters`, {
         params: {
@@ -270,7 +271,7 @@ export const useDraftPipelinePreProcessingParams = (params: PipelinePreProcessin
 export const usePublishedPipelinePreProcessingParams = (params: PipelinePreProcessingParamsRequest, enabled = true) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelinePreProcessingParamsResponse>({
-    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id],
+    queryKey: [NAME_SPACE, 'pipeline-pre-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelinePreProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/processing/parameters`, {
         params: {
@@ -278,6 +279,7 @@ export const usePublishedPipelinePreProcessingParams = (params: PipelinePreProce
         },
       })
     },
+    staleTime: 0,
     enabled,
   })
 }

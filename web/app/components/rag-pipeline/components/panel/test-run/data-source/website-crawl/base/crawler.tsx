@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CrawlResultItem } from '@/models/datasets'
 import Header from '@/app/components/datasets/create/website/base/header'
@@ -7,15 +7,17 @@ import Options from './options'
 import Crawling from './crawling'
 import ErrorMessage from './error-message'
 import CrawledResult from './crawled-result'
-import type { RAGPipelineVariables } from '@/models/pipeline'
-import { useDatasourceNodeRun } from '@/service/use-pipeline'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import {
+  useDatasourceNodeRun,
+  useDraftPipelinePreProcessingParams,
+  usePublishedPipelineProcessingParams,
+} from '@/service/use-pipeline'
+import { useStore } from '@/app/components/workflow/store'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type CrawlerProps = {
   nodeId: string
-  variables: RAGPipelineVariables
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
@@ -25,6 +27,7 @@ type CrawlerProps = {
     docLink: string
   }
   onPreview?: (payload: CrawlResultItem) => void
+  usingPublished?: boolean
 }
 
 enum Step {
@@ -35,17 +38,23 @@ enum Step {
 
 const Crawler = ({
   nodeId,
-  variables,
   checkedCrawlResult,
   headerInfo,
   onCheckedCrawlResultChange,
   onJobIdChange,
   onPreview,
+  usingPublished = false,
 }: CrawlerProps) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
-  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const pipelineId = useStore(s => s.pipelineId)
+
+  const usePreProcessingParams = useRef(usingPublished ? usePublishedPipelineProcessingParams : useDraftPipelinePreProcessingParams)
+  const { data: paramsConfig } = usePreProcessingParams.current({
+    pipeline_id: pipelineId!,
+    node_id: nodeId,
+  }, !!pipelineId && !!nodeId)
 
   useEffect(() => {
     if (step !== Step.init)
@@ -95,7 +104,7 @@ const Crawler = ({
       />
       <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <Options
-          variables={variables}
+          variables={paramsConfig?.variables || []}
           isRunning={isRunning}
           controlFoldOptions={controlFoldOptions}
           onSubmit={(value) => {

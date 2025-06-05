@@ -56,14 +56,15 @@ const InputFieldDialog = ({
 
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
-  useUnmount(() => {
-    doSyncWorkflowDraft()
-  })
-
-  const { run: syncWorkflowDraft } = useDebounceFn(() => {
-    doSyncWorkflowDraft()
+  const { run: syncWorkflowDraft, cancel: cancelSyncWorkflowDraft } = useDebounceFn(async () => {
+    await doSyncWorkflowDraft()
   }, {
     wait: 500,
+  })
+
+  useUnmount(() => {
+    cancelSyncWorkflowDraft()
+    doSyncWorkflowDraft()
   })
 
   const datasourceNodeDataMap = useMemo(() => {
@@ -76,7 +77,7 @@ const InputFieldDialog = ({
     return datasourceNodeDataMap
   }, [nodes])
 
-  const updateInputFields = useCallback((key: string, value: InputVar[]) => {
+  const updateInputFields = useCallback(async (key: string, value: InputVar[]) => {
     inputFieldsMap.current[key] = value
     const newRagPipelineVariables: RAGPipelineVariables = []
     Object.keys(inputFieldsMap.current).forEach((key) => {
@@ -89,7 +90,7 @@ const InputFieldDialog = ({
       })
     })
     setRagPipelineVariables?.(newRagPipelineVariables)
-    syncWorkflowDraft()
+    await syncWorkflowDraft()
   }, [setRagPipelineVariables, syncWorkflowDraft])
 
   const closePanel = useCallback(() => {
