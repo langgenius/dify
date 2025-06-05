@@ -9,10 +9,13 @@ import useCurrentVars from '../hooks/use-inspect-vars-crud'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import cn from '@/utils/classnames'
 
 const VariableInspectTrigger: FC = () => {
   const { t } = useTranslation()
+  const { eventEmitter } = useEventEmitterContextContext()
 
   const showVariableInspectPanel = useStore(s => s.showVariableInspectPanel)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
@@ -41,7 +44,9 @@ const VariableInspectTrigger: FC = () => {
   const isRunning = useMemo(() => isPreviewRunning || isStepRunning, [isPreviewRunning, isStepRunning])
 
   const handleStop = () => {
-    // TODO: Implement stop functionality
+    eventEmitter?.emit({
+      type: EVENT_WORKFLOW_STOP,
+    } as any)
   }
 
   const handleClearAll = () => {

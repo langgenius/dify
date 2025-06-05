@@ -19,6 +19,8 @@ import cn from '@/utils/classnames'
 import {
   StopCircle,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 
 const RunMode = memo(() => {
   const { t } = useTranslation()
@@ -26,6 +28,16 @@ const RunMode = memo(() => {
   const { handleStopRun } = useWorkflowRun()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
+
+  const handleStop = () => {
+    handleStopRun(workflowRunningData?.task_id || '')
+  }
+
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === EVENT_WORKFLOW_STOP)
+      handleStop()
+  })
 
   return (
     <>
@@ -59,7 +71,7 @@ const RunMode = memo(() => {
         isRunning && (
           <div
             className='ml-0.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-black/5'
-            onClick={() => handleStopRun(workflowRunningData?.task_id || '')}
+            onClick={handleStop}
           >
             <StopCircle className='h-4 w-4 text-components-button-ghost-text' />
           </div>
