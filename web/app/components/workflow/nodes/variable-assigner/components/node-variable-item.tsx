@@ -38,7 +38,13 @@ const NodeVariableItem = ({
   const isEnv = isENV(variable)
   const isChatVar = isConversationVar(variable)
   const isRagVar = isRagVariableVar(variable)
-  const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
+  const varName = useMemo(() => {
+    if(isSystem)
+      return `sys.${variable[variable.length - 1]}`
+    if(isRagVar)
+      return variable[variable.length - 1]
+    return variable.slice(1).join('.')
+  }, [isRagVar, isSystem, variable])
 
   const VariableIcon = useMemo(() => {
     if (isEnv) {
