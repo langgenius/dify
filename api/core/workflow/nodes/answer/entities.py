@@ -3,8 +3,9 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from core.workflow.nodes.base import BaseNodeData
 from core.workflow.entities.variable_entities import VariableSelector
+from core.workflow.nodes.base import BaseNodeData
+
 
 class AnswerNodeData(BaseNodeData):
     """
