@@ -17,6 +17,7 @@ import { ToolTipContent } from '@/app/components/base/tooltip/content'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import cn from '@/utils/classnames'
+import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 
 type Props = {
   icon?: any
@@ -37,6 +38,7 @@ type Props = {
   onInstall?: () => void
   versionMismatch?: boolean
   open: boolean
+  canChooseMCPTool?: boolean,
 }
 
 const ToolItem = ({
@@ -58,11 +60,13 @@ const ToolItem = ({
   isError,
   errorTip,
   versionMismatch,
+  canChooseMCPTool,
 }: Props) => {
   const { t } = useTranslation()
   const providerNameText = isMCPTool ? providerShowName : providerName?.split('/').pop()
   const isTransparent = uninstalled || versionMismatch || isError
   const [isDeleting, setIsDeleting] = useState(false)
+  const isShowCanNotChooseMCPTip = isMCPTool && !canChooseMCPTool
 
   return (
     <div className={cn(
@@ -90,7 +94,7 @@ const ToolItem = ({
         <div className='system-xs-medium text-text-secondary'>{toolLabel}</div>
       </div>
       <div className='hidden items-center gap-1 group-hover:flex'>
-        {!noAuth && !isError && !uninstalled && !versionMismatch && (
+        {!noAuth && !isError && !uninstalled && !versionMismatch && !isShowCanNotChooseMCPTip && (
           <ActionButton>
             <RiEqualizer2Line className='h-4 w-4' />
           </ActionButton>
@@ -107,7 +111,7 @@ const ToolItem = ({
           <RiDeleteBinLine className='h-4 w-4' />
         </div>
       </div>
-      {!isError && !uninstalled && !noAuth && !versionMismatch && showSwitch && (
+      {!isError && !uninstalled && !noAuth && !versionMismatch && !isShowCanNotChooseMCPTip && showSwitch && (
         <div className='mr-1' onClick={e => e.stopPropagation()}>
           <Switch
             size='md'
@@ -115,6 +119,9 @@ const ToolItem = ({
             onChange={onSwitchChange}
           />
         </div>
+      )}
+      {isShowCanNotChooseMCPTip && (
+        <McpToolNotSupportTooltip />
       )}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant='secondary' size='small' onClick={onAuth}>

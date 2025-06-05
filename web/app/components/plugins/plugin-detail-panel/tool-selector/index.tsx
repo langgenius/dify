@@ -279,6 +279,7 @@ const ToolSelector: FC<Props> = ({
                   </p>
                 </div>
               }
+              canChooseMCPTool={canChooseMCPTool}
             />
           )}
         </PortalToFollowElemTrigger>

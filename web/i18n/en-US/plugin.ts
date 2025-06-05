@@ -93,6 +93,7 @@ const translation = {
       unsupportedTitle: 'Unsupported Action',
       unsupportedContent: 'The installed plugin version does not provide this action.',
       unsupportedContent2: 'Click to switch version.',
+      unsupportedMCPTool: 'Currently selected agent strategy plugin version does not support MCP tools.',
     },
     configureApp: 'Configure App',
     configureModel: 'Configure model',
