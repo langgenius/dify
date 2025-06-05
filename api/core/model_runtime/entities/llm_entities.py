@@ -17,19 +17,6 @@ class LLMMode(StrEnum):
     COMPLETION = "completion"
     CHAT = "chat"
 
-    @classmethod
-    def value_of(cls, value: str) -> "LLMMode":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid mode value {value}")
-
 
 class LLMUsage(ModelUsage):
     """

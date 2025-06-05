@@ -15,7 +15,7 @@ const translation = {
   exportFailed: '匯出 DSL 失敗',
   importDSL: '匯入 DSL 檔案',
   createFromConfigFile: '透過 DSL 檔案建立',
-  deleteAppConfirmTitle: '確認刪除應用?',
+  deleteAppConfirmTitle: '確認刪除應用？',
   deleteAppConfirmContent:
     '刪除應用將無法復原。使用者將無法存取你的應用，所有 Prompt 設定和日誌都將一併被刪除。',
   appDeleted: '應用已刪除',
@@ -30,17 +30,17 @@ const translation = {
     chatbotDescription: '使用大型語言模型構建聊天助手',
     completionDescription: '構建一個根據提示生成高品質文字的應用程式，例如生成文章、摘要、翻譯等。',
     completionWarning: '該類型不久後將不再支援建立',
-    agentDescription: '構建一個智慧Agent，可以自主選擇工具來完成任務',
-    workflowDescription: '以工作流的形式編排生成型應用，提供更多的自訂設定。 它適合有經驗的使用者。',
+    agentDescription: '構建一個智慧 Agent，可以自主選擇工具來完成任務',
+    workflowDescription: '以工作流的形式編排生成型應用，提供更多的自訂設定。它適合有經驗的使用者。',
     workflowWarning: '正在進行 Beta 測試',
     chatbotType: '聊天助手編排方法',
     basic: '基礎編排',
     basicTip: '新手適用，可以切換成工作流編排',
     basicFor: '新手適用',
-    basicDescription: '基本編排允許使用簡單的設定編排聊天機器人應用程式，而無需修改內建提示。 它適合初學者。',
+    basicDescription: '基本編排允許使用簡單的設定編排聊天機器人應用程式，而無需修改內建提示。它適合初學者。',
     advanced: '工作流編排',
     advancedFor: '進階使用者適用',
-    advancedDescription: '工作流編排以工作流的形式編排聊天機器人，提供自訂設定，包括編輯內建提示的能力。 它適合有經驗的使用者。',
+    advancedDescription: '工作流編排以工作流的形式編排聊天機器人，提供自訂設定，包括編輯內建提示的能力。它適合有經驗的使用者。',
     captionName: '應用名稱 & 圖示',
     appNamePlaceholder: '給你的應用起個名字',
     captionDescription: '描述',
@@ -120,7 +120,7 @@ const translation = {
   },
   tracing: {
     title: '追蹤應用程式效能',
-    description: '配置第三方LLMOps提供商並追蹤應用程式效能。',
+    description: '配置第三方 LLMOps 提供商並追蹤應用程式效能。',
     config: '配置',
     view: '查看',
     collapse: '收起',
@@ -129,7 +129,7 @@ const translation = {
     disabled: '已禁用',
     disabledTip: '請先配置提供商',
     enabled: '服務中',
-    tracingDescription: '捕獲應用程式執行的完整上下文，包括LLM調用、上下文、提示、HTTP請求等，到第三方追蹤平台。',
+    tracingDescription: '捕獲應用程式執行的完整上下文，包括 LLM 調用、上下文、提示、HTTP 請求等，到第三方追蹤平台。',
     configProviderTitle: {
       configured: '已配置',
       notConfigured: '配置提供商以啟用追蹤',
@@ -137,11 +137,11 @@ const translation = {
     },
     langsmith: {
       title: 'LangSmith',
-      description: '一個全方位的開發者平台，用於LLM驅動的應用程式生命週期的每個步驟。',
+      description: '一個全方位的開發者平台，用於 LLM 驅動的應用程式生命週期的每個步驟。',
     },
     langfuse: {
       title: 'Langfuse',
-      description: '追蹤、評估、提示管理和指標，用於調試和改進您的LLM應用程式。',
+      description: '追蹤、評估、提示管理和指標，用於調試和改進您的 LLM 應用程式。',
     },
     inUse: '使用中',
     configProvider: {
@@ -198,7 +198,7 @@ const translation = {
     label: '應用程式',
   },
   structOutput: {
-    moreFillTip: '顯示最多10層的嵌套',
+    moreFillTip: '顯示最多 10 層的嵌套',
     required: '必需的',
     LLMResponse: 'LLM 回應',
     structured: '結構化的',
@@ -212,12 +212,14 @@ const translation = {
     anyone: '任何人都可以訪問這個網絡應用程式',
     specific: '只有特定的群體或成員可以訪問這個網絡應用程序',
     organization: '組織中的任何人都可以訪問該網絡應用程序',
+    external: '只有經過身份驗證的外部用戶才能訪問該網絡應用程序',
   },
   accessControlDialog: {
     accessItems: {
       anyone: '擁有鏈接的人',
       specific: '特定群體或成員',
       organization: '只有企業內部成員',
+      external: '經過驗證的外部用戶',
     },
     operateGroupAndMember: {
       searchPlaceholder: '搜尋群組和成員',

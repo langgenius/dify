@@ -228,7 +228,7 @@ const translation = {
     'logic': 'Logic',
     'transform': 'Chuyển đổi',
     'utilities': 'Tiện ích',
-    'noResult': 'Không tìm thấy kế；t quả phù hợp',
+    'noResult': 'Không tìm thấy kế. t quả phù hợp',
     'searchTool': 'Công cụ tìm kiếm',
     'agent': 'Chiến lược đại lý',
     'plugin': 'Plugin',

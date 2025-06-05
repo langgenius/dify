@@ -142,7 +142,7 @@ class ElasticSearchVector(BaseVector):
             if score > score_threshold:
                 if doc.metadata is not None:
                     doc.metadata["score"] = score
-            docs.append(doc)
+                    docs.append(doc)
 
         return docs
 

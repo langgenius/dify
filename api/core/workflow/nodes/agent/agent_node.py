@@ -2,6 +2,9 @@ import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -320,15 +323,12 @@ class AgentNode(ToolNode):
             return None
         conversation_id = conversation_id_variable.value
 
-        # get conversation
-        conversation = (
-            db.session.query(Conversation)
-            .filter(Conversation.app_id == self.app_id, Conversation.id == conversation_id)
-            .first()
-        )
+        with Session(db.engine, expire_on_commit=False) as session:
+            stmt = select(Conversation).where(Conversation.app_id == self.app_id, Conversation.id == conversation_id)
+            conversation = session.scalar(stmt)
 
-        if not conversation:
-            return None
+            if not conversation:
+                return None
 
         memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
 
