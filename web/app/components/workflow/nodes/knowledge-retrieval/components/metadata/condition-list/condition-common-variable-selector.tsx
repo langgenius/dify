@@ -24,20 +24,10 @@ const ConditionCommonVariableSelector = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  // 添加调试日志
-  console.log('ConditionCommonVariableSelector - variables:', variables)
-  console.log('ConditionCommonVariableSelector - varType:', varType)
-
-  // 过滤变量，支持数组类型
   const filteredVariables = variables.filter((v) => {
-    // 如果是数组类型变量，始终显示
     const isArrayType = v.type === 'array' || v.type.startsWith('array')
-
-    // 如果是指定类型或数组类型，则显示
     return v.type === varType || isArrayType
   })
-
-  console.log('ConditionCommonVariableSelector - filteredVariables:', filteredVariables)
 
   const selected = variables.find(v => v.name === value)
   const handleChange = useCallback((v: string) => {
