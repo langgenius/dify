@@ -99,7 +99,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 SystemVariableKey.USER_ID: user_id,
                 SystemVariableKey.APP_ID: app_config.app_id,
                 SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
-                SystemVariableKey.WORKFLOW_RUN_ID: self.application_generate_entity.workflow_run_id,
+                SystemVariableKey.WORKFLOW_EXECUTION_ID: self.application_generate_entity.workflow_execution_id,
                 SystemVariableKey.DOCUMENT_ID: self.application_generate_entity.document_id,
                 SystemVariableKey.BATCH: self.application_generate_entity.batch,
                 SystemVariableKey.DATASET_ID: self.application_generate_entity.dataset_id,
