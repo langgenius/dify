@@ -1027,6 +1027,15 @@ class WorkflowDraftVariable(Base):
         self._set_selector([self.node_id, name])
 
     def set_value(self, value: Segment):
+        """Updates the `value` and corresponding `value_type` fields in the database model.
+
+        This method also stores the provided Segment object in the deserialized cache
+        without creating a copy, allowing for efficient value access.
+
+        Args:
+            value: The Segment object to store as the variable's value.
+        """
+        self.__value = value
         self.value = json.dumps(value, cls=variable_utils.SegmentJSONEncoder)
         self.value_type = value.value_type
 

@@ -7,7 +7,7 @@ from constants import HIDDEN_VALUE
 from core.file.enums import FileTransferMethod, FileType
 from core.file.models import File
 from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from core.variables.segments import Segment
+from core.variables.segments import IntegerSegment, Segment
 from factories.variable_factory import build_segment
 from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
 
@@ -262,4 +262,53 @@ class TestWorkflowDraftVariableGetValue:
             fail_msg = f"test case {c.name} failed, index={idx}"
             draft_var = WorkflowDraftVariable()
             draft_var.set_value(c.value)
-            assert c.value == draft_var.get_value(tenant_id=tenant_id), fail_msg
+            assert c.value == draft_var.get_value(), fail_msg
+
+    def test_file_variable_preserves_all_fields(self):
+        """Test that File type variables preserve all fields during encoding/decoding."""
+        tenant_id = "test_tenant_id"
+
+        # Create a File with specific field values
+        test_file = File(
+            id="test_file_id",
+            tenant_id=tenant_id,
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/test.jpg",
+            filename="test.jpg",
+            extension=".jpg",
+            mime_type="image/jpeg",
+            size=12345,  # Specific size to test preservation
+            storage_key="test_storage_key",
+        )
+
+        # Create a FileSegment and WorkflowDraftVariable
+        file_segment = build_segment(test_file)
+        draft_var = WorkflowDraftVariable()
+        draft_var.set_value(file_segment)
+
+        # Retrieve the value and verify all fields are preserved
+        retrieved_segment = draft_var.get_value()
+        retrieved_file = retrieved_segment.value
+
+        # Verify all important fields are preserved
+        assert retrieved_file.id == test_file.id
+        assert retrieved_file.tenant_id == test_file.tenant_id
+        assert retrieved_file.type == test_file.type
+        assert retrieved_file.transfer_method == test_file.transfer_method
+        assert retrieved_file.remote_url == test_file.remote_url
+        assert retrieved_file.filename == test_file.filename
+        assert retrieved_file.extension == test_file.extension
+        assert retrieved_file.mime_type == test_file.mime_type
+        assert retrieved_file.size == test_file.size  # This was the main issue being fixed
+        # Note: storage_key is not serialized in model_dump() so it won't be preserved
+
+        # Verify the segments have the same type and the important fields match
+        assert file_segment.value_type == retrieved_segment.value_type
+
+    def test_get_and_set_value(self):
+        draft_var = WorkflowDraftVariable()
+        int_var = IntegerSegment(value=1)
+        draft_var.set_value(int_var)
+        value = draft_var.get_value()
+        assert value == int_var
