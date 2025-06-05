@@ -78,6 +78,8 @@ def decode_jwt_token():
         return app_model, end_user
     except Unauthorized as e:
         if system_features.webapp_auth.enabled:
+            if not app_code:
+                raise Unauthorized("Please re-login to access the web app.")
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=str(app_code)).access_mode != "public"
             )
