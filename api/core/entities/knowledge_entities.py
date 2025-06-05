@@ -29,6 +29,7 @@ class PipelineDataset(BaseModel):
 class PipelineDocument(BaseModel):
     id: str
     position: int
+    data_source_type: str
     data_source_info: Optional[dict] = None
     name: str
     indexing_status: str

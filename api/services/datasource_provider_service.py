@@ -104,7 +104,7 @@ class DatasourceProviderService:
         for datasource_provider in datasource_providers:
             encrypted_credentials = datasource_provider.encrypted_credentials
             # Get provider credential secret variables
-            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider_id=provider)
+            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider_id=f"{plugin_id}/{provider}")
 
             # Obfuscate provider credentials
             copy_credentials = encrypted_credentials.copy()
