@@ -25,7 +25,7 @@ class TestWorkflowDraftNodeVariableListApi:
         monkeypatch.setattr(draft_variable_api, "WorkflowDraftVariableService", srv_class)
         monkeypatch.setattr(wraps, "_load_app_model", mock_load_app_model)
 
-        var1 = WorkflowDraftVariable.create_node_variable(
+        var1 = WorkflowDraftVariable.new_node_variable(
             app_id="test_app_1",
             node_id="test_node_1",
             name="str_var",
