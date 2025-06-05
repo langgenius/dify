@@ -1,6 +1,6 @@
-from amqp import NotFound
 from flask_restful import Resource, reqparse
 from pydantic import ValidationError
+from werkzeug.exceptions import NotFound
 
 from controllers.mcp import api
 from controllers.web.error import (

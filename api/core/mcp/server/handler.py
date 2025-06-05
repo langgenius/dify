@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping
-from typing import cast
+from typing import Any, cast
 
 from configs import dify_config
 from controllers.web.passport import generate_session_id
@@ -153,7 +153,7 @@ class MCPServerReuqestHandler:
         )
 
     def _convert_input_form_to_parameters(self, user_input_form: list[VariableEntity]):
-        parameters = {}
+        parameters: dict[str, dict[str, Any]] = {}
         required = []
         for item in user_input_form:
             parameters[item.variable] = {}

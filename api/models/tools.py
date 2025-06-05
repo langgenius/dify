@@ -248,9 +248,8 @@ class MCPToolProvider(Base):
         return [Tool(**tool) for tool in json.loads(self.tools)]
 
     @property
-    def provider_icon(self) -> str:
-        icon_dict = json.loads(self.icon)
-        return icon_dict
+    def provider_icon(self) -> dict[str, str]:
+        return cast(dict[str, str], json.loads(self.icon))
 
 
 class ToolModelInvoke(Base):

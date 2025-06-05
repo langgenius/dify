@@ -689,8 +689,8 @@ class ToolManager:
                     result_providers[f"workflow_provider.{user_provider.name}"] = user_provider
             if "mcp" in filters:
                 mcp_providers = MCPToolManageService.retrieve_mcp_tools(tenant_id)
-                for provider in mcp_providers:
-                    result_providers[f"mcp_provider.{provider.name}"] = provider
+                for mcp_provider in mcp_providers:
+                    result_providers[f"mcp_provider.{mcp_provider.name}"] = mcp_provider
 
         return BuiltinToolProviderSort.sort(list(result_providers.values()))
 

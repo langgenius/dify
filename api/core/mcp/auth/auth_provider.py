@@ -90,4 +90,4 @@ class OAuthClientProvider:
         if not mcp_provider:
             return ""
         credentials = MCPToolManageService.get_mcp_provider_decrypted_credentials(self.tenant_id, self.provider_id)
-        return credentials.get("code_verifier", "")
+        return str(credentials.get("code_verifier", ""))

@@ -340,8 +340,8 @@ class ClientSession(
 
             case types.ListRootsRequest():
                 with responder:
-                    response = self._list_roots_callback(ctx)
-                    client_response = ClientResponse.validate_python(response)
+                    list_roots_response = self._list_roots_callback(ctx)
+                    client_response = ClientResponse.validate_python(list_roots_response)
                     responder.respond(client_response)
 
             case types.PingRequest():

@@ -431,8 +431,8 @@ def streamablehttp_client(
     transport = StreamableHTTPTransport(url, headers, timeout, sse_read_timeout)
 
     # Create queues with clear directional meaning
-    server_to_client_queue = queue.Queue()  # For messages FROM server TO client
-    client_to_server_queue = queue.Queue()  # For messages FROM client TO server
+    server_to_client_queue: ServerToClientQueue = queue.Queue()  # For messages FROM server TO client
+    client_to_server_queue: ClientToServerQueue = queue.Queue()  # For messages FROM client TO server
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:

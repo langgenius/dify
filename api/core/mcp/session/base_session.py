@@ -38,7 +38,7 @@ SendNotificationT = TypeVar("SendNotificationT", ClientNotification, ServerNotif
 ReceiveRequestT = TypeVar("ReceiveRequestT", ClientRequest, ServerRequest)
 ReceiveResultT = TypeVar("ReceiveResultT", bound=BaseModel)
 ReceiveNotificationT = TypeVar("ReceiveNotificationT", ClientNotification, ServerNotification)
-DEFAULT_RESPONSE_READ_TIMEOUT = 1
+DEFAULT_RESPONSE_READ_TIMEOUT = 1.0
 
 
 class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
@@ -56,6 +56,10 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
     2. Request completion tracking
     3. Cleanup of in-flight requests
     """
+
+    request: ReceiveRequestT
+    _session: Any
+    _on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any]
 
     def __init__(
         self,
@@ -146,6 +150,8 @@ class BaseSession(
     _response_streams: dict[RequestId, queue.Queue[JSONRPCResponse | JSONRPCError]]
     _request_id: int
     _in_flight: dict[RequestId, RequestResponder[ReceiveRequestT, SendResultT]]
+    _receive_request_type: type[ReceiveRequestT]
+    _receive_notification_type: type[ReceiveNotificationT]
 
     def __init__(
         self,
@@ -165,7 +171,6 @@ class BaseSession(
         self._session_read_timeout_seconds = read_timeout_seconds
         self._in_flight = {}
         self._exit_stack = ExitStack()
-        self._futures = []
 
     def __enter__(self) -> Self:
         self._executor = ThreadPoolExecutor()
@@ -198,7 +203,7 @@ class BaseSession(
         request_id = self._request_id
         self._request_id = request_id + 1
 
-        response_queue = queue.Queue()
+        response_queue: queue.Queue[JSONRPCResponse | JSONRPCError] = queue.Queue()
         self._response_streams[request_id] = response_queue
 
         try:
@@ -211,9 +216,9 @@ class BaseSession(
             self._write_stream.put(SessionMessage(message=JSONRPCMessage(jsonrpc_request), metadata=metadata))
             timeout = DEFAULT_RESPONSE_READ_TIMEOUT
             if request_read_timeout_seconds is not None:
-                timeout = request_read_timeout_seconds.total_seconds()
+                timeout = float(request_read_timeout_seconds.total_seconds())
             elif self._session_read_timeout_seconds is not None:
-                timeout = self._session_read_timeout_seconds.total_seconds()
+                timeout = float(self._session_read_timeout_seconds.total_seconds())
             while True:
                 try:
                     response_or_error = response_queue.get(timeout=timeout)

@@ -123,16 +123,14 @@ def create_ssrf_proxy_mcp_http_client(
     Returns:
         Configured httpx.Client with proxy settings
     """
-    client_kwargs = {
-        "verify": HTTP_REQUEST_NODE_SSL_VERIFY,
-        "headers": headers or {},
-        "timeout": timeout,
-        "follow_redirects": True,  # Enable redirect following for MCP connections
-    }
-
     if dify_config.SSRF_PROXY_ALL_URL:
-        client_kwargs["proxy"] = dify_config.SSRF_PROXY_ALL_URL
-        return httpx.Client(**client_kwargs)
+        return httpx.Client(
+            verify=HTTP_REQUEST_NODE_SSL_VERIFY,
+            headers=headers or {},
+            timeout=timeout,
+            follow_redirects=True,
+            proxy=dify_config.SSRF_PROXY_ALL_URL,
+        )
     elif dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
         proxy_mounts = {
             "http://": httpx.HTTPTransport(proxy=dify_config.SSRF_PROXY_HTTP_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY),
@@ -140,10 +138,20 @@ def create_ssrf_proxy_mcp_http_client(
                 proxy=dify_config.SSRF_PROXY_HTTPS_URL, verify=HTTP_REQUEST_NODE_SSL_VERIFY
             ),
         }
-        client_kwargs["mounts"] = proxy_mounts
-        return httpx.Client(**client_kwargs)
+        return httpx.Client(
+            verify=HTTP_REQUEST_NODE_SSL_VERIFY,
+            headers=headers or {},
+            timeout=timeout,
+            follow_redirects=True,
+            mounts=proxy_mounts,
+        )
     else:
-        return httpx.Client(**client_kwargs)
+        return httpx.Client(
+            verify=HTTP_REQUEST_NODE_SSL_VERIFY,
+            headers=headers or {},
+            timeout=timeout,
+            follow_redirects=True,
+        )
 
 
 def ssrf_proxy_sse_connect(url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):

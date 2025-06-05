@@ -24,8 +24,8 @@ def generate_pkce_challenge() -> tuple[str, str]:
     code_verifier = base64.urlsafe_b64encode(os.urandom(40)).decode("utf-8")
     code_verifier = code_verifier.replace("=", "").replace("+", "-").replace("/", "_")
 
-    code_challenge = hashlib.sha256(code_verifier.encode("utf-8")).digest()
-    code_challenge = base64.urlsafe_b64encode(code_challenge).decode("utf-8")
+    code_challenge_hash = hashlib.sha256(code_verifier.encode("utf-8")).digest()
+    code_challenge = base64.urlsafe_b64encode(code_challenge_hash).decode("utf-8")
     code_challenge = code_challenge.replace("=", "").replace("+", "-").replace("/", "_")
 
     return code_verifier, code_challenge
@@ -213,12 +213,12 @@ def auth(
         provider.save_tokens(tokens)
         return {"result": "success"}
 
-    tokens = provider.tokens()
+    provider_tokens = provider.tokens()
 
     # Handle token refresh or new authorization
-    if tokens and tokens.refresh_token:
+    if provider_tokens and provider_tokens.refresh_token:
         try:
-            new_tokens = refresh_authorization(server_url, metadata, client_information, tokens.refresh_token)
+            new_tokens = refresh_authorization(server_url, metadata, client_information, provider_tokens.refresh_token)
             provider.save_tokens(new_tokens)
             return {"result": "success"}
         except Exception as e:

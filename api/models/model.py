@@ -1467,7 +1467,7 @@ class AppMCPServer(Base):
 
     @property
     def parameters_dict(self) -> dict[str, Any]:
-        return json.loads(self.parameters)
+        return cast(dict[str, Any], json.loads(self.parameters))
 
 
 class Site(Base):

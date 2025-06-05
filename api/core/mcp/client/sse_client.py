@@ -3,7 +3,7 @@ import queue
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -38,9 +38,9 @@ def sse_client(
     if headers is None:
         headers = {}
 
-    read_queue = queue.Queue()
-    write_queue = queue.Queue()
-    status_queue = queue.Queue()
+    read_queue: queue.Queue[SessionMessage | Exception | None] = queue.Queue()
+    write_queue: queue.Queue[SessionMessage | Exception | None] = queue.Queue()
+    status_queue: queue.Queue[tuple[str, str | Exception]] = queue.Queue()
 
     with ThreadPoolExecutor() as executor:
         try:
@@ -97,6 +97,9 @@ def sse_client(
                                     message = write_queue.get(timeout=DEFAULT_QUEUE_READ_TIMEOUT)
                                     if message is None:
                                         break
+                                    if isinstance(message, Exception):
+                                        write_queue.put(message)
+                                        continue
                                     response = client.post(
                                         endpoint_url,
                                         json=message.message.model_dump(
@@ -119,13 +122,14 @@ def sse_client(
 
                     executor.submit(sse_reader, status_queue)
                     try:
-                        status, endpoint_url = status_queue.get(timeout=1)
+                        status, endpoint_url_or_error = status_queue.get(timeout=1)
                     except queue.Empty:
                         raise ValueError("failed to get endpoint URL")
                     if status != "ready":
                         raise ValueError("failed to get endpoint URL")
-                    if status == "error":
-                        raise endpoint_url
+                    if status == "error" and isinstance(endpoint_url_or_error, Exception):
+                        raise endpoint_url_or_error
+                    endpoint_url = cast(str, endpoint_url_or_error)
                     executor.submit(post_writer, endpoint_url)
 
                     yield read_queue, write_queue
