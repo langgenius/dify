@@ -6,6 +6,11 @@ export enum VarType {
   mixed = 'mixed',
 }
 
+export enum DataSourceClassification {
+  file = 'local_file',
+  website = 'website_crawl',
+}
+
 export type ToolVarInputs = Record<string, {
   type: VarType
   value?: string | ValueSelector | any
@@ -13,7 +18,7 @@ export type ToolVarInputs = Record<string, {
 
 export type DataSourceNodeType = CommonNodeType & {
   fileExtensions?: string[]
-  provider_id: string
+  plugin_id: string
   provider_type: string
   provider_name: string
   datasource_name: string

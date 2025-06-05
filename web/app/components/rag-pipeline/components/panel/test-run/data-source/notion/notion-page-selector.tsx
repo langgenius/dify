@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import WorkspaceSelector from '@/app/components/base/notion-page-selector/workspace-selector'
-import SearchInput from '@/app/education-apply/search-input'
+import SearchInput from '@/app/components/base/notion-page-selector/search-input'
 import PageSelector from '@/app/components/base/notion-page-selector/page-selector'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import Header from '@/app/components/datasets/create/website/base/header'
@@ -36,12 +36,15 @@ const NotionPageSelector = ({
 
   const getNotionData = useCallback(async () => {
     if (pipeline_id) {
-      const notionData = await getNotionPages({
+      await getNotionPages({
         pipeline_id,
         node_id: nodeId,
         inputs: {},
-      }) as DataSourceNotionWorkspace[]
-      setNotionData(notionData)
+      }, {
+        onSuccess(notionData) {
+          setNotionData(notionData as DataSourceNotionWorkspace[])
+        },
+      })
     }
   }, [getNotionPages, nodeId, pipeline_id])
 

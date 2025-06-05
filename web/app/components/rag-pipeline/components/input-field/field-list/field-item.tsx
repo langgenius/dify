@@ -35,12 +35,14 @@ const FieldItem = ({
   const ref = useRef(null)
   const isHovering = useHover(ref)
 
-  const handleOnClickEdit = useCallback(() => {
+  const handleOnClickEdit = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
     if (readonly) return
     onClickEdit(payload.variable)
   }, [onClickEdit, payload.variable, readonly])
 
-  const handleRemove = useCallback(() => {
+  const handleRemove = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
     if (readonly) return
     onRemove(index)
   }, [index, onRemove, readonly])

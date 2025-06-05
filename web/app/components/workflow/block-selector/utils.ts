@@ -5,7 +5,7 @@ export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
   return {
     id: dataSourceItem.plugin_id,
     provider: dataSourceItem.provider,
-    name: dataSourceItem.declaration.identity.name,
+    name: dataSourceItem.provider,
     author: dataSourceItem.declaration.identity.author,
     description: dataSourceItem.declaration.identity.description,
     icon: dataSourceItem.declaration.identity.icon,

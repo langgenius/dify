@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { memo } from 'react'
 import { useBoolean } from 'ahooks'
 import type { DataSourceNodeType } from './types'
+import { DataSourceClassification } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
   BoxGroupField,
@@ -17,7 +18,11 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import TagInput from '@/app/components/base/tag-input'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useConfig } from './hooks/use-config'
-import { OUTPUT_VARIABLES_MAP } from './constants'
+import {
+  COMMON_OUTPUT,
+  FILE_OUTPUT,
+  WEBSITE_OUTPUT,
+} from './constants'
 import { useStore } from '@/app/components/workflow/store'
 import Button from '@/app/components/base/button'
 import ConfigCredential from './components/config-credential'
@@ -35,7 +40,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const dataSourceList = useStore(s => s.dataSourceList)
   const {
     provider_type,
-    provider_id,
+    plugin_id,
     fileExtensions = [],
     datasource_parameters,
   } = data
@@ -43,8 +48,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
     handleFileExtensionsChange,
     handleParametersChange,
   } = useConfig(id)
-  const isLocalFile = provider_type === 'local_file'
-  const currentDataSource = dataSourceList?.find(ds => ds.plugin_id === provider_id)
+  const isLocalFile = provider_type === DataSourceClassification.file
+  const isWebsiteCrawl = provider_type === DataSourceClassification.website
+  const currentDataSource = dataSourceList?.find(ds => ds.plugin_id === plugin_id)
   const isAuthorized = !!currentDataSource?.is_authorized
   const [showAuthModal, {
     setTrue: openAuthModal,
@@ -150,24 +156,37 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
         )
       }
       <OutputVars>
-        <VarItem
-          name={OUTPUT_VARIABLES_MAP.datasource_type.name}
-          type={OUTPUT_VARIABLES_MAP.datasource_type.type}
-          description={OUTPUT_VARIABLES_MAP.datasource_type.description}
-        />
         {
-          isLocalFile && (
+          COMMON_OUTPUT.map(item => (
             <VarItem
-              name={OUTPUT_VARIABLES_MAP.file.name}
-              type={OUTPUT_VARIABLES_MAP.file.type}
-              description={OUTPUT_VARIABLES_MAP.file.description}
-              subItems={OUTPUT_VARIABLES_MAP.file.subItems.map(item => ({
+              name={item.name}
+              type={item.type}
+              description={item.description}
+            />
+          ))
+        }
+        {
+          isLocalFile && FILE_OUTPUT.map(item => (
+            <VarItem
+              name={item.name}
+              type={item.type}
+              description={item.description}
+              subItems={item.subItems.map(item => ({
                 name: item.name,
                 type: item.type,
                 description: item.description,
               }))}
             />
-          )
+          ))
+        }
+        {
+          isWebsiteCrawl && WEBSITE_OUTPUT.map(item => (
+            <VarItem
+              name={item.name}
+              type={item.type}
+              description={item.description}
+            />
+          ))
         }
       </OutputVars>
       {

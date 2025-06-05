@@ -32,7 +32,7 @@ const DataSources = ({
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const handleSelect = useCallback((_: any, toolDefaultValue: ToolDefaultValue) => {
     onSelect(BlockEnum.DataSource, toolDefaultValue && {
-      provider_id: toolDefaultValue?.provider_id,
+      plugin_id: toolDefaultValue?.provider_id,
       provider_type: toolDefaultValue?.provider_type,
       provider_name: toolDefaultValue?.provider_name,
       datasource_name: toolDefaultValue?.tool_name,

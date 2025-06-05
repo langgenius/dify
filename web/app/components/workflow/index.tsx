@@ -375,4 +375,4 @@ const WorkflowWithDefaultContext = ({
   )
 }
 
-export default memo(WorkflowWithDefaultContext)
+export default WorkflowWithDefaultContext

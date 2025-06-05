@@ -36,7 +36,7 @@ export type ToolDefaultValue = {
 }
 
 export type DataSourceDefaultValue = {
-  provider_id: string
+  plugin_id: string
   provider_type: string
   provider_name: string
   datasource_name: string
