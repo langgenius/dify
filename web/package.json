@@ -180,7 +180,6 @@
     "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.20",
     "bing-translate-api": "^4.0.2",
-    "code-inspector-plugin": "^0.18.1",
     "cross-env": "^7.0.3",
     "eslint": "^9.20.1",
     "eslint-config-next": "^15.0.0",
