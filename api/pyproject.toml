@@ -151,7 +151,7 @@ dev = [
     "types_pyOpenSSL>=24.1.0",
     "types_cffi>=1.17.0",
     "types_setuptools>=80.9.0",
-    "pandas-stubs>=2.2.3.241009",
+    "pandas-stubs~=2.2.3",
     "scipy-stubs>=1.15.3.0",
 ]
 
