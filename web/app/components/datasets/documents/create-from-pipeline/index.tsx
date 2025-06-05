@@ -265,6 +265,11 @@ const CreateFormPipeline = () => {
                 {datasource?.type === DatasourceType.onlineDocument && (
                   <Notion
                     nodeId={datasource?.nodeId || ''}
+                    headerInfo={{
+                      title: datasource.description,
+                      docTitle: datasource.docTitle || '',
+                      docLink: datasource.docLink || '',
+                    }}
                     notionPages={notionPages}
                     updateNotionPages={updateNotionPages}
                     canPreview
@@ -283,7 +288,6 @@ const CreateFormPipeline = () => {
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
                     onPreview={updateCurrentWebsite}
-                    usingPublished
                   />
                 )}
                 {isShowVectorSpaceFull && (

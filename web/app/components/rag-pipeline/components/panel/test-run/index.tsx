@@ -132,8 +132,14 @@ const TestRunPanel = () => {
                 {datasource?.type === DatasourceType.onlineDocument && (
                   <Notion
                     nodeId={datasource?.nodeId || ''}
+                    headerInfo={{
+                      title: datasource.description,
+                      docTitle: datasource.docTitle || '',
+                      docLink: datasource.docLink || '',
+                    }}
                     notionPages={notionPages}
                     updateNotionPages={updateNotionPages}
+                    isInPipeline
                   />
                 )}
                 {datasource?.type === DatasourceType.websiteCrawl && (
@@ -147,6 +153,7 @@ const TestRunPanel = () => {
                     }}
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
+                    isInPipeline
                   />
                 )}
                 {isShowVectorSpaceFull && (

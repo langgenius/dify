@@ -3,6 +3,11 @@ import NotionPageSelector from './notion-page-selector'
 
 type NotionProps = {
   nodeId: string
+  headerInfo: {
+    title: string
+    docTitle: string
+    docLink: string
+  }
   notionPages: NotionPage[]
   updateNotionPages: (value: NotionPage[]) => void
   canPreview?: boolean
@@ -12,6 +17,7 @@ type NotionProps = {
 
 const Notion = ({
   nodeId,
+  headerInfo,
   notionPages,
   updateNotionPages,
   canPreview = false,
@@ -21,6 +27,7 @@ const Notion = ({
   return (
     <NotionPageSelector
       nodeId={nodeId}
+      headerInfo={headerInfo}
       value={notionPages.map(page => page.page_id)}
       onSelect={updateNotionPages}
       canPreview={canPreview}

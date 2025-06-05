@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import WorkspaceSelector from '@/app/components/base/notion-page-selector/workspace-selector'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
 import PageSelector from '@/app/components/base/notion-page-selector/page-selector'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import Header from '@/app/components/datasets/create/website/base/header'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useDatasourceNodeRun } from '@/service/use-pipeline'
-import { useTranslation } from 'react-i18next'
+import { useDraftDatasourceNodeRun, usePublishedDatasourceNodeRun } from '@/service/use-pipeline'
+import { DatasourceType } from '@/models/pipeline'
 
 type NotionPageSelectorProps = {
   value?: string[]
@@ -16,6 +16,11 @@ type NotionPageSelectorProps = {
   onPreview?: (selectedPage: NotionPage) => void
   isInPipeline?: boolean
   nodeId: string
+  headerInfo: {
+    title: string
+    docTitle: string
+    docLink: string
+  }
 }
 
 const NotionPageSelector = ({
@@ -26,13 +31,15 @@ const NotionPageSelector = ({
   onPreview,
   isInPipeline = false,
   nodeId,
+  headerInfo,
 }: NotionPageSelectorProps) => {
-  const { t } = useTranslation()
   const pipeline_id = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const { mutateAsync: getNotionPages } = useDatasourceNodeRun()
   const [notionData, setNotionData] = useState<DataSourceNotionWorkspace[]>([])
   const [searchValue, setSearchValue] = useState('')
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
+
+  const useDatasourceNodeRun = useRef(!isInPipeline ? usePublishedDatasourceNodeRun : useDraftDatasourceNodeRun)
+  const { mutateAsync: getNotionPages } = useDatasourceNodeRun.current()
 
   const getNotionData = useCallback(async () => {
     if (pipeline_id) {
@@ -40,6 +47,7 @@ const NotionPageSelector = ({
         pipeline_id,
         node_id: nodeId,
         inputs: {},
+        datasource_type: DatasourceType.onlineDocument,
       }, {
         onSuccess(notionData) {
           setNotionData(notionData as DataSourceNotionWorkspace[])
@@ -106,9 +114,7 @@ const NotionPageSelector = ({
     <div className='flex flex-col gap-y-2'>
       <Header
         isInPipeline={isInPipeline}
-        title={t('datasetPipeline.testRun.notion.title')}
-        docTitle={t('datasetPipeline.testRun.notion.docTitle')}
-        docLink={'https://www.notion.so/docs'}
+        {...headerInfo}
       />
       <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
         <div className='flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2'>
