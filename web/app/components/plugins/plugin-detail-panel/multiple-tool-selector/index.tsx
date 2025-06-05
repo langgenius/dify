@@ -13,6 +13,7 @@ import type { Node } from 'reactflow'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import { useAllMCPTools } from '@/service/use-tools'
 
 type Props = {
   disabled?: boolean
@@ -44,7 +45,13 @@ const MultipleToolSelector = ({
   canChooseMCPTool,
 }: Props) => {
   const { t } = useTranslation()
-  const enabledCount = value.filter(item => item.enabled).length
+    const { data: mcpTools } = useAllMCPTools()
+  const enabledCount = value.filter((item) => {
+    const isMCPTool = mcpTools?.find(tool => tool.id === item.provider_name)
+    if(isMCPTool)
+      return item.enabled && canChooseMCPTool
+    return item.enabled
+  }).length
   // collapse control
   const [collapse, setCollapse] = React.useState(false)
   const handleCollapse = () => {

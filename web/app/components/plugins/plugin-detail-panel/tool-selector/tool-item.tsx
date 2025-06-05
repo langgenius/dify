@@ -75,7 +75,7 @@ const ToolItem = ({
       isDeleting && 'border-state-destructive-border shadow-xs hover:bg-state-destructive-hover',
     )}>
       {icon && (
-        <div className={cn('shrink-0', isTransparent && 'opacity-50')}>
+        <div className={cn('shrink-0', isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30')}>
           {typeof icon === 'string' && <div className='h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge bg-cover bg-center' style={{ backgroundImage: `url(${icon})` }} />}
           {typeof icon !== 'string' && <AppIcon className='h-7 w-7 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge' size='xs' icon={icon?.content} background={icon?.background} />}
         </div>
@@ -83,13 +83,14 @@ const ToolItem = ({
       {!icon && (
         <div className={cn(
           'flex h-7 w-7 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
+          isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30',
         )}>
           <div className='flex h-5 w-5 items-center justify-center opacity-35'>
             <Group className='text-text-tertiary' />
           </div>
         </div>
       )}
-      <div className={cn('grow truncate pl-0.5', isTransparent && 'opacity-50')}>
+      <div className={cn('grow truncate pl-0.5', isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30')}>
         <div className='system-2xs-medium-uppercase text-text-tertiary'>{providerNameText}</div>
         <div className='system-xs-medium text-text-secondary'>{toolLabel}</div>
       </div>
