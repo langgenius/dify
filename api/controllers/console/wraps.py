@@ -11,7 +11,8 @@ from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
 
-from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
+from .error import (NotInitValidateError, NotSetupError,
+                    UnauthorizedAndForceLogout)
 
 
 def account_initialization_required(view):
@@ -39,7 +40,18 @@ def only_edition_cloud(view):
     return decorated
 
 
-def only_enterprise_edition(view):
+def only_edition_enterprise(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        if not dify_config.ENTERPRISE_ENABLED:
+            abort(404)
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def only_edition_self_hosted(view):
     @wraps(view)
     def decorated(*args, **kwargs):
         if not dify_config.ENTERPRISE_ENABLED:
