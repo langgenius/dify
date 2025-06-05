@@ -1,18 +1,18 @@
-import { useCallback } from 'react'
+import {
+  useCallback,
+  useEffect,
+} from 'react'
 import { useStoreApi } from 'reactflow'
-import { useTranslation } from 'react-i18next'
 import { useNodeDataUpdate } from '@/app/components/workflow/hooks'
 import type {
   DataSourceNodeType,
   ToolVarInputs,
 } from '../types'
-import { useToastContext } from '@/app/components/base/toast'
+import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from '../constants'
 
 export const useConfig = (id: string) => {
   const store = useStoreApi()
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
-  const { notify } = useToastContext()
-  const { t } = useTranslation()
 
   const getNodeData = useCallback(() => {
     const { getNodes } = store.getState()
@@ -27,6 +27,23 @@ export const useConfig = (id: string) => {
       data,
     })
   }, [id, handleNodeDataUpdateWithSyncDraft])
+
+  const handleLocalFileDataSourceInit = useCallback(() => {
+    const nodeData = getNodeData()
+
+    if (nodeData?.data._dataSourceStartToAdd && nodeData?.data.provider_type === 'local_file') {
+      handleNodeDataUpdate({
+        ...nodeData.data,
+        _dataSourceStartToAdd: false,
+        fileExtensions: DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE,
+      })
+    }
+  }, [getNodeData, handleNodeDataUpdate])
+
+  useEffect(() => {
+    handleLocalFileDataSourceInit()
+  }, [handleLocalFileDataSourceInit])
+
   const handleFileExtensionsChange = useCallback((fileExtensions: string[]) => {
     const nodeData = getNodeData()
     handleNodeDataUpdate({

@@ -12,7 +12,6 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
   BoxGroupField,
   Group,
-  GroupField,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import TagInput from '@/app/components/base/tag-input'
@@ -86,7 +85,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   return (
     <div >
       {
-        !isAuthorized && !showAuthModal && !isLocalFile && (
+        !isAuthorized && !showAuthModal && !isLocalFile && currentDataSource && (
           <Group>
             <Button
               variant='primary'
@@ -101,9 +100,15 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
       }
       {
         isAuthorized && !isLocalFile && (
-          <GroupField
-            groupProps={{
-              withBorderBottom: true,
+          <BoxGroupField
+            boxGroupProps={{
+              boxProps: { withBorderBottom: true },
+            }}
+            fieldProps={{
+              fieldTitleProps: {
+                title: t('workflow.nodes.tool.inputVars'),
+              },
+              supportCollapse: true,
             }}
           >
             <InputVarList
@@ -116,7 +121,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               isSupportConstantValue
               onOpen={handleOnVarOpen}
             />
-          </GroupField>
+          </BoxGroupField>
         )
       }
       {

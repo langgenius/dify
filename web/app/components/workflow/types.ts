@@ -82,6 +82,7 @@ export type CommonNodeType<T = {}> = {
   _inParallelHovering?: boolean
   _waitingRun?: boolean
   _retryIndex?: number
+  _dataSourceStartToAdd?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean

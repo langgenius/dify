@@ -14,6 +14,10 @@ export const useAvailableNodesMetaData = () => {
     ...WORKFLOW_COMMON_NODES,
     {
       ...dataSourceDefault,
+      defaultValue: {
+        ...dataSourceDefault.defaultValue,
+        _dataSourceStartToAdd: true,
+      },
       metaData: {
         ...dataSourceDefault.metaData,
         isStart: true,
