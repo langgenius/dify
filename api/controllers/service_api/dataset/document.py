@@ -175,8 +175,11 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
-        if not dataset.indexing_technique and not args.get("indexing_technique"):
+
+        indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
+        if not indexing_technique:
             raise ValueError("indexing_technique is required.")
+        args["indexing_technique"] = indexing_technique
 
         # save file info
         file = request.files["file"]
