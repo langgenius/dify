@@ -150,6 +150,5 @@ class FirecrawlApp:
             return response_data
         elif response.status_code in {402, 409, 500, 429, 408}:
             self._handle_error(response, "perform search")
-            return {}  # Avoid additional exception after handling error
         else:
             raise Exception(f"Failed to perform search. Status code: {response.status_code}")
