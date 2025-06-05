@@ -23,13 +23,16 @@ export const DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE = [
   'html',
 ]
 
-export const OUTPUT_VARIABLES_MAP = {
-  datasource_type: {
+export const COMMON_OUTPUT = [
+  {
     name: 'datasource_type',
     type: VarType.string,
     description: 'local_file, online_document, website_crawl',
   },
-  file: {
+]
+
+export const FILE_OUTPUT = [
+  {
     name: 'file',
     type: VarType.file,
     description: 'file',
@@ -76,4 +79,27 @@ export const OUTPUT_VARIABLES_MAP = {
       },
     ],
   },
-}
+]
+
+export const WEBSITE_OUTPUT = [
+  {
+    name: 'source_url',
+    type: VarType.string,
+    description: 'The URL of the crawled website',
+  },
+  {
+    name: 'content',
+    type: VarType.string,
+    description: 'The content of the crawled website',
+  },
+  {
+    name: 'title',
+    type: VarType.string,
+    description: 'The title of the crawled website',
+  },
+  {
+    name: 'description',
+    type: VarType.string,
+    description: 'The description of the crawled website',
+  },
+]

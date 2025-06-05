@@ -23,6 +23,7 @@ export const useNodesSyncDraft = () => {
       edges,
       transform,
     } = store.getState()
+    const nodes = getNodes()
     const [x, y, zoom] = transform
     const {
       pipelineId,
@@ -32,8 +33,6 @@ export const useNodesSyncDraft = () => {
     } = workflowStore.getState()
 
     if (pipelineId) {
-      const nodes = getNodes()
-
       const producedNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
           Object.keys(node.data).forEach((key) => {
