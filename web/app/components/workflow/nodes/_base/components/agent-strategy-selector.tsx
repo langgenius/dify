@@ -220,6 +220,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             indexBarClassName='top-0 xl:top-36'
             showWorkflowEmpty={false}
             hasSearchText={false}
+            canNotSelectMultiple
             canChooseMCPTool={canChooseMCPTool}
           />
           <PluginList
