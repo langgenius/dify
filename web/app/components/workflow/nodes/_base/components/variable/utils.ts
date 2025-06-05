@@ -53,6 +53,8 @@ export const isConversationVar = (valueSelector: ValueSelector) => {
 }
 
 export const isRagVariableVar = (valueSelector: ValueSelector) => {
+  if(!valueSelector)
+    return false
   return valueSelector[0] === 'rag'
 }
 
@@ -498,7 +500,7 @@ const formatItem = (
     case 'rag': {
       res.vars = data.ragVariables.map((ragVar: RAGPipelineVariable) => {
         return {
-          variable: `rag.${ragVar.variable}`,
+          variable: `rag.shared.${ragVar.variable}`,
           type: inputVarTypeToVarType(ragVar.type as any),
           des: ragVar.label,
           isRagVariable: true,
@@ -636,10 +638,11 @@ export const toNodeOutputVars = (
     let ragVariablesInDataSource: RAGPipelineVariable[] = []
     if (node.data.type === BlockEnum.DataSource)
       ragVariablesInDataSource = ragVariables.filter(ragVariable => ragVariable.belong_to_node_id === node.id)
+    console.log(ragVariables, ragVariablesInDataSource, node.id)
     return {
       ...formatItem(node, isChatMode, filterVar, ragVariablesInDataSource.map(
         (ragVariable: RAGPipelineVariable) => ({
-          variable: ragVariable.variable,
+          variable: `rag.${node.id}.${ragVariable.variable}`,
           type: inputVarTypeToVarType(ragVariable.type as any),
           description: ragVariable.label,
           isRagVariable: true,

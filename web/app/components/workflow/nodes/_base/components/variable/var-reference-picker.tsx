@@ -183,7 +183,7 @@ const VarReferencePicker: FC<Props> = ({
     }
   }, [value, hasValue, isConstant, isIterationVar, iterationNode, availableNodes, outputVarNodeId, startNode, isLoopVar, loopNode])
 
-  const isShowAPart = (value as ValueSelector).length > 2
+  const isShowAPart = (value as ValueSelector).length > 2 && !isRagVariableVar((value as ValueSelector))
 
   const varName = useMemo(() => {
     if (!hasValue)
