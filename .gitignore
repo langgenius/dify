@@ -192,7 +192,8 @@ sdks/python-client/dist
 sdks/python-client/dify_client.egg-info
 
 .vscode/*
-!.vscode/launch.json
+!.vscode/launch.json.template
+!.vscode/README.md
 pyrightconfig.json
 api/.vscode
 
