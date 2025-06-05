@@ -16,7 +16,7 @@ const ProcessDocuments = ({
   const { data: paramsConfig } = useDraftPipelineProcessingParams({
     pipeline_id: pipelineId!,
     node_id: dataSourceNodeId,
-  })
+  }, !!pipelineId && !!dataSourceNodeId)
 
   return (
     <div className='flex flex-col'>

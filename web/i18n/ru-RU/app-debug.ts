@@ -322,6 +322,7 @@ const translation = {
     'inputPlaceholder': 'Пожалуйста, введите',
     'content': 'Содержимое',
     'required': 'Обязательно',
+    'hide': 'Скрыть',
     'errorMsg': {
       labelNameRequired: 'Имя метки обязательно',
       varNameCanBeRepeat: 'Имя переменной не может повторяться',

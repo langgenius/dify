@@ -361,6 +361,7 @@ const translation = {
     'inputPlaceholder': '请输入',
     'labelName': '显示名称',
     'required': '必填',
+    'hide': '隐藏',
     'placeholder': '占位符',
     'placeholderPlaceholder': '输入字段为空时显示的文本',
     'defaultValue': '默认值',

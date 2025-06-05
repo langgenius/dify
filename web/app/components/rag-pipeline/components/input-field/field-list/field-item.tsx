@@ -51,11 +51,13 @@ const FieldItem = ({
       className={cn(
         'flex h-8 cursor-pointer items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pl-2 shadow-xs hover:shadow-sm',
         (isHovering && !readonly) ? 'pr-1' : 'pr-2.5',
+        readonly && 'cursor-default',
       )}
+      onClick={handleOnClickEdit}
     >
       <div className='flex grow basis-0 items-center gap-x-1'>
         {
-          isHovering
+          (isHovering && !readonly)
             ? <RiDraggable className='handle h-4 w-4 cursor-all-scroll text-text-quaternary' />
             : <InputField className='size-4 text-text-accent' />
         }

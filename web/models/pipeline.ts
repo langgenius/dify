@@ -142,6 +142,15 @@ export type PipelineProcessingParamsResponse = {
   variables: RAGPipelineVariables
 }
 
+export type PipelinePreProcessingParamsRequest = {
+  pipeline_id: string
+  node_id: string
+}
+
+export type PipelinePreProcessingParamsResponse = {
+  variables: RAGPipelineVariables
+}
+
 export type PipelineDatasourceNodeRunRequest = {
   pipeline_id: string
   node_id: string

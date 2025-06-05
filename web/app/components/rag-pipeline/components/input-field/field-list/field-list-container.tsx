@@ -1,5 +1,6 @@
 import {
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 import { ReactSortable } from 'react-sortablejs'
@@ -7,6 +8,7 @@ import cn from '@/utils/classnames'
 import type { InputVar } from '@/models/pipeline'
 import FieldItem from './field-item'
 import type { SortableItem } from './types'
+import { isEqual } from 'lodash-es'
 
 type FieldListContainerProps = {
   className?: string
@@ -33,11 +35,17 @@ const FieldListContainer = ({
     })
   }, [inputFields])
 
+  const handleListSortChange = useCallback((newList: SortableItem[]) => {
+    if (isEqual(newList, list))
+      return
+    onListSortChange(newList)
+  }, [list, onListSortChange])
+
   return (
     <ReactSortable<SortableItem>
       className={cn(className)}
       list={list}
-      setList={onListSortChange}
+      setList={handleListSortChange}
       handle='.handle'
       ghostClass='opacity-50'
       group='rag-pipeline-input-field'

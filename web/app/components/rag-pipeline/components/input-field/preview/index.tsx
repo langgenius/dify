@@ -40,13 +40,15 @@ const PreviewPanel = ({
           <RiCloseLine className='size-4 text-text-tertiary' />
         </button>
       </div>
+      {/* Data source form Preview */}
       <DataSource
         onSelect={setDatasource}
-        datasourceNodeId={datasource?.nodeId || ''}
+        dataSourceNodeId={datasource?.nodeId || ''}
       />
       <div className='px-4 py-2'>
         <Divider type='horizontal' className='bg-divider-subtle' />
       </div>
+      {/* Process documents form Preview */}
       <ProcessDocuments dataSourceNodeId={datasource?.nodeId || ''} />
     </DialogWrapper>
   )
