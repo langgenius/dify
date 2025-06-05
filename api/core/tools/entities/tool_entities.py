@@ -15,6 +15,7 @@ from core.plugin.entities.parameters import (
     cast_parameter_value,
     init_frontend_parameter,
 )
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
 
@@ -177,7 +178,7 @@ class ToolInvokeMessage(BaseModel):
         metadata: Optional[Mapping[str, Any]] = Field(default=None, description="The metadata of the log")
 
     class RetrieverResourceMessage(BaseModel):
-        retriever_resources: list[dict] = Field(..., description="retriever resources")
+        retriever_resources: list[RetrievalSourceMetadata] = Field(..., description="retriever resources")
         context: str = Field(..., description="context")
 
     class MessageType(Enum):
