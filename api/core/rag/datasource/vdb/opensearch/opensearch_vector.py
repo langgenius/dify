@@ -209,10 +209,10 @@ class OpenSearchVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        full_text_query = {"query": {"match": {Field.CONTENT_KEY.value: query}}}
+        full_text_query = {"query": {"bool": {"must": [{"match": {Field.CONTENT_KEY.value: query}}]}}}
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            full_text_query["query"]["terms"] = {"metadata.document_id": document_ids_filter}
+            full_text_query["query"]["bool"]["filter"] = [{"terms": {"metadata.document_id": document_ids_filter}}]
 
         response = self._client.search(index=self._collection_name.lower(), body=full_text_query)
 
