@@ -65,6 +65,9 @@ const translation = {
       atLeastOne: '上传文件的内容不能少于一条',
     },
   },
+  login: {
+    backToHome: '返回首页',
+  },
 }
 
 export default translation
