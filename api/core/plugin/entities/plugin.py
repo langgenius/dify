@@ -72,6 +72,7 @@ class PluginDeclaration(BaseModel):
 
     class Meta(BaseModel):
         minimum_dify_version: Optional[str] = Field(default=None, pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
+        version: Optional[str] = Field(default=None)
 
     version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
     author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
