@@ -403,7 +403,7 @@ class PipelineGenerator(BaseAppGenerator):
         return self._generate(
             flask_app=current_app._get_current_object(),  # type: ignore
             pipeline=pipeline,
-            workflow=workflow,
+            workflow_id=workflow.id,
             user=user,
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
