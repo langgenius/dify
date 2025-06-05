@@ -53,7 +53,7 @@ export const isConversationVar = (valueSelector: ValueSelector) => {
 }
 
 export const isRagVariableVar = (valueSelector: ValueSelector) => {
-  if(!valueSelector)
+  if (!valueSelector)
     return false
   return valueSelector[0] === 'rag'
 }
@@ -152,7 +152,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   if (isStructuredOutput) {
     childrenResult = findExceptVarInStructuredOutput(children, filterVar)
   }
- else if (Array.isArray(children)) {
+  else if (Array.isArray(children)) {
     childrenResult = children.filter((item: Var) => {
       const { children: itemChildren } = item
       const currSelector = [...value_selector, item.variable]
@@ -164,7 +164,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
       return filteredObj.children && (filteredObj.children as Var[])?.length > 0
     })
   }
- else {
+  else {
     childrenResult = []
   }
 
@@ -638,7 +638,6 @@ export const toNodeOutputVars = (
     let ragVariablesInDataSource: RAGPipelineVariable[] = []
     if (node.data.type === BlockEnum.DataSource)
       ragVariablesInDataSource = ragVariables.filter(ragVariable => ragVariable.belong_to_node_id === node.id)
-    console.log(ragVariables, ragVariablesInDataSource, node.id)
     return {
       ...formatItem(node, isChatMode, filterVar, ragVariablesInDataSource.map(
         (ragVariable: RAGPipelineVariable) => ({
@@ -682,9 +681,9 @@ const getIterationItemType = ({
       curr = Array.isArray(curr) ? curr.find(v => v.variable === key) : []
 
       if (isLast)
-      arrayType = curr?.type
+        arrayType = curr?.type
       else if (curr?.type === VarType.object || curr?.type === VarType.file)
-      curr = curr.children || []
+        curr = curr.children || []
     }
   }
 
