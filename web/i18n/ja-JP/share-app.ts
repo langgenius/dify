@@ -69,6 +69,9 @@ const translation = {
       atLeastOne: 'アップロードされたファイルには少なくとも1行の入力が必要です。',
     },
   },
+  login: {
+    backToHome: 'ホームに戻る',
+  },
 }
 
 export default translation

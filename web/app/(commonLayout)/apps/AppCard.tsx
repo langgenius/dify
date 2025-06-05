@@ -4,7 +4,7 @@ import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill } from '@remixicon/react'
+import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
@@ -328,16 +328,25 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </div>
           <div className='shrink-0 w-5 h-5 flex items-center justify-center'>
             {app.access_mode === AccessMode.PUBLIC && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.anyone')}>
-              <RiGlobalLine className='text-text-accent w-4 h-4' />
-            </Tooltip>}
-            {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.specific')}>
-              <RiLockLine className='text-text-quaternary w-4 h-4' />
-            </Tooltip>}
-            {app.access_mode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.organization')}>
-              <RiBuildingLine className='text-text-quaternary w-4 h-4' />
-            </Tooltip>}
-          </div>
-        </div>
+              <RiGlobalLine className='h-4 w-4 text-text-quaternary' />
+            </Tooltip >}
+            {
+              app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.specific')}>
+                <RiLockLine className='text-text-quaternary w-4 h-4' />
+              </Tooltip>
+            }
+            {
+              app.access_mode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.organization')}>
+                <RiBuildingLine className='text-text-quaternary w-4 h-4' />
+              </Tooltip>
+            }
+            {
+              app.access_mode === AccessMode.EXTERNAL_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.external')}>
+                <RiVerifiedBadgeLine className='h-4 w-4 text-text-quaternary' />
+              </Tooltip>
+            }
+          </div >
+        </div >
         <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-text-tertiary'>
           <div
             className={cn(tags.length ? 'line-clamp-2' : 'line-clamp-4', 'group-hover:line-clamp-2')}
@@ -401,7 +410,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </>
           )}
         </div>
-      </div>
+      </div >
       {showEditModal && (
         <EditAppModal
           isEditModal
@@ -418,45 +427,55 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           onHide={() => setShowEditModal(false)}
         />
       )}
-      {showDuplicateModal && (
-        <DuplicateAppModal
-          appName={app.name}
-          icon_type={app.icon_type}
-          icon={app.icon}
-          icon_background={app.icon_background}
-          icon_url={app.icon_url}
-          show={showDuplicateModal}
-          onConfirm={onCopy}
-          onHide={() => setShowDuplicateModal(false)}
-        />
-      )}
-      {showSwitchModal && (
-        <SwitchAppModal
-          show={showSwitchModal}
-          appDetail={app}
-          onClose={() => setShowSwitchModal(false)}
-          onSuccess={onSwitch}
-        />
-      )}
-      {showConfirmDelete && (
-        <Confirm
-          title={t('app.deleteAppConfirmTitle')}
-          content={t('app.deleteAppConfirmContent')}
-          isShow={showConfirmDelete}
-          onConfirm={onConfirmDelete}
-          onCancel={() => setShowConfirmDelete(false)}
-        />
-      )}
-      {secretEnvList.length > 0 && (
-        <DSLExportConfirmModal
-          envList={secretEnvList}
-          onConfirm={onExport}
-          onClose={() => setSecretEnvList([])}
-        />
-      )}
-      {showAccessControl && (
-        <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
-      )}
+      {
+        showDuplicateModal && (
+          <DuplicateAppModal
+            appName={app.name}
+            icon_type={app.icon_type}
+            icon={app.icon}
+            icon_background={app.icon_background}
+            icon_url={app.icon_url}
+            show={showDuplicateModal}
+            onConfirm={onCopy}
+            onHide={() => setShowDuplicateModal(false)}
+          />
+        )
+      }
+      {
+        showSwitchModal && (
+          <SwitchAppModal
+            show={showSwitchModal}
+            appDetail={app}
+            onClose={() => setShowSwitchModal(false)}
+            onSuccess={onSwitch}
+          />
+        )
+      }
+      {
+        showConfirmDelete && (
+          <Confirm
+            title={t('app.deleteAppConfirmTitle')}
+            content={t('app.deleteAppConfirmContent')}
+            isShow={showConfirmDelete}
+            onConfirm={onConfirmDelete}
+            onCancel={() => setShowConfirmDelete(false)}
+          />
+        )
+      }
+      {
+        secretEnvList.length > 0 && (
+          <DSLExportConfirmModal
+            envList={secretEnvList}
+            onConfirm={onExport}
+            onClose={() => setSecretEnvList([])}
+          />
+        )
+      }
+      {
+        showAccessControl && (
+          <AccessControl app={app} onConfirm={onUpdateAccessControl} onClose={() => setShowAccessControl(false)} />
+        )
+      }
     </>
   )
 }

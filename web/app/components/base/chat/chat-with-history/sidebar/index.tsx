@@ -12,13 +12,11 @@ import type { ConversationItem } from '@/models/share'
 import Confirm from '@/app/components/base/confirm'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
-import { AccessMode } from '@/models/access-control'
 
 const Sidebar = () => {
   const { t } = useTranslation()
   const {
     isInstalledApp,
-    accessMode,
     appData,
     pinnedConversationList,
     conversationList,
@@ -120,7 +118,7 @@ const Sidebar = () => {
         }
       </div>
       <div className='flex items-center justify-between px-4 pb-4 '>
-        <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} placement='top-start' data={appData?.site} />
+        <MenuDropdown hideLogout={isInstalledApp} placement='top-start' data={appData?.site} />
         {appData?.site.copyright && (
           <div className='text-xs text-gray-400 truncate'>
             © {(new Date()).getFullYear()} {appData?.site.copyright}
