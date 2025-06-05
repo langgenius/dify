@@ -178,7 +178,7 @@ const ToolPicker: FC<Props> = ({
             workflowTools={workflowToolList || []}
             mcpTools={mcpTools || []}
             selectedTools={selectedTools}
-            isHideMCPTools={!canChooseMCPTool}
+            canChooseMCPTool={canChooseMCPTool}
           />
         </div>
       </PortalToFollowElemContent>

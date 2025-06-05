@@ -25,6 +25,7 @@ type ToolsProps = {
   className?: string
   indexBarClassName?: string
   selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
 }
 const Blocks = ({
   showWorkflowEmpty,
@@ -37,6 +38,7 @@ const Blocks = ({
   className,
   indexBarClassName,
   selectedTools,
+  canChooseMCPTool,
 }: ToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -114,6 +116,7 @@ const Blocks = ({
             canNotSelectMultiple={canNotSelectMultiple}
             onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
           />
         ) : (
           <ToolListTreeView
@@ -123,6 +126,7 @@ const Blocks = ({
             canNotSelectMultiple={canNotSelectMultiple}
             onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
           />
         )
       )}

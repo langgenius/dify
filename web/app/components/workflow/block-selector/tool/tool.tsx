@@ -14,6 +14,7 @@ import ActonItem from './action-item'
 import BlockIcon from '../../block-icon'
 import { useTranslation } from 'react-i18next'
 import { useHover } from 'ahooks'
+import McpToolNotSupportTooltip from '../../nodes/_base/components/mcp-tool-not-support-tooltip'
 
 type Props = {
   className?: string
@@ -25,6 +26,7 @@ type Props = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
 }
 
 const Tool: FC<Props> = ({
@@ -37,6 +39,7 @@ const Tool: FC<Props> = ({
   canNotSelectMultiple,
   onSelectMultiple,
   selectedTools,
+  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -47,6 +50,7 @@ const Tool: FC<Props> = ({
   const [isFold, setFold] = React.useState<boolean>(true)
   const ref = useRef(null)
   const isHovering = useHover(ref)
+  const isShowCanNotChooseMCPTip = !canChooseMCPTool && payload.type === CollectionType.mcp
   const getIsDisabled = useCallback((tool: ToolType) => {
     if (!selectedTools || !selectedTools.length) return false
     return selectedTools.some(selectedTool => (selectedTool.provider_name === payload.name || selectedTool.provider_name === payload.id) && selectedTool.tool_name === tool.name)
@@ -173,7 +177,7 @@ const Tool: FC<Props> = ({
             })
           }}
         >
-          <div className='flex h-8 grow items-center'>
+          <div className={cn('flex h-8 grow items-center', isShowCanNotChooseMCPTip && 'opacity-30')}>
             <BlockIcon
               className='shrink-0'
               type={BlockEnum.Tool}
@@ -188,7 +192,8 @@ const Tool: FC<Props> = ({
           </div>
 
           <div className='ml-2 flex items-center'>
-            {!canNotSelectMultiple && (notShowProvider ? notShowProviderSelectInfo : selectedInfo)}
+            {!isShowCanNotChooseMCPTip && !canNotSelectMultiple && (notShowProvider ? notShowProviderSelectInfo : selectedInfo)}
+            {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
             {hasAction && (
               <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-quaternary', isFold && 'text-text-tertiary')} />
             )}
@@ -202,7 +207,8 @@ const Tool: FC<Props> = ({
               provider={payload}
               payload={action}
               onSelect={onSelect}
-              disabled={getIsDisabled(action)}
+              disabled={getIsDisabled(action) || isShowCanNotChooseMCPTip}
+              isAdded={getIsDisabled(action)}
             />
           ))
         )}

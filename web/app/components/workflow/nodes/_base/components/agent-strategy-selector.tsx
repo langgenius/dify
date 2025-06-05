@@ -89,10 +89,11 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
 export type AgentStrategySelectorProps = {
   value?: Strategy,
   onChange: (value?: Strategy) => void,
+  canChooseMCPTool: boolean,
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
-  const { value, onChange } = props
+  const { value, onChange, canChooseMCPTool } = props
   const [open, setOpen] = useState(false)
   const [viewType, setViewType] = useState<ViewType>(ViewType.flat)
   const [query, setQuery] = useState('')
@@ -216,7 +217,11 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               setOpen(false)
             }}
             className='h-full max-h-full max-w-none overflow-y-auto'
-            indexBarClassName='top-0 xl:top-36' showWorkflowEmpty={false} hasSearchText={false} />
+            indexBarClassName='top-0 xl:top-36'
+            showWorkflowEmpty={false}
+            hasSearchText={false}
+            canChooseMCPTool={canChooseMCPTool}
+          />
           <PluginList
             ref={pluginRef}
             wrapElemRef={wrapElemRef}

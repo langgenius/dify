@@ -35,7 +35,7 @@ type AllToolsProps = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-  isHideMCPTools?: boolean
+  canChooseMCPTool?: boolean
 }
 
 const DEFAULT_TAGS: AllToolsProps['tags'] = []
@@ -53,10 +53,10 @@ const AllTools = ({
   customTools,
   mcpTools = [],
   selectedTools,
-  isHideMCPTools,
+  canChooseMCPTool,
 }: AllToolsProps) => {
   const language = useGetLanguage()
-  const tabs = useToolTabs(isHideMCPTools)
+  const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
   const hasFilter = searchText || tags.length > 0
@@ -148,6 +148,7 @@ const AllTools = ({
           viewType={isSupportGroupView ? activeView : ViewType.flat}
           hasSearchText={!!searchText}
           selectedTools={selectedTools}
+          canChooseMCPTool={canChooseMCPTool}
         />
         {/* Plugins from marketplace */}
         {enable_marketplace && <PluginList

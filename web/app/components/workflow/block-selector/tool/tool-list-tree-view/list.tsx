@@ -15,6 +15,7 @@ type Props = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
 }
 
 const ToolListTreeView: FC<Props> = ({
@@ -24,6 +25,7 @@ const ToolListTreeView: FC<Props> = ({
   canNotSelectMultiple,
   onSelectMultiple,
   selectedTools,
+  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
   const getI18nGroupName = useCallback((name: string) => {
@@ -53,6 +55,7 @@ const ToolListTreeView: FC<Props> = ({
           canNotSelectMultiple={canNotSelectMultiple}
           onSelectMultiple={onSelectMultiple}
           selectedTools={selectedTools}
+          canChooseMCPTool={canChooseMCPTool}
         />
       ))}
     </div>

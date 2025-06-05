@@ -15,6 +15,7 @@ type Props = {
   provider: ToolWithProvider
   payload: Tool
   disabled?: boolean
+  isAdded?: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
@@ -23,6 +24,7 @@ const ToolItem: FC<Props> = ({
   payload,
   onSelect,
   disabled,
+  isAdded,
 }) => {
   const { t } = useTranslation()
 
@@ -76,7 +78,7 @@ const ToolItem: FC<Props> = ({
         <div className={cn('system-sm-medium h-8 truncate border-l-2 border-divider-subtle pl-4 leading-8 text-text-secondary')}>
           <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
         </div>
-        {disabled && (
+        {isAdded && (
           <div className='system-xs-regular mr-4 text-text-tertiary'>{t('tools.addToolModal.added')}</div>
         )}
       </div>
