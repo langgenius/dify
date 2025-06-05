@@ -830,12 +830,20 @@ export const getVarType = ({
   const isSystem = isSystemVar(valueSelector)
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
-  const isRagVariable = isRagVariableVar(valueSelector)
+  const isSharedRagVariable = isRagVariableVar(valueSelector) && valueSelector[1] === 'shared'
+  const isInNodeRagVariable = isRagVariableVar(valueSelector) && valueSelector[1] !== 'shared'
+
   const startNode = availableNodes.find((node: any) => {
     return node?.data.type === BlockEnum.Start
   })
 
-  const targetVarNodeId = isSystem ? startNode?.id : valueSelector[0]
+  const targetVarNodeId = (() => {
+    if(isSystem)
+      return startNode?.id
+    if(isInNodeRagVariable)
+      return valueSelector[1]
+    return valueSelector[0]
+  })()
   const targetVar = beforeNodesOutputVars.find(v => v.nodeId === targetVarNodeId)
 
   if (!targetVar)
@@ -844,13 +852,20 @@ export const getVarType = ({
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
 
-  if (isSystem || isEnv || isChatVar || isRagVariable) {
+  if (isSystem || isEnv || isChatVar || isSharedRagVariable) {
     return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
   }
   else {
-    const targetVar = curr.find((v: any) => v.variable === valueSelector[1])
+    const targetVar = curr.find((v: any) => {
+      if(isInNodeRagVariable)
+        return v.variable === valueSelector.join('.')
+      return v.variable === valueSelector[1]
+  })
     if (!targetVar)
       return VarType.string
+
+    if(isInNodeRagVariable)
+      return targetVar.type
 
     const isStructuredOutputVar = !!targetVar.children?.schema?.properties
     if (isStructuredOutputVar) {
