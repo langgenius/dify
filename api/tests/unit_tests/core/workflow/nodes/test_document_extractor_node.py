@@ -205,7 +205,7 @@ def test_extract_text_from_excel_single_sheet(mock_excel_file):
     file_content = b"fake_excel_content"
     result = _extract_text_from_excel(file_content)
     expected_manual = "| Name with newline | Age |\n| ----------------- | --- |\n\
-    | John Doe | 25 |\n| Jane Smith | 30 |\n\n"
+| John Doe | 25 |\n| Jane Smith | 30 |\n\n"
 
     assert expected_manual == result
     mock_excel_instance.parse.assert_called_once_with(sheet_name="Sheet1")
@@ -232,9 +232,9 @@ def test_extract_text_from_excel_multiple_sheets(mock_excel_file):
     result = _extract_text_from_excel(file_content)
 
     expected_manual1 = "| Product Name | Price |\n| ------------ | ----- |\n\
-    | Apple Red | 1.5 |\n| Banana Yellow | 0.99 |\n\n"
+| Apple Red | 1.5 |\n| Banana Yellow | 0.99 |\n\n"
     expected_manual2 = "| City Name | Population |\n| --------- | ---------- |\n\
-    | New York | 8000000 |\n| Los Angeles | 3900000 |\n\n"
+| New York | 8000000 |\n| Los Angeles | 3900000 |\n\n"
 
     assert expected_manual1 in result
     assert expected_manual2 in result
