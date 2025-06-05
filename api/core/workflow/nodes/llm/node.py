@@ -900,7 +900,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             variable_mapping["#context#"] = node_data.context.variable_selector
 
         if node_data.vision.enabled:
-            variable_mapping["#files#"] = ["sys", SystemVariableKey.FILES.value]
+            variable_mapping["#files#"] = node_data.vision.configs.variable_selector
 
         if node_data.memory:
             variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY.value]
