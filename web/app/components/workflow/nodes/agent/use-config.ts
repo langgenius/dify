@@ -14,6 +14,7 @@ import type { Memory, Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import produce from 'immer'
+import { isSupportMCP } from '@/utils/plugin-version-feature'
 
 export type StrategyStatus = {
   plugin: {
@@ -214,6 +215,7 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     outputSchema,
     handleMemoryChange,
     isChatMode,
+    canChooseMCPTool: isSupportMCP(inputs.meta?.version),
   }
 }
 

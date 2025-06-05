@@ -67,6 +67,7 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
       icon: getIcon(item.declaration.identity.icon),
       label: item.declaration.identity.label as any,
       type: CollectionType.all,
+      meta: item.meta,
       tools: item.declaration.strategies.map(strategy => ({
         name: strategy.identity.name,
         author: strategy.identity.author,
@@ -210,6 +211,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                 agent_strategy_label: tool!.tool_label,
                 agent_output_schema: tool!.output_schema,
                 plugin_unique_identifier: tool!.provider_id,
+                meta: tool!.meta,
               })
               setOpen(false)
             }}

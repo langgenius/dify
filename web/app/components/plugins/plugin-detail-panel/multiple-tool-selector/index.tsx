@@ -26,6 +26,7 @@ type Props = {
   nodeOutputVars: NodeOutPutVar[],
   availableNodes: Node[],
   nodeId?: string
+  canChooseMCPTool?: boolean
 }
 
 const MultipleToolSelector = ({
@@ -40,6 +41,7 @@ const MultipleToolSelector = ({
   nodeOutputVars,
   availableNodes,
   nodeId,
+  canChooseMCPTool,
 }: Props) => {
   const { t } = useTranslation()
   const enabledCount = value.filter(item => item.enabled).length
@@ -155,7 +157,7 @@ const MultipleToolSelector = ({
             }
             panelShowState={panelShowState}
             onPanelShowStateChange={setPanelShowState}
-
+            canChooseMCPTool={canChooseMCPTool}
           />
           {value.length === 0 && (
             <div className='system-xs-regular flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary'>{t('plugin.detailPanel.toolSelector.empty')}</div>
@@ -173,6 +175,7 @@ const MultipleToolSelector = ({
                 onSelectMultiple={handleAddMultiple}
                 onDelete={() => handleDelete(index)}
                 supportEnableSwitch
+                canChooseMCPTool={canChooseMCPTool}
               />
             </div>
           ))}

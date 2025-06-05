@@ -22,6 +22,8 @@ import type { Node } from 'reactflow'
 import { useContext } from 'use-context-selector'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
+import type { PluginMeta } from '@/app/components/plugins/types'
+import { noop } from 'lodash'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -29,6 +31,7 @@ export type Strategy = {
   agent_strategy_label: string
   agent_output_schema: Record<string, any>
   plugin_unique_identifier: string
+  meta?: PluginMeta
 }
 
 export type AgentStrategyProps = {
@@ -40,6 +43,7 @@ export type AgentStrategyProps = {
   nodeOutputVars?: NodeOutPutVar[],
   availableNodes?: Node[],
   nodeId?: string
+  canChooseMCPTool?: boolean
 }
 
 type CustomSchema<Type, Field = {}> = Omit<CredentialFormSchema, 'type'> & { type: Type } & Field
@@ -50,7 +54,7 @@ type MultipleToolSelectorSchema = CustomSchema<'array[tools]'>
 type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
-  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, nodeId } = props
+  const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, nodeId, canChooseMCPTool } = props
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
@@ -166,6 +170,8 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
               value={value}
               onSelect={item => onChange(item)}
               onDelete={() => onChange(null)}
+              canChooseMCPTool={canChooseMCPTool}
+              onSelectMultiple={noop}
             />
           </Field>
         )
@@ -187,6 +193,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             onChange={onChange}
             supportCollapse
             required={schema.required}
+            canChooseMCPTool={canChooseMCPTool}
           />
         )
       }

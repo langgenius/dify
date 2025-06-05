@@ -15,6 +15,7 @@ import type {
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
+import type { PluginMeta } from '../plugins/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -400,6 +401,7 @@ export type MoreInfo = {
 
 export type ToolWithProvider = Collection & {
   tools: Tool[]
+  meta: PluginMeta
 }
 
 export enum SupportUploadFileTypes {

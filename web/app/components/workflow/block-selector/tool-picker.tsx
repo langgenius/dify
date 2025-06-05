@@ -39,6 +39,7 @@ type Props = {
   supportAddCustomTool?: boolean
   scope?: string
   selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
 }
 
 const ToolPicker: FC<Props> = ({
@@ -54,6 +55,7 @@ const ToolPicker: FC<Props> = ({
   scope = 'all',
   selectedTools,
   panelClassName,
+  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -175,8 +177,8 @@ const ToolPicker: FC<Props> = ({
             customTools={customToolList || []}
             workflowTools={workflowToolList || []}
             mcpTools={mcpTools || []}
-
             selectedTools={selectedTools}
+            isHideMCPTools={!canChooseMCPTool}
           />
         </div>
       </PortalToFollowElemContent>

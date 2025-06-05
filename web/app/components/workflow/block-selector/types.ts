@@ -1,3 +1,5 @@
+import type { PluginMeta } from '../../plugins/types'
+
 export enum TabsEnum {
   Blocks = 'blocks',
   Tools = 'tools',
@@ -31,6 +33,7 @@ export type ToolDefaultValue = {
   params: Record<string, any>
   paramSchemas: Record<string, any>[]
   output_schema: Record<string, any>
+  meta: PluginMeta
 }
 
 export type ToolValue = {

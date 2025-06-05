@@ -69,6 +69,7 @@ const ToolItem: FC<Props> = ({
             output_schema: payload.output_schema,
             paramSchemas: payload.parameters,
             params,
+            meta: provider.meta,
           })
         }}
       >

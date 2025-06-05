@@ -83,6 +83,7 @@ const Tabs: FC<TabsProps> = ({
             customTools={customTools || []}
             workflowTools={workflowTools || []}
             mcpTools={mcpTools || []}
+            isHideMCPTools={false}
           />
         )
       }
