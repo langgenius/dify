@@ -676,7 +676,7 @@ class RagPipelineService:
                 item["variable"]: item for item in variables
             }
         else:
-            variables_map = {}
+            return []
         datasource_parameters = datasource_node_data.get("datasource_parameters", {})
         user_input_variables = []
         for key, value in datasource_parameters.items():
@@ -708,7 +708,7 @@ class RagPipelineService:
                 item["variable"]: item for item in variables
             }
         else:
-            variables = {}
+            return []
         datasource_parameters = datasource_node_data.get("datasource_parameters", {})
 
         user_input_variables = []
