@@ -279,6 +279,7 @@ const translation = {
     'labelName': 'Tên nhãn',
     'inputPlaceholder': 'Vui lòng nhập',
     'required': 'Bắt buộc',
+    'hide': 'Ẩn',
     'errorMsg': {
       varNameRequired: 'Tên biến là bắt buộc',
       labelNameRequired: 'Tên nhãn là bắt buộc',
