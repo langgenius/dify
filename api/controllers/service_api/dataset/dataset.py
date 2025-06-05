@@ -369,6 +369,7 @@ class DatasetTagsApi(DatasetApiResource):
         )
         parser.add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
         args = parser.parse_args()
+        args["type"] = "knowledge"
         tag = TagService.update_tags(args, args.get("tag_id"))
 
         binding_count = TagService.get_tag_binding_count(args.get("tag_id"))
