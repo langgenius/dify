@@ -533,14 +533,13 @@ class KnowledgeRetrievalNode(LLMNode):
                 if isinstance(value, list | tuple):
                     if not value:
                         return filters
-                    
+
                     # Generate matching conditions for each value, supporting both number and string matching
                     or_conditions = []
                     for i, v in enumerate(value):
                         if isinstance(v, str):
                             or_conditions.append(Document.doc_metadata[metadata_name] == f'"{v}"')
                         elif isinstance(v, int | float):
-                            
                             or_conditions.append(
                                 sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) == v
                             )
@@ -548,7 +547,7 @@ class KnowledgeRetrievalNode(LLMNode):
                         else:
                             v_str = str(v)
                             or_conditions.append(Document.doc_metadata[metadata_name] == f'"{v_str}"')
-                    
+
                     if or_conditions:
                         filters.append(or_(*or_conditions))
                 else:
@@ -559,16 +558,15 @@ class KnowledgeRetrievalNode(LLMNode):
                         filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) == value)
             case "not in":
                 if isinstance(value, list | tuple):
-                    if not value: 
+                    if not value:
                         return filters
-                    
+
                     # generate not in conditions
                     and_conditions = []
                     for i, v in enumerate(value):
                         if isinstance(v, str):
                             and_conditions.append(Document.doc_metadata[metadata_name] != f'"{v}"')
                         elif isinstance(v, int | float):
-                        
                             and_conditions.append(
                                 sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) != v
                             )
@@ -576,7 +574,7 @@ class KnowledgeRetrievalNode(LLMNode):
                         else:
                             v_str = str(v)
                             and_conditions.append(Document.doc_metadata[metadata_name] != f'"{v_str}"')
-                    
+
                     if and_conditions:
                         filters.append(and_(*and_conditions))
                 else:
