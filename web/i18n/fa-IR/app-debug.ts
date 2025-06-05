@@ -315,6 +315,7 @@ const translation = {
       'inputPlaceholder': 'لطفاً وارد کنید',
       'content': 'محتوا',
       'required': 'مورد نیاز',
+      'hide': 'مخفی کردن',
       'errorMsg': {
         varNameRequired: 'نام متغیر مورد نیاز است',
         labelNameRequired: 'نام برچسب مورد نیاز است',

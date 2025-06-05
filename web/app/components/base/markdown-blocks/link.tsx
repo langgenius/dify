@@ -5,6 +5,7 @@
  */
 import React from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
+import { isValidUrl } from './utils'
 
 const Link = ({ node, children, ...props }: any) => {
   const { onSend } = useChatContext()
@@ -14,7 +15,11 @@ const Link = ({ node, children, ...props }: any) => {
     return <abbr className="cursor-pointer underline !decoration-primary-700 decoration-dashed" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value || ''}>{node.children[0]?.value || ''}</abbr>
   }
   else {
-    return <a {...props} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{children || 'Download'}</a>
+    const href = props.href || node.properties?.href
+    if(!isValidUrl(href))
+      return <span>{children}</span>
+
+    return <a href={href} target="_blank" className="cursor-pointer underline !decoration-primary-700 decoration-dashed">{children || 'Download'}</a>
   }
 }
 
