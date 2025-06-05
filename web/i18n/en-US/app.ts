@@ -87,6 +87,7 @@ const translation = {
     appCreateDSLErrorPart3: 'Current application DSL version: ',
     appCreateDSLErrorPart4: 'System-supported DSL version: ',
     appCreateFailed: 'Failed to create app',
+    dropDSLToCreateApp: 'Drop DSL file here to create app',
   },
   newAppFromTemplate: {
     byCategories: 'BY CATEGORIES',
