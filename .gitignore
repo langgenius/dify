@@ -206,3 +206,6 @@ plugins.jsonl
 
 # mise
 mise.toml
+
+# Next.js build output
+.next/
