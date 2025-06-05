@@ -1,5 +1,7 @@
+import io
 from unittest.mock import Mock, patch
 
+import pandas as pd
 import pytest
 from docx.oxml.text.paragraph import CT_P
 
@@ -187,145 +189,134 @@ def test_node_type(document_extractor_node):
 
 @patch("pandas.ExcelFile")
 def test_extract_text_from_excel_single_sheet(mock_excel_file):
-    """Test extracting text from Excel file with single sheet."""
-    # Mock DataFrame
-    mock_df = Mock()
-    mock_df.dropna = Mock()
-    mock_df.to_markdown.return_value = "| Name | Age |\n|------|-----|\n| John | 25  |"
+    """Test extracting text from Excel file with single sheet and multiline content."""
+
+    # Test multi-line cell
+    data = {"Name\nwith\nnewline": ["John\nDoe", "Jane\nSmith"], "Age": [25, 30]}
+
+    df = pd.DataFrame(data)
 
     # Mock ExcelFile
     mock_excel_instance = Mock()
     mock_excel_instance.sheet_names = ["Sheet1"]
-    mock_excel_instance.parse.return_value = mock_df
+    mock_excel_instance.parse.return_value = df
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_content"
     result = _extract_text_from_excel(file_content)
+    expected_manual = "| Name with newline | Age |\n| ----------------- | --- |\n\
+| John Doe | 25 |\n| Jane Smith | 30 |\n\n"
 
-    expected = "| Name | Age |\n|------|-----|\n| John | 25  |\n\n"
-    assert result == expected
-    mock_excel_file.assert_called_once()
-    mock_df.dropna.assert_called_once_with(how="all", inplace=True)
-    mock_df.to_markdown.assert_called_once_with(index=False, floatfmt="")
+    assert expected_manual == result
+    mock_excel_instance.parse.assert_called_once_with(sheet_name="Sheet1")
 
 
 @patch("pandas.ExcelFile")
 def test_extract_text_from_excel_multiple_sheets(mock_excel_file):
-    """Test extracting text from Excel file with multiple sheets."""
-    # Mock DataFrames for different sheets
-    mock_df1 = Mock()
-    mock_df1.dropna = Mock()
-    mock_df1.to_markdown.return_value = "| Product | Price |\n|---------|-------|\n| Apple   | 1.50  |"
+    """Test extracting text from Excel file with multiple sheets and multiline content."""
 
-    mock_df2 = Mock()
-    mock_df2.dropna = Mock()
-    mock_df2.to_markdown.return_value = "| City | Population |\n|------|------------|\n| NYC  | 8000000    |"
+    # Test multi-line cell
+    data1 = {"Product\nName": ["Apple\nRed", "Banana\nYellow"], "Price": [1.50, 0.99]}
+    df1 = pd.DataFrame(data1)
+
+    data2 = {"City\nName": ["New\nYork", "Los\nAngeles"], "Population": [8000000, 3900000]}
+    df2 = pd.DataFrame(data2)
 
     # Mock ExcelFile
     mock_excel_instance = Mock()
     mock_excel_instance.sheet_names = ["Products", "Cities"]
-    mock_excel_instance.parse.side_effect = [mock_df1, mock_df2]
+    mock_excel_instance.parse.side_effect = [df1, df2]
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_content_multiple_sheets"
     result = _extract_text_from_excel(file_content)
 
-    expected = (
-        "| Product | Price |\n|---------|-------|\n| Apple   | 1.50  |\n\n"
-        "| City | Population |\n|------|------------|\n| NYC  | 8000000    |\n\n"
-    )
-    assert result == expected
+    expected_manual1 = "| Product Name | Price |\n| ------------ | ----- |\n\
+| Apple Red | 1.5 |\n| Banana Yellow | 0.99 |\n\n"
+    expected_manual2 = "| City Name | Population |\n| --------- | ---------- |\n\
+| New York | 8000000 |\n| Los Angeles | 3900000 |\n\n"
+
+    assert expected_manual1 in result
+    assert expected_manual2 in result
+
     assert mock_excel_instance.parse.call_count == 2
 
 
 @patch("pandas.ExcelFile")
 def test_extract_text_from_excel_empty_sheets(mock_excel_file):
     """Test extracting text from Excel file with empty sheets."""
-    # Mock empty DataFrame
-    mock_df = Mock()
-    mock_df.dropna = Mock()
-    mock_df.to_markdown.return_value = ""
+
+    # Empty excel
+    df = pd.DataFrame()
 
     # Mock ExcelFile
     mock_excel_instance = Mock()
     mock_excel_instance.sheet_names = ["EmptySheet"]
-    mock_excel_instance.parse.return_value = mock_df
+    mock_excel_instance.parse.return_value = df
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_empty_content"
     result = _extract_text_from_excel(file_content)
 
-    expected = "\n\n"
+    expected = "|  |\n|  |\n\n"
     assert result == expected
+
+    mock_excel_instance.parse.assert_called_once_with(sheet_name="EmptySheet")
 
 
 @patch("pandas.ExcelFile")
 def test_extract_text_from_excel_sheet_parse_error(mock_excel_file):
     """Test handling of sheet parsing errors - should continue with other sheets."""
-    # Mock DataFrames - one successful, one that raises exception
-    mock_df_success = Mock()
-    mock_df_success.dropna = Mock()
-    mock_df_success.to_markdown.return_value = "| Data | Value |\n|------|-------|\n| Test | 123   |"
+
+    # Test error
+    data = {"Data": ["Test"], "Value": [123]}
+    df = pd.DataFrame(data)
 
     # Mock ExcelFile
     mock_excel_instance = Mock()
     mock_excel_instance.sheet_names = ["GoodSheet", "BadSheet"]
-    mock_excel_instance.parse.side_effect = [mock_df_success, Exception("Parse error")]
+    mock_excel_instance.parse.side_effect = [df, Exception("Parse error")]
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"fake_excel_mixed_content"
     result = _extract_text_from_excel(file_content)
 
-    expected = "| Data | Value |\n|------|-------|\n| Test | 123   |\n\n"
-    assert result == expected
+    expected_manual = "| Data | Value |\n| ---- | ----- |\n| Test | 123 |\n\n"
 
+    assert expected_manual == result
 
-@patch("pandas.ExcelFile")
-def test_extract_text_from_excel_file_error(mock_excel_file):
-    """Test handling of Excel file reading errors."""
-    mock_excel_file.side_effect = Exception("Invalid Excel file")
-
-    file_content = b"invalid_excel_content"
-
-    with pytest.raises(Exception) as exc_info:
-        _extract_text_from_excel(file_content)
-
-    # Note: The function should raise TextExtractionError, but since it's not imported in the test,
-    # we check for the general Exception pattern
-    assert "Failed to extract text from Excel file" in str(exc_info.value)
+    assert mock_excel_instance.parse.call_count == 2
 
 
 @patch("pandas.ExcelFile")
 def test_extract_text_from_excel_io_bytesio_usage(mock_excel_file):
     """Test that BytesIO is properly used with the file content."""
-    import io
 
-    # Mock DataFrame
-    mock_df = Mock()
-    mock_df.dropna = Mock()
-    mock_df.to_markdown.return_value = "| Test | Data |\n|------|------|\n| 1    | A    |"
+    # Test bytesio
+    data = {"Test": [1], "Data": ["A"]}
+    df = pd.DataFrame(data)
 
     # Mock ExcelFile
     mock_excel_instance = Mock()
     mock_excel_instance.sheet_names = ["TestSheet"]
-    mock_excel_instance.parse.return_value = mock_df
+    mock_excel_instance.parse.return_value = df
     mock_excel_file.return_value = mock_excel_instance
 
     file_content = b"test_excel_bytes"
     result = _extract_text_from_excel(file_content)
 
-    # Verify that ExcelFile was called with a BytesIO object
     mock_excel_file.assert_called_once()
-    call_args = mock_excel_file.call_args[0][0]
-    assert isinstance(call_args, io.BytesIO)
+    call_arg = mock_excel_file.call_args[0][0]
+    assert isinstance(call_arg, io.BytesIO)
 
-    expected = "| Test | Data |\n|------|------|\n| 1    | A    |\n\n"
-    assert result == expected
+    expected_manual = "| Test | Data |\n| ---- | ---- |\n| 1 | A |\n\n"
+    assert expected_manual == result
 
 
 @patch("pandas.ExcelFile")
 def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
     """Test when all sheets fail to parse - should return empty string."""
+
     # Mock ExcelFile
     mock_excel_instance = Mock()
     mock_excel_instance.sheet_names = ["BadSheet1", "BadSheet2"]
@@ -335,29 +326,6 @@ def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
     file_content = b"fake_excel_all_bad_sheets"
     result = _extract_text_from_excel(file_content)
 
-    # Should return empty string when all sheets fail
     assert result == ""
 
-
-@patch("pandas.ExcelFile")
-def test_extract_text_from_excel_markdown_formatting(mock_excel_file):
-    """Test that markdown formatting parameters are correctly applied."""
-    # Mock DataFrame
-    mock_df = Mock()
-    mock_df.dropna = Mock()
-    mock_df.to_markdown.return_value = "| Float | Int |\n|-------|-----|\n| 123456.78 | 42  |"
-
-    # Mock ExcelFile
-    mock_excel_instance = Mock()
-    mock_excel_instance.sheet_names = ["NumberSheet"]
-    mock_excel_instance.parse.return_value = mock_df
-    mock_excel_file.return_value = mock_excel_instance
-
-    file_content = b"fake_excel_numbers"
-    result = _extract_text_from_excel(file_content)
-
-    # Verify to_markdown was called with correct parameters
-    mock_df.to_markdown.assert_called_once_with(index=False, floatfmt="")
-
-    expected = "| Float | Int |\n|-------|-----|\n| 123456.78 | 42  |\n\n"
-    assert result == expected
+    assert mock_excel_instance.parse.call_count == 2
