@@ -375,19 +375,20 @@ class KnowledgeRetrievalNode(LLMNode):
                                 expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                     expected_value
                                 ).value[0]
-                                if expected_value.value_type == "number":  # type: ignore
-                                    expected_value = expected_value.value  # type: ignore
-                                elif expected_value.value_type == "string":  # type: ignore
-                                    expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
-                                elif expected_value.value_type in (
-                                    "array[number]",
-                                    "array[string]",
-                                    "array[object]",
-                                    "array",
-                                ):  # type: ignore
-                                    expected_value = expected_value.value  # type: ignore
-                                else:
-                                    raise ValueError("Invalid expected metadata value type")
+                                if hasattr(expected_value, "value_type"):
+                                    if expected_value.value_type == "number":  # type: ignore
+                                        expected_value = expected_value.value  # type: ignore
+                                    elif expected_value.value_type == "string":  # type: ignore
+                                        expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
+                                    elif expected_value.value_type in (
+                                        "array[number]",
+                                        "array[string]",
+                                        "array[object]",
+                                        "array",
+                                    ):  # type: ignore
+                                        expected_value = expected_value.value  # type: ignore
+                                    else:
+                                        raise ValueError("Invalid expected metadata value type")
                             elif isinstance(expected_value, list):
                                 # For constant array values
                                 pass
