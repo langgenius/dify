@@ -117,7 +117,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const {
     appInfoError,
     appInfoLoading,
-    accessMode,
     userCanAccess,
     appData,
     appParams,
@@ -154,7 +153,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       appInfoError,
       appInfoLoading,
       appData,
-      accessMode,
       userCanAccess,
       appParams,
       appMeta,

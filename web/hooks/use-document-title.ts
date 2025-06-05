@@ -1,19 +1,23 @@
 'use client'
-import { useLayoutEffect } from 'react'
+import { useFavicon, useTitle } from 'ahooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export default function useDocumentTitle(title: string) {
-  const { systemFeatures } = useGlobalPublicStore()
-  useLayoutEffect(() => {
-    const prefix = title ? `${title} - ` : ''
+  const isPending = useGlobalPublicStore(s => s.isGlobalPending)
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  const prefix = title ? `${title} - ` : ''
+  let titleStr = ''
+  let favicon = ''
+  if (isPending === false) {
     if (systemFeatures.branding.enabled) {
-      document.title = `${prefix}${systemFeatures.branding.application_title}`
-      const faviconEle = document.querySelector('link[rel*=\'icon\']') as HTMLLinkElement
-      if (faviconEle)
-        faviconEle.href = systemFeatures.branding.favicon
+      titleStr = `${prefix}${systemFeatures.branding.application_title}`
+      favicon = systemFeatures.branding.favicon
     }
     else {
-      document.title = `${prefix}Dify`
+      titleStr = `${prefix}Dify`
+      favicon = '/favicon.ico'
     }
-  }, [systemFeatures, title])
+  }
+  useTitle(titleStr)
+  useFavicon(favicon)
 }

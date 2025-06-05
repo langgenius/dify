@@ -69,6 +69,9 @@ const translation = {
       atLeastOne: 'Please input at least one row in the uploaded file.',
     },
   },
+  login: {
+    backToHome: 'Back to Home',
+  },
 }
 
 export default translation

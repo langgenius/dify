@@ -209,7 +209,7 @@ function AppCard({
               )}
             </div>
           </div>
-        </div>
+        </div >
         <div className={'pt-2 flex flex-row items-center flex-wrap gap-y-2'}>
           {!isApp && <SecretKeyButton className='flex-shrink-0 !h-8 bg-white mr-2' textCls='!text-gray-700 font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} />}
           {OPERATIONS_MAP[cardType].map((op) => {
@@ -239,36 +239,38 @@ function AppCard({
             )
           })}
         </div>
-      </div>
-      {isApp
-        ? (
-          <>
-            <SettingsModal
-              isChat={appMode === 'chat'}
-              appInfo={appInfo}
-              isShow={showSettingsModal}
-              onClose={() => setShowSettingsModal(false)}
-              onSave={onSaveSiteConfig}
-            />
-            <EmbeddedModal
-              siteInfo={appInfo.site}
-              isShow={showEmbedded}
-              onClose={() => setShowEmbedded(false)}
-              appBaseUrl={app_base_url}
-              accessToken={access_token}
-            />
-            <CustomizeModal
-              isShow={showCustomizeModal}
-              linkUrl=""
-              onClose={() => setShowCustomizeModal(false)}
-              appId={appInfo.id}
-              api_base_url={appInfo.api_base_url}
-              mode={appInfo.mode}
-            />
-          </>
-        )
-        : null}
-    </div>
+      </div >
+      {
+        isApp
+          ? (
+            <>
+              <SettingsModal
+                isChat={appMode === 'chat'}
+                appInfo={appInfo}
+                isShow={showSettingsModal}
+                onClose={() => setShowSettingsModal(false)}
+                onSave={onSaveSiteConfig}
+              />
+              <EmbeddedModal
+                siteInfo={appInfo.site}
+                isShow={showEmbedded}
+                onClose={() => setShowEmbedded(false)}
+                appBaseUrl={app_base_url}
+                accessToken={access_token}
+              />
+              <CustomizeModal
+                isShow={showCustomizeModal}
+                linkUrl=""
+                onClose={() => setShowCustomizeModal(false)}
+                appId={appInfo.id}
+                api_base_url={appInfo.api_base_url}
+                mode={appInfo.mode}
+              />
+            </>
+          )
+          : null
+      }
+    </div >
   )
 }
 

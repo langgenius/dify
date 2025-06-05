@@ -35,7 +35,8 @@ import { changeLanguage } from '@/i18n/i18next-config'
 import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
-import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -65,9 +66,13 @@ function getFormattedChatList(messages: any[]) {
 
 export const useEmbeddedChatbot = () => {
   const isInstalledApp = false
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', fetchAppInfo)
-  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({ appId: appInfo?.app_id, isInstalledApp })
-  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({ appId: appInfo?.app_id, isInstalledApp })
+  const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({
+    appId: appInfo?.app_id,
+    isInstalledApp,
+    enabled: systemFeatures.webapp_auth.enabled,
+  })
 
   const appData = useMemo(() => {
     return appInfo
@@ -322,9 +327,8 @@ export const useEmbeddedChatbot = () => {
 
   return {
     appInfoError,
-    appInfoLoading: appInfoLoading || isGettingAccessMode || isCheckingPermission,
-    accessMode: appAccessMode?.accessMode,
-    userCanAccess: userCanAccessResult?.result,
+    appInfoLoading: appInfoLoading || (systemFeatures.webapp_auth.enabled && isCheckingPermission),
+    userCanAccess: systemFeatures.webapp_auth.enabled ? userCanAccessResult?.result : true,
     isInstalledApp,
     appId,
     currentConversationId,
