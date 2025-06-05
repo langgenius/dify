@@ -17,7 +17,6 @@ import Datasource from './label-right-content/datasource'
 import { useNodes } from 'reactflow'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useTranslation } from 'react-i18next'
-// import produce from 'immer'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
 import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 import Button from '@/app/components/base/button'
@@ -25,7 +24,6 @@ import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import PreviewPanel from './preview'
-import { useDebounceFn, useUnmount } from 'ahooks'
 
 type InputFieldDialogProps = {
   readonly?: boolean
@@ -55,17 +53,7 @@ const InputFieldDialog = ({
   }
   const inputFieldsMap = useRef(getInputFieldsMap())
 
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
-
-  useUnmount(async () => {
-    await doSyncWorkflowDraft()
-  })
-
-  const { run: syncWorkflowDraft } = useDebounceFn(() => {
-    doSyncWorkflowDraft()
-  }, {
-    wait: 500,
-  })
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
   const datasourceNodeDataMap = useMemo(() => {
     const datasourceNodeDataMap: Record<string, DataSourceNodeType> = {}
@@ -77,7 +65,7 @@ const InputFieldDialog = ({
     return datasourceNodeDataMap
   }, [nodes])
 
-  const updateInputFields = useCallback((key: string, value: InputVar[]) => {
+  const updateInputFields = useCallback(async (key: string, value: InputVar[]) => {
     inputFieldsMap.current[key] = value
     const newRagPipelineVariables: RAGPipelineVariables = []
     Object.keys(inputFieldsMap.current).forEach((key) => {
@@ -90,8 +78,8 @@ const InputFieldDialog = ({
       })
     })
     setRagPipelineVariables?.(newRagPipelineVariables)
-    syncWorkflowDraft()
-  }, [setRagPipelineVariables, syncWorkflowDraft])
+    handleSyncWorkflowDraft()
+  }, [setRagPipelineVariables, handleSyncWorkflowDraft])
 
   const closePanel = useCallback(() => {
     setShowInputFieldDialog?.(false)

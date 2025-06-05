@@ -3,17 +3,24 @@ import { useTranslation } from 'react-i18next'
 import DataSourceOptions from '../../panel/test-run/data-source-options'
 import Form from './form'
 import type { Datasource } from '../../panel/test-run/types'
+import { useStore } from '@/app/components/workflow/store'
+import { useDraftPipelinePreProcessingParams } from '@/service/use-pipeline'
 
 type DatasourceProps = {
   onSelect: (dataSource: Datasource) => void
-  datasourceNodeId: string
+  dataSourceNodeId: string
 }
 
 const DataSource = ({
   onSelect: setDatasource,
-  datasourceNodeId,
+  dataSourceNodeId,
 }: DatasourceProps) => {
   const { t } = useTranslation()
+  const pipelineId = useStore(state => state.pipelineId)
+  const { data: paramsConfig } = useDraftPipelinePreProcessingParams({
+    pipeline_id: pipelineId!,
+    node_id: dataSourceNodeId,
+  }, !!pipelineId && !!dataSourceNodeId)
 
   return (
     <div className='flex flex-col'>
@@ -23,10 +30,10 @@ const DataSource = ({
       <div className='px-4 py-2'>
         <DataSourceOptions
           onSelect={setDatasource}
-          datasourceNodeId={datasourceNodeId}
+          dataSourceNodeId={dataSourceNodeId}
         />
       </div>
-      <Form variables={[]} />
+      <Form variables={paramsConfig?.variables || []} />
     </div>
   )
 }

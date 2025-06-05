@@ -274,7 +274,6 @@ const CreateFormPipeline = () => {
                 {datasource?.type === DatasourceType.websiteCrawl && (
                   <WebsiteCrawl
                     nodeId={datasource?.nodeId || ''}
-                    variables={[]} // todo: replace with actual variables if needed
                     headerInfo={{
                       title: datasource.description,
                       docTitle: datasource.docTitle || '',
@@ -284,6 +283,7 @@ const CreateFormPipeline = () => {
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
                     onPreview={updateCurrentWebsite}
+                    usingPublished
                   />
                 )}
                 {isShowVectorSpaceFull && (

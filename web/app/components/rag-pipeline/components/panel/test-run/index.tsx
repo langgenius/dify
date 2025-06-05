@@ -117,7 +117,7 @@ const TestRunPanel = () => {
             <>
               <div className='flex flex-col gap-y-4 px-4 py-2'>
                 <DataSourceOptions
-                  datasourceNodeId={datasource?.nodeId || ''}
+                  dataSourceNodeId={datasource?.nodeId || ''}
                   onSelect={setDatasource}
                 />
                 {datasource?.type === DatasourceType.localFile && (
@@ -139,7 +139,6 @@ const TestRunPanel = () => {
                 {datasource?.type === DatasourceType.websiteCrawl && (
                   <WebsiteCrawl
                     nodeId={datasource?.nodeId || ''}
-                    variables={[]} // todo: replace with actual variables if needed
                     checkedCrawlResult={websitePages}
                     headerInfo={{
                       title: datasource.description,

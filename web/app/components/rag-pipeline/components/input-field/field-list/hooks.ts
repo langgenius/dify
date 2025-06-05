@@ -44,9 +44,11 @@ export const useFieldList = (
 
   const [editingField, setEditingField] = useState<InputVar | undefined>()
   const [showInputFieldEditor, setShowInputFieldEditor] = useState(false)
+  const editingFieldIndex = useRef<number>(-1)
   const handleOpenInputFieldEditor = useCallback((id?: string) => {
-    const fieldToEdit = inputFieldsRef.current.find(field => field.variable === id)
-    setEditingField(fieldToEdit)
+    const index = inputFieldsRef.current.findIndex(field => field.variable === id)
+    editingFieldIndex.current = index
+    setEditingField(inputFieldsRef.current[index])
     setShowInputFieldEditor(true)
   }, [])
   const handleCancelInputFieldEditor = useCallback(() => {
@@ -76,7 +78,7 @@ export const useFieldList = (
 
   const handleSubmitField = useCallback((data: InputVar, moreInfo?: MoreInfo) => {
     const newInputFields = produce(inputFieldsRef.current, (draft) => {
-      const currentIndex = draft.findIndex(field => field.variable === data.variable)
+      const currentIndex = editingFieldIndex.current
       if (currentIndex === -1) {
         draft.push(data)
         return

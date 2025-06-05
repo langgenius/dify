@@ -239,4 +239,4 @@ const translation = {
   },
 }
 
-module.exports = translation
+export default translation

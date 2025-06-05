@@ -359,6 +359,7 @@ const translation = {
     'labelName': 'ラベル名',
     'inputPlaceholder': '入力してください',
     'required': '必須',
+    'hide': '非表示',
     'file': {
       supportFileTypes: 'サポートされたファイルタイプ',
       image: {

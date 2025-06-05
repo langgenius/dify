@@ -264,6 +264,7 @@ const translation = {
     'inputPlaceholder': '請輸入',
     'labelName': '顯示名稱',
     'required': '必填',
+    'hide': '隱藏',
     'errorMsg': {
       varNameRequired: '變數名稱必填',
       labelNameRequired: '顯示名稱必填',

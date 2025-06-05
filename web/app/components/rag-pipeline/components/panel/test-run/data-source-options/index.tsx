@@ -4,12 +4,12 @@ import OptionCard from './option-card'
 import type { Datasource } from '../types'
 
 type DataSourceOptionsProps = {
-  datasourceNodeId: string
+  dataSourceNodeId: string
   onSelect: (option: Datasource) => void
 }
 
 const DataSourceOptions = ({
-  datasourceNodeId,
+  dataSourceNodeId,
   onSelect,
 }: DataSourceOptionsProps) => {
   const { datasources, options } = useDatasourceOptions()
@@ -34,7 +34,7 @@ const DataSourceOptions = ({
           key={option.value}
           label={option.label}
           nodeData={option.data}
-          selected={datasourceNodeId === option.value}
+          selected={dataSourceNodeId === option.value}
           onClick={handelSelect.bind(null, option.value)}
         />
       ))}
