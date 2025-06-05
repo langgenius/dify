@@ -3,7 +3,7 @@ export const markdownContentSVG = `
 <svg width="400" height="600" xmlns="http://www.w3.org/2000/svg">
   <rect width="100%" height="100%" fill="#F0F8FF"/>
 
-  <text x="50%" y="60" font-family="楷体" font-size="32" fill="#4682B4" text-anchor="middle">创意Logo设计</text>
+  <text x="50%" y="60" font-family="楷体" font-size="32" fill="#4682B4" text-anchor="middle">创意 Logo 设计</text>
 
   <line x1="50" y1="80" x2="350" y2="80" stroke="#B0C4DE" stroke-width="2"/>
 

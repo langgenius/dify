@@ -477,17 +477,15 @@ class DatasetService:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
                 logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
                 raise NoPermissionError("You do not have permission to access this dataset.")
-            if dataset.permission == "partial_members":
-                user_permission = (
-                    db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
-                )
-                if (
-                    not user_permission
-                    and dataset.tenant_id != user.current_tenant_id
-                    and dataset.created_by != user.id
-                ):
-                    logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
-                    raise NoPermissionError("You do not have permission to access this dataset.")
+            if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
+                # For partial team permission, user needs explicit permission or be the creator
+                if dataset.created_by != user.id:
+                    user_permission = (
+                        db.session.query(DatasetPermission).filter_by(dataset_id=dataset.id, account_id=user.id).first()
+                    )
+                    if not user_permission:
+                        logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
+                        raise NoPermissionError("You do not have permission to access this dataset.")
 
     @staticmethod
     def check_dataset_operator_permission(user: Optional[Account] = None, dataset: Optional[Dataset] = None):
@@ -960,11 +958,11 @@ class DocumentService:
                         "score_threshold_enabled": False,
                     }
 
-                dataset.retrieval_model = (
-                    knowledge_config.retrieval_model.model_dump()
-                    if knowledge_config.retrieval_model
-                    else default_retrieval_model
-                )  # type: ignore
+                    dataset.retrieval_model = (
+                        knowledge_config.retrieval_model.model_dump()
+                        if knowledge_config.retrieval_model
+                        else default_retrieval_model
+                    )  # type: ignore
 
         documents = []
         if knowledge_config.original_document_id:

@@ -48,7 +48,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         assert app_config.agent
 
         iteration_step = 1
-        max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration, 99) + 1
 
         # continue to run until there is not any tool call
         function_call_state = True

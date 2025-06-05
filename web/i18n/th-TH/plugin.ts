@@ -62,6 +62,7 @@ const translation = {
       uninstalledTitle: 'ไม่ได้ติดตั้งเครื่องมือ',
       descriptionPlaceholder: 'คําอธิบายสั้น ๆ เกี่ยวกับวัตถุประสงค์ของเครื่องมือ เช่น รับอุณหภูมิสําหรับตําแหน่งเฉพาะ',
       uninstalledContent: 'ปลั๊กอินนี้ติดตั้งจากที่เก็บในเครื่อง/GitHub กรุณาใช้หลังการติดตั้ง',
+      toolSetting: 'การตั้งค่าเครื่องมือ',
     },
     endpointDisableContent: 'คุณต้องการปิดการใช้งาน {{name}} หรือไม่?',
     configureApp: 'กําหนดค่าแอป',
@@ -210,6 +211,7 @@ const translation = {
     title: 'ปลั๊กอิน',
   },
   difyVersionNotCompatible: 'เวอร์ชั่นปัจจุบันของ Dify ไม่สามารถใช้งานร่วมกับปลั๊กอินนี้ได้ กรุณาอัปเกรดไปยังเวอร์ชั่นขั้นต่ำที่ต้องการ: {{minimalDifyVersion}}',
+  requestAPlugin: 'ขอปลั๊กอิน',
 }
 
 export default translation

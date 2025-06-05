@@ -80,6 +80,9 @@ const translation = {
     execution: 'अनु执行',
     executions: '{{num}} फाँसी',
   },
+  login: {
+    backToHome: 'होम पर वापस',
+  },
 }
 
 export default translation

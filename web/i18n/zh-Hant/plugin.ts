@@ -26,7 +26,7 @@ const translation = {
   source: {
     marketplace: '市場',
     local: '本地包檔',
-    github: 'GitHub的',
+    github: 'GitHub 的',
   },
   detailPanel: {
     categoryTip: {
@@ -45,7 +45,7 @@ const translation = {
       checkUpdate: '檢查更新',
     },
     toolSelector: {
-      uninstalledContent: '此外掛程式是從local/GitHub儲存庫安裝的。請在安裝後使用。',
+      uninstalledContent: '此外掛程式是從 local/GitHub 儲存庫安裝的。請在安裝後使用。',
       descriptionLabel: '工具描述',
       params: '推理配置',
       paramsTip2: '當 \'Automatic\' 關閉時，使用預設值。',
@@ -62,6 +62,7 @@ const translation = {
       empty: '點擊 『+』 按鈕添加工具。您可以新增多個工具。',
       unsupportedContent2: '按兩下以切換版本。',
       paramsTip1: '控制 LLM 推理參數。',
+      toolSetting: '工具設定',
     },
     actionNum: '{{num}}{{作}}包括',
     switchVersion: 'Switch 版本',
@@ -180,7 +181,7 @@ const translation = {
     viewMore: '查看更多',
     difyMarketplace: 'Dify 市場',
     pluginsResult: '{{num}} 個結果',
-    verifiedTip: '由Dify驗證',
+    verifiedTip: '由 Dify 驗證',
     partnerTip: '由 Dify 合作夥伴驗證',
   },
   task: {
@@ -191,6 +192,7 @@ const translation = {
     clearAll: '全部清除',
     installing: '安裝 {{installingLength}} 個外掛程式，0 個完成。',
   },
+  requestAPlugin: '申请外掛程式',
   submitPlugin: '提交外掛程式',
   findMoreInMarketplace: '在 Marketplace 中查找更多內容',
   installPlugin: '安裝外掛程式',

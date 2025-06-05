@@ -302,6 +302,7 @@ const translation = {
     organizeBlocks: 'Організувати блоки',
     change: 'Змінити',
     optional: '(необов\'язково)',
+    moveToThisNode: 'Перемістіть до цього вузла',
   },
   nodes: {
     common: {
@@ -647,7 +648,6 @@ const translation = {
       'setParameter': 'Встановити параметр...',
     },
     tool: {
-      toAuthorize: 'Авторизувати',
       inputVars: 'Вхідні змінні',
       outputVars: {
         text: 'генерований вміст інструменту',
@@ -660,6 +660,7 @@ const translation = {
         },
         json: 'JSON, згенерований інструментом',
       },
+      authorize: 'Уповноважити',
     },
     questionClassifiers: {
       model: 'модель',

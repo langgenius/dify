@@ -34,13 +34,13 @@ def test_workflow_tool_should_raise_tool_invoke_error_when_result_has_error_fiel
     # needs to patch those methods to avoid database access.
     monkeypatch.setattr(tool, "_get_app", lambda *args, **kwargs: None)
     monkeypatch.setattr(tool, "_get_workflow", lambda *args, **kwargs: None)
-    monkeypatch.setattr(tool, "_get_user", lambda *args, **kwargs: None)
 
     # replace `WorkflowAppGenerator.generate` 's return value.
     monkeypatch.setattr(
         "core.app.apps.workflow.app_generator.WorkflowAppGenerator.generate",
         lambda *args, **kwargs: {"data": {"error": "oops"}},
     )
+    monkeypatch.setattr("flask_login.current_user", lambda *args, **kwargs: None)
 
     with pytest.raises(ToolInvokeError) as exc_info:
         # WorkflowTool always returns a generator, so we need to iterate to

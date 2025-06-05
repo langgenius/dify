@@ -15,7 +15,6 @@ const translation = {
   },
   author: 'Tarafından',
   auth: {
-    unauthorized: 'Yetki Ver',
     authorized: 'Yetkilendirildi',
     setup: 'Kullanmak için yetkilendirmeyi ayarla',
     setupModalTitle: 'Yetkilendirmeyi Ayarla',

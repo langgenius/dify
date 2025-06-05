@@ -302,6 +302,7 @@ const translation = {
     organizeBlocks: 'سازماندهی بلوک‌ها',
     change: 'تغییر',
     optional: '(اختیاری)',
+    moveToThisNode: 'به این گره بروید',
   },
   nodes: {
     common: {
@@ -647,7 +648,6 @@ const translation = {
       'varNotSet': 'متغیر NOT Set',
     },
     tool: {
-      toAuthorize: 'برای مجوز دادن',
       inputVars: 'متغیرهای ورودی',
       outputVars: {
         text: 'محتوای تولید شده توسط ابزار',
@@ -660,6 +660,7 @@ const translation = {
         },
         json: 'json تولید شده توسط ابزار',
       },
+      authorize: 'مجوز دادن',
     },
     questionClassifiers: {
       model: 'مدل',

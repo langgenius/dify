@@ -302,6 +302,7 @@ const translation = {
     organizeBlocks: 'Organizar bloques',
     change: 'Cambiar',
     optional: '(opcional)',
+    moveToThisNode: 'Mueve a este nodo',
   },
   nodes: {
     common: {
@@ -645,7 +646,6 @@ const translation = {
       'assignedVarsDescription': 'Las variables asignadas deben ser variables grabables, como las variables de conversación.',
     },
     tool: {
-      toAuthorize: 'Para autorizar',
       inputVars: 'Variables de entrada',
       outputVars: {
         text: 'Contenido generado por la herramienta',
@@ -658,6 +658,7 @@ const translation = {
         },
         json: 'JSON generado por la herramienta',
       },
+      authorize: 'autorizar',
     },
     questionClassifiers: {
       model: 'modelo',
