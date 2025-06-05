@@ -165,7 +165,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
-        print(f"generator: {generator}")
+        print(f"generator: {generator}=======")
         if self._base_task_pipeline._stream:
             return self._to_stream_response(generator)
         else:
@@ -183,7 +183,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                 extras = {}
                 if stream_response.metadata:
                     extras["metadata"] = stream_response.metadata
-                print(f"stream_response: {stream_response}")
                 return ChatbotAppBlockingResponse(
                     task_id=stream_response.task_id,
                     data=ChatbotAppBlockingResponse.Data(
@@ -210,7 +209,6 @@ class AdvancedChatAppGenerateTaskPipeline:
         :return:
         """
         for stream_response in generator:
-            print(f"stream_response: {stream_response}")
             yield ChatbotAppStreamResponse(
                 conversation_id=self._conversation_id,
                 message_id=self._message_id,
@@ -361,7 +359,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                     self._recorded_files.extend(
                         self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
                     )
-
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_success(
                         event=event
@@ -494,6 +491,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not graph_runtime_state:
                     raise ValueError("workflow run not initialized.")
 
+                print(f"outputsfff: {event.outputs}")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_execution = self._workflow_cycle_manager.handle_workflow_run_success(
                         workflow_run_id=self._workflow_run_id,

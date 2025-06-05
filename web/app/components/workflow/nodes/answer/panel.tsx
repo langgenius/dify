@@ -7,6 +7,9 @@ import Editor from '@/app/components/workflow/nodes/_base/components/prompt/edit
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 const i18nPrefix = 'workflow.nodes.answer'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import AddButton from '@/app/components/base/button/add-button'
+import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 
 const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
   id,
@@ -46,7 +49,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
           isSupportFileVar
         />
       </div>
-      {/* <div className='space-y-4 px-4 pb-4'>
+      <div className='space-y-4 px-4 pb-4'>
         <Field
           title={t(`${i18nPrefix}.outputVars`)}
           operations={
@@ -60,7 +63,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
             onChange={handleVarListChange}
           />
         </Field>
-      </div> */}
+      </div>
     </div>
   )
 }

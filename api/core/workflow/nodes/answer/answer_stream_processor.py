@@ -26,9 +26,12 @@ class AnswerStreamProcessor(StreamProcessor):
         for answer_node_id in self.generate_routes.answer_generate_route:
             self.route_position[answer_node_id] = 0
         self.current_stream_chunk_generating_node_ids: dict[str, list[str]] = {}
-
+        self.has_output = False
+        self.output_node_ids: set[str] = set()
+        
     def process(self, generator: Generator[GraphEngineEvent, None, None]) -> Generator[GraphEngineEvent, None, None]:
         for event in generator:
+
             if isinstance(event, NodeRunStartedEvent):
                 if event.route_node_state.node_id == self.graph.root_node_id and not self.rest_node_ids:
                     self.reset()
@@ -36,6 +39,11 @@ class AnswerStreamProcessor(StreamProcessor):
                 yield event
             elif isinstance(event, NodeRunStreamChunkEvent):
                 if event.in_iteration_id or event.in_loop_id:
+                    if self.has_output and event.node_id not in self.output_node_ids:
+                        print(f"event22: {event}")
+                        event.chunk_content = "\n" + event.chunk_content
+                    self.output_node_ids.add(event.node_id)
+                    self.has_output = True
                     yield event
                     continue
 
@@ -50,6 +58,10 @@ class AnswerStreamProcessor(StreamProcessor):
                     )
 
                 for _ in stream_out_answer_node_ids:
+                    if self.has_output and event.node_id not in self.output_node_ids:
+                        event.chunk_content = "\n" + event.chunk_content
+                    self.output_node_ids.add(event.node_id)
+                    self.has_output = True
                     yield event
             elif isinstance(event, NodeRunSucceededEvent | NodeRunExceptionEvent):
                 yield event

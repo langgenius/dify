@@ -16,6 +16,7 @@ const useConfig = (id: string, payload: AnswerNodeType) => {
   const { handleVarListChange, handleAddVariable } = useVarList<AnswerNodeType>({
     inputs,
     setInputs,
+    varKey: 'outputs',
   })
 
   const handleAnswerChange = useCallback((value: string) => {

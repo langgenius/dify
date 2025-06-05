@@ -4,7 +4,7 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from core.workflow.nodes.base import BaseNodeData
-
+from core.workflow.entities.variable_entities import VariableSelector
 
 class AnswerNodeData(BaseNodeData):
     """
@@ -12,6 +12,7 @@ class AnswerNodeData(BaseNodeData):
     """
 
     answer: str = Field(..., description="answer template string")
+    outputs: list[VariableSelector]
 
 
 class GenerateRouteChunk(BaseModel):
