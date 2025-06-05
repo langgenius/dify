@@ -110,6 +110,11 @@ const translation = {
   licenseExpiredTip: 'Licencja Dify Enterprise dla Twojego obszaru roboczego wygasła. Skontaktuj się z administratorem, aby kontynuować korzystanie z Dify.',
   licenseLostTip: 'Nie udało się nawiązać połączenia z serwerem licencji Dify. Skontaktuj się z administratorem, aby kontynuować korzystanie z Dify.',
   licenseInactiveTip: 'Licencja Dify Enterprise dla Twojego obszaru roboczego jest nieaktywna. Skontaktuj się z administratorem, aby kontynuować korzystanie z Dify.',
+  webapp: {
+    noLoginMethod: 'Metoda uwierzytelniania nie jest skonfigurowana dla aplikacji internetowej',
+    noLoginMethodTip: 'Proszę skontaktować się z administratorem systemu, aby dodać metodę uwierzytelniania.',
+    disabled: 'Uwierzytelnianie aplikacji internetowej jest wyłączone. Proszę skontaktować się z administratorem systemu, aby je włączyć. Możesz spróbować użyć aplikacji bezpośrednio.',
+  },
 }
 
 export default translation

@@ -1096,6 +1096,7 @@ const translation = {
       },
       inputVars: 'Vhodne spremenljivke',
       toAuthorize: 'Za odobritev',
+      authorize: 'Pooblasti',
     },
     questionClassifiers: {
       outputVars: {

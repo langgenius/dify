@@ -24,7 +24,7 @@ const translation = {
       desc: {
         front: 'Your information and use of Education Verified status are subject to our',
         and: 'and',
-        end: '. By submitting：',
+        end: '. By submitting:',
         termsOfService: 'Terms of Service',
         privacyPolicy: 'Privacy Policy',
       },

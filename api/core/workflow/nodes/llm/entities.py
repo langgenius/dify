@@ -66,7 +66,8 @@ class LLMNodeData(BaseNodeData):
     context: ContextConfig
     vision: VisionConfig = Field(default_factory=VisionConfig)
     structured_output: dict | None = None
-    structured_output_enabled: bool = False
+    # We used 'structured_output_enabled' in the past, but it's not a good name.
+    structured_output_switch_on: bool = Field(False, alias="structured_output_enabled")
 
     @field_validator("prompt_config", mode="before")
     @classmethod
@@ -74,3 +75,7 @@ class LLMNodeData(BaseNodeData):
         if v is None:
             return PromptConfig()
         return v
+
+    @property
+    def structured_output_enabled(self) -> bool:
+        return self.structured_output_switch_on and self.structured_output is not None

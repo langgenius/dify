@@ -85,11 +85,9 @@ from .workflow import (
     Workflow,
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
+    WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
-    WorkflowRunStatus,
     WorkflowType,
 )
 
@@ -101,7 +99,7 @@ __all__ = [
     "AccountStatus",
     "ApiRequest",
     "ApiToken",
-    "ApiToolProvider",  # Added
+    "ApiToolProvider",
     "App",
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
@@ -109,7 +107,7 @@ __all__ = [
     "AppMCPServer",  # Added
     "AppMode",
     "AppModelConfig",
-    "BuiltinToolProvider",  # Added
+    "BuiltinToolProvider",
     "CeleryTask",
     "CeleryTaskSet",
     "Conversation",
@@ -173,11 +171,9 @@ __all__ = [
     "Workflow",
     "WorkflowAppLog",
     "WorkflowAppLogCreatedFrom",
-    "WorkflowNodeExecution",
-    "WorkflowNodeExecutionStatus",
+    "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionTriggeredFrom",
     "WorkflowRun",
-    "WorkflowRunStatus",
     "WorkflowRunTriggeredFrom",
     "WorkflowToolProvider",
     "WorkflowType",

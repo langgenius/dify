@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { FilterState } from './filter-management'
 import FilterManagement from './filter-management'
 import List from './list'
-import { useInstalledLatestVersion, useInstalledPluginListWithPagination, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInstalledLatestVersion, useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { usePluginPageContext } from './context'
 import { useDebounceFn } from 'ahooks'
@@ -17,7 +17,7 @@ const PluginsPanel = () => {
   const { t } = useTranslation()
   const filters = usePluginPageContext(v => v.filters) as FilterState
   const setFilters = usePluginPageContext(v => v.setFilters)
-  const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginListWithPagination()
+  const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginList()
   const { data: installedLatestVersion } = useInstalledLatestVersion(
     pluginList?.plugins
       .filter(plugin => plugin.source === PluginSource.marketplace)

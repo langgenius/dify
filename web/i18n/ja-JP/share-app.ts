@@ -35,7 +35,7 @@ const translation = {
   },
   generation: {
     tabs: {
-      create: '1回実行',
+      create: '1 回実行',
       batch: '一括実行',
       saved: '保存済み',
     },
@@ -44,7 +44,7 @@ const translation = {
       description: 'コンテンツ生成後に結果がここに表示されます',
       startCreateContent: '生成を開始',
     },
-    title: 'AI文章作成',
+    title: 'AI 文章作成',
     queryTitle: '入力内容',
     completionResult: '生成結果',
     queryPlaceholder: '入力してください',
@@ -52,11 +52,11 @@ const translation = {
     execution: '処理中',
     executions: '{{num}}回実行',
     copy: 'コピー',
-    resultTitle: 'AI生成結果',
-    noData: 'AIがコンテンツを生成します',
-    csvUploadTitle: 'CSVファイルをドロップするか',
+    resultTitle: 'AI 生成結果',
+    noData: 'AI がコンテンツを生成します',
+    csvUploadTitle: 'CSV ファイルをドロップするか',
     browse: 'ファイルを選択',
-    csvStructureTitle: 'CSV形式要件:',
+    csvStructureTitle: 'CSV 形式要件：',
     downloadTemplate: 'テンプレートを取得',
     field: '',
     batchFailed: {
@@ -67,11 +67,14 @@ const translation = {
     errorMsg: {
       empty: 'ファイル内容が空です',
       fileStructNotMatch: 'ファイル形式が不正です',
-      emptyLine: '{{rowIndex}}行目: 内容が空です',
-      invalidLine: '{{rowIndex}}行目: {{varName}}の入力が必要です',
-      moreThanMaxLengthLine: '{{rowIndex}}行目: {{varName}}が制限長（{{maxLength}}）を超過',
-      atLeastOne: '1行以上のデータが必要です',
+      emptyLine: '{{rowIndex}}行目：内容が空です',
+      invalidLine: '{{rowIndex}}行目：{{varName}}の入力が必要です',
+      moreThanMaxLengthLine: '{{rowIndex}}行目：{{varName}}が制限長（{{maxLength}}）を超過',
+      atLeastOne: '1 行以上のデータが必要です',
     },
+  },
+  login: {
+    backToHome: 'ホームに戻る',
   },
 }
 

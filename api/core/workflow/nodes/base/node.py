@@ -4,9 +4,9 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.enums import CONTINUE_ON_ERROR_NODE_TYPE, RETRY_ON_ERROR_NODE_TYPE, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import BaseNodeData
 

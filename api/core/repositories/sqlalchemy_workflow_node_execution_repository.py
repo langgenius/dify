@@ -12,19 +12,18 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.node_entities import NodeRunMetadataKey
-from core.workflow.entities.node_execution_entities import (
-    NodeExecution,
-    NodeExecutionStatus,
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
 )
 from core.workflow.nodes.enums import NodeType
-from core.workflow.repository.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 from models import (
     Account,
     CreatorUserRole,
     EndUser,
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
+    WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
 )
 
@@ -87,9 +86,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         # Initialize in-memory cache for node executions
         # Key: node_execution_id, Value: WorkflowNodeExecution (DB model)
-        self._node_execution_cache: dict[str, WorkflowNodeExecution] = {}
+        self._node_execution_cache: dict[str, WorkflowNodeExecutionModel] = {}
 
-    def _to_domain_model(self, db_model: WorkflowNodeExecution) -> NodeExecution:
+    def _to_domain_model(self, db_model: WorkflowNodeExecutionModel) -> WorkflowNodeExecution:
         """
         Convert a database model to a domain model.
 
@@ -103,16 +102,16 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         inputs = db_model.inputs_dict
         process_data = db_model.process_data_dict
         outputs = db_model.outputs_dict
-        metadata = {NodeRunMetadataKey(k): v for k, v in db_model.execution_metadata_dict.items()}
+        metadata = {WorkflowNodeExecutionMetadataKey(k): v for k, v in db_model.execution_metadata_dict.items()}
 
         # Convert status to domain enum
-        status = NodeExecutionStatus(db_model.status)
+        status = WorkflowNodeExecutionStatus(db_model.status)
 
-        return NodeExecution(
+        return WorkflowNodeExecution(
             id=db_model.id,
             node_execution_id=db_model.node_execution_id,
             workflow_id=db_model.workflow_id,
-            workflow_run_id=db_model.workflow_run_id,
+            workflow_execution_id=db_model.workflow_run_id,
             index=db_model.index,
             predecessor_node_id=db_model.predecessor_node_id,
             node_id=db_model.node_id,
@@ -129,7 +128,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             finished_at=db_model.finished_at,
         )
 
-    def to_db_model(self, domain_model: NodeExecution) -> WorkflowNodeExecution:
+    def to_db_model(self, domain_model: WorkflowNodeExecution) -> WorkflowNodeExecutionModel:
         """
         Convert a domain model to a database model.
 
@@ -147,14 +146,14 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
 
-        db_model = WorkflowNodeExecution()
+        db_model = WorkflowNodeExecutionModel()
         db_model.id = domain_model.id
         db_model.tenant_id = self._tenant_id
         if self._app_id is not None:
             db_model.app_id = self._app_id
         db_model.workflow_id = domain_model.workflow_id
         db_model.triggered_from = self._triggered_from
-        db_model.workflow_run_id = domain_model.workflow_run_id
+        db_model.workflow_run_id = domain_model.workflow_execution_id
         db_model.index = domain_model.index
         db_model.predecessor_node_id = domain_model.predecessor_node_id
         db_model.node_execution_id = domain_model.node_execution_id
@@ -176,7 +175,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_model.finished_at = domain_model.finished_at
         return db_model
 
-    def save(self, execution: NodeExecution) -> None:
+    def save(self, execution: WorkflowNodeExecution) -> None:
         """
         Save or update a NodeExecution domain entity to the database.
 
@@ -208,7 +207,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 logger.debug(f"Updating cache for node_execution_id: {db_model.node_execution_id}")
                 self._node_execution_cache[db_model.node_execution_id] = db_model
 
-    def get_by_node_execution_id(self, node_execution_id: str) -> Optional[NodeExecution]:
+    def get_by_node_execution_id(self, node_execution_id: str) -> Optional[WorkflowNodeExecution]:
         """
         Retrieve a NodeExecution by its node_execution_id.
 
@@ -231,13 +230,13 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         # If not in cache, query the database
         logger.debug(f"Cache miss for node_execution_id: {node_execution_id}, querying database")
         with self._session_factory() as session:
-            stmt = select(WorkflowNodeExecution).where(
-                WorkflowNodeExecution.node_execution_id == node_execution_id,
-                WorkflowNodeExecution.tenant_id == self._tenant_id,
+            stmt = select(WorkflowNodeExecutionModel).where(
+                WorkflowNodeExecutionModel.node_execution_id == node_execution_id,
+                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
             )
 
             if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
+                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
 
             db_model = session.scalar(stmt)
             if db_model:
@@ -253,7 +252,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_run_id: str,
         order_config: Optional[OrderConfig] = None,
-    ) -> Sequence[WorkflowNodeExecution]:
+    ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Retrieve all WorkflowNodeExecution database models for a specific workflow run.
 
@@ -271,20 +270,20 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             A list of WorkflowNodeExecution database models
         """
         with self._session_factory() as session:
-            stmt = select(WorkflowNodeExecution).where(
-                WorkflowNodeExecution.workflow_run_id == workflow_run_id,
-                WorkflowNodeExecution.tenant_id == self._tenant_id,
-                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            stmt = select(WorkflowNodeExecutionModel).where(
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
+                WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
 
             if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
+                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
 
             # Apply ordering if provided
             if order_config and order_config.order_by:
                 order_columns: list[UnaryExpression] = []
                 for field in order_config.order_by:
-                    column = getattr(WorkflowNodeExecution, field, None)
+                    column = getattr(WorkflowNodeExecutionModel, field, None)
                     if not column:
                         continue
                     if order_config.order_direction == "desc":
@@ -308,7 +307,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         self,
         workflow_run_id: str,
         order_config: Optional[OrderConfig] = None,
-    ) -> Sequence[NodeExecution]:
+    ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.
 
@@ -335,7 +334,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         return domain_models
 
-    def get_running_executions(self, workflow_run_id: str) -> Sequence[NodeExecution]:
+    def get_running_executions(self, workflow_run_id: str) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all running NodeExecution instances for a specific workflow run.
 
@@ -349,15 +348,15 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             A list of running NodeExecution instances
         """
         with self._session_factory() as session:
-            stmt = select(WorkflowNodeExecution).where(
-                WorkflowNodeExecution.workflow_run_id == workflow_run_id,
-                WorkflowNodeExecution.tenant_id == self._tenant_id,
-                WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING,
-                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+            stmt = select(WorkflowNodeExecutionModel).where(
+                WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                WorkflowNodeExecutionModel.tenant_id == self._tenant_id,
+                WorkflowNodeExecutionModel.status == WorkflowNodeExecutionStatus.RUNNING,
+                WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
             )
 
             if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
+                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
 
             db_models = session.scalars(stmt).all()
             domain_models = []
@@ -382,10 +381,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         It also clears the in-memory cache.
         """
         with self._session_factory() as session:
-            stmt = delete(WorkflowNodeExecution).where(WorkflowNodeExecution.tenant_id == self._tenant_id)
+            stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.tenant_id == self._tenant_id)
 
             if self._app_id:
-                stmt = stmt.where(WorkflowNodeExecution.app_id == self._app_id)
+                stmt = stmt.where(WorkflowNodeExecutionModel.app_id == self._app_id)
 
             result = session.execute(stmt)
             session.commit()

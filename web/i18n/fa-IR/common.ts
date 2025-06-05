@@ -149,6 +149,8 @@ const translation = {
     newDataset: 'ایجاد دانش',
     tools: 'ابزارها',
     exploreMarketplace: 'بازار را کاوش کنید',
+    appDetail: 'جزئیات برنامه',
+    account: 'حساب',
   },
   userProfile: {
     settings: 'تنظیمات',
@@ -644,6 +646,7 @@ const translation = {
   license: {
     expiring_plural: 'انقضا در {{count}} روز',
     expiring: 'انقضا در یک روز',
+    unlimited: 'نامحدود',
   },
   pagination: {
     perPage: 'موارد در هر صفحه',
@@ -667,6 +670,7 @@ const translation = {
     supportedFormats: 'از فرمت‌های PNG، JPG، JPEG، WEBP و GIF پشتیبانی می‌کند',
     browse: 'مرورگر',
   },
+  you: 'تو',
 }
 
 export default translation
