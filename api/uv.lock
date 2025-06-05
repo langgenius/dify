@@ -1456,7 +1456,7 @@ dev = [
     { name = "faker", specifier = "~=32.1.0" },
     { name = "lxml-stubs", specifier = "~=0.5.1" },
     { name = "mypy", specifier = "~=1.16.0" },
-    { name = "pandas-stubs", specifier = ">=2.2.3.241009" },
+    { name = "pandas-stubs", specifier = "~=2.2.3" },
     { name = "pytest", specifier = "~=8.3.2" },
     { name = "pytest-benchmark", specifier = "~=4.0.0" },
     { name = "pytest-cov", specifier = "~=4.1.0" },
