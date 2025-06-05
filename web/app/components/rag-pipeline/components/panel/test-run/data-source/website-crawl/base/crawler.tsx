@@ -12,7 +12,7 @@ import {
   useDraftPipelinePreProcessingParams,
   usePublishedPipelineProcessingParams,
 } from '@/service/use-pipeline'
-import { useStore } from '@/app/components/workflow/store'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -48,7 +48,7 @@ const Crawler = ({
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
-  const pipelineId = useStore(s => s.pipelineId)
+  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
 
   const usePreProcessingParams = useRef(usingPublished ? usePublishedPipelineProcessingParams : useDraftPipelinePreProcessingParams)
   const { data: paramsConfig } = usePreProcessingParams.current({
