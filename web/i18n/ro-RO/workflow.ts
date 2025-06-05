@@ -648,7 +648,6 @@ const translation = {
       'variables': 'Variabile',
     },
     tool: {
-      toAuthorize: 'Autorizați',
       inputVars: 'Variabile de intrare',
       outputVars: {
         text: 'conținut generat de instrument',
@@ -661,6 +660,7 @@ const translation = {
         },
         json: 'JSON generat de instrument',
       },
+      authorize: 'Autorizați',
     },
     questionClassifiers: {
       model: 'model',

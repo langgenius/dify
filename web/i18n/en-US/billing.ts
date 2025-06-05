@@ -92,9 +92,9 @@ const translation = {
     member: 'Member',
     memberAfter: 'Member',
     messageRequest: {
-      title: '{{count,number}} messages',
-      titlePerMonth: '{{count,number}} messages/month',
-      tooltip: 'Message invocation quotas for various plans using OpenAl models. Messages over the limit will use your OpenAI API Key.',
+      title: '{{count,number}} message credits',
+      titlePerMonth: '{{count,number}} message credits/month',
+      tooltip: 'Message credits are provided to help you easily try out different OpenAI models in Dify. Credits are consumed based on the model type. Once they’re used up, you can switch to your own OpenAI API key.',
     },
     annotatedResponse: {
       title: '{{count,number}} Annotation Quota Limits',

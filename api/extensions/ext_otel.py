@@ -12,19 +12,30 @@ from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 
 from configs import dify_config
 from dify_app import DifyApp
+from models import Account, EndUser
 
 
 @user_logged_in.connect
 @user_loaded_from_request.connect
-def on_user_loaded(_sender, user):
+def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
     if dify_config.ENABLE_OTEL:
         from opentelemetry.trace import get_current_span
 
         if user:
-            current_span = get_current_span()
-            if current_span:
-                current_span.set_attribute("service.tenant.id", user.current_tenant_id)
-                current_span.set_attribute("service.user.id", user.id)
+            try:
+                current_span = get_current_span()
+                if isinstance(user, Account) and user.current_tenant_id:
+                    tenant_id = user.current_tenant_id
+                elif isinstance(user, EndUser):
+                    tenant_id = user.tenant_id
+                else:
+                    return
+                if current_span:
+                    current_span.set_attribute("service.tenant.id", tenant_id)
+                    current_span.set_attribute("service.user.id", user.id)
+            except Exception:
+                logging.exception("Error setting tenant and user attributes")
+                pass
 
 
 def init_app(app: DifyApp):
@@ -47,21 +58,25 @@ def init_app(app: DifyApp):
 
         def response_hook(span: Span, status: str, response_headers: list):
             if span and span.is_recording():
-                if status.startswith("2"):
-                    span.set_status(StatusCode.OK)
-                else:
-                    span.set_status(StatusCode.ERROR, status)
+                try:
+                    if status.startswith("2"):
+                        span.set_status(StatusCode.OK)
+                    else:
+                        span.set_status(StatusCode.ERROR, status)
 
-                status = status.split(" ")[0]
-                status_code = int(status)
-                status_class = f"{status_code // 100}xx"
-                attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
-                request = flask.request
-                if request and request.url_rule:
-                    attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
-                if request and request.method:
-                    attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
-                _http_response_counter.add(1, attributes)
+                    status = status.split(" ")[0]
+                    status_code = int(status)
+                    status_class = f"{status_code // 100}xx"
+                    attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
+                    request = flask.request
+                    if request and request.url_rule:
+                        attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
+                    if request and request.method:
+                        attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
+                    _http_response_counter.add(1, attributes)
+                except Exception:
+                    logging.exception("Error setting status and attributes")
+                    pass
 
         instrumentor = FlaskInstrumentor()
         if dify_config.DEBUG:
@@ -92,7 +107,7 @@ def init_app(app: DifyApp):
     class ExceptionLoggingHandler(logging.Handler):
         """Custom logging handler that creates spans for logging.exception() calls"""
 
-        def emit(self, record):
+        def emit(self, record: logging.LogRecord):
             try:
                 if record.exc_info:
                     tracer = get_tracer_provider().get_tracer("dify.exception.logging")
@@ -107,9 +122,12 @@ def init_app(app: DifyApp):
                         },
                     ) as span:
                         span.set_status(StatusCode.ERROR)
-                        span.record_exception(record.exc_info[1])
-                        span.set_attribute("exception.type", record.exc_info[0].__name__)
-                        span.set_attribute("exception.message", str(record.exc_info[1]))
+                        if record.exc_info[1]:
+                            span.record_exception(record.exc_info[1])
+                            span.set_attribute("exception.message", str(record.exc_info[1]))
+                        if record.exc_info[0]:
+                            span.set_attribute("exception.type", record.exc_info[0].__name__)
+
             except Exception:
                 pass
 

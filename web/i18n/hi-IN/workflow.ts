@@ -664,7 +664,6 @@ const translation = {
       'noAssignedVars': 'कोई उपलब्ध असाइन किए गए चर नहीं',
     },
     tool: {
-      toAuthorize: 'अधिकृत करने के लिए',
       inputVars: 'इनपुट वेरिएबल्स',
       outputVars: {
         text: 'उपकरण द्वारा उत्पन्न सामग्री',
@@ -677,6 +676,7 @@ const translation = {
         },
         json: 'उपकरण द्वारा उत्पन्न JSON',
       },
+      authorize: 'अधिकृत करें',
     },
     questionClassifiers: {
       model: 'मॉडल',

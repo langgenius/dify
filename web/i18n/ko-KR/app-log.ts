@@ -49,7 +49,7 @@ const translation = {
       dislike: '좋아요 취소',
       addAnnotation: '향상 추가',
       editAnnotation: '향상 편집',
-      annotationPlaceholder: 'AI가 응답할 것으로 예상하는 답변을 입력하여 향후 모델 세부 조정 및 텍스트 생성 품질 지속적 향상을 위해 개선할 수 있습니다.',
+      annotationPlaceholder: 'AI 가 응답할 것으로 예상하는 답변을 입력하여 향후 모델 세부 조정 및 텍스트 생성 품질 지속적 향상을 위해 개선할 수 있습니다.',
     },
     variables: '변수',
     uploadImages: '업로드된 이미지',
@@ -58,10 +58,10 @@ const translation = {
   filter: {
     period: {
       today: '오늘',
-      last7days: '지난 7일',
-      last4weeks: '지난 4주',
-      last3months: '지난 3개월',
-      last12months: '지난 12개월',
+      last7days: '지난 7 일',
+      last4weeks: '지난 4 주',
+      last3months: '지난 3 개월',
+      last12months: '지난 12 개월',
       monthToDate: '월 초부터 오늘까지',
       quarterToDate: '분기 초부터 오늘까지',
       yearToDate: '연 초부터 오늘까지',
@@ -77,7 +77,7 @@ const translation = {
     ascending: '오름차순',
   },
   workflowTitle: '워크플로우 로그',
-  workflowSubtitle: '이 로그는 Automate의 작업을 기록했습니다.',
+  workflowSubtitle: '이 로그는 Automate 의 작업을 기록했습니다.',
   runDetail: {
     title: '대화 로그',
     workflowTitle: '로그 세부 정보',
