@@ -32,7 +32,7 @@ class DatasourceProviderService:
         :param credentials:
         """
         credential_valid = self.provider_manager.validate_provider_credentials(
-            tenant_id=tenant_id, user_id=current_user.id, provider=provider, credentials=credentials
+            tenant_id=tenant_id, user_id=current_user.id, provider=provider, plugin_id=plugin_id, credentials=credentials
         )
         if credential_valid:
             # Get all provider configurations of the current workspace
@@ -119,13 +119,13 @@ class DatasourceProviderService:
             )
 
         return copy_credentials_list
-    
+
     def update_datasource_credentials(self, tenant_id: str, auth_id: str, provider: str, plugin_id: str, credentials: dict) -> None:
         """
         update datasource credentials.
         """
         credential_valid = self.provider_manager.validate_provider_credentials(
-            tenant_id=tenant_id, user_id=current_user.id, provider=provider, credentials=credentials
+            tenant_id=tenant_id, user_id=current_user.id, provider=provider,plugin_id=plugin_id, credentials=credentials
         )
         if credential_valid:
             # Get all provider configurations of the current workspace
@@ -156,7 +156,7 @@ class DatasourceProviderService:
                 db.session.commit()
         else:
             raise CredentialsValidateFailedError()
-        
+
     def remove_datasource_credentials(self, tenant_id: str, auth_id: str, provider: str, plugin_id: str) -> None:
         """
         remove datasource credentials.

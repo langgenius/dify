@@ -202,12 +202,12 @@ class PluginDatasourceManager(BasePluginClient):
         raise Exception("No response from plugin daemon")
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str, provider: str, credentials: dict[str, Any]
+        self, tenant_id: str, user_id: str, provider: str, plugin_id: str, credentials: dict[str, Any]
     ) -> bool:
         """
         validate the credentials of the provider
         """
-        datasource_provider_id = GenericProviderID(provider)
+        # datasource_provider_id = GenericProviderID(provider_id)
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
@@ -216,12 +216,12 @@ class PluginDatasourceManager(BasePluginClient):
             data={
                 "user_id": user_id,
                 "data": {
-                    "provider": datasource_provider_id.provider_name,
+                    "provider": provider,
                     "credentials": credentials,
                 },
             },
             headers={
-                "X-Plugin-ID": datasource_provider_id.plugin_id,
+                "X-Plugin-ID": plugin_id,
                 "Content-Type": "application/json",
             },
         )
