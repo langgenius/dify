@@ -63,6 +63,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
   const {
     setControlPromptEditorRerenderKey,
   } = workflowStore.getState()
+
   const override: ComponentProps<typeof Form<CustomField>>['override'] = [
     [FormTypeEnum.textNumber, FormTypeEnum.textInput],
     (schema, props) => {
@@ -220,6 +221,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             nodeId={nodeId}
             nodeOutputVars={nodeOutputVars || []}
             availableNodes={availableNodes || []}
+            canChooseMCPTool={canChooseMCPTool}
           />
         </div>
         : <ListEmpty

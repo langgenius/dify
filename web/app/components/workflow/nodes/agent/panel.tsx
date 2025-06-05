@@ -114,6 +114,7 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
         nodeOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         nodeId={props.id}
+        canChooseMCPTool={canChooseMCPTool}
       />
     </Field>
     <div className='px-4 py-2'>
