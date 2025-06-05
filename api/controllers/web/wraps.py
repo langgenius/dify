@@ -1,19 +1,18 @@
 from datetime import UTC, datetime
 from functools import wraps
 
-from flask import request
-from flask_restful import Resource  # type: ignore
-from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
-
 from controllers.web.error import (WebAppAuthAccessDeniedError,
                                    WebAppAuthRequiredError)
 from extensions.ext_database import db
+from flask import request
+from flask_restful import Resource  # type: ignore
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import (EnterpriseService,
                                                     WebAppSettings)
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
+from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 
 def validate_jwt_token(view=None):
@@ -80,6 +79,8 @@ def decode_jwt_token():
         return app_model, end_user
     except Unauthorized as e:
         if system_features.webapp_auth.enabled:
+            if not app_code:
+                raise Unauthorized("Please re-login to access the web app.")
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
             )
