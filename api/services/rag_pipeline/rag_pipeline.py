@@ -430,11 +430,16 @@ class RagPipelineService:
             raise ValueError("Workflow not initialized")
 
         # run draft workflow node
+        datasource_node_data = None
         start_at = time.perf_counter()
-
-        datasource_node_data = published_workflow.graph_dict.get("nodes", {}).get(node_id, {}).get("data", {})
+        datasource_nodes = published_workflow.graph_dict.get("nodes", [])
+        for datasource_node in datasource_nodes:
+            if datasource_node.get("id") == node_id:
+                datasource_node_data = datasource_node.get("data", {})
+                break
         if not datasource_node_data:
             raise ValueError("Datasource node data not found")
+        
         datasource_parameters = datasource_node_data.get("datasource_parameters", {})
         for key, value in datasource_parameters.items():
             if not user_inputs.get(key):
@@ -665,7 +670,12 @@ class RagPipelineService:
             raise ValueError("Workflow not initialized")
 
         # get second step node
-        datasource_node_data = published_workflow.graph_dict.get("nodes", {}).get(node_id, {}).get("data", {})
+        datasource_node_data = None
+        datasource_nodes = published_workflow.graph_dict.get("nodes", [])
+        for datasource_node in datasource_nodes:
+            if datasource_node.get("id") == node_id:
+                datasource_node_data = datasource_node.get("data", {})
+                break
         if not datasource_node_data:
             raise ValueError("Datasource node data not found")
         datasource_parameters = datasource_node_data.get("datasource_parameters", {})
@@ -692,7 +702,12 @@ class RagPipelineService:
             raise ValueError("Workflow not initialized")
 
         # get second step node
-        datasource_node_data = draft_workflow.graph_dict.get("nodes", {}).get(node_id, {}).get("data", {})
+        datasource_node_data = None
+        datasource_nodes = draft_workflow.graph_dict.get("nodes", [])
+        for datasource_node in datasource_nodes:
+            if datasource_node.get("id") == node_id:
+                datasource_node_data = datasource_node.get("data", {})
+                break
         if not datasource_node_data:
             raise ValueError("Datasource node data not found")
         datasource_parameters = datasource_node_data.get("datasource_parameters", {})
