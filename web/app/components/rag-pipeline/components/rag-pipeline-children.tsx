@@ -8,7 +8,7 @@ import RagPipelinePanel from './panel'
 import RagPipelineHeader from './rag-pipeline-header'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
-import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
+import UpdateDSLModal from './update-dsl-modal'
 import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import {
   useDSL,
