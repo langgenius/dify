@@ -103,6 +103,8 @@ const useSingleRunFormParams = ({
     const existVarsKey: Record<string, boolean> = {}
     const uniqueVarInputs: InputVar[] = []
     varInputs.forEach((input) => {
+      if(!input)
+        return
       if (!existVarsKey[input.variable]) {
         existVarsKey[input.variable] = true
         uniqueVarInputs.push(input)
