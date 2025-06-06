@@ -172,12 +172,13 @@ const useOneStepRun = <T>({
   } = useInspectVarsCrud()
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
     doSetRunResult(data)
+    // run fail may also update the inspect vars when the node set the error default output.
+    const vars = await fetchNodeInspectVars(appId!, id)
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    appendNodeInspectVars(id, vars, nodes)
     if(data?.status === NodeRunningStatus.Succeeded) {
       invalidLastRun()
-      const vars = await fetchNodeInspectVars(appId!, id)
-      const { getNodes } = store.getState()
-      const nodes = getNodes()
-      appendNodeInspectVars(id, vars, nodes)
       if(isStartNode)
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
