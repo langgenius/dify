@@ -304,4 +304,6 @@ class GetWebsiteCrawlResponse(BaseModel):
     Get website crawl response
     """
 
-    result: list[WebSiteInfo]
+    result: Optional[list[WebSiteInfo]] = []
+    job_id: str = Field(..., description="The job id")
+    status: str = Field(..., description="The status of the job")
