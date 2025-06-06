@@ -54,7 +54,7 @@ export const toolCredentialToFormSchemas = (parameters: ToolCredential[]) => {
   return formSchemas
 }
 
-export const addDefaultValue = (value: Record<string, any>, formSchemas: { variable: string; default?: any }[]) => {
+export const addDefaultValue = (value: Record<string, any>, formSchemas: { variable: string; type: string; default?: any }[]) => {
   const newValues = { ...value }
   formSchemas.forEach((formSchema) => {
     const itemValue = value[formSchema.variable]
@@ -93,4 +93,31 @@ export const getStructureValue = (value: Record<string, any>) => {
     }
   })
   return newValue
+}
+
+export const getConfiguredValue = (value: Record<string, any>, formSchemas: { variable: string; type: string; default?: any }[]) => {
+  const newValues = { ...value }
+  formSchemas.forEach((formSchema) => {
+    const itemValue = value[formSchema.variable]
+    if ((formSchema.default !== undefined) && (value === undefined || itemValue === null || itemValue === '' || itemValue === undefined)) {
+      const value = formSchema.default
+      newValues[formSchema.variable] = {
+        type: 'constant',
+        value: formSchema.default,
+      }
+      if (formSchema.type === 'boolean') {
+        if (typeof value === 'string')
+          newValues[formSchema.variable].value = value === 'true' ? 1 : 0
+
+        if (typeof value === 'boolean')
+          newValues[formSchema.variable].value = value ? 1 : 0
+      }
+
+      if (formSchema.type === 'number-input') {
+        if (typeof value === 'string' && value !== '')
+          newValues[formSchema.variable].value = Number.parseFloat(value)
+      }
+    }
+  })
+  return newValues
 }

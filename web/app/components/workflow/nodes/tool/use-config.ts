@@ -8,7 +8,10 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
 import { updateBuiltInToolCredential } from '@/service/tools'
-import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import {
+  getConfiguredValue,
+  toolParametersToFormSchemas,
+} from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { VarType as VarVarType } from '@/app/components/workflow/types'
@@ -28,8 +31,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const language = useLanguage()
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ToolNodeType>(id, payload)
   /*
-  * tool_configurations: tool setting, not dynamic setting
-  * tool_parameters: tool dynamic setting(by user)
+  * tool_configurations: tool setting, not dynamic setting (form type = form)
+  * tool_parameters: tool dynamic setting(form type = llm)
   * output_schema: tool dynamic output
   */
   const { provider_id, provider_type, tool_name, tool_configurations, output_schema } = inputs
@@ -112,12 +115,11 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     doSetInputs(newInputs)
   }, [doSetInputs, formSchemas, hasShouldTransferTypeSettingInput])
   const [notSetDefaultValue, setNotSetDefaultValue] = useState(false)
-  const toolSettingValue = (() => {
+  const toolSettingValue = useMemo(() => {
     if (notSetDefaultValue)
       return tool_configurations
-
-    return addDefaultValue(tool_configurations, toolSettingSchema)
-  })()
+    return getConfiguredValue(tool_configurations, toolSettingSchema)
+  }, [notSetDefaultValue, toolSettingSchema, tool_configurations])
   const setToolSettingValue = useCallback((value: Record<string, any>) => {
     setNotSetDefaultValue(true)
     setInputs({
@@ -131,7 +133,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       return
     const inputsWithDefaultValue = produce(inputs, (draft) => {
       if (!draft.tool_configurations || Object.keys(draft.tool_configurations).length === 0)
-        draft.tool_configurations = addDefaultValue(tool_configurations, toolSettingSchema)
+        draft.tool_configurations = getConfiguredValue(tool_configurations, toolSettingSchema)
 
       if (!draft.tool_parameters)
         draft.tool_parameters = {}
