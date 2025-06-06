@@ -154,7 +154,6 @@ const Panel: FC = () => {
   if (!isLoaded) {
     return (
       <div className='mb-3 flex items-center justify-between'>
-        <Title className='h-[41px]' />
         <div className='w-[200px]'>
           <Loading />
         </div>
@@ -163,8 +162,7 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className={cn('mb-3 flex items-center justify-between')}>
-      <Title className='h-[41px]' />
+    <div className={cn('flex items-center justify-between')}>
       <div
         className={cn(
           'flex cursor-pointer items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
