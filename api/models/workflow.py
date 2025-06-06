@@ -892,6 +892,7 @@ class WorkflowDraftVariable(Base):
     # visible
     visible: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    node_execution_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     def get_selector(self) -> list[str]:
         selector = json.loads(self.selector)
