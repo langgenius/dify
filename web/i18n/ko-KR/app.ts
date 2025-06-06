@@ -34,7 +34,7 @@ const translation = {
     workflowWarning: '현재 베타 버전입니다.',
     chatbotType: '챗봇 오케스트레이션 방식',
     basic: '기본',
-    basicTip: '초보자용. 나중에 Chatflow로 전환할 수 있습니다.',
+    basicTip: '초보자용. 나중에 Chatflow 로 전환할 수 있습니다.',
     basicFor: '초보자용',
     basicDescription: '기본 오케스트레이션은 내장된 프롬프트를 수정할 수 없고 간단한 설정을 사용하여 챗봇 앱을 오케스트레이션합니다. 초보자용입니다.',
     advanced: 'Chatflow',
@@ -85,7 +85,7 @@ const translation = {
     noAppsFound: '앱을 찾을 수 없습니다.',
     foundResult: '{{개수}} 결과',
     completionUserDescription: '간단한 구성으로 텍스트 생성 작업을 위한 AI 도우미를 빠르게 구축합니다.',
-    chatbotUserDescription: '간단한 구성으로 LLM 기반 챗봇을 빠르게 구축할 수 있습니다. 나중에 Chatflow로 전환할 수 있습니다.',
+    chatbotUserDescription: '간단한 구성으로 LLM 기반 챗봇을 빠르게 구축할 수 있습니다. 나중에 Chatflow 로 전환할 수 있습니다.',
     workflowShortDescription: '지능형 자동화를 위한 에이전트 플로우',
     agentUserDescription: '작업 목표를 달성하기 위해 반복적인 추론과 자율적인 도구를 사용할 수 있는 지능형 에이전트입니다.',
     advancedUserDescription: '메모리 기능과 챗봇 인터페이스를 갖춘 워크플로우',
@@ -117,7 +117,7 @@ const translation = {
   },
   tracing: {
     title: '앱 성능 추적',
-    description: '제3자 LLMOps 제공업체 구성 및 앱 성능 추적.',
+    description: '제 3 자 LLMOps 제공업체 구성 및 앱 성능 추적.',
     config: '구성',
     collapse: '접기',
     expand: '펼치기',
@@ -125,7 +125,7 @@ const translation = {
     disabled: '비활성화됨',
     disabledTip: '먼저 제공업체를 구성해 주세요',
     enabled: '서비스 중',
-    tracingDescription: 'LLM 호출, 컨텍스트, 프롬프트, HTTP 요청 등 앱 실행의 전체 컨텍스트를 제3자 추적 플랫폼에 캡처합니다.',
+    tracingDescription: 'LLM 호출, 컨텍스트, 프롬프트, HTTP 요청 등 앱 실행의 전체 컨텍스트를 제 3 자 추적 플랫폼에 캡처합니다.',
     configProviderTitle: {
       configured: '구성됨',
       notConfigured: '추적을 활성화하려면 제공업체를 구성하세요',
@@ -153,27 +153,27 @@ const translation = {
     view: '보기',
     opik: {
       title: '오픽',
-      description: 'Opik은 LLM 애플리케이션을 평가, 테스트 및 모니터링하기 위한 오픈 소스 플랫폼입니다.',
+      description: 'Opik 은 LLM 애플리케이션을 평가, 테스트 및 모니터링하기 위한 오픈 소스 플랫폼입니다.',
     },
     weave: {
       title: '직조하다',
-      description: 'Weave는 LLM 애플리케이션을 평가하고 테스트하며 모니터링하기 위한 오픈 소스 플랫폼입니다.',
+      description: 'Weave 는 LLM 애플리케이션을 평가하고 테스트하며 모니터링하기 위한 오픈 소스 플랫폼입니다.',
     },
   },
   answerIcon: {
     description: 'web app 아이콘을 사용하여 공유 응용 프로그램에서 바꿀🤖지 여부',
     title: 'web app 아이콘을 사용하여 🤖',
-    descriptionInExplore: 'Explore에서 web app 아이콘을 사용하여 바꿀🤖지 여부',
+    descriptionInExplore: 'Explore 에서 web app 아이콘을 사용하여 바꿀🤖지 여부',
   },
-  importFromDSL: 'DSL에서 가져오기',
+  importFromDSL: 'DSL 에서 가져오기',
   importFromDSLFile: 'DSL 파일에서',
-  importFromDSLUrl: 'URL에서',
+  importFromDSLUrl: 'URL 에서',
   importFromDSLUrlPlaceholder: '여기에 DSL 링크 붙여 넣기',
   mermaid: {
     handDrawn: '손으로 그린',
     classic: '고전',
   },
-  openInExplore: 'Explore에서 열기',
+  openInExplore: 'Explore 에서 열기',
   newAppFromTemplate: {
     sidebar: {
       Agent: '대리인',
@@ -201,7 +201,7 @@ const translation = {
     notConfiguredTip: '구성이 아직 설정되지 않았습니다.',
     structured: '구조화된',
     configure: '설정하다',
-    moreFillTip: '최대 10단계 중첩을 표시합니다.',
+    moreFillTip: '최대 10 단계 중첩을 표시합니다.',
     modelNotSupportedTip: '현재 모델은 이 기능을 지원하지 않으며 자동으로 프롬프트 주입으로 다운그레이드됩니다.',
     structuredTip: '구조화된 출력은 모델이 제공한 JSON 스키마를 항상 준수하는 응답을 생성하도록 보장하는 기능입니다.',
   },
@@ -209,12 +209,14 @@ const translation = {
     anyone: '누구나 웹 앱에 접근할 수 있습니다.',
     specific: '특정 그룹이나 회원만 웹 앱에 접근할 수 있습니다.',
     organization: '조직 내 모든 사람이 웹 애플리케이션에 접근할 수 있습니다.',
+    external: '인증된 외부 사용자만 웹 애플리케이션에 접근할 수 있습니다.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: '링크가 있는 누구나',
       specific: '특정 그룹 또는 구성원',
       organization: '기업 내의 회원만',
+      external: '인증된 외부 사용자',
     },
     operateGroupAndMember: {
       searchPlaceholder: '그룹 및 구성원 검색',

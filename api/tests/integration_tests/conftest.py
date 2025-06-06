@@ -47,7 +47,7 @@ def setup_account(request) -> Generator[Account, None, None]:
     Most tests in the `controllers` package may require dify has been successfully setup.
     """
     with _CACHED_APP.test_request_context():
-        rand_suffix = random.randint(int(1e6), int(1e7))
+        rand_suffix = random.randint(int(1e6), int(1e7))  # noqa
         name = f"test-user-{rand_suffix}"
         email = f"{name}@example.com"
         RegisterService.setup(

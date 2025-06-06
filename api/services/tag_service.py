@@ -46,6 +46,8 @@ class TagService:
 
     @staticmethod
     def get_tag_by_tag_name(tag_type: str, current_tenant_id: str, tag_name: str) -> list:
+        if not tag_type or not tag_name:
+            return []
         tags = (
             db.session.query(Tag)
             .filter(Tag.name == tag_name, Tag.tenant_id == current_tenant_id, Tag.type == tag_type)
@@ -88,7 +90,7 @@ class TagService:
 
     @staticmethod
     def update_tags(args: dict, tag_id: str) -> Tag:
-        if TagService.get_tag_by_tag_name(args["type"], current_user.current_tenant_id, args["name"]):
+        if TagService.get_tag_by_tag_name(args.get("type", ""), current_user.current_tenant_id, args.get("name", "")):
             raise ValueError("Tag name already exists")
         tag = db.session.query(Tag).filter(Tag.id == tag_id).first()
         if not tag:

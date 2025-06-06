@@ -285,6 +285,7 @@ const translation = {
     'labelName': 'Nume etichetă',
     'inputPlaceholder': 'Vă rugăm să introduceți',
     'required': 'Obligatoriu',
+    'hide': 'Ascundeți',
     'errorMsg': {
       varNameRequired: 'Numele variabilei este obligatoriu',
       labelNameRequired: 'Numele etichetei este obligatoriu',

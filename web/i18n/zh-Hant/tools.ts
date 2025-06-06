@@ -35,8 +35,8 @@ const translation = {
     urlError: '請輸入有效的 URL',
     examples: '例子',
     exampleOptions: {
-      json: '天氣(JSON)',
-      yaml: '寵物商店(YAML)',
+      json: '天氣 (JSON)',
+      yaml: '寵物商店 (YAML)',
       blankTemplate: '空白模版',
     },
     availableTools: {
@@ -91,7 +91,7 @@ const translation = {
     },
     description: '描述',
     nameForToolCall: '工具調用名稱',
-    confirmTitle: '確認儲存 ？',
+    confirmTitle: '確認儲存？',
     descriptionPlaceholder: '工具用途的簡要描述，例如，獲取特定位置的溫度。',
     nameForToolCallTip: '僅支援數位、字母和下劃線。',
     confirmTip: '使用此工具的應用程式將受到影響',
@@ -123,7 +123,7 @@ const translation = {
     file: '檔',
   },
   noCustomTool: {
-    title: '沒有自定義工具!',
+    title: '沒有自定義工具！',
     content: '在此統一新增和管理你的自定義工具，方便構建應用時使用。',
     createTool: '建立工具',
   },

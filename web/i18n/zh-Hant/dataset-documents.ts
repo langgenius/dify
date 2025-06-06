@@ -355,7 +355,7 @@ const translation = {
     addChunk: '添加數據塊',
     addChildChunk: '添加子塊',
     addAnother: '添加另一個',
-    childChunkAdded: '添加了1個子塊',
+    childChunkAdded: '添加了 1 個子塊',
     editParentChunk: '編輯父塊（Edit Parent Chunk）',
     editChildChunk: '編輯子塊',
     chunkDetail: '數據塊詳細資訊',

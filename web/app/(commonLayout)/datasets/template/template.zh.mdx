@@ -207,7 +207,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         - <code>doc_language</code> 在 Q&A 模式下，指定文档的语言，例如：<code>English</code>、<code>Chinese</code>
 
         - <code>process_rule</code> 处理规则
-          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义 / hierarchical 父子
+          - <code>mode</code> (string) 清洗、分段模式，automatic 自动 / custom 自定义 / hierarchical 父子
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
               - <code>id</code> (string) 预处理规则的唯一标识符
@@ -234,12 +234,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>hybrid_search</code> 混合检索
             - <code>semantic_search</code> 语义检索
             - <code>full_text_search</code> 全文检索
-          - <code>reranking_enable</code> (bool) 是否开启rerank
+          - <code>reranking_enable</code> (bool) 是否开启 rerank
           - <code>reranking_model</code> (object) Rerank 模型配置
             - <code>reranking_provider_name</code> (string) Rerank 模型的提供商
             - <code>reranking_model_name</code> (string) Rerank 模型的名称
           - <code>top_k</code> (int) 召回条数
-          - <code>score_threshold_enabled</code> (bool)是否开启召回分数限制
+          - <code>score_threshold_enabled</code> (bool) 是否开启召回分数限制
           - <code>score_threshold</code> (float) 召回分数限制
       </Property>
       <Property name='embedding_model' type='string' key='embedding_model'>
@@ -350,12 +350,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>hybrid_search</code> 混合检索
             - <code>semantic_search</code> 语义检索
             - <code>full_text_search</code> 全文检索
-          - <code>reranking_enable</code> (bool) 是否开启rerank
+          - <code>reranking_enable</code> (bool) 是否开启 rerank
           - <code>reranking_model</code> (object) Rerank 模型配置
             - <code>reranking_provider_name</code> (string) Rerank 模型的提供商
             - <code>reranking_model_name</code> (string) Rerank 模型的名称
           - <code>top_k</code> (int) 召回条数
-          - <code>score_threshold_enabled</code> (bool)是否开启召回分数限制
+          - <code>score_threshold_enabled</code> (bool) 是否开启召回分数限制
           - <code>score_threshold</code> (float) 召回分数限制
       </Property>
     </Properties>
@@ -1322,7 +1322,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         文档 ID
       </Property>
       <Property name='segment_id' type='string' key='segment_id'>
-        文档分段ID
+        文档分段 ID
       </Property>
     </Properties>
   </Col>
@@ -1435,7 +1435,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         文档 ID
       </Property>
       <Property name='segment_id' type='string' key='segment_id'>
-        文档分段ID
+        文档分段 ID
       </Property>
     </Properties>
 
@@ -2223,7 +2223,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         - <code>document_id</code> (string) 文档 ID
         - <code>metadata_list</code> (list) 元数据列表
           - <code>id</code> (string) 元数据 ID
-          - <code>type</code> (string) 元数据类型
+          - <code>value</code> (string) 元数据值
           - <code>name</code> (string) 元数据名称
       </Property>
     </Properties>
@@ -2404,7 +2404,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='name' type='string'>
-        (text) 新标签名称，必填，最大长度为50
+        (text) 新标签名称，必填，最大长度为 50
       </Property>
     </Properties>
   </Col>
@@ -2490,10 +2490,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='name' type='string'>
-        (text) 修改后的标签名称，必填，最大长度为50
+        (text) 修改后的标签名称，必填，最大长度为 50
       </Property>
       <Property name='tag_id' type='string'>
-        (text) 标签ID，必填
+        (text) 标签 ID，必填
       </Property>
     </Properties>
   </Col>
@@ -2538,7 +2538,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='tag_id' type='string'>
-        (text) 标签ID，必填
+        (text) 标签 ID，必填
       </Property>
     </Properties>
   </Col>
@@ -2579,10 +2579,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='tag_ids' type='list'>
-        (list) 标签ID列表，必填
+        (list) 标签 ID 列表，必填
       </Property>
       <Property name='target_id' type='string'>
-        (text) 知识库ID，必填
+        (text) 知识库 ID，必填
       </Property>
     </Properties>
   </Col>
@@ -2621,10 +2621,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='tag_id' type='string'>
-        (text) 标签ID，必填
+        (text) 标签 ID，必填
       </Property>
       <Property name='target_id' type='string'>
-        (text) 知识库ID，必填
+        (text) 知识库 ID，必填
       </Property>
     </Properties>
   </Col>
@@ -2664,7 +2664,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Path
     <Properties>
       <Property name='dataset_id' type='string'>
-        (text) 知识库ID
+        (text) 知识库 ID
       </Property>
     </Properties>
   </Col>
