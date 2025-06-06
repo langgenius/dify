@@ -46,6 +46,7 @@ const Input = ({
   placeholder,
   onChange = noop,
   unit,
+  type = "text"
   ...props
 }: InputProps) => {
   const { t } = useTranslation()
@@ -73,6 +74,7 @@ const Input = ({
         value={value}
         onChange={onChange}
         disabled={disabled}
+        type={type}
         {...props}
       />
       {showClearIcon && value && !disabled && !destructive && (
