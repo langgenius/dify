@@ -714,7 +714,7 @@ class ToolAnnotations(BaseModel):
 
     idempotentHint: bool | None = None
     """
-    If true, calling the tool repeatedly with the same arguments 
+    If true, calling the tool repeatedly with the same arguments
     will have no additional effect on the its environment.
     (This property is meaningful only when `readOnlyHint == false`)
     Default: false
