@@ -13,7 +13,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Input from '@/app/components/base/input'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
+import { BubbleX, Env, GlobalVariable } from '@/app/components/base/icons/src/vender/line/others'
 import { checkKeys } from '@/utils/var'
 import type { StructuredOutput } from '../../../llm/types'
 import { Type } from '../../../llm/types'
@@ -148,8 +148,9 @@ const Item: FC<ItemProps> = ({
           onMouseDown={e => e.preventDefault()}
         >
           <div className='flex w-0 grow items-center'>
-            {!isEnv && !isChatVar && !isLoopVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
+            {!isEnv && !isChatVar && !isLoopVar && !isSys && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
             {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
+            {isSys && <GlobalVariable className='h-3.5 w-3.5 shrink-0 text-util-colors-orange-orange-600' />}
             {isChatVar && <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />}
             {isLoopVar && <Loop className='h-3.5 w-3.5 shrink-0 text-util-colors-cyan-cyan-500' />}
             {!isEnv && !isChatVar && (
