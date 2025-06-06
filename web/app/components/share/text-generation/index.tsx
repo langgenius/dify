@@ -10,12 +10,12 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
-import { checkOrSetAccessToken } from '../utils'
 import AppUnavailable from '../../base/app-unavailable'
+import { checkOrSetAccessToken, removeAccessToken } from '../utils'
 import s from './style.module.css'
+import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
-import MenuDropdown from './menu-dropdown'
 import cn from '@/utils/classnames'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
@@ -41,6 +41,7 @@ import { Resolution, TransferMethod } from '@/types/app'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
 import { AccessMode } from '@/models/access-control'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -113,6 +114,7 @@ const TextGeneration: FC<IMainProps> = ({
   const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({ appId, isInstalledApp })
   const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({ appId, isInstalledApp })
 
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
   const fetchSavedMessage = async () => {
@@ -544,14 +546,31 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   )
 
-  if (!appId || !siteInfo || !promptConfig || isGettingAccessMode || isCheckingPermission) {
+  const getSigninUrl = useCallback(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('message')
+    params.set('redirect_url', pathname)
+    return `/webapp-signin?${params.toString()}`
+  }, [searchParams, pathname])
+
+  const backToHome = useCallback(() => {
+    removeAccessToken()
+    const url = getSigninUrl()
+    router.replace(url)
+  }, [getSigninUrl, router])
+
+  if (!appId || !siteInfo || !promptConfig || (systemFeatures.webapp_auth.enabled && (isGettingAccessMode || isCheckingPermission))) {
     return (
       <div className='flex items-center h-screen'>
         <Loading type='app' />
       </div>)
   }
-  if (!userCanAccessResult?.result)
-    return <AppUnavailable code={403} unknownReason='no permission.' />
+  if (systemFeatures.webapp_auth.enabled && !userCanAccessResult?.result) {
+    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
+      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
+      {!isInstalledApp && <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>}
+    </div>
+  }
 
   return (
     <>

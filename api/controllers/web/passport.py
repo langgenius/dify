@@ -11,9 +11,8 @@ from libs.passport import PassportService
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
-from werkzeug.exceptions import NotFound, Unauthorized
-
 from services.webapp_auth_service import WebAppAuthService, WebAppAuthType
+from werkzeug.exceptions import NotFound, Unauthorized
 
 
 class PassportResource(Resource):
