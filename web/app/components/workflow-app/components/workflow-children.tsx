@@ -46,7 +46,7 @@ const WorkflowChildren = () => {
         showImportDSLModal && (
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
-            onBackup={exportCheck}
+            onBackup={exportCheck!}
             onImport={handlePaneContextmenuCancel}
           />
         )
@@ -55,7 +55,7 @@ const WorkflowChildren = () => {
         secretEnvList.length > 0 && (
           <DSLExportConfirmModal
             envList={secretEnvList}
-            onConfirm={handleExportDSL}
+            onConfirm={handleExportDSL!}
             onClose={() => setSecretEnvList([])}
           />
         )

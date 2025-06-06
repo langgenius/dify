@@ -24,10 +24,11 @@ export const usePipelineInit = () => {
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   const datasetId = useDatasetDetailContextWithSelector(s => s.dataset)?.pipeline_id
+  const knowledgeName = useDatasetDetailContextWithSelector(s => s.dataset)?.name
 
   useEffect(() => {
-    workflowStore.setState({ pipelineId: datasetId })
-  }, [datasetId, workflowStore])
+    workflowStore.setState({ pipelineId: datasetId, knowledgeName })
+  }, [datasetId, workflowStore, knowledgeName])
 
   usePipelineConfig()
 
