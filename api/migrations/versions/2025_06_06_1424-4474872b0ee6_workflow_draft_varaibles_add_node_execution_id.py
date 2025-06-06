@@ -34,7 +34,7 @@ def upgrade():
         )
 
     with op.batch_alter_table('workflow_draft_variables', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('node_execution_id', models.types.StringUUID(), nullable=False))
+        batch_op.add_column(sa.Column('node_execution_id', models.types.StringUUID(), nullable=True))
     # ### end Alembic commands ###
 
 

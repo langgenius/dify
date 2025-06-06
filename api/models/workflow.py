@@ -919,7 +919,14 @@ class WorkflowDraftVariable(Base):
 
     # The `node_execution_id` field identifies the workflow node execution that created this variable.
     # It corresponds to the `id` field in the `WorkflowNodeExecutionModel` model.
-    node_execution_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    #
+    # This field is not `None` for system variables and node variables, and is  `None`
+    # for conversation variables.
+    node_execution_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+    )
 
     def get_selector(self) -> list[str]:
         selector = json.loads(self.selector)
