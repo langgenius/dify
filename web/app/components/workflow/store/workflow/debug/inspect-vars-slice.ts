@@ -16,6 +16,7 @@ type InspectVarsActions = {
   setNodeInspectVars: (nodeId: string, payload: VarInInspect[]) => void
   deleteNodeInspectVars: (nodeId: string) => void
   setInspectVarValue: (nodeId: string, name: string, value: any) => void
+  resetToLastRunVar: (nodeId: string, varId: string, value: any) => void
   renameInspectVarName: (nodeId: string, varId: string, selector: ValueSelector) => void
   deleteInspectVar: (nodeId: string, varId: string) => void
 }
@@ -78,6 +79,24 @@ export const createInspectVarsSlice: StateCreator<InspectVarsSliceShape> = (set,
             return
           targetVar.value = value
           targetVar.edited = true
+          },
+        )
+        return {
+          nodesWithInspectVars: nodes,
+        }
+      })
+    },
+    resetToLastRunVar: (nodeId, varId, value) => {
+      set((state: InspectVarsSliceShape) => {
+        const nodes = produce(state.nodesWithInspectVars, (draft) => {
+          const targetNode = draft.find(node => node.nodeId === nodeId)
+          if (!targetNode)
+            return
+          const targetVar = targetNode.vars.find(varItem => varItem.id === varId)
+          if(!targetVar)
+            return
+          targetVar.value = value
+          targetVar.edited = false
           },
         )
         return {
