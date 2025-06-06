@@ -301,7 +301,7 @@ class PublishedRagPipelineRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
-class RagPipelineDatasourceNodeRunApi(Resource):
+class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -336,10 +336,50 @@ class RagPipelineDatasourceNodeRunApi(Resource):
             user_inputs=inputs,
             account=current_user,
             datasource_type=datasource_type,
+            is_published=True
         )
 
         return result
 
+class RagPipelineDrafDatasourceNodeRunApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, node_id: str):
+        """
+        Run rag pipeline datasource
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("datasource_type", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        inputs = args.get("inputs")
+        if inputs == None:
+            raise ValueError("missing inputs")
+        datasource_type = args.get("datasource_type")
+        if datasource_type == None:
+            raise ValueError("missing datasource_type")
+
+        rag_pipeline_service = RagPipelineService()
+        result = rag_pipeline_service.run_datasource_workflow_node(
+            pipeline=pipeline,
+            node_id=node_id,
+            user_inputs=inputs,
+            account=current_user,
+            datasource_type=datasource_type,
+            is_published=False
+        )
+
+        return result
 
 class RagPipelinePublishedNodeRunApi(Resource):
     @setup_required
@@ -851,8 +891,13 @@ api.add_resource(
     "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run",
 )
 api.add_resource(
-    RagPipelineDatasourceNodeRunApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/datasource/nodes/<string:node_id>/run",
+    RagPipelinePublishedDatasourceNodeRunApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run",
+)
+
+api.add_resource(
+    RagPipelineDrafDatasourceNodeRunApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run",
 )
 
 api.add_resource(
