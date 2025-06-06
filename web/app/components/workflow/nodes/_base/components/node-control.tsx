@@ -13,7 +13,7 @@ import {
   useNodesInteractions,
   useNodesSyncDraft,
 } from '../../../hooks'
-import type { Node } from '../../../types'
+import { type Node, NodeRunningStatus } from '../../../types'
 import { canRunBySingle } from '../../../utils'
 import PanelOperator from './panel-operator'
 import {
@@ -31,7 +31,7 @@ const NodeControl: FC<NodeControlProps> = ({
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleNodeSelect } = useNodesInteractions()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-
+  const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setOpen(newOpen)
   }, [])
@@ -53,11 +53,15 @@ const NodeControl: FC<NodeControlProps> = ({
             <div
               className='flex h-5 w-5 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
               onClick={() => {
+                const nextData: Record<string, any> = {
+                  _isSingleRun: !isSingleRunning,
+                }
+                if(isSingleRunning)
+                  nextData._singleRunningStatus = undefined
+
                 handleNodeDataUpdate({
                   id,
-                  data: {
-                    _isSingleRun: !data._isSingleRun,
-                  },
+                  data: nextData,
                 })
                 handleNodeSelect(id)
                 if (!data._isSingleRun)
@@ -65,7 +69,7 @@ const NodeControl: FC<NodeControlProps> = ({
               }}
             >
               {
-                data._isSingleRun
+                isSingleRunning
                   ? <Stop className='h-3 w-3' />
                   : (
                     <Tooltip

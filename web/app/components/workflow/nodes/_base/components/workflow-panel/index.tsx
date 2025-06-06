@@ -44,7 +44,7 @@ import {
   hasRetryNode,
 } from '@/app/components/workflow/utils'
 import Tooltip from '@/app/components/base/tooltip'
-import { BlockEnum, type Node } from '@/app/components/workflow/types'
+import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useStore } from '@/app/components/workflow/store'
 import Tab, { TabType } from './tab'
@@ -56,6 +56,7 @@ import { NODES_EXTRA_DATA } from '@/app/components/workflow/constants'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import PanelWrap from '../before-run-form/panel-wrap'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
+import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 
 type BasePanelProps = {
   children: ReactNode
@@ -73,6 +74,8 @@ const BasePanel: FC<BasePanelProps> = ({
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
   })))
+    const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+
   const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
@@ -126,6 +129,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { saveStateToHistory } = useWorkflowHistory()
 
   const {
+    handleNodeDataUpdate,
     handleNodeDataUpdateWithSyncDraft,
   } = useNodeDataUpdate()
 
@@ -265,12 +269,29 @@ const BasePanel: FC<BasePanelProps> = ({
                   <Tooltip
                     popupContent={t('workflow.panel.runThisStep')}
                     popupClassName='mr-1'
+                    disabled={isSingleRunning}
                   >
                     <div
                       className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
-                      onClick={handleSingleRun}
+                      onClick={() => {
+                        if(isSingleRunning) {
+                          handleNodeDataUpdate({
+                            id,
+                            data: {
+                              _isSingleRun: false,
+                              _singleRunningStatus: undefined,
+                            },
+                          })
+                        }
+                        else {
+                          handleSingleRun()
+                        }
+                      }}
                     >
-                      <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
+                      {
+                        isSingleRunning ? <Stop className='h-4 w-4 text-text-tertiary' />
+                        : <RiPlayLargeLine className='h-4 w-4 text-text-tertiary' />
+                      }
                     </div>
                   </Tooltip>
                 )
