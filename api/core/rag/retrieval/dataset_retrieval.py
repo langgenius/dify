@@ -900,8 +900,7 @@ class DatasetRetrieval:
         elif metadata_filtering_mode == "manual":
             if metadata_filtering_conditions:
                 conditions = []
-                # type: ignore
-                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):
+                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):  # type: ignore
                     metadata_name = condition.name
                     expected_value = condition.value
                     if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
