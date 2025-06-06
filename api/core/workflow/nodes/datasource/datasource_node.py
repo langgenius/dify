@@ -103,17 +103,18 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                         inputs=parameters_for_log,
                         metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                         outputs={
-                            "online_document": online_document_result.result.model_dump(),
+                            **online_document_result.result.model_dump(),
                             "datasource_type": datasource_type,
                         },
                     )
                 case DatasourceProviderType.WEBSITE_CRAWL:
+
                     return NodeRunResult(
                         status=WorkflowNodeExecutionStatus.SUCCEEDED,
                         inputs=parameters_for_log,
                         metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
                         outputs={
-                            "website": datasource_info,
+                            **datasource_info,
                             "datasource_type": datasource_type,
                         },
                     )
