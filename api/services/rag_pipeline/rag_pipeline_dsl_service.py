@@ -197,8 +197,8 @@ class RagPipelineDslService:
             # Validate and fix DSL version
             if not data.get("version"):
                 data["version"] = "0.1.0"
-            if not data.get("kind") or data.get("kind") != "rag-pipeline":
-                data["kind"] = "rag-pipeline"
+            if not data.get("kind") or data.get("kind") != "rag_pipeline":
+                data["kind"] = "rag_pipeline"
 
             imported_version = data.get("version", "0.1.0")
             # check if imported_version is a float-like string
@@ -277,8 +277,7 @@ class RagPipelineDslService:
             dataset_id = None
             for node in nodes:
                 if node.get("data", {}).get("type") == "knowledge_index":
-                    knowledge_configuration = node.get("data", {}).get("knowledge_configuration", {})
-                    knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
+                    knowledge_configuration = KnowledgeConfiguration(**node.get("data", {}))
                     if (
                         dataset
                         and pipeline.is_published
@@ -412,8 +411,7 @@ class RagPipelineDslService:
             dataset_id = None
             for node in nodes:
                 if node.get("data", {}).get("type") == "knowledge_index":
-                    knowledge_configuration = node.get("data", {}).get("knowledge_configuration", {})
-                    knowledge_configuration = KnowledgeConfiguration(**knowledge_configuration)
+                    knowledge_configuration = KnowledgeConfiguration(**node.get("data", {}))
                     if not dataset:
                         dataset = Dataset(
                             tenant_id=account.current_tenant_id,
@@ -644,7 +642,7 @@ class RagPipelineDslService:
         export_data = {
             "version": CURRENT_DSL_VERSION,
             "kind": "rag_pipeline",
-            "pipeline": {
+            "rag_pipeline": {
                 "name": pipeline.name,
                 "icon": icon_info.get("icon", "📙") if icon_info else "📙",
                 "icon_type": icon_info.get("icon_type", "emoji") if icon_info else "emoji",
