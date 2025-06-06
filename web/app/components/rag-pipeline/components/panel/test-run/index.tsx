@@ -40,9 +40,7 @@ const TestRunPanel = () => {
   } = useOnlineDocuments()
   const {
     websitePages,
-    // websiteCrawlJobId, // todo: Add status query
     setWebsitePages,
-    setWebsiteCrawlJobId,
   } = useWebsiteCrawl()
   const { handleRun } = useWorkflowRun()
 
@@ -147,7 +145,6 @@ const TestRunPanel = () => {
                       docLink: datasource.docLink || '',
                     }}
                     onCheckedCrawlResultChange={setWebsitePages}
-                    onJobIdChange={setWebsiteCrawlJobId}
                     isInPipeline
                   />
                 )}

@@ -7,7 +7,6 @@ type WebsiteCrawlProps = {
   nodeId: string
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
-  onJobIdChange: (jobId: string) => void
   headerInfo: {
     title: string
     docTitle: string
@@ -22,7 +21,6 @@ const WebsiteCrawl = ({
   checkedCrawlResult,
   headerInfo,
   onCheckedCrawlResultChange,
-  onJobIdChange,
   onPreview,
   isInPipeline,
 }: WebsiteCrawlProps) => {
@@ -32,7 +30,6 @@ const WebsiteCrawl = ({
       checkedCrawlResult={checkedCrawlResult}
       headerInfo={headerInfo}
       onCheckedCrawlResultChange={onCheckedCrawlResultChange}
-      onJobIdChange={onJobIdChange}
       onPreview={onPreview}
       isInPipeline={isInPipeline}
     />

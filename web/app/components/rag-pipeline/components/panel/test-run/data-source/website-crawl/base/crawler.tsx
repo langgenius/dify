@@ -9,12 +9,15 @@ import ErrorMessage from './error-message'
 import CrawledResult from './crawled-result'
 import {
   useDraftDatasourceNodeRun,
+  useDraftDatasourceNodeRunStatus,
   useDraftPipelinePreProcessingParams,
   usePublishedDatasourceNodeRun,
+  usePublishedDatasourceNodeRunStatus,
   usePublishedPipelinePreProcessingParams,
 } from '@/service/use-pipeline'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
+import { sleep } from '@/utils'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -22,7 +25,6 @@ type CrawlerProps = {
   nodeId: string
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
-  onJobIdChange: (jobId: string) => void
   headerInfo: {
     title: string
     docTitle: string
@@ -43,7 +45,6 @@ const Crawler = ({
   checkedCrawlResult,
   headerInfo,
   onCheckedCrawlResultChange,
-  onJobIdChange,
   onPreview,
   isInPipeline = false,
 }: CrawlerProps) => {
@@ -74,31 +75,59 @@ const Crawler = ({
   const showError = isCrawlFinished && crawlErrorMessage
 
   const useDatasourceNodeRun = useRef(!isInPipeline ? usePublishedDatasourceNodeRun : useDraftDatasourceNodeRun)
+  const useDatasourceNodeRunStatus = useRef(!isInPipeline ? usePublishedDatasourceNodeRunStatus : useDraftDatasourceNodeRunStatus)
   const { mutateAsync: runDatasourceNode } = useDatasourceNodeRun.current()
+  const { mutateAsync: getDatasourceNodeRunStatus } = useDatasourceNodeRunStatus.current()
+
+  const checkCrawlStatus = useCallback(async (jobId: string) => {
+    const res = await getDatasourceNodeRunStatus({
+      node_id: nodeId,
+      pipeline_id: pipelineId!,
+      job_id: jobId,
+      datasource_type: DatasourceType.websiteCrawl,
+    }, {
+      onError: async (error: any) => {
+        const message = await error.json()
+        setCrawlErrorMessage(message || t(`${I18N_PREFIX}.unknownError`))
+      },
+    }) as any
+    if (res.status === 'completed') {
+      setCrawlResult(res)
+      onCheckedCrawlResultChange(res.result || []) // default select the crawl result
+      setCrawlErrorMessage('')
+      setStep(Step.finished)
+    }
+    else if (res.status === 'processing') {
+      await sleep(2500)
+      await checkCrawlStatus(jobId)
+    }
+  }, [getDatasourceNodeRunStatus, nodeId, pipelineId, t, onCheckedCrawlResultChange])
 
   const handleRun = useCallback(async (value: Record<string, any>) => {
     setStep(Step.running)
-    await runDatasourceNode({
+    const res = await runDatasourceNode({
       node_id: nodeId,
       pipeline_id: pipelineId!,
       inputs: value,
       datasource_type: DatasourceType.websiteCrawl,
     }, {
-      onSuccess: (res: any) => {
-        const jobId = res.job_id
-        onJobIdChange(jobId)
-        setCrawlResult(res)
-        onCheckedCrawlResultChange(res.result || []) // default select the crawl result
-        setCrawlErrorMessage('')
-      },
-      onError: (error) => {
-        setCrawlErrorMessage(error.message || t(`${I18N_PREFIX}.unknownError`))
-      },
-      onSettled: () => {
+      onError: async (error: any) => {
+        const message = await error.json()
+        setCrawlErrorMessage(message || t(`${I18N_PREFIX}.unknownError`))
         setStep(Step.finished)
       },
-    })
-  }, [runDatasourceNode, nodeId, pipelineId, onJobIdChange, onCheckedCrawlResultChange, t])
+    }) as any
+    const jobId = res.job_id
+    if (!jobId && res.status === 'completed') {
+      setCrawlResult(res)
+      onCheckedCrawlResultChange(res.result || []) // default select the crawl result
+      setStep(Step.finished)
+    }
+    else if (jobId) {
+      await checkCrawlStatus(jobId)
+    }
+    setCrawlErrorMessage('')
+  }, [runDatasourceNode, nodeId, pipelineId, onCheckedCrawlResultChange, checkCrawlStatus, t])
 
   return (
     <div className='flex flex-col'>
