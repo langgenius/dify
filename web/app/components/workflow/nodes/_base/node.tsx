@@ -91,7 +91,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   }, [data.isInLoop, data.selected, id, handleNodeLoopChildSizeChange])
 
   const { hasNodeInspectVars } = useInspectVarsCrud()
-  // window.nodesWithInspectVars = nodesWithInspectVars
+  const isLoading = data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running
   const hasVarValue = hasNodeInspectVars(id)
   const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const {
@@ -264,12 +264,12 @@ const BaseNode: FC<BaseNodeProps> = ({
             data.type === BlockEnum.Loop && data._loopIndex && LoopIndex
           }
           {
-            (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
+            isLoading && (
               <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
             )
           }
           {
-            (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue) && (
+            (!isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)) && (
               <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
             )
           }
