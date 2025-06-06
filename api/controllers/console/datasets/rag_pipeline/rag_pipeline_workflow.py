@@ -300,6 +300,86 @@ class PublishedRagPipelineRunApi(Resource):
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
 
+class RagPipelinePublishedDatasourceNodeRunStatusApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, node_id: str):
+        """
+        Run rag pipeline datasource
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("job_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("datasource_type", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        job_id = args.get("job_id")
+        if job_id == None:
+            raise ValueError("missing job_id")
+        datasource_type = args.get("datasource_type")
+        if datasource_type == None:
+            raise ValueError("missing datasource_type")
+
+        rag_pipeline_service = RagPipelineService()
+        result = rag_pipeline_service.run_datasource_workflow_node_status(
+            pipeline=pipeline,
+            node_id=node_id,
+            job_id=job_id,
+            account=current_user,
+            datasource_type=datasource_type,
+            is_published=True
+        )
+
+        return result
+
+class RagPipelineDraftDatasourceNodeRunStatusApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_rag_pipeline
+    def post(self, pipeline: Pipeline, node_id: str):
+        """
+        Run rag pipeline datasource
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("job_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("datasource_type", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        job_id = args.get("job_id")
+        if job_id == None:
+            raise ValueError("missing job_id")
+        datasource_type = args.get("datasource_type")
+        if datasource_type == None:
+            raise ValueError("missing datasource_type")
+
+        rag_pipeline_service = RagPipelineService()
+        result = rag_pipeline_service.run_datasource_workflow_node_status(
+            pipeline=pipeline,
+            node_id=node_id,
+            job_id=job_id,
+            account=current_user,
+            datasource_type=datasource_type,
+            is_published=False
+        )
+
+        return result
+    
 
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @setup_required
@@ -893,6 +973,14 @@ api.add_resource(
 api.add_resource(
     RagPipelinePublishedDatasourceNodeRunApi,
     "/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run",
+)
+api.add_resource(
+    RagPipelinePublishedDatasourceNodeRunStatusApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run-status",
+)
+api.add_resource(
+    RagPipelineDraftDatasourceNodeRunStatusApi,
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run-status",
 )
 
 api.add_resource(
