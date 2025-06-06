@@ -255,7 +255,8 @@ class OpenSearchVector(BaseVector):
                             Field.METADATA_KEY.value: {
                                 "type": "object",
                                 "properties": {
-                                    "doc_id": {"type": "keyword"}  # Map doc_id to keyword type
+                                    "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
+                                    "document_id": {"type": "keyword"},
                                 },
                             },
                         }
