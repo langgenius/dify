@@ -867,6 +867,16 @@ def _naive_utc_datetime():
 
 
 class WorkflowDraftVariable(Base):
+    """`WorkflowDraftVariable` record variables and outputs generated during
+    debugging worfklow or chatflow.
+
+    IMPORTANT: This model maintains multiple invariant rules that must be preserved.
+    Do not instantiate this class directly with the constructor.
+
+    Instead, use the factory methods (`new_conversation_variable`, `new_sys_variable`,
+    `new_node_variable`) defined below to ensure all invariants are properly maintained.
+    """
+
     @staticmethod
     def unique_app_id_node_id_name() -> list[str]:
         return [
@@ -956,6 +966,7 @@ class WorkflowDraftVariable(Base):
     # Use double underscore prefix for better encapsulation,
     # making this attribute harder to access from outside the class.
     __value: Segment | None
+    node_execution_id: str | None  # pretend this field exists.
 
     def __init__(self, *args, **kwargs):
         """
@@ -1062,6 +1073,7 @@ class WorkflowDraftVariable(Base):
         node_id: str,
         name: str,
         value: Segment,
+        node_execution_id: str | None = None,
         description: str = "",
     ) -> "WorkflowDraftVariable":
         variable = WorkflowDraftVariable()
@@ -1073,6 +1085,7 @@ class WorkflowDraftVariable(Base):
         variable.name = name
         variable.set_value(value)
         variable._set_selector(list(variable_utils.to_selector(node_id, name)))
+        variable.node_execution_id = node_execution_id
         return variable
 
     @classmethod
@@ -1100,9 +1113,16 @@ class WorkflowDraftVariable(Base):
         app_id: str,
         name: str,
         value: Segment,
+        node_execution_id: str,
         editable: bool = False,
     ) -> "WorkflowDraftVariable":
-        variable = cls._new(app_id=app_id, node_id=SYSTEM_VARIABLE_NODE_ID, name=name, value=value)
+        variable = cls._new(
+            app_id=app_id,
+            node_id=SYSTEM_VARIABLE_NODE_ID,
+            name=name,
+            node_execution_id=node_execution_id,
+            value=value,
+        )
         variable.editable = editable
         return variable
 
@@ -1114,10 +1134,17 @@ class WorkflowDraftVariable(Base):
         node_id: str,
         name: str,
         value: Segment,
+        node_execution_id: str,
         visible: bool = True,
         editable: bool = True,
     ) -> "WorkflowDraftVariable":
-        variable = cls._new(app_id=app_id, node_id=node_id, name=name, value=value)
+        variable = cls._new(
+            app_id=app_id,
+            node_id=node_id,
+            name=name,
+            node_execution_id=node_execution_id,
+            value=value,
+        )
         variable.visible = visible
         variable.editable = editable
         return variable

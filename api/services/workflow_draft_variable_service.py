@@ -460,6 +460,9 @@ class DraftVariableSaver:
     # Indicates how the workflow execution was triggered (see InvokeFrom).
     _invoke_from: InvokeFrom
 
+    #
+    _node_execution_id: str
+
     # _enclosing_node_id identifies the container node that the current node belongs to.
     # For example, if the current node is an LLM node inside an Iteration node
     # or Loop node, then `_enclosing_node_id` refers to the ID of
@@ -476,6 +479,7 @@ class DraftVariableSaver:
         node_id: str,
         node_type: NodeType,
         invoke_from: InvokeFrom,
+        node_execution_id: str,
         enclosing_node_id: str | None = None,
     ):
         self._session = session
@@ -483,6 +487,7 @@ class DraftVariableSaver:
         self._node_id = node_id
         self._node_type = node_type
         self._invoke_from = invoke_from
+        self._node_execution_id = node_execution_id
         self._enclosing_node_id = enclosing_node_id
 
     def _should_save_output_variables_for_draft(self) -> bool:
@@ -512,6 +517,7 @@ class DraftVariableSaver:
                 WorkflowDraftVariable.new_conversation_variable(
                     app_id=self._app_id,
                     name=item.name,
+                    node_execution_id=self._node_execution_id,
                     value=segment,
                 )
             )
@@ -531,6 +537,7 @@ class DraftVariableSaver:
                         app_id=self._app_id,
                         node_id=self._node_id,
                         name=name,
+                        node_execution_id=self._node_execution_id,
                         value=value_seg,
                         visible=True,
                         editable=True,
@@ -551,6 +558,7 @@ class DraftVariableSaver:
                     WorkflowDraftVariable.new_sys_variable(
                         app_id=self._app_id,
                         name=name,
+                        node_execution_id=self._node_execution_id,
                         value=value_seg,
                         editable=self._should_variable_be_editable(node_id, name),
                     )
@@ -561,6 +569,7 @@ class DraftVariableSaver:
                     app_id=self._app_id,
                     node_id=self._node_id,
                     name=self._DUMMY_OUTPUT_IDENTITY,
+                    node_execution_id=self._node_execution_id,
                     value=_build_segment_for_value(self._DUMMY_OUTPUT_VALUE),
                     visible=False,
                     editable=False,
@@ -583,6 +592,7 @@ class DraftVariableSaver:
                     app_id=self._app_id,
                     node_id=self._node_id,
                     name=name,
+                    node_execution_id=self._node_execution_id,
                     value=value_seg,
                     visible=self._should_variable_be_visible(self._node_id, self._node_type, name),
                 )

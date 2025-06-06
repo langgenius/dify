@@ -733,6 +733,7 @@ class WorkflowBasedAppRunner(AppRunner):
                 node_type=event.node_type,
                 # FIXME(QuantumGhost): rely on private state of queue_manager is not ideal.
                 invoke_from=self.queue_manager._invoke_from,
+                node_execution_id=event.id,
                 enclosing_node_id=event.in_loop_id or event.in_iteration_id or None,
             )
             draft_var_saver.save(process_data=process_data, outputs=outputs)
