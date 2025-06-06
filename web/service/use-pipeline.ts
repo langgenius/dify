@@ -288,7 +288,7 @@ export const usePublishedPipelinePreProcessingParams = (params: PipelinePreProce
   return useQuery<PipelinePreProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'published-pipeline-pre-processing-params', pipeline_id, node_id],
     queryFn: () => {
-      return get<PipelinePreProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/processing/parameters`, {
+      return get<PipelinePreProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/pre-processing/parameters`, {
         params: {
           node_id,
         },

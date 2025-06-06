@@ -72,9 +72,9 @@ const CreateFormPipeline = () => {
   } = useOnlineDocuments()
   const {
     websitePages,
-    websiteCrawlJobId,
+    // websiteCrawlJobId, // todo: Add status query
     previewWebsitePage,
-    setWebsitePages,
+    updataCheckedCrawlResultChange,
     setWebsiteCrawlJobId,
     currentWebsite,
     updateCurrentWebsite,
@@ -124,13 +124,8 @@ const CreateFormPipeline = () => {
       }
       datasourceInfoList.push(documentInfo)
     }
-    if (datasource.type === DatasourceType.websiteCrawl) {
-      const documentInfo = {
-        job_id: websiteCrawlJobId,
-        result: previewWebsitePage.current,
-      }
-      datasourceInfoList.push(documentInfo)
-    }
+    if (datasource.type === DatasourceType.websiteCrawl)
+      datasourceInfoList.push(previewWebsitePage.current)
     await runPublishedPipeline({
       pipeline_id: pipelineId!,
       inputs: data,
@@ -143,7 +138,7 @@ const CreateFormPipeline = () => {
         setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
       },
     })
-  }, [datasource, pipelineId, previewFile, previewOnlineDocument, previewWebsitePage, runPublishedPipeline, websiteCrawlJobId])
+  }, [datasource, pipelineId, previewFile, previewOnlineDocument, previewWebsitePage, runPublishedPipeline])
 
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
@@ -176,11 +171,9 @@ const CreateFormPipeline = () => {
       })
     }
     if (datasource.type === DatasourceType.websiteCrawl) {
-      const documentInfo = {
-        job_id: websiteCrawlJobId,
-        result: websitePages,
-      }
-      datasourceInfoList.push(documentInfo)
+      websitePages.forEach((websitePage) => {
+        datasourceInfoList.push(websitePage)
+      })
     }
     await runPublishedPipeline({
       pipeline_id: pipelineId!,
@@ -196,7 +189,7 @@ const CreateFormPipeline = () => {
         handleNextStep()
       },
     })
-  }, [datasource, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, websiteCrawlJobId, websitePages])
+  }, [datasource, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, websitePages])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -285,7 +278,7 @@ const CreateFormPipeline = () => {
                       docLink: datasource.docLink || '',
                     }}
                     checkedCrawlResult={websitePages}
-                    onCheckedCrawlResultChange={setWebsitePages}
+                    onCheckedCrawlResultChange={updataCheckedCrawlResultChange}
                     onJobIdChange={setWebsiteCrawlJobId}
                     onPreview={updateCurrentWebsite}
                   />

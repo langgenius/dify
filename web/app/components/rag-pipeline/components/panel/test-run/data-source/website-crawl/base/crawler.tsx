@@ -11,7 +11,7 @@ import {
   useDraftDatasourceNodeRun,
   useDraftPipelinePreProcessingParams,
   usePublishedDatasourceNodeRun,
-  usePublishedPipelineProcessingParams,
+  usePublishedPipelinePreProcessingParams,
 } from '@/service/use-pipeline'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { DatasourceType } from '@/models/pipeline'
@@ -52,7 +52,7 @@ const Crawler = ({
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
 
-  const usePreProcessingParams = useRef(!isInPipeline ? usePublishedPipelineProcessingParams : useDraftPipelinePreProcessingParams)
+  const usePreProcessingParams = useRef(!isInPipeline ? usePublishedPipelinePreProcessingParams : useDraftPipelinePreProcessingParams)
   const { data: paramsConfig } = usePreProcessingParams.current({
     pipeline_id: pipelineId!,
     node_id: nodeId,

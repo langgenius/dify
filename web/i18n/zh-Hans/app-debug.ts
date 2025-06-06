@@ -360,6 +360,7 @@ const translation = {
     'varName': '变量名称',
     'inputPlaceholder': '请输入',
     'labelName': '显示名称',
+    'displayName': '显示名称',
     'required': '必填',
     'hide': '隐藏',
     'placeholder': '占位符',
