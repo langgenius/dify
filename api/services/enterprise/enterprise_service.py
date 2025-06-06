@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from pydantic import BaseModel, Field
-
 from services.enterprise.base import EnterpriseRequest
 
 
@@ -25,7 +24,6 @@ class EnterpriseService:
     @classmethod
     def get_app_sso_settings_last_update_time(cls) -> datetime:
         data = EnterpriseRequest.send_request("GET", "/sso/app/last-update-time")
-        print(data)
         if not data:
             raise ValueError("No data found.")
         try:
@@ -37,7 +35,6 @@ class EnterpriseService:
     @classmethod
     def get_workspace_sso_settings_last_update_time(cls) -> datetime:
         data = EnterpriseRequest.send_request("GET", "/sso/workspace/last-update-time")
-        print(data)
         if not data:
             raise ValueError("No data found.")
         try:
