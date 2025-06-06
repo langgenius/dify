@@ -30,7 +30,7 @@ export const COMMON_OUTPUT = [
   },
 ]
 
-export const FILE_OUTPUT = [
+export const LOCAL_FILE_OUTPUT = [
   {
     name: 'file',
     type: VarType.file,
@@ -80,7 +80,7 @@ export const FILE_OUTPUT = [
   },
 ]
 
-export const WEBSITE_OUTPUT = [
+export const WEBSITE_CRAWL_OUTPUT = [
   {
     name: 'source_url',
     type: VarType.string,
@@ -100,5 +100,23 @@ export const WEBSITE_OUTPUT = [
     name: 'description',
     type: VarType.string,
     description: 'The description of the crawled website',
+  },
+]
+
+export const ONLINE_DOCUMENT_OUTPUT = [
+  {
+    name: 'workspace_id',
+    type: VarType.string,
+    description: 'The ID of the workspace where the document is stored',
+  },
+  {
+    name: 'page_id',
+    type: VarType.string,
+    description: 'The ID of the page in the document',
+  },
+  {
+    name: 'content',
+    type: VarType.string,
+    description: 'The content of the online document',
   },
 ]

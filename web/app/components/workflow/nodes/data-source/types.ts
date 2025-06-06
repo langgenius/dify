@@ -7,8 +7,9 @@ export enum VarType {
 }
 
 export enum DataSourceClassification {
-  file = 'local_file',
-  website = 'website_crawl',
+  localFile = 'local_file',
+  websiteCrawl = 'website_crawl',
+  onlineDocument = 'online_document',
 }
 
 export type ToolVarInputs = Record<string, {
