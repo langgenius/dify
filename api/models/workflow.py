@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     from models.model import AppMode
 
 import sqlalchemy as sa
-from sqlalchemy import UniqueConstraint, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Index, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
@@ -590,28 +590,45 @@ class WorkflowNodeExecutionModel(Base):
     """
 
     __tablename__ = "workflow_node_executions"
-    __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
-        db.Index(
-            "workflow_node_execution_workflow_run_idx",
-            "tenant_id",
-            "app_id",
-            "workflow_id",
-            "triggered_from",
-            "workflow_run_id",
-        ),
-        db.Index(
-            "workflow_node_execution_node_run_idx", "tenant_id", "app_id", "workflow_id", "triggered_from", "node_id"
-        ),
-        db.Index(
-            "workflow_node_execution_id_idx",
-            "tenant_id",
-            "app_id",
-            "workflow_id",
-            "triggered_from",
-            "node_execution_id",
-        ),
-    )
+
+    @declared_attr
+    def __table_args__(cls):  # noqa
+        return (
+            db.PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
+            db.Index(
+                "workflow_node_execution_workflow_run_idx",
+                "tenant_id",
+                "app_id",
+                "workflow_id",
+                "triggered_from",
+                "workflow_run_id",
+            ),
+            db.Index(
+                "workflow_node_execution_node_run_idx",
+                "tenant_id",
+                "app_id",
+                "workflow_id",
+                "triggered_from",
+                "node_id",
+            ),
+            db.Index(
+                "workflow_node_execution_id_idx",
+                "tenant_id",
+                "app_id",
+                "workflow_id",
+                "triggered_from",
+                "node_execution_id",
+            ),
+            Index(
+                # The first argument is the index name,
+                # which we leave as `None`` to allow auto-generation by the ORM.
+                None,
+                cls.tenant_id,
+                cls.workflow_id,
+                cls.node_id,
+                cls.created_at.desc(),
+            ),
+        )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
