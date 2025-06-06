@@ -20,7 +20,6 @@ export const DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE = [
   'epub',
   'ppt',
   'md',
-  'html',
 ]
 
 export const COMMON_OUTPUT = [
