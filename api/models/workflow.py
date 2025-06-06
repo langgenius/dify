@@ -902,13 +902,20 @@ class WorkflowDraftVariable(Base):
 
     selector: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="selector")
 
+    # The data type of this variable's value
     value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20))
-    # JSON string
+
+    # The variable's value serialized as a JSON string
     value: Mapped[str] = mapped_column(sa.Text, nullable=False, name="value")
 
-    # visible
+    # Controls whether the variable should be displayed in the variable inspection panel
     visible: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+
+    # Determines whether this variable can be modified by users
     editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+
+    # The `node_execution_id` field identifies the workflow node execution that created this variable.
+    # It corresponds to the `id` field in the `WorkflowNodeExecutionModel` model.
     node_execution_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
     def get_selector(self) -> list[str]:
