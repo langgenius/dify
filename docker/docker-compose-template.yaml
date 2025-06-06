@@ -617,6 +617,18 @@ services:
     ports:
       - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
 
+  # Matrixone vector store.
+  matrixone:
+    hostname: matrixone
+    image: matrixorigin/matrixone:2.1.1
+    profiles:
+      - matrixone
+    restart: always
+    volumes:
+      - ./volumes/matrixone/data:/mo-data
+    ports:
+      - ${MATRIXONE_PORT:-6001}:${MATRIXONE_PORT:-6001}
+
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
   elasticsearch:
