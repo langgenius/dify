@@ -626,7 +626,10 @@ class WorkflowNodeExecutionModel(Base):
                 cls.tenant_id,
                 cls.workflow_id,
                 cls.node_id,
-                cls.created_at.desc(),
+                # MyPy may flag the following line because it doesn't recognize that
+                # the `declared_attr` decorator passes the receiving class as the first
+                # argument to this method, allowing us to reference class attributes.
+                cls.created_at.desc(),  # type: ignore
             ),
         )
 
