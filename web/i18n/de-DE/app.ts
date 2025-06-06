@@ -220,12 +220,14 @@ const translation = {
     anyone: 'Jeder kann auf die Webanwendung zugreifen.',
     specific: 'Nur bestimmte Gruppen oder Mitglieder können auf die Webanwendung zugreifen.',
     organization: 'Jeder in der Organisation kann auf die Webanwendung zugreifen.',
+    external: 'Nur authentifizierte externe Benutzer können auf die Webanwendung zugreifen.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Jeder mit dem Link',
       specific: 'Spezifische Gruppen oder Mitglieder',
       organization: 'Nur Mitglieder innerhalb des Unternehmens',
+      external: 'Authentifizierte externe Benutzer',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Gruppen und Mitglieder suchen',

@@ -212,12 +212,14 @@ const translation = {
     anyone: '任何人都可以訪問這個網絡應用程式',
     specific: '只有特定的群體或成員可以訪問這個網絡應用程序',
     organization: '組織中的任何人都可以訪問該網絡應用程序',
+    external: '只有經過身份驗證的外部用戶才能訪問該網絡應用程序',
   },
   accessControlDialog: {
     accessItems: {
       anyone: '擁有鏈接的人',
       specific: '特定群體或成員',
       organization: '只有企業內部成員',
+      external: '經過驗證的外部用戶',
     },
     operateGroupAndMember: {
       searchPlaceholder: '搜尋群組和成員',

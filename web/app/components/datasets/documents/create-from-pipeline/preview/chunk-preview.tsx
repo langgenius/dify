@@ -20,35 +20,35 @@ import { DatasourceType } from '@/models/pipeline'
 type ChunkPreviewProps = {
   datasource: Datasource
   files: CustomFile[]
-  notionPages: NotionPage[]
+  onlineDocuments: NotionPage[]
   websitePages: CrawlResultItem[]
   isIdle: boolean
   isPending: boolean
   estimateData: FileIndexingEstimateResponse | undefined
   onPreview: () => void
   handlePreviewFileChange: (file: DocumentItem) => void
-  handlePreviewNotionPageChange: (page: NotionPage) => void
+  handlePreviewOnlineDocumentChange: (page: NotionPage) => void
   handlePreviewWebsitePageChange: (page: CrawlResultItem) => void
 }
 
 const ChunkPreview = ({
   datasource,
   files,
-  notionPages,
+  onlineDocuments,
   websitePages,
   isIdle,
   isPending,
   estimateData,
   onPreview,
   handlePreviewFileChange,
-  handlePreviewNotionPageChange,
+  handlePreviewOnlineDocumentChange,
   handlePreviewWebsitePageChange,
 }: ChunkPreviewProps) => {
   const { t } = useTranslation()
   const currentDocForm = useDatasetDetailContextWithSelector(s => s.dataset?.doc_form)
 
   const [previewFile, setPreviewFile] = useState<DocumentItem>(files[0] as DocumentItem)
-  const [previewNotionPage, setPreviewNotionPage] = useState<NotionPage>(notionPages[0])
+  const [previewOnlineDocument, setPreviewOnlineDocument] = useState<NotionPage>(onlineDocuments[0])
   const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(websitePages[0])
 
   const dataSourceType = datasource?.type
@@ -72,20 +72,20 @@ const ChunkPreview = ({
           {dataSourceType === DatasourceType.onlineDocument
             && <PreviewDocumentPicker
               files={
-                notionPages.map(page => ({
+                onlineDocuments.map(page => ({
                   id: page.page_id,
                   name: page.page_name,
                   extension: 'md',
                 }))
               }
               onChange={(selected) => {
-                const selectedPage = notionPages.find(page => page.page_id === selected.id)
-                setPreviewNotionPage(selectedPage!)
-                handlePreviewNotionPageChange(selectedPage!)
+                const selectedPage = onlineDocuments.find(page => page.page_id === selected.id)
+                setPreviewOnlineDocument(selectedPage!)
+                handlePreviewOnlineDocumentChange(selectedPage!)
               }}
               value={{
-                id: previewNotionPage?.page_id || '',
-                name: previewNotionPage?.page_name || '',
+                id: previewOnlineDocument?.page_id || '',
+                name: previewOnlineDocument?.page_name || '',
                 extension: 'md',
               }}
             />

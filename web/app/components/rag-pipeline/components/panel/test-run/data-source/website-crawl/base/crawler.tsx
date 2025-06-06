@@ -8,11 +8,13 @@ import Crawling from './crawling'
 import ErrorMessage from './error-message'
 import CrawledResult from './crawled-result'
 import {
-  useDatasourceNodeRun,
+  useDraftDatasourceNodeRun,
   useDraftPipelinePreProcessingParams,
+  usePublishedDatasourceNodeRun,
   usePublishedPipelineProcessingParams,
 } from '@/service/use-pipeline'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { DatasourceType } from '@/models/pipeline'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -27,7 +29,7 @@ type CrawlerProps = {
     docLink: string
   }
   onPreview?: (payload: CrawlResultItem) => void
-  usingPublished?: boolean
+  isInPipeline?: boolean
 }
 
 enum Step {
@@ -43,14 +45,14 @@ const Crawler = ({
   onCheckedCrawlResultChange,
   onJobIdChange,
   onPreview,
-  usingPublished = false,
+  isInPipeline = false,
 }: CrawlerProps) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
 
-  const usePreProcessingParams = useRef(usingPublished ? usePublishedPipelineProcessingParams : useDraftPipelinePreProcessingParams)
+  const usePreProcessingParams = useRef(!isInPipeline ? usePublishedPipelineProcessingParams : useDraftPipelinePreProcessingParams)
   const { data: paramsConfig } = usePreProcessingParams.current({
     pipeline_id: pipelineId!,
     node_id: nodeId,
@@ -71,7 +73,8 @@ const Crawler = ({
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const showError = isCrawlFinished && crawlErrorMessage
 
-  const { mutateAsync: runDatasourceNode } = useDatasourceNodeRun()
+  const useDatasourceNodeRun = useRef(!isInPipeline ? usePublishedDatasourceNodeRun : useDraftDatasourceNodeRun)
+  const { mutateAsync: runDatasourceNode } = useDatasourceNodeRun.current()
 
   const handleRun = useCallback(async (value: Record<string, any>) => {
     setStep(Step.running)
@@ -79,6 +82,7 @@ const Crawler = ({
       node_id: nodeId,
       pipeline_id: pipelineId!,
       inputs: value,
+      datasource_type: DatasourceType.websiteCrawl,
     }, {
       onSuccess: (res: any) => {
         const jobId = res.job_id

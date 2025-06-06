@@ -366,7 +366,7 @@ export const useChat = (
             if (!newResponseItem)
               return
 
-            const isUseAgentThought = newResponseItem.agent_thoughts?.length > 0
+            const isUseAgentThought = newResponseItem.agent_thoughts?.length > 0 && newResponseItem.agent_thoughts[newResponseItem.agent_thoughts?.length - 1].thought === newResponseItem.answer
             updateChatTreeNode(responseItem.id, {
               content: isUseAgentThought ? '' : newResponseItem.answer,
               log: [

@@ -49,8 +49,8 @@ export const useDatasourceOptions = () => {
       return {
         nodeId: node.id,
         type: node.data.provider_type as DatasourceType,
-        description: '', // todo: Add description
-        docTitle: '', // todo: Add docTitle and docLink
+        description: node.data.datasource_label,
+        docTitle: 'How to use?',
         docLink: '',
         fileExtensions: node.data.fileExtensions || [],
       }
@@ -101,16 +101,16 @@ export const useLocalFile = () => {
   }
 }
 
-export const useNotionPages = () => {
-  const [notionPages, setNotionPages] = useState<NotionPage[]>([])
+export const useOnlineDocuments = () => {
+  const [onlineDocuments, setOnlineDocuments] = useState<NotionPage[]>([])
 
-  const updateNotionPages = (value: NotionPage[]) => {
-    setNotionPages(value)
+  const updateOnlineDocuments = (value: NotionPage[]) => {
+    setOnlineDocuments(value)
   }
 
   return {
-    notionPages,
-    updateNotionPages,
+    onlineDocuments,
+    updateOnlineDocuments,
   }
 }
 
