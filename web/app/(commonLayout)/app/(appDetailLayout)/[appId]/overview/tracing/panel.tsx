@@ -23,19 +23,6 @@ import Divider from '@/app/components/base/divider'
 
 const I18N_PREFIX = 'app.tracing'
 
-const Title = ({
-  className,
-}: {
-  className?: string
-}) => {
-  const { t } = useTranslation()
-
-  return (
-    <div className={cn('system-xl-semibold flex items-center text-text-primary', className)}>
-      {t('common.appMenus.overview')}
-    </div>
-  )
-}
 const Panel: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
