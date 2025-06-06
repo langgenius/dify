@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from models.model import AppMode
 
 import sqlalchemy as sa
-from sqlalchemy import Index, UniqueConstraint, func
+from sqlalchemy import Index, PrimaryKeyConstraint, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
@@ -594,8 +594,8 @@ class WorkflowNodeExecutionModel(Base):
     @declared_attr
     def __table_args__(cls):  # noqa
         return (
-            db.PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
-            db.Index(
+            PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
+            Index(
                 "workflow_node_execution_workflow_run_idx",
                 "tenant_id",
                 "app_id",
@@ -603,7 +603,7 @@ class WorkflowNodeExecutionModel(Base):
                 "triggered_from",
                 "workflow_run_id",
             ),
-            db.Index(
+            Index(
                 "workflow_node_execution_node_run_idx",
                 "tenant_id",
                 "app_id",
@@ -611,7 +611,7 @@ class WorkflowNodeExecutionModel(Base):
                 "triggered_from",
                 "node_id",
             ),
-            db.Index(
+            Index(
                 "workflow_node_execution_id_idx",
                 "tenant_id",
                 "app_id",
