@@ -6,6 +6,7 @@ from typing import Optional, Union
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs.app_config import DifyConfig
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -54,6 +55,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.repositories.workflow_execution_repo_mode import WorkflowExecRepoMode
 from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -554,6 +556,10 @@ class WorkflowAppGenerateTaskPipeline:
             tts_publisher.publish(None)
 
     def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution) -> None:
+        config = DifyConfig()
+        if config.WORKFLOW_NODE_EXECUTION_REPO_MODE == WorkflowExecRepoMode.MEMORY:
+            return
+
         workflow_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == workflow_execution.id_))
         assert workflow_run is not None
         invoke_from = self._application_generate_entity.invoke_from
