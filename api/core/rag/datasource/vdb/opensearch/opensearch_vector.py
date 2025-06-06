@@ -256,7 +256,7 @@ class OpenSearchVector(BaseVector):
                                 "type": "object",
                                 "properties": {
                                     "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
-                                    "document_id": {"type": "keyword"}
+                                    "document_id": {"type": "keyword"},
                                 },
                             },
                         }
