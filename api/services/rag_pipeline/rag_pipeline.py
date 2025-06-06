@@ -450,32 +450,32 @@ class RagPipelineService:
             tenant_id=pipeline.tenant_id,
             datasource_type=DatasourceProviderType(datasource_type),
         )
+        match datasource_type:
+            case DatasourceProviderType.ONLINE_DOCUMENT:
+                datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+                online_document_result: GetOnlineDocumentPagesResponse = datasource_runtime._get_online_document_pages(
+                    user_id=account.id,
+                    datasource_parameters=user_inputs,
+                    provider_type=datasource_runtime.datasource_provider_type(),
+                )
+                return {
+                    "result": [page.model_dump() for page in online_document_result.result],
+                    "provider_type": datasource_node_data.get("provider_type"),
+                }
 
-        if datasource_runtime.datasource_provider_type() == DatasourceProviderType.ONLINE_DOCUMENT:
-            datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-            online_document_result: GetOnlineDocumentPagesResponse = datasource_runtime._get_online_document_pages(
-                user_id=account.id,
-                datasource_parameters=user_inputs,
-                provider_type=datasource_runtime.datasource_provider_type(),
-            )
-            return {
-                "result": [page.model_dump() for page in online_document_result.result],
-                "provider_type": datasource_node_data.get("provider_type"),
-            }
-
-        elif datasource_runtime.datasource_provider_type == DatasourceProviderType.WEBSITE_CRAWL:
-            datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-            website_crawl_result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
-                user_id=account.id,
-                datasource_parameters=user_inputs,
-                provider_type=datasource_runtime.datasource_provider_type(),
-            )
-            return {
-                "result": [result.model_dump() for result in website_crawl_result.result],
-                "provider_type": datasource_node_data.get("provider_type"),
-            }
-        else:
-            raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
+            case DatasourceProviderType.WEBSITE_CRAWL:
+                datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
+                website_crawl_result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
+                    user_id=account.id,
+                    datasource_parameters=user_inputs,
+                    provider_type=datasource_runtime.datasource_provider_type(),
+                )
+                return {
+                    "result": [result.model_dump() for result in website_crawl_result.result],
+                    "provider_type": datasource_node_data.get("provider_type"),
+                }
+            case _:
+                raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
