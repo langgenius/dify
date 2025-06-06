@@ -496,6 +496,8 @@ class DatasetRetrieval:
                     all_documents = self.calculate_keyword_score(query, all_documents, top_k)
                 elif index_type == "high_quality":
                     all_documents = self.calculate_vector_score(all_documents, top_k, score_threshold)
+                else:
+                    all_documents = all_documents[:top_k] if top_k else all_documents
 
         self._on_query(query, dataset_ids, app_id, user_from, user_id)
 
@@ -898,7 +900,8 @@ class DatasetRetrieval:
         elif metadata_filtering_mode == "manual":
             if metadata_filtering_conditions:
                 conditions = []
-                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):  # type: ignore
+                # type: ignore
+                for sequence, condition in enumerate(metadata_filtering_conditions.conditions):
                     metadata_name = condition.name
                     expected_value = condition.value
                     if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
