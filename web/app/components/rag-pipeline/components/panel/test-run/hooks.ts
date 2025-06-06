@@ -116,12 +116,9 @@ export const useOnlineDocuments = () => {
 
 export const useWebsiteCrawl = () => {
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
-  const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
 
   return {
     websitePages,
-    websiteCrawlJobId,
     setWebsitePages,
-    setWebsiteCrawlJobId,
   }
 }

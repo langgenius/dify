@@ -10,6 +10,8 @@ import type {
   PipelineCheckDependenciesResponse,
   PipelineDatasourceNodeRunRequest,
   PipelineDatasourceNodeRunResponse,
+  PipelineDatasourceNodeRunStatusRequest,
+  PipelineDatasourceNodeRunStatusResponse,
   PipelinePreProcessingParamsRequest,
   PipelinePreProcessingParamsResponse,
   PipelineProcessingParamsRequest,
@@ -146,6 +148,36 @@ export const usePublishedDatasourceNodeRun = (
     mutationFn: (request: PipelineDatasourceNodeRunRequest) => {
       const { pipeline_id, node_id, ...rest } = request
       return post<PipelineDatasourceNodeRunResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/datasource/nodes/${node_id}/run`, {
+        body: rest,
+      })
+    },
+    ...mutationOptions,
+  })
+}
+
+export const useDraftDatasourceNodeRunStatus = (
+  mutationOptions: MutationOptions<PipelineDatasourceNodeRunStatusResponse, Error, PipelineDatasourceNodeRunStatusRequest> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'draft-datasource-node-run-status'],
+    mutationFn: (request: PipelineDatasourceNodeRunStatusRequest) => {
+      const { pipeline_id, node_id, ...rest } = request
+      return post<PipelineDatasourceNodeRunStatusResponse>(`/rag/pipelines/${pipeline_id}/workflows/draft/datasource/nodes/${node_id}/run`, {
+        body: rest,
+      })
+    },
+    ...mutationOptions,
+  })
+}
+
+export const usePublishedDatasourceNodeRunStatus = (
+  mutationOptions: MutationOptions<PipelineDatasourceNodeRunStatusResponse, Error, PipelineDatasourceNodeRunStatusRequest> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'published-datasource-node-run-status'],
+    mutationFn: (request: PipelineDatasourceNodeRunStatusRequest) => {
+      const { pipeline_id, node_id, ...rest } = request
+      return post<PipelineDatasourceNodeRunStatusResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/datasource/nodes/${node_id}/run`, {
         body: rest,
       })
     },
