@@ -120,6 +120,47 @@ class DatasourceProviderService:
 
         return copy_credentials_list
 
+    def get_real_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> list[dict]:
+        """
+        get datasource credentials.
+
+        :param tenant_id: workspace id
+        :param provider_id: provider id
+        :return:
+        """
+        # Get all provider configurations of the current workspace
+        datasource_providers: list[DatasourceProvider] = (
+            db.session.query(DatasourceProvider)
+            .filter(
+                DatasourceProvider.tenant_id == tenant_id,
+                DatasourceProvider.provider == provider,
+                DatasourceProvider.plugin_id == plugin_id,
+            )
+            .all()
+        )
+        if not datasource_providers:
+            return []
+        copy_credentials_list = []
+        for datasource_provider in datasource_providers:
+            encrypted_credentials = datasource_provider.encrypted_credentials
+            # Get provider credential secret variables
+            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider_id=f"{plugin_id}/{provider}")
+
+            # Obfuscate provider credentials
+            copy_credentials = encrypted_credentials.copy()
+            for key, value in copy_credentials.items():
+                if key in credential_secret_variables:
+                    copy_credentials[key] = encrypter.decrypt_token(tenant_id, value)
+            copy_credentials_list.append(
+                {
+                    "credentials": copy_credentials,
+                    "type": datasource_provider.auth_type,
+                }
+            )
+
+        return copy_credentials_list
+
+
     def update_datasource_credentials(self, tenant_id: str, auth_id: str, provider: str, plugin_id: str, credentials: dict) -> None:
         """
         update datasource credentials.
