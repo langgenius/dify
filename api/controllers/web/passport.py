@@ -113,7 +113,7 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     app_auth_type = WebAppAuthService.get_app_auth_type(app_code=app_code)
 
     if app_auth_type == WebAppAuthType.PUBLIC:
-        return _exchange_for_public_app_token(app_model, site)
+        return _exchange_for_public_app_token(app_model, site, enterprise_user_decoded)
     elif app_auth_type == WebAppAuthType.EXTERNAL and user_auth_type != "external":
         raise WebAppAuthRequiredError("Please login as external user.")
     elif app_auth_type == WebAppAuthType.INTERNAL and user_auth_type != "internal":
@@ -164,17 +164,25 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     }
 
 
-def _exchange_for_public_app_token(app_model, site):
-    end_user = EndUser(
-        tenant_id=app_model.tenant_id,
-        app_id=app_model.id,
-        type="browser",
-        is_anonymous=True,
-        session_id=generate_session_id(),
-    )
+def _exchange_for_public_app_token(app_model, site, token_decoded):
+    user_id = token_decoded.get("user_id")
+    end_user = None
+    if user_id:
+        end_user = db.session.query(EndUser).filter(
+            EndUser.app_id == app_model.id, EndUser.session_id == user_id
+        ).first()
 
-    db.session.add(end_user)
-    db.session.commit()
+    if not end_user:
+        end_user = EndUser(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            type="browser",
+            is_anonymous=True,
+            session_id=generate_session_id(),
+        )
+
+        db.session.add(end_user)
+        db.session.commit()
 
     payload = {
         "iss": site.app_id,
