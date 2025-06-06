@@ -8,6 +8,7 @@ import { transformDataSourceToTool } from '@/app/components/workflow/block-selec
 
 export type RagPipelineSliceShape = {
   pipelineId: string
+  knowledgeName: string
   showInputFieldDialog: boolean
   setShowInputFieldDialog: (showInputFieldPanel: boolean) => void
   nodesDefaultConfigs: Record<string, any>
@@ -21,6 +22,7 @@ export type RagPipelineSliceShape = {
 export type CreateRagPipelineSliceSlice = StateCreator<RagPipelineSliceShape>
 export const createRagPipelineSliceSlice: StateCreator<RagPipelineSliceShape> = set => ({
   pipelineId: '',
+  knowledgeName: '',
   showInputFieldDialog: false,
   setShowInputFieldDialog: showInputFieldDialog => set(() => ({ showInputFieldDialog })),
   nodesDefaultConfigs: {},

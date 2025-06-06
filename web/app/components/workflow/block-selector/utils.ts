@@ -13,6 +13,7 @@ export const transformDataSourceToTool = (dataSourceItem: DataSourceItem) => {
     type: dataSourceItem.declaration.provider_type,
     team_credentials: {},
     allow_delete: true,
+    is_team_authorization: dataSourceItem.is_authorized,
     is_authorized: dataSourceItem.is_authorized,
     labels: dataSourceItem.declaration.identity.tags || [],
     plugin_id: dataSourceItem.plugin_id,
