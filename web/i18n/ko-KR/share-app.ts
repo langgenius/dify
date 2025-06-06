@@ -73,6 +73,9 @@ const translation = {
     execution: '실행',
     executions: '{{num}} 처형',
   },
+  login: {
+    backToHome: '홈으로 돌아가기',
+  },
 }
 
 export default translation

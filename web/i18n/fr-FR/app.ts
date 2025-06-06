@@ -207,17 +207,20 @@ const translation = {
     modelNotSupported: 'Modèle non pris en charge',
     moreFillTip: 'Affichage d\'un maximum de 10 niveaux d\'imbrication',
     configure: 'Configurer',
+    structured: 'systématique',
   },
   accessItemsDescription: {
     anyone: 'Tout le monde peut accéder à l\'application web.',
     specific: 'Seules des groupes ou membres spécifiques peuvent accéder à l\'application web.',
     organization: 'Toute personne dans l\'organisation peut accéder à l\'application web.',
+    external: 'Seuls les utilisateurs externes authentifiés peuvent accéder à l\'application Web.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Quiconque avec le lien',
       specific: 'Groupes ou membres spécifiques',
       organization: 'Seuls les membres au sein de l\'entreprise',
+      external: 'Utilisateurs externes authentifiés',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Rechercher des groupes et des membres',

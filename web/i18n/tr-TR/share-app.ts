@@ -73,6 +73,9 @@ const translation = {
     execution: 'İFRAZAT',
     executions: '{{num}} İDAM',
   },
+  login: {
+    backToHome: 'Ana Sayfaya Dön',
+  },
 }
 
 export default translation
