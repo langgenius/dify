@@ -111,7 +111,6 @@ class RagPipelineExportApi(Resource):
     @login_required
     @get_rag_pipeline
     @account_initialization_required
-    @marshal_with(pipeline_import_check_dependencies_fields)
     def get(self, pipeline: Pipeline):
         if not current_user.is_editor:
             raise Forbidden()
