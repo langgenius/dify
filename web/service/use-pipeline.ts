@@ -306,7 +306,7 @@ export const useExportPipelineDSL = () => {
       pipelineId,
       include = false,
     }: { pipelineId: string; include?: boolean }) => {
-      return get<ExportTemplateDSLResponse>(`/rag/pipelines/${pipelineId}/export?include_secret=${include}`)
+      return get<ExportTemplateDSLResponse>(`/rag/pipelines/${pipelineId}/exports?include_secret=${include}`)
     },
   })
 }
