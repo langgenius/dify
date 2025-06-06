@@ -5,6 +5,18 @@
   "engines": {
     "node": ">=v22.11.0"
   },
+  "browserslist": [
+    "last 1 Chrome version",
+    "last 1 Firefox version",
+    "last 1 Edge version",
+    "last 1 Safari version",
+    "iOS >=15",
+    "Android >= 10",
+    "and_chr >= 126",
+    "and_ff >= 137",
+    "and_uc >= 15.5",
+    "and_qq >= 14.9"
+  ],
   "scripts": {
     "dev": "cross-env NODE_OPTIONS='--inspect' next dev",
     "build": "next build",
