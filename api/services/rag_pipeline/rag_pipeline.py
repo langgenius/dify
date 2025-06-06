@@ -422,7 +422,7 @@ class RagPipelineService:
         Run published workflow datasource
         """
         if is_published:
-        # fetch published workflow by app_model
+            # fetch published workflow by app_model
             workflow = self.get_published_workflow(pipeline=pipeline)
         else:
             workflow = self.get_draft_workflow(pipeline=pipeline)
@@ -439,7 +439,6 @@ class RagPipelineService:
                 break
         if not datasource_node_data:
             raise ValueError("Datasource node data not found")
-
 
         from core.datasource.datasource_manager import DatasourceManager
 
@@ -474,16 +473,16 @@ class RagPipelineService:
                 }
             case _:
                 raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
-            
 
     def run_datasource_workflow_node(
-        self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account, datasource_type: str, is_published: bool
+        self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account, datasource_type: str,
+        is_published: bool
     ) -> dict:
         """
         Run published workflow datasource
         """
         if is_published:
-        # fetch published workflow by app_model
+            # fetch published workflow by app_model
             workflow = self.get_published_workflow(pipeline=pipeline)
         else:
             workflow = self.get_draft_workflow(pipeline=pipeline)
@@ -544,6 +543,8 @@ class RagPipelineService:
                 )
                 return {
                     "result": [result.model_dump() for result in website_crawl_result.result],
+                    "job_id": website_crawl_result.job_id,
+                    "status": website_crawl_result.status,
                     "provider_type": datasource_node_data.get("provider_type"),
                 }
             case _:
