@@ -50,6 +50,7 @@ const InputField = ({
       return (
         <form.AppField
           name={variable}
+          listeners={listeners}
           children={field => (
             <field.TextField
               label={label}

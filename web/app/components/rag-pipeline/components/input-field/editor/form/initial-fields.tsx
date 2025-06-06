@@ -16,11 +16,16 @@ const InitialFields = ({
   render: function Render({
     form,
   }) {
+    const getFieldValue = useCallback((fieldName: string) => {
+      return form.getFieldValue(fieldName)
+    }, [form])
+
     const setFieldValue = useCallback((fieldName: string, value: any) => {
       form.setFieldValue(fieldName, value)
     }, [form])
 
     const initialConfigurations = useConfigurations({
+      getFieldValue,
       setFieldValue,
       supportFile,
     })

@@ -90,6 +90,7 @@ const Options = ({
         <Button
           variant='primary'
           onClick={form.handleSubmit}
+          disabled={isRunning}
           loading={isRunning}
           className='shrink-0 gap-x-0.5'
           spinnerClassName='!ml-0'

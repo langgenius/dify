@@ -64,11 +64,12 @@ export const useHiddenFieldNames = (type: PipelineInputVarType) => {
 }
 
 export const useConfigurations = (props: {
+  getFieldValue: (fieldName: DeepKeys<FormData>) => any,
   setFieldValue: (fieldName: DeepKeys<FormData>, value: any) => void,
   supportFile: boolean
 }) => {
   const { t } = useTranslation()
-  const { setFieldValue, supportFile } = props
+  const { getFieldValue, setFieldValue, supportFile } = props
 
   const handleTypeChange = useCallback((type: PipelineInputVarType) => {
     if ([PipelineInputVarType.singleFile, PipelineInputVarType.multiFiles].includes(type)) {
@@ -83,6 +84,17 @@ export const useConfigurations = (props: {
     if (type === PipelineInputVarType.paragraph)
       setFieldValue('maxLength', DEFAULT_VALUE_MAX_LEN)
   }, [setFieldValue])
+
+  const handleVariableNameBlur = useCallback((value: string) => {
+    if (!value)
+      return
+    setFieldValue('label', value)
+  }, [setFieldValue])
+
+  const handleDisplayNameBlur = useCallback((value: string) => {
+    if (!value)
+      setFieldValue('label', getFieldValue('variable'))
+  }, [getFieldValue, setFieldValue])
 
   const initialConfigurations = useMemo((): InputFieldConfiguration[] => {
     return [{
@@ -101,13 +113,19 @@ export const useConfigurations = (props: {
       variable: 'variable',
       placeholder: t('appDebug.variableConfig.inputPlaceholder'),
       required: true,
+      listeners: {
+        onBlur: ({ value }) => handleVariableNameBlur(value),
+      },
       showConditions: [],
     }, {
       type: InputFieldType.textInput,
-      label: t('appDebug.variableConfig.labelName'),
+      label: t('appDebug.variableConfig.displayName'),
       variable: 'label',
       placeholder: t('appDebug.variableConfig.inputPlaceholder'),
-      required: true,
+      required: false,
+      listeners: {
+        onBlur: ({ value }) => handleDisplayNameBlur(value),
+      },
       showConditions: [],
     }, {
       type: InputFieldType.numberInput,
@@ -155,7 +173,7 @@ export const useConfigurations = (props: {
       required: true,
       showConditions: [],
     }]
-  }, [handleTypeChange, supportFile, t])
+  }, [t, supportFile, handleTypeChange, handleVariableNameBlur, handleDisplayNameBlur])
 
   return initialConfigurations
 }
