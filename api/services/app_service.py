@@ -395,3 +395,15 @@ class AppService:
         if not site:
             raise ValueError(f"App with id {app_id} not found")
         return str(site.code)
+
+    @staticmethod
+    def get_app_id_by_code(app_code: str) -> str:
+        """
+        Get app id by app code
+        :param app_code: app code
+        :return: app id
+        """
+        site = db.session.query(Site).filter(Site.code == app_code).first()
+        if not site:
+            raise ValueError(f"App with code {app_code} not found")
+        return str(site.app_id)
