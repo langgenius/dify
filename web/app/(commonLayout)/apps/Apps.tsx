@@ -213,7 +213,11 @@ const Apps = () => {
           </div>}
 
         {isCurrentWorkspaceEditor && (
-          <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
+          <div
+            className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
+            role="region"
+            aria-label={t('app.newApp.dropDSLToCreateApp')}
+          >
             <RiDragDropLine className="h-4 w-4" />
             <span className="system-xs-regular">{t('app.newApp.dropDSLToCreateApp')}</span>
           </div>
