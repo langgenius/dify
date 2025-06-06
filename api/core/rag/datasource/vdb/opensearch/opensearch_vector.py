@@ -184,7 +184,16 @@ class OpenSearchVector(BaseVector):
         }
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            query["query"] = {"terms": {"metadata.document_id": document_ids_filter}}
+            query["query"] = {
+                "script_score": {
+                    "query": {"bool": {"filter": [{"terms": {Field.DOCUMENT_ID.value: document_ids_filter}}]}},
+                    "script": {
+                        "source": "knn_score",
+                        "lang": "knn",
+                        "params": {"field": Field.VECTOR.value, "query_value": query_vector, "space_type": "l2"},
+                    },
+                }
+            }
 
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
