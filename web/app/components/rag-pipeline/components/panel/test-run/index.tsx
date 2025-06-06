@@ -1,10 +1,10 @@
 import { useStore as useWorkflowStoreWithSelector } from '@/app/components/workflow/store'
 import { useCallback, useMemo, useState } from 'react'
-import { useLocalFile, useNotionPages, useTestRunSteps, useWebsiteCrawl } from './hooks'
+import { useLocalFile, useOnlineDocuments, useTestRunSteps, useWebsiteCrawl } from './hooks'
 import DataSourceOptions from './data-source-options'
 import LocalFile from './data-source/local-file'
 import { useProviderContextSelector } from '@/context/provider-context'
-import Notion from './data-source/notion'
+import OnlineDocuments from './data-source/online-documents'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import WebsiteCrawl from './data-source/website-crawl'
 import Actions from './data-source/actions'
@@ -35,9 +35,9 @@ const TestRunPanel = () => {
     updateFileList,
   } = useLocalFile()
   const {
-    notionPages,
-    updateNotionPages,
-  } = useNotionPages()
+    onlineDocuments,
+    updateOnlineDocuments,
+  } = useOnlineDocuments()
   const {
     websitePages,
     websiteCrawlJobId,
@@ -54,11 +54,11 @@ const TestRunPanel = () => {
     if (datasource.type === DatasourceType.localFile)
       return isShowVectorSpaceFull || !fileList.length || fileList.some(file => !file.file.id)
     if (datasource.type === DatasourceType.onlineDocument)
-      return isShowVectorSpaceFull || !notionPages.length
+      return isShowVectorSpaceFull || !onlineDocuments.length
     if (datasource.type === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     return false
-  }, [datasource, isShowVectorSpaceFull, fileList, notionPages.length, websitePages.length])
+  }, [datasource, isShowVectorSpaceFull, fileList, onlineDocuments.length, websitePages.length])
 
   const handleClose = () => {
     setShowDebugAndPreviewPanel(false)
@@ -83,7 +83,7 @@ const TestRunPanel = () => {
       datasourceInfoList.push(documentInfo)
     }
     if (datasource.type === DatasourceType.onlineDocument) {
-      const { workspace_id, ...rest } = notionPages[0]
+      const { workspace_id, ...rest } = onlineDocuments[0]
       const documentInfo = {
         workspace_id,
         page: rest,
@@ -103,7 +103,7 @@ const TestRunPanel = () => {
       datasource_type: datasource.type,
       datasource_info_list: datasourceInfoList,
     })
-  }, [datasource, fileList, handleRun, notionPages, websiteCrawlJobId, websitePages])
+  }, [datasource, fileList, handleRun, onlineDocuments, websiteCrawlJobId, websitePages])
 
   return (
     <div
@@ -130,10 +130,16 @@ const TestRunPanel = () => {
                   />
                 )}
                 {datasource?.type === DatasourceType.onlineDocument && (
-                  <Notion
+                  <OnlineDocuments
                     nodeId={datasource?.nodeId || ''}
-                    notionPages={notionPages}
-                    updateNotionPages={updateNotionPages}
+                    headerInfo={{
+                      title: datasource.description,
+                      docTitle: datasource.docTitle || '',
+                      docLink: datasource.docLink || '',
+                    }}
+                    onlineDocuments={onlineDocuments}
+                    updateOnlineDocuments={updateOnlineDocuments}
+                    isInPipeline
                   />
                 )}
                 {datasource?.type === DatasourceType.websiteCrawl && (
@@ -147,6 +153,7 @@ const TestRunPanel = () => {
                     }}
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
+                    isInPipeline
                   />
                 )}
                 {isShowVectorSpaceFull && (

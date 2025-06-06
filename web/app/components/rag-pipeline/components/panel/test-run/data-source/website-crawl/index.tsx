@@ -14,7 +14,7 @@ type WebsiteCrawlProps = {
     docLink: string
   }
   onPreview?: (payload: CrawlResultItem) => void
-  usingPublished?: boolean
+  isInPipeline?: boolean
 }
 
 const WebsiteCrawl = ({
@@ -24,7 +24,7 @@ const WebsiteCrawl = ({
   onCheckedCrawlResultChange,
   onJobIdChange,
   onPreview,
-  usingPublished,
+  isInPipeline,
 }: WebsiteCrawlProps) => {
   return (
     <Crawler
@@ -34,7 +34,7 @@ const WebsiteCrawl = ({
       onCheckedCrawlResultChange={onCheckedCrawlResultChange}
       onJobIdChange={onJobIdChange}
       onPreview={onPreview}
-      usingPublished={usingPublished}
+      isInPipeline={isInPipeline}
     />
   )
 }

@@ -654,6 +654,7 @@ const translation = {
     auto: 'sistema',
     light: 'luz',
     theme: 'Tema',
+    dark: 'noche',
   },
   compliance: {
     iso27001: 'Certificación ISO 27001:2022',

@@ -109,6 +109,7 @@ function unicodeToChar(text: string) {
 }
 
 function requiredWebSSOLogin(message?: string) {
+  removeAccessToken()
   const params = new URLSearchParams()
   params.append('redirect_url', globalThis.location.pathname)
   if (message)

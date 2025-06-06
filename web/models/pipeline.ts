@@ -155,6 +155,7 @@ export type PipelineDatasourceNodeRunRequest = {
   pipeline_id: string
   node_id: string
   inputs: Record<string, any>
+  datasource_type: DatasourceType
 }
 
 export type PipelineDatasourceNodeRunResponse = Record<string, any>

@@ -123,14 +123,29 @@ export const useCheckPipelineDependencies = (
   })
 }
 
-export const useDatasourceNodeRun = (
+export const useDraftDatasourceNodeRun = (
   mutationOptions: MutationOptions<PipelineDatasourceNodeRunResponse, Error, PipelineDatasourceNodeRunRequest> = {},
 ) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'datasource-node-run'],
+    mutationKey: [NAME_SPACE, 'draft-datasource-node-run'],
     mutationFn: (request: PipelineDatasourceNodeRunRequest) => {
       const { pipeline_id, node_id, ...rest } = request
-      return post<PipelineDatasourceNodeRunResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/nodes/${node_id}/run`, {
+      return post<PipelineDatasourceNodeRunResponse>(`/rag/pipelines/${pipeline_id}/workflows/draft/datasource/nodes/${node_id}/run`, {
+        body: rest,
+      })
+    },
+    ...mutationOptions,
+  })
+}
+
+export const usePublishedDatasourceNodeRun = (
+  mutationOptions: MutationOptions<PipelineDatasourceNodeRunResponse, Error, PipelineDatasourceNodeRunRequest> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'published-datasource-node-run'],
+    mutationFn: (request: PipelineDatasourceNodeRunRequest) => {
+      const { pipeline_id, node_id, ...rest } = request
+      return post<PipelineDatasourceNodeRunResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/datasource/nodes/${node_id}/run`, {
         body: rest,
       })
     },
@@ -141,7 +156,7 @@ export const useDatasourceNodeRun = (
 export const useDraftPipelineProcessingParams = (params: PipelineProcessingParamsRequest, enabled = true) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelineProcessingParamsResponse>({
-    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id, node_id],
+    queryKey: [NAME_SPACE, 'draft-pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelineProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/draft/processing/parameters`, {
         params: {
@@ -157,7 +172,7 @@ export const useDraftPipelineProcessingParams = (params: PipelineProcessingParam
 export const usePublishedPipelineProcessingParams = (params: PipelineProcessingParamsRequest) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelineProcessingParamsResponse>({
-    queryKey: [NAME_SPACE, 'pipeline-processing-params', pipeline_id, node_id],
+    queryKey: [NAME_SPACE, 'published-pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelineProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/processing/parameters`, {
         params: {
@@ -255,7 +270,7 @@ export const useUpdateDataSourceCredentials = (
 export const useDraftPipelinePreProcessingParams = (params: PipelinePreProcessingParamsRequest, enabled = true) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelinePreProcessingParamsResponse>({
-    queryKey: [NAME_SPACE, 'pipeline-pre-processing-params', pipeline_id, node_id],
+    queryKey: [NAME_SPACE, 'draft-pipeline-pre-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelinePreProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/draft/pre-processing/parameters`, {
         params: {
@@ -271,7 +286,7 @@ export const useDraftPipelinePreProcessingParams = (params: PipelinePreProcessin
 export const usePublishedPipelinePreProcessingParams = (params: PipelinePreProcessingParamsRequest, enabled = true) => {
   const { pipeline_id, node_id } = params
   return useQuery<PipelinePreProcessingParamsResponse>({
-    queryKey: [NAME_SPACE, 'pipeline-pre-processing-params', pipeline_id, node_id],
+    queryKey: [NAME_SPACE, 'published-pipeline-pre-processing-params', pipeline_id, node_id],
     queryFn: () => {
       return get<PipelinePreProcessingParamsResponse>(`/rag/pipelines/${pipeline_id}/workflows/published/processing/parameters`, {
         params: {

@@ -209,12 +209,14 @@ const translation = {
     anyone: '누구나 웹 앱에 접근할 수 있습니다.',
     specific: '특정 그룹이나 회원만 웹 앱에 접근할 수 있습니다.',
     organization: '조직 내 모든 사람이 웹 애플리케이션에 접근할 수 있습니다.',
+    external: '인증된 외부 사용자만 웹 애플리케이션에 접근할 수 있습니다.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: '링크가 있는 누구나',
       specific: '특정 그룹 또는 구성원',
       organization: '기업 내의 회원만',
+      external: '인증된 외부 사용자',
     },
     operateGroupAndMember: {
       searchPlaceholder: '그룹 및 구성원 검색',

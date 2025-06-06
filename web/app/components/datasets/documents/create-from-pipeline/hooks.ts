@@ -51,8 +51,8 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
       return {
         nodeId: node.id,
         type: node.data.provider_type as DatasourceType,
-        description: node.data.desc || '',
-        docTitle: '', // todo: Add docTitle and docLink if needed, or remove these properties if not used
+        description: node.data.datasource_label,
+        docTitle: 'How to use?',
         docLink: '',
         fileExtensions: node.data.fileExtensions || [],
       }
@@ -119,31 +119,31 @@ export const useLocalFile = () => {
   }
 }
 
-export const useNotionsPages = () => {
-  const [notionPages, setNotionPages] = useState<NotionPage[]>([])
-  const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
+export const useOnlineDocuments = () => {
+  const [onlineDocuments, setOnlineDocuments] = useState<NotionPage[]>([])
+  const [currentDocuments, setCurrentDocuments] = useState<NotionPage | undefined>()
 
-  const previewNotionPage = useRef<NotionPage>(notionPages[0])
+  const previewOnlineDocument = useRef<NotionPage>(onlineDocuments[0])
 
-  const updateNotionPages = (value: NotionPage[]) => {
-    setNotionPages(value)
+  const updateOnlineDocuments = (value: NotionPage[]) => {
+    setOnlineDocuments(value)
   }
 
   const updateCurrentPage = useCallback((page: NotionPage) => {
-    setCurrentNotionPage(page)
+    setCurrentDocuments(page)
   }, [])
 
-  const hideNotionPagePreview = useCallback(() => {
-    setCurrentNotionPage(undefined)
+  const hideOnlineDocumentPreview = useCallback(() => {
+    setCurrentDocuments(undefined)
   }, [])
 
   return {
-    notionPages,
-    previewNotionPage,
-    updateNotionPages,
-    currentNotionPage,
+    onlineDocuments,
+    previewOnlineDocument,
+    updateOnlineDocuments,
+    currentDocuments,
     updateCurrentPage,
-    hideNotionPagePreview,
+    hideOnlineDocumentPreview,
   }
 }
 

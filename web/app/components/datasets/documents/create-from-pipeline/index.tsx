@@ -5,7 +5,7 @@ import type { CrawlResultItem, DocumentItem, CustomFile as File, FileIndexingEst
 import LocalFile from '@/app/components/rag-pipeline/components/panel/test-run/data-source/local-file'
 import { useProviderContextSelector } from '@/context/provider-context'
 import type { NotionPage } from '@/models/common'
-import Notion from '@/app/components/rag-pipeline/components/panel/test-run/data-source/notion'
+import OnlineDocuments from '@/app/components/rag-pipeline/components/panel/test-run/data-source/online-documents'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import WebsiteCrawl from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website-crawl'
 import Actions from './data-source/actions'
@@ -26,7 +26,7 @@ import Processing from './processing'
 import type { InitialDocumentDetail, PublishedPipelineRunPreviewResponse, PublishedPipelineRunResponse } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
-import { useAddDocumentsSteps, useLocalFile, useNotionsPages, useWebsiteCrawl } from './hooks'
+import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useWebsiteCrawl } from './hooks'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
@@ -63,13 +63,13 @@ const CreateFormPipeline = () => {
     hideFilePreview,
   } = useLocalFile()
   const {
-    notionPages,
-    previewNotionPage,
-    updateNotionPages,
-    currentNotionPage,
+    onlineDocuments,
+    previewOnlineDocument,
+    updateOnlineDocuments,
+    currentDocuments,
     updateCurrentPage,
-    hideNotionPagePreview,
-  } = useNotionsPages()
+    hideOnlineDocumentPreview,
+  } = useOnlineDocuments()
   const {
     websitePages,
     websiteCrawlJobId,
@@ -90,11 +90,11 @@ const CreateFormPipeline = () => {
     if (datasource.type === DatasourceType.localFile)
       return isShowVectorSpaceFull || !fileList.length || fileList.some(file => !file.file.id)
     if (datasource.type === DatasourceType.onlineDocument)
-      return isShowVectorSpaceFull || !notionPages.length
+      return isShowVectorSpaceFull || !onlineDocuments.length
     if (datasource.type === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     return false
-  }, [datasource, isShowVectorSpaceFull, fileList, notionPages.length, websitePages.length])
+  }, [datasource, isShowVectorSpaceFull, fileList, onlineDocuments.length, websitePages.length])
 
   const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
 
@@ -117,7 +117,7 @@ const CreateFormPipeline = () => {
       datasourceInfoList.push(documentInfo)
     }
     if (datasource.type === DatasourceType.onlineDocument) {
-      const { workspace_id, ...rest } = previewNotionPage.current
+      const { workspace_id, ...rest } = previewOnlineDocument.current
       const documentInfo = {
         workspace_id,
         page: rest,
@@ -143,7 +143,7 @@ const CreateFormPipeline = () => {
         setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
       },
     })
-  }, [datasource, pipelineId, previewFile, previewNotionPage, previewWebsitePage, runPublishedPipeline, websiteCrawlJobId])
+  }, [datasource, pipelineId, previewFile, previewOnlineDocument, previewWebsitePage, runPublishedPipeline, websiteCrawlJobId])
 
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
@@ -166,7 +166,7 @@ const CreateFormPipeline = () => {
       })
     }
     if (datasource.type === DatasourceType.onlineDocument) {
-      notionPages.forEach((page) => {
+      onlineDocuments.forEach((page) => {
         const { workspace_id, ...rest } = page
         const documentInfo = {
           workspace_id,
@@ -196,7 +196,7 @@ const CreateFormPipeline = () => {
         handleNextStep()
       },
     })
-  }, [datasource, fileList, handleNextStep, notionPages, pipelineId, runPublishedPipeline, websiteCrawlJobId, websitePages])
+  }, [datasource, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, websiteCrawlJobId, websitePages])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -217,10 +217,10 @@ const CreateFormPipeline = () => {
     onClickPreview()
   }, [onClickPreview, previewFile])
 
-  const handlePreviewNotionPageChange = useCallback((page: NotionPage) => {
-    previewNotionPage.current = page
+  const handlePreviewOnlineDocumentChange = useCallback((page: NotionPage) => {
+    previewOnlineDocument.current = page
     onClickPreview()
-  }, [onClickPreview, previewNotionPage])
+  }, [onClickPreview, previewOnlineDocument])
 
   const handlePreviewWebsiteChange = useCallback((website: CrawlResultItem) => {
     previewWebsitePage.current = website
@@ -263,10 +263,15 @@ const CreateFormPipeline = () => {
                   />
                 )}
                 {datasource?.type === DatasourceType.onlineDocument && (
-                  <Notion
+                  <OnlineDocuments
                     nodeId={datasource?.nodeId || ''}
-                    notionPages={notionPages}
-                    updateNotionPages={updateNotionPages}
+                    headerInfo={{
+                      title: datasource.description,
+                      docTitle: datasource.docTitle || '',
+                      docLink: datasource.docLink || '',
+                    }}
+                    onlineDocuments={onlineDocuments}
+                    updateOnlineDocuments={updateOnlineDocuments}
                     canPreview
                     onPreview={updateCurrentPage}
                   />
@@ -283,7 +288,6 @@ const CreateFormPipeline = () => {
                     onCheckedCrawlResultChange={setWebsitePages}
                     onJobIdChange={setWebsiteCrawlJobId}
                     onPreview={updateCurrentWebsite}
-                    usingPublished
                   />
                 )}
                 {isShowVectorSpaceFull && (
@@ -323,7 +327,7 @@ const CreateFormPipeline = () => {
         currentStep === 1 && (
           <div className='flex h-full w-[752px] shrink-0 pl-2 pt-2'>
             {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
-            {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
+            {currentDocuments && <NotionPagePreview currentPage={currentDocuments} hidePreview={hideOnlineDocumentPreview} />}
             {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
           </div>
         )
@@ -335,14 +339,14 @@ const CreateFormPipeline = () => {
               <ChunkPreview
                 datasource={datasource!}
                 files={fileList.map(file => file.file)}
-                notionPages={notionPages}
+                onlineDocuments={onlineDocuments}
                 websitePages={websitePages}
                 isIdle={isIdle && isPreview.current}
                 isPending={isPending && isPreview.current}
                 estimateData={estimateData}
                 onPreview={onClickPreview}
                 handlePreviewFileChange={handlePreviewFileChange}
-                handlePreviewNotionPageChange={handlePreviewNotionPageChange}
+                handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
                 handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
               />
             )}
