@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Build and Push API & Web"]
     branches:
-      - "deploy/dev"
+      - "deploy/rag-dev"
     types:
       - completed
 
@@ -17,8 +17,8 @@ jobs:
       - name: Deploy to server
         uses: appleboy/ssh-action@v0.1.8
         with:
-          host: ${{ secrets.SSH_HOST }}
+          host: ${{ secrets.RAG_SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key: ${{ secrets.RAG_SSH_PRIVATE_KEY }}
           script: |
             ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}
