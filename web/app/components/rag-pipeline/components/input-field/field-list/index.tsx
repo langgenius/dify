@@ -34,7 +34,7 @@ const FieldList = ({
     handleSubmitField,
     handleListSortChange,
     handleRemoveField,
-    handleCancelInputFieldEditor,
+    handleCloseInputFieldEditor,
     handleOpenInputFieldEditor,
     showInputFieldEditor,
     editingField,
@@ -69,7 +69,7 @@ const FieldList = ({
           show={showInputFieldEditor}
           initialData={editingField}
           onSubmit={handleSubmitField}
-          onClose={handleCancelInputFieldEditor}
+          onClose={handleCloseInputFieldEditor}
         />
       )}
       <RemoveEffectVarConfirm

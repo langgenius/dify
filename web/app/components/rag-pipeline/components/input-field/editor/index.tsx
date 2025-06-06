@@ -27,8 +27,7 @@ const InputFieldEditor = ({
   const handleSubmit = useCallback((value: FormData, moreInfo?: MoreInfo) => {
     const inputFieldData = convertFormDataToINputField(value)
     onSubmit(inputFieldData, moreInfo)
-    onClose()
-  }, [onSubmit, onClose])
+  }, [onSubmit])
 
   return (
     <DialogWrapper
