@@ -9,7 +9,10 @@ import {
   RiPlayCircleLine,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import { useKeyPress } from 'ahooks'
+import {
+  useBoolean,
+  useKeyPress,
+} from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import {
   useStore,
@@ -29,6 +32,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useInvalid } from '@/service/use-base'
 import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
+import Confirm from '@/app/components/base/confirm'
 
 const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
 
@@ -46,29 +50,52 @@ const Popup = () => {
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   const { notify } = useToastContext()
   const workflowStore = useWorkflowStore()
+  const [confirmVisible, {
+    setFalse: hideConfirm,
+    setTrue: showConfirm,
+  }] = useBoolean(false)
+  const [publishing, {
+    setFalse: hidePublishing,
+    setTrue: showPublishing,
+  }] = useBoolean(false)
 
   const invalidPublishedPipelineInfo = useInvalid([...publishedPipelineInfoQueryKeyPrefix, pipelineId])
 
   const handlePublish = useCallback(async (params?: PublishWorkflowParams) => {
-    if (await handleCheckBeforePublish()) {
-      const res = await publishWorkflow({
-        url: `/rag/pipelines/${pipelineId}/workflows/publish`,
-        title: params?.title || '',
-        releaseNotes: params?.releaseNotes || '',
-      })
-      setPublished(true)
+    if (publishing)
+      return
+    try {
+      const checked = await handleCheckBeforePublish()
 
-      if (res) {
-        notify({ type: 'success', message: t('common.api.actionSuccess') })
-        workflowStore.getState().setPublishedAt(res.created_at)
-        mutateDatasetRes?.()
-        invalidPublishedPipelineInfo()
+      if (checked) {
+        if (!publishedAt && !confirmVisible) {
+          showConfirm()
+          return
+        }
+        showPublishing()
+        const res = await publishWorkflow({
+          url: `/rag/pipelines/${pipelineId}/workflows/publish`,
+          title: params?.title || '',
+          releaseNotes: params?.releaseNotes || '',
+        })
+        setPublished(true)
+        if (res) {
+          notify({ type: 'success', message: t('common.api.actionSuccess') })
+          workflowStore.getState().setPublishedAt(res.created_at)
+          mutateDatasetRes?.()
+          invalidPublishedPipelineInfo()
+        }
       }
     }
-    else {
-      throw new Error('Checklist failed')
+    catch {
     }
-  }, [handleCheckBeforePublish, publishWorkflow, pipelineId, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo])
+    finally {
+      if (publishing)
+        hidePublishing()
+      if (confirmVisible)
+        hideConfirm()
+    }
+  }, [handleCheckBeforePublish, publishWorkflow, pipelineId, notify, t, workflowStore, mutateDatasetRes, invalidPublishedPipelineInfo, showConfirm, publishedAt, confirmVisible, hidePublishing, showPublishing, hideConfirm, publishing])
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.p`, (e) => {
     e.preventDefault()
@@ -108,7 +135,7 @@ const Popup = () => {
           variant='primary'
           className='mt-3 w-full'
           onClick={() => handlePublish()}
-          disabled={published}
+          disabled={published || publishing}
         >
           {
             published
@@ -163,6 +190,18 @@ const Popup = () => {
           </div>
         </Button>
       </div>
+      {
+        confirmVisible && (
+          <Confirm
+            isShow={confirmVisible}
+            title={t('pipeline.common.confirmPublish')}
+            content={t('pipeline.common.confirmPublishContent')}
+            onCancel={hideConfirm}
+            onConfirm={handlePublish}
+            isDisabled={publishing}
+          />
+        )
+      }
     </div>
   )
 }

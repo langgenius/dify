@@ -20,8 +20,9 @@ import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import { useConfig } from './hooks/use-config'
 import {
   COMMON_OUTPUT,
-  FILE_OUTPUT,
-  WEBSITE_OUTPUT,
+  LOCAL_FILE_OUTPUT,
+  ONLINE_DOCUMENT_OUTPUT,
+  WEBSITE_CRAWL_OUTPUT,
 } from './constants'
 import { useStore } from '@/app/components/workflow/store'
 import Button from '@/app/components/base/button'
@@ -48,8 +49,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
     handleFileExtensionsChange,
     handleParametersChange,
   } = useConfig(id)
-  const isLocalFile = provider_type === DataSourceClassification.file
-  const isWebsiteCrawl = provider_type === DataSourceClassification.website
+  const isLocalFile = provider_type === DataSourceClassification.localFile
+  const isWebsiteCrawl = provider_type === DataSourceClassification.websiteCrawl
+  const isOnlineDocument = provider_type === DataSourceClassification.onlineDocument
   const currentDataSource = dataSourceList?.find(ds => ds.plugin_id === plugin_id)
   const isAuthorized = !!currentDataSource?.is_authorized
   const [showAuthModal, {
@@ -166,7 +168,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
           ))
         }
         {
-          isLocalFile && FILE_OUTPUT.map(item => (
+          isLocalFile && LOCAL_FILE_OUTPUT.map(item => (
             <VarItem
               name={item.name}
               type={item.type}
@@ -180,7 +182,16 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
           ))
         }
         {
-          isWebsiteCrawl && WEBSITE_OUTPUT.map(item => (
+          isWebsiteCrawl && WEBSITE_CRAWL_OUTPUT.map(item => (
+            <VarItem
+              name={item.name}
+              type={item.type}
+              description={item.description}
+            />
+          ))
+        }
+        {
+          isOnlineDocument && ONLINE_DOCUMENT_OUTPUT.map(item => (
             <VarItem
               name={item.name}
               type={item.type}

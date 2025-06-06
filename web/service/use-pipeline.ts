@@ -298,3 +298,15 @@ export const usePublishedPipelinePreProcessingParams = (params: PipelinePreProce
     enabled,
   })
 }
+
+export const useExportPipelineDSL = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'export-pipeline-dsl'],
+    mutationFn: ({
+      pipelineId,
+      include = false,
+    }: { pipelineId: string; include?: boolean }) => {
+      return get<ExportTemplateDSLResponse>(`/rag/pipelines/${pipelineId}/export?include_secret=${include}`)
+    },
+  })
+}
