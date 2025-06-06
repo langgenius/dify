@@ -1,35 +1,35 @@
 import type { NotionPage } from '@/models/common'
-import NotionPageSelector from './notion-page-selector'
+import OnlineDocumentSelector from './online-document-selector'
 
-type NotionProps = {
+type OnlineDocumentsProps = {
   nodeId: string
   headerInfo: {
     title: string
     docTitle: string
     docLink: string
   }
-  notionPages: NotionPage[]
-  updateNotionPages: (value: NotionPage[]) => void
+  onlineDocuments: NotionPage[]
+  updateOnlineDocuments: (value: NotionPage[]) => void
   canPreview?: boolean
   onPreview?: (selectedPage: NotionPage) => void
   isInPipeline?: boolean
 }
 
-const Notion = ({
+const OnlineDocuments = ({
   nodeId,
   headerInfo,
-  notionPages,
-  updateNotionPages,
+  onlineDocuments,
+  updateOnlineDocuments,
   canPreview = false,
   onPreview,
   isInPipeline = false,
-}: NotionProps) => {
+}: OnlineDocumentsProps) => {
   return (
-    <NotionPageSelector
+    <OnlineDocumentSelector
       nodeId={nodeId}
       headerInfo={headerInfo}
-      value={notionPages.map(page => page.page_id)}
-      onSelect={updateNotionPages}
+      value={onlineDocuments.map(page => page.page_id)}
+      onSelect={updateOnlineDocuments}
       canPreview={canPreview}
       onPreview={onPreview}
       isInPipeline={isInPipeline}
@@ -37,4 +37,4 @@ const Notion = ({
   )
 }
 
-export default Notion
+export default OnlineDocuments

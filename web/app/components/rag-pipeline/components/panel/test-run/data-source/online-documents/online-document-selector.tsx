@@ -8,7 +8,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDraftDatasourceNodeRun, usePublishedDatasourceNodeRun } from '@/service/use-pipeline'
 import { DatasourceType } from '@/models/pipeline'
 
-type NotionPageSelectorProps = {
+type OnlineDocumentSelectorProps = {
   value?: string[]
   onSelect: (selectedPages: NotionPage[]) => void
   canPreview?: boolean
@@ -23,7 +23,7 @@ type NotionPageSelectorProps = {
   }
 }
 
-const NotionPageSelector = ({
+const OnlineDocumentSelector = ({
   value,
   onSelect,
   canPreview,
@@ -32,42 +32,42 @@ const NotionPageSelector = ({
   isInPipeline = false,
   nodeId,
   headerInfo,
-}: NotionPageSelectorProps) => {
+}: OnlineDocumentSelectorProps) => {
   const pipeline_id = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const [notionData, setNotionData] = useState<DataSourceNotionWorkspace[]>([])
+  const [documentsData, setDocumentsData] = useState<DataSourceNotionWorkspace[]>([])
   const [searchValue, setSearchValue] = useState('')
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
 
   const useDatasourceNodeRun = useRef(!isInPipeline ? usePublishedDatasourceNodeRun : useDraftDatasourceNodeRun)
-  const { mutateAsync: getNotionPages } = useDatasourceNodeRun.current()
+  const { mutateAsync: crawlOnlineDocuments } = useDatasourceNodeRun.current()
 
-  const getNotionData = useCallback(async () => {
+  const getOnlineDocuments = useCallback(async () => {
     if (pipeline_id) {
-      await getNotionPages({
+      await crawlOnlineDocuments({
         pipeline_id,
         node_id: nodeId,
         inputs: {},
         datasource_type: DatasourceType.onlineDocument,
       }, {
-        onSuccess(notionData) {
-          setNotionData(notionData as DataSourceNotionWorkspace[])
+        onSuccess(documentsData) {
+          setDocumentsData(documentsData as DataSourceNotionWorkspace[])
         },
       })
     }
-  }, [getNotionPages, nodeId, pipeline_id])
+  }, [crawlOnlineDocuments, nodeId, pipeline_id])
 
   useEffect(() => {
-    getNotionData()
+    getOnlineDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const firstWorkspaceId = notionData[0]?.workspace_id
-  const currentWorkspace = notionData.find(workspace => workspace.workspace_id === currentWorkspaceId)
+  const firstWorkspaceId = documentsData[0]?.workspace_id
+  const currentWorkspace = documentsData.find(workspace => workspace.workspace_id === currentWorkspaceId)
 
   const PagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
     const selectedPagesId = new Set<string>()
     const boundPagesId = new Set<string>()
-    const pagesMap = notionData.reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
+    const pagesMap = documentsData.reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
       next.pages.forEach((page) => {
         if (page.is_bound) {
           selectedPagesId.add(page.page_id)
@@ -82,7 +82,7 @@ const NotionPageSelector = ({
       return prev
     }, {})
     return [pagesMap, selectedPagesId, boundPagesId]
-  }, [notionData])
+  }, [documentsData])
   const defaultSelectedPagesId = [...Array.from(PagesMapAndSelectedPagesId[1]), ...(value || [])]
   const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
 
@@ -107,7 +107,7 @@ const NotionPageSelector = ({
     setCurrentWorkspaceId(firstWorkspaceId)
   }, [firstWorkspaceId])
 
-  if (!notionData?.length)
+  if (!documentsData?.length)
     return null
 
   return (
@@ -121,7 +121,7 @@ const NotionPageSelector = ({
           <div className='flex grow items-center gap-x-1'>
             <WorkspaceSelector
               value={currentWorkspaceId || firstWorkspaceId}
-              items={notionData}
+              items={documentsData}
               onSelect={handleSelectWorkspace}
             />
           </div>
@@ -148,4 +148,4 @@ const NotionPageSelector = ({
   )
 }
 
-export default NotionPageSelector
+export default OnlineDocumentSelector

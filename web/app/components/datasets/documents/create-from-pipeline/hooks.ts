@@ -119,31 +119,31 @@ export const useLocalFile = () => {
   }
 }
 
-export const useNotionsPages = () => {
-  const [notionPages, setNotionPages] = useState<NotionPage[]>([])
-  const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
+export const useOnlineDocuments = () => {
+  const [onlineDocuments, setOnlineDocuments] = useState<NotionPage[]>([])
+  const [currentDocuments, setCurrentDocuments] = useState<NotionPage | undefined>()
 
-  const previewNotionPage = useRef<NotionPage>(notionPages[0])
+  const previewOnlineDocument = useRef<NotionPage>(onlineDocuments[0])
 
-  const updateNotionPages = (value: NotionPage[]) => {
-    setNotionPages(value)
+  const updateOnlineDocuments = (value: NotionPage[]) => {
+    setOnlineDocuments(value)
   }
 
   const updateCurrentPage = useCallback((page: NotionPage) => {
-    setCurrentNotionPage(page)
+    setCurrentDocuments(page)
   }, [])
 
-  const hideNotionPagePreview = useCallback(() => {
-    setCurrentNotionPage(undefined)
+  const hideOnlineDocumentPreview = useCallback(() => {
+    setCurrentDocuments(undefined)
   }, [])
 
   return {
-    notionPages,
-    previewNotionPage,
-    updateNotionPages,
-    currentNotionPage,
+    onlineDocuments,
+    previewOnlineDocument,
+    updateOnlineDocuments,
+    currentDocuments,
     updateCurrentPage,
-    hideNotionPagePreview,
+    hideOnlineDocumentPreview,
   }
 }
 
