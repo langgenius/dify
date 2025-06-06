@@ -43,6 +43,7 @@ from models.account import Account
 from models.dataset import Pipeline, PipelineCustomizedTemplate  # type: ignore
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
+from models.oauth import DatasourceProvider
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionTriggeredFrom,
@@ -50,6 +51,7 @@ from models.workflow import (
     WorkflowType,
 )
 from services.dataset_service import DatasetService
+from services.datasource_provider_service import DatasourceProviderService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     KnowledgeConfiguration,
     PipelineTemplateInfoEntity,
@@ -442,6 +444,7 @@ class RagPipelineService:
         for key, value in datasource_parameters.items():
             if not user_inputs.get(key):
                 user_inputs[key] = value["value"]
+
         from core.datasource.datasource_manager import DatasourceManager
 
         datasource_runtime = DatasourceManager.get_datasource_runtime(
@@ -450,6 +453,14 @@ class RagPipelineService:
             tenant_id=pipeline.tenant_id,
             datasource_type=DatasourceProviderType(datasource_type),
         )
+        datasource_provider_service = DatasourceProviderService()
+        credentials = datasource_provider_service.get_real_datasource_credentials(
+            tenant_id=pipeline.tenant_id,
+            provider=datasource_node_data.get('provider_name'),
+            plugin_id=datasource_node_data.get('plugin_id'),
+        )
+        if credentials:
+            datasource_runtime.runtime.credentials = credentials[0].get("credentials")
         match datasource_type:
             case DatasourceProviderType.ONLINE_DOCUMENT:
                 datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
