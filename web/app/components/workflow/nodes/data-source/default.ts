@@ -8,6 +8,9 @@ import {
   FILE_OUTPUT,
   WEBSITE_OUTPUT,
 } from './constants'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+
+const i18nPrefix = 'workflow.errorMsg'
 
 const metaData = genNodeMetaData({
   sort: -1,
@@ -19,10 +22,36 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
     datasource_parameters: {},
     datasource_configurations: {},
   },
-  checkValid() {
+  checkValid(payload, t, moreDataForCheckValid) {
+    const { dataSourceInputsSchema, notAuthed } = moreDataForCheckValid
+    let errorMessage = ''
+    if (notAuthed)
+      errorMessage = t(`${i18nPrefix}.authRequired`)
+
+    if (!errorMessage) {
+      dataSourceInputsSchema.filter((field: any) => {
+        return field.required
+      }).forEach((field: any) => {
+        const targetVar = payload.datasource_parameters[field.variable]
+        if (!targetVar) {
+          errorMessage = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+          return
+        }
+        const { type: variable_type, value } = targetVar
+        if (variable_type === VarKindType.variable) {
+          if (!errorMessage && (!value || value.length === 0))
+            errorMessage = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+        }
+        else {
+          if (!errorMessage && (value === undefined || value === null || value === ''))
+            errorMessage = t(`${i18nPrefix}.fieldRequired`, { field: field.label })
+        }
+      })
+    }
+
     return {
-      isValid: true,
-      errorMessage: '',
+      isValid: !errorMessage,
+      errorMessage,
     }
   },
   getOutputVars(payload, ragVars = []) {
