@@ -84,57 +84,81 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         """Split incoming text and return chunks."""
 
         final_chunks = []
-        separator = self._separators[-1]
-        new_separators = []
+        # 'separator' here will hold the chosen separator for the current iteration
+        separator_to_use = self._separators[-1] # Default to the last separator
+        remaining_separators_for_recursion = []
 
         for i, _s in enumerate(self._separators):
             if _s == "":
-                separator = _s
+                separator_to_use = _s
+                # For character splitting, typically no finer user-defined separators
+                # Or, if "" is not last, remaining_separators_for_recursion could be self._separators[i+1:]
+                # For simplicity of this logic, if "" is chosen, assume it's the finest.
+                remaining_separators_for_recursion = [] 
                 break
             if _s in text:
-                separator = _s
-                new_separators = self._separators[i + 1 :]
+                separator_to_use = _s
+                remaining_separators_for_recursion = self._separators[i + 1 :]
                 break
-
-        # Now that we have the separator, split the text
-        if separator:
-            if separator == " ":
-                splits = text.split()
-            else:
-                splits = text.split(separator)
-        else:
+        
+        # Now that we have the separator_to_use, split the text
+        splits: list[str]
+        if separator_to_use:
+            # --- CHANGE 1: Use text.split(separator_to_use) consistently ---
+            # Removed the special `if separator_to_use == " ": splits = text.split()`
+            splits = text.split(separator_to_use)
+        else: # separator_to_use is "" (empty string), so split by character
             splits = list(text)
-        splits = [s for s in splits if (s not in {"", "\n"})]
+        
+        # --- CHANGE 2: REMOVE the aggressive filter ---
+        # The following line is removed:
+        # splits = [s for s in splits if (s not in {"", "\n"})]
+        
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
-        _separator = "" if self._keep_separator else separator
+        
+        # --- CHANGE 3: Correct the logic for determining the separator for merging ---
+        # 'separator_to_use' holds the actual separator string used for splitting.
+        _separator_for_merging = separator_to_use if self._keep_separator else ""
+        
         s_lens = self._length_function(splits)
-        if separator != "":
+
+        # This outer if/else distinguishes behavior based on whether a non-empty separator was found
+        # or if it's character-level splitting. This structure is preserved from your "Neuer Code".
+        if separator_to_use != "": 
             for s, s_len in zip(splits, s_lens):
                 if s_len < self._chunk_size:
                     _good_splits.append(s)
                     _good_splits_lengths.append(s_len)
                 else:
                     if _good_splits:
-                        merged_text = self._merge_splits(_good_splits, _separator, _good_splits_lengths)
+                        merged_text = self._merge_splits(_good_splits, _separator_for_merging, _good_splits_lengths)
                         final_chunks.extend(merged_text)
                         _good_splits = []
                         _good_splits_lengths = []
-                    if not new_separators:
-                        final_chunks.append(s)
+                    
+                    # If the current split 's' is still too long, try splitting it further
+                    # with the remaining finer separators.
+                    if not remaining_separators_for_recursion: # No more finer separators to try
+                        final_chunks.append(s) # Add as is (potentially oversized)
                     else:
-                        other_info = self._split_text(s, new_separators)
+                        # `self._split_text` is a method from the base RecursiveCharacterTextSplitter
+                        # which handles splitting with a given list of separators.
+                        other_info = self._split_text(s, remaining_separators_for_recursion)
                         final_chunks.extend(other_info)
 
             if _good_splits:
-                merged_text = self._merge_splits(_good_splits, _separator, _good_splits_lengths)
+                merged_text = self._merge_splits(_good_splits, _separator_for_merging, _good_splits_lengths)
                 final_chunks.extend(merged_text)
-        else:
+        else: # This block handles the case where separator_to_use == "" (character splitting)
+              # This logic is from your "Neuer Code" and is largely preserved.
+              # Note: The `_separator_for_merging` (which would be "" if separator_to_use is "")
+              # is not directly used by this custom character accumulation logic.
             current_part = ""
             current_length = 0
             overlap_part = ""
             overlap_part_length = 0
-            for s, s_len in zip(splits, s_lens):
+            for s, s_len in zip(splits, s_lens): # 'splits' are individual characters here
                 if current_length + s_len <= self._chunk_size - self._chunk_overlap:
                     current_part += s
                     current_length += s_len
