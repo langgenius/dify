@@ -101,7 +101,7 @@ const Crawler = ({
   }, [runDatasourceNode, nodeId, pipelineId, onJobIdChange, onCheckedCrawlResultChange, t])
 
   return (
-    <div>
+    <div className='flex flex-col'>
       <Header
         isInPipeline
         {...headerInfo}
@@ -117,7 +117,7 @@ const Crawler = ({
         />
       </div>
       {!isInit && (
-        <div className='relative'>
+        <div className='relative flex flex-col'>
           {isRunning && (
             <Crawling
               crawledNum={0}
