@@ -1,18 +1,19 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from flask import request
-from flask_restful import Resource
-from werkzeug.exceptions import NotFound, Unauthorized
-
 from configs import dify_config
 from controllers.web import api
 from controllers.web.error import WebAppAuthRequiredError
 from extensions.ext_database import db
+from flask import request
+from flask_restful import Resource
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
+from werkzeug.exceptions import NotFound, Unauthorized
+
+from api.services.webapp_auth_service import WebAppAuthService, WebAppAuthType
 
 
 class PassportResource(Resource):
@@ -116,7 +117,9 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     user_id = enterprise_user_decoded.get("user_id")
     end_user_id = enterprise_user_decoded.get("end_user_id")
     session_id = enterprise_user_decoded.get("session_id")
-    auth_type = enterprise_user_decoded.get("auth_type")
+    user_auth_type = enterprise_user_decoded.get("auth_type")
+    if not user_auth_type:
+        raise Unauthorized("Missing auth_type in the token.")
 
     site = db.session.query(Site).filter(Site.code == app_code, Site.status == "normal").first()
     if not site:
@@ -126,13 +129,15 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     if not app_model or app_model.status != "normal" or not app_model.enable_site:
         raise NotFound()
 
-    if not auth_type:
-        raise Unauthorized("Missing auth_type in the token.")
-    settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
-    if settings.access_mode == "sso_verified" and auth_type != "external":
+    app_auth_type = WebAppAuthService.get_app_auth_type(app_code=app_code)
+
+    if app_auth_type == WebAppAuthType.PUBLIC:
+        return _exchange_for_public_app_token(app_model, site)
+    elif app_auth_type == WebAppAuthType.EXTERNAL and user_auth_type != "external":
         raise WebAppAuthRequiredError("Please login as external user.")
-    elif settings.access_mode in ["private", "private_all"] and auth_type == "external":
+    elif app_auth_type == WebAppAuthType.INTERNAL and user_auth_type != "internal":
         raise WebAppAuthRequiredError("Please login as internal user.")
+
     end_user = None
     if end_user_id:
         end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
@@ -158,7 +163,6 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
         )
         db.session.add(end_user)
         db.session.commit()
-
     exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
     exp = int(exp_dt.timestamp())
     payload = {
@@ -168,7 +172,7 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
         "app_code": site.code,
         "user_id": user_id,
         "end_user_id": end_user.id,
-        "auth_type": auth_type,
+        "auth_type": user_auth_type,
         "granted_at": int(datetime.now(UTC).timestamp()),
         "token_source": "webapp",
         "exp": exp,
@@ -176,6 +180,33 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
     token: str = PassportService().issue(payload)
     return {
         "access_token": token,
+    }
+
+
+def _exchange_for_public_app_token(app_model, site):
+    end_user = EndUser(
+        tenant_id=app_model.tenant_id,
+        app_id=app_model.id,
+        type="browser",
+        is_anonymous=True,
+        session_id=generate_session_id(),
+    )
+
+    db.session.add(end_user)
+    db.session.commit()
+
+    payload = {
+        "iss": site.app_id,
+        "sub": "Web API Passport",
+        "app_id": site.app_id,
+        "app_code": site.code,
+        "end_user_id": end_user.id,
+    }
+
+    tk = PassportService().issue(payload)
+
+    return {
+        "access_token": tk,
     }
 
 

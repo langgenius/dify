@@ -1,3 +1,4 @@
+import enum
 import random
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional, cast
@@ -15,6 +16,14 @@ from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.account import AccountLoginError, AccountNotFoundError, AccountPasswordError
 from tasks.mail_email_code_login import send_email_code_login_mail_task
+
+
+class WebAppAuthType(enum.StrEnum):
+    """Enum for web app authentication types."""
+
+    PUBLIC = "public"
+    INTERNAL = "internal"
+    EXTERNAL = "external"
 
 
 class WebAppAuthService:
@@ -145,3 +154,25 @@ class WebAppAuthService:
         if webapp_settings and webapp_settings.access_mode in modes_requiring_permission_check:
             return True
         return False
+
+    @classmethod
+    def get_app_auth_type(cls, app_code: str | None = None, access_mode: str | None = None) -> WebAppAuthType:
+        """
+        Get the authentication type for the app based on its access mode.
+        """
+        if not app_code and not access_mode:
+            raise ValueError("Either app_code or access_mode must be provided.")
+
+        if access_mode:
+            if access_mode == "public":
+                return WebAppAuthType.PUBLIC
+            elif access_mode in ["private", "private_all"]:
+                return WebAppAuthType.INTERNAL
+            elif access_mode == "sso_verified":
+                return WebAppAuthType.EXTERNAL
+
+        if app_code:
+            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code)
+            return cls.get_app_auth_type(access_mode=webapp_settings.access_mode)
+
+        raise ValueError("Could not determine app authentication type.")
