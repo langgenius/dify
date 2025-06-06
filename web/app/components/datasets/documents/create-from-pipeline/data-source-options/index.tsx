@@ -26,7 +26,7 @@ const DataSourceOptions = ({
   }, [datasources, onSelect])
 
   useEffect(() => {
-    if (options.length > 0)
+    if (options.length > 0 && !datasourceNodeId)
       handelSelect(options[0].value)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

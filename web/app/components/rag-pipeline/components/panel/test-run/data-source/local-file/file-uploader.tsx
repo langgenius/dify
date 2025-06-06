@@ -242,7 +242,7 @@ const FileUploader = ({
   }, [handleDrop])
 
   return (
-    <div>
+    <div className='flex flex-col'>
       {!hideUpload && (
         <input
           ref={fileUploader}
