@@ -15,6 +15,7 @@ import Version from '../../base/version'
 import { usePluginTaskList } from '@/service/use-plugins'
 import { gte } from 'semver'
 import { useAppContext } from '@/context/app-context'
+import useInstallPluginLimit from '../../hooks/use-install-plugin-limit'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -124,7 +125,9 @@ const Installed: FC<Props> = ({
   const isDifyVersionCompatible = useMemo(() => {
     if (!pluginDeclaration || !langeniusVersionInfo.current_version) return true
     return gte(langeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
-  }, [langeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version])
+  }, [langeniusVersionInfo.current_version, pluginDeclaration])
+
+  const { canInstall } = useInstallPluginLimit(payload)
 
   return (
     <>
@@ -132,7 +135,7 @@ const Installed: FC<Props> = ({
         <div className='system-md-regular text-text-secondary'>
           <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
           {!isDifyVersionCompatible && (
-            <p className='system-md-regular text-text-secondary text-text-warning'>
+            <p className='system-md-regular text-text-warning'>
               {t('plugin.difyVersionNotCompatible', { minimalDifyVersion: pluginDeclaration?.manifest.meta.minimum_dify_version })}
             </p>
           )}
@@ -146,6 +149,7 @@ const Installed: FC<Props> = ({
               installedVersion={installedVersion}
               toInstallVersion={toInstallVersion}
             />}
+            showLimitWarning={!canInstall}
           />
         </div>
       </div>
@@ -159,7 +163,7 @@ const Installed: FC<Props> = ({
         <Button
           variant='primary'
           className='flex min-w-[72px] space-x-0.5'
-          disabled={isInstalling || isLoading}
+          disabled={isInstalling || isLoading || !canInstall}
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
