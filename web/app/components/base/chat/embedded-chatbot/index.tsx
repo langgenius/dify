@@ -1,10 +1,14 @@
+'use client'
 import {
+  useCallback,
   useEffect,
   useState,
 } from 'react'
 import { useAsyncEffect } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { RiLoopLeftLine } from '@remixicon/react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import Tooltip from '../../tooltip'
 import {
   EmbeddedChatbotContext,
   useEmbeddedChatbotContext,
@@ -12,8 +16,7 @@ import {
 import { useEmbeddedChatbot } from './hooks'
 import { isDify } from './utils'
 import { useThemeContext } from './theme/theme-context'
-import cn from '@/utils/classnames'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
+import { checkOrSetAccessToken, removeAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
@@ -21,7 +24,8 @@ import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ConfigPanel from '@/app/components/base/chat/embedded-chatbot/config-panel'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
-import Tooltip from '@/app/components/base/tooltip'
+import cn from '@/utils/classnames'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const Chatbot = () => {
   const { t } = useTranslation()
@@ -36,6 +40,7 @@ const Chatbot = () => {
     appChatListDataLoading,
     handleNewConversation,
     themeBuilder,
+    isInstalledApp,
   } = useEmbeddedChatbotContext()
 
   const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
@@ -54,14 +59,36 @@ const Chatbot = () => {
     }
   }, [site, customConfig, themeBuilder])
 
+  useDocumentTitle(site?.title || 'Chat')
+
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const getSigninUrl = useCallback(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('message')
+    params.set('redirect_url', pathname)
+    return `/webapp-signin?${params.toString()}`
+  }, [searchParams, pathname])
+
+  const backToHome = useCallback(() => {
+    removeAccessToken()
+    const url = getSigninUrl()
+    router.replace(url)
+  }, [getSigninUrl, router])
+
   if (appInfoLoading) {
     return (
       <Loading type='app' />
     )
   }
 
-  if (!userCanAccess)
-    return <AppUnavailable code={403} unknownReason='no permission.' />
+  if (!userCanAccess) {
+    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
+      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
+      {!isInstalledApp && <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>}
+    </div>
+  }
 
   if (appInfoError) {
     return (
@@ -118,7 +145,6 @@ const EmbeddedChatbotWrapper = () => {
     appInfoError,
     appInfoLoading,
     appData,
-    accessMode,
     userCanAccess,
     appParams,
     appMeta,
@@ -146,7 +172,6 @@ const EmbeddedChatbotWrapper = () => {
 
   return <EmbeddedChatbotContext.Provider value={{
     userCanAccess,
-    accessMode,
     appInfoError,
     appInfoLoading,
     appData,

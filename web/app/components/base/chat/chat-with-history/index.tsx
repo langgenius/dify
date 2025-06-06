@@ -1,9 +1,13 @@
+'use client'
 import type { FC } from 'react'
 import {
+  useCallback,
   useEffect,
   useState,
 } from 'react'
 import { useAsyncEffect } from 'ahooks'
+import { useTranslation } from 'react-i18next'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useThemeContext } from '../embedded-chatbot/theme/theme-context'
 import {
   ChatWithHistoryContext,
@@ -17,8 +21,9 @@ import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
+import { checkOrSetAccessToken, removeAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -37,6 +42,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     chatShouldReloadKey,
     isMobile,
     themeBuilder,
+    isInstalledApp,
   } = useChatWithHistoryContext()
 
   const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatTree.length)
@@ -53,13 +59,36 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
     }
   }, [site, customConfig, themeBuilder])
 
+  useDocumentTitle(site?.title || 'Chat')
+
+  const { t } = useTranslation()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const getSigninUrl = useCallback(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('message')
+    params.set('redirect_url', pathname)
+    return `/webapp-signin?${params.toString()}`
+  }, [searchParams, pathname])
+
+  const backToHome = useCallback(() => {
+    removeAccessToken()
+    const url = getSigninUrl()
+    router.replace(url)
+  }, [getSigninUrl, router])
+
   if (appInfoLoading) {
     return (
       <Loading type='app' />
     )
   }
-  if (!userCanAccess)
-    return <AppUnavailable code={403} unknownReason='no permission.' />
+  if (!userCanAccess) {
+    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
+      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
+      {!isInstalledApp && <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>}
+    </div>
+  }
 
   if (appInfoError) {
     return (
