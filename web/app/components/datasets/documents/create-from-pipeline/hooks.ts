@@ -162,11 +162,16 @@ export const useWebsiteCrawl = () => {
     setCurrentWebsite(undefined)
   }, [])
 
+  const updataCheckedCrawlResultChange = useCallback((checkedCrawlResult: CrawlResultItem[]) => {
+    setWebsitePages(checkedCrawlResult)
+    previewWebsitePage.current = checkedCrawlResult[0]
+  }, [])
+
   return {
     websitePages,
     websiteCrawlJobId,
     previewWebsitePage,
-    setWebsitePages,
+    updataCheckedCrawlResultChange,
     setWebsiteCrawlJobId,
     currentWebsite,
     updateCurrentWebsite,

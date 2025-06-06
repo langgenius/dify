@@ -40,7 +40,7 @@ const TestRunPanel = () => {
   } = useOnlineDocuments()
   const {
     websitePages,
-    websiteCrawlJobId,
+    // websiteCrawlJobId, // todo: Add status query
     setWebsitePages,
     setWebsiteCrawlJobId,
   } = useWebsiteCrawl()
@@ -90,20 +90,15 @@ const TestRunPanel = () => {
       }
       datasourceInfoList.push(documentInfo)
     }
-    if (datasource.type === DatasourceType.websiteCrawl) {
-      const documentInfo = {
-        job_id: websiteCrawlJobId,
-        result: [websitePages[0]],
-      }
-      datasourceInfoList.push(documentInfo)
-    }
+    if (datasource.type === DatasourceType.websiteCrawl)
+      datasourceInfoList.push(websitePages[0])
     handleRun({
       inputs: data,
       start_node_id: datasource.nodeId,
       datasource_type: datasource.type,
       datasource_info_list: datasourceInfoList,
     })
-  }, [datasource, fileList, handleRun, onlineDocuments, websiteCrawlJobId, websitePages])
+  }, [datasource, fileList, handleRun, onlineDocuments, websitePages])
 
   return (
     <div

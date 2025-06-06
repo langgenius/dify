@@ -62,14 +62,14 @@ const CrawledResult = ({
           time: usedTime.toFixed(1),
         })}
       </div>
-      <div className='rounded-xl border border-components-panel-border bg-components-panel-bg'>
+      <div className='overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg'>
         <div className='flex items-center px-4 py-2'>
           <CheckboxWithLabel
             isChecked={isCheckAll}
             onChange={handleCheckedAll} label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
           />
         </div>
-        <div className='flex flex-col gap-y-px overflow-hidden border-t border-divider-subtle bg-background-default-subtle p-2'>
+        <div className='flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2'>
           {list.map((item, index) => (
             <CrawledResultItem
               key={item.source_url}
