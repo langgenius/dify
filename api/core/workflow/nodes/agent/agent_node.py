@@ -2,11 +2,13 @@ import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
+from packaging.version import Version
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
 from core.agent.plugin_entities import AgentStrategyParameter
+from core.agent.strategy.plugin import PluginAgentStrategy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
@@ -68,12 +70,14 @@ class AgentNode(ToolNode):
             agent_parameters=agent_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=node_data,
+            strategy=strategy,
         )
         parameters_for_log = self._generate_agent_parameters(
             agent_parameters=agent_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
             node_data=node_data,
             for_log=True,
+            strategy=strategy,
         )
 
         # get conversation id
@@ -123,6 +127,7 @@ class AgentNode(ToolNode):
         variable_pool: VariablePool,
         node_data: AgentNodeData,
         for_log: bool = False,
+        strategy: PluginAgentStrategy,
     ) -> dict[str, Any]:
         """
         Generate parameters based on the given tool parameters, variable pool, and node data.
@@ -171,7 +176,7 @@ class AgentNode(ToolNode):
             if parameter.type == "array[tools]":
                 value = cast(list[dict[str, Any]], value)
                 value = [tool for tool in value if tool.get("enabled", False)]
-
+                value = self._filter_mcp_type_tool(strategy, value)
                 for tool in value:
                     if "schemas" in tool:
                         tool.pop("schemas")
@@ -362,3 +367,16 @@ class AgentNode(ToolNode):
                 except ValueError:
                     model_schema.features.remove(feature)
         return model_schema
+
+    def _filter_mcp_type_tool(self, strategy: PluginAgentStrategy, tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """
+        Filter MCP type tool
+        :param strategy: plugin agent strategy
+        :param tool: tool
+        :return: filtered tool dict
+        """
+        meta_version = strategy.meta_version
+        if meta_version and Version(meta_version) > Version("0.0.1"):
+            return tools
+        else:
+            return [tool for tool in tools if tool.get("type") != ToolProviderType.MCP.value]

@@ -40,6 +40,15 @@ class PluginParameterType(enum.StrEnum):
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
 
 
+class MCPServerParameterType(enum.StrEnum):
+    """
+    MCP server got complex parameter types
+    """
+
+    ARRAY = "array"
+    OBJECT = "object"
+
+
 class PluginParameterAutoGenerate(BaseModel):
     class Type(enum.StrEnum):
         PROMPT_INSTRUCTION = "prompt_instruction"

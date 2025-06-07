@@ -15,10 +15,12 @@ class PluginAgentStrategy(BaseAgentStrategy):
 
     tenant_id: str
     declaration: AgentStrategyEntity
+    meta_version: str | None = None
 
-    def __init__(self, tenant_id: str, declaration: AgentStrategyEntity):
+    def __init__(self, tenant_id: str, declaration: AgentStrategyEntity, meta_version: str | None):
         self.tenant_id = tenant_id
         self.declaration = declaration
+        self.meta_version = meta_version
 
     def get_parameters(self) -> Sequence[AgentStrategyParameter]:
         return self.declaration.parameters

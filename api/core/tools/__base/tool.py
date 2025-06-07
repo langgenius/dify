@@ -148,6 +148,8 @@ class Tool(ABC):
                     tool_parameter.default = parameter.default
                     tool_parameter.options = parameter.options
                     tool_parameter.llm_description = parameter.llm_description
+                    if parameter.input_schema:
+                        tool_parameter.input_schema = parameter.input_schema
                     break
             else:
                 # add new parameter
