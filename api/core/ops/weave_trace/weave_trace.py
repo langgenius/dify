@@ -4,10 +4,10 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, Optional, cast
 
+import wandb
 import weave
 from sqlalchemy.orm import sessionmaker
 
-import wandb
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import WeaveConfig
 from core.ops.entities.trace_entity import (
