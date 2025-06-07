@@ -7,7 +7,7 @@ const Empty = () => {
 
   return (
     <div className='flex flex-col items-center'>
-      <div className="h-[149px] w-[163px] shrink-0 bg-[url('~@/app/components/tools/add-tool-modal/empty.png')] bg-cover bg-no-repeat"></div>
+      <div className="h-[149px] w-[163px] shrink-0 bg-[url('/assets/empty.png')] bg-cover bg-no-repeat"></div>
       <div className='mb-1 text-[13px] font-medium leading-[18px] text-text-primary'>
         {t(`tools.addToolModal.${searchParams.get('category') === 'workflow' ? 'emptyTitle' : 'emptyTitleCustom'}`)}
       </div>

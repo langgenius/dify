@@ -26,7 +26,7 @@
 
 .trashIcon {
     background-color: transparent;
-    background-image: url(./assets/trash-gray.svg);
+    background-image: url(/assets/trash-gray.svg);
     background-position: center;
     background-repeat: no-repeat;
     background-size: 16px 16px;
@@ -34,24 +34,24 @@
 
 .trashIcon:hover {
     background-color: rgba(254, 228, 226, 1);
-    background-image: url(./assets/trash-red.svg);
+    background-image: url(/assets/trash-red.svg);
     background-position: center;
     background-repeat: no-repeat;
     background-size: 16px 16px;
 }
 
 .copyIcon {
-    background-image: url(./assets/copy.svg);
+    background-image: url(/assets/copy.svg);
     background-position: center;
     background-repeat: no-repeat;
 }
 
 .copyIcon:hover {
-    background-image: url(./assets/copy-hover.svg);
+    background-image: url(/assets/copy-hover.svg);
     background-position: center;
     background-repeat: no-repeat;
 }
 
 .copyIcon.copied {
-    background-image: url(./assets/copied.svg);
+    background-image: url(/assets/copied.svg);
 }
