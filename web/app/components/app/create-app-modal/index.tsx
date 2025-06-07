@@ -29,6 +29,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import useTheme from '@/hooks/use-theme'
+import { getDocLink } from '@/context/i18n'
 
 type CreateAppProps = {
   onSuccess: () => void
@@ -307,17 +308,17 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'chat': {
       title: t('app.types.chatbot'),
       description: t('app.newApp.chatbotUserDescription'),
-      link: 'https://docs.dify.ai/guides/application-orchestrate/readme',
+      link: getDocLink('/guides/application-orchestrate/chatbot-application'),
     },
     'advanced-chat': {
       title: t('app.types.advanced'),
       description: t('app.newApp.advancedUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/workflow/README',
+      link: getDocLink('/guides/workflow/readme'),
     },
     'agent-chat': {
       title: t('app.types.agent'),
       description: t('app.newApp.agentUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/application-orchestrate/agent',
+      link: getDocLink('/guides/application-orchestrate/agent'),
     },
     'completion': {
       title: t('app.newApp.completeApp'),
@@ -327,7 +328,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/workflow/README',
+      link: getDocLink('/guides/workflow/readme'),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]
