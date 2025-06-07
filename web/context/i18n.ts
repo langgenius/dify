@@ -3,6 +3,7 @@ import {
   useContext,
 } from 'use-context-selector'
 import type { Locale } from '@/i18n'
+import { getLocaleOnClient } from '@/i18n'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n/language'
 import { noop } from 'lodash-es'
 
@@ -33,6 +34,12 @@ export const useGetPricingPageLanguage = () => {
   const { locale } = useI18N()
 
   return getPricingPageLanguage(locale)
+}
+
+const baseDocUrl = 'https://docs.dify.ai'
+export const getDocLink = (path: string) => {
+  const docLanguage = getLocaleOnClient() === 'zh-Hans' ? '/zh-hans' : '/'
+  return `${baseDocUrl}${docLanguage}/${path}`
 }
 
 export default I18NContext
