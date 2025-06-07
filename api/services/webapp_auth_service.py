@@ -1,4 +1,4 @@
-import random
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, Optional, cast
 
@@ -66,7 +66,7 @@ class WebAppAuthService:
         if email is None:
             raise ValueError("Email must be provided.")
 
-        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        code = "".join([str(secrets.randbelow(exclusive_upper_bound=10)) for _ in range(6)])
         token = TokenManager.generate_token(
             account=account, email=email, token_type="webapp_email_code_login", additional_data={"code": code}
         )
