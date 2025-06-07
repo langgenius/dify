@@ -165,6 +165,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             streaming=stream,
             call_depth=1,
             workflow_thread_pool_id=None,
+            conversation_id=None,
         )
 
     @classmethod

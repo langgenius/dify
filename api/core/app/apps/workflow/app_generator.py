@@ -48,6 +48,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        conversation_id: Optional[str],
     ) -> Generator[Mapping | str, None, None]: ...
 
     @overload
@@ -62,6 +63,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[False],
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        conversation_id: Optional[str],
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -76,6 +78,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool,
         call_depth: int,
         workflow_thread_pool_id: Optional[str],
+        conversation_id: Optional[str],
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]: ...
 
     def generate(
@@ -89,6 +92,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
     ) -> Union[Mapping[str, Any], Generator[Mapping | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -133,6 +137,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             call_depth=call_depth,
             trace_manager=trace_manager,
             workflow_execution_id=workflow_run_id,
+            conversation_id=conversation_id,
         )
 
         contexts.plugin_tool_providers.set({})
@@ -280,6 +285,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 node_id=node_id, inputs=args["inputs"]
             ),
             workflow_execution_id=str(uuid.uuid4()),
+            conversation_id=None,
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
@@ -356,6 +362,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             extras={"auto_generate_conversation_name": False},
             single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
             workflow_execution_id=str(uuid.uuid4()),
+            conversation_id=None,
         )
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
