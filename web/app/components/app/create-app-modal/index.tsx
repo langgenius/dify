@@ -323,7 +323,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'completion': {
       title: t('app.newApp.completeApp'),
       description: t('app.newApp.completionUserDescription'),
-      link: null,
+      link: getDocLink('/guides/application-orchestrate/text-generator'),
     },
     'workflow': {
       title: t('app.types.workflow'),
