@@ -313,7 +313,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'advanced-chat': {
       title: t('app.types.advanced'),
       description: t('app.newApp.advancedUserDescription'),
-      link: getDocLink('/guides/workflow/readme'),
+      link: getDocLink('/guides/workflow/README'),
     },
     'agent-chat': {
       title: t('app.types.agent'),
@@ -328,7 +328,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: getDocLink('/guides/workflow/readme'),
+      link: getDocLink('/guides/workflow/README'),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]
