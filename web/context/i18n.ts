@@ -38,8 +38,8 @@ export const useGetPricingPageLanguage = () => {
 
 const baseDocUrl = 'https://docs.dify.ai'
 export const getDocLink = (path: string) => {
-  const docLanguage = getLocaleOnClient() === 'zh-Hans' ? '/zh-hans' : '/'
-  return `${baseDocUrl}${docLanguage}/${path}`
+  const docLanguage = getLocaleOnClient() === 'zh-Hans' ? '/zh-hans' : '/en'
+  return (path.startsWith('/')) ? `${baseDocUrl}${docLanguage}${path}` : `${baseDocUrl}${docLanguage}/${path}`
 }
 
 export default I18NContext
