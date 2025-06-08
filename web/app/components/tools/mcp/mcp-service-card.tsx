@@ -50,7 +50,7 @@ function MCPServiceCard({
   const appUnpublished = !currentWorkflow?.graph
   const serverPublished = !!id
   const serverActivated = status === 'active'
-  const serverURL = serverPublished ? `${globalThis.location.protocol}//${globalThis.location.host}/api/server/${server_code}/mcp` : '***********'
+  const serverURL = serverPublished ? `${appInfo.api_base_url.replace('/v1', '')}/mcp/server/${server_code}/mcp` : '***********'
   const toggleDisabled = !isCurrentWorkspaceEditor || appUnpublished
 
   const [activated, setActivated] = useState(serverActivated)
