@@ -317,7 +317,14 @@ class AppRunner:
             else:
                 queue_manager.publish(QueueAgentMessageEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
 
-            text += result.delta.message.content
+            if isinstance(result.delta.message.content, str):
+                text += result.delta.message.content
+            elif isinstance(result.delta.message.content, list):
+                for content in result.delta.message.content:
+                    if not isinstance(content, str):
+                        text += content.data
+                    else:
+                        text += str(content)  # failback to str
 
             if not model:
                 model = result.model
