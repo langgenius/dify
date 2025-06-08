@@ -54,7 +54,7 @@ class AppAccessMode(Resource):
         app_code = args.get("appCode")
         
         if not app_id and not app_code:
-            return {"error": "Missing app_id or app_code in query"}, 400
+            return {"error": "Missing appId or appCode in query"}, 400
         
         if app_id:
             res = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
