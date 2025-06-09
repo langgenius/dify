@@ -1,7 +1,7 @@
 import datetime
 import uuid
 from collections import OrderedDict
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from flask_restful import marshal
 
@@ -18,6 +18,7 @@ from .workflow_draft_variable import (
 )
 
 _TEST_APP_ID = "test_app_id"
+_TEST_NODE_EXEC_ID = str(uuid.uuid4())
 
 
 class TestWorkflowDraftVariableFields:
@@ -29,7 +30,7 @@ class TestWorkflowDraftVariableFields:
         conv_var.id = str(uuid.uuid4())
         conv_var.visible = True
 
-        expected_without_value = OrderedDict(
+        expected_without_value: OrderedDict[str, Any] = OrderedDict(
             {
                 "id": str(conv_var.id),
                 "type": conv_var.get_variable_type().value,
@@ -53,6 +54,7 @@ class TestWorkflowDraftVariableFields:
             name="sys_var",
             value=build_segment("a"),
             editable=True,
+            node_execution_id=_TEST_NODE_EXEC_ID,
         )
 
         sys_var.id = str(uuid.uuid4())
@@ -83,12 +85,13 @@ class TestWorkflowDraftVariableFields:
             name="node_var",
             value=build_segment([1, "a"]),
             visible=False,
+            node_execution_id=_TEST_NODE_EXEC_ID,
         )
 
         node_var.id = str(uuid.uuid4())
         node_var.last_edited_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
 
-        expected_without_value = OrderedDict(
+        expected_without_value: OrderedDict[str, Any] = OrderedDict(
             {
                 "id": str(node_var.id),
                 "type": node_var.get_variable_type().value,
@@ -120,6 +123,7 @@ class TestWorkflowDraftVariableList:
             name="test_var",
             value=build_segment("a"),
             visible=True,
+            node_execution_id=_TEST_NODE_EXEC_ID,
         )
         node_var.id = str(uuid.uuid4())
         node_var_dict = OrderedDict(
@@ -216,7 +220,11 @@ def test_workflow_file_variable_with_signed_url():
 
     # Create a WorkflowDraftVariable with the File
     file_var = WorkflowDraftVariable.new_node_variable(
-        app_id=_TEST_APP_ID, node_id="test_node", name="file_var", value=build_segment(test_file)
+        app_id=_TEST_APP_ID,
+        node_id="test_node",
+        name="file_var",
+        value=build_segment(test_file),
+        node_execution_id=_TEST_NODE_EXEC_ID,
     )
 
     # Marshal the variable using the API fields
@@ -270,7 +278,11 @@ def test_workflow_file_variable_remote_url():
 
     # Create a WorkflowDraftVariable with the File
     file_var = WorkflowDraftVariable.new_node_variable(
-        app_id=_TEST_APP_ID, node_id="test_node", name="file_var", value=build_segment(test_file)
+        app_id=_TEST_APP_ID,
+        node_id="test_node",
+        name="file_var",
+        value=build_segment(test_file),
+        node_execution_id=_TEST_NODE_EXEC_ID,
     )
 
     # Marshal the variable using the API fields

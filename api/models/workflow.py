@@ -1107,7 +1107,7 @@ class WorkflowDraftVariable(Base):
         node_id: str,
         name: str,
         value: Segment,
-        node_execution_id: str | None = None,
+        node_execution_id: str | None,
         description: str = "",
     ) -> "WorkflowDraftVariable":
         variable = WorkflowDraftVariable()
@@ -1137,6 +1137,7 @@ class WorkflowDraftVariable(Base):
             name=name,
             value=value,
             description=description,
+            node_execution_id=None,
         )
         return variable
 

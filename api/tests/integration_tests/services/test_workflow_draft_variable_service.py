@@ -17,6 +17,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
     _session: Session
     _node1_id = "test_node_1"
     _node2_id = "test_node_2"
+    _node_exec_id = str(uuid.uuid4())
 
     def setUp(self):
         self._test_app_id = str(uuid.uuid4())
@@ -25,6 +26,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
             app_id=self._test_app_id,
             name="sys_var",
             value=build_segment("sys_value"),
+            node_execution_id=self._node_exec_id,
         )
         conv_var = WorkflowDraftVariable.new_conversation_variable(
             app_id=self._test_app_id,
@@ -38,6 +40,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
                 name="int_var",
                 value=build_segment(1),
                 visible=False,
+                node_execution_id=self._node_exec_id,
             ),
             WorkflowDraftVariable.new_node_variable(
                 app_id=self._test_app_id,
@@ -45,6 +48,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
                 name="str_var",
                 value=build_segment("str_value"),
                 visible=True,
+                node_execution_id=self._node_exec_id,
             ),
         ]
         node1_var = WorkflowDraftVariable.new_node_variable(
@@ -53,6 +57,7 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
             name="str_var",
             value=build_segment("str_value"),
             visible=True,
+            node_execution_id=self._node_exec_id,
         )
         _variables = list(node2_vars)
         _variables.extend(
@@ -163,6 +168,7 @@ class TestDraftVariableLoader(unittest.TestCase):
     _test_app_id: str
 
     _node1_id = "test_loader_node_1"
+    _node_exec_id = str(uuid.uuid4())
 
     def setUp(self):
         self._test_app_id = str(uuid.uuid4())
@@ -170,6 +176,7 @@ class TestDraftVariableLoader(unittest.TestCase):
             app_id=self._test_app_id,
             name="sys_var",
             value=build_segment("sys_value"),
+            node_execution_id=self._node_exec_id,
         )
         conv_var = WorkflowDraftVariable.new_conversation_variable(
             app_id=self._test_app_id,
@@ -182,6 +189,7 @@ class TestDraftVariableLoader(unittest.TestCase):
             name="str_var",
             value=build_segment("str_value"),
             visible=True,
+            node_execution_id=self._node_exec_id,
         )
         _variables = [
             node_var,
