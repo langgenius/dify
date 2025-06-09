@@ -160,6 +160,10 @@ class ProviderModel(BaseModel):
     deprecated: bool = False
     model_config = ConfigDict(protected_namespaces=())
 
+    @property
+    def support_structure_output(self) -> bool:
+        return self.features is not None and ModelFeature.STRUCTURED_OUTPUT in self.features
+
 
 class ParameterRule(BaseModel):
     """

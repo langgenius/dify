@@ -2,7 +2,7 @@ import copy
 import datetime
 import json
 import logging
-import random
+import secrets
 import time
 import uuid
 from collections import Counter
@@ -970,7 +970,7 @@ class DocumentService:
             documents.append(document)
             batch = document.batch
         else:
-            batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
+            batch = time.strftime("%Y%m%d%H%M%S") + str(100000 + secrets.randbelow(exclusive_upper_bound=900000))
             # save process rule
             if not dataset_process_rule:
                 process_rule = knowledge_config.process_rule

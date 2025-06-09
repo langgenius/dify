@@ -192,15 +192,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
           - original_document_id が渡されない場合、新しい操作が実行され、process_rule が必要です。
 
         - <code>indexing_technique</code> インデックスモード
-          - <code>high_quality</code> 高品質: 埋め込みモデルを使用してベクトルデータベースインデックスを構築
-          - <code>economy</code> 経済: キーワードテーブルインデックスの反転インデックスを構築
+          - <code>high_quality</code> 高品質：埋め込みモデルを使用してベクトルデータベースインデックスを構築
+          - <code>economy</code> 経済：キーワードテーブルインデックスの反転インデックスを構築
 
         - <code>doc_form</code> インデックス化された内容の形式
           - <code>text_model</code> テキストドキュメントは直接埋め込まれます; `economy` モードではこの形式がデフォルト
           - <code>hierarchical_model</code> 親子モード
-          - <code>qa_model</code> Q&A モード: 分割されたドキュメントの質問と回答ペアを生成し、質問を埋め込みます
+          - <code>qa_model</code> Q&A モード：分割されたドキュメントの質問と回答ペアを生成し、質問を埋め込みます
 
-        - <code>doc_language</code> Q&A モードでは、ドキュメントの言語を指定します。例: <code>English</code>, <code>Chinese</code>
+        - <code>doc_language</code> Q&A モードでは、ドキュメントの言語を指定します。例：<code>English</code>, <code>Chinese</code>
 
         - <code>process_rule</code> 処理ルール
           - <code>mode</code> (string) クリーニング、セグメンテーションモード、自動 / カスタム
@@ -214,7 +214,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>segmentation</code> (object) セグメンテーションルール
               - <code>separator</code> カスタムセグメント識別子。現在は 1 つの区切り文字のみ設定可能。デフォルトは \n
               - <code>max_tokens</code> 最大長 (トークン) デフォルトは 1000
-            - <code>parent_mode</code> 親チャンクの検索モード: <code>full-doc</code> 全文検索 / <code>paragraph</code> 段落検索
+            - <code>parent_mode</code> 親チャンクの検索モード：<code>full-doc</code> 全文検索 / <code>paragraph</code> 段落検索
             - <code>subchunk_segmentation</code> (object) 子チャンクルール
               - <code>separator</code> セグメンテーション識別子。現在は 1 つの区切り文字のみ許可。デフォルトは <code>***</code>
               - <code>max_tokens</code> 最大長 (トークン) は親チャンクの長さより短いことを検証する必要があります
@@ -324,7 +324,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
           - <code>partial_members</code> 一部のメンバー
       </Property>
       <Property name='provider' type='string' key='provider'>
-        プロバイダー (オプション、デフォルト: vendor)
+        プロバイダー (オプション、デフォルト：vendor)
           - <code>vendor</code> ベンダー
           - <code>external</code> 外部ナレッジ
       </Property>
@@ -415,16 +415,16 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         検索キーワード、オプション
       </Property>
       <Property name='tag_ids' type='array[string]' key='tag_ids'>
-        タグIDリスト、オプション
+        タグ ID リスト、オプション
       </Property>
       <Property name='page' type='string' key='page'>
-        ページ番号、オプション、デフォルト1
+        ページ番号、オプション、デフォルト 1
       </Property>
       <Property name='limit' type='string' key='limit'>
-        返されるアイテム数、オプション、デフォルト20、範囲1-100
+        返されるアイテム数、オプション、デフォルト 20、範囲 1-100
       </Property>
       <Property name='include_all' type='boolean' key='include_all'>
-        すべてのデータセットを含めるかどうか（所有者のみ有効）、オプション、デフォルトはfalse
+        すべてのデータセットを含めるかどうか（所有者のみ有効）、オプション、デフォルトは false
       </Property>
     </Properties>
   </Col>
@@ -2013,7 +2013,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='name' type='string'>
-        (text) 新しいタグ名、必須、最大長50文字
+        (text) 新しいタグ名、必須、最大長 50 文字
       </Property>
     </Properties>
   </Col>
@@ -2099,10 +2099,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='name' type='string'>
-        (text) 変更後のタグ名、必須、最大長50文字
+        (text) 変更後のタグ名、必須、最大長 50 文字
       </Property>
       <Property name='tag_id' type='string'>
-        (text) タグID、必須
+        (text) タグ ID、必須
       </Property>
     </Properties>
   </Col>
@@ -2147,7 +2147,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='tag_id' type='string'>
-        (text) タグID、必須
+        (text) タグ ID、必須
       </Property>
     </Properties>
   </Col>
@@ -2188,10 +2188,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='tag_ids' type='list'>
-        (list) タグIDリスト、必須
+        (list) タグ ID リスト、必須
       </Property>
       <Property name='target_id' type='string'>
-        (text) ナレッジベースID、必須
+        (text) ナレッジベース ID、必須
       </Property>
     </Properties>
   </Col>
@@ -2230,10 +2230,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Request Body
     <Properties>
       <Property name='tag_id' type='string'>
-        (text) タグID、必須
+        (text) タグ ID、必須
       </Property>
       <Property name='target_id' type='string'>
-        (text) ナレッジベースID、必須
+        (text) ナレッジベース ID、必須
       </Property>
     </Properties>
   </Col>
@@ -2273,7 +2273,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
     ### Path
     <Properties>
       <Property name='dataset_id' type='string'>
-        (text) ナレッジベースID
+        (text) ナレッジベース ID
       </Property>
     </Properties>
   </Col>

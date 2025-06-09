@@ -81,7 +81,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                 return {
                     "config_class": WeaveConfig,
                     "secret_keys": ["api_key"],
-                    "other_keys": ["project", "entity", "endpoint"],
+                    "other_keys": ["project", "entity", "endpoint", "host"],
                     "trace_instance": WeaveDataTrace,
                 }
 
