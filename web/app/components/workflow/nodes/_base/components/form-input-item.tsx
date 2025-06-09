@@ -11,6 +11,7 @@ import type { ValueSelector } from '@/app/components/workflow/types'
 import FormInputTypeSwitch from './form-input-type-switch'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
+import FormInputBoolean from './form-input-boolean'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
@@ -155,6 +156,12 @@ const FormInputItem: FC<Props> = ({
           value={varInput.value || ''}
           onChange={e => handleValueChange(e.target.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
+        />
+      )}
+      {isBoolean && (
+        <FormInputBoolean
+          value={varInput.value as boolean}
+          onChange={handleValueChange}
         />
       )}
       {isSelect && (

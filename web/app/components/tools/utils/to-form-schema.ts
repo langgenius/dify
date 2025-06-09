@@ -105,12 +105,15 @@ export const getConfiguredValue = (value: Record<string, any>, formSchemas: { va
         type: 'constant',
         value: formSchema.default,
       }
+      if (formSchema.type === 'text-input' || formSchema.type === 'secret-input')
+        newValues[formSchema.variable].type = 'mixed'
+
       if (formSchema.type === 'boolean') {
         if (typeof value === 'string')
-          newValues[formSchema.variable].value = value === 'true' ? 1 : 0
+          newValues[formSchema.variable].value = value === 'true'
 
         if (typeof value === 'boolean')
-          newValues[formSchema.variable].value = value ? 1 : 0
+          newValues[formSchema.variable].value = value
       }
 
       if (formSchema.type === 'number-input') {
