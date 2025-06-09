@@ -309,9 +309,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'chat': {
       title: t('app.types.chatbot'),
       description: t('app.newApp.chatbotUserDescription'),
-      link: docLink('/guides/application-orchestrate/chatbot-application', {
-        'zh-hans': '/zh-hans/guides/workflow/readme',
-      }),
+      link: docLink('/guides/application-orchestrate/chatbot-application'),
     },
     'advanced-chat': {
       title: t('app.types.advanced'),
@@ -332,8 +330,8 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: docLink('/guides/application-orchestrate/chatbot-application', {
-        'zh-hans': '/zh-hans/guides/workflow/readme',
+      link: docLink('/guides/workflow/README', {
+        'zh-hans': '/guides/workflow/readme',
       }),
     },
   }
