@@ -278,7 +278,7 @@ const AppPublisher = ({
                     onClick={() => {
                       setShowAppAccessControl(true)
                     }}>
-                    <div className='flex grow items-center gap-x-1.5 pr-1'>
+                    <div className='flex grow items-center gap-x-1.5 overflow-hidden pr-1'>
                       {appDetail?.access_mode === AccessMode.ORGANIZATION
                         && <>
                           <RiBuildingLine className='h-4 w-4 shrink-0 text-text-secondary' />
@@ -288,7 +288,9 @@ const AppPublisher = ({
                       {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
                         && <>
                           <RiLockLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                          <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>
+                          <div className='grow truncate'>
+                            <span className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</span>
+                          </div>
                         </>
                       }
                       {appDetail?.access_mode === AccessMode.PUBLIC
