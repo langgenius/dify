@@ -325,14 +325,12 @@ function AppPreview({ mode }: { mode: AppMode }) {
       title: t('app.newApp.completeApp'),
       description: t('app.newApp.completionUserDescription'),
       link: docLink('/guides/application-orchestrate/text-generator',
-        { 'zh-hans': '/guides/application-orchestrate/readme' }),
+        { 'zh-Hans': '/guides/application-orchestrate/readme' }),
     },
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: docLink('/guides/workflow/README', {
-        'zh-hans': '/guides/workflow/readme',
-      }),
+      link: docLink('/guides/workflow/readme'),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]
