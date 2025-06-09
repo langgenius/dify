@@ -24,7 +24,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { getDocLink } from '@/context/i18n'
+import { useDocLink } from '@/i18n/language'
 import cn from '@/utils/classnames'
 
 export type ISettingsModalProps = {
@@ -97,6 +97,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
@@ -236,7 +237,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           <div className='system-xs-regular mt-0.5 text-text-tertiary'>
             <span>{t(`${prefixSettings}.modalTip`)}</span>
-            <Link href={getDocLink('/guides/application-publishing/launch-your-webapp-quickly/README')}
+            <Link href={docLink('/guides/application-publishing/launch-your-webapp-quickly/README')}
               target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
           </div>
         </div>
