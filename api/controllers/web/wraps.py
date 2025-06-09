@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
 from functools import wraps
 
-from controllers.web.error import (WebAppAuthAccessDeniedError,
+from controllers.web.error import (AppNotPublishedError,
+                                   WebAppAuthAccessDeniedError,
                                    WebAppAuthRequiredError)
 from extensions.ext_database import db
 from flask import request
@@ -55,8 +56,8 @@ def decode_jwt_token():
             raise NotFound()
         if not app_code or not site:
             raise BadRequest("Site URL is no longer valid.")
-        if app_model.enable_site is False:
-            raise BadRequest("Site is disabled.")
+        if app_model.enable_site is False or app_model.status != "normal":
+            raise AppNotPublishedError()
         end_user_id = decoded.get("end_user_id")
         end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
         if not end_user:

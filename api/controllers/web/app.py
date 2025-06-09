@@ -2,7 +2,7 @@
 from controllers.common import fields
 from controllers.common import helpers as controller_helpers
 from controllers.web import api
-from controllers.web.error import AppNotPublishedError, AppUnavailableError
+from controllers.web.error import AppUnavailableError
 from controllers.web.wraps import WebApiResource
 from flask import request
 from flask_restful import Resource, marshal_with, reqparse  # type: ignore
@@ -30,7 +30,7 @@ class AppParameterApi(WebApiResource):
         else:
             app_model_config = app_model.app_model_config
             if app_model_config is None:
-                raise AppNotPublishedError()
+                raise AppUnavailableError()
 
             features_dict = app_model_config.to_dict()
 
