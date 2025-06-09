@@ -1,4 +1,6 @@
 import data from './languages.json'
+import { useMemo } from 'react'
+import { getLocaleOnClient } from '@/i18n/index'
 export type Item = {
   value: number | string
   name: string
@@ -47,6 +49,19 @@ const DOC_LANGUAGE: Record<string, string> = {
 
 export const getDocLanguage = (locale: string) => {
   return DOC_LANGUAGE[locale] || 'en'
+}
+
+export const useDocLink = (baseUrl?: string): ((path: string, pathMap?: { [index: string]: string }) => string) => {
+    const baseDocUrl = baseUrl || 'https://docs.dify.ai'
+    return useMemo(() => {
+        // 返回拼接函数
+        return (path: string, pathMap?: { [index: string]: string }): string => {
+            const locale = getLocaleOnClient()
+            const docLanguage = (['zh-Hans', 'ja-JP'].includes(locale) ? locale : 'en').toLowerCase()
+            const targetPath = (pathMap !== undefined) ? pathMap[docLanguage] || path : path
+            return (targetPath.startsWith('/')) ? `${baseDocUrl}/${docLanguage}${targetPath}` : `${baseDocUrl}/${docLanguage}/${targetPath}`
+        }
+    }, [baseDocUrl])
 }
 
 const PRICING_PAGE_LANGUAGE: Record<string, string> = {

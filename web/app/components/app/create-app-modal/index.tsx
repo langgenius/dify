@@ -29,7 +29,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import useTheme from '@/hooks/use-theme'
-import { getDocLink } from '@/context/i18n'
+import { useDocLink } from '@/i18n/language'
 
 type CreateAppProps = {
   onSuccess: () => void
@@ -304,32 +304,37 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
 
 function AppPreview({ mode }: { mode: AppMode }) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const modeToPreviewInfoMap = {
     'chat': {
       title: t('app.types.chatbot'),
       description: t('app.newApp.chatbotUserDescription'),
-      link: getDocLink('/guides/application-orchestrate/chatbot-application'),
+      link: docLink('/guides/application-orchestrate/chatbot-application', {
+        'zh-hans': '/zh-hans/guides/workflow/readme',
+      }),
     },
     'advanced-chat': {
       title: t('app.types.advanced'),
       description: t('app.newApp.advancedUserDescription'),
-      link: getDocLink('/guides/workflow/README'),
+      link: docLink('/guides/workflow/readme'),
     },
     'agent-chat': {
       title: t('app.types.agent'),
       description: t('app.newApp.agentUserDescription'),
-      link: getDocLink('/guides/application-orchestrate/agent'),
+      link: docLink('/guides/application-orchestrate/agent'),
     },
     'completion': {
       title: t('app.newApp.completeApp'),
       description: t('app.newApp.completionUserDescription'),
-      link: getDocLink('/guides/application-orchestrate/text-generator',
+      link: docLink('/guides/application-orchestrate/text-generator',
         { 'zh-hans': '/guides/application-orchestrate/readme' }),
     },
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: getDocLink('/guides/workflow/README'),
+      link: docLink('/guides/application-orchestrate/chatbot-application', {
+        'zh-hans': '/zh-hans/guides/workflow/readme',
+      }),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]

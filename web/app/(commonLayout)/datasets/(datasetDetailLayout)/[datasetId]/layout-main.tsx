@@ -31,7 +31,7 @@ import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { getDocLink } from '@/context/i18n'
+import { useDocLink } from '@/i18n/language'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -48,6 +48,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
   const locale = getLocaleOnClient()
   const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
   const relatedAppsTotal = relatedApps?.data?.length || 0
@@ -97,7 +98,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
             <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
             <a
               className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
-              href={getDocLink('/guides/knowledge-base/integrate-knowledge-within-application')}
+              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
               target='_blank' rel='noopener noreferrer'
             >
               <RiBookOpenLine className='mr-1 text-text-accent' />
