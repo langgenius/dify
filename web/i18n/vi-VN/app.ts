@@ -213,12 +213,14 @@ const translation = {
     anyone: 'Mọi người đều có thể truy cập ứng dụng web.',
     specific: 'Chỉ những nhóm hoặc thành viên cụ thể mới có thể truy cập ứng dụng web.',
     organization: 'Bất kỳ ai trong tổ chức đều có thể truy cập ứng dụng web.',
+    external: 'Chỉ những người dùng bên ngoài đã xác thực mới có thể truy cập vào ứng dụng Web.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Ai có liên kết',
       specific: 'Các nhóm hoặc thành viên cụ thể',
       organization: 'Chỉ các thành viên trong doanh nghiệp',
+      external: 'Người dùng bên ngoài được xác thực',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Tìm kiếm nhóm và thành viên',

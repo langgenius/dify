@@ -285,6 +285,7 @@ const translation = {
     'labelName': 'Nome do Rótulo',
     'inputPlaceholder': 'Por favor, insira',
     'required': 'Obrigatório',
+    'hide': 'Ocultar',
     'errorMsg': {
       varNameRequired: 'O nome da variável é obrigatório',
       labelNameRequired: 'O nome do rótulo é obrigatório',
