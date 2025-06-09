@@ -1,8 +1,8 @@
 import logging
 import time
 import uuid
-from collections.abc import Callable, Generator, Mapping, Sequence
-from typing import Any, Optional, TypeAlias, cast
+from collections.abc import Generator, Mapping, Sequence
+from typing import Any, Optional, cast
 
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
@@ -10,7 +10,6 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.workflow.callbacks import WorkflowCallback
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from core.workflow.entities.node_entities import WorkflowNodeExecutionMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
@@ -20,11 +19,10 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
+from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from factories import file_factory
-from libs import gen_utils
 from models.enums import UserFrom
 from models.workflow import (
     Workflow,
@@ -141,7 +139,6 @@ class WorkflowEntry:
         node_type = NodeType(node_config_data.get("type"))
         node_version = node_config_data.get("version", "1")
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
-        metadata_attacher = _attach_execution_metadata_based_on_node_config(node_config_data)
 
         # init graph
         graph = Graph.init(graph_config=workflow.graph_dict)
@@ -194,8 +191,6 @@ class WorkflowEntry:
             generator = node_instance.run()
         except Exception as e:
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
-        if metadata_attacher:
-            generator = gen_utils.map_(generator, metadata_attacher)
         return node_instance, generator
 
     @classmethod
@@ -381,49 +376,3 @@ class WorkflowEntry:
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)
-
-
-_NodeOrInNodeEvent: TypeAlias = NodeEvent | InNodeEvent
-
-
-def _attach_execution_metadata(
-    extra_metadata: dict[WorkflowNodeExecutionMetadataKey, Any],
-) -> Callable[[_NodeOrInNodeEvent], _NodeOrInNodeEvent]:
-    def _execution_metadata_mapper(e: NodeEvent | InNodeEvent) -> NodeEvent | InNodeEvent:
-        if not isinstance(e, RunCompletedEvent):
-            return e
-        run_result = e.run_result
-        if run_result.metadata is None:
-            run_result.metadata = {}
-        for k, v in extra_metadata.items():
-            run_result.metadata[k] = v
-        return e
-
-    return _execution_metadata_mapper
-
-
-def _attach_execution_metadata_based_on_node_config(
-    node_config: dict,
-) -> Callable[[_NodeOrInNodeEvent], _NodeOrInNodeEvent] | None:
-    in_loop = node_config.get("isInLoop", False)
-    in_iteration = node_config.get("isInIteration", False)
-    if in_loop:
-        loop_id = node_config.get("loop_id")
-        if loop_id is None:
-            raise Exception("invalid graph")
-        return _attach_execution_metadata(
-            {
-                WorkflowNodeExecutionMetadataKey.LOOP_ID: loop_id,
-            }
-        )
-    elif in_iteration:
-        iteration_id = node_config.get("iteration_id")
-        if iteration_id is None:
-            raise Exception("invalid graph")
-        return _attach_execution_metadata(
-            {
-                WorkflowNodeExecutionMetadataKey.ITERATION_ID: iteration_id,
-            }
-        )
-    else:
-        return None

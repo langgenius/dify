@@ -15,7 +15,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables import Variable
-from core.workflow.entities.node_entities import NodeRunResult, WorkflowNodeExecutionMetadataKey
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
@@ -362,6 +362,13 @@ class WorkflowService:
             app_id=app_model.id,
         )
 
+        node_config = draft_workflow.get_node_config_by_id(node_id)
+        eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
+        if eclosing_node_type_and_id:
+            _, enclosing_node_id = eclosing_node_type_and_id
+        else:
+            enclosing_node_id = None
+
         run = WorkflowEntry.single_step_run(
             workflow=draft_workflow,
             node_id=node_id,
@@ -394,11 +401,6 @@ class WorkflowService:
         # Convert node_execution to WorkflowNodeExecution after save
         workflow_node_execution = repository.to_db_model(node_execution)
 
-        exec_metadata = workflow_node_execution.execution_metadata_dict or {}
-
-        loop_id = exec_metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID, None)
-        iteration_id = exec_metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID, None)
-
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
                 session=session,
@@ -406,7 +408,8 @@ class WorkflowService:
                 node_id=workflow_node_execution.node_id,
                 node_type=NodeType(workflow_node_execution.node_type),
                 invoke_from=InvokeFrom.DEBUGGER,
-                enclosing_node_id=loop_id or iteration_id or None,
+                enclosing_node_id=enclosing_node_id,
+                node_execution_id=node_execution.id,
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=node_execution.outputs)
             session.commit()
