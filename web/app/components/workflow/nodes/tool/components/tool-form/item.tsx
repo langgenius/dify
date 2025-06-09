@@ -17,8 +17,6 @@ type Props = {
   schema: CredentialFormSchema
   value: ToolVarInputs
   onChange: (value: ToolVarInputs) => void
-  onOpen?: (index: number) => void
-  showDescription?: boolean
 }
 
 const ToolFormItem: FC<Props> = ({
@@ -27,11 +25,11 @@ const ToolFormItem: FC<Props> = ({
   schema,
   value,
   onChange,
-  showDescription,
 }) => {
   const language = useLanguage()
   const { label, type, required, tooltip } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
+  const showDescription = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
 
   return (
     <div className='space-y-0.5 py-1'>

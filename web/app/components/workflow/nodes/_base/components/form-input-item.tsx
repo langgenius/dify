@@ -1,5 +1,7 @@
 'use client'
 import type { FC } from 'react'
+import React, { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -7,15 +9,17 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import FormInputTypeSwitch from './form-input-type-switch'
+import MixedInput from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
 import FormInputBoolean from './form-input-boolean'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-// import cn from '@/utils/classnames'
+import cn from '@/utils/classnames'
 
 type Props = {
   readOnly: boolean
@@ -23,7 +27,6 @@ type Props = {
   schema: CredentialFormSchema
   value: ToolVarInputs
   onChange: (value: any) => void
-  onOpen?: (index: number) => void
   hideTypeSwitch?: boolean
 }
 
@@ -35,6 +38,9 @@ const FormInputItem: FC<Props> = ({
   onChange,
   hideTypeSwitch,
 }) => {
+  const { t } = useTranslation()
+  const language = useLanguage()
+
   const {
     placeholder,
     variable,
@@ -43,7 +49,6 @@ const FormInputItem: FC<Props> = ({
     options,
     scope,
   } = schema as any
-  const language = useLanguage()
   const varInput = value[variable]
   const isString = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
   const isNumber = type === FormTypeEnum.textNumber
@@ -54,8 +59,14 @@ const FormInputItem: FC<Props> = ({
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
   const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
-
   const showTypeSwitch = isNumber || isObject || isArray
+
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: (varPayload: Var) => {
+      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    },
+  })
 
   const targetVarType = () => {
     if (isString)
@@ -144,23 +155,48 @@ const FormInputItem: FC<Props> = ({
     })
   }
 
+  const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
+  const handleInputFocus = useCallback((variable: string) => {
+    return (value: boolean) => {
+      setInputsIsFocus((prev) => {
+        return {
+          ...prev,
+          [variable]: value,
+        }
+      })
+    }
+  }, [])
+
   return (
     <div className='flex gap-1'>
       {showTypeSwitch && !hideTypeSwitch && (
-        <FormInputTypeSwitch value={varInput.type} onChange={handleTypeChange}/>
+        <FormInputTypeSwitch value={varInput?.type} onChange={handleTypeChange}/>
       )}
-      {isNumber && varInput.type === VarKindType.constant && (
+      {isString && (
+        <MixedInput
+          className={cn(inputsIsFocus[variable] ? 'border-gray-300 bg-gray-50 shadow-xs' : 'border-gray-100 bg-gray-100', 'grow rounded-lg border px-3 py-[6px]')}
+          value={varInput?.value as string || ''}
+          onChange={handleValueChange}
+          readOnly={readOnly}
+          nodesOutputVars={availableVars}
+          availableNodes={availableNodesWithParent}
+          onFocusChange={handleInputFocus(variable)}
+          placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
+          placeholderClassName='!leading-[21px]'
+        />
+      )}
+      {isNumber && varInput?.type === VarKindType.constant && (
         <Input
           className='h-8 grow'
           type='number'
-          value={varInput.value || ''}
+          value={varInput?.value || ''}
           onChange={e => handleValueChange(e.target.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
         />
       )}
       {isBoolean && (
         <FormInputBoolean
-          value={varInput.value as boolean}
+          value={varInput?.value as boolean}
           onChange={handleValueChange}
         />
       )}
@@ -183,7 +219,7 @@ const FormInputItem: FC<Props> = ({
         <AppSelector
           disabled={readOnly}
           scope={scope || 'all'}
-          value={varInput.value as any}
+          value={varInput?.value as any}
           onSelect={handleValueChange}
         />
       )}
@@ -192,13 +228,13 @@ const FormInputItem: FC<Props> = ({
           popupClassName='!w-[387px]'
           isAdvancedMode
           isInWorkflow
-          value={varInput.value as any}
+          value={varInput?.value as any}
           setModel={handleValueChange}
           readonly={readOnly}
           scope={scope}
         />
       )}
-      {varInput.type === VarKindType.variable && (
+      {varInput?.type === VarKindType.variable && (
         <VarReferencePicker
           className='h-8 grow'
           readonly={readOnly}

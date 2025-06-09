@@ -4,12 +4,10 @@ import { useTranslation } from 'react-i18next'
 import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
 import useConfig from './use-config'
-import InputVarList from './components/input-var-list'
 import ToolForm from './components/tool-form'
 import Button from '@/app/components/base/button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-// import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import Loading from '@/app/components/base/loading'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
@@ -34,8 +32,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     inputs,
     toolInputVarSchema,
     setInputVar,
-    handleOnVarOpen,
-    filterVar,
     toolSettingSchema,
     toolSettingValue,
     setToolSettingValue,
@@ -94,29 +90,18 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               className='px-4'
               title={t(`${i18nPrefix}.inputVars`)}
             >
-              <InputVarList
+              <ToolForm
                 readOnly={readOnly}
                 nodeId={id}
                 schema={toolInputVarSchema as any}
                 value={inputs.tool_parameters}
                 onChange={setInputVar}
-                filterVar={filterVar}
-                isSupportConstantValue
-                onOpen={handleOnVarOpen}
               />
-              {/* <ToolForm
-                readOnly={readOnly}
-                nodeId={id}
-                schema={toolInputVarSchema as any}
-                value={inputs.tool_parameters}
-                onChange={setInputVar}
-                onOpen={handleOnVarOpen}
-              /> */}
             </Field>
           )}
 
           {toolInputVarSchema.length > 0 && toolSettingSchema.length > 0 && (
-            <Split />
+            <Split className='mt-1' />
           )}
 
           {toolSettingSchema.length > 0 && (
@@ -126,19 +111,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 collapsed={collapsed}
                 onCollapse={setCollapsed}
               >
-                {/* <Form
-                  className='space-y-4'
-                  itemClassName='!py-0'
-                  fieldLabelClassName='!text-[13px] !font-semibold !text-text-secondary uppercase'
-                  value={toolSettingValue}
-                  onChange={setToolSettingValue}
-                  formSchemas={toolSettingSchema as any}
-                  isEditMode={false}
-                  showOnVariableMap={{}}
-                  validating={false}
-                  // inputClassName='!bg-gray-50'
-                  readonly={readOnly}
-                /> */}
                 <ToolForm
                   readOnly={readOnly}
                   nodeId={id}
