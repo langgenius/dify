@@ -89,6 +89,10 @@ class AppWebAuthPermission(Resource):
         except Exception as e:
             pass
 
+        features = FeatureService.get_system_features()
+        if not features.webapp_auth.enabled:
+            return {"result": True}
+
         parser = reqparse.RequestParser()
         parser.add_argument("appId", type=str, required=True, location="args")
         args = parser.parse_args()
