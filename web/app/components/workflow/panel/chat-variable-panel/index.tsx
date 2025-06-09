@@ -3,7 +3,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useContext } from 'use-context-selector'
 import {
   useStoreApi,
 } from 'reactflow'
@@ -22,13 +21,12 @@ import type {
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { BlockEnum } from '@/app/components/workflow/types'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 import cn from '@/utils/classnames'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
   const store = useStoreApi()
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
@@ -139,8 +137,11 @@ const ChatVariablePanel = () => {
             <div className='system-2xs-medium-uppercase inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary'>TIPS</div>
             <div className='system-sm-regular mb-4 mt-1 text-text-secondary'>
               {t('workflow.chatVariable.panelDescription')}
-              <a target='_blank' rel='noopener noreferrer' className='text-text-accent' href={locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/guides/workflow/variables#conversation-variables' : `https://docs.dify.ai/${locale.toLowerCase()}/guides/workflow/variables#hui-hua-bian-liang`}>{t('workflow.chatVariable.docLink')}</a>
-            </div>
+              <a target='_blank' rel='noopener noreferrer' className='text-text-accent'
+                 href={docLink('/guides/workflow/variables#conversation-variables', { 'zh-Hans': '/guides/workflow/variables#hui-hua-bian-liang' })}>
+                {t('workflow.chatVariable.docLink')}
+              </a>
+          </div>
             <div className='flex items-center gap-2'>
               <div className='radius-lg flex flex-col border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md'>
                 <BubbleX className='mb-1 h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />
