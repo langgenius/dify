@@ -23,7 +23,6 @@ import GithubStar from '../github-star'
 import Support from './support'
 import Compliance from './compliance'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useGetDocLanguage } from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { logout } from '@/service/common'
@@ -49,7 +48,6 @@ export default function AppSelector() {
   const { userProfile, langeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
-  const docLanguage = useGetDocLanguage()
 
   const handleLogout = async () => {
     await logout({
