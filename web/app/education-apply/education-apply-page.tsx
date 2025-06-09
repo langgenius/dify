@@ -25,7 +25,7 @@ import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/con
 import { getLocaleOnClient } from '@/i18n'
 import { noop } from 'lodash-es'
 import DifyLogo from '../components/base/logo/dify-logo'
-import { getDocLink } from '@/context/i18n'
+import { useDocLink } from '@/i18n/language'
 const EducationApplyAge = () => {
   const { t } = useTranslation()
   const locale = getLocaleOnClient()
@@ -42,6 +42,7 @@ const EducationApplyAge = () => {
   const updateEducationStatus = useInvalidateEducationStatus()
   const { notify } = useToastContext()
   const router = useRouter()
+  const docLink = useDocLink()
 
   const handleModalConfirm = () => {
     setShowModal(undefined)
@@ -158,7 +159,7 @@ const EducationApplyAge = () => {
           <div className='mb-4 mt-5 h-[1px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]'></div>
           <a
             className='system-xs-regular flex items-center text-text-accent'
-            href={getDocLink('/getting-started/dify-for-education')}
+            href={docLink('/getting-started/dify-for-education')}
             target='_blank'
           >
             {t('education.learn')}

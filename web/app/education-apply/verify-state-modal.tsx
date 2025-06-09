@@ -6,7 +6,7 @@ import {
 } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import { getLocaleOnClient } from '@/i18n'
-import { getDocLink } from '@/context/i18n'
+import { useDocLink } from '@/i18n/language'
 
 export type IConfirm = {
   className?: string
@@ -34,8 +34,8 @@ function Confirm({
   const locale = getLocaleOnClient()
   const dialogRef = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(isShow)
-
-  const docLink = getDocLink('/getting-started/dify-for-education')
+  const dl = useDocLink()
+  const docLink = dl('/getting-started/dify-for-education')
 
   const handleClick = () => {
     window.open(docLink, '_blank', 'noopener,noreferrer')
