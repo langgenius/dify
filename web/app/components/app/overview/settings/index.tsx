@@ -236,7 +236,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           </div>
           <div className='system-xs-regular mt-0.5 text-text-tertiary'>
             <span>{t(`${prefixSettings}.modalTip`)}</span>
-            <Link href={getDocLink('/guides/application-publishing/launch-your-webapp-quickly/README') }
+            <Link href={getDocLink('/guides/application-publishing/launch-your-webapp-quickly/README')}
               target='_blank' rel='noopener noreferrer' className='text-text-accent'>{t('common.operation.learnMore')}</Link>
           </div>
         </div>
