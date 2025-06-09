@@ -26,12 +26,11 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore } from '@/app/components/app/store'
-import { getLocaleOnClient } from '@/i18n'
+import { useDocLink } from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useDocLink } from '@/context/i18n'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -45,7 +44,6 @@ type IExtraInfoProps = {
 }
 
 const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
-  const locale = getLocaleOnClient()
   const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
   const docLink = useDocLink()

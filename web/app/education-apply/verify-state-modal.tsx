@@ -5,7 +5,6 @@ import {
   RiExternalLinkLine,
 } from '@remixicon/react'
 import Button from '@/app/components/base/button'
-import { getLocaleOnClient } from '@/i18n'
 import { useDocLink } from '@/context/i18n'
 
 export type IConfirm = {
@@ -31,14 +30,13 @@ function Confirm({
   email,
 }: IConfirm) {
   const { t } = useTranslation()
-  const locale = getLocaleOnClient()
+  const docLink = useDocLink()
   const dialogRef = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(isShow)
-  const dl = useDocLink()
-  const docLink = dl('/getting-started/dify-for-education')
+  const eduDocLink = docLink('/getting-started/dify-for-education')
 
   const handleClick = () => {
-    window.open(docLink, '_blank', 'noopener,noreferrer')
+    window.open(eduDocLink, '_blank', 'noopener,noreferrer')
   }
 
   useEffect(() => {
@@ -101,7 +99,7 @@ function Confirm({
             <div className='flex items-center gap-1'>
               {showLink && (
                 <>
-                  <a onClick={handleClick} href={docLink} target='_blank' className='system-xs-regular cursor-pointer text-text-accent'>{t('education.learn')}</a>
+                  <a onClick={handleClick} href={eduDocLink} target='_blank' className='system-xs-regular cursor-pointer text-text-accent'>{t('education.learn')}</a>
                   <RiExternalLinkLine className='h-3 w-3 text-text-accent' />
                 </>
               )}

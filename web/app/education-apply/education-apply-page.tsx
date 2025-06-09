@@ -22,13 +22,11 @@ import {
 import { useProviderContext } from '@/context/provider-context'
 import { useToastContext } from '@/app/components/base/toast'
 import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
-import { getLocaleOnClient } from '@/i18n'
 import { noop } from 'lodash-es'
 import DifyLogo from '../components/base/logo/dify-logo'
 import { useDocLink } from '@/context/i18n'
 const EducationApplyAge = () => {
   const { t } = useTranslation()
-  const locale = getLocaleOnClient()
   const [schoolName, setSchoolName] = useState('')
   const [role, setRole] = useState('Student')
   const [ageChecked, setAgeChecked] = useState(false)
