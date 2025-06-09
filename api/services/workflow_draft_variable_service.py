@@ -517,7 +517,6 @@ class DraftVariableSaver:
                 WorkflowDraftVariable.new_conversation_variable(
                     app_id=self._app_id,
                     name=item.name,
-                    node_execution_id=self._node_execution_id,
                     value=segment,
                 )
             )
