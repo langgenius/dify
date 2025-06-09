@@ -11,6 +11,7 @@ from libs.passport import PassportService
 from models.model import App, AppMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
 
@@ -53,6 +54,10 @@ class AppAccessMode(Resource):
         parser.add_argument("appId", type=str, required=False, location="args")
         parser.add_argument("appCode", type=str, required=False, location="args")
         args = parser.parse_args()
+
+        features = FeatureService.get_system_features()
+        if not features.webapp_auth.enabled:
+            return {"accessMode": "public"}
 
         app_id = args.get("appId")
         if args.get("appCode"):
