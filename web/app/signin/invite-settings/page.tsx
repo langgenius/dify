@@ -23,7 +23,7 @@ export default function InviteSettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
-  const { locale, setLocaleOnClient } = useContext(I18n)
+  const { setLocaleOnClient } = useContext(I18n)
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(LanguagesSupported[0])
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
