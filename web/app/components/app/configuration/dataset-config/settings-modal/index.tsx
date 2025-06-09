@@ -31,8 +31,7 @@ import {
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
-import { getDocLink } from '@/context/i18n'
-
+import { useDocLink } from '@/i18n/language'
 type SettingsModalProps = {
   currentDataset: DataSet
   onCancel: () => void
@@ -59,6 +58,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { notify } = useToastContext()
   const ref = useRef(null)
   const isExternal = currentDataset.provider === 'external'
@@ -329,7 +329,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               <div>
                 <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                 <div className='text-xs font-normal leading-[18px] text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer' href={getDocLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')} className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                  <a target='_blank' rel='noopener noreferrer' href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')} className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                   {t('datasetSettings.form.retrievalSetting.description')}
                 </div>
               </div>
