@@ -62,6 +62,7 @@ const translation = {
       settings: 'PARAMÈTRES UTILISATEUR',
       paramsTip2: 'Lorsque « Automatique » est désactivé, la valeur par défaut est utilisée.',
       paramsTip1: 'Contrôle les paramètres d’inférence LLM.',
+      toolSetting: 'Paramètres de l\'outil',
     },
     modelNum: '{{num}} MODÈLES INCLUS',
     endpointDeleteTip: 'Supprimer le point de terminaison',
@@ -210,6 +211,7 @@ const translation = {
     title: 'Plugins',
   },
   difyVersionNotCompatible: 'La version actuelle de Dify n\'est pas compatible avec ce plugin, veuillez mettre à niveau vers la version minimale requise : {{minimalDifyVersion}}',
+  requestAPlugin: 'Demander un plugin',
 }
 
 export default translation

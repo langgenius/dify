@@ -279,6 +279,7 @@ const translation = {
     'labelName': 'Назва мітки',
     'inputPlaceholder': 'Будь ласка, введіть',
     'required': 'Обов\'язково',
+    'hide': 'Приховати',
     'errorMsg': {
       varNameRequired: 'Потрібно вказати назву змінної',
       labelNameRequired: 'Потрібно вказати назву мітки',

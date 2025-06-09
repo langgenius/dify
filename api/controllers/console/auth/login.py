@@ -202,18 +202,18 @@ class EmailCodeLoginApi(Resource):
         except AccountRegisterError as are:
             raise AccountInFreezeError()
         if account:
-            tenant = TenantService.get_join_tenants(account)
-            if not tenant:
+            tenants = TenantService.get_join_tenants(account)
+            if not tenants:
                 workspaces = FeatureService.get_system_features().license.workspaces
                 if not workspaces.is_available():
                     raise WorkspacesLimitExceeded()
                 if not FeatureService.get_system_features().is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
-                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(tenant, account, role="owner")
-                    account.current_tenant = tenant
-                    tenant_was_created.send(tenant)
+                    new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                    TenantService.create_tenant_member(new_tenant, account, role="owner")
+                    account.current_tenant = new_tenant
+                    tenant_was_created.send(new_tenant)
 
         if account is None:
             try:

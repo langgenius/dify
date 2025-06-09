@@ -13,7 +13,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes import NodeType
@@ -30,8 +30,7 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import (
     Workflow,
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
+    WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowType,
 )
@@ -255,7 +254,7 @@ class WorkflowService:
 
     def run_draft_workflow_node(
         self, app_model: App, node_id: str, user_inputs: dict, account: Account
-    ) -> WorkflowNodeExecution:
+    ) -> WorkflowNodeExecutionModel:
         """
         Run draft workflow node
         """
@@ -297,7 +296,7 @@ class WorkflowService:
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
-    ) -> NodeExecution:
+    ) -> WorkflowNodeExecution:
         """
         Run draft workflow node
         """
@@ -323,7 +322,7 @@ class WorkflowService:
         invoke_node_fn: Callable[[], tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]],
         start_at: float,
         node_id: str,
-    ) -> NodeExecution:
+    ) -> WorkflowNodeExecution:
         try:
             node_instance, generator = invoke_node_fn()
 
@@ -375,7 +374,7 @@ class WorkflowService:
             error = e.error
 
         # Create a NodeExecution domain model
-        node_execution = NodeExecution(
+        node_execution = WorkflowNodeExecution(
             id=str(uuid4()),
             workflow_id="",  # This is a single-step execution, so no workflow ID
             index=1,
@@ -404,13 +403,13 @@ class WorkflowService:
 
             # Map status from WorkflowNodeExecutionStatus to NodeExecutionStatus
             if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
-                node_execution.status = NodeExecutionStatus.SUCCEEDED
+                node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED
             elif node_run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
-                node_execution.status = NodeExecutionStatus.EXCEPTION
+                node_execution.status = WorkflowNodeExecutionStatus.EXCEPTION
                 node_execution.error = node_run_result.error
         else:
             # Set failed status and error
-            node_execution.status = NodeExecutionStatus.FAILED
+            node_execution.status = WorkflowNodeExecutionStatus.FAILED
             node_execution.error = error
 
         return node_execution
@@ -508,11 +507,11 @@ class WorkflowService:
             raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
 
         # Check if this workflow is currently referenced by an app
-        stmt = select(App).where(App.workflow_id == workflow_id)
-        app = session.scalar(stmt)
+        app_stmt = select(App).where(App.workflow_id == workflow_id)
+        app = session.scalar(app_stmt)
         if app:
             # Cannot delete a workflow that's currently in use by an app
-            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.name}'")
+            raise WorkflowInUseError(f"Cannot delete workflow that is currently in use by app '{app.id}'")
 
         # Don't use workflow.tool_published as it's not accurate for specific workflow versions
         # Check if there's a tool provider using this specific workflow version

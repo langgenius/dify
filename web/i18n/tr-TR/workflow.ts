@@ -302,6 +302,7 @@ const translation = {
     organizeBlocks: 'Blokları Düzenle',
     change: 'Değiştir',
     optional: '(isteğe bağlı)',
+    moveToThisNode: 'Bu düğüme geç',
   },
   nodes: {
     common: {
@@ -648,7 +649,6 @@ const translation = {
       'noAssignedVars': 'Kullanılabilir atanmış değişken yok',
     },
     tool: {
-      toAuthorize: 'Yetkilendirmek için',
       inputVars: 'Giriş Değişkenleri',
       outputVars: {
         text: 'araç tarafından oluşturulan içerik',
@@ -661,6 +661,7 @@ const translation = {
         },
         json: 'araç tarafından oluşturulan json',
       },
+      authorize: 'Yetkilendirmek',
     },
     questionClassifiers: {
       model: 'model',

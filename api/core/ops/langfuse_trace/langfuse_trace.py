@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from langfuse import Langfuse  # type: ignore
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangfuseConfig
@@ -31,7 +31,7 @@ from core.ops.utils import filter_none_values
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
-from models import Account, App, EndUser, WorkflowNodeExecutionTriggeredFrom
+from models import EndUser, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -114,22 +114,11 @@ class LangFuseDataTrace(BaseTraceInstance):
         # through workflow_run_id get all_nodes_execution using repository
         session_factory = sessionmaker(bind=db.engine)
         # Find the app's creator account
-        with Session(db.engine, expire_on_commit=False) as session:
-            # Get the app to find its creator
-            app_id = trace_info.metadata.get("app_id")
-            if not app_id:
-                raise ValueError("No app_id found in trace_info metadata")
+        app_id = trace_info.metadata.get("app_id")
+        if not app_id:
+            raise ValueError("No app_id found in trace_info metadata")
 
-            app = session.query(App).filter(App.id == app_id).first()
-            if not app:
-                raise ValueError(f"App with id {app_id} not found")
-
-            if not app.created_by:
-                raise ValueError(f"App with id {app_id} has no creator (created_by is None)")
-
-            service_account = session.query(Account).filter(Account.id == app.created_by).first()
-            if not service_account:
-                raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
+        service_account = self.get_service_account_with_tenant(app_id)
 
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,

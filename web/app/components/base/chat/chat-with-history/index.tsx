@@ -124,7 +124,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
   const {
     appInfoError,
     appInfoLoading,
-    accessMode,
     userCanAccess,
     appData,
     appParams,
@@ -161,6 +160,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    allInputsHidden,
   } = useChatWithHistory(installedAppInfo)
 
   return (
@@ -168,7 +168,6 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       appInfoError,
       appInfoLoading,
       appData,
-      accessMode,
       userCanAccess,
       appParams,
       appMeta,
@@ -206,6 +205,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       setIsResponding,
       currentConversationInputs,
       setCurrentConversationInputs,
+      allInputsHidden,
     }}>
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>

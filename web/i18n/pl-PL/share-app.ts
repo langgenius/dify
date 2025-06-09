@@ -78,6 +78,9 @@ const translation = {
     executions: '{{num}} EGZEKUCJI',
     execution: 'WYKONANIE',
   },
+  login: {
+    backToHome: 'Powrót do strony głównej',
+  },
 }
 
 export default translation

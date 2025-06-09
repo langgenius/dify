@@ -23,7 +23,8 @@ logger = logging.getLogger(__name__)
 class OpenSearchConfig(BaseModel):
     host: str
     port: int
-    secure: bool = False
+    secure: bool = False  # use_ssl
+    verify_certs: bool = True
     auth_method: Literal["basic", "aws_managed_iam"] = "basic"
     user: Optional[str] = None
     password: Optional[str] = None
@@ -42,6 +43,8 @@ class OpenSearchConfig(BaseModel):
                 raise ValueError("config OPENSEARCH_AWS_REGION is required for AWS_MANAGED_IAM auth method")
             if not values.get("aws_service"):
                 raise ValueError("config OPENSEARCH_AWS_SERVICE is required for AWS_MANAGED_IAM auth method")
+        if not values.get("OPENSEARCH_SECURE") and values.get("OPENSEARCH_VERIFY_CERTS"):
+            raise ValueError("verify_certs=True requires secure (HTTPS) connection")
         return values
 
     def create_aws_managed_iam_auth(self) -> Urllib3AWSV4SignerAuth:
@@ -57,7 +60,7 @@ class OpenSearchConfig(BaseModel):
         params = {
             "hosts": [{"host": self.host, "port": self.port}],
             "use_ssl": self.secure,
-            "verify_certs": self.secure,
+            "verify_certs": self.verify_certs,
             "connection_class": Urllib3HttpConnection,
             "pool_maxsize": 20,
         }
@@ -181,7 +184,16 @@ class OpenSearchVector(BaseVector):
         }
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            query["query"] = {"terms": {"metadata.document_id": document_ids_filter}}
+            query["query"] = {
+                "script_score": {
+                    "query": {"bool": {"filter": [{"terms": {Field.DOCUMENT_ID.value: document_ids_filter}}]}},
+                    "script": {
+                        "source": "knn_score",
+                        "lang": "knn",
+                        "params": {"field": Field.VECTOR.value, "query_value": query_vector, "space_type": "l2"},
+                    },
+                }
+            }
 
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
@@ -206,10 +218,10 @@ class OpenSearchVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        full_text_query = {"query": {"match": {Field.CONTENT_KEY.value: query}}}
+        full_text_query = {"query": {"bool": {"must": [{"match": {Field.CONTENT_KEY.value: query}}]}}}
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
-            full_text_query["query"]["terms"] = {"metadata.document_id": document_ids_filter}
+            full_text_query["query"]["bool"]["filter"] = [{"terms": {"metadata.document_id": document_ids_filter}}]
 
         response = self._client.search(index=self._collection_name.lower(), body=full_text_query)
 
@@ -252,7 +264,8 @@ class OpenSearchVector(BaseVector):
                             Field.METADATA_KEY.value: {
                                 "type": "object",
                                 "properties": {
-                                    "doc_id": {"type": "keyword"}  # Map doc_id to keyword type
+                                    "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
+                                    "document_id": {"type": "keyword"},
                                 },
                             },
                         }
@@ -279,6 +292,7 @@ class OpenSearchVectorFactory(AbstractVectorFactory):
             host=dify_config.OPENSEARCH_HOST or "localhost",
             port=dify_config.OPENSEARCH_PORT,
             secure=dify_config.OPENSEARCH_SECURE,
+            verify_certs=dify_config.OPENSEARCH_VERIFY_CERTS,
             auth_method=dify_config.OPENSEARCH_AUTH_METHOD.value,
             user=dify_config.OPENSEARCH_USER,
             password=dify_config.OPENSEARCH_PASSWORD,
