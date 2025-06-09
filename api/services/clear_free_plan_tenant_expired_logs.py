@@ -14,7 +14,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.model import App, Conversation, Message
-from models.workflow import WorkflowNodeExecution, WorkflowRun
+from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
 from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
@@ -108,10 +108,11 @@ class ClearFreePlanTenantExpiredLogs:
             while True:
                 with Session(db.engine).no_autoflush as session:
                     workflow_node_executions = (
-                        session.query(WorkflowNodeExecution)
+                        session.query(WorkflowNodeExecutionModel)
                         .filter(
-                            WorkflowNodeExecution.tenant_id == tenant_id,
-                            WorkflowNodeExecution.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
+                            WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                            WorkflowNodeExecutionModel.created_at
+                            < datetime.datetime.now() - datetime.timedelta(days=days),
                         )
                         .limit(batch)
                         .all()
@@ -135,8 +136,8 @@ class ClearFreePlanTenantExpiredLogs:
                     ]
 
                     # delete workflow node executions
-                    session.query(WorkflowNodeExecution).filter(
-                        WorkflowNodeExecution.id.in_(workflow_node_execution_ids),
+                    session.query(WorkflowNodeExecutionModel).filter(
+                        WorkflowNodeExecutionModel.id.in_(workflow_node_execution_ids),
                     ).delete(synchronize_session=False)
                     session.commit()
 

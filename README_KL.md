@@ -235,7 +235,7 @@ At the same time, please consider supporting Dify by sharing it on social media 
 
 ## Community & Contact
 
-* [Github Discussion](https://github.com/langgenius/dify/discussions
+* [GitHub Discussion](https://github.com/langgenius/dify/discussions
 
 ). Best for: sharing feedback and asking questions.
 * [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).

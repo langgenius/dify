@@ -141,7 +141,7 @@ const MultipleToolSelector = ({
             }
             panelShowState={panelShowState}
             onPanelShowStateChange={setPanelShowState}
-
+            isEdit={false}
           />
           {value.length === 0 && (
             <div className='system-xs-regular flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary'>{t('plugin.detailPanel.toolSelector.empty')}</div>
@@ -158,6 +158,7 @@ const MultipleToolSelector = ({
                 onSelect={item => handleConfigure(item, index)}
                 onDelete={() => handleDelete(index)}
                 supportEnableSwitch
+                isEdit
               />
             </div>
           ))}

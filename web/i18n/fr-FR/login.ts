@@ -105,6 +105,11 @@ const translation = {
   licenseLost: 'Licence perdue',
   licenseExpiredTip: 'La licence Dify Enterprise de votre espace de travail a expiré. Veuillez contacter votre administrateur pour continuer à utiliser Dify.',
   licenseInactive: 'Licence inactive',
+  webapp: {
+    noLoginMethodTip: 'Veuillez contacter l\'administrateur système pour ajouter une méthode d\'authentification.',
+    noLoginMethod: 'Méthode d\'authentification non configurée pour l\'application web',
+    disabled: 'L\'authentification de l\'application web est désactivée. Veuillez contacter l\'administrateur du système pour l\'activer. Vous pouvez essayer d\'utiliser l\'application directement.',
+  },
 }
 
 export default translation

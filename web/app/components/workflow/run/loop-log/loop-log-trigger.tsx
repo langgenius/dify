@@ -29,7 +29,7 @@ const LoopLogTrigger = ({
     if (parallelNodes.length > 0)
       return parallelNodes
 
-    const serialIndex = parseInt(key, 10)
+    const serialIndex = Number.parseInt(key, 10)
     if (!isNaN(serialIndex)) {
       const serialNodes = allExecutions.filter(exec =>
         exec.execution_metadata?.loop_id === nodeInfo.node_id
@@ -51,15 +51,14 @@ const LoopLogTrigger = ({
     const loopVarMap = loopNodeMeta?.loop_variable_map || {}
 
     let structuredList: NodeTracing[][] = []
-
-    if (loopNodeMeta?.loop_duration_map) {
+    if (nodeInfo.details?.length) {
+      structuredList = nodeInfo.details
+    }
+    else if (loopNodeMeta?.loop_duration_map) {
       const instanceKeys = Object.keys(loopNodeMeta.loop_duration_map)
       structuredList = instanceKeys
         .map(key => filterNodesForInstance(key))
         .filter(branchNodes => branchNodes.length > 0)
-    }
-    else if (nodeInfo.details?.length) {
-      structuredList = nodeInfo.details
     }
 
     onShowLoopResultList(

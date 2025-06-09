@@ -52,12 +52,12 @@ const translation = {
     emailInValid: '請輸入有效的郵箱地址',
     nameEmpty: '使用者名稱不能為空',
     passwordEmpty: '密碼不能為空',
-    passwordInvalid: '密碼必須包含字母和數字，且長度不小於8位',
-    passwordLengthInValid: '密碼必須至少為8個字元',
+    passwordInvalid: '密碼必須包含字母和數字，且長度不小於 8 位',
+    passwordLengthInValid: '密碼必須至少為 8 個字元',
     registrationNotAllowed: '找不到帳戶。請聯繫系統管理員進行註冊。',
   },
   license: {
-    tip: '啟動 Dify 社群版之前, 請閱讀 GitHub 上的',
+    tip: '啟動 Dify 社群版之前，請閱讀 GitHub 上的',
     link: '開源協議',
   },
   join: '加入',
@@ -78,7 +78,7 @@ const translation = {
     emptyCode: '驗證碼是必需的',
     checkYourEmail: '檢查您的電子郵件',
     tips: '我們將驗證碼發送到 <strong>{{email}}</strong>',
-    verificationCodePlaceholder: '輸入6位代碼',
+    verificationCodePlaceholder: '輸入 6 位代碼',
     useAnotherMethod: '使用其他方法',
     validTime: '請記住，該代碼的有效期為 5 分鐘',
     verificationCode: '驗證碼',
@@ -105,6 +105,11 @@ const translation = {
   licenseInactive: '許可證處於非活動狀態',
   licenseInactiveTip: '您的工作區的 Dify Enterprise 許可證處於非活動狀態。請聯繫您的管理員以繼續使用 Dify。',
   licenseLostTip: '無法連接 Dify 許可證伺服器。請聯繫您的管理員以繼續使用 Dify。',
+  webapp: {
+    noLoginMethod: '未為網絡應用程序配置身份驗證方法',
+    noLoginMethodTip: '請聯絡系統管理員以添加身份驗證方法。',
+    disabled: '網頁應用程序身份驗證已被禁用。請聯繫系統管理員以啟用它。您可以嘗試直接使用應用程序。',
+  },
 }
 
 export default translation

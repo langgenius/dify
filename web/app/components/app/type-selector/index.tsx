@@ -15,7 +15,7 @@ export type AppSelectorProps = {
   onChange: (value: AppSelectorProps['value']) => void
 }
 
-const allTypes: AppMode[] = ['chat', 'agent-chat', 'completion', 'advanced-chat', 'workflow']
+const allTypes: AppMode[] = ['workflow', 'advanced-chat', 'chat', 'agent-chat', 'completion']
 
 const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
   const [open, setOpen] = useState(false)

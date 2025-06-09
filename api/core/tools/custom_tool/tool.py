@@ -168,7 +168,7 @@ class ApiTool(Tool):
                 cookies[parameter["name"]] = value
 
             elif parameter["in"] == "header":
-                headers[parameter["name"]] = value
+                headers[parameter["name"]] = str(value)
 
         # check if there is a request body and handle it
         if "requestBody" in self.api_bundle.openapi and self.api_bundle.openapi["requestBody"] is not None:

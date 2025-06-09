@@ -62,6 +62,7 @@ const translation = {
       uninstalledTitle: 'Narzędzie nie jest zainstalowane',
       paramsTip2: 'Gdy opcja "Automatycznie" jest wyłączona, używana jest wartość domyślna.',
       toolLabel: 'Narzędzie',
+      toolSetting: 'Ustawienia narzędzi',
     },
     strategyNum: '{{liczba}} {{strategia}} ZAWARTE',
     endpointsEmpty: 'Kliknij przycisk "+", aby dodać punkt końcowy',
@@ -210,6 +211,7 @@ const translation = {
     title: 'Wtyczki',
   },
   difyVersionNotCompatible: 'Obecna wersja Dify nie jest kompatybilna z tym wtyczką, proszę zaktualizować do minimalnej wymaganej wersji: {{minimalDifyVersion}}',
+  requestAPlugin: 'Poproś o wtyczkę',
 }
 
 export default translation

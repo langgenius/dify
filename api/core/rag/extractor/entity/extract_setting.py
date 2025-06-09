@@ -27,18 +27,14 @@ class WebsiteInfo(BaseModel):
     website import info.
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     provider: str
     job_id: str
     url: str
     mode: str
     tenant_id: str
     only_main_content: bool = False
-
-    class Config:
-        arbitrary_types_allowed = True
-
-    def __init__(self, **data) -> None:
-        super().__init__(**data)
 
 
 class ExtractSetting(BaseModel):

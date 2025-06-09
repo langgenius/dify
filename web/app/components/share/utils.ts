@@ -10,8 +10,8 @@ export const getInitialTokenV2 = (): Record<string, any> => ({
   version: 2,
 })
 
-export const checkOrSetAccessToken = async () => {
-  const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+export const checkOrSetAccessToken = async (appCode?: string) => {
+  const sharedToken = appCode || globalThis.location.pathname.split('/').slice(-1)[0]
   const userId = (await getProcessedSystemVariablesFromUrlParams()).user_id
   const accessToken = localStorage.getItem('token') || JSON.stringify(getInitialTokenV2())
   let accessTokenJson = getInitialTokenV2()
@@ -23,8 +23,10 @@ export const checkOrSetAccessToken = async () => {
   catch {
 
   }
+
   if (!accessTokenJson[sharedToken]?.[userId || 'DEFAULT']) {
-    const res = await fetchAccessToken(sharedToken, userId)
+    const webAppAccessToken = localStorage.getItem('webapp_access_token')
+    const res = await fetchAccessToken({ appCode: sharedToken, userId, webAppAccessToken })
     accessTokenJson[sharedToken] = {
       ...accessTokenJson[sharedToken],
       [userId || 'DEFAULT']: res.access_token,
@@ -33,7 +35,7 @@ export const checkOrSetAccessToken = async () => {
   }
 }
 
-export const setAccessToken = async (sharedToken: string, token: string, user_id?: string) => {
+export const setAccessToken = (sharedToken: string, token: string, user_id?: string) => {
   const accessToken = localStorage.getItem('token') || JSON.stringify(getInitialTokenV2())
   let accessTokenJson = getInitialTokenV2()
   try {
@@ -55,21 +57,6 @@ export const setAccessToken = async (sharedToken: string, token: string, user_id
 }
 
 export const removeAccessToken = () => {
-  const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-
-  const accessToken = localStorage.getItem('token') || JSON.stringify(getInitialTokenV2())
-  let accessTokenJson = getInitialTokenV2()
-  try {
-    accessTokenJson = JSON.parse(accessToken)
-    if (isTokenV1(accessTokenJson))
-      accessTokenJson = getInitialTokenV2()
-  }
-  catch {
-
-  }
-
-  localStorage.removeItem(CONVERSATION_ID_INFO)
-
-  delete accessTokenJson[sharedToken]
-  localStorage.setItem('token', JSON.stringify(accessTokenJson))
+  localStorage.removeItem('token')
+  localStorage.removeItem('webapp_access_token')
 }

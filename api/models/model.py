@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import sign_tool_file
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from services.plugin.plugin_service import PluginService
 
 if TYPE_CHECKING:
@@ -31,7 +32,6 @@ from .base import Base
 from .engine import db
 from .enums import CreatorUserRole
 from .types import StringUUID
-from .workflow import WorkflowRunStatus
 
 if TYPE_CHECKING:
     from .workflow import Workflow
@@ -293,6 +293,15 @@ class App(Base):
         )
 
         return tags or []
+
+    @property
+    def author_name(self):
+        if self.created_by:
+            account = db.session.query(Account).filter(Account.id == self.created_by).first()
+            if account:
+                return account.name
+
+        return None
 
 
 class AppModelConfig(Base):
@@ -785,22 +794,22 @@ class Conversation(Base):
     def status_count(self):
         messages = db.session.query(Message).filter(Message.conversation_id == self.id).all()
         status_counts = {
-            WorkflowRunStatus.RUNNING: 0,
-            WorkflowRunStatus.SUCCEEDED: 0,
-            WorkflowRunStatus.FAILED: 0,
-            WorkflowRunStatus.STOPPED: 0,
-            WorkflowRunStatus.PARTIAL_SUCCEEDED: 0,
+            WorkflowExecutionStatus.RUNNING: 0,
+            WorkflowExecutionStatus.SUCCEEDED: 0,
+            WorkflowExecutionStatus.FAILED: 0,
+            WorkflowExecutionStatus.STOPPED: 0,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED: 0,
         }
 
         for message in messages:
             if message.workflow_run:
-                status_counts[WorkflowRunStatus(message.workflow_run.status)] += 1
+                status_counts[WorkflowExecutionStatus(message.workflow_run.status)] += 1
 
         return (
             {
-                "success": status_counts[WorkflowRunStatus.SUCCEEDED],
-                "failed": status_counts[WorkflowRunStatus.FAILED],
-                "partial_success": status_counts[WorkflowRunStatus.PARTIAL_SUCCEEDED],
+                "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
+                "failed": status_counts[WorkflowExecutionStatus.FAILED],
+                "partial_success": status_counts[WorkflowExecutionStatus.PARTIAL_SUCCEEDED],
             }
             if messages
             else None

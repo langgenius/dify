@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from services.enterprise.base import EnterpriseRequest
@@ -5,7 +7,7 @@ from services.enterprise.base import EnterpriseRequest
 
 class WebAppSettings(BaseModel):
     access_mode: str = Field(
-        description="Access mode for the web app. Can be 'public' or 'private'",
+        description="Access mode for the web app. Can be 'public', 'private', 'private_all', 'sso_verified'",
         default="private",
         alias="accessMode",
     )
@@ -19,6 +21,28 @@ class EnterpriseService:
     @classmethod
     def get_workspace_info(cls, tenant_id: str):
         return EnterpriseRequest.send_request("GET", f"/workspace/{tenant_id}/info")
+
+    @classmethod
+    def get_app_sso_settings_last_update_time(cls) -> datetime:
+        data = EnterpriseRequest.send_request("GET", "/sso/app/last-update-time")
+        if not data:
+            raise ValueError("No data found.")
+        try:
+            # parse the UTC timestamp from the response
+            return datetime.fromisoformat(data.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise ValueError(f"Invalid date format: {data}") from e
+
+    @classmethod
+    def get_workspace_sso_settings_last_update_time(cls) -> datetime:
+        data = EnterpriseRequest.send_request("GET", "/sso/workspace/last-update-time")
+        if not data:
+            raise ValueError("No data found.")
+        try:
+            # parse the UTC timestamp from the response
+            return datetime.fromisoformat(data.replace("Z", "+00:00"))
+        except ValueError as e:
+            raise ValueError(f"Invalid date format: {data}") from e
 
     class WebAppAuth:
         @classmethod

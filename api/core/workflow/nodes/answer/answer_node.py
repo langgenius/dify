@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from core.variables import ArrayFileSegment, FileSegment
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
@@ -13,7 +14,6 @@ from core.workflow.nodes.answer.entities import (
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class AnswerNode(BaseNode[AnswerNodeData]):

@@ -121,9 +121,6 @@ class ForgotPasswordResetApi(Resource):
         # Must use token in reset phase
         if reset_data.get("phase", "") != "reset":
             raise InvalidTokenError()
-        # Must use token in reset phase
-        if reset_data.get("phase", "") != "reset":
-            raise InvalidTokenError()
 
         # Revoke token to prevent reuse
         AccountService.revoke_reset_password_token(args["token"])

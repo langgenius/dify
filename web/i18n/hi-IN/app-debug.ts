@@ -312,6 +312,7 @@ const translation = {
     'inputPlaceholder': 'कृपया इनपुट करें',
     'content': 'सामग्री',
     'required': 'आवश्यक',
+    'hide': 'छुपाएँ',
     'errorMsg': {
       varNameRequired: 'वेरिएबल नाम आवश्यक है',
       labelNameRequired: 'लेबल नाम आवश्यक है',

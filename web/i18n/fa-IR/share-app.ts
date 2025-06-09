@@ -73,6 +73,9 @@ const translation = {
     executions: '{{num}} اعدام',
     execution: 'اجرا',
   },
+  login: {
+    backToHome: 'بازگشت به خانه',
+  },
 }
 
 export default translation

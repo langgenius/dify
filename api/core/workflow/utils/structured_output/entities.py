@@ -14,11 +14,3 @@ class SpecialModelType(StrEnum):
 
     GEMINI = "gemini"
     OLLAMA = "ollama"
-
-
-class SupportStructuredOutputStatus(StrEnum):
-    """Constants for structured output support status"""
-
-    SUPPORTED = "supported"
-    UNSUPPORTED = "unsupported"
-    DISABLED = "disabled"

@@ -4,9 +4,9 @@ from datetime import datetime
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from models import App, EndUser, WorkflowAppLog, WorkflowRun
 from models.enums import CreatorUserRole
-from models.workflow import WorkflowRunStatus
 
 
 class WorkflowAppService:
@@ -16,7 +16,7 @@ class WorkflowAppService:
         session: Session,
         app_model: App,
         keyword: str | None = None,
-        status: WorkflowRunStatus | None = None,
+        status: WorkflowExecutionStatus | None = None,
         created_at_before: datetime | None = None,
         created_at_after: datetime | None = None,
         page: int = 1,

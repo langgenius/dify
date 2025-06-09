@@ -7,19 +7,24 @@ import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
 import { getSystemFeatures } from '@/service/common'
 import Loading from '@/app/components/base/loading'
+import { AccessMode } from '@/models/access-control'
 
 type GlobalPublicStore = {
-  isPending: boolean
-  setIsPending: (isPending: boolean) => void
+  isGlobalPending: boolean
+  setIsGlobalPending: (isPending: boolean) => void
   systemFeatures: SystemFeatures
   setSystemFeatures: (systemFeatures: SystemFeatures) => void
+  webAppAccessMode: AccessMode,
+  setWebAppAccessMode: (webAppAccessMode: AccessMode) => void
 }
 
 export const useGlobalPublicStore = create<GlobalPublicStore>(set => ({
-  isPending: true,
-  setIsPending: (isPending: boolean) => set(() => ({ isPending })),
+  isGlobalPending: true,
+  setIsGlobalPending: (isPending: boolean) => set(() => ({ isGlobalPending: isPending })),
   systemFeatures: defaultSystemFeatures,
   setSystemFeatures: (systemFeatures: SystemFeatures) => set(() => ({ systemFeatures })),
+  webAppAccessMode: AccessMode.PUBLIC,
+  setWebAppAccessMode: (webAppAccessMode: AccessMode) => set(() => ({ webAppAccessMode })),
 }))
 
 const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
@@ -29,7 +34,7 @@ const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
     queryKey: ['systemFeatures'],
     queryFn: getSystemFeatures,
   })
-  const { setSystemFeatures, setIsPending } = useGlobalPublicStore()
+  const { setSystemFeatures, setIsGlobalPending: setIsPending } = useGlobalPublicStore()
   useEffect(() => {
     if (data)
       setSystemFeatures({ ...defaultSystemFeatures, ...data })

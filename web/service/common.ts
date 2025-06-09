@@ -52,6 +52,9 @@ type LoginResponse = LoginSuccess | LoginFail
 export const login: Fetcher<LoginResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<LoginResponse>
 }
+export const webAppLogin: Fetcher<LoginResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post(url, { body }, { isPublicAPI: true }) as Promise<LoginResponse>
+}
 
 export const fetchNewToken: Fetcher<CommonResponse & { data: { access_token: string; refresh_token: string } }, { body: Record<string, any> }> = ({ body }) => {
   return post('/refresh-token', { body }) as Promise<CommonResponse & { data: { access_token: string; refresh_token: string } }>
@@ -324,6 +327,16 @@ export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boo
 export const changePasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
   post<CommonResponse>(url, { body })
 
+export const sendWebAppForgotPasswordEmail: Fetcher<CommonResponse & { data: string }, { url: string; body: { email: string } }> = ({ url, body }) =>
+  post<CommonResponse & { data: string }>(url, { body }, { isPublicAPI: true })
+
+export const verifyWebAppForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boolean; email: string }, { url: string; body: { token: string } }> = ({ url, body }) => {
+  return post(url, { body }, { isPublicAPI: true }) as Promise<CommonResponse & { is_valid: boolean; email: string }>
+}
+
+export const changeWebAppPasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
+  post<CommonResponse>(url, { body }, { isPublicAPI: true })
+
 export const uploadRemoteFileInfo = (url: string, isPublic?: boolean) => {
   return post<{ id: string; name: string; size: number; mime_type: string; url: string }>('/remote-files/upload', { body: { url } }, { isPublicAPI: isPublic })
 }
@@ -339,6 +352,18 @@ export const sendResetPasswordCode = (email: string, language = 'en-US') =>
 
 export const verifyResetPasswordCode = (body: { email: string; code: string; token: string }) =>
   post<CommonResponse & { is_valid: boolean; token: string }>('/forgot-password/validity', { body })
+
+export const sendWebAppEMailLoginCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } }, { isPublicAPI: true })
+
+export const webAppEmailLoginWithCode = (data: { email: string; code: string; token: string }) =>
+  post<LoginResponse>('/email-code-login/validity', { body: data }, { isPublicAPI: true })
+
+export const sendWebAppResetPasswordCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string; message?: string; code?: string }>('/forgot-password', { body: { email, language } }, { isPublicAPI: true })
+
+export const verifyWebAppResetPasswordCode = (body: { email: string; code: string; token: string }) =>
+  post<CommonResponse & { is_valid: boolean; token: string }>('/forgot-password/validity', { body }, { isPublicAPI: true })
 
 export const sendDeleteAccountCode = () =>
   get<CommonResponse & { data: string }>('/account/delete/verify')

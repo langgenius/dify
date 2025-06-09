@@ -9,6 +9,7 @@ import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { noop } from 'lodash-es'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type IAccountSettingProps = {
   langeniusVersionInfo: LangGeniusVersionResponse
@@ -21,6 +22,7 @@ export default function AccountAbout({
 }: IAccountSettingProps) {
   const { t } = useTranslation()
   const isLatest = langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
   return (
     <Modal
@@ -33,7 +35,14 @@ export default function AccountAbout({
           <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>
         <div className='flex flex-col items-center gap-4 py-8'>
-          <DifyLogo size='large' className='mx-auto' />
+          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+            ? <img
+              src={systemFeatures.branding.workspace_logo}
+              className='block h-7 w-auto object-contain'
+              alt='logo'
+            />
+            : <DifyLogo size='large' className='mx-auto' />}
+
           <div className='text-center text-xs font-normal text-text-tertiary'>Version {langeniusVersionInfo?.current_version}</div>
           <div className='flex flex-col items-center gap-2 text-center text-xs font-normal text-text-secondary'>
             <div>© {dayjs().year()} LangGenius, Inc., Contributors.</div>

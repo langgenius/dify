@@ -17,7 +17,7 @@ from core.plugin.entities.plugin import (
     PluginInstallation,
     PluginInstallationSource,
 )
-from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadResponse
+from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginListResponse, PluginUploadResponse
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
@@ -108,6 +108,15 @@ class PluginService:
         """
         manager = PluginInstaller()
         plugins = manager.list_plugins(tenant_id)
+        return plugins
+
+    @staticmethod
+    def list_with_total(tenant_id: str, page: int, page_size: int) -> PluginListResponse:
+        """
+        list all plugins of the tenant
+        """
+        manager = PluginInstaller()
+        plugins = manager.list_plugins_with_total(tenant_id, page, page_size)
         return plugins
 
     @staticmethod

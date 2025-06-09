@@ -57,7 +57,7 @@ describe('extractFunctionParams', () => {
     })
   })
 
-  // JavaScriptのテストケース
+  // JavaScript のテストケース
   describe('JavaScript', () => {
     test('handles no parameters', () => {
       const result = extractFunctionParams(SAMPLE_CODES.javascript.noParams, CodeLanguage.javascript)
@@ -180,7 +180,7 @@ function main(name, age, city) {
 }
 
 describe('extractReturnType', () => {
-  // Python3のテスト
+  // Python3 のテスト
   describe('Python3', () => {
     test('extracts single return value', () => {
       const result = extractReturnType(RETURN_TYPE_SAMPLES.python3.singleReturn, CodeLanguage.python3)
@@ -247,7 +247,7 @@ describe('extractReturnType', () => {
     })
   })
 
-  // JavaScriptのテスト
+  // JavaScript のテスト
   describe('JavaScript', () => {
     test('extracts single return value', () => {
       const result = extractReturnType(RETURN_TYPE_SAMPLES.javascript.singleReturn, CodeLanguage.javascript)

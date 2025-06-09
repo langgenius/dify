@@ -66,12 +66,15 @@ const translation = {
       empty: '上傳檔案的內容不能為空',
       fileStructNotMatch: '上傳檔案的內容與結構不匹配',
       emptyLine: '第 {{rowIndex}} 行的內容為空',
-      invalidLine: '第 {{rowIndex}} 行: {{varName}}值必填',
-      moreThanMaxLengthLine: '第 {{rowIndex}} 行: {{varName}}值超過最大長度 {{maxLength}}',
+      invalidLine: '第 {{rowIndex}} 行：{{varName}}值必填',
+      moreThanMaxLengthLine: '第 {{rowIndex}} 行：{{varName}}值超過最大長度 {{maxLength}}',
       atLeastOne: '上傳檔案的內容不能少於一條',
     },
     execution: '執行',
     executions: '{{num}} 執行',
+  },
+  login: {
+    backToHome: '返回首頁',
   },
 }
 

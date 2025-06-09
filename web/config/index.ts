@@ -173,7 +173,7 @@ export const MAX_TOOLS_NUM = maxToolsNum
 
 export const DEFAULT_AGENT_SETTING = {
   enabled: false,
-  max_iteration: 5,
+  max_iteration: 10,
   strategy: AgentStrategy.functionCall,
   tools: [],
 }
@@ -295,7 +295,7 @@ else if (globalThis.document?.body?.getAttribute('data-public-loop-node-max-coun
 
 export const LOOP_NODE_MAX_COUNT = loopNodeMaxCount
 
-let maxIterationsNum = 5
+let maxIterationsNum = 99
 
 if (process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM && process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM !== '')
   maxIterationsNum = Number.parseInt(process.env.NEXT_PUBLIC_MAX_ITERATIONS_NUM)

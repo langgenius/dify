@@ -68,10 +68,13 @@ const translation = {
       empty: '上传文件的内容不能为空',
       fileStructNotMatch: '上传文件的内容与结构不匹配',
       emptyLine: '第 {{rowIndex}} 行的内容为空',
-      invalidLine: '第 {{rowIndex}} 行: {{varName}}值必填',
-      moreThanMaxLengthLine: '第 {{rowIndex}} 行: {{varName}}值超过最大长度 {{maxLength}}',
+      invalidLine: '第 {{rowIndex}} 行：{{varName}}值必填',
+      moreThanMaxLengthLine: '第 {{rowIndex}} 行：{{varName}}值超过最大长度 {{maxLength}}',
       atLeastOne: '上传文件的内容不能少于一条',
     },
+  },
+  login: {
+    backToHome: '返回首页',
   },
 }
 

@@ -144,6 +144,8 @@ const translation = {
     newDataset: 'สร้างความรู้',
     tools: 'เครื่อง มือ',
     exploreMarketplace: 'สํารวจ Marketplace',
+    appDetail: 'รายละเอียดแอป',
+    account: 'บัญชี',
   },
   userProfile: {
     settings: 'การตั้งค่า',
@@ -639,6 +641,7 @@ const translation = {
   license: {
     expiring: 'หมดอายุในหนึ่งวัน',
     expiring_plural: 'หมดอายุใน {{count}} วัน',
+    unlimited: 'ไม่มีขีดจำกัด',
   },
   pagination: {
     perPage: 'รายการต่อหน้า',
@@ -662,6 +665,7 @@ const translation = {
     browse: 'ท่องเว็บ',
     supportedFormats: 'รองรับ PNG, JPG, JPEG, WEBP และ GIF',
   },
+  you: 'คุณ',
 }
 
 export default translation

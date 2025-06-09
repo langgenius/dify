@@ -105,6 +105,11 @@ const translation = {
   licenseExpired: 'Licență expirată',
   licenseLost: 'Licență pierdută',
   licenseExpiredTip: 'Licența Dify Enterprise pentru spațiul de lucru a expirat. Contactați administratorul pentru a continua să utilizați Dify.',
+  webapp: {
+    noLoginMethod: 'Metoda de autentificare nu este configurată pentru aplicația web',
+    noLoginMethodTip: 'Vă rugăm să contactați administratorul sistemului pentru a adăuga o metodă de autentificare.',
+    disabled: 'Autentificarea webapp-ului este dezactivată. Vă rugăm să contactați administratorul sistemului pentru a o activa. Puteți încerca să folosiți aplicația direct.',
+  },
 }
 
 export default translation

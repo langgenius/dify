@@ -44,4 +44,5 @@ export type WeaveConfig = {
   entity: string
   project: string
   endpoint: string
+  host: string
 }

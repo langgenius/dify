@@ -29,8 +29,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.graph_engine.entities.event import (
     AgentLogEvent,
     GraphEngineEvent,
@@ -295,7 +295,7 @@ class WorkflowBasedAppRunner(AppRunner):
             inputs: Mapping[str, Any] | None = {}
             process_data: Mapping[str, Any] | None = {}
             outputs: Mapping[str, Any] | None = {}
-            execution_metadata: Mapping[NodeRunMetadataKey, Any] | None = {}
+            execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] | None = {}
             if node_run_result:
                 inputs = node_run_result.inputs
                 process_data = node_run_result.process_data

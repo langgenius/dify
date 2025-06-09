@@ -231,7 +231,7 @@ export const useFile = (fileConfig: FileUpload) => {
         url: res.url,
       }
       if (!isAllowedFileExtension(res.name, res.mime_type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-        notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
+        notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${file.type}` })
         handleRemoveFile(uploadingFile.id)
       }
       if (!checkSizeLimit(newFile.supportFileType, newFile.size))
@@ -257,7 +257,7 @@ export const useFile = (fileConfig: FileUpload) => {
 
   const handleLocalFileUpload = useCallback((file: File) => {
     if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-      notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
+      notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${file.type}` })
       return
     }
     const allowedFileTypes = fileConfig.allowed_file_types

@@ -2,12 +2,29 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from core.model_runtime.entities.llm_entities import LLMResult
+from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.node_entities import AgentNodeStrategyInit, NodeRunMetadataKey
-from models.workflow import WorkflowNodeExecutionStatus
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.workflow.entities.node_entities import AgentNodeStrategyInit
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+
+
+class AnnotationReplyAccount(BaseModel):
+    id: str
+    name: str
+
+
+class AnnotationReply(BaseModel):
+    id: str
+    account: AnnotationReplyAccount
+
+
+class TaskStateMetadata(BaseModel):
+    annotation_reply: AnnotationReply | None = None
+    retriever_resources: Sequence[RetrievalSourceMetadata] = Field(default_factory=list)
+    usage: LLMUsage | None = None
 
 
 class TaskState(BaseModel):
@@ -15,7 +32,7 @@ class TaskState(BaseModel):
     TaskState entity
     """
 
-    metadata: dict = {}
+    metadata: TaskStateMetadata = Field(default_factory=TaskStateMetadata)
 
 
 class EasyUITaskState(TaskState):
@@ -189,7 +206,6 @@ class WorkflowStartStreamResponse(StreamResponse):
 
         id: str
         workflow_id: str
-        sequence_number: int
         inputs: Mapping[str, Any]
         created_at: int
 
@@ -210,7 +226,6 @@ class WorkflowFinishStreamResponse(StreamResponse):
 
         id: str
         workflow_id: str
-        sequence_number: int
         status: str
         outputs: Optional[Mapping[str, Any]] = None
         error: Optional[str] = None
@@ -307,7 +322,7 @@ class NodeFinishStreamResponse(StreamResponse):
         status: str
         error: Optional[str] = None
         elapsed_time: float
-        execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
+        execution_metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None
         created_at: int
         finished_at: int
         files: Optional[Sequence[Mapping[str, Any]]] = []
@@ -376,7 +391,7 @@ class NodeRetryStreamResponse(StreamResponse):
         status: str
         error: Optional[str] = None
         elapsed_time: float
-        execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
+        execution_metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None
         created_at: int
         finished_at: int
         files: Optional[Sequence[Mapping[str, Any]]] = []

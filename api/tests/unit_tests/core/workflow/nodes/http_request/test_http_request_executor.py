@@ -246,7 +246,9 @@ def test_executor_with_form_data():
     assert "multipart/form-data" in executor.headers["Content-Type"]
     assert executor.params == []
     assert executor.json is None
-    assert executor.files is None
+    # '__multipart_placeholder__' is expected when no file inputs exist,
+    # to ensure the request is treated as multipart/form-data by the backend.
+    assert executor.files == [("__multipart_placeholder__", ("", b"", "application/octet-stream"))]
     assert executor.content is None
 
     # Check that the form data is correctly loaded in executor.data

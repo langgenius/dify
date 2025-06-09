@@ -82,7 +82,7 @@ class AgentEntity(BaseModel):
     strategy: Strategy
     prompt: Optional[AgentPromptEntity] = None
     tools: Optional[list[AgentToolEntity]] = None
-    max_iteration: int = 5
+    max_iteration: int = 10
 
 
 class AgentInvokeMessage(ToolInvokeMessage):

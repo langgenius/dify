@@ -228,7 +228,7 @@ const translation = {
     'logic': 'Logic',
     'transform': 'Chuyển đổi',
     'utilities': 'Tiện ích',
-    'noResult': 'Không tìm thấy kế；t quả phù hợp',
+    'noResult': 'Không tìm thấy kế. t quả phù hợp',
     'searchTool': 'Công cụ tìm kiếm',
     'agent': 'Chiến lược đại lý',
     'plugin': 'Plugin',
@@ -648,7 +648,6 @@ const translation = {
       'variables': 'Biến',
     },
     tool: {
-      toAuthorize: 'Ủy quyền',
       inputVars: 'Biến đầu vào',
       outputVars: {
         text: 'nội dung do công cụ tạo ra',
@@ -661,6 +660,7 @@ const translation = {
         },
         json: 'JSON được tạo bởi công cụ',
       },
+      authorize: 'Ủy quyền',
     },
     questionClassifiers: {
       model: 'mô hình',

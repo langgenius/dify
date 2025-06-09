@@ -105,6 +105,11 @@ const translation = {
   licenseLost: 'Licencia perdida',
   licenseExpiredTip: 'La licencia de Dify Enterprise para su espacio de trabajo ha caducado. Póngase en contacto con su administrador para seguir utilizando Dify.',
   licenseLostTip: 'No se pudo conectar el servidor de licencias de Dife. Póngase en contacto con su administrador para seguir utilizando Dify.',
+  webapp: {
+    disabled: 'La autenticación de la aplicación web está desactivada. Por favor, contacte al administrador del sistema para habilitarla. Puede intentar usar la aplicación directamente.',
+    noLoginMethodTip: 'Por favor, contacta al administrador del sistema para agregar un método de autenticación.',
+    noLoginMethod: 'Método de autenticación no configurado para la aplicación web',
+  },
 }
 
 export default translation

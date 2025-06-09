@@ -6,6 +6,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
@@ -15,7 +16,7 @@ from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from core.workflow.utils.condition.entities import Condition, SubCondition, SubVariableCondition
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 def test_execute_if_else_result_true():

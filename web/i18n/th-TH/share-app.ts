@@ -73,6 +73,9 @@ const translation = {
     execution: 'การดำเนินการ',
     executions: '{{num}} การประหารชีวิต',
   },
+  login: {
+    backToHome: 'กลับไปที่หน้าแรก',
+  },
 }
 
 export default translation

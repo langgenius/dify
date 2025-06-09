@@ -1,12 +1,12 @@
 import { CodeGroup } from '../code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
 
-# 高度なチャットアプリAPI
+# 高度なチャットアプリ API
 
-チャットアプリケーションはセッションの持続性をサポートしており、以前のチャット履歴を応答のコンテキストとして使用できます。これは、チャットボットやカスタマーサービスAIなどに適用できます。
+チャットアプリケーションはセッションの持続性をサポートしており、以前のチャット履歴を応答のコンテキストとして使用できます。これは、チャットボットやカスタマーサービス AI などに適用できます。
 
 <div>
-  ### ベースURL
+  ### ベース URL
   <CodeGroup title="コード" targetCode={props.appDetail.api_base_url}>
     ```javascript
     ```
@@ -14,10 +14,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
   ### 認証
 
-  サービスAPIは`API-Key`認証を使用します。
-  <i>**APIキーはサーバー側に保存し、クライアント側で共有または保存しないことを強くお勧めします。APIキーの漏洩は深刻な結果を招く可能性があります。**</i>
+  サービス API は `API-Key` 認証を使用します。
+  <i>**API キーはサーバー側に保存し、クライアント側で共有または保存しないことを強くお勧めします。API キーの漏洩は深刻な結果を招く可能性があります。**</i>
 
-  すべてのAPIリクエストには、以下のように`Authorization`HTTPヘッダーにAPIキーを含めてください：
+  すべての API リクエストには、以下のように `Authorization`HTTP ヘッダーに API キーを含めてください：
 
   <CodeGroup title="コード">
     ```javascript
@@ -327,25 +327,25 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ユーザー識別子、開発者のルールによって定義され、アプリケーション内で一意でなければなりません。
 
   ### 応答
-  アップロードが成功すると、サーバーはファイルのIDと関連情報を返します。
+  アップロードが成功すると、サーバーはファイルの ID と関連情報を返します。
   - `id` (uuid) ID
   - `name` (string) ファイル名
   - `size` (int) ファイルサイズ（バイト）
   - `extension` (string) ファイル拡張子
-  - `mime_type` (string) ファイルのMIMEタイプ
+  - `mime_type` (string) ファイルの MIME タイプ
   - `created_by` (uuid) エンドユーザーID
   - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
 
   ### エラー
   - 400, `no_file_uploaded`, ファイルが提供されなければなりません
-  - 400, `too_many_files`, 現在は1つのファイルのみ受け付けます
+  - 400, `too_many_files`, 現在は 1 つのファイルのみ受け付けます
   - 400, `unsupported_preview`, ファイルはプレビューをサポートしていません
   - 400, `unsupported_estimate`, ファイルは推定をサポートしていません
   - 413, `file_too_large`, ファイルが大きすぎます
   - 415, `unsupported_file_type`, サポートされていない拡張子、現在はドキュメントファイルのみ受け付けます
-  - 503, `s3_connection_failed`, S3サービスに接続できません
-  - 503, `s3_permission_denied`, S3にファイルをアップロードする権限がありません
-  - 503, `s3_file_too_large`, ファイルがS3のサイズ制限を超えています
+  - 503, `s3_connection_failed`, S3 サービスに接続できません
+  - 503, `s3_permission_denied`, S3 にファイルをアップロードする権限がありません
+  - 503, `s3_file_too_large`, ファイルが S3 のサイズ制限を超えています
   - 500, 内部サーバーエラー
 
 
@@ -391,7 +391,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
   ストリーミングモードでのみサポートされています。
   ### パス
-  - `task_id` (string) タスクID、ストリーミングチャンクの返り値から取得できます
+  - `task_id` (string) タスク ID、ストリーミングチャンクの返り値から取得できます
   ### リクエストボディ
   - `user` (string) 必須
     ユーザー識別子、エンドユーザーの身元を定義するために使用され、送信メッセージインターフェースで渡されたユーザーと一致している必要があります。
@@ -712,7 +712,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    現在のユーザーの会話リストを取得し、デフォルトで最新の20件を返します。
+    現在のユーザーの会話リストを取得し、デフォルトで最新の 20 件を返します。
 
     ### クエリ
 
@@ -943,7 +943,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     - `limit` (int) ページごとのアイテム数
     - `has_more` (bool) さらにアイテムがあるかどうか
     - `data` (array[object]) 変数のリスト
-      - `id` (string) 変数ID
+      - `id` (string) 変数 ID
       - `name` (string) 変数名
       - `value_type` (string) 変数タイプ（文字列、数値、真偽値など）
       - `value` (string) 変数値
@@ -1014,7 +1014,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    このエンドポイントはmultipart/form-dataリクエストを必要とします。
+    このエンドポイントは multipart/form-data リクエストを必要とします。
 
     ### リクエストボディ
 
@@ -1288,9 +1288,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     - `tool_name` (string)
       - `icon` (object|string)
         - (object) アイコンオブジェクト
-          - `background` (string) 背景色（16進数形式）
+          - `background` (string) 背景色（16 進数形式）
           - `content`(string) 絵文字
-        - (string) アイコンのURL
+        - (string) アイコンの URL
   </Col>
   <Col>
   <CodeGroup title="リクエスト" tag="GET" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -1327,22 +1327,22 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-  アプリのWebApp設定を取得するために使用します。
+  アプリの WebApp 設定を取得するために使用します。
   ### 応答
-  - `title` (string) WebApp名
-  - `chat_color_theme` (string) チャットの色テーマ、16進数形式
+  - `title` (string) WebApp 名
+  - `chat_color_theme` (string) チャットの色テーマ、16 進数形式
   - `chat_color_theme_inverted` (bool) チャットの色テーマを反転するかどうか
   - `icon_type` (string) アイコンタイプ、`emoji`-絵文字、`image`-画像
-  - `icon` (string) アイコン。`emoji`タイプの場合は絵文字、`image`タイプの場合は画像URL
-  - `icon_background` (string) 16進数形式の背景色
-  - `icon_url` (string) アイコンのURL
+  - `icon` (string) アイコン。`emoji`タイプの場合は絵文字、`image`タイプの場合は画像 URL
+  - `icon_background` (string) 16 進数形式の背景色
+  - `icon_url` (string) アイコンの URL
   - `description` (string) 説明
   - `copyright` (string) 著作権情報
   - `privacy_policy` (string) プライバシーポリシーのリンク
   - `custom_disclaimer` (string) カスタム免責事項
   - `default_language` (string) デフォルト言語
   - `show_workflow_steps` (bool) ワークフローの詳細を表示するかどうか
-  - `use_icon_as_answer_icon` (bool) WebAppのアイコンをチャット内の🤖に置き換えるかどうか
+  - `use_icon_as_answer_icon` (bool) WebApp のアイコンをチャット内の🤖に置き換えるかどうか
   </Col>
   <Col>
   <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>

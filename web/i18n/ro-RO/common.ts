@@ -145,6 +145,8 @@ const translation = {
     newDataset: 'Creează Cunoștințe',
     tools: 'Instrumente',
     exploreMarketplace: 'Explorați Marketplace',
+    appDetail: 'Detalii aplicație',
+    account: 'Cont',
   },
   userProfile: {
     settings: 'Setări',
@@ -550,7 +552,7 @@ const translation = {
       vectorHash: 'Hash vector:',
       hitScore: 'Scor de recuperare:',
     },
-    inputPlaceholder: 'Vorbește cu Bot',
+    inputPlaceholder: 'Vorbește cu {{botName}}',
     thinking: 'Gândire...',
     thought: 'Gând',
     resend: 'Reexpediați',
@@ -644,6 +646,7 @@ const translation = {
   license: {
     expiring: 'Expiră într-o zi',
     expiring_plural: 'Expiră în {{count}} zile',
+    unlimited: 'Nelimitat',
   },
   pagination: {
     perPage: 'Articole pe pagină',
@@ -667,6 +670,7 @@ const translation = {
     browse: 'naviga',
     dropImageHere: 'Trageți imaginea aici sau',
   },
+  you: 'Tu',
 }
 
 export default translation

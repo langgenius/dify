@@ -54,6 +54,7 @@ type Props = {
   scope?: string
   value?: ToolValue
   selectedTools?: ToolValue[]
+  isEdit?: boolean
   onSelect: (tool: {
     provider_name: string
     tool_name: string
@@ -77,6 +78,7 @@ type Props = {
 const ToolSelector: FC<Props> = ({
   value,
   selectedTools,
+  isEdit,
   disabled,
   placement = 'left',
   offset = 4,
@@ -277,7 +279,7 @@ const ToolSelector: FC<Props> = ({
           <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', !isShowSettingAuth && 'overflow-y-auto pb-2')}>
             {!isShowSettingAuth && (
               <>
-                <div className='system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary'>{t('plugin.detailPanel.toolSelector.title')}</div>
+                <div className='system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary'>{t(`plugin.detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`)}</div>
                 {/* base form */}
                 <div className='flex flex-col gap-3 px-4 py-2'>
                   <div className='flex flex-col gap-1'>

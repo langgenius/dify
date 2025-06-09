@@ -66,7 +66,6 @@ class ToolFileMessageTransformer:
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
                     raise ValueError("unexpected message type")
 
-                # FIXME: should do a type check here.
                 assert isinstance(message.message.blob, bytes)
                 tool_file_manager = ToolFileManager()
                 file = tool_file_manager.create_file_by_raw(

@@ -59,6 +59,7 @@ export type PromptVariable = {
   config?: Record<string, any>
   icon?: string
   icon_background?: string
+  hide?: boolean // used in frontend to hide variable
 }
 
 export type CompletionParams = {

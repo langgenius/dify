@@ -647,7 +647,6 @@ const translation = {
       'selectAssignedVariable': 'Sélectionner la variable affectée...',
     },
     tool: {
-      toAuthorize: 'Autoriser',
       inputVars: 'Variables de saisie',
       outputVars: {
         text: 'contenu généré par l\'outil',
@@ -660,6 +659,7 @@ const translation = {
         },
         json: 'JSON généré par un outil',
       },
+      authorize: 'Autoriser',
     },
     questionClassifiers: {
       model: 'modèle',

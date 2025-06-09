@@ -15,7 +15,6 @@ const translation = {
   },
   author: '作者',
   auth: {
-    unauthorized: '去授权',
     authorized: '已授权',
     setup: '要使用请先授权',
     setupModalTitle: '设置授权',
@@ -30,7 +29,7 @@ const translation = {
     added: '已添加',
     manageInTools: '去工具列表管理',
     emptyTitle: '没有可用的工作流工具',
-    emptyTip: '去 “工作流 -> 发布为工具” 添加',
+    emptyTip: '去“工作流 -> 发布为工具”添加',
     emptyTitleCustom: '没有可用的自定义工具',
     emptyTipCustom: '创建自定义工具',
   },
@@ -53,8 +52,8 @@ const translation = {
     urlError: '请输入有效的 URL',
     examples: '例子',
     exampleOptions: {
-      json: '天气(JSON)',
-      yaml: '宠物商店(YAML)',
+      json: '天气 (JSON)',
+      yaml: '宠物商店 (YAML)',
       blankTemplate: '空白模版',
     },
     availableTools: {
@@ -99,7 +98,7 @@ const translation = {
       methodParameter: 'LLM 填入',
       methodParameterTip: 'LLM 在推理过程中填写',
       label: '标签',
-      labelPlaceholder: '选择标签(可选)',
+      labelPlaceholder: '选择标签 (可选)',
       description: '描述',
       descriptionPlaceholder: '参数意义的描述',
     },
@@ -136,7 +135,7 @@ const translation = {
     infoAndSetting: '信息和设置',
   },
   noCustomTool: {
-    title: '没有自定义工具!',
+    title: '没有自定义工具！',
     content: '在此统一添加和管理你的自定义工具，方便构建应用时使用。',
     createTool: '创建工具',
   },

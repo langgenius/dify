@@ -2,9 +2,9 @@
 
 import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill } from '@remixicon/react'
+import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
@@ -35,6 +35,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import AccessControl from '@/app/components/app/app-access-control'
 import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { formatTime } from '@/utils/time'
 
 export type AppCardProps = {
   app: App
@@ -296,6 +297,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     setTags(app.tags)
   }, [app.tags])
 
+  const EditTimeText = useMemo(() => {
+    const timeText = formatTime({
+      date: (app.updated_at || app.created_at) * 1000,
+      dateFormat: 'MM/DD/YYYY h:mm',
+    })
+    return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [app.updated_at, app.created_at])
+
   return (
     <>
       <div
@@ -320,23 +330,24 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <div className='flex items-center text-sm font-semibold leading-5 text-text-secondary'>
               <div className='truncate' title={app.name}>{app.name}</div>
             </div>
-            <div className='flex items-center text-[10px] font-medium leading-[18px] text-text-tertiary'>
-              {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
-              {app.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-              {app.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
-              {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
-              {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
+            <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
+              <div className='truncate' title={app.author_name}>{app.author_name}</div>
+              <div>·</div>
+              <div className='truncate'>{EditTimeText}</div>
             </div>
           </div>
           <div className='flex h-5 w-5 shrink-0 items-center justify-center'>
             {app.access_mode === AccessMode.PUBLIC && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.anyone')}>
-              <RiGlobalLine className='h-4 w-4 text-text-accent' />
+              <RiGlobalLine className='h-4 w-4 text-text-quaternary' />
             </Tooltip>}
             {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.specific')}>
               <RiLockLine className='h-4 w-4 text-text-quaternary' />
             </Tooltip>}
             {app.access_mode === AccessMode.ORGANIZATION && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.organization')}>
               <RiBuildingLine className='h-4 w-4 text-text-quaternary' />
+            </Tooltip>}
+            {app.access_mode === AccessMode.EXTERNAL_MEMBERS && <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.external')}>
+              <RiVerifiedBadgeLine className='h-4 w-4 text-text-quaternary' />
             </Tooltip>}
           </div>
         </div>

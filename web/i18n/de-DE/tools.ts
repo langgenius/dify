@@ -14,7 +14,6 @@ const translation = {
   },
   author: 'Von',
   auth: {
-    unauthorized: 'Zur Autorisierung',
     authorized: 'Autorisiert',
     setup: 'Autorisierung einrichten, um zu nutzen',
     setupModalTitle: 'Autorisierung einrichten',

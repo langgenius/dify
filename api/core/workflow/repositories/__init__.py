@@ -6,7 +6,7 @@ for accessing and manipulating data, regardless of the underlying
 storage mechanism.
 """
 
-from core.workflow.repository.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
 
 __all__ = [
     "OrderConfig",

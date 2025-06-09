@@ -2,14 +2,11 @@ from functools import wraps
 from typing import Any
 
 from flask import current_app, g, has_request_context, request
-from flask_login import user_logged_in  # type: ignore
 from flask_login.config import EXEMPT_METHODS  # type: ignore
-from werkzeug.exceptions import Unauthorized
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
-from extensions.ext_database import db
-from models.account import Account, Tenant, TenantAccountJoin
+from models.account import Account
 from models.model import EndUser
 
 #: A proxy for the current user. If no user is logged in, this will be an
@@ -53,36 +50,6 @@ def login_required(func):
 
     @wraps(func)
     def decorated_view(*args, **kwargs):
-        auth_header = request.headers.get("Authorization")
-        if dify_config.ADMIN_API_KEY_ENABLE:
-            if auth_header:
-                if " " not in auth_header:
-                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-                auth_scheme, auth_token = auth_header.split(None, 1)
-                auth_scheme = auth_scheme.lower()
-                if auth_scheme != "bearer":
-                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
-                admin_api_key = dify_config.ADMIN_API_KEY
-                if admin_api_key:
-                    if admin_api_key == auth_token:
-                        workspace_id = request.headers.get("X-WORKSPACE-ID")
-                        if workspace_id:
-                            tenant_account_join = (
-                                db.session.query(Tenant, TenantAccountJoin)
-                                .filter(Tenant.id == workspace_id)
-                                .filter(TenantAccountJoin.tenant_id == Tenant.id)
-                                .filter(TenantAccountJoin.role == "owner")
-                                .one_or_none()
-                            )
-                            if tenant_account_join:
-                                tenant, ta = tenant_account_join
-                                account = db.session.query(Account).filter_by(id=ta.account_id).first()
-                                # Login admin
-                                if account:
-                                    account.current_tenant = tenant
-                                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
-                                    user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
         if request.method in EXEMPT_METHODS or dify_config.LOGIN_DISABLED:
             pass
         elif not current_user.is_authenticated:

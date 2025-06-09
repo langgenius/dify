@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from functools import wraps
 
 from flask import request
@@ -8,8 +9,9 @@ from controllers.web.error import WebAppAuthAccessDeniedError, WebAppAuthRequire
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
-from services.enterprise.enterprise_service import EnterpriseService
+from services.enterprise.enterprise_service import EnterpriseService, WebAppSettings
 from services.feature_service import FeatureService
+from services.webapp_auth_service import WebAppAuthService
 
 
 def validate_jwt_token(view=None):
@@ -45,7 +47,8 @@ def decode_jwt_token():
             raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
-        app_model = db.session.query(App).filter(App.id == decoded["app_id"]).first()
+        app_id = decoded.get("app_id")
+        app_model = db.session.query(App).filter(App.id == app_id).first()
         site = db.session.query(Site).filter(Site.code == app_code).first()
         if not app_model:
             raise NotFound()
@@ -53,23 +56,30 @@ def decode_jwt_token():
             raise BadRequest("Site URL is no longer valid.")
         if app_model.enable_site is False:
             raise BadRequest("Site is disabled.")
-        end_user = db.session.query(EndUser).filter(EndUser.id == decoded["end_user_id"]).first()
+        end_user_id = decoded.get("end_user_id")
+        end_user = db.session.query(EndUser).filter(EndUser.id == end_user_id).first()
         if not end_user:
             raise NotFound()
 
         # for enterprise webapp auth
         app_web_auth_enabled = False
+        webapp_settings = None
         if system_features.webapp_auth.enabled:
-            app_web_auth_enabled = (
-                EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code).access_mode != "public"
-            )
+            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=app_code)
+            if not webapp_settings:
+                raise NotFound("Web app settings not found.")
+            app_web_auth_enabled = webapp_settings.access_mode != "public"
 
         _validate_webapp_token(decoded, app_web_auth_enabled, system_features.webapp_auth.enabled)
-        _validate_user_accessibility(decoded, app_code, app_web_auth_enabled, system_features.webapp_auth.enabled)
+        _validate_user_accessibility(
+            decoded, app_code, app_web_auth_enabled, system_features.webapp_auth.enabled, webapp_settings
+        )
 
         return app_model, end_user
     except Unauthorized as e:
         if system_features.webapp_auth.enabled:
+            if not app_code:
+                raise Unauthorized("Please re-login to access the web app.")
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code=str(app_code)).access_mode != "public"
             )
@@ -95,15 +105,41 @@ def _validate_webapp_token(decoded, app_web_auth_enabled: bool, system_webapp_au
             raise Unauthorized("webapp token expired.")
 
 
-def _validate_user_accessibility(decoded, app_code, app_web_auth_enabled: bool, system_webapp_auth_enabled: bool):
+def _validate_user_accessibility(
+    decoded,
+    app_code,
+    app_web_auth_enabled: bool,
+    system_webapp_auth_enabled: bool,
+    webapp_settings: WebAppSettings | None,
+):
     if system_webapp_auth_enabled and app_web_auth_enabled:
         # Check if the user is allowed to access the web app
         user_id = decoded.get("user_id")
         if not user_id:
             raise WebAppAuthRequiredError()
 
-        if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
-            raise WebAppAuthAccessDeniedError()
+        if not webapp_settings:
+            raise WebAppAuthRequiredError("Web app settings not found.")
+
+        if WebAppAuthService.is_app_require_permission_check(access_mode=webapp_settings.access_mode):
+            if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_code=app_code):
+                raise WebAppAuthAccessDeniedError()
+
+        auth_type = decoded.get("auth_type")
+        granted_at = decoded.get("granted_at")
+        if not auth_type:
+            raise WebAppAuthAccessDeniedError("Missing auth_type in the token.")
+        if not granted_at:
+            raise WebAppAuthAccessDeniedError("Missing granted_at in the token.")
+        # check if sso has been updated
+        if auth_type == "external":
+            last_update_time = EnterpriseService.get_app_sso_settings_last_update_time()
+            if granted_at and datetime.fromtimestamp(granted_at, tz=UTC) < last_update_time:
+                raise WebAppAuthAccessDeniedError("SSO settings have been updated. Please re-login.")
+        elif auth_type == "internal":
+            last_update_time = EnterpriseService.get_workspace_sso_settings_last_update_time()
+            if granted_at and datetime.fromtimestamp(granted_at, tz=UTC) < last_update_time:
+                raise WebAppAuthAccessDeniedError("SSO settings have been updated. Please re-login.")
 
 
 class WebApiResource(Resource):

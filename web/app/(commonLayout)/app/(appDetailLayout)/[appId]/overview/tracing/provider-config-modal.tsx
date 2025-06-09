@@ -68,6 +68,7 @@ const weaveConfigTemplate = {
   entity: '',
   project: '',
   endpoint: '',
+  host: '',
 }
 
 const ProviderConfigModal: FC<Props> = ({
@@ -324,6 +325,13 @@ const ProviderConfigModal: FC<Props> = ({
                             value={(config as WeaveConfig).endpoint}
                             onChange={handleConfigChange('endpoint')}
                             placeholder={'https://trace.wandb.ai/'}
+                          />
+                          <Field
+                            label='Host'
+                            labelClassName='!text-sm'
+                            value={(config as WeaveConfig).host}
+                            onChange={handleConfigChange('host')}
+                            placeholder={'https://api.wandb.ai'}
                           />
                         </>
                       )}

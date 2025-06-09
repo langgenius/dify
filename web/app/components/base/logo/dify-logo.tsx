@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import classNames from '@/utils/classnames'
 import useTheme from '@/hooks/use-theme'
 import { basePath } from '@/utils/var'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 export type LogoStyle = 'default' | 'monochromeWhite'
 
 export const logoPathMap: Record<LogoStyle, string> = {
@@ -32,15 +31,10 @@ const DifyLogo: FC<DifyLogoProps> = ({
 }) => {
   const { theme } = useTheme()
   const themedStyle = (theme === 'dark' && style === 'default') ? 'monochromeWhite' : style
-  const { systemFeatures } = useGlobalPublicStore()
-
-  let src = `${basePath}${logoPathMap[themedStyle]}`
-  if (systemFeatures.branding.enabled)
-    src = systemFeatures.branding.workspace_logo
 
   return (
     <img
-      src={src}
+      src={`${basePath}${logoPathMap[themedStyle]}`}
       className={classNames('block object-contain', logoSizeMap[size], className)}
       alt='Dify logo'
     />

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -34,7 +34,7 @@ class S3StorageConfig(BaseSettings):
         default=None,
     )
 
-    S3_ADDRESS_STYLE: str = Field(
+    S3_ADDRESS_STYLE: Literal["auto", "virtual", "path"] = Field(
         description="S3 addressing style: 'auto', 'path', or 'virtual'",
         default="auto",
     )

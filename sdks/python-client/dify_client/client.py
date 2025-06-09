@@ -47,7 +47,7 @@ class DifyClient:
 
     def text_to_audio(self, text: str, user: str, streaming: bool = False):
         data = {"text": text, "user": user, "streaming": streaming}
-        return self._send_request("POST", "/text-to-audio", data=data)
+        return self._send_request("POST", "/text-to-audio", json=data)
 
     def get_meta(self, user):
         params = {"user": user}

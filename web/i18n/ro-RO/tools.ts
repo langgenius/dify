@@ -14,7 +14,6 @@ const translation = {
   },
   author: 'De',
   auth: {
-    unauthorized: 'Pentru a Autoriza',
     authorized: 'Autorizat',
     setup: 'Configurează autorizarea pentru a utiliza',
     setupModalTitle: 'Configurează Autorizarea',

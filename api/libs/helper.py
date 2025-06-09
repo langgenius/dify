@@ -1,7 +1,7 @@
 import json
 import logging
-import random
 import re
+import secrets
 import string
 import subprocess
 import time
@@ -18,6 +18,7 @@ from flask_restful import fields
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.file import helpers as file_helpers
+from core.model_runtime.utils.encoders import jsonable_encoder
 from extensions.ext_redis import redis_client
 
 if TYPE_CHECKING:
@@ -175,7 +176,7 @@ def generate_string(n):
     letters_digits = string.ascii_letters + string.digits
     result = ""
     for i in range(n):
-        result += random.choice(letters_digits)
+        result += secrets.choice(letters_digits)
 
     return result
 
@@ -196,7 +197,7 @@ def generate_text_hash(text: str) -> str:
 
 def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
     if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype="application/json")
+        return Response(response=json.dumps(jsonable_encoder(response)), status=200, mimetype="application/json")
     else:
 
         def generate() -> Generator:

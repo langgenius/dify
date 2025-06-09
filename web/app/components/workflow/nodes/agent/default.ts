@@ -126,7 +126,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
         }
       }
       // common params
-      if (param.required && !payload.agent_parameters?.[param.name]?.value) {
+      if (param.required && !(payload.agent_parameters?.[param.name]?.value || param.default)) {
         return {
           isValid: false,
           errorMessage: t('workflow.errorMsg.fieldRequired', { field: renderI18nObject(param.label, language) }),

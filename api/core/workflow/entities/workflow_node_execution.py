@@ -13,11 +13,35 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.nodes.enums import NodeType
 
 
-class NodeExecutionStatus(StrEnum):
+class WorkflowNodeExecutionMetadataKey(StrEnum):
+    """
+    Node Run Metadata Key.
+    """
+
+    TOTAL_TOKENS = "total_tokens"
+    TOTAL_PRICE = "total_price"
+    CURRENCY = "currency"
+    TOOL_INFO = "tool_info"
+    AGENT_LOG = "agent_log"
+    ITERATION_ID = "iteration_id"
+    ITERATION_INDEX = "iteration_index"
+    LOOP_ID = "loop_id"
+    LOOP_INDEX = "loop_index"
+    PARALLEL_ID = "parallel_id"
+    PARALLEL_START_NODE_ID = "parallel_start_node_id"
+    PARENT_PARALLEL_ID = "parent_parallel_id"
+    PARENT_PARALLEL_START_NODE_ID = "parent_parallel_start_node_id"
+    PARALLEL_MODE_RUN_ID = "parallel_mode_run_id"
+    ITERATION_DURATION_MAP = "iteration_duration_map"  # single iteration duration if iteration node runs
+    LOOP_DURATION_MAP = "loop_duration_map"  # single loop duration if loop node runs
+    ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
+    LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
+
+
+class WorkflowNodeExecutionStatus(StrEnum):
     """
     Node Execution Status Enum.
     """
@@ -29,7 +53,7 @@ class NodeExecutionStatus(StrEnum):
     RETRY = "retry"
 
 
-class NodeExecution(BaseModel):
+class WorkflowNodeExecution(BaseModel):
     """
     Domain model for workflow node execution.
 
@@ -46,7 +70,7 @@ class NodeExecution(BaseModel):
     id: str  # Unique identifier for this execution record
     node_execution_id: Optional[str] = None  # Optional secondary ID for cross-referencing
     workflow_id: str  # ID of the workflow this node belongs to
-    workflow_run_id: Optional[str] = None  # ID of the specific workflow run (null for single-step debugging)
+    workflow_execution_id: Optional[str] = None  # ID of the specific workflow run (null for single-step debugging)
 
     # Execution positioning and flow
     index: int  # Sequence number for ordering in trace visualization
@@ -61,12 +85,12 @@ class NodeExecution(BaseModel):
     outputs: Optional[Mapping[str, Any]] = None  # Output variables produced by this node
 
     # Execution state
-    status: NodeExecutionStatus = NodeExecutionStatus.RUNNING  # Current execution status
+    status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RUNNING  # Current execution status
     error: Optional[str] = None  # Error message if execution failed
     elapsed_time: float = Field(default=0.0)  # Time taken for execution in seconds
 
     # Additional metadata
-    metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None  # Execution metadata (tokens, cost, etc.)
+    metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None  # Execution metadata (tokens, cost, etc.)
 
     # Timing information
     created_at: datetime  # When execution started
@@ -77,7 +101,7 @@ class NodeExecution(BaseModel):
         inputs: Optional[Mapping[str, Any]] = None,
         process_data: Optional[Mapping[str, Any]] = None,
         outputs: Optional[Mapping[str, Any]] = None,
-        metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None,
+        metadata: Optional[Mapping[WorkflowNodeExecutionMetadataKey, Any]] = None,
     ) -> None:
         """
         Update the model from mappings.

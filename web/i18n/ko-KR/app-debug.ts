@@ -39,8 +39,8 @@ const translation = {
     settingBtn: '설정으로 이동',
   },
   trailUseGPT4Info: {
-    title: '현재 gpt-4는 지원되지 않습니다',
-    description: 'gpt-4를 사용하려면 API 키를 설정해야 합니다.',
+    title: '현재 gpt-4 는 지원되지 않습니다',
+    description: 'gpt-4 를 사용하려면 API 키를 설정해야 합니다.',
   },
   feature: {
     groupChat: {
@@ -52,12 +52,12 @@ const translation = {
     },
     conversationOpener: {
       title: '대화 시작',
-      description: '채팅 앱에서 AI가 사용자에게 처음으로 적극적으로 말을 건다면 일반적으로 환영 메시지로 사용됩니다.',
+      description: '채팅 앱에서 AI 가 사용자에게 처음으로 적극적으로 말을 건다면 일반적으로 환영 메시지로 사용됩니다.',
     },
     suggestedQuestionsAfterAnswer: {
       title: '팔로우업',
       description: '다음 질문 제안을 설정하면 사용자에게 더 나은 채팅이 제공됩니다.',
-      resDes: '사용자의 다음 질문에 대한 3가지 제안.',
+      resDes: '사용자의 다음 질문에 대한 3 가지 제안.',
       tryToAsk: '질문해보세요',
     },
     moreLikeThis: {
@@ -162,7 +162,7 @@ const translation = {
     },
     moderation: {
       title: '콘텐츠 모더레이션',
-      description: '모더레이션 API를 사용하거나 기밀 단어 목록을 유지함으로써 모델 출력을 안전하게 합니다.',
+      description: '모더레이션 API 를 사용하거나 기밀 단어 목록을 유지함으로써 모델 출력을 안전하게 합니다.',
       allEnabled: '입력/출력 콘텐츠가 모두 활성화되어 있습니다',
       inputEnabled: '입력 콘텐츠가 활성화되어 있습니다',
       outputEnabled: '출력 콘텐츠가 활성화되어 있습니다',
@@ -178,7 +178,7 @@ const translation = {
           keywords: '키워드',
         },
         keywords: {
-          tip: '한 줄에 하나씩, 줄 바꿈으로 입력하세요. 한 줄 당 최대 100자.',
+          tip: '한 줄에 하나씩, 줄 바꿈으로 입력하세요. 한 줄 당 최대 100 자.',
           placeholder: '한 줄씩 입력하세요',
           line: '줄',
         },
@@ -188,7 +188,7 @@ const translation = {
           preset: '프리셋 응답',
           placeholder: '프리셋 응답 내용을 입력하세요',
           condition: '최소한 하나의 입력 및 출력 콘텐츠를 모더레이션합니다',
-          fromApi: '프리셋 응답은 API에서 반환됩니다',
+          fromApi: '프리셋 응답은 API 에서 반환됩니다',
           errorMessage: '프리셋 응답은 비워둘 수 없습니다',
           supportMarkdown: '마크다운이 지원됩니다',
         },
@@ -201,10 +201,10 @@ const translation = {
   },
   automatic: {
     title: '자동 어플리케이션 오케스트레이션',
-    description: '시나리오를 설명하세요. Dify가 어플리케이션을 자동으로 오케스트레이션 합니다.',
+    description: '시나리오를 설명하세요. Dify 가 어플리케이션을 자동으로 오케스트레이션 합니다.',
     intendedAudience: '누가 대상이 되는지 설명하세요.',
     intendedAudiencePlaceHolder: '예: 학생',
-    solveProblem: '어떤 문제를 AI가 해결할 것으로 예상하나요?',
+    solveProblem: '어떤 문제를 AI 가 해결할 것으로 예상하나요?',
     solveProblemPlaceHolder: '예: 학업 성적 평가',
     generate: '생성',
     audiencesRequired: '대상이 필요합니다',
@@ -231,7 +231,7 @@ const translation = {
   },
   chatSubTitle: '단계',
   completionSubTitle: '접두사 프롬프트',
-  promptTip: '프롬프트는 AI의 응답을 지시하고 제한하여 유도합니다. {{input}}과 같은 변수를 삽입하세요. 이 프롬프트는 사용자에게 표시되지 않습니다.',
+  promptTip: '프롬프트는 AI 의 응답을 지시하고 제한하여 유도합니다. {{input}}과 같은 변수를 삽입하세요. 이 프롬프트는 사용자에게 표시되지 않습니다.',
   formattingChangedTitle: '포맷이 변경되었습니다',
   formattingChangedText: '포맷을 변경하면 디버그 영역이 재설정됩니다. 계속하시겠습니까?',
   variableTitle: '변수',
@@ -249,7 +249,7 @@ const translation = {
   },
   varKeyError: {
     canNoBeEmpty: '{{key}}가 필요합니다',
-    tooLong: '{{key}}가 너무 깁니다. 30자를 넘을 수 없습니다',
+    tooLong: '{{key}}가 너무 깁니다. 30 자를 넘을 수 없습니다',
     notValid: '{{key}}가 유효하지 않습니다. 문자, 숫자, 밑줄만 포함할 수 있습니다',
     notStartWithNumber: '{{key}}는 숫자로 시작할 수 없습니다',
     keyAlreadyExists: '{{key}}는 이미 존재합니다',
@@ -279,6 +279,7 @@ const translation = {
     'labelName': '레이블명',
     'inputPlaceholder': '입력하세요',
     'required': '필수',
+    'hide': '숨기기',
     'errorMsg': {
       varNameRequired: '변수명은 필수입니다',
       labelNameRequired: '레이블명은 필수입니다',
@@ -294,9 +295,9 @@ const translation = {
     visionSettings: {
       title: '비전 설정',
       resolution: '해상도',
-      resolutionTooltip: `저해상도는 모델에게 512 x 512 해상도의 저해상도 이미지를 제공하여 65 토큰의 예산으로 이미지를 표현합니다. 이로 인해 API는 더 빠른 응답을 제공하며 높은 세부 정보가 필요한 경우 토큰 소모를 늘립니다.
+      resolutionTooltip: `저해상도는 모델에게 512 x 512 해상도의 저해상도 이미지를 제공하여 65 토큰의 예산으로 이미지를 표현합니다. 이로 인해 API 는 더 빠른 응답을 제공하며 높은 세부 정보가 필요한 경우 토큰 소모를 늘립니다.
       \n
-      고해상도는 먼저 모델에게 저해상도 이미지를 보여주고, 그 후 입력 이미지 크기에 따라 512px의 정사각형 세부 사진을 만듭니다. 각 세부 사진에 대해 129 토큰의 예산을 사용합니다.`,
+      고해상도는 먼저 모델에게 저해상도 이미지를 보여주고, 그 후 입력 이미지 크기에 따라 512px 의 정사각형 세부 사진을 만듭니다. 각 세부 사진에 대해 129 토큰의 예산을 사용합니다.`,
       high: '고',
       low: '저',
       uploadMethod: '업로드 방식',
@@ -363,12 +364,12 @@ const translation = {
     },
     retrieveMultiWay: {
       title: '멀티패스 리트리벌',
-      description: '사용자 의도에 따라 모든 지식을 쿼리하고, 관련 텍스트를 여러 소스에서 가져와 다시 순위를 매긴 후 사용자 쿼리에 가장 적합한 결과를 선택합니다. 재순위 모델 API의 구성이 필요합니다.',
+      description: '사용자 의도에 따라 모든 지식을 쿼리하고, 관련 텍스트를 여러 소스에서 가져와 다시 순위를 매긴 후 사용자 쿼리에 가장 적합한 결과를 선택합니다. 재순위 모델 API 의 구성이 필요합니다.',
     },
     rerankModelRequired: '재순위 모델이 필요합니다',
     params: '매개변수',
     top_k: '상위 K',
-    top_kTip: '사용자 질문에 가장 유사한 청크를 필터링하는 데 사용됩니다. 시스템은 선택한 모델의 max_tokens에 따라 동적으로 상위 K 값을 조정합니다.',
+    top_kTip: '사용자 질문에 가장 유사한 청크를 필터링하는 데 사용됩니다. 시스템은 선택한 모델의 max_tokens 에 따라 동적으로 상위 K 값을 조정합니다.',
     score_threshold: '점수 임계값',
     score_thresholdTip: '청크 필터링의 유사성 임계값을 설정하는 데 사용됩니다.',
     retrieveChangeTip: '인덱스 모드 및 리트리벌 모드를 변경하면 이 지식과 관련된 애플리케이션에 영향을 줄 수 있습니다.',
@@ -409,7 +410,7 @@ const translation = {
     promptPlaceholder: '여기에 프롬프트를 입력하세요',
     tools: {
       name: '도구',
-      description: '도구를 사용하여 인터넷 검색이나 과학적 계산 등 LLM의 기능을 확장할 수 있습니다',
+      description: '도구를 사용하여 인터넷 검색이나 과학적 계산 등 LLM 의 기능을 확장할 수 있습니다',
       enabled: '활성화됨',
     },
   },

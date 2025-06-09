@@ -175,8 +175,11 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
-        if not dataset.indexing_technique and not args.get("indexing_technique"):
+
+        indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
+        if not indexing_technique:
             raise ValueError("indexing_technique is required.")
+        args["indexing_technique"] = indexing_technique
 
         # save file info
         file = request.files["file"]
@@ -206,12 +209,16 @@ class DocumentAddByFileApi(DatasetApiResource):
         knowledge_config = KnowledgeConfig(**args)
         DocumentService.document_create_args_validate(knowledge_config)
 
+        dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None
+        if not knowledge_config.original_document_id and not dataset_process_rule and not knowledge_config.process_rule:
+            raise ValueError("process_rule is required.")
+
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 knowledge_config=knowledge_config,
                 account=dataset.created_by_account,
-                dataset_process_rule=dataset.latest_process_rule if "process_rule" not in args else None,
+                dataset_process_rule=dataset_process_rule,
                 created_from="api",
             )
         except ProviderTokenNotInitError as ex:

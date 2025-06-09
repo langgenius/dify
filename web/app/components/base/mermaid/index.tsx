@@ -91,6 +91,11 @@ const initMermaid = () => {
           numberSectionStyles: 4,
           axisFormat: '%Y-%m-%d',
         },
+        mindmap: {
+          useMaxWidth: true,
+          padding: 10,
+          diagramPadding: 20,
+        },
         maxTextSize: 50000,
       })
       isMermaidInitialized = true
@@ -289,11 +294,12 @@ const Flowchart = React.forwardRef((props: {
     try {
       let finalCode: string
 
-      // Check if it's a gantt chart
+      // Check if it's a gantt chart or mindmap
       const isGanttChart = primitiveCode.trim().startsWith('gantt')
+      const isMindMap = primitiveCode.trim().startsWith('mindmap')
 
-      if (isGanttChart) {
-        // For gantt charts, ensure each task is on its own line
+      if (isGanttChart || isMindMap) {
+        // For gantt charts and mindmaps, ensure each task is on its own line
         // and preserve exact whitespace/format
         finalCode = primitiveCode.trim()
       }
@@ -351,6 +357,11 @@ const Flowchart = React.forwardRef((props: {
           fontSize: 11,
           numberSectionStyles: 4,
           axisFormat: '%Y-%m-%d',
+        },
+        mindmap: {
+          useMaxWidth: true,
+          padding: 10,
+          diagramPadding: 20,
         },
       }
 

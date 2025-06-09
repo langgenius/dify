@@ -55,6 +55,13 @@ class ApiBasedToolSchemaParser:
             # convert parameters
             parameters = []
             if "parameters" in interface["operation"]:
+                for i, parameter in enumerate(interface["operation"]["parameters"]):
+                    if "$ref" in parameter:
+                        root = openapi
+                        reference = parameter["$ref"].split("/")[1:]
+                        for ref in reference:
+                            root = root[ref]
+                        interface["operation"]["parameters"][i] = root
                 for parameter in interface["operation"]["parameters"]:
                     tool_parameter = ToolParameter(
                         name=parameter["name"],

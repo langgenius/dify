@@ -6,7 +6,7 @@ from typing import Optional, cast
 
 from opik import Opik, Trace
 from opik.id_helpers import uuid4_to_uuid7
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import OpikConfig
@@ -22,10 +22,10 @@ from core.ops.entities.trace_entity import (
     WorkflowTraceInfo,
 )
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.node_entities import NodeRunMetadataKey
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
-from models import Account, App, EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
+from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,7 @@ class OpikDataTrace(BaseTraceInstance):
                 "metadata": workflow_metadata,
                 "input": wrap_dict("input", trace_info.workflow_run_inputs),
                 "output": wrap_dict("output", trace_info.workflow_run_outputs),
+                "thread_id": trace_info.conversation_id,
                 "tags": ["message", "workflow"],
                 "project_name": self.project,
             }
@@ -144,6 +145,7 @@ class OpikDataTrace(BaseTraceInstance):
                 "metadata": workflow_metadata,
                 "input": wrap_dict("input", trace_info.workflow_run_inputs),
                 "output": wrap_dict("output", trace_info.workflow_run_outputs),
+                "thread_id": trace_info.conversation_id,
                 "tags": ["workflow"],
                 "project_name": self.project,
             }
@@ -152,22 +154,11 @@ class OpikDataTrace(BaseTraceInstance):
         # through workflow_run_id get all_nodes_execution using repository
         session_factory = sessionmaker(bind=db.engine)
         # Find the app's creator account
-        with Session(db.engine, expire_on_commit=False) as session:
-            # Get the app to find its creator
-            app_id = trace_info.metadata.get("app_id")
-            if not app_id:
-                raise ValueError("No app_id found in trace_info metadata")
+        app_id = trace_info.metadata.get("app_id")
+        if not app_id:
+            raise ValueError("No app_id found in trace_info metadata")
 
-            app = session.query(App).filter(App.id == app_id).first()
-            if not app:
-                raise ValueError(f"App with id {app_id} not found")
-
-            if not app.created_by:
-                raise ValueError(f"App with id {app_id} has no creator (created_by is None)")
-
-            service_account = session.query(Account).filter(Account.id == app.created_by).first()
-            if not service_account:
-                raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
+        service_account = self.get_service_account_with_tenant(app_id)
 
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
@@ -244,7 +235,7 @@ class OpikDataTrace(BaseTraceInstance):
             parent_span_id = trace_info.workflow_app_log_id or trace_info.workflow_run_id
 
             if not total_tokens:
-                total_tokens = execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS) or 0
+                total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
 
             span_data = {
                 "trace_id": opik_trace_id,
@@ -306,6 +297,7 @@ class OpikDataTrace(BaseTraceInstance):
             "metadata": wrap_metadata(metadata),
             "input": trace_info.inputs,
             "output": message_data.answer,
+            "thread_id": message_data.conversation_id,
             "tags": ["message", str(trace_info.conversation_mode)],
             "project_name": self.project,
         }
@@ -420,6 +412,7 @@ class OpikDataTrace(BaseTraceInstance):
             "metadata": wrap_metadata(trace_info.metadata),
             "input": trace_info.inputs,
             "output": trace_info.outputs,
+            "thread_id": trace_info.conversation_id,
             "tags": ["generate_name"],
             "project_name": self.project,
         }

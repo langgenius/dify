@@ -647,7 +647,6 @@ const translation = {
       'setParameter': 'ตั้งค่าพารามิเตอร์...',
     },
     tool: {
-      toAuthorize: 'เพื่ออนุญาต',
       inputVars: 'ตัวแปรอินพุต',
       outputVars: {
         text: 'เนื้อหาที่สร้างขึ้นด้วยเครื่องมือ',
@@ -660,6 +659,7 @@ const translation = {
         },
         json: 'เครื่องมือสร้าง JSON',
       },
+      authorize: 'อนุญาต',
     },
     questionClassifiers: {
       model: 'แบบ',

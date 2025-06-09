@@ -15,6 +15,17 @@ async function decodeBase64AndDecompress(base64String: string) {
   }
 }
 
+async function getRawInputsFromUrlParams(): Promise<Record<string, any>> {
+  const urlParams = new URLSearchParams(window.location.search)
+  const inputs: Record<string, any> = {}
+  const entriesArray = Array.from(urlParams.entries())
+  entriesArray.forEach(([key, value]) => {
+    if (!key.startsWith('sys.'))
+      inputs[key] = decodeURIComponent(value)
+  })
+  return inputs
+}
+
 async function getProcessedInputsFromUrlParams(): Promise<Record<string, any>> {
   const urlParams = new URLSearchParams(window.location.search)
   const inputs: Record<string, any> = {}
@@ -184,6 +195,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
 }
 
 export {
+  getRawInputsFromUrlParams,
   getProcessedInputsFromUrlParams,
   getProcessedSystemVariablesFromUrlParams,
   isValidGeneratedAnswer,

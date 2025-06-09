@@ -280,6 +280,7 @@ const translation = {
     'inputPlaceholder': 'Por favor ingresa',
     'content': 'Contenido',
     'required': 'Requerido',
+    'hide': 'Ocultar',
     'errorMsg': {
       varNameRequired: 'Nombre de la variable es requerido',
       labelNameRequired: 'Nombre de la etiqueta es requerido',

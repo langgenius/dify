@@ -1,5 +1,5 @@
 import pytest
-from pydantic.error_wrappers import ValidationError
+from pydantic import ValidationError
 
 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig
 

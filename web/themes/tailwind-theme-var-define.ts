@@ -386,6 +386,7 @@ const vars = {
   'background-gradient-bg-fill-chat-bg-2': 'var(--color-background-gradient-bg-fill-chat-bg-2)',
   'background-gradient-bg-fill-chat-bubble-bg-1': 'var(--color-background-gradient-bg-fill-chat-bubble-bg-1)',
   'background-gradient-bg-fill-chat-bubble-bg-2': 'var(--color-background-gradient-bg-fill-chat-bubble-bg-2)',
+  'background-gradient-bg-fill-chat-bubble-bg-3': 'var(--color-background-gradient-bg-fill-chat-bubble-bg-3)',
   'background-gradient-bg-fill-debug-bg-1': 'var(--color-background-gradient-bg-fill-debug-bg-1)',
   'background-gradient-bg-fill-debug-bg-2': 'var(--color-background-gradient-bg-fill-debug-bg-2)',
 

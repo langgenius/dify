@@ -10,12 +10,12 @@ from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.workflow.entities.workflow_execution_entities import (
+from core.workflow.entities.workflow_execution import (
     WorkflowExecution,
     WorkflowExecutionStatus,
     WorkflowType,
 )
-from core.workflow.repository.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from models import (
     Account,
     CreatorUserRole,
@@ -104,10 +104,9 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         status = WorkflowExecutionStatus(db_model.status)
 
         return WorkflowExecution(
-            id=db_model.id,
+            id_=db_model.id,
             workflow_id=db_model.workflow_id,
-            sequence_number=db_model.sequence_number,
-            type=WorkflowType(db_model.type),
+            workflow_type=WorkflowType(db_model.type),
             workflow_version=db_model.version,
             graph=graph,
             inputs=inputs,
@@ -140,14 +139,29 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             raise ValueError("created_by_role is required in repository constructor")
 
         db_model = WorkflowRun()
-        db_model.id = domain_model.id
+        db_model.id = domain_model.id_
         db_model.tenant_id = self._tenant_id
         if self._app_id is not None:
             db_model.app_id = self._app_id
         db_model.workflow_id = domain_model.workflow_id
         db_model.triggered_from = self._triggered_from
-        db_model.sequence_number = domain_model.sequence_number
-        db_model.type = domain_model.type
+
+        # Check if this is a new record
+        with self._session_factory() as session:
+            existing = session.scalar(select(WorkflowRun).where(WorkflowRun.id == domain_model.id_))
+            if not existing:
+                # For new records, get the next sequence number
+                stmt = select(WorkflowRun.sequence_number).where(
+                    WorkflowRun.app_id == self._app_id,
+                    WorkflowRun.tenant_id == self._tenant_id,
+                )
+                max_sequence = session.scalar(stmt.order_by(WorkflowRun.sequence_number.desc()))
+                db_model.sequence_number = (max_sequence or 0) + 1
+            else:
+                # For updates, keep the existing sequence number
+                db_model.sequence_number = existing.sequence_number
+
+        db_model.type = domain_model.workflow_type
         db_model.version = domain_model.workflow_version
         db_model.graph = json.dumps(domain_model.graph) if domain_model.graph else None
         db_model.inputs = json.dumps(domain_model.inputs) if domain_model.inputs else None

@@ -10,11 +10,11 @@ const translation = {
     title: 'web app 브랜드 사용자 정의',
     removeBrand: 'Powered by Dify 삭제',
     changeLogo: 'Powered by 브랜드 이미지 변경',
-    changeLogoTip: '최소 크기 40x40px의 SVG 또는 PNG 형식',
+    changeLogoTip: '최소 크기 40x40px 의 SVG 또는 PNG 형식',
   },
   app: {
     title: '앱 헤더 브랜드 사용자 정의',
-    changeLogoTip: '최소 크기 80x80px의 SVG 또는 PNG 형식',
+    changeLogoTip: '최소 크기 80x80px 의 SVG 또는 PNG 형식',
   },
   upload: '업로드',
   uploading: '업로드 중',

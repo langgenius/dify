@@ -31,11 +31,19 @@ jobs:
             echo "FILES_CHANGED=false" >> $GITHUB_ENV
           fi
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
       - name: Set up Node.js
         if: env.FILES_CHANGED == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 'lts/*'
+          cache: pnpm
+          cache-dependency-path: ./web/package.json
 
       - name: Install dependencies
         if: env.FILES_CHANGED == 'true'

@@ -11,7 +11,7 @@ describe('title should be empty if systemFeatures is pending', () => {
   act(() => {
     useGlobalPublicStore.setState({
       systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
-      isPending: true,
+      isGlobalPending: true,
     })
   })
   it('document title should be empty if set title', () => {
@@ -28,7 +28,7 @@ describe('use default branding', () => {
   beforeEach(() => {
     act(() => {
       useGlobalPublicStore.setState({
-        isPending: false,
+        isGlobalPending: false,
         systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: false } },
       })
     })
@@ -48,7 +48,7 @@ describe('use specific branding', () => {
   beforeEach(() => {
     act(() => {
       useGlobalPublicStore.setState({
-        isPending: false,
+        isGlobalPending: false,
         systemFeatures: { ...defaultSystemFeatures, branding: { ...defaultSystemFeatures.branding, enabled: true, application_title: 'Test' } },
       })
     })

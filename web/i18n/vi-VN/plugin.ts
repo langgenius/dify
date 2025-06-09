@@ -62,6 +62,7 @@ const translation = {
       settings: 'CÀI ĐẶT NGƯỜI DÙNG',
       empty: 'Nhấp vào nút \'+\' để thêm công cụ. Bạn có thể thêm nhiều công cụ.',
       unsupportedTitle: 'Hành động không được hỗ trợ',
+      toolSetting: 'Cài đặt công cụ',
     },
     switchVersion: 'Chuyển đổi phiên bản',
     endpointDisableTip: 'Tắt điểm cuối',
@@ -210,6 +211,7 @@ const translation = {
     title: 'Plugin',
   },
   difyVersionNotCompatible: 'Phiên bản Dify hiện tại không tương thích với plugin này, vui lòng nâng cấp lên phiên bản tối thiểu cần thiết: {{minimalDifyVersion}}',
+  requestAPlugin: 'Yêu cầu một plugin',
 }
 
 export default translation

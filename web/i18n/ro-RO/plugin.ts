@@ -62,6 +62,7 @@ const translation = {
       descriptionPlaceholder: 'Scurtă descriere a scopului instrumentului, de exemplu, obțineți temperatura pentru o anumită locație.',
       toolLabel: 'Unealtă',
       uninstalledTitle: 'Instrumentul nu este instalat',
+      toolSetting: 'Setările instrumentului',
     },
     endpointDeleteContent: 'Doriți să eliminați {{name}}?',
     strategyNum: '{{num}} {{strategie}} INCLUS',
@@ -210,6 +211,7 @@ const translation = {
     title: 'Pluginuri',
   },
   difyVersionNotCompatible: 'Versiunea curentă Dify nu este compatibilă cu acest plugin, vă rugăm să faceți upgrade la versiunea minimă necesară: {{minimalDifyVersion}}',
+  requestAPlugin: 'Solicitați un plugin',
 }
 
 export default translation
