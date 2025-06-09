@@ -1,5 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
+import { useDocLink } from '@/context/i18n'
 import { useCallback, useState } from 'react'
 import Link from 'next/link'
 import { useContext } from 'use-context-selector'
@@ -18,6 +19,7 @@ import Toast from '@/app/components/base/toast'
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
@@ -147,7 +149,7 @@ export default function InviteSettingsPage() {
       <Link
         className='system-xs-medium text-text-accent-secondary'
         target='_blank' rel='noopener noreferrer'
-        href={`https://docs.dify.ai/${language !== LanguagesSupported[1] ? 'user-agreement' : `v/${locale.toLowerCase()}/policies`}/open-source`}
+        href={docLink('/policies/open-source')}
       >{t('login.license.link')}</Link>
     </div>
   </div>
