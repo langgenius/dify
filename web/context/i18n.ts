@@ -42,7 +42,7 @@ export const useDocLink = (baseUrl?: string): ((path?: string, pathMap?: { [inde
         const baseDocUrl = baseUrl || defaultDocBaseUrl
         const docLanguage = getDocLanguage(locale)
         const pathUrl = path || ''
-        const targetPath = (pathMap !== undefined) ? pathMap[locale] || pathUrl : pathUrl
+        const targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
         return (targetPath.startsWith('/')) ? `${baseDocUrl}/${docLanguage}${targetPath}` : `${baseDocUrl}/${docLanguage}/${targetPath}`
     }
 }
