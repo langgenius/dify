@@ -7,6 +7,7 @@ from .explore.audio import ChatAudioApi, ChatTextApi
 from .explore.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from .explore.conversation import (
     ConversationApi,
+    ConversationBatchApi,
     ConversationListApi,
     ConversationPinApi,
     ConversationRenameApi,
@@ -129,6 +130,13 @@ api.add_resource(
     "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>",
     endpoint="installed_app_conversation",
 )
+
+api.add_resource(
+    ConversationBatchApi,
+    "/installed-apps/<uuid:installed_app_id>/conversations/batch/remove",
+    endpoint="installed_app_conversation_batch_remove",
+)
+
 api.add_resource(
     ConversationPinApi,
     "/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin",
@@ -170,6 +178,7 @@ from .tag import tags
 # Import workspace controllers
 from .workspace import (
     account,
+    account_ext,
     agent_providers,
     endpoint,
     load_balancing_config,

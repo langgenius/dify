@@ -1,0 +1,11 @@
+model: ${INIT_MODEL_LLM_NAME}
+model_type: llm
+credentials:
+  mode: chat
+  context_size: ${INIT_MODEL_LLM_CONTEXT_SIZE}
+  max_tokens: ${INIT_MODEL_LLM_MAX_TOKENS}
+  vision_support: false
+  function_call_support: false
+  base_url: ${INIT_MODEL_LLM_BASE_URL}
+load_balancing:
+  enabled: false

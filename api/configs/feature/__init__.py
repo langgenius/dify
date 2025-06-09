@@ -868,6 +868,63 @@ class AccountConfig(BaseSettings):
         default=False,
     )
 
+class ExtConfig(BaseSettings):
+    PLUGIN_UNIQUE_IDENTIFIERS: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="langgenius/ollama:0.0.3@9ded90ac00e8510119a24be7396ba77191c9610d5e1e29f59d68fa1229822fc7",
+    )
+    INIT_MODEL_LLM_BASE_URL: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="http://120.46.154.21:19042",
+    )
+    INIT_MODEL_LLM_NAME: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="qwq:32b",
+    )
+    INIT_MODEL_LLM_PROVIDER: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="langgenius/ollama/ollama",
+    )
+    INIT_MODEL_LLM_CONTEXT_SIZE: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="4096",
+    )
+    INIT_MODEL_LLM_MAX_TOKENS: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="4096",
+    )
+    INIT_MODEL_TEXT_EMBEDDING_BASE_URL: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="http://120.46.154.21:19042",
+    )
+    INIT_MODEL_TEXT_EMBEDDING_NAME: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="bge-m3:latest",
+    )
+    INIT_MODEL_TEXT_EMBEDDING_PROVIDER: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="langgenius/ollama/ollama",
+    )
+    INIT_MODEL_TEXT_EMBEDDING_CONTEXT_SIZE: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="4096",
+    )
+    INIT_MODEL_TEXT_EMBEDDING_MAX_TOKENS: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="4096",
+    )
+    INIT_MODEL_TEXT_EMBEDDING_RERANK_BASE_URL: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="http://120.46.154.21:19086",
+    )
+    INIT_MODEL_TEXT_EMBEDDING_RERANK_NAME: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="bge-reranker-large",
+    )
+    INIT_MODEL_TEXT_EMBEDDING_RERANK_PROVIDER: str = Field(
+        description="Duration in minutes for which a account deletion token remains valid",
+        default="langgenius/huggingface_tei/huggingface_tei",
+    )
 
 class FeatureConfig(
     # place the configs in alphabet order
@@ -902,5 +959,6 @@ class FeatureConfig(
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,
+    ExtConfig
 ):
     pass

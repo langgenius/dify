@@ -63,6 +63,7 @@ class Dataset(Base):
     collection_binding_id = db.Column(StringUUID, nullable=True)
     retrieval_model = db.Column(JSONB, nullable=True)
     built_in_field_enabled = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    target_tenant_id = db.Column(db.String(255), nullable=True)
 
     @property
     def dataset_keyword_table(self):
@@ -418,6 +419,7 @@ class Document(Base):
                             "mime_type": file_detail.mime_type,
                             "created_by": file_detail.created_by,
                             "created_at": file_detail.created_at.timestamp(),
+                            "file_id": file_detail.file_id,
                         }
                     }
             elif self.data_source_type in {"notion_import", "website_crawl"}:

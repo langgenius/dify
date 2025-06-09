@@ -1,0 +1,6 @@
+model: ${INIT_MODEL_TEXT_EMBEDDING_RERANK_NAME}
+model_type: rerank
+credentials:
+    server_url: ${INIT_MODEL_TEXT_EMBEDDING_RERANK_BASE_URL}
+load_balancing:
+    enabled: false

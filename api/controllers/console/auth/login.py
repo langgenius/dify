@@ -244,7 +244,31 @@ class RefreshTokenApi(Resource):
             return {"result": "fail", "data": str(e)}, 401
 
 
+class SingleSignApi(Resource):
+    @setup_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=str, required=True, location="json")
+        parser.add_argument("tenantId", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        try:
+            account = AccountService.authenticate_email(args["email"], args["tenantId"])
+        except services.errors.account.AccountLoginError:
+            raise AccountBannedError()
+        except services.errors.account.AccountNotFoundError:
+            if FeatureService.get_system_features().is_allow_register:
+                return {"result": "fail", "code": "account_not_found"}
+            else:
+                raise AccountNotFound()
+
+        token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+        AccountService.reset_login_error_rate_limit(args["email"])
+        return {"result": "success", "data": token_pair.model_dump()}
+
+
 api.add_resource(LoginApi, "/login")
+api.add_resource(SingleSignApi, "/single/login")
 api.add_resource(LogoutApi, "/logout")
 api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
 api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")

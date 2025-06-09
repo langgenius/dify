@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
-from sqlalchemy import Float, and_, func, or_, text
+from sqlalchemy import Float, Integer, and_, func, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
 from sqlalchemy.orm import Session
 
@@ -370,7 +370,8 @@ class KnowledgeRetrievalNode(LLMNode):
                     for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
                         metadata_name = condition.name
                         expected_value = condition.value
-                        if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
+#                         if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
+                        if expected_value is not None and condition.comparison_operator not in ("empty", "not empty", "in"):
                             if isinstance(expected_value, str):
                                 expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                     expected_value
@@ -531,6 +532,14 @@ class KnowledgeRetrievalNode(LLMNode):
                 filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) <= value)
             case "≥" | ">=":
                 filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) >= value)
+            case "in":
+                if value is None or value == "":
+                    filters.append(1 == 2)
+                else:
+                    values = value.split(',')
+                    filters.append(
+                        (text("documents.doc_metadata ->> :key in :value")).params(key=metadata_name, value=tuple(values))
+                    )
             case _:
                 pass
         return filters

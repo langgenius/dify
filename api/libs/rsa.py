@@ -7,7 +7,7 @@ from Crypto.Random import get_random_bytes
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import gmpy2_pkcs10aep_cipher
-
+from models import Tenant
 
 def generate_key_pair(tenant_id):
     private_key = RSA.generate(2048)
@@ -16,11 +16,11 @@ def generate_key_pair(tenant_id):
     pem_private = private_key.export_key()
     pem_public = public_key.export_key()
 
-    filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
+#     filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
+#
+#     storage.save(filepath, pem_private)
 
-    storage.save(filepath, pem_private)
-
-    return pem_public.decode()
+    return pem_public.decode(), pem_private.decode()
 
 
 prefix_hybrid = b"HYBRID:"
@@ -46,16 +46,21 @@ def encrypt(text, public_key):
 
 
 def get_decrypt_decoding(tenant_id):
-    filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
 
-    cache_key = "tenant_privkey:{hash}".format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
+    from extensions.ext_database import db
+
+#     filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
+
+#     cache_key = "tenant_privkey:{hash}".format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
+    cache_key = "tenant_privkey:{hash}".format(hash=hashlib.sha3_256(tenant_id.encode('utf-8')).hexdigest())
     private_key = redis_client.get(cache_key)
     if not private_key:
-        try:
-            private_key = storage.load(filepath)
-        except FileNotFoundError:
-            raise PrivkeyNotFoundError("Private key not found, tenant_id: {tenant_id}".format(tenant_id=tenant_id))
-
+#         try:
+#             private_key = storage.load(filepath)
+#         except FileNotFoundError:
+#             raise PrivkeyNotFoundError("Private key not found, tenant_id: {tenant_id}".format(tenant_id=tenant_id))
+        tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).one_or_none()
+        private_key = tenant.encrypt_private_key
         redis_client.setex(cache_key, 120, private_key)
 
     rsa_key = RSA.import_key(private_key)

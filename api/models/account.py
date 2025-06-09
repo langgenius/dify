@@ -100,11 +100,13 @@ class Account(UserMixin, Base):
     initialized_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    target_tenant_id = db.Column(db.String(255), nullable=True)
 
     @reconstructor
     def init_on_load(self):
         self.role: Optional[TenantAccountRole] = None
         self._current_tenant: Optional[Tenant] = None
+    target_tenant_id = db.Column(db.String(255), nullable=True)
 
     @property
     def is_password_set(self):
@@ -199,11 +201,13 @@ class Tenant(Base):
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     name = db.Column(db.String(255), nullable=False)
     encrypt_public_key = db.Column(db.Text)
+    encrypt_private_key = db.Column(db.Text)
     plan = db.Column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     custom_config = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    target_tenant_id = db.Column(db.String(255), nullable=True)
 
     def get_accounts(self) -> list[Account]:
         return (

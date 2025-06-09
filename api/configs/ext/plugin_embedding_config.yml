@@ -1,0 +1,11 @@
+model: ${INIT_MODEL_TEXT_EMBEDDING_NAME}
+model_type: text-embedding
+credentials:
+  mode: chat
+  context_size: ${INIT_MODEL_TEXT_EMBEDDING_CONTEXT_SIZE}
+  max_tokens: ${INIT_MODEL_TEXT_EMBEDDING_MAX_TOKENS}
+  vision_support: false
+  function_call_support: false
+  base_url: ${INIT_MODEL_TEXT_EMBEDDING_BASE_URL}
+load_balancing:
+  enabled: false

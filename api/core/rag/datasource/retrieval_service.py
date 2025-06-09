@@ -422,6 +422,7 @@ class RetrievalService:
                     if score_value is not None and isinstance(score_value, int | float | str)
                     else None
                 )
+            cls.append_next_segments(records=records,dataset_documents=dataset_documents)
 
                 # Create RetrievalSegments object
                 retrieval_segment = RetrievalSegments(segment=segment, child_chunks=child_chunks, score=score)
@@ -431,3 +432,93 @@ class RetrievalService:
         except Exception as e:
             db.session.rollback()
             raise e
+
+    @classmethod
+    def append_next_segments(cls, records: list[dict], dataset_documents : dict):
+        # import pdb; pdb.set_trace()
+        def filter_record(record):
+            document_id = record["segment"].document_id
+            if document_id in dataset_documents:
+                dataset_document = dataset_documents[document_id]
+                if dataset_document and dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX:
+                    return True
+            return False
+        filtered_data = list(filter(filter_record, records))
+        cls.set_next_segments(records=filtered_data)
+
+    # 为文档
+    @classmethod
+    def set_next_segments(cls,records: list[dict]) :
+        # 判断文档是否为空
+        document_ids = []
+        doc_segment_ids = []
+        for record in records:
+            document_id = record["segment"].document_id
+            doc_segment_id = record["segment"].id
+            doc_segment_ids.append(doc_segment_id)
+            document_ids.append(document_id)
+
+        # 找到文档的所有的
+        if len(document_ids) > 0:
+            document_segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id.in_(document_ids)).all()
+            document_segment_data = {}
+            for document_segment in document_segments:
+                key = document_segment.document_id
+                if key not in document_segment_data:
+                    document_segment_data[key] = []
+                document_segment_data[key].append(document_segment)
+            cls.merged_next_segment_content(records=records, document_segment_data=document_segment_data,doc_segment_ids=doc_segment_ids)
+
+    @classmethod
+    def merged_next_segment_content(cls,records: list[dict],document_segment_data: dict,doc_segment_ids: list) :
+        # 按照分数倒叙排序
+        sorted_records = sorted(records, key=lambda r: r["score"], reverse=True)
+        # 只处理最大分数的前三个，如果已存在，顺延处理下一片，直到满3个
+        index = 3
+        for record in sorted_records:
+            if index == 0:
+                break
+            document_id = record["segment"].document_id
+            doc_segment_id = record["segment"].id
+            content = record["segment"].content
+            document_segments = document_segment_data[document_id]
+            # 获取下一个分片
+            next_segment = cls.get_next_segment(doc_segment_id=doc_segment_id,document_segments=document_segments)
+            if next_segment and next_segment.id not in doc_segment_ids:
+                merged_string, merged = cls.merged_text(content, next_segment.content)
+                doc_segment_ids.append(next_segment.id)
+                if merged:
+                    record["segment"].content = merged_string
+                    index -= 1
+
+    @classmethod
+    def merged_text(cls, text, target_text) -> (str,bool):
+        # 初始化最大重叠长度为0
+        max_overlap_length = 0  # 初始化变量max_overlap_length用于存储最大重叠长度
+
+        # 检查A的结尾与B的开头是否有大于10个字符的重叠
+        for overlap_length in range(1, min(len(text), len(target_text)) + 1):  # 遍历可能的重叠长度从1到最小字符串长度
+            if text[-overlap_length:] == target_text[:overlap_length]:  # 检查A的后缀和B的前缀是否相同
+                max_overlap_length = overlap_length  # 更新最大重叠长度
+        merged_string = text
+        merged = False
+        # 如果有大于10个字符的重叠，则合并字符串
+        if max_overlap_length > 10:  # 判断最大重叠长度是否大于10
+            merged_string = text + target_text[max_overlap_length:]  # 合并字符串，去掉重复部分
+            merged = True
+        return merged_string,merged
+
+    @classmethod
+    def get_next_segment(cls,doc_segment_id, document_segments: list[DocumentSegment]) -> DocumentSegment:
+        # import pdb; pdb.set_trace()
+        next_segment = None
+        if document_segments is not None and len(document_segments) > 0:
+            this_positions = -1
+            for index, document_segment in enumerate(document_segments):
+                if document_segment.id == doc_segment_id:
+                    this_positions = document_segment.position
+            for document_segment in document_segments:
+                if document_segment.position == this_positions + 1:
+                    next_segment = document_segment
+                    break
+        return next_segment

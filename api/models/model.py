@@ -1389,6 +1389,26 @@ class AppAnnotationSetting(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
+    def created_account(self):
+        account = (
+            db.session.query(Account)
+            .join(AppAnnotationSetting, AppAnnotationSetting.created_user_id == Account.id)
+            .filter(AppAnnotationSetting.id == self.annotation_id)
+            .first()
+        )
+        return account
+
+    @property
+    def updated_account(self):
+        account = (
+            db.session.query(Account)
+            .join(AppAnnotationSetting, AppAnnotationSetting.updated_user_id == Account.id)
+            .filter(AppAnnotationSetting.id == self.annotation_id)
+            .first()
+        )
+        return account
+
+    @property
     def collection_binding_detail(self):
         from .dataset import DatasetCollectionBinding
 
@@ -1545,6 +1565,7 @@ class UploadFile(Base):
     used_at: Mapped[datetime | None] = db.Column(db.DateTime, nullable=True)
     hash: Mapped[str | None] = db.Column(db.String(255), nullable=True)
     source_url: Mapped[str] = mapped_column(sa.TEXT, default="")
+    file_id = db.Column(db.String(255), nullable=True, default=0)
 
     def __init__(
         self,
@@ -1564,6 +1585,7 @@ class UploadFile(Base):
         used_at: datetime | None = None,
         hash: str | None = None,
         source_url: str = "",
+        file_id:str| None = None
     ):
         self.tenant_id = tenant_id
         self.storage_type = storage_type
@@ -1580,6 +1602,7 @@ class UploadFile(Base):
         self.used_at = used_at
         self.hash = hash
         self.source_url = source_url
+        self.file_id = file_id
 
 
 class ApiRequest(Base):

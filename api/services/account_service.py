@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import random
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -174,6 +175,7 @@ class AccountService:
         db.session.commit()
 
         return cast(Account, account)
+
 
     @staticmethod
     def update_account_password(account, password, new_password):
@@ -587,6 +589,10 @@ class AccountService:
         return False
 
 
+def _get_login_cache_key(*, account_id: str, token: str):
+    return f"account_login:{account_id}:{token}"
+
+
 class TenantService:
     @staticmethod
     def create_tenant(name: str, is_setup: Optional[bool] = False, is_from_dashboard: Optional[bool] = False) -> Tenant:
@@ -604,7 +610,10 @@ class TenantService:
         db.session.add(tenant)
         db.session.commit()
 
-        tenant.encrypt_public_key = generate_key_pair(tenant.id)
+#         tenant.encrypt_public_key = generate_key_pair(tenant.id)
+        pem_public, pem_private = generate_key_pair(tenant.id)
+        tenant.encrypt_public_key = pem_public
+        tenant.encrypt_private_key = pem_private
         db.session.commit()
         return tenant
 

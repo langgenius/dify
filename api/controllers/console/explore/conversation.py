@@ -15,6 +15,7 @@ from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.web_conversation_service import WebConversationService
 
+import ast
 
 class ConversationListApi(InstalledAppResource):
     @marshal_with(conversation_infinite_scroll_pagination_fields)
@@ -62,6 +63,27 @@ class ConversationApi(InstalledAppResource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         WebConversationService.unpin(app_model, conversation_id, current_user)
+
+        return {"result": "success"}, 204
+
+class ConversationBatchApi(InstalledAppResource):
+    def post(self, installed_app):
+        app_model = installed_app.app
+        app_mode = AppMode.value_of(app_model.mode)
+        parser = reqparse.RequestParser()
+        parser.add_argument("conv_ids", location="json",)
+        args = parser.parse_args()
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        conv_ids = conv_ids = ast.literal_eval(args['conv_ids'])
+
+
+        try:
+            ConversationService.batch_delete(app_model, conv_ids, current_user)
+        except ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+        WebConversationService.batch_unpin(app_model, conv_ids, current_user)
 
         return {"result": "success"}, 204
 

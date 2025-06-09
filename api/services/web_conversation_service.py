@@ -111,3 +111,24 @@ class WebConversationService:
 
         db.session.delete(pinned_conversation)
         db.session.commit()
+
+    @classmethod
+    def batch_unpin(cls, app_model: App, conversation_ids: list[str], user: Optional[Union[Account, EndUser]]):
+        if not user:
+            return
+        pinned_conversations = (
+            db.session.query(PinnedConversation)
+            .filter(
+                PinnedConversation.app_id == app_model.id,
+                PinnedConversation.conversation_id.in_(conversation_ids),
+                PinnedConversation.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
+                PinnedConversation.created_by == user.id,
+            )
+            .first()
+        )
+
+        if pinned_conversations is None:
+            return
+
+        db.session.delete(pinned_conversations)
+        db.session.commit()

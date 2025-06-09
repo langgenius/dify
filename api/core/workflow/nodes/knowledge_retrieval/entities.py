@@ -95,6 +95,9 @@ SupportedComparisonOperator = Literal[
     # for time
     "before",
     "after",
+    # 扩展
+    "in",
+    "not in"
 ]
 
 

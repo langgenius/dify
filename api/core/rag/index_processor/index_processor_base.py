@@ -13,7 +13,15 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from models.dataset import Dataset, DatasetProcessRule
-
+from core.rag.splitter.text_splitter import (
+    TS,
+    Collection,
+    Literal,
+    RecursiveCharacterTextSplitter,
+    Set,
+    TokenTextSplitter,
+    Union,
+)
 
 class BaseIndexProcessor(ABC):
     """Interface for extract files."""
@@ -69,7 +77,8 @@ class BaseIndexProcessor(ABC):
                 chunk_size=max_tokens,
                 chunk_overlap=chunk_overlap,
                 fixed_separator=separator,
-                separators=["\n\n", "。", ". ", " ", ""],
+                # separators=["\n\n","\n", "。", ". ", " ", "#"],
+                separators=["\n\n", "\n", "。", "？", "！", "）", "：", ". ", "?", "，", "!", ")", ":", ",", "#", "”", " "],
                 embedding_model_instance=embedding_model_instance,
             )
         else:
@@ -77,7 +86,8 @@ class BaseIndexProcessor(ABC):
             character_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["max_tokens"],
                 chunk_overlap=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["chunk_overlap"],
-                separators=["\n\n", "。", ". ", " ", ""],
+                # separators=["\n\n", "\n", "。", ". ", " ", ""],
+                separators=["\n\n", "\n", "。", "？", "！", "）", "：", ". ", "?", "，", "!", ")", ":", ",", "#", "”", " "],
                 embedding_model_instance=embedding_model_instance,
             )
 

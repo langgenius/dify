@@ -28,7 +28,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from services.file_service import FileService
-
+from configs.ext_config import get_init_knowledge_config
 
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
@@ -161,12 +161,15 @@ class DocumentAddByFileApi(DatasetApiResource):
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
         args = {}
+        file_id = None
         if "data" in request.form:
             args = json.loads(request.form["data"])
         if "doc_form" not in args:
             args["doc_form"] = "text_model"
         if "doc_language" not in args:
             args["doc_language"] = "English"
+        if "file_id" in request.form:
+            file_id = int(request.form["file_id"])
 
         # get dataset info
         dataset_id = str(dataset_id)
@@ -199,12 +202,16 @@ class DocumentAddByFileApi(DatasetApiResource):
             mimetype=file.mimetype,
             user=current_user,
             source="datasets",
+            file_id=file_id
         )
         data_source = {
             "type": "upload_file",
             "info_list": {"data_source_type": "upload_file", "file_info_list": {"file_ids": [upload_file.id]}},
         }
         args["data_source"] = data_source
+
+        # 取默认的值
+        args = get_init_knowledge_config(args)
         # validate args
         knowledge_config = KnowledgeConfig(**args)
         DocumentService.document_create_args_validate(knowledge_config)

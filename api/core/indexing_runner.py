@@ -445,7 +445,7 @@ class IndexingRunner:
                 chunk_size=max_tokens,
                 chunk_overlap=chunk_overlap,
                 fixed_separator=separator,
-                separators=["\n\n", "。", ". ", " ", ""],
+                separators=["\n\n", "\n","。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance,
             )
         else:
@@ -454,7 +454,7 @@ class IndexingRunner:
             character_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=automatic_rules["max_tokens"],
                 chunk_overlap=automatic_rules["chunk_overlap"],
-                separators=["\n\n", "。", ". ", " ", ""],
+                separators=["\n\n", "\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance,
             )
 

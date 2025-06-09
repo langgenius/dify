@@ -7,7 +7,7 @@ from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
-
+from services.ext.read_file_service import ReadPdfService
 
 class PdfExtractor(BaseExtractor):
     """Load pdf files.
@@ -48,7 +48,8 @@ class PdfExtractor(BaseExtractor):
     ) -> Iterator[Document]:
         """Lazy load given path as pages."""
         blob = Blob.from_path(self._file_path)
-        yield from self.parse(blob)
+        yield from self.parse_ext(blob)
+        # yield from self.parse(blob)
 
     def parse(self, blob: Blob) -> Iterator[Document]:
         """Lazily parse the blob."""
@@ -57,12 +58,23 @@ class PdfExtractor(BaseExtractor):
         with blob.as_bytes_io() as file_path:
             pdf_reader = pypdfium2.PdfDocument(file_path, autoclose=True)
             try:
+                content_arr = []
                 for page_number, page in enumerate(pdf_reader):
                     text_page = page.get_textpage()
                     content = text_page.get_text_range()
+                    # print(content)
+                    content_arr.append(content)
                     text_page.close()
                     page.close()
-                    metadata = {"source": blob.source, "page": page_number}
-                    yield Document(page_content=content, metadata=metadata)
+
+                contents = " ".join([p for p in content_arr])
+                metadata = {"source": blob.source, "page": 1}
+                yield Document(page_content=contents, metadata=metadata)
             finally:
                 pdf_reader.close()
+
+    def parse_ext(self, blob: Blob) -> Iterator[Document]:
+        read_pdf_service = ReadPdfService()
+        contents = read_pdf_service.load_content(self._file_path)
+        metadata = {"source": blob.source, "page": 1}
+        yield Document(page_content=contents, metadata=metadata)
