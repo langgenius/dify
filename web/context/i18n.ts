@@ -36,12 +36,13 @@ export const useGetPricingPageLanguage = () => {
 }
 
 const defaultDocBaseUrl = 'https://docs.dify.ai'
-export const useDocLink = (baseUrl?: string): ((path: string, pathMap?: { [index: string]: string }) => string) => {
+export const useDocLink = (baseUrl?: string): ((path?: string, pathMap?: { [index: string]: string }) => string) => {
     const { locale } = useI18N()
-    return (path: string, pathMap?: { [index: string]: string }): string => {
+    return (path?: string, pathMap?: { [index: string]: string }): string => {
+        const pathUrl = path || ''
         const baseDocUrl = baseUrl || defaultDocBaseUrl
         const docLanguage = getDocLanguage(locale)
-        const targetPath = (pathMap !== undefined) ? pathMap[locale] || path : path
+        const targetPath = (pathMap !== undefined) ? pathMap[locale] || pathUrl : pathUrl
         return (targetPath.startsWith('/')) ? `${baseDocUrl}/${docLanguage}${targetPath}` : `${baseDocUrl}/${docLanguage}/${targetPath}`
     }
 }
