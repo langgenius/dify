@@ -365,6 +365,10 @@ const translation = {
         ms: 'ms',
         retries: '{{num}} Retries',
       },
+      typeSwitch: {
+        input: 'Input value',
+        variable: 'Use variable',
+      },
     },
     start: {
       required: 'required',
@@ -654,6 +658,7 @@ const translation = {
     tool: {
       toAuthorize: 'To authorize',
       inputVars: 'Input Variables',
+      settings: 'Settings',
       outputVars: {
         text: 'tool generated content',
         files: {

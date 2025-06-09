@@ -366,6 +366,10 @@ const translation = {
         ms: '毫秒',
         retries: '{{num}} 重试次数',
       },
+      typeSwitch: {
+        input: '输入值',
+        variable: '使用变量',
+      },
     },
     start: {
       required: '必填',
@@ -655,6 +659,7 @@ const translation = {
     tool: {
       toAuthorize: '授权',
       inputVars: '输入变量',
+      settings: '设置',
       outputVars: {
         text: '工具生成的内容',
         files: {
