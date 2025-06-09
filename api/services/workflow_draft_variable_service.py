@@ -684,10 +684,6 @@ class DraftVariableSaver:
             draft_vars = self._build_from_variable_assigner_mapping(process_data=process_data)
         elif self._node_type == NodeType.START:
             draft_vars = self._build_variables_from_start_mapping(outputs)
-        elif self._node_type == NodeType.LOOP:
-            # Do not save output variables for loop node.
-            # (since the loop variables are inaccessible outside the loop node.)
-            return
         else:
             draft_vars = self._build_variables_from_mapping(outputs)
         _batch_upsert_draft_varaible(self._session, draft_vars)
