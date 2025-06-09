@@ -43,8 +43,9 @@ export const useDocLink = (baseUrl?: string): ((path?: string, pathMap?: { [inde
     return (path?: string, pathMap?: { [index: string]: string }): string => {
         const docLanguage = getDocLanguage(locale)
         const pathUrl = path || ''
-        const targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
-        return (targetPath.startsWith('/')) ? `${baseDocUrl}/${docLanguage}${targetPath}` : `${baseDocUrl}/${docLanguage}/${targetPath}`
+        let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
+        targetPath = (targetPath.startsWith('/')) ? targetPath.slice(0, -1) : targetPath
+        return `${baseDocUrl}/${docLanguage}/${targetPath}`
     }
 }
 export default I18NContext
