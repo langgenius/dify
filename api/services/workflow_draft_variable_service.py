@@ -498,6 +498,14 @@ class DraftVariableSaver:
     _DUMMY_OUTPUT_IDENTITY: ClassVar[str] = "__dummy__"
     _DUMMY_OUTPUT_VALUE: ClassVar[None] = None
 
+    # _EXCLUDE_VARIABLE_NAMES_MAPPING maps node types and versions to variable names that
+    # should be excluded when saving draft variables. This prevents certain internal or
+    # technical variables from being exposed in the draft environment, particularly those
+    # that aren't meant to be directly edited or viewed by users.
+    _EXCLUDE_VARIABLE_NAMES_MAPPING: dict[NodeType, frozenset[str]] = {
+        NodeType.LLM: frozenset(["finish_reason"]),
+    }
+
     # Database session used for persisting draft variables.
     _session: Session
 
@@ -639,6 +647,14 @@ class DraftVariableSaver:
     def _build_variables_from_mapping(self, output: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
         draft_vars = []
         for name, value in output.items():
+            if not self._should_variable_be_saved(name):
+                _logger.debug(
+                    "Skip saving variable as it has been excluded by its node_type, name=%s, node_type=%s",
+                    name,
+                    self._node_type,
+                )
+                continue
+
             value_seg = _build_segment_for_value(value)
             draft_vars.append(
                 WorkflowDraftVariable.new_node_variable(
@@ -692,20 +708,8 @@ class DraftVariableSaver:
             return False
         return True
 
-    # @staticmethod
-    # def _normalize_variable(node_type: NodeType, node_id: str, name: str) -> tuple[str, str]:
-    #     if node_type != NodeType.START:
-    #         return node_id, name
-    #
-    #     # TODO(QuantumGhost): need special handling for dummy output variable in
-    #     # `Start` node.
-    #     if not name.startswith(f"{SYSTEM_VARIABLE_NODE_ID}."):
-    #         return node_id, name
-    #     logging.getLogger(__name__).info(
-    #         "Normalizing variable: node_type=%s, node_id=%s, name=%s",
-    #         node_type,
-    #         node_id,
-    #         name,
-    #     )
-    #     node_id, name_ = name.split(".", maxsplit=1)
-    #     return node_id, name_
+    def _should_variable_be_saved(self, name: str) -> bool:
+        exclude_var_names = self._EXCLUDE_VARIABLE_NAMES_MAPPING.get(self._node_type)
+        if exclude_var_names is None:
+            return True
+        return name in exclude_var_names

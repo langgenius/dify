@@ -13,6 +13,7 @@ from core.file.models import File
 from core.variables import utils as variable_utils
 from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import build_segment
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
@@ -75,6 +76,10 @@ class WorkflowType(Enum):
 
         app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(app_mode)
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
+
+
+class _InvalidGraphDefinitionError(Exception):
+    pass
 
 
 class Workflow(Base):
@@ -225,6 +230,31 @@ class Workflow(Base):
         except StopIteration:
             raise NodeNotFoundError(node_id)
         return node_config
+
+    @staticmethod
+    def get_node_type_from_node_config(node_config: Mapping[str, Any]) -> NodeType:
+        """Extract type of a node from the node configuration returned by `get_node_config_by_id`."""
+        node_config_data = node_config.get("data", {})
+        # Get node class
+        node_type = NodeType(node_config_data.get("type"))
+        return node_type
+
+    @staticmethod
+    def get_enclosing_node_type_and_id(node_config: Mapping[str, Any]) -> tuple[NodeType, str] | None:
+        in_loop = node_config.get("isInLoop", False)
+        in_iteration = node_config.get("isInIteration", False)
+        if in_loop:
+            loop_id = node_config.get("loop_id")
+            if loop_id is None:
+                raise _InvalidGraphDefinitionError("invalid graph")
+            return NodeType.LOOP, loop_id
+        elif in_iteration:
+            iteration_id = node_config.get("iteration_id")
+            if iteration_id is None:
+                raise _InvalidGraphDefinitionError("invalid graph")
+            return NodeType.ITERATION, iteration_id
+        else:
+            return None
 
     @property
     def features(self) -> str:

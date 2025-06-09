@@ -140,13 +140,6 @@ class WorkflowEntry:
         # Get node class
         node_type = NodeType(node_config_data.get("type"))
         node_version = node_config_data.get("version", "1")
-        if node_type == NodeType.START:
-            # special handing for start node.
-            #
-            # 1. create conversation variables and system variables
-            # 2. create environment variables
-            pass
-
         node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
         metadata_attacher = _attach_execution_metadata_based_on_node_config(node_config_data)
 
