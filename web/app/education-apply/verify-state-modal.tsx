@@ -6,7 +6,7 @@ import {
 } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import { getLocaleOnClient } from '@/i18n'
-import { useDocLink } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 
 export type IConfirm = {
   className?: string

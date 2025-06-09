@@ -24,8 +24,8 @@ import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { useDocLink } from '@/i18n/language'
 import cn from '@/utils/classnames'
+import { useDocLink } from '@/context/i18n'
 
 export type ISettingsModalProps = {
   isChat: boolean

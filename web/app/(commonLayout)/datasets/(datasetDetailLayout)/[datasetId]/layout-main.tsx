@@ -31,7 +31,7 @@ import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { useDocLink } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode

@@ -25,7 +25,7 @@ import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/con
 import { getLocaleOnClient } from '@/i18n'
 import { noop } from 'lodash-es'
 import DifyLogo from '../components/base/logo/dify-logo'
-import { useDocLink } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 const EducationApplyAge = () => {
   const { t } = useTranslation()
   const locale = getLocaleOnClient()

@@ -33,7 +33,7 @@ import { useModalContext } from '@/context/modal-context'
 import { IS_CLOUD_EDITION } from '@/config'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useDocLink } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 
 export default function AppSelector() {
   const itemClassName = `

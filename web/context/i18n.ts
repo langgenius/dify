@@ -3,7 +3,6 @@ import {
   useContext,
 } from 'use-context-selector'
 import type { Locale } from '@/i18n'
-import { getLocaleOnClient } from '@/i18n'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n/language'
 import { noop } from 'lodash-es'
 
@@ -36,11 +35,14 @@ export const useGetPricingPageLanguage = () => {
   return getPricingPageLanguage(locale)
 }
 
-const baseDocUrl = 'https://docs.dify.ai'
-export const getDocLink = (path: string, pathMap?: { [index: string]: string }) => {
-  const docLanguage = getLocaleOnClient() === 'zh-Hans' ? 'zh-hans' : 'en'
-  const targetPath = (pathMap !== undefined) ? pathMap[docLanguage] || path : path
-  return (targetPath.startsWith('/')) ? `${baseDocUrl}/${docLanguage}${targetPath}` : `${baseDocUrl}/${docLanguage}/${targetPath}`
+const defaultDocBaseUrl = 'https://docs.dify.ai'
+export const useDocLink = (baseUrl?: string): ((path: string, pathMap?: { [index: string]: string }) => string) => {
+    const { locale } = useI18N()
+    return (path: string, pathMap?: { [index: string]: string }): string => {
+        const baseDocUrl = baseUrl || defaultDocBaseUrl
+        const docLanguage = getDocLanguage(locale)
+        const targetPath = (pathMap !== undefined) ? pathMap[locale] || path : path
+        return (targetPath.startsWith('/')) ? `${baseDocUrl}/${docLanguage}${targetPath}` : `${baseDocUrl}/${docLanguage}/${targetPath}`
+    }
 }
-
 export default I18NContext

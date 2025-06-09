@@ -1,5 +1,4 @@
 import data from './languages.json'
-import { getLocaleOnClient } from '@/i18n/index'
 export type Item = {
   value: number | string
   name: string
@@ -48,17 +47,6 @@ const DOC_LANGUAGE: Record<string, string> = {
 
 export const getDocLanguage = (locale: string) => {
   return DOC_LANGUAGE[locale] || 'en'
-}
-
-const officialDocBaseUrl = 'https://docs.dify.ai'
-export const useDocLink = (baseUrl?: string): ((path: string, pathMap?: { [index: string]: string }) => string) => {
-    return (path: string, pathMap?: { [index: string]: string }): string => {
-        const baseDocUrl = baseUrl || officialDocBaseUrl
-        const locale = getLocaleOnClient()
-        const docLanguage = getDocLanguage(locale)
-        const targetPath = (pathMap !== undefined) ? pathMap[locale] || path : path
-        return (targetPath.startsWith('/')) ? `${baseDocUrl}/${docLanguage}${targetPath}` : `${baseDocUrl}/${docLanguage}/${targetPath}`
-    }
 }
 
 const PRICING_PAGE_LANGUAGE: Record<string, string> = {

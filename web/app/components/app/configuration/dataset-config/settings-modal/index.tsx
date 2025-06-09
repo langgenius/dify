@@ -31,7 +31,7 @@ import {
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
-import { useDocLink } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 type SettingsModalProps = {
   currentDataset: DataSet
   onCancel: () => void

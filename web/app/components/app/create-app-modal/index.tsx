@@ -29,7 +29,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import useTheme from '@/hooks/use-theme'
-import { useDocLink } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 
 type CreateAppProps = {
   onSuccess: () => void
