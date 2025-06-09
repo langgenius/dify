@@ -23,14 +23,16 @@ class AppParameterApi(WebApiResource):
         if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
             workflow = app_model.workflow
             if workflow is None:
-                raise AppUnavailableError()
+                raise AppUnavailableError(
+                    "Workflow is not available for this app. Please publish your app with the correct workflow."
+                )
 
             features_dict = workflow.features_dict
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config
             if app_model_config is None:
-                raise AppUnavailableError()
+                raise AppUnavailableError("App model configuration is not available. Please publish your app with the correct model setting.")
 
             features_dict = app_model_config.to_dict()
 
