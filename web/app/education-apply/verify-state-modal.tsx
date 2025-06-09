@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -6,6 +6,7 @@ import {
 } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import { getLocaleOnClient } from '@/i18n'
+import { getDocLink } from '@/context/i18n'
 
 export type IConfirm = {
   className?: string
@@ -34,13 +35,7 @@ function Confirm({
   const dialogRef = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(isShow)
 
-  const docLink = useMemo(() => {
-    if (locale === 'zh-Hans')
-      return 'https://docs.dify.ai/zh-hans/getting-started/dify-for-education'
-    if (locale === 'ja-JP')
-      return 'https://docs.dify.ai/ja-jp/getting-started/dify-for-education'
-    return 'https://docs.dify.ai/getting-started/dify-for-education'
-  }, [locale])
+  const docLink = getDocLink('/getting-started/dify-for-education')
 
   const handleClick = () => {
     window.open(docLink, '_blank', 'noopener,noreferrer')
