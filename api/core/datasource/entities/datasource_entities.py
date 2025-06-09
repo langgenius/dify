@@ -213,15 +213,6 @@ class GetOnlineDocumentPagesRequest(BaseModel):
     """
 
 
-class OnlineDocumentPageIcon(BaseModel):
-    """
-    Online document page icon
-    """
-
-    type: str = Field(..., description="The type of the icon")
-    url: str = Field(..., description="The url of the icon")
-
-
 class OnlineDocumentPage(BaseModel):
     """
     Online document page
@@ -229,7 +220,7 @@ class OnlineDocumentPage(BaseModel):
 
     page_id: str = Field(..., description="The page id")
     page_title: str = Field(..., description="The page title")
-    page_icon: Optional[OnlineDocumentPageIcon] = Field(None, description="The page icon")
+    page_icon: Optional[dict] = Field(None, description="The page icon")
     type: str = Field(..., description="The type of the page")
     last_edited_time: str = Field(..., description="The last edited time")
 
@@ -288,15 +279,21 @@ class GetWebsiteCrawlRequest(BaseModel):
     crawl_parameters: dict = Field(..., description="The crawl parameters")
 
 
-class WebSiteInfo(BaseModel):
-    """
-    Website info
-    """
-
+class WebSiteInfoDetail(BaseModel):
     source_url: str = Field(..., description="The url of the website")
     content: str = Field(..., description="The content of the website")
     title: str = Field(..., description="The title of the website")
     description: str = Field(..., description="The description of the website")
+
+class WebSiteInfo(BaseModel):
+    """
+    Website info
+    """
+    job_id: str = Field(..., description="The job id")
+    status: str = Field(..., description="The status of the job")
+    web_info_list: Optional[list[WebSiteInfoDetail]] = []
+
+
 
 
 class GetWebsiteCrawlResponse(BaseModel):
@@ -304,6 +301,5 @@ class GetWebsiteCrawlResponse(BaseModel):
     Get website crawl response
     """
 
-    result: Optional[list[WebSiteInfo]] = []
-    job_id: str = Field(..., description="The job id")
-    status: str = Field(..., description="The status of the job")
+    result: WebSiteInfo = WebSiteInfo(job_id="", status="", web_info_list=[])
+
