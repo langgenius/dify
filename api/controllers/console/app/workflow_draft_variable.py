@@ -293,14 +293,7 @@ class VariableResetApi(Resource):
         if variable.app_id != app_model.id:
             raise NotFoundError(description=f"variable not found, id={variable_id}")
 
-        if variable.node_id != CONVERSATION_VARIABLE_NODE_ID:
-            error_msg = "variable is not a conversation variable, id={}, node_id={},  name={}".format(
-                variable.id,
-                variable.node_id,
-                variable.name,
-            )
-            raise InvalidArgumentError(error_msg)
-        resetted = draft_var_srv.reset_conversation_variable(draft_workflow, variable)
+        resetted = draft_var_srv.reset_variable(draft_workflow, variable)
         db.session.commit()
         if resetted is None:
             return Response("", 204)
