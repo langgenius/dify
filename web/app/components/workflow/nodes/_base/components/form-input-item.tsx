@@ -57,14 +57,14 @@ const FormInputItem: FC<Props> = ({
   const isObject = type === FormTypeEnum.object
   const isArray = type === FormTypeEnum.array
   const isShowJSONEditor = isObject || isArray
+  const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
   const isBoolean = type === FormTypeEnum.boolean
   const isSelect = type === FormTypeEnum.select
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
-  const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
   const showTypeSwitch = isNumber || isObject || isArray
-  const isVariable = varInput?.type === VarKindType.variable
-  const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
+  const isConstant = varInput?.type === VarKindType.constant
+  const showVariableSelector = isString || isFile || varInput?.type === VarKindType.variable
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -78,10 +78,18 @@ const FormInputItem: FC<Props> = ({
       return VarType.string
     else if (isNumber)
       return VarType.number
-    else if (isFile)
+    else if (type === FormTypeEnum.files)
       return VarType.arrayFile
-    else if (isBoolean)
-      return VarType.boolean
+    else if (type === FormTypeEnum.file)
+      return VarType.file
+    // else if (isSelect)
+    //   return VarType.select
+    // else if (isAppSelector)
+    //   return VarType.appSelector
+    // else if (isModelSelector)
+    //   return VarType.modelSelector
+    // else if (isBoolean)
+    //   return VarType.boolean
     else if (isObject)
       return VarType.object
     else if (isArray)
@@ -253,7 +261,7 @@ const FormInputItem: FC<Props> = ({
           scope={scope}
         />
       )}
-      {isVariable && (
+      {showVariableSelector && (
         <VarReferencePicker
           className='h-8 grow'
           readonly={readOnly}
