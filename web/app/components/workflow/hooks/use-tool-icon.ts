@@ -33,7 +33,7 @@ export const useToolIcon = (data: Node['data']) => {
       return targetTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.icon
     }
     if (data.type === BlockEnum.DataSource)
-      return dataSourceList?.find(toolWithProvider => toolWithProvider.name === data.provider_id)?.icon
+      return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon
   }, [data, buildInTools, customTools, workflowTools, dataSourceList])
 
   return toolIcon
@@ -61,7 +61,7 @@ export const useGetToolIcon = () => {
     }
 
     if (data.type === BlockEnum.DataSource)
-      return dataSourceList?.find(toolWithProvider => toolWithProvider.name === data.provider_id)?.icon
+      return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon
   }, [workflowStore])
 
   return getToolIcon

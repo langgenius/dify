@@ -24,7 +24,7 @@ export const useDatasourceIcon = (data: DataSourceNodeType) => {
   useDataSourceList(!!pipelineId, handleUpdateDataSourceList)
 
   const datasourceIcon = useMemo(() => {
-    return dataSourceList?.find(toolWithProvider => toolWithProvider.name === data.provider_id)?.icon
+    return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon
   }, [data, dataSourceList])
 
   return datasourceIcon

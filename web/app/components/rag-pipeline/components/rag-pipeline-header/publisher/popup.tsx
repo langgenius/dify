@@ -31,7 +31,10 @@ import { useToastContext } from '@/app/components/base/toast'
 import { useParams, useRouter } from 'next/navigation'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useInvalid } from '@/service/use-base'
-import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
+import {
+  publishedPipelineInfoQueryKeyPrefix,
+  usePublishAsCustomizedPipeline,
+} from '@/service/use-pipeline'
 import Confirm from '@/app/components/base/confirm'
 
 const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
@@ -58,6 +61,10 @@ const Popup = () => {
     setFalse: hidePublishing,
     setTrue: showPublishing,
   }] = useBoolean(false)
+  const {
+    mutate: publishAsCustomizedPipeline,
+    isPending: isPublishingAsCustomizedPipeline,
+  } = usePublishAsCustomizedPipeline()
 
   const invalidPublishedPipelineInfo = useInvalid([...publishedPipelineInfoQueryKeyPrefix, pipelineId])
 
@@ -183,6 +190,8 @@ const Popup = () => {
         <Button
           className='w-full hover:bg-state-accent-hover hover:text-text-accent'
           variant='tertiary'
+          onClick={() => publishAsCustomizedPipeline({ pipelineId: pipelineId || '' })}
+          disabled={!publishedAt || isPublishingAsCustomizedPipeline}
         >
           <div className='flex grow items-center'>
             <RiHammerLine className='mr-2 h-4 w-4' />
