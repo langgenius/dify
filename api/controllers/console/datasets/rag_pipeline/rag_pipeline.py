@@ -111,7 +111,7 @@ class CustomizedPipelineTemplateApi(Resource):
         return {"data": dsl}, 200
 
 
-class CustomizedPipelineTemplateApi(Resource):
+class PublishCustomizedPipelineTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -140,7 +140,7 @@ class CustomizedPipelineTemplateApi(Resource):
         )
         args = parser.parse_args()
         rag_pipeline_service = RagPipelineService()
-        RagPipelineService.publish_customized_pipeline_template(pipeline_id, args)
+        rag_pipeline_service.publish_customized_pipeline_template(pipeline_id, args)
         return 200
 
 
@@ -155,4 +155,8 @@ api.add_resource(
 api.add_resource(
     CustomizedPipelineTemplateApi,
     "/rag/pipeline/customized/templates/<string:template_id>",
+)
+api.add_resource(
+    CustomizedPipelineTemplateApi,
+    "/rag/pipeline/customized/templates/<string:template_id>/publish",
 )
