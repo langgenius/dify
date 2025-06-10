@@ -63,7 +63,7 @@ const FormInputItem: FC<Props> = ({
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
   const showTypeSwitch = isNumber || isObject || isArray
-  const isConstant = varInput?.type === VarKindType.constant
+  const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
   const showVariableSelector = isFile || varInput?.type === VarKindType.variable
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
