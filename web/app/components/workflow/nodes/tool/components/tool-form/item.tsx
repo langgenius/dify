@@ -50,15 +50,16 @@ const ToolFormItem: FC<Props> = ({
           )}
           {showSchemaButton && (
             <>
-              <div className='system-xs-regular ml-1 text-text-quaternary'>·</div>
+              <div className='system-xs-regular ml-1 mr-0.5 text-text-quaternary'>·</div>
               <Button
                 variant='ghost'
                 size='small'
                 onClick={() => {
                   // onOpen?.(index)
                 }}
+                className='system-xs-regular px-1 text-text-tertiary'
               >
-                <RiBracesLine className='mr-1' />
+                <RiBracesLine className='mr-1 size-3.5' />
                 <span>JSON Schema</span>
               </Button>
             </>
