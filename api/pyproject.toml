@@ -199,6 +199,6 @@ vdb = [
     "tidb-vector==0.0.9",
     "upstash-vector==0.6.0",
     "volcengine-compat~=1.0.0",
-    "weaviate-client~=3.24.0",
+    "weaviate-client~=3.21.0",
     "xinference-client~=1.2.2",
 ]
