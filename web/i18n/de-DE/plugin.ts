@@ -195,7 +195,6 @@ const translation = {
   allCategories: 'Alle Kategorien',
   install: '{{num}} Installationen',
   installAction: 'Installieren',
-  submitPlugin: 'Plugin einreichen',
   from: 'Von',
   fromMarketplace: 'Aus dem Marketplace',
   search: 'Suchen',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'Die aktuelle Dify-Version ist mit diesem Plugin nicht kompatibel, bitte aktualisieren Sie auf die erforderliche Mindestversion: {{minimalDifyVersion}}',
   requestAPlugin: 'Ein Plugin anfordern',
+  publishPlugins: 'Plugins veröffentlichen',
 }
 
 export default translation

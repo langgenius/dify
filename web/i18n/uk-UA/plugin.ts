@@ -192,7 +192,6 @@ const translation = {
     installing: 'Встановлення плагінів {{installingLength}}, 0 виконано.',
     installingWithSuccess: 'Встановлення плагінів {{installingLength}}, успіх {{successLength}}.',
   },
-  submitPlugin: 'Надіслати плагін',
   from: 'Від',
   searchInMarketplace: 'Пошук у Marketplace',
   endpointsEnabled: '{{num}} наборів кінцевих точок увімкнено',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'Поточна версія Dify не сумісна з цим плагіном, будь ласка, оновіть до мінімальної версії: {{minimalDifyVersion}}',
   requestAPlugin: 'Запросити плагін',
+  publishPlugins: 'Публікація плагінів',
 }
 
 export default translation
