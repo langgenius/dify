@@ -100,6 +100,11 @@ export const BLOCKS: Block[] = [
     type: BlockEnum.Agent,
     title: 'Agent',
   },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.Vanna,
+    title: 'Vanna',
+  },
 ]
 
 export const BLOCK_CLASSIFICATIONS: string[] = [
