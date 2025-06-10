@@ -49,7 +49,7 @@ const useInspectVarsCrud = () => {
   const { mutate: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(appId)
   const { mutate: doDeleteInspectVar } = useDeleteInspectVar(appId)
 
-  const { mutate: doEditInspectorVar } = useEditInspectorVar(appId)
+  const { mutateAsync: doEditInspectorVar } = useEditInspectorVar(appId)
   const { handleCancelNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
   const getNodeInspectVars = useCallback((nodeId: string) => {
@@ -172,9 +172,6 @@ const useInspectVarsCrud = () => {
     if (nodeId === VarInInspectType.conversation) {
       invalidateConversationVarValues()
     }
-    else if (nodeId === VarInInspectType.system) {
-      invalidateSysVarValues()
-    }
     else {
       await doEditInspectorVar({
         varId,
@@ -182,6 +179,8 @@ const useInspectVarsCrud = () => {
       })
       setInspectVarValue(nodeId, varId, value)
     }
+    if (nodeId === VarInInspectType.system)
+      invalidateSysVarValues()
   }, [doEditInspectorVar, invalidateConversationVarValues, invalidateSysVarValues, setInspectVarValue])
 
   const [currNodeId, setCurrNodeId] = useState<string | null>(null)
