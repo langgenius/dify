@@ -178,7 +178,7 @@ class BaseNode(Generic[GenericNodeData]):
         #
         # If you have introduced a new node type, please add it to `NODE_TYPE_CLASSES_MAPPING`
         # in `api/core/workflow/nodes/__init__.py`.
-        pass
+        raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
     @property
     def should_continue_on_error(self) -> bool:
