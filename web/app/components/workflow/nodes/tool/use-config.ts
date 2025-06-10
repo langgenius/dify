@@ -178,8 +178,11 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     const res = produce(inputVarValues, (draft) => {
       Object.keys(inputs.tool_parameters).forEach((key: string) => {
         const { type, value } = inputs.tool_parameters[key]
-        if (type === VarType.constant && (value === undefined || value === null))
+        if (type === VarType.constant && (value === undefined || value === null)) {
+          if(!draft.tool_parameters || !draft.tool_parameters[key])
+            return
           draft.tool_parameters[key].value = value
+        }
       })
     })
     return res

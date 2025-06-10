@@ -20,6 +20,8 @@ import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-select
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import cn from '@/utils/classnames'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 type Props = {
   readOnly: boolean
@@ -54,12 +56,15 @@ const FormInputItem: FC<Props> = ({
   const isNumber = type === FormTypeEnum.textNumber
   const isObject = type === FormTypeEnum.object
   const isArray = type === FormTypeEnum.array
+  const isShowJSONEditor = isObject || isArray
   const isBoolean = type === FormTypeEnum.boolean
   const isSelect = type === FormTypeEnum.select
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
   const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
   const showTypeSwitch = isNumber || isObject || isArray
+  const isVariable = varInput?.type === VarKindType.variable
+  const isConstant = varInput?.type === VarKindType.constant
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -168,9 +173,9 @@ const FormInputItem: FC<Props> = ({
   }, [])
 
   return (
-    <div className='flex gap-1'>
+    <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
       {showTypeSwitch && !hideTypeSwitch && (
-        <FormInputTypeSwitch value={varInput?.type} onChange={handleTypeChange}/>
+        <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange}/>
       )}
       {isString && (
         <MixedInput
@@ -185,7 +190,7 @@ const FormInputItem: FC<Props> = ({
           placeholderClassName='!leading-[21px]'
         />
       )}
-      {isNumber && varInput?.type === VarKindType.constant && (
+      {isNumber && isConstant && (
         <Input
           className='h-8 grow'
           type='number'
@@ -215,6 +220,20 @@ const FormInputItem: FC<Props> = ({
           placeholder={placeholder?.[language] || placeholder?.en_US}
         />
       )}
+      {isShowJSONEditor && isConstant && (
+        <div className='mt-1 w-full'>
+          <CodeEditor
+            title='JSON'
+            value={varInput?.value as any}
+            isExpand
+            height={100}
+            language={CodeLanguage.json}
+            onChange={handleValueChange}
+            className='w-full'
+            placeholder={<div className='whitespace-pre'>{placeholder?.[language] || placeholder?.en_US}</div>}
+          />
+        </div>
+      )}
       {isAppSelector && (
         <AppSelector
           disabled={readOnly}
@@ -223,7 +242,7 @@ const FormInputItem: FC<Props> = ({
           onSelect={handleValueChange}
         />
       )}
-      {isModelSelector && (
+      {isModelSelector && isConstant && (
         <ModelParameterModal
           popupClassName='!w-[387px]'
           isAdvancedMode
@@ -234,7 +253,7 @@ const FormInputItem: FC<Props> = ({
           scope={scope}
         />
       )}
-      {varInput?.type === VarKindType.variable && (
+      {isVariable && (
         <VarReferencePicker
           className='h-8 grow'
           readonly={readOnly}

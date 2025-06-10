@@ -10,8 +10,8 @@ import { VarType } from '@/app/components/workflow/nodes/tool/types'
 import cn from '@/utils/classnames'
 
 type Props = {
-  value: string
-  onChange: (value: string) => void
+  value: VarType
+  onChange: (value: VarType) => void
 }
 
 const FormInputTypeSwitch: FC<Props> = ({
@@ -20,7 +20,7 @@ const FormInputTypeSwitch: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='flex h-8 shrink-0 gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5'>
+    <div className='inline-flex h-8 shrink-0 gap-px rounded-[10px] bg-components-segmented-control-bg-normal p-0.5'>
       <Tooltip
         popupContent={value === VarType.variable ? '' : t('workflow.nodes.common.typeSwitch.variable')}
       >
