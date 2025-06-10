@@ -31,7 +31,10 @@ import { useToastContext } from '@/app/components/base/toast'
 import { useParams, useRouter } from 'next/navigation'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useInvalid } from '@/service/use-base'
-import { publishedPipelineInfoQueryKeyPrefix } from '@/service/use-pipeline'
+import {
+  publishedPipelineInfoQueryKeyPrefix,
+  usePublishAsCustomizedPipeline,
+} from '@/service/use-pipeline'
 import Confirm from '@/app/components/base/confirm'
 
 const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
@@ -58,6 +61,10 @@ const Popup = () => {
     setFalse: hidePublishing,
     setTrue: showPublishing,
   }] = useBoolean(false)
+  const {
+    mutate: publishAsCustomizedPipeline,
+    isPending: isPublishingAsCustomizedPipeline,
+  } = usePublishAsCustomizedPipeline()
 
   const invalidPublishedPipelineInfo = useInvalid([...publishedPipelineInfoQueryKeyPrefix, pipelineId])
 
@@ -168,21 +175,25 @@ const Popup = () => {
           </div>
           <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
         </Button>
-        <Button
-          className='w-full hover:bg-state-accent-hover hover:text-text-accent'
-          variant='tertiary'
-          disabled={!publishedAt}
-        >
-          <div className='flex grow items-center'>
-            <RiTerminalBoxLine className='mr-2 h-4 w-4' />
-            {t('workflow.common.accessAPIReference')}
-          </div>
-          <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
-        </Button>
+        <a href='/datasets?category=api' target='_blank'>
+          <Button
+            className='w-full hover:bg-state-accent-hover hover:text-text-accent'
+            variant='tertiary'
+            disabled={!publishedAt}
+          >
+            <div className='flex grow items-center'>
+              <RiTerminalBoxLine className='mr-2 h-4 w-4' />
+              {t('workflow.common.accessAPIReference')}
+            </div>
+            <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
+          </Button>
+        </a>
         <Divider className='my-2' />
         <Button
           className='w-full hover:bg-state-accent-hover hover:text-text-accent'
           variant='tertiary'
+          onClick={() => publishAsCustomizedPipeline({ pipelineId: pipelineId || '' })}
+          disabled={!publishedAt || isPublishingAsCustomizedPipeline}
         >
           <div className='flex grow items-center'>
             <RiHammerLine className='mr-2 h-4 w-4' />

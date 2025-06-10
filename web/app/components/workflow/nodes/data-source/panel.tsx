@@ -107,7 +107,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
         )
       }
       {
-        isAuthorized && !isLocalFile && (
+        isAuthorized && !isLocalFile && !!formSchemas?.length && (
           <BoxGroupField
             boxGroupProps={{
               boxProps: { withBorderBottom: true },

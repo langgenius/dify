@@ -342,3 +342,14 @@ export const useExportPipelineDSL = () => {
     },
   })
 }
+
+export const usePublishAsCustomizedPipeline = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'publish-as-customized-pipeline'],
+    mutationFn: ({
+      pipelineId,
+    }: { pipelineId: string }) => {
+      return post(`/rag/pipelines/${pipelineId}/customized/publish`)
+    },
+  })
+}
