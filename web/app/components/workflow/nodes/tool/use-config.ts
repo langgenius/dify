@@ -137,6 +137,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
       if (!draft.tool_parameters)
         draft.tool_parameters = {}
+      // TODO: boolean & model & app formatting BOTH configuration & parameters
     })
     setInputs(inputsWithDefaultValue)
     // eslint-disable-next-line react-hooks/exhaustive-deps
