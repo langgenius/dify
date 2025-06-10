@@ -9,7 +9,7 @@
   .segmented-control-large {
     @apply rounded-lg
   }
-  
+
   .segmented-control-large.padding,
   .segmented-control-regular.padding {
     @apply p-0.5
@@ -52,8 +52,11 @@
   }
 
   .active {
-    @apply border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg shadow-xs shadow-shadow-shadow-3
-    text-text-secondary
+    @apply border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg shadow-xs shadow-shadow-shadow-3 text-text-secondary
+  }
+
+  .disabled {
+    @apply cursor-not-allowed text-text-disabled hover:text-text-disabled bg-transparent hover:bg-transparent
   }
 
   .active.accent {

@@ -9,8 +9,9 @@ import './index.css'
 type SegmentedControlOption<T> = {
   value: T
   text?: string
-  Icon: RemixiconComponentType
+  Icon?: RemixiconComponentType
   count?: number
+  disabled?: boolean
 }
 
 type SegmentedControlProps<T extends string | number | symbol> = {
@@ -90,9 +91,9 @@ export const SegmentedControl = <T extends string | number | symbol>({
   activeState,
   activeClassName,
 }: SegmentedControlProps<T>
-& VariantProps<typeof SegmentedControlVariants>
-& VariantProps<typeof SegmentedControlItemVariants>
-& VariantProps<typeof ItemTextWrapperVariants>) => {
+  & VariantProps<typeof SegmentedControlVariants>
+  & VariantProps<typeof SegmentedControlItemVariants>
+  & VariantProps<typeof ItemTextWrapperVariants>) => {
   const selectedOptionIndex = options.findIndex(option => option.value === value)
 
   return (
@@ -101,7 +102,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
       className,
     )}>
       {options.map((option, index) => {
-        const { Icon, text, count } = option
+        const { Icon, text, count, disabled } = option
         const isSelected = index === selectedOptionIndex
         const isNextSelected = index === selectedOptionIndex - 1
         const isLast = index === options.length - 1
@@ -113,10 +114,15 @@ export const SegmentedControl = <T extends string | number | symbol>({
               isSelected ? 'active' : 'default',
               SegmentedControlItemVariants({ size, activeState: isSelected ? activeState : 'default' }),
               isSelected && activeClassName,
+              disabled && 'disabled',
             )}
-            onClick={() => onChange(option.value)}
+            onClick={() => {
+              if (!isSelected)
+                onChange(option.value)
+            }}
+            disabled={disabled}
           >
-            <Icon className='size-4 shrink-0' />
+            {Icon && <Icon className='size-4 shrink-0' />}
             {text && (
               <div className={cn('inline-flex items-center gap-x-1', ItemTextWrapperVariants({ size }))}>
                 <span>{text}</span>
@@ -128,7 +134,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
               </div>
             )}
             {!isLast && !isSelected && !isNextSelected && (
-              <div className='absolute right-[-1px] top-0 flex h-full items-center'>
+              <div data-testid={`segmented-control-divider-${index}`} className='absolute right-[-1px] top-0 flex h-full items-center'>
                 <Divider type='vertical' className='mx-0 h-3.5' />
               </div>
             )}
