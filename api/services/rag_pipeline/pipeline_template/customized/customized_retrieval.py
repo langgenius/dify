@@ -64,7 +64,6 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         pipeline_template = (
             db.session.query(PipelineCustomizedTemplate).filter(PipelineCustomizedTemplate.id == template_id).first()
         )
-
         if not pipeline_template:
             return None
 

@@ -51,7 +51,9 @@ class PipelineTemplateDetailApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def get(self, template_id: str):
-        pipeline_template = RagPipelineService.get_pipeline_template_detail(template_id)
+        type = request.args.get("type", default="built-in", type=str)
+        rag_pipeline_service = RagPipelineService()
+        pipeline_template = rag_pipeline_service.get_pipeline_template_detail(template_id, type)
         return pipeline_template, 200
 
 
