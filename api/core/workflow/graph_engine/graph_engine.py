@@ -194,6 +194,7 @@ class GraphEngine:
                             self.graph_runtime_state.outputs["answer"] = self.graph_runtime_state.outputs[
                                 "answer"
                             ].strip()
+                            self.graph_runtime_state.outputs["outputs"] = item.route_node_state.node_run_result.outputs
                 except Exception as e:
                     logger.exception("Graph run failed")
                     yield GraphRunFailedEvent(error=str(e), exceptions_count=len(handle_exceptions))

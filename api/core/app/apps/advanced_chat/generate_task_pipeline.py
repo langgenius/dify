@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 from collections.abc import Generator, Mapping
@@ -506,7 +507,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
                     )
-                    print(f"workflow_finish_resp: {workflow_finish_resp}")
+                    self._task_state.metadata.data = workflow_finish_resp.data.outputs.get('outputs', {}).get('outputs')
+                    print(f"self._task_state.metadata.data: {self._task_state.metadata.data}")
                 yield workflow_finish_resp
                 self._base_task_pipeline._queue_manager.publish(
                     QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE
@@ -630,6 +632,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                     tts_publisher.publish(queue_message)
 
                 self._task_state.answer += delta_text
+                print(f"self._task_state.answer: {self._task_state.answer}")
                 yield self._message_cycle_manager.message_to_stream_response(
                     answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
                 )
@@ -651,7 +654,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         answer=output_moderation_answer,
                         reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
-
+                print(f"graph_runtime_state: {graph_runtime_state}")
                 # Save message
                 with Session(db.engine, expire_on_commit=False) as session:
                     self._save_message(session=session, graph_runtime_state=graph_runtime_state)

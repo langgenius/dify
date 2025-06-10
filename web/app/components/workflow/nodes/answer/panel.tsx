@@ -26,7 +26,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
     handleAddVariable,
   } = useConfig(id, data)
 
-  const outputs = inputs.outputs
+  const outputs = inputs?.outputs || []
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,

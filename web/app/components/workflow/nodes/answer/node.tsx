@@ -38,7 +38,6 @@ const Node: FC<NodeProps<AnswerNodeType>> = ({
 
   const { outputs = [] } = data
   const filteredOutputs = (outputs as Variable[]).filter(({ value_selector }) => value_selector.length > 0)
-  console.log('filteredOutputs', filteredOutputs)
 
   if (!filteredOutputs.length)
     return null
