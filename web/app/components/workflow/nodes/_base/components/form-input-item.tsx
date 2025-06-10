@@ -64,7 +64,7 @@ const FormInputItem: FC<Props> = ({
   const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
   const showTypeSwitch = isNumber || isObject || isArray
   const isVariable = varInput?.type === VarKindType.variable
-  const isConstant = varInput?.type === VarKindType.constant
+  const isConstant = varInput?.type === VarKindType.constant || !varInput?.type
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
