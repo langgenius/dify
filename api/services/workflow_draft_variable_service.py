@@ -430,6 +430,7 @@ def _batch_upsert_draft_varaible(
                 "value": stmt.excluded.value,
                 "visible": stmt.excluded.visible,
                 "editable": stmt.excluded.editable,
+                "node_execution_id": stmt.excluded.node_execution_id,
             },
         )
     elif _UpsertPolicy.IGNORE:
@@ -448,6 +449,7 @@ def _model_to_insertion_dict(model: WorkflowDraftVariable) -> dict[str, Any]:
         "selector": model.selector,
         "value_type": model.value_type,
         "value": model.value,
+        "node_execution_id": model.node_execution_id,
     }
     if model.visible is not None:
         d["visible"] = model.visible
