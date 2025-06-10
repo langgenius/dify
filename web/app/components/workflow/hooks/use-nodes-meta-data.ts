@@ -30,7 +30,7 @@ export const useNodeMetaData = (node: Node) => {
   const nodeMetaData = availableNodesMetaData.nodesMap?.[data.type]
   const author = useMemo(() => {
     if (data.type === BlockEnum.DataSource)
-      return dataSourceList?.find(dataSource => dataSource.id === data.provider_id)?.author
+      return dataSourceList?.find(dataSource => dataSource.plugin_id === data.plugin_id)?.author
 
     if (data.type === BlockEnum.Tool) {
       if (data.provider_type === CollectionType.builtIn)
@@ -44,7 +44,7 @@ export const useNodeMetaData = (node: Node) => {
 
   const description = useMemo(() => {
     if (data.type === BlockEnum.DataSource)
-      return dataSourceList?.find(dataSource => dataSource.id === data.provider_id)?.description[language]
+      return dataSourceList?.find(dataSource => dataSource.plugin_id === data.plugin_id)?.description[language]
     if (data.type === BlockEnum.Tool) {
       if (data.provider_type === CollectionType.builtIn)
         return buildInTools.find(toolWithProvider => canFindTool(toolWithProvider.id, data.provider_id))?.description[language]
