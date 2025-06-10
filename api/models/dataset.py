@@ -311,6 +311,19 @@ class DatasetProcessRule(Base):
             return json.loads(self.rules) if self.rules else None
         except JSONDecodeError:
             return None
+        
+    @property
+    def total_documents(self):
+        return db.session.query(func.count(Document.id)).filter(Document.dataset_id == self.dataset_id).scalar()
+
+    @property
+    def total_available_documents(self):
+        return db.session.query(func.count(Document.id)).filter(
+            Document.dataset_id == self.dataset_id,
+            Document.indexing_status == "completed",
+            Document.enabled == True,
+            Document.archived == False,
+        ).scalar()
 
     @property
     def total_documents(self):

@@ -484,6 +484,9 @@ class DatasetService:
             # update Retrieval model
             filtered_data["retrieval_model"] = data["retrieval_model"]
 
+            # update icon info
+            if data.get("icon_info"):
+                filtered_data["icon_info"] = data.get("icon_info")
             db.session.query(Dataset).filter_by(id=dataset_id).update(filtered_data)
 
             db.session.commit()
