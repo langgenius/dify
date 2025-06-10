@@ -171,9 +171,12 @@ const useLastRun = <T>({
     return formattedData
   }, [isIterationNode, isLoopNode, singleRunParams?.allVarObject, id])
 
-  const callRunApi = async (data: Record<string, any>) => {
-    await handleSyncWorkflowDraft(true)
-    doCallRunApi(toSubmitData(data))
+  const callRunApi = (data: Record<string, any>) => {
+    handleSyncWorkflowDraft(true, true, {
+      onSuccess() {
+        doCallRunApi(toSubmitData(data))
+      },
+    })
   }
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
