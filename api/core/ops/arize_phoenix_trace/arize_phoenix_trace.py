@@ -31,7 +31,7 @@ from core.ops.entities.trace_entity import (
 )
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
-from models.workflow import WorkflowNodeExecution
+from models.workflow import WorkflowNodeExecutionModel
 
 logger = logging.getLogger(__name__)
 
@@ -690,20 +690,20 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         """Helper method to get workflow nodes"""
         workflow_nodes = (
             db.session.query(
-                WorkflowNodeExecution.id,
-                WorkflowNodeExecution.tenant_id,
-                WorkflowNodeExecution.app_id,
-                WorkflowNodeExecution.title,
-                WorkflowNodeExecution.node_type,
-                WorkflowNodeExecution.status,
-                WorkflowNodeExecution.inputs,
-                WorkflowNodeExecution.outputs,
-                WorkflowNodeExecution.created_at,
-                WorkflowNodeExecution.elapsed_time,
-                WorkflowNodeExecution.process_data,
-                WorkflowNodeExecution.execution_metadata,
+                WorkflowNodeExecutionModel.id,
+                WorkflowNodeExecutionModel.tenant_id,
+                WorkflowNodeExecutionModel.app_id,
+                WorkflowNodeExecutionModel.title,
+                WorkflowNodeExecutionModel.node_type,
+                WorkflowNodeExecutionModel.status,
+                WorkflowNodeExecutionModel.inputs,
+                WorkflowNodeExecutionModel.outputs,
+                WorkflowNodeExecutionModel.created_at,
+                WorkflowNodeExecutionModel.elapsed_time,
+                WorkflowNodeExecutionModel.process_data,
+                WorkflowNodeExecutionModel.execution_metadata,
             )
-            .filter(WorkflowNodeExecution.workflow_run_id == workflow_run_id)
+            .filter(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
             .all()
         )
         return workflow_nodes
