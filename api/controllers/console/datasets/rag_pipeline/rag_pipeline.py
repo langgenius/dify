@@ -158,5 +158,5 @@ api.add_resource(
 )
 api.add_resource(
     PublishCustomizedPipelineTemplateApi,
-    "/rag/pipeline/<string:pipeline_id>/customized/publish",
+    "/rag/pipelines/<string:pipeline_id>/customized/publish",
 )
