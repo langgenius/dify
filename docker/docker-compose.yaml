@@ -504,91 +504,108 @@ x-shared-env: &shared-api-worker-env
   QUEUE_MONITOR_THRESHOLD: ${QUEUE_MONITOR_THRESHOLD:-200}
   QUEUE_MONITOR_ALERT_EMAILS: ${QUEUE_MONITOR_ALERT_EMAILS:-}
   QUEUE_MONITOR_INTERVAL: ${QUEUE_MONITOR_INTERVAL:-30}
-
+  INIT_MODEL_LLM_BASE_URL: ${INIT_MODEL_LLM_BASE_URL:-}
+  INIT_MODEL_LLM_NAME: ${INIT_MODEL_LLM_NAME:-}
+  INIT_MODEL_LLM_PROVIDER: ${INIT_MODEL_LLM_PROVIDER:-}
+  INIT_MODEL_LLM_CONTEXT_SIZE: ${INIT_MODEL_LLM_CONTEXT_SIZE:-4096}
+  INIT_MODEL_LLM_MAX_TOKENS: ${INIT_MODEL_LLM_MAX_TOKENS:-4096}
+  INIT_MODEL_TEXT_EMBEDDING_BASE_URL: ${INIT_MODEL_TEXT_EMBEDDING_BASE_URL:-}
+  INIT_MODEL_TEXT_EMBEDDING_NAME: ${INIT_MODEL_TEXT_EMBEDDING_NAME:-}
+  INIT_MODEL_TEXT_EMBEDDING_PROVIDER: ${INIT_MODEL_TEXT_EMBEDDING_PROVIDER:-}
+  INIT_MODEL_TEXT_EMBEDDING_CONTEXT_SIZE: ${INIT_MODEL_TEXT_EMBEDDING_CONTEXT_SIZE:-4096}
+  INIT_MODEL_TEXT_EMBEDDING_MAX_TOKENS: ${INIT_MODEL_TEXT_EMBEDDING_MAX_TOKENS:-4096}
+  INIT_MODEL_TEXT_EMBEDDING_RERANK_BASE_URL: ${INIT_MODEL_TEXT_EMBEDDING_RERANK_BASE_URL:-}
+  INIT_MODEL_TEXT_EMBEDDING_RERANK_NAME: ${INIT_MODEL_TEXT_EMBEDDING_RERANK_NAME:-}
+  INIT_MODEL_TEXT_EMBEDDING_RERANK_PROVIDER: ${INIT_MODEL_TEXT_EMBEDDING_RERANK_PROVIDER:-}
+  
 services:
   # API service
-  api:
-    image: langgenius/dify-api:1.4.1
-    restart: always
-    environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
-      # Startup mode, 'api' starts the API server.
-      MODE: api
-      SENTRY_DSN: ${API_SENTRY_DSN:-}
-      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
-      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
-      PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
-      PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
-      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
-      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    volumes:
-      # Mount the storage directory to the container, for storing user files.
-      - ./volumes/app/storage:/app/api/storage
-    networks:
-      - ssrf_proxy_network
-      - default
+#  api:
+#    image: langgenius/dify-api:1.4.1
+#    restart: always
+#    ports:
+#      - "5001:5001"
+#    environment:
+#      # Use the shared environment variables.
+#      <<: *shared-api-worker-env
+#      # Startup mode, 'api' starts the API server.
+#      MODE: api
+#      SENTRY_DSN: ${API_SENTRY_DSN:-}
+#      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+#      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+#      PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
+#      PLUGIN_REMOTE_INSTALL_PORT: ${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}
+#      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+#      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+#    depends_on:
+#      db:
+#        condition: service_healthy
+#      redis:
+#        condition: service_started
+#    volumes:
+#      # Mount the storage directory to the container, for storing user files.
+#      - ./volumes/app/storage:/app/api/storage
+#    networks:
+#      - ssrf_proxy_network
+#      - default
 
   # worker service
   # The Celery worker for processing the queue.
-  worker:
-    image: langgenius/dify-api:1.4.1
-    restart: always
-    environment:
-      # Use the shared environment variables.
-      <<: *shared-api-worker-env
-      # Startup mode, 'worker' starts the Celery worker for processing the queue.
-      MODE: worker
-      SENTRY_DSN: ${API_SENTRY_DSN:-}
-      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
-      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
-      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
-      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    volumes:
-      # Mount the storage directory to the container, for storing user files.
-      - ./volumes/app/storage:/app/api/storage
-    networks:
-      - ssrf_proxy_network
-      - default
+#  worker:
+#    image: langgenius/dify-api:1.4.1
+#    restart: always
+#    environment:
+#      # Use the shared environment variables.
+#      <<: *shared-api-worker-env
+#      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+#      MODE: worker
+#      SENTRY_DSN: ${API_SENTRY_DSN:-}
+#      SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
+#      SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+#      PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
+#      INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
+#    depends_on:
+#      db:
+#        condition: service_healthy
+#      redis:
+#        condition: service_started
+#    volumes:
+#      # Mount the storage directory to the container, for storing user files.
+#      - ./volumes/app/storage:/app/api/storage
+#    networks:
+#      - ssrf_proxy_network
+#      - default
 
   # Frontend web application.
-  web:
-    image: langgenius/dify-web:1.4.1
-    restart: always
-    environment:
-      CONSOLE_API_URL: ${CONSOLE_API_URL:-}
-      APP_API_URL: ${APP_API_URL:-}
-      SENTRY_DSN: ${WEB_SENTRY_DSN:-}
-      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
-      TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
-      CSP_WHITELIST: ${CSP_WHITELIST:-}
-      ALLOW_EMBED: ${ALLOW_EMBED:-false}
-      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
-      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
-      TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
-      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
-      PM2_INSTANCES: ${PM2_INSTANCES:-2}
-      LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
-      MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
-      MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
-      MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-99}
-      ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
-      ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
-      ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
+#  web:
+#    image: langgenius/dify-web:1.4.1
+#    restart: always
+#    environment:
+#      CONSOLE_API_URL: ${CONSOLE_API_URL:-}
+#      APP_API_URL: ${APP_API_URL:-}
+#      SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+#      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
+#      TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
+#      CSP_WHITELIST: ${CSP_WHITELIST:-}
+#      ALLOW_EMBED: ${ALLOW_EMBED:-false}
+#      MARKETPLACE_API_URL: ${MARKETPLACE_API_URL:-https://marketplace.dify.ai}
+#      MARKETPLACE_URL: ${MARKETPLACE_URL:-https://marketplace.dify.ai}
+#      TOP_K_MAX_VALUE: ${TOP_K_MAX_VALUE:-}
+#      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-}
+#      PM2_INSTANCES: ${PM2_INSTANCES:-2}
+#      LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
+#      MAX_TOOLS_NUM: ${MAX_TOOLS_NUM:-10}
+#      MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
+#      MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-99}
+#      ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
+#      ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
+#      ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
   # The postgres database.
   db:
     image: postgres:15-alpine
     restart: always
+    ports:
+      - "5432:5432"
     environment:
       PGUSER: ${PGUSER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
@@ -612,6 +629,8 @@ services:
   redis:
     image: redis:6-alpine
     restart: always
+    ports:
+      - "6379:6379"
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
     volumes:
@@ -626,6 +645,8 @@ services:
   sandbox:
     image: langgenius/dify-sandbox:0.2.12
     restart: always
+    ports:
+     - "8194:8194"
     environment:
       # The DifySandbox configurations
       # Make sure you are changing this key for your deployment with a strong key.
@@ -650,6 +671,9 @@ services:
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.1.1-local
     restart: always
+    ports:
+     - "5003:5003"
+     - "5002:5002"
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
@@ -694,8 +718,6 @@ services:
       VOLCENGINE_TOS_ACCESS_KEY: ${PLUGIN_VOLCENGINE_TOS_ACCESS_KEY:-}
       VOLCENGINE_TOS_SECRET_KEY: ${PLUGIN_VOLCENGINE_TOS_SECRET_KEY:-}
       VOLCENGINE_TOS_REGION: ${PLUGIN_VOLCENGINE_TOS_REGION:-}
-    ports:
-      - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
@@ -708,6 +730,8 @@ services:
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
+    ports:
+      - "3128:3128"
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
@@ -745,43 +769,43 @@ services:
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
-  nginx:
-    image: nginx:latest
-    restart: always
-    volumes:
-      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
-      - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
-      - ./nginx/https.conf.template:/etc/nginx/https.conf.template
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-      - ./nginx/ssl:/etc/ssl # cert dir (legacy)
-      - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
-      - ./volumes/certbot/conf:/etc/letsencrypt
-      - ./volumes/certbot/www:/var/www/html
-    entrypoint: [ 'sh', '-c', "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
-    environment:
-      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
-      NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
-      NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
-      NGINX_PORT: ${NGINX_PORT:-80}
-      # You're required to add your own SSL certificates/keys to the `./nginx/ssl` directory
-      # and modify the env vars below in .env if HTTPS_ENABLED is true.
-      NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
-      NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
-      NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
-      NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
-      NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-15M}
-      NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
-      NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
-      NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
-      NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
-      CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
-    depends_on:
-      - api
-      - web
-    ports:
-      - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
-      - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
+#  nginx:
+#    image: nginx:latest
+#    restart: always
+#    ports:
+#      - '80:80'
+#    volumes:
+#      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+#      - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
+#      - ./nginx/https.conf.template:/etc/nginx/https.conf.template
+#      - ./nginx/conf.d:/etc/nginx/conf.d
+#      - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+#      - ./nginx/ssl:/etc/ssl # cert dir (legacy)
+#      - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
+#      - ./volumes/certbot/conf:/etc/letsencrypt
+#      - ./volumes/certbot/www:/var/www/html
+#    entrypoint: [ 'sh', '-c', "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
+#    environment:
+#      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
+#      NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
+#      NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
+#      NGINX_PORT: ${NGINX_PORT:-80}
+#      # You're required to add your own SSL certificates/keys to the `./nginx/ssl` directory
+#      # and modify the env vars below in .env if HTTPS_ENABLED is true.
+#      NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
+#      NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
+#      NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
+#      NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
+#      NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-15M}
+#      NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
+#      NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
+#      NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
+#      NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
+#      CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
+#    depends_on:
+#      - api
+#      - web
+
 
   # The Weaviate vector store.
   weaviate:
@@ -790,6 +814,8 @@ services:
       - ''
       - weaviate
     restart: always
+    ports:
+      - '8080:8080'
     volumes:
       # Mount the Weaviate data directory to the con tainer.
       - ./volumes/weaviate:/var/lib/weaviate
@@ -977,17 +1003,18 @@ services:
   # Milvus vector database services
   etcd:
     container_name: milvus-etcd
-    image: quay.io/coreos/etcd:v3.5.5
-    profiles:
-      - milvus
+    image: bitnami/etcd:latest
     environment:
-      ETCD_AUTO_COMPACTION_MODE: ${ETCD_AUTO_COMPACTION_MODE:-revision}
-      ETCD_AUTO_COMPACTION_RETENTION: ${ETCD_AUTO_COMPACTION_RETENTION:-1000}
-      ETCD_QUOTA_BACKEND_BYTES: ${ETCD_QUOTA_BACKEND_BYTES:-4294967296}
-      ETCD_SNAPSHOT_COUNT: ${ETCD_SNAPSHOT_COUNT:-50000}
+#      ETCD_AUTO_COMPACTION_MODE: ${ETCD_AUTO_COMPACTION_MODE:-revision}
+#      ETCD_AUTO_COMPACTION_RETENTION: ${ETCD_AUTO_COMPACTION_RETENTION:-1000}
+#      ETCD_QUOTA_BACKEND_BYTES: ${ETCD_QUOTA_BACKEND_BYTES:-4294967296}
+#      ETCD_SNAPSHOT_COUNT: ${ETCD_SNAPSHOT_COUNT:-50000}
+      ALLOW_NONE_AUTHENTICATION: yes  
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://etcd:2379"
+      ETCD_DATA_DIR: "/etcd"
     volumes:
-      - ./volumes/milvus/etcd:/etcd
-    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+      - ./volumes/milvus/etcd:/bitnami/etcd
     healthcheck:
       test: [ 'CMD', 'etcdctl', 'endpoint', 'health' ]
       interval: 30s
@@ -998,12 +1025,14 @@ services:
 
   minio:
     container_name: milvus-minio
-    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
-    profiles:
-      - milvus
+    image: minio/minio:latest
+    ports:
+      - '9000:9000'
+      - '9001:9001'
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_STORAGE_DIRECTORY: /minio_data
     volumes:
       - ./volumes/milvus/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
@@ -1017,14 +1046,13 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.5.0-beta
-    profiles:
-      - milvus
+    image: milvusdb/milvus:latest
     command: [ 'milvus', 'run', 'standalone' ]
     environment:
+      MILVUS_ENABLE_AUTH: false
       ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
       MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
-      common.security.authorizationEnabled: ${MILVUS_AUTHORIZATION_ENABLED:-true}
+      #common.security.authorizationEnabled: ${MILVUS_AUTHORIZATION_ENABLED:-true}
     volumes:
       - ./volumes/milvus/milvus:/var/lib/milvus
     healthcheck:
@@ -1041,6 +1069,19 @@ services:
       - 9091:9091
     networks:
       - milvus
+      
+  milvus-attu:
+    image: zilliz/attu:latest
+    container_name: milvus-attu
+    ports:
+      - "8000:3000"
+    environment:
+      MILVUS_URL: "milvus-standalone:19530"
+#      MILVUS_USERNAME: "root"
+#      MILVUS_PASSWORD: "Milvus"
+    networks:
+      - milvus
+
 
   # Opensearch vector database
   opensearch:
