@@ -141,7 +141,7 @@ class PublishCustomizedPipelineTemplateApi(Resource):
         args = parser.parse_args()
         rag_pipeline_service = RagPipelineService()
         rag_pipeline_service.publish_customized_pipeline_template(pipeline_id, args)
-        return 200
+        return {"result": "success"}
 
 
 api.add_resource(
@@ -158,5 +158,5 @@ api.add_resource(
 )
 api.add_resource(
     PublishCustomizedPipelineTemplateApi,
-    "/rag/pipeline/<string:pipeline_id>/customized/publish",
+    "/rag/pipelines/<string:pipeline_id>/customized/publish",
 )
