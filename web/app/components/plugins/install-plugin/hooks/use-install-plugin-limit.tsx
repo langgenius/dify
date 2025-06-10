@@ -1,9 +1,9 @@
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import type { SystemFeatures } from '@/types/feature'
 import { InstallationScope } from '@/types/feature'
 import type { Plugin, PluginManifestInMarket } from '../../types'
 
-export default function usePluginInstallLimit(plugin: Plugin | PluginManifestInMarket) {
-  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+export function pluginInstallLimit(plugin: Plugin | PluginManifestInMarket, systemFeatures: SystemFeatures) {
   if (systemFeatures.plugin_installation_permission.restrict_to_marketplace_only) {
     return { canInstall: false }
   }
@@ -36,4 +36,9 @@ export default function usePluginInstallLimit(plugin: Plugin | PluginManifestInM
       canInstall: true,
     }
   }
+}
+
+export default function usePluginInstallLimit(plugin: Plugin | PluginManifestInMarket) {
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
+  return pluginInstallLimit(plugin, systemFeatures)
 }

@@ -149,7 +149,7 @@ const Installed: FC<Props> = ({
               installedVersion={installedVersion}
               toInstallVersion={toInstallVersion}
             />}
-            showLimitWarning={!canInstall}
+            limitedInstall={!canInstall}
           />
         </div>
       </div>
