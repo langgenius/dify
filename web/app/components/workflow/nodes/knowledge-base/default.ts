@@ -18,16 +18,37 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
       score_threshold: 0.5,
     },
   },
-  checkValid(payload) {
-    const { chunk_structure } = payload
-    let errorMessage = ''
+  checkValid(payload, t) {
+    const {
+      chunk_structure,
+      indexing_technique,
+      retrieval_model,
+    } = payload
 
-    if (!chunk_structure)
-      errorMessage = 'Chunk structure is required.'
+    if (!chunk_structure) {
+      return {
+        isValid: false,
+        errorMessage: t('workflow.nodes.knowledgeBase.chunkIsRequired'),
+      }
+    }
+
+    if (!indexing_technique) {
+      return {
+        isValid: false,
+        errorMessage: t('workflow.nodes.knowledgeBase.indexMethodIsRequired'),
+      }
+    }
+
+    if (!retrieval_model || !retrieval_model.search_method) {
+      return {
+        isValid: false,
+        errorMessage: t('workflow.nodes.knowledgeBase.retrievalSettingIsRequired'),
+      }
+    }
 
     return {
-      isValid: !errorMessage,
-      errorMessage,
+      isValid: true,
+      errorMessage: '',
     }
   },
 }

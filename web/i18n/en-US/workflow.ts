@@ -894,6 +894,9 @@ const translation = {
       chooseChunkStructure: 'Choose a chunk structure',
       changeChunkStructure: 'Change Chunk Structure',
       aboutRetrieval: 'about retrieval method.',
+      chunkIsRequired: 'Chunk structure is required',
+      indexMethodIsRequired: 'Index method is required',
+      retrievalSettingIsRequired: 'Retrieval setting is required',
     },
   },
   tracing: {
