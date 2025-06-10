@@ -175,17 +175,19 @@ const Popup = () => {
           </div>
           <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
         </Button>
-        <Button
-          className='w-full hover:bg-state-accent-hover hover:text-text-accent'
-          variant='tertiary'
-          disabled={!publishedAt}
-        >
-          <div className='flex grow items-center'>
-            <RiTerminalBoxLine className='mr-2 h-4 w-4' />
-            {t('workflow.common.accessAPIReference')}
-          </div>
-          <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
-        </Button>
+        <a href='/datasets?category=api' target='_blank'>
+          <Button
+            className='w-full hover:bg-state-accent-hover hover:text-text-accent'
+            variant='tertiary'
+            disabled={!publishedAt}
+          >
+            <div className='flex grow items-center'>
+              <RiTerminalBoxLine className='mr-2 h-4 w-4' />
+              {t('workflow.common.accessAPIReference')}
+            </div>
+            <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
+          </Button>
+        </a>
         <Divider className='my-2' />
         <Button
           className='w-full hover:bg-state-accent-hover hover:text-text-accent'
