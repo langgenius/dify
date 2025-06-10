@@ -669,18 +669,24 @@ def _setup_variable_pool(
         # Create a variable pool.
         system_inputs = {
             # From inputs:
-            SystemVariableKey.QUERY: query,
             SystemVariableKey.FILES: files,
             SystemVariableKey.USER_ID: user_id,
-            # From sysvar
-            SystemVariableKey.CONVERSATION_ID: conversation_id,
-            SystemVariableKey.DIALOGUE_COUNT: 0,
             # From workflow model
             SystemVariableKey.APP_ID: workflow.app_id,
             SystemVariableKey.WORKFLOW_ID: workflow.id,
             # Randomly generated.
             SystemVariableKey.WORKFLOW_EXECUTION_ID: str(uuid.uuid4()),
         }
+
+        # Only add chatflow-specific variables for non-workflow types
+        if workflow.type != WorkflowType.WORKFLOW.value:
+            system_inputs.update(
+                {
+                    SystemVariableKey.QUERY: query,
+                    SystemVariableKey.CONVERSATION_ID: conversation_id,
+                    SystemVariableKey.DIALOGUE_COUNT: 0,
+                }
+            )
     else:
         system_inputs = {}
 
