@@ -349,7 +349,7 @@ export const usePublishAsCustomizedPipeline = () => {
     mutationFn: ({
       pipelineId,
     }: { pipelineId: string }) => {
-      return get(`/rag/customized/pipelines/${pipelineId}/publish`)
+      return post(`/rag/pipelines/${pipelineId}/customized/publish`)
     },
   })
 }
