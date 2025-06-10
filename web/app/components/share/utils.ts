@@ -57,22 +57,6 @@ export const setAccessToken = (sharedToken: string, token: string, user_id?: str
 }
 
 export const removeAccessToken = () => {
-  const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-
-  const accessToken = localStorage.getItem('token') || JSON.stringify(getInitialTokenV2())
-  let accessTokenJson = getInitialTokenV2()
-  try {
-    accessTokenJson = JSON.parse(accessToken)
-    if (isTokenV1(accessTokenJson))
-      accessTokenJson = getInitialTokenV2()
-  }
-  catch {
-
-  }
-
-  localStorage.removeItem(CONVERSATION_ID_INFO)
+  localStorage.removeItem('token')
   localStorage.removeItem('webapp_access_token')
-
-  delete accessTokenJson[sharedToken]
-  localStorage.setItem('token', JSON.stringify(accessTokenJson))
 }

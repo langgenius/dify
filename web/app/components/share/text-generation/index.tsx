@@ -9,7 +9,7 @@ import {
 import { useBoolean } from 'ahooks'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
-import { checkOrSetAccessToken } from '../utils'
+import { checkOrSetAccessToken, removeAccessToken } from '../utils'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
@@ -536,14 +536,31 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   )
 
+  const getSigninUrl = useCallback(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('message')
+    params.set('redirect_url', pathname)
+    return `/webapp-signin?${params.toString()}`
+  }, [searchParams, pathname])
+
+  const backToHome = useCallback(() => {
+    removeAccessToken()
+    const url = getSigninUrl()
+    router.replace(url)
+  }, [getSigninUrl, router])
+
   if (!appId || !siteInfo || !promptConfig || (systemFeatures.webapp_auth.enabled && (isGettingAccessMode || isCheckingPermission))) {
     return (
       <div className='flex h-screen items-center'>
         <Loading type='app' />
       </div>)
   }
-  if (systemFeatures.webapp_auth.enabled && !userCanAccessResult?.result)
-    return <AppUnavailable code={403} unknownReason='no permission.' />
+  if (systemFeatures.webapp_auth.enabled && !userCanAccessResult?.result) {
+    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
+      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
+      {!isInstalledApp && <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>}
+    </div>
+  }
 
   return (
     <div className={cn(
