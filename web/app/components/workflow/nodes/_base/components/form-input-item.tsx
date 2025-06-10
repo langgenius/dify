@@ -234,6 +234,7 @@ const FormInputItem: FC<Props> = ({
             title='JSON'
             value={varInput?.value as any}
             isExpand
+            isInNode
             height={100}
             language={CodeLanguage.json}
             onChange={handleValueChange}
