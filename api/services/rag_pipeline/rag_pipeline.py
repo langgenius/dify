@@ -542,9 +542,9 @@ class RagPipelineService:
                     provider_type=datasource_runtime.datasource_provider_type(),
                 )
                 return {
-                    "result": [result.model_dump() for result in website_crawl_result.result],
-                    "job_id": website_crawl_result.job_id,
-                    "status": website_crawl_result.status,
+                    "result": [result.model_dump() for result in website_crawl_result.result.web_info_list] if website_crawl_result.result.web_info_list else [],
+                    "job_id": website_crawl_result.result.job_id,
+                    "status": website_crawl_result.result.status,
                     "provider_type": datasource_node_data.get("provider_type"),
                 }
             case _:
