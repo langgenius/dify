@@ -710,4 +710,4 @@ class DraftVariableSaver:
         exclude_var_names = self._EXCLUDE_VARIABLE_NAMES_MAPPING.get(self._node_type)
         if exclude_var_names is None:
             return True
-        return name in exclude_var_names
+        return name not in exclude_var_names
