@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from collections.abc import Generator, Mapping
@@ -492,7 +491,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if not graph_runtime_state:
                     raise ValueError("workflow run not initialized.")
 
-                print(f"outputsfff: {event.outputs}")
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_execution = self._workflow_cycle_manager.handle_workflow_run_success(
                         workflow_run_id=self._workflow_run_id,
@@ -508,7 +506,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                         workflow_execution=workflow_execution,
                     )
                     self._task_state.metadata.data = workflow_finish_resp.data.outputs.get('outputs', {}).get('outputs')
-                    print(f"self._task_state.metadata.data: {self._task_state.metadata.data}")
                 yield workflow_finish_resp
                 self._base_task_pipeline._queue_manager.publish(
                     QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE
