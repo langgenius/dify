@@ -303,7 +303,6 @@ class OracleVector(BaseVector):
             return docs
         else:
             return [Document(page_content="", metadata={})]
-        return []
 
     def delete(self) -> None:
         with self._get_connection() as conn:
