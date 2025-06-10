@@ -64,6 +64,8 @@ const translation = {
     skip: '跳过',
     format: '格式化',
     more: '更多',
+    selectAll: '全选',
+    deSelectAll: '取消全选',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

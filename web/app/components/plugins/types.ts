@@ -97,7 +97,8 @@ export type PluginManifestInMarket = {
   badges: string[],
   verification: {
     authorized_category: 'langgenius' | 'partner' | 'community'
-  }
+  },
+  from: Dependency['type']
 }
 
 export type PluginDetail = {
@@ -151,7 +152,8 @@ export type Plugin = {
   badges: string[],
   verification: {
     authorized_category: 'langgenius' | 'partner' | 'community'
-  }
+  },
+  from: Dependency['type']
 }
 
 export enum PermissionType {

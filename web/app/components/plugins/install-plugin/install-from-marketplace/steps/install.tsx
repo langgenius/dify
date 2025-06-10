@@ -127,8 +127,7 @@ const Installed: FC<Props> = ({
     return gte(langeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
   }, [langeniusVersionInfo.current_version, pluginDeclaration])
 
-  const { canInstall } = useInstallPluginLimit(payload)
-
+  const { canInstall } = useInstallPluginLimit({ ...payload, from: 'marketplace' })
   return (
     <>
       <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
