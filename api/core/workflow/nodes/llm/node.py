@@ -704,15 +704,15 @@ class LLMNode(BaseNode[LLMNodeData]):
         model = ModelManager().get_model_instance(
             tenant_id=self.tenant_id,
             model_type=ModelType.LLM,
-            provider=self.node_data.model.provider,
-            model=self.node_data.model.name,
+            provider=model_config.provider,
+            model=model_config.model,
         )
         model_schema = model.model_type_instance.get_model_schema(
-            model=self.node_data.model.name,
+            model=model_config.model,
             credentials=model.credentials,
         )
         if not model_schema:
-            raise ModelNotExistError(f"Model {self.node_data.model.name} not exist.")
+            raise ModelNotExistError(f"Model {model_config.model} not exist.")
         if self.node_data.structured_output_enabled:
             if not model_schema.support_structure_output:
                 filtered_prompt_messages = self._handle_prompt_based_schema(
