@@ -300,6 +300,7 @@ class PublishedRagPipelineRunApi(Resource):
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
 
+
 class RagPipelinePublishedDatasourceNodeRunStatusApi(Resource):
     @setup_required
     @login_required
@@ -340,6 +341,7 @@ class RagPipelinePublishedDatasourceNodeRunStatusApi(Resource):
 
         return result
 
+
 class RagPipelineDraftDatasourceNodeRunStatusApi(Resource):
     @setup_required
     @login_required
@@ -379,7 +381,7 @@ class RagPipelineDraftDatasourceNodeRunStatusApi(Resource):
         )
 
         return result
-    
+
 
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @setup_required
@@ -421,6 +423,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
 
         return result
 
+
 class RagPipelineDrafDatasourceNodeRunApi(Resource):
     @setup_required
     @login_required
@@ -460,6 +463,7 @@ class RagPipelineDrafDatasourceNodeRunApi(Resource):
         )
 
         return result
+
 
 class RagPipelinePublishedNodeRunApi(Resource):
     @setup_required
@@ -798,6 +802,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
             "variables": variables,
         }
 
+
 class PublishedRagPipelineFirstStepApi(Resource):
     @setup_required
     @login_required
@@ -822,6 +827,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
             "variables": variables,
         }
 
+
 class DraftRagPipelineFirstStepApi(Resource):
     @setup_required
     @login_required
@@ -845,6 +851,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         return {
             "variables": variables,
         }
+
 
 class DraftRagPipelineSecondStepApi(Resource):
     @setup_required
