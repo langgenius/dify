@@ -176,6 +176,21 @@ class AccountService:
 
         return cast(Account, account)
 
+    @staticmethod
+    def authenticate_email(email: str, tenantId: str) -> None | Account:
+        account = db.session.query(Account).filter_by(email=email, target_tenant_id=tenantId).first()
+        if not account:
+            raise AccountNotFoundError()
+
+        if account.status == AccountStatus.BANNED.value:
+            raise AccountLoginError("Account is banned.")
+
+        if account.status == AccountStatus.PENDING.value:
+            account.status = AccountStatus.ACTIVE.value
+            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
+
+        db.session.commit()
+        return cast(Account, account)
 
     @staticmethod
     def update_account_password(account, password, new_password):
