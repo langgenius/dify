@@ -1,18 +1,21 @@
 import datetime
 import logging
 from collections.abc import Mapping
+import time
 from typing import Any, cast
+
+from sqlalchemy import func
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 
 from ..base import BaseNode
 from .entities import KnowledgeIndexNodeData
@@ -111,13 +114,19 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
         document = db.session.query(Document).filter_by(id=document_id.value).first()
         if not document:
             raise KnowledgeIndexNodeError(f"Document {document_id.value} not found.")
-
+        # chunk nodes by chunk size
+        indexing_start_at = time.perf_counter()
         index_processor = IndexProcessorFactory(dataset.chunk_structure).init_index_processor()
         index_processor.index(dataset, document, chunks)
-
+        indexing_end_at = time.perf_counter()
+        document.indexing_latency = indexing_end_at - indexing_start_at
         # update document status
         document.indexing_status = "completed"
         document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+        document.word_count = db.session.query(func.sum(DocumentSegment.word_count)).filter(
+            DocumentSegment.document_id == document.id,
+            DocumentSegment.dataset_id == dataset.id,
+        ).scalar()
         db.session.add(document)
         # update document segment status
         db.session.query(DocumentSegment).filter(

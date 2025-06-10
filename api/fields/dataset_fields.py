@@ -88,6 +88,8 @@ dataset_detail_fields = {
     "chunk_structure": fields.String,
     "icon_info": fields.Nested(icon_info_fields),
     "is_published": fields.Boolean,
+    "total_documents": fields.Integer,
+    "total_available_documents": fields.Integer,
 }
 
 dataset_query_detail_fields = {
