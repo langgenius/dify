@@ -405,6 +405,9 @@ class RetrievalService:
                     record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")  # type: ignore
                     record["score"] = segment_child_map[record["segment"].id]["max_score"]
 
+            # 高分片段，自动拼接相近的片段
+            cls.append_next_segments(records=records,dataset_documents=dataset_documents)
+
             result = []
             for record in records:
                 # Extract segment
@@ -422,8 +425,6 @@ class RetrievalService:
                     if score_value is not None and isinstance(score_value, int | float | str)
                     else None
                 )
-            cls.append_next_segments(records=records,dataset_documents=dataset_documents)
-
                 # Create RetrievalSegments object
                 retrieval_segment = RetrievalSegments(segment=segment, child_chunks=child_chunks, score=score)
                 result.append(retrieval_segment)
@@ -435,7 +436,6 @@ class RetrievalService:
 
     @classmethod
     def append_next_segments(cls, records: list[dict], dataset_documents : dict):
-        # import pdb; pdb.set_trace()
         def filter_record(record):
             document_id = record["segment"].document_id
             if document_id in dataset_documents:

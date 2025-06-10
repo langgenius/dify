@@ -8,7 +8,7 @@ from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.llm import LLMNode
 from extensions.utils.vanna_text2sql import VannaServer
-from models.workflow import WorkflowNodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 
 from .entities import VannaNodeData
 
@@ -89,4 +89,4 @@ class VannaNode(LLMNode):
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs={"output": sql}
         )
-    
+
