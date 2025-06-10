@@ -285,6 +285,7 @@ class WebSiteInfoDetail(BaseModel):
     title: str = Field(..., description="The title of the website")
     description: str = Field(..., description="The description of the website")
 
+
 class WebSiteInfo(BaseModel):
     """
     Website info
@@ -294,12 +295,9 @@ class WebSiteInfo(BaseModel):
     web_info_list: Optional[list[WebSiteInfoDetail]] = []
 
 
-
-
 class GetWebsiteCrawlResponse(BaseModel):
     """
     Get website crawl response
     """
 
     result: WebSiteInfo = WebSiteInfo(job_id="", status="", web_info_list=[])
-
