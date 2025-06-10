@@ -35,7 +35,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   * tool_parameters: tool dynamic setting(form type = llm)
   * output_schema: tool dynamic output
   */
-  const { provider_id, provider_type, tool_name, tool_configurations, output_schema } = inputs
+  const { provider_id, provider_type, tool_name, tool_configurations, output_schema, tool_parameters } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
@@ -132,12 +132,19 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     if (!currTool)
       return
     const inputsWithDefaultValue = produce(inputs, (draft) => {
-      if (!draft.tool_configurations || Object.keys(draft.tool_configurations).length === 0)
+      if (!draft.tool_configurations || Object.keys(draft.tool_configurations).length === 0) {
         draft.tool_configurations = getConfiguredValue(tool_configurations, toolSettingSchema)
+      }
+      else {
+        // TODO
+      }
 
-      if (!draft.tool_parameters)
-        draft.tool_parameters = {}
-      // TODO: boolean & model & app formatting BOTH configuration & parameters
+      if (!draft.tool_parameters || Object.keys(draft.tool_configurations).length === 0) {
+        draft.tool_parameters = getConfiguredValue(tool_parameters, toolInputVarSchema)
+      }
+      else {
+        // TODO: boolean & model & app formatting BOTH configuration & parameters
+      }
     })
     setInputs(inputsWithDefaultValue)
     // eslint-disable-next-line react-hooks/exhaustive-deps

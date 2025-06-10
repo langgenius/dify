@@ -64,7 +64,7 @@ const FormInputItem: FC<Props> = ({
   const isModelSelector = type === FormTypeEnum.modelSelector
   const showTypeSwitch = isNumber || isObject || isArray
   const isConstant = varInput?.type === VarKindType.constant
-  const showVariableSelector = isString || isFile || varInput?.type === VarKindType.variable
+  const showVariableSelector = isFile || varInput?.type === VarKindType.variable
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
@@ -110,7 +110,7 @@ const FormInputItem: FC<Props> = ({
     else if (isObject)
       return (varPayload: any) => varPayload.type === VarType.object
     else if (isArray)
-      return (varPayload: any) => varPayload.type === VarType.arrayObject
+      return (varPayload: any) => [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
     return undefined
   }
 
