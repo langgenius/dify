@@ -22,6 +22,7 @@ import IterationStartDefault from './nodes/iteration-start/default'
 import AgentDefault from './nodes/agent/default'
 import LoopStartDefault from './nodes/loop-start/default'
 import LoopEndDefault from './nodes/loop-end/default'
+import VannaDefault from './nodes/vanna/default'
 
 type NodesExtraData = {
   author: string
@@ -240,6 +241,16 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: ListFilterDefault.getAvailableNextNodes,
     checkValid: AgentDefault.checkValid,
   },
+
+    [BlockEnum.Vanna]: {
+        author: '维斯德',
+        about: '',
+        availablePrevNodes: [],
+        availableNextNodes: [],
+        getAvailablePrevNodes: VannaDefault.getAvailablePrevNodes,
+        getAvailableNextNodes: VannaDefault.getAvailableNextNodes,
+        checkValid: VannaDefault.checkValid,
+    },
 }
 
 export const NODES_INITIAL_DATA = {
@@ -471,7 +482,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
   BlockEnum.ParameterExtractor, BlockEnum.Iteration, BlockEnum.Loop,
   BlockEnum.DocExtractor, BlockEnum.ListFilter,
-  BlockEnum.Agent,
+  BlockEnum.Agent,BlockEnum.Vanna
 ]
 
 export const LLM_OUTPUT_STRUCT: Var[] = [

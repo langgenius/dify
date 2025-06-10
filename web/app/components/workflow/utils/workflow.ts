@@ -32,6 +32,7 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.Agent
     || nodeType === BlockEnum.DocExtractor
     || nodeType === BlockEnum.Loop
+    || nodeType === BlockEnum.Vanna
 }
 
 type ConnectedSourceOrTargetNodesChange = {

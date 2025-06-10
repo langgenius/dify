@@ -129,7 +129,9 @@ def reset_encrypt_key_pair():
             click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
             return
 
-        tenant.encrypt_public_key = generate_key_pair(tenant.id)
+        pem_public, pem_private = generate_key_pair(tenant.id)
+        tenant.encrypt_public_key = pem_public
+        tenant.encrypt_private_key = pem_private
 
         db.session.query(Provider).filter(Provider.provider_type == "custom", Provider.tenant_id == tenant.id).delete()
         db.session.query(ProviderModel).filter(ProviderModel.tenant_id == tenant.id).delete()
