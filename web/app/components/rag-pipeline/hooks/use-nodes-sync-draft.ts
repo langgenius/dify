@@ -32,7 +32,7 @@ export const useNodesSyncDraft = () => {
       ragPipelineVariables,
     } = workflowStore.getState()
 
-    if (pipelineId) {
+    if (pipelineId && !!nodes.length) {
       const producedNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
           Object.keys(node.data).forEach((key) => {
