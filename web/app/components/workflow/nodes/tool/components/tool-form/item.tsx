@@ -10,6 +10,8 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
+import { useBoolean } from 'ahooks'
+import SchemaModal from '@/app/components/plugins/plugin-detail-panel/tool-selector/schema-modal'
 
 type Props = {
   readOnly: boolean
@@ -27,10 +29,13 @@ const ToolFormItem: FC<Props> = ({
   onChange,
 }) => {
   const language = useLanguage()
-  const { label, type, required, tooltip } = schema
+  const { name, label, type, required, tooltip, input_schema } = schema
   const showSchemaButton = type === FormTypeEnum.object || type === FormTypeEnum.array
   const showDescription = type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput
-
+  const [isShowSchema, {
+    setTrue: showSchema,
+    setFalse: hideSchema,
+  }] = useBoolean(false)
   return (
     <div className='space-y-0.5 py-1'>
       <div>
@@ -54,9 +59,7 @@ const ToolFormItem: FC<Props> = ({
               <Button
                 variant='ghost'
                 size='small'
-                onClick={() => {
-                  // onOpen?.(index)
-                }}
+                onClick={showSchema}
                 className='system-xs-regular px-1 text-text-tertiary'
               >
                 <RiBracesLine className='mr-1 size-3.5' />
@@ -76,6 +79,15 @@ const ToolFormItem: FC<Props> = ({
         value={value}
         onChange={onChange}
       />
+
+      {isShowSchema && (
+        <SchemaModal
+          isShow
+          onClose={hideSchema}
+          rootName={name}
+          schema={input_schema!}
+        />
+      )}
     </div>
   )
 }
