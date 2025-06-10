@@ -722,6 +722,8 @@ const vars = {
   'util-colors-midnight-midnight-600': 'var(--color-util-colors-midnight-midnight-600)',
   'util-colors-midnight-midnight-700': 'var(--color-util-colors-midnight-midnight-700)',
 
+  'third-party-Arize': 'var(--color-third-party-Arize)',
+  'third-party-Phoenix': 'var(--color-third-party-Phoenix)',
   'third-party-LangChain': 'var(--color-third-party-LangChain)',
   'third-party-Langfuse': 'var(--color-third-party-Langfuse)',
   'third-party-Github': 'var(--color-third-party-Github)',
