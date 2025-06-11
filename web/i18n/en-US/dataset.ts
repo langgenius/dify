@@ -25,7 +25,7 @@ const translation = {
   externalKnowledgeBase: 'External Knowledge Base',
   localDocs: 'Local Docs',
   documentCount: ' docs',
-  docAllEnabled_one: 'All {{count}} document enabled',
+  docAllEnabled_one: '{{count}} document enabled',
   docAllEnabled_other: 'All {{count}} documents enabled',
   partialEnabled_one: 'Total of {{count}} document, {{num}} available',
   partialEnabled_other: 'Total of {{count}} documents, {{num}} available',
