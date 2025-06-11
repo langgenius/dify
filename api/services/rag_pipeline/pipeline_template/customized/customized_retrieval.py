@@ -70,6 +70,9 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         return {
             "id": pipeline_template.id,
             "name": pipeline_template.name,
-            "icon": pipeline_template.icon,
+            "icon_info": pipeline_template.icon,
+            "description": pipeline_template.description,
+            "chunk_structure": pipeline_template.chunk_structure,
             "export_data": yaml.safe_load(pipeline_template.yaml_content),
+            "created_by": pipeline_template.created_user_name,
         }

@@ -116,6 +116,7 @@ class RagPipelineService:
         customized_template.name = template_info.name
         customized_template.description = template_info.description
         customized_template.icon = template_info.icon_info.model_dump()
+        customized_template.updated_by = current_user.id
         db.session.commit()
         return customized_template
 
@@ -694,7 +695,6 @@ class RagPipelineService:
                             db.session.add(document)
                             db.session.commit()
 
-
         return workflow_node_execution
 
     def update_workflow(
@@ -969,6 +969,7 @@ class RagPipelineService:
             position=max_position + 1 if max_position else 1,
             chunk_structure=dataset.chunk_structure,
             language="en-US",
+            created_by=current_user.id,
         )
         db.session.add(pipeline_customized_template)
         db.session.commit()
