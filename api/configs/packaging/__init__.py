@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
+from pydantic import Field
 
 from configs.packaging.pyproject import PyProjectConfig, PyProjectTomlConfig
 
