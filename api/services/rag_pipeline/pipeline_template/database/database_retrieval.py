@@ -72,7 +72,7 @@ class DatabasePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             "name": pipeline_template.name,
             "icon_info": pipeline_template.icon,
             "chunk_structure": pipeline_template.chunk_structure,
-            "export_data": yaml.safe_load(pipeline_template.yaml_content),
+            "export_data": pipeline_template.yaml_content,
             "created_by": pipeline_template.created_user_name,
             "description": pipeline_template.description,
         }
