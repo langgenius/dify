@@ -59,6 +59,7 @@ jobs:
 
       - name: Coverage summary
         run: |
+          set -x
           # Extract coverage percentage and create a summary
           TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
 
