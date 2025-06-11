@@ -109,8 +109,7 @@ class CustomizedPipelineTemplateApi(Resource):
             if not template:
                 raise ValueError("Customized pipeline template not found.")
 
-            dsl = yaml.safe_load(template.yaml_content)
-        return {"data": dsl}, 200
+        return {"data": template.yaml_content}, 200
 
 
 class PublishCustomizedPipelineTemplateApi(Resource):
