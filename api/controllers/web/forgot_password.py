@@ -6,8 +6,6 @@ from flask_restful import Resource, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from constants.languages import languages
-from controllers.console import api
 from controllers.console.auth.error import (
     EmailCodeError,
     EmailPasswordResetLimitError,
@@ -15,20 +13,18 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import AccountInFreezeError, AccountNotFound, EmailSendIpLimitError
-from controllers.console.wraps import email_password_login_enabled, setup_required
-from events.tenant_event import tenant_was_created
+from controllers.console.error import AccountNotFound, EmailSendIpLimitError
+from controllers.console.wraps import email_password_login_enabled, only_edition_enterprise, setup_required
+from controllers.web import api
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
-from services.account_service import AccountService, TenantService
-from services.errors.account import AccountRegisterError
-from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
-from services.feature_service import FeatureService
+from services.account_service import AccountService
 
 
 class ForgotPasswordSendEmailApi(Resource):
+    @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
     def post(self):
@@ -50,11 +46,7 @@ class ForgotPasswordSendEmailApi(Resource):
             account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
         token = None
         if account is None:
-            if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_reset_password_email(email=args["email"], language=language)
-                return {"result": "fail", "data": token, "code": "account_not_found"}
-            else:
-                raise AccountNotFound()
+            raise AccountNotFound()
         else:
             token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
 
@@ -62,6 +54,7 @@ class ForgotPasswordSendEmailApi(Resource):
 
 
 class ForgotPasswordCheckApi(Resource):
+    @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
     def post(self):
@@ -101,6 +94,7 @@ class ForgotPasswordCheckApi(Resource):
 
 
 class ForgotPasswordResetApi(Resource):
+    @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
     def post(self):
@@ -137,7 +131,7 @@ class ForgotPasswordResetApi(Resource):
             if account:
                 self._update_existing_account(account, password_hashed, salt, session)
             else:
-                self._create_new_account(email, args["password_confirm"])
+                raise AccountNotFound()
 
         return {"result": "success"}
 
@@ -146,32 +140,6 @@ class ForgotPasswordResetApi(Resource):
         account.password = base64.b64encode(password_hashed).decode()
         account.password_salt = base64.b64encode(salt).decode()
         session.commit()
-
-        # Create workspace if needed
-        if (
-            not TenantService.get_join_tenants(account)
-            and FeatureService.get_system_features().is_allow_create_workspace
-        ):
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-            TenantService.create_tenant_member(tenant, account, role="owner")
-            account.current_tenant = tenant
-            tenant_was_created.send(tenant)
-
-    def _create_new_account(self, email, password):
-        # Create new account if allowed
-        try:
-            AccountService.create_account_and_tenant(
-                email=email,
-                name=email,
-                password=password,
-                interface_language=languages[0],
-            )
-        except WorkSpaceNotAllowedCreateError:
-            pass
-        except WorkspacesLimitExceededError:
-            pass
-        except AccountRegisterError:
-            raise AccountInFreezeError()
 
 
 api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")

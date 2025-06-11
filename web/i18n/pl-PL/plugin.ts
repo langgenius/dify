@@ -206,12 +206,12 @@ const translation = {
   fromMarketplace: 'Z Marketplace',
   searchPlugins: 'Wtyczki wyszukiwania',
   searchTools: 'Narzędzia wyszukiwania...',
-  submitPlugin: 'Prześlij wtyczkę',
   metadata: {
     title: 'Wtyczki',
   },
   difyVersionNotCompatible: 'Obecna wersja Dify nie jest kompatybilna z tym wtyczką, proszę zaktualizować do minimalnej wymaganej wersji: {{minimalDifyVersion}}',
   requestAPlugin: 'Poproś o wtyczkę',
+  publishPlugins: 'Publikowanie wtyczek',
 }
 
 export default translation

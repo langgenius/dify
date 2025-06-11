@@ -464,6 +464,7 @@ const translation = {
         options: {
           disabled: {
             subTitle: 'Ne pas activer le filtrage des métadonnées',
+            title: 'Handicapé',
           },
           automatic: {
             subTitle: 'Générer automatiquement des conditions de filtrage des métadonnées en fonction de la requête de l\'utilisateur',

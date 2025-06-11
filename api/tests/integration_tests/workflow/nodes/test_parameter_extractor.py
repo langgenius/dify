@@ -353,7 +353,7 @@ def test_extract_json_from_tool_call():
     assert result["location"] == "kawaii"
 
 
-def test_chat_parameter_extractor_with_memory(setup_model_mock):
+def test_chat_parameter_extractor_with_memory(setup_model_mock, monkeypatch):
     """
     Test chat parameter extractor with memory.
     """
@@ -384,7 +384,8 @@ def test_chat_parameter_extractor_with_memory(setup_model_mock):
         mode="chat",
         credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")},
     )
-    node._fetch_memory = get_mocked_fetch_memory("customized memory")
+    # Test the mock before running the actual test
+    monkeypatch.setattr("core.workflow.nodes.llm.llm_utils.fetch_memory", get_mocked_fetch_memory("customized memory"))
     db.session.close = MagicMock()
 
     result = node._run()
