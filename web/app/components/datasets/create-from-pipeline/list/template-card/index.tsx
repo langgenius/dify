@@ -108,7 +108,7 @@ const TemplateCard = ({
         const blob = new Blob([res.data], { type: 'application/yaml' })
         downloadFile({
           data: blob,
-          fileName: `${pipeline.name}.dsl`,
+          fileName: `${pipeline.name}.yml`,
         })
         Toast.notify({
           type: 'success',
