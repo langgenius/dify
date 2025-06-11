@@ -149,22 +149,26 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
-      baseNavigation.unshift(...[{
+      if (datasetRes?.pipeline_id) {
+        baseNavigation.unshift({
+          name: t('common.datasetMenus.pipeline'),
+          href: `/datasets/${datasetId}/pipeline`,
+          icon: PipelineLine as RemixiconComponentType,
+          selectedIcon: PipelineFill as RemixiconComponentType,
+          disabled: false,
+        })
+      }
+      baseNavigation.unshift({
         name: t('common.datasetMenus.documents'),
         href: `/datasets/${datasetId}/documents`,
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
         disabled: isButtonDisabledWithPipeline,
-      }, {
-        name: t('common.datasetMenus.pipeline'),
-        href: `/datasets/${datasetId}/pipeline`,
-        icon: PipelineLine as RemixiconComponentType,
-        selectedIcon: PipelineFill as RemixiconComponentType,
-        disabled: false,
-      }])
+      })
     }
+
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetRes?.pipeline_id])
 
   useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 
