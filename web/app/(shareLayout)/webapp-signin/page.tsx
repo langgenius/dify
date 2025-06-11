@@ -23,10 +23,12 @@ const WebSSOForm: FC = () => {
   const redirectUrl = searchParams.get('redirect_url')
   const tokenFromUrl = searchParams.get('web_sso_token')
   const message = searchParams.get('message')
+  const code = searchParams.get('code')
 
   const getSigninUrl = useCallback(() => {
     const params = new URLSearchParams(searchParams)
     params.delete('message')
+    params.delete('code')
     return `/webapp-signin?${params.toString()}`
   }, [searchParams])
 
@@ -85,8 +87,8 @@ const WebSSOForm: FC = () => {
 
   if (message) {
     return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
-      <AppUnavailable className='h-auto w-auto' code={t('share.common.appUnavailable')} unknownReason={message} />
-      <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('share.login.backToHome')}</span>
+      <AppUnavailable className='h-auto w-auto' code={code || t('share.common.appUnavailable')} unknownReason={message} />
+      <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{code === '403' ? t('common.userProfile.logout') : t('share.login.backToHome')}</span>
     </div>
   }
   if (!redirectUrl) {

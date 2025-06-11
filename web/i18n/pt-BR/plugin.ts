@@ -194,7 +194,6 @@ const translation = {
   },
   installAction: 'Instalar',
   endpointsEnabled: '{{num}} conjuntos de endpoints habilitados',
-  submitPlugin: 'Enviar plugin',
   searchPlugins: 'Pesquisar plugins',
   searchInMarketplace: 'Pesquisar no Marketplace',
   installPlugin: 'Instale o plugin',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'A versão atual do Dify não é compatível com este plugin, por favor atualize para a versão mínima exigida: {{minimalDifyVersion}}',
   requestAPlugin: 'Solicitar um plugin',
+  publishPlugins: 'Publicar plugins',
 }
 
 export default translation

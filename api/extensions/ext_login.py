@@ -57,6 +57,9 @@ def load_user_from_request(request_from_flask_login):
             raise Unauthorized("Invalid Authorization token.")
         decoded = PassportService().verify(auth_token)
         user_id = decoded.get("user_id")
+        source = decoded.get("token_source")
+        if source:
+            raise Unauthorized("Invalid Authorization token.")
         if not user_id:
             raise Unauthorized("Invalid Authorization token.")
 

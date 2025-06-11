@@ -193,7 +193,6 @@ const translation = {
     installing: 'Installation des plugins {{installingLength}}, 0 fait.',
   },
   search: 'Rechercher',
-  submitPlugin: 'Soumettre le plugin',
   installAction: 'Installer',
   from: 'De',
   searchCategories: 'Catégories de recherche',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'La version actuelle de Dify n\'est pas compatible avec ce plugin, veuillez mettre à niveau vers la version minimale requise : {{minimalDifyVersion}}',
   requestAPlugin: 'Demander un plugin',
+  publishPlugins: 'Publier des plugins',
 }
 
 export default translation
