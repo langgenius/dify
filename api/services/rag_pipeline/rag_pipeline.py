@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 import contexts
 from configs import dify_config
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     GetOnlineDocumentPagesResponse,
@@ -28,6 +29,7 @@ from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
 )
+from core.workflow.enums import SystemVariableKey
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base.node import BaseNode
@@ -40,7 +42,7 @@ from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.dataset import Pipeline, PipelineCustomizedTemplate  # type: ignore
+from models.dataset import Document, Pipeline, PipelineCustomizedTemplate  # type: ignore
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.oauth import DatasourceProvider
@@ -102,7 +104,7 @@ class RagPipelineService:
         :param template_info: template info
         """
         customized_template: PipelineCustomizedTemplate | None = (
-            db.query(PipelineCustomizedTemplate)
+            db.session.query(PipelineCustomizedTemplate)
             .filter(
                 PipelineCustomizedTemplate.id == template_id,
                 PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
@@ -114,7 +116,7 @@ class RagPipelineService:
         customized_template.name = template_info.name
         customized_template.description = template_info.description
         customized_template.icon = template_info.icon_info.model_dump()
-        db.commit()
+        db.session.commit()
         return customized_template
 
     @classmethod
@@ -678,6 +680,20 @@ class RagPipelineService:
             # create workflow node execution
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED
             workflow_node_execution.error = error
+            # update document status
+            variable_pool = node_instance.graph_runtime_state.variable_pool
+            invoke_from = variable_pool.get(["sys", SystemVariableKey.INVOKE_FROM])
+            if invoke_from:
+                if invoke_from.value == InvokeFrom.PUBLISHED.value:
+                    document_id = variable_pool.get(["sys", SystemVariableKey.DOCUMENT_ID])
+                    if document_id:
+                        document = db.session.query(Document).filter(Document.id == document_id.value).first()
+                        if document:
+                            document.indexing_status = "error"
+                            document.error = error
+                            db.session.add(document)
+                            db.session.commit()
+
 
         return workflow_node_execution
 
