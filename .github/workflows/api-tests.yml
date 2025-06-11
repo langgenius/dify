@@ -53,7 +53,6 @@ jobs:
           ls ./api
 
       - name: Coverage summary
-        if: false
         run: |
           # Extract coverage percentage and create a summary
           TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
