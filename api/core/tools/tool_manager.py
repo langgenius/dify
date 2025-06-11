@@ -4,7 +4,7 @@ import mimetypes
 from collections.abc import Generator
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
 
 from yarl import URL
 
@@ -18,6 +18,7 @@ from core.tools.mcp_tool.tool import MCPTool
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.plugin_tool.tool import PluginTool
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from core.workflow.entities.variable_pool import VariablePool
 from services.tools.mcp_tools_mange_service import MCPToolManageService
 
 if TYPE_CHECKING:
@@ -307,6 +308,7 @@ class ToolManager:
         app_id: str,
         agent_tool: AgentToolEntity,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
+        variable_pool: Optional[VariablePool] = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -321,24 +323,9 @@ class ToolManager:
         )
         runtime_parameters = {}
         parameters = tool_entity.get_merged_runtime_parameters()
-        for parameter in parameters:
-            # check file types
-            if (
-                parameter.type
-                in {
-                    ToolParameter.ToolParameterType.SYSTEM_FILES,
-                    ToolParameter.ToolParameterType.FILE,
-                    ToolParameter.ToolParameterType.FILES,
-                }
-                and parameter.required
-            ):
-                raise ValueError(f"file type parameter {parameter.name} not supported in agent")
-
-            if parameter.form == ToolParameter.ToolParameterForm.FORM:
-                # save tool parameter to tool entity memory
-                value = parameter.init_frontend_parameter(agent_tool.tool_parameters.get(parameter.name))
-                runtime_parameters[parameter.name] = value
-
+        runtime_parameters = cls._convert_tool_parameters_type(
+            parameters, variable_pool, agent_tool.tool_parameters, typ="agent"
+        )
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
             tenant_id=tenant_id,
@@ -362,10 +349,12 @@ class ToolManager:
         node_id: str,
         workflow_tool: "ToolEntity",
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
+        variable_pool: Optional[VariablePool] = None,
     ) -> Tool:
         """
         get the workflow tool runtime
         """
+
         tool_runtime = cls.get_tool_runtime(
             provider_type=workflow_tool.provider_type,
             provider_id=workflow_tool.provider_id,
@@ -374,15 +363,11 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
         )
-        runtime_parameters = {}
+
         parameters = tool_runtime.get_merged_runtime_parameters()
-
-        for parameter in parameters:
-            # save tool parameter to tool entity memory
-            if parameter.form == ToolParameter.ToolParameterForm.FORM:
-                value = parameter.init_frontend_parameter(workflow_tool.tool_configurations.get(parameter.name))
-                runtime_parameters[parameter.name] = value
-
+        runtime_parameters = cls._convert_tool_parameters_type(
+            parameters, variable_pool, workflow_tool.tool_configurations, typ="workflow"
+        )
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
             tenant_id=tenant_id,
@@ -921,6 +906,54 @@ class ToolManager:
             return {"background": "#252525", "content": "\ud83d\ude01"}
         else:
             raise ValueError(f"provider type {provider_type} not found")
+
+    @classmethod
+    def _convert_tool_parameters_type(
+        cls,
+        parameters: list[ToolParameter],
+        variable_pool: Optional[VariablePool],
+        tool_configurations: dict[str, Any],
+        typ: Literal["agent", "workflow", "tool"] = "workflow",
+    ) -> dict[str, Any]:
+        """
+        Convert tool parameters type
+        """
+        from core.workflow.nodes.tool.entities import ToolNodeData
+        from core.workflow.nodes.tool.exc import ToolParameterError
+
+        runtime_parameters = {}
+        for parameter in parameters:
+            if (
+                parameter.type
+                in {
+                    ToolParameter.ToolParameterType.SYSTEM_FILES,
+                    ToolParameter.ToolParameterType.FILE,
+                    ToolParameter.ToolParameterType.FILES,
+                }
+                and parameter.required
+                and typ == "agent"
+            ):
+                raise ValueError(f"file type parameter {parameter.name} not supported in agent")
+            # save tool parameter to tool entity memory
+            if parameter.form == ToolParameter.ToolParameterForm.FORM:
+                if variable_pool:
+                    tool_input = ToolNodeData.ToolInput(**tool_configurations.get(parameter.name, {}))
+                    if tool_input.type == "variable":
+                        variable = variable_pool.get(tool_input.value)
+                        if variable is None:
+                            raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                        parameter_value = variable.value
+                    elif tool_input.type in {"mixed", "constant"}:
+                        segment_group = variable_pool.convert_template(str(tool_input.value))
+                        parameter_value = segment_group.text
+                    else:
+                        raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")
+                    runtime_parameters[parameter.name] = parameter_value
+
+                else:
+                    value = parameter.init_frontend_parameter(tool_configurations.get(parameter.name))
+                    runtime_parameters[parameter.name] = value
+        return runtime_parameters
 
 
 ToolManager.load_hardcoded_providers_cache()

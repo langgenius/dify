@@ -213,9 +213,9 @@ class AgentNode(ToolNode):
                         )
 
                         extra = tool.get("extra", {})
-
+                        runtime_variable_pool = variable_pool if self.node_data.version != "1" else None
                         tool_runtime = ToolManager.get_agent_tool_runtime(
-                            self.tenant_id, self.app_id, entity, self.invoke_from
+                            self.tenant_id, self.app_id, entity, self.invoke_from, runtime_variable_pool
                         )
                         if tool_runtime.entity.description:
                             tool_runtime.entity.description.llm = (
