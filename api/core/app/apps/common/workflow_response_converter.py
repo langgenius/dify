@@ -43,10 +43,12 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.file import FILE_MODEL_IDENTITY, File
+from core.plugin.impl.datasource import PluginDatasourceManager
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.workflow_execution import WorkflowExecution
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.nodes import NodeType
+from core.workflow.nodes.datasource.entities import DatasourceNodeData
 from core.workflow.nodes.tool.entities import ToolNodeData
 from models import (
     Account,
@@ -181,6 +183,11 @@ class WorkflowResponseConverter:
                 provider_type=node_data.provider_type,
                 provider_id=node_data.provider_id,
             )
+        elif event.node_type == NodeType.DATASOURCE:
+            node_data = cast(DatasourceNodeData, event.node_data)
+            manager = PluginDatasourceManager()
+            provider_entity = manager.fetch_datasource_provider(self._application_generate_entity.app_config.tenant_id, f"{node_data.plugin_id}/{node_data.provider_name}")
+            response.data.extras["icon"] = provider_entity.declaration.identity.icon
 
         return response
 
