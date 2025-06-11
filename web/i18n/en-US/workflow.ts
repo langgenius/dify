@@ -926,6 +926,7 @@ const translation = {
       emptyLink: 'Learn more',
       clearAll: 'Reset all',
       clearNode: 'Clear cached variable',
+      resetConversationVar: 'Reset conversation variable to default value',
       view: 'View log',
       edited: 'Edited',
       reset: 'Reset to last run value',

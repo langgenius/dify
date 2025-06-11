@@ -927,6 +927,7 @@ const translation = {
       emptyLink: '了解更多',
       clearAll: '重置所有',
       clearNode: '清除缓存',
+      resetConversationVar: '重置会话变量为默认值',
       view: '查看记录',
       edited: '已编辑',
       reset: '还原至上一次运行',

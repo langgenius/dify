@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next'
 import {
   RiArrowGoBackLine,
   RiCloseLine,
-  RiDeleteBinLine,
   RiMenuLine,
 } from '@remixicon/react'
 import { useStore } from '../store'
@@ -118,9 +117,9 @@ const Right = ({
                 </Tooltip>
               )}
               {currentNodeVar.var.type === VarInInspectType.conversation && (
-                <Tooltip popupContent={t('workflow.debug.variableInspect.clearNode')}>
+                <Tooltip popupContent={t('workflow.debug.variableInspect.resetConversationVar')}>
                   <ActionButton onClick={handleClear}>
-                    <RiDeleteBinLine className='h-4 w-4' />
+                    <RiArrowGoBackLine className='h-4 w-4' />
                   </ActionButton>
                 </Tooltip>
               )}
