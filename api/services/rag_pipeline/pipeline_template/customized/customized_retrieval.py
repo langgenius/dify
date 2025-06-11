@@ -66,6 +66,9 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         )
         if not pipeline_template:
             return None
+        
+        dsl_data = yaml.safe_load(pipeline_template.yaml_content)
+        graph_data = dsl_data.get("workflow", {}).get("graph", {})
 
         return {
             "id": pipeline_template.id,
@@ -74,5 +77,6 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
             "description": pipeline_template.description,
             "chunk_structure": pipeline_template.chunk_structure,
             "export_data": pipeline_template.yaml_content,
+            "graph": graph_data,
             "created_by": pipeline_template.created_user_name,
         }
