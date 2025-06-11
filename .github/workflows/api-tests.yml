@@ -46,7 +46,7 @@ jobs:
 
       - name: Run Unit tests
         run: |
-          uv run --directory api pytest tests/unit_tests
+          dev/pytest/pytest_unit_tests.sh
           echo "ls"
           ls
           echo "ls api"
