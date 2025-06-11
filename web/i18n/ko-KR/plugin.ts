@@ -198,7 +198,6 @@ const translation = {
   endpointsEnabled: '{{num}}개의 엔드포인트 집합이 활성화되었습니다.',
   installFrom: '에서 설치',
   allCategories: '모든 카테고리',
-  submitPlugin: '플러그인 제출',
   findMoreInMarketplace: 'Marketplace 에서 더 알아보기',
   searchCategories: '검색 카테고리',
   search: '검색',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: '현재 Dify 버전이 이 플러그인과 호환되지 않습니다. 필요한 최소 버전으로 업그레이드하십시오: {{minimalDifyVersion}}',
   requestAPlugin: '플러그인을 요청하세요',
+  publishPlugins: '플러그인 게시',
 }
 
 export default translation
