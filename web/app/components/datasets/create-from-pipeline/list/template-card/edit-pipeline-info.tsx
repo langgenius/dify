@@ -9,7 +9,8 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import type { PipelineTemplate } from '@/models/pipeline'
-import { useUpdateTemplateInfo } from '@/service/use-pipeline'
+import { PipelineTemplateListQueryKeyPrefix, useUpdateTemplateInfo } from '@/service/use-pipeline'
+import { useInvalid } from '@/service/use-base'
 
 type EditPipelineInfoProps = {
   onClose: () => void
@@ -22,7 +23,7 @@ const EditPipelineInfo = ({
 }: EditPipelineInfoProps) => {
   const { t } = useTranslation()
   const [name, setName] = useState(pipeline.name)
-  const iconInfo = pipeline.icon_info
+  const iconInfo = pipeline.icon
   const [appIcon, setAppIcon] = useState<AppIconSelection>(
     iconInfo.icon_type === 'image'
       ? { type: 'image' as const, url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
@@ -62,6 +63,7 @@ const EditPipelineInfo = ({
   }, [])
 
   const { mutateAsync: updatePipeline } = useUpdateTemplateInfo()
+  const invalidCustomizedTemplateList = useInvalid([...PipelineTemplateListQueryKeyPrefix, 'customized'])
 
   const handleSave = useCallback(async () => {
     if (!name) {
@@ -74,7 +76,7 @@ const EditPipelineInfo = ({
     const request = {
       template_id: pipeline.id,
       name,
-      icon_info: {
+      icon: {
         icon_type: appIcon.type,
         icon: appIcon.type === 'image' ? appIcon.fileId : appIcon.icon,
         icon_background: appIcon.type === 'image' ? undefined : appIcon.background,
@@ -83,11 +85,12 @@ const EditPipelineInfo = ({
       description,
     }
     await updatePipeline(request, {
-      onSettled: () => {
+      onSuccess: () => {
+        invalidCustomizedTemplateList()
         onClose()
       },
     })
-  }, [name, appIcon, description, pipeline.id, updatePipeline, onClose])
+  }, [name, appIcon, description, pipeline.id, updatePipeline, invalidCustomizedTemplateList, onClose])
 
   return (
     <div className='relative flex flex-col'>

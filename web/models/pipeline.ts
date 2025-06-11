@@ -19,10 +19,10 @@ export type PipelineTemplateListParams = {
 export type PipelineTemplate = {
   id: string
   name: string
-  icon_info: IconInfo
+  icon: IconInfo
   description: string
   position: number
-  doc_form: ChunkingMode
+  chunk_structure: ChunkingMode
 }
 
 export type PipelineTemplateListResponse = {
@@ -31,7 +31,7 @@ export type PipelineTemplateListResponse = {
 
 export type PipelineTemplateByIdResponse = {
   name: string
-  icon_info: IconInfo
+  icon: IconInfo
   description: string
   author: string // todo: TBD
   structure: string // todo: TBD
@@ -54,14 +54,14 @@ export type CreateFormData = {
 export type UpdateTemplateInfoRequest = {
   template_id: string
   name: string
-  icon_info: IconInfo
+  icon: IconInfo
   description: string
 }
 
 export type UpdateTemplateInfoResponse = {
   pipeline_id: string
   name: string
-  icon_info: IconInfo
+  icon: IconInfo
   description: string
   position: number
 }

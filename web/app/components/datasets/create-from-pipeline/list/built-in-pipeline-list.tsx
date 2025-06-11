@@ -3,7 +3,7 @@ import TemplateCard from './template-card'
 
 const BuiltInPipelineList = () => {
   const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'built-in' })
-  const list = pipelineList?.pipelines
+  const list = pipelineList?.pipeline_templates
 
   if (isLoading || !list)
     return null

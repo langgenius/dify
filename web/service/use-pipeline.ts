@@ -32,10 +32,10 @@ import type { IconInfo } from '@/models/datasets'
 
 const NAME_SPACE = 'pipeline'
 
+export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template', 'list']
 export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
-  console.log('params', params)
   return useQuery<PipelineTemplateListResponse>({
-    queryKey: [NAME_SPACE, 'template', 'list', params.type],
+    queryKey: [...PipelineTemplateListQueryKeyPrefix, params.type],
     queryFn: () => {
       return get<PipelineTemplateListResponse>('/rag/pipeline/templates', { params })
     },
