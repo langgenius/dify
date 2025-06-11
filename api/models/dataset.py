@@ -70,6 +70,19 @@ class Dataset(Base):
     chunk_structure = db.Column(db.String(255), nullable=True)
 
     @property
+    def total_documents(self):
+        return db.session.query(func.count(Document.id)).filter(Document.dataset_id == self.id).scalar()
+
+    @property
+    def total_available_documents(self):
+        return db.session.query(func.count(Document.id)).filter(
+            Document.dataset_id == self.id,
+            Document.indexing_status == "completed",
+            Document.enabled == True,
+            Document.archived == False,
+        ).scalar()
+
+    @property
     def dataset_keyword_table(self):
         dataset_keyword_table = (
             db.session.query(DatasetKeywordTable).filter(DatasetKeywordTable.dataset_id == self.id).first()
@@ -311,20 +324,6 @@ class DatasetProcessRule(Base):
             return json.loads(self.rules) if self.rules else None
         except JSONDecodeError:
             return None
-        
-    @property
-    def total_documents(self):
-        return db.session.query(func.count(Document.id)).filter(Document.dataset_id == self.dataset_id).scalar()
-
-    @property
-    def total_available_documents(self):
-        return db.session.query(func.count(Document.id)).filter(
-            Document.dataset_id == self.dataset_id,
-            Document.indexing_status == "completed",
-            Document.enabled == True,
-            Document.archived == False,
-        ).scalar()
-
 
 class Document(Base):
     __tablename__ = "documents"
