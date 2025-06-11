@@ -33,7 +33,7 @@ import type { IconInfo } from '@/models/datasets'
 
 const NAME_SPACE = 'pipeline'
 
-export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template', 'list']
+export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template-list']
 export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
   return useQuery<PipelineTemplateListResponse>({
     queryKey: [...PipelineTemplateListQueryKeyPrefix, params.type],
@@ -62,7 +62,7 @@ export const useUpdateTemplateInfo = (
   mutationOptions: MutationOptions<UpdateTemplateInfoResponse, Error, UpdateTemplateInfoRequest> = {},
 ) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'template', 'update'],
+    mutationKey: [NAME_SPACE, 'template-update'],
     mutationFn: (request: UpdateTemplateInfoRequest) => {
       const { template_id, ...rest } = request
       return patch<UpdateTemplateInfoResponse>(`/rag/pipeline/customized/templates/${template_id}`, {
@@ -77,7 +77,7 @@ export const useDeleteTemplate = (
   mutationOptions: MutationOptions<DeleteTemplateResponse, Error, string> = {},
 ) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'template', 'delete'],
+    mutationKey: [NAME_SPACE, 'template-delete'],
     mutationFn: (templateId: string) => {
       return del<DeleteTemplateResponse>(`/rag/pipeline/customized/templates/${templateId}`)
     },
@@ -89,7 +89,7 @@ export const useExportTemplateDSL = (
   mutationOptions: MutationOptions<ExportTemplateDSLResponse, Error, string> = {},
 ) => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'dsl-export'],
+    mutationKey: [NAME_SPACE, 'template-dsl-export'],
     mutationFn: (templateId: string) => {
       return post<ExportTemplateDSLResponse>(`/rag/pipeline/customized/templates/${templateId}`)
     },

@@ -73,7 +73,7 @@ const DatasetCard = ({
     if (availableDocCount === dataset.document_count)
       return t('dataset.docAllEnabled', { count: availableDocCount })
     if (availableDocCount < dataset.document_count)
-      return t('dataset.docAllEnabled', { count: dataset.document_count, num: availableDocCount })
+      return t('dataset.partialEnabled', { count: dataset.document_count, num: availableDocCount })
   }, [t, dataset.document_count, dataset.total_available_documents])
 
   const language = useGetLanguage()

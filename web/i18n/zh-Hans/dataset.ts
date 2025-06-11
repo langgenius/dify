@@ -25,7 +25,7 @@ const translation = {
   externalKnowledgeBase: '外部知识库',
   localDocs: '本地文档',
   documentCount: ' 文档',
-  docAllEnabled_one: '所有 {{count}} 个文档均可用',
+  docAllEnabled_one: '{{count}} 个文档可用',
   docAllEnabled_other: '所有 {{count}} 个文档均可用',
   partialEnabled_one: '共计 {{count}} 个文档, {{num}} 可用',
   partialEnabled_other: '共计 {{count}} 个文档, {{num}} 可用',
