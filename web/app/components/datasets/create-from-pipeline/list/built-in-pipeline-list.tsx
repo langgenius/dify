@@ -13,6 +13,7 @@ const BuiltInPipelineList = () => {
       {list.map((pipeline, index) => (
         <TemplateCard
           key={index}
+          type='built-in'
           pipeline={pipeline}
           showMoreOperations={false}
         />
