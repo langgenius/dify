@@ -104,7 +104,7 @@ class RagPipelineService:
         :param template_info: template info
         """
         customized_template: PipelineCustomizedTemplate | None = (
-            db.query(PipelineCustomizedTemplate)
+            db.session.query(PipelineCustomizedTemplate)
             .filter(
                 PipelineCustomizedTemplate.id == template_id,
                 PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
@@ -116,7 +116,7 @@ class RagPipelineService:
         customized_template.name = template_info.name
         customized_template.description = template_info.description
         customized_template.icon = template_info.icon_info.model_dump()
-        db.commit()
+        db.session.commit()
         return customized_template
 
     @classmethod
