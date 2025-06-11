@@ -24,7 +24,7 @@ class AnnotationReply(BaseModel):
 class TaskStateMetadata(BaseModel):
     annotation_reply: AnnotationReply | None = None
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(default_factory=list)
-    data: Optional[Mapping[str, Any]] = None
+    outputs: Optional[Mapping[str, Any]] = None
     usage: LLMUsage | None = None
 
 

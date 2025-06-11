@@ -100,7 +100,6 @@ class AnswerStreamGeneratorRouter:
         :param config: node config
         :return:
         """
-        print(f"config: {config}=======")
         node_data = AnswerNodeData(**config.get("data", {}))
         return cls.extract_generate_route_from_node_data(node_data)
 
