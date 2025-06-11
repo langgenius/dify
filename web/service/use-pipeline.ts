@@ -127,7 +127,7 @@ export const useCheckPipelineDependencies = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'check-dependencies'],
     mutationFn: (pipelineId: string) => {
-      return post<PipelineCheckDependenciesResponse>(`/rag/pipelines/imports/${pipelineId}/check-dependencies`)
+      return get<PipelineCheckDependenciesResponse>(`/rag/pipelines/imports/${pipelineId}/check-dependencies`)
     },
     ...mutationOptions,
   })
