@@ -5,14 +5,17 @@ import {
 } from '@/app/components/base/icons/src/vender/knowledge'
 import { EffectColor, type Option } from './types'
 import { ChunkingMode } from '@/models/datasets'
+import { useTranslation } from 'react-i18next'
 
 export const useChunkStructure = () => {
+  const { t } = useTranslation()
+
   const GeneralOption: Option = {
     id: ChunkingMode.text,
     icon: <GeneralChunk className='size-[18px]' />,
     iconActiveColor: 'text-util-colors-indigo-indigo-600',
     title: 'General',
-    description: 'General text chunking mode, the chunks retrieved and recalled are the same.',
+    description: t('datasetCreation.stepTwo.generalTip'),
     effectColor: EffectColor.indigo,
     showEffectColor: true,
   }
@@ -21,7 +24,7 @@ export const useChunkStructure = () => {
     icon: <ParentChildChunk className='size-[18px]' />,
     iconActiveColor: 'text-util-colors-blue-light-blue-light-500',
     title: 'Parent-Child',
-    description: 'When using the parent-child mode, the child-chunk is used for retrieval and the parent-chunk is used for recall as context.',
+    description: t('datasetCreation.stepTwo.parentChildTip'),
     effectColor: EffectColor.blueLight,
     showEffectColor: true,
   }
@@ -29,7 +32,7 @@ export const useChunkStructure = () => {
     id: ChunkingMode.qa,
     icon: <QuestionAndAnswer className='size-[18px]' />,
     title: 'Q&A',
-    description: 'When using structured Q&A data, you can create documents that pair questions with answers. These documents are indexed based on the question portion, allowing the system to retrieve relevant answers based on query similarity',
+    description: t('datasetCreation.stepTwo.qaTip'),
   }
 
   const options = [

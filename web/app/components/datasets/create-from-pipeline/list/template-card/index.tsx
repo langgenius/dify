@@ -40,7 +40,10 @@ const TemplateCard = ({
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
 
-  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(pipeline.id, type, false)
+  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById({
+    template_id: pipeline.id,
+    type,
+  }, false)
   const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 

@@ -4,7 +4,7 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
-import { ExternalKnowledgeBase, General, Graph, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
+import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
 
 export enum DataSourceType {
@@ -23,7 +23,7 @@ export enum ChunkingMode {
   text = 'text_model', // General text
   qa = 'qa_model', // General QA
   parentChild = 'hierarchical_model', // Parent-Child
-  graph = 'graph', // Graph
+  // graph = 'graph', // todo: Graph RAG
 }
 
 export type MetadataInDoc = {
@@ -720,7 +720,7 @@ export const DOC_FORM_ICON_WITH_BG: Record<ChunkingMode | 'external', React.Comp
   [ChunkingMode.text]: General,
   [ChunkingMode.qa]: Qa,
   [ChunkingMode.parentChild]: ParentChild,
-  [ChunkingMode.graph]: Graph,
+  // [ChunkingMode.graph]: Graph, // todo: Graph RAG
   external: ExternalKnowledgeBase,
 }
 
@@ -734,7 +734,7 @@ export const DOC_FORM_TEXT: Record<ChunkingMode, string> = {
   [ChunkingMode.text]: 'general',
   [ChunkingMode.qa]: 'qa',
   [ChunkingMode.parentChild]: 'parentChild',
-  [ChunkingMode.graph]: 'graph',
+  // [ChunkingMode.graph]: 'graph', // todo: Graph RAG
 }
 
 export type CreateDatasetReq = {

@@ -16,6 +16,7 @@ import type {
   PipelinePreProcessingParamsResponse,
   PipelineProcessingParamsRequest,
   PipelineProcessingParamsResponse,
+  PipelineTemplateByIdRequest,
   PipelineTemplateByIdResponse,
   PipelineTemplateListParams,
   PipelineTemplateListResponse,
@@ -42,11 +43,16 @@ export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
   })
 }
 
-export const usePipelineTemplateById = (templateId: string, type: string, enabled: boolean) => {
+export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, enabled: boolean) => {
+  const { template_id, type } = params
   return useQuery<PipelineTemplateByIdResponse>({
-    queryKey: [NAME_SPACE, 'template', templateId],
+    queryKey: [NAME_SPACE, 'template', template_id],
     queryFn: () => {
-      return get<PipelineTemplateByIdResponse>(`/rag/pipeline/templates/${templateId}?type=${type}`)
+      return get<PipelineTemplateByIdResponse>(`/rag/pipeline/templates/${template_id}`, {
+        params: {
+          type,
+        },
+      })
     },
     enabled,
   })

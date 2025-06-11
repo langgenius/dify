@@ -123,6 +123,7 @@ const translation = {
     paragraphTip: 'This mode splits the text in to paragraphs based on delimiters and the maximum chunk length, using the split text as the parent chunk for retrieval.',
     fullDoc: 'Full Doc',
     fullDocTip: 'The entire document is used as the parent chunk and retrieved directly. Please note that for performance reasons, text exceeding 10000 tokens will be automatically truncated.',
+    qaTip: 'When using structured Q&A data, you can create documents that pair questions with answers. These documents are indexed based on the question portion, allowing the system to retrieve relevant answers based on query similarity.',
     separator: 'Delimiter',
     separatorTip: 'A delimiter is the character used to separate text. \\n\\n and \\n are commonly used delimiters for separating paragraphs and lines. Combined with commas (\\n\\n,\\n), paragraphs will be segmented by lines when exceeding the maximum chunk length. You can also use special delimiters defined by yourself (e.g. ***).',
     separatorPlaceholder: '\\n\\n for paragraphs; \\n for lines',
