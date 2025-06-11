@@ -56,6 +56,8 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
         const value = payload.tool_configurations[field.variable]
         if (!errorMessages && (value === undefined || value === null || value === ''))
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label[language] })
+        if (!errorMessages && typeof value === 'object' && !!value.type && (value.value === undefined || value.value === null || value.value === '' || (Array.isArray(value.value) && value.value.length === 0)))
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: field.label[language] })
       })
     }
 

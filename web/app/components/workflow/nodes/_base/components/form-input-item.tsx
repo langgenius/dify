@@ -172,7 +172,7 @@ const FormInputItem: FC<Props> = ({
       ...value,
       [variable]: {
         ...varInput,
-        type: getVarKindType(),
+        type: VarKindType.variable,
         value: newValue || '',
       },
     })

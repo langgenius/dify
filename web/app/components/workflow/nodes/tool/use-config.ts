@@ -213,7 +213,11 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     .filter(key => inputs.tool_parameters[key].type !== VarType.constant)
     .map(k => inputs.tool_parameters[k])
 
-  const varInputs = getInputVars(hadVarParams.map((p) => {
+  const hadVarSettings = Object.keys(inputs.tool_configurations)
+    .filter(key => typeof inputs.tool_configurations[key] === 'object' && inputs.tool_configurations[key].type && inputs.tool_configurations[key].type !== VarType.constant)
+    .map(k => inputs.tool_configurations[k])
+
+  const varInputs = getInputVars([...hadVarParams, ...hadVarSettings].map((p) => {
     if (p.type === VarType.variable) {
       // handle the old wrong value not crash the page
       if (!(p.value as any).join)
@@ -237,16 +241,23 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const handleRun = (submitData: Record<string, any>) => {
     const varTypeInputKeys = Object.keys(inputs.tool_parameters)
       .filter(key => inputs.tool_parameters[key].type === VarType.variable)
-    const shouldAdd = varTypeInputKeys.length > 0
+    const varTypeSettingKeys = Object.keys(inputs.tool_configurations)
+      .filter(key => typeof inputs.tool_configurations[key] === 'object' && inputs.tool_configurations[key].type === VarType.variable)
+    const mergedInputKeys = [...varTypeInputKeys, ...varTypeSettingKeys]
+    const shouldAdd = mergedInputKeys.length > 0
     if (!shouldAdd) {
       doHandleRun(submitData)
       return
     }
     const addMissedVarData = { ...submitData }
+    const mergedValueMap = {
+      ...inputs.tool_parameters,
+      ...inputs.tool_configurations,
+    }
     Object.keys(submitData).forEach((key) => {
       const value = submitData[key]
-      varTypeInputKeys.forEach((inputKey) => {
-        const inputValue = inputs.tool_parameters[inputKey].value as ValueSelector
+      mergedInputKeys.forEach((inputKey) => {
+        const inputValue = mergedValueMap[inputKey].value as ValueSelector
         if (`#${inputValue.join('.')}#` === key)
           addMissedVarData[inputKey] = value
       })
