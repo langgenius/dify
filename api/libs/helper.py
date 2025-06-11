@@ -185,7 +185,7 @@ def generate_string(n):
 
 def extract_remote_ip(request) -> str:
     if request.headers.get("CF-Connecting-IP"):
-        return cast(str, request.headers.get("Cf-Connecting-Ip"))
+        return cast(str, request.headers.get("CF-Connecting-IP"))
     elif request.headers.getlist("X-Forwarded-For"):
         return cast(str, request.headers.getlist("X-Forwarded-For")[0])
     else:
