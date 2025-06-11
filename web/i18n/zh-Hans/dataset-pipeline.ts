@@ -45,6 +45,7 @@ const translation = {
     errorTip: '导出流水线 DSL 失败',
   },
   details: {
+    createdBy: '由 {{author}} 创建',
     structure: '文档结构',
     structureTooltip: '文档结构决定了文档的拆分和索引方式，Dify 提供了通用、父子和问答模式，每个知识库的文档结构是唯一的。',
   },

@@ -45,6 +45,7 @@ const translation = {
     errorTip: 'Failed to export pipeline DSL',
   },
   details: {
+    createdBy: 'By {{author}}',
     structure: 'Structure',
     structureTooltip: 'Chunk Structure determines how documents are split and indexed—offering General, Parent-Child, and Q&A modes—and is unique to each knowledge base.',
   },

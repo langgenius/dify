@@ -29,24 +29,24 @@ export type PipelineTemplateListResponse = {
   pipeline_templates: PipelineTemplate[]
 }
 
+export type PipelineTemplateByIdRequest = {
+  template_id: string
+  type: 'built-in' | 'customized'
+}
+
 export type PipelineTemplateByIdResponse = {
   id: string
   name: string
-  icon: IconInfo
+  icon_info: IconInfo
   description: string
-  author: string // todo: TBD
-  structure: string // todo: TBD
-  export_data: {
-    workflow: {
-      graph: {
-        nodes: Node[]
-        edges: Edge[]
-        viewport: Viewport
-      }
-      environment_variables?: EnvironmentVariable[]
-      rag_pipeline_variables?: RAGPipelineVariables
-    }
+  chunk_structure: ChunkingMode
+  export_data: string // DSL content
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport: Viewport
   }
+  created_by: string
 }
 
 export type CreateFormData = {
@@ -60,7 +60,7 @@ export type CreateFormData = {
 export type UpdateTemplateInfoRequest = {
   template_id: string
   name: string
-  icon: IconInfo
+  icon_info: IconInfo
   description: string
 }
 

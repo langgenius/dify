@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 import { usePipelineTemplateById } from '@/service/use-pipeline'
 import type { AppIconType } from '@/types/app'
@@ -7,6 +7,8 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
+import { useChunkStructureConfig } from './hooks'
+import ChunkStructureCard from './chunk-structure-card'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 
 type DetailsProps = {
@@ -23,15 +25,21 @@ const Details = ({
   onClose,
 }: DetailsProps) => {
   const { t } = useTranslation()
-  const { data: pipelineTemplateInfo } = usePipelineTemplateById(id, type, true)
-  const appIcon = React.useMemo(() => {
+  const { data: pipelineTemplateInfo } = usePipelineTemplateById({
+    template_id: id,
+    type,
+  }, true)
+
+  const appIcon = useMemo(() => {
     if (!pipelineTemplateInfo)
       return { type: 'emoji', icon: '📙', background: '#FFF4ED' }
-    const iconInfo = pipelineTemplateInfo.icon
+    const iconInfo = pipelineTemplateInfo.icon_info
     return iconInfo.icon_type === 'image'
       ? { type: 'image', url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
       : { type: 'icon', icon: iconInfo.icon || '', background: iconInfo.icon_background || '' }
   }, [pipelineTemplateInfo])
+
+  const chunkStructureConfig = useChunkStructureConfig()
 
   if (!pipelineTemplateInfo) {
     return (
@@ -42,9 +50,7 @@ const Details = ({
   return (
     <div className='flex h-full'>
       <div className='flex grow items-center justify-center p-3 pr-0'>
-        <WorkflowPreview
-          {...pipelineTemplateInfo.export_data.workflow.graph}
-        />
+        <WorkflowPreview {...pipelineTemplateInfo.graph} />
       </div>
       <div className='relative flex w-[360px] shrink-0 flex-col'>
         <button
@@ -68,7 +74,9 @@ const Details = ({
               {pipelineTemplateInfo.name}
             </div>
             <div className='system-2xs-medium-uppercase text-text-tertiary'>
-              {`By ${pipelineTemplateInfo.author}`}
+              {t('datasetPipeline.details.createdBy', {
+                author: pipelineTemplateInfo.created_by,
+              })}
             </div>
           </div>
         </div>
@@ -86,14 +94,16 @@ const Details = ({
           </Button>
         </div>
         <div className='flex flex-col gap-y-1 px-4 py-2'>
-          <div className='flex items-center gap-x-0.5'>
+          <div className='flex h-6 items-center gap-x-0.5'>
             <span className='system-sm-semibold-uppercase text-text-secondary'>
               {t('datasetPipeline.details.structure')}
             </span>
             <Tooltip
+              popupClassName='max-w-[240px]'
               popupContent={t('datasetPipeline.details.structureTooltip')}
             />
           </div>
+          <ChunkStructureCard {...chunkStructureConfig[pipelineTemplateInfo.chunk_structure]} />
         </div>
       </div>
     </div>

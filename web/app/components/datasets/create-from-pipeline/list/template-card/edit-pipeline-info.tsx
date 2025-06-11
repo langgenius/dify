@@ -76,7 +76,7 @@ const EditPipelineInfo = ({
     const request = {
       template_id: pipeline.id,
       name,
-      icon: {
+      icon_info: {
         icon_type: appIcon.type,
         icon: appIcon.type === 'image' ? appIcon.fileId : appIcon.icon,
         icon_background: appIcon.type === 'image' ? undefined : appIcon.background,

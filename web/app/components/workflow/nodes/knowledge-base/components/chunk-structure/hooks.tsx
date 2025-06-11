@@ -41,7 +41,7 @@ export const useChunkStructure = () => {
     id: ChunkStructureEnum.question_answer,
     icon: <QuestionAndAnswer className='h-[18px] w-[18px] text-text-tertiary' />,
     title: 'Question-Answer',
-    description: 'Question-answer text chunking mode, the chunks retrieved and recalled are different.',
+    description: t('datasetCreation.stepTwo.qaTip'),
   }
 
   const optionMap: Record<ChunkStructureEnum, Option> = {

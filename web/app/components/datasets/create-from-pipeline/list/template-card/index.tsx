@@ -5,6 +5,7 @@ import EditPipelineInfo from './edit-pipeline-info'
 import type { PipelineTemplate } from '@/models/pipeline'
 import Confirm from '@/app/components/base/confirm'
 import {
+  PipelineTemplateListQueryKeyPrefix,
   useDeleteTemplate,
   useExportTemplateDSL,
   usePipelineTemplateById,
@@ -19,6 +20,7 @@ import Actions from './actions'
 import type { CreateDatasetReq } from '@/models/datasets'
 import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
 import CreateModal from './create-modal'
+import { useInvalid } from '@/service/use-base'
 
 type TemplateCardProps = {
   pipeline: PipelineTemplate
@@ -38,7 +40,10 @@ const TemplateCard = ({
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
 
-  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(pipeline.id, type, false)
+  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById({
+    template_id: pipeline.id,
+    type,
+  }, false)
   const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
@@ -127,14 +132,16 @@ const TemplateCard = ({
   }, [])
 
   const { mutateAsync: deletePipeline } = useDeleteTemplate()
+  const invalidCustomizedTemplateList = useInvalid([...PipelineTemplateListQueryKeyPrefix, 'customized'])
 
   const onConfirmDelete = useCallback(async () => {
     await deletePipeline(pipeline.id, {
-      onSettled: () => {
+      onSuccess: () => {
+        invalidCustomizedTemplateList()
         setShowConfirmDelete(false)
       },
     })
-  }, [pipeline.id, deletePipeline])
+  }, [pipeline.id, deletePipeline, invalidCustomizedTemplateList])
 
   return (
     <div className='group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3'>
