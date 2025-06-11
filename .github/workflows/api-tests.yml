@@ -47,15 +47,19 @@ jobs:
       - name: Run Unit tests
         run: |
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
-          echo "ls"
+          echo "ls1"
           ls
-          echo "ls api"
+          echo "ls2"
+          ls ./api
+          mv api/coverage.json ./coverage.json
+          echo "ls3"
+          ls
+          echo "ls4"
           ls ./api
 
       - name: Coverage summary
         run: |
           # Extract coverage percentage and create a summary
-          mv api/coverage.json ./coverage.json
           TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("./coverage.json"))["totals"]["percent_covered_display"])')
 
           # Create a detailed coverage summary
