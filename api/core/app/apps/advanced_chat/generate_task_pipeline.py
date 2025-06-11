@@ -629,7 +629,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                     tts_publisher.publish(queue_message)
 
                 self._task_state.answer += delta_text
-                print(f"self._task_state.answer: {self._task_state.answer}")
                 yield self._message_cycle_manager.message_to_stream_response(
                     answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
                 )
@@ -651,7 +650,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                         answer=output_moderation_answer,
                         reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
-                print(f"graph_runtime_state: {graph_runtime_state}")
                 # Save message
                 with Session(db.engine, expire_on_commit=False) as session:
                     self._save_message(session=session, graph_runtime_state=graph_runtime_state)
