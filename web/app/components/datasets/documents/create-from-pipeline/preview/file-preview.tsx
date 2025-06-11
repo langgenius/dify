@@ -40,7 +40,7 @@ const FilePreview = ({
   }
 
   return (
-    <div className='h-full rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
+    <div className='h-full w-full rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
       <div className='flex gap-x-2 border-b border-divider-subtle pb-3 pl-6 pr-4 pt-4'>
         <div className='flex grow flex-col gap-y-1'>
           <div className='system-2xs-semibold-uppercase text-text-accent'>{t('datasetPipeline.addDocuments.stepOne.preview')}</div>

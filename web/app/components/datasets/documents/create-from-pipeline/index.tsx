@@ -72,10 +72,8 @@ const CreateFormPipeline = () => {
   } = useOnlineDocuments()
   const {
     websitePages,
-    // websiteCrawlJobId, // todo: Add status query
     previewWebsitePage,
     updataCheckedCrawlResultChange,
-    setWebsiteCrawlJobId,
     currentWebsite,
     updateCurrentWebsite,
     hideWebsitePreview,
@@ -279,7 +277,6 @@ const CreateFormPipeline = () => {
                     }}
                     checkedCrawlResult={websitePages}
                     onCheckedCrawlResultChange={updataCheckedCrawlResultChange}
-                    onJobIdChange={setWebsiteCrawlJobId}
                     onPreview={updateCurrentWebsite}
                   />
                 )}
@@ -328,21 +325,19 @@ const CreateFormPipeline = () => {
       {
         currentStep === 2 && (
           <div className='flex h-full w-[752px] shrink-0 pl-2 pt-2'>
-            {estimateData && (
-              <ChunkPreview
-                datasource={datasource!}
-                files={fileList.map(file => file.file)}
-                onlineDocuments={onlineDocuments}
-                websitePages={websitePages}
-                isIdle={isIdle && isPreview.current}
-                isPending={isPending && isPreview.current}
-                estimateData={estimateData}
-                onPreview={onClickPreview}
-                handlePreviewFileChange={handlePreviewFileChange}
-                handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
-                handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
-              />
-            )}
+            <ChunkPreview
+              datasource={datasource!}
+              files={fileList.map(file => file.file)}
+              onlineDocuments={onlineDocuments}
+              websitePages={websitePages}
+              isIdle={isIdle}
+              isPending={isPending}
+              estimateData={estimateData}
+              onPreview={onClickPreview}
+              handlePreviewFileChange={handlePreviewFileChange}
+              handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
+              handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
+            />
           </div>
         )
       }
