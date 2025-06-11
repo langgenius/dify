@@ -25,7 +25,7 @@ const Details = ({
   const appIcon = React.useMemo(() => {
     if (!pipelineTemplateInfo)
       return { type: 'emoji', icon: '📙', background: '#FFF4ED' }
-    const iconInfo = pipelineTemplateInfo.icon_info
+    const iconInfo = pipelineTemplateInfo.icon
     return iconInfo.icon_type === 'image'
       ? { type: 'image', url: iconInfo.icon_url || '', fileId: iconInfo.icon || '' }
       : { type: 'icon', icon: iconInfo.icon || '', background: iconInfo.icon_background || '' }

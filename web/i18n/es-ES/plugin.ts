@@ -195,7 +195,6 @@ const translation = {
   fromMarketplace: 'De Marketplace',
   endpointsEnabled: '{{num}} conjuntos de puntos finales habilitados',
   from: 'De',
-  submitPlugin: 'Enviar plugin',
   installAction: 'Instalar',
   install: '{{num}} instalaciones',
   allCategories: 'Todas las categorías',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'La versión actual de Dify no es compatible con este plugin, por favor actualiza a la versión mínima requerida: {{minimalDifyVersion}}',
   requestAPlugin: 'Solicitar un plugin',
+  publishPlugins: 'Publicar plugins',
 }
 
 export default translation

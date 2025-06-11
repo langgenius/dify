@@ -212,7 +212,7 @@ const translation = {
     clearAll: 'Clear all',
   },
   requestAPlugin: 'Request a plugin',
-  submitPlugin: 'Submit plugin',
+  publishPlugins: 'Publish plugins',
   difyVersionNotCompatible: 'The current Dify version is not compatible with this plugin, please upgrade to the minimum version required: {{minimalDifyVersion}}',
 }
 

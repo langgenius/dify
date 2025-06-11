@@ -25,10 +25,11 @@ export const usePipelineInit = () => {
   const [isLoading, setIsLoading] = useState(true)
   const datasetId = useDatasetDetailContextWithSelector(s => s.dataset)?.pipeline_id
   const knowledgeName = useDatasetDetailContextWithSelector(s => s.dataset)?.name
+  const knowledgeIcon = useDatasetDetailContextWithSelector(s => s.dataset)?.icon_info
 
   useEffect(() => {
-    workflowStore.setState({ pipelineId: datasetId, knowledgeName })
-  }, [datasetId, workflowStore, knowledgeName])
+    workflowStore.setState({ pipelineId: datasetId, knowledgeName, knowledgeIcon })
+  }, [datasetId, workflowStore, knowledgeName, knowledgeIcon])
 
   usePipelineConfig()
 

@@ -149,7 +149,6 @@ export const useOnlineDocuments = () => {
 
 export const useWebsiteCrawl = () => {
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
-  const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
   const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
 
   const previewWebsitePage = useRef<CrawlResultItem>(websitePages[0])
@@ -169,10 +168,8 @@ export const useWebsiteCrawl = () => {
 
   return {
     websitePages,
-    websiteCrawlJobId,
     previewWebsitePage,
     updataCheckedCrawlResultChange,
-    setWebsiteCrawlJobId,
     currentWebsite,
     updateCurrentWebsite,
     hideWebsitePreview,

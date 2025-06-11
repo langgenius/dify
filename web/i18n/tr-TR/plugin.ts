@@ -197,7 +197,6 @@ const translation = {
   search: 'Aramak',
   install: '{{num}} yükleme',
   searchPlugins: 'Eklentileri ara',
-  submitPlugin: 'Eklenti gönder',
   searchTools: 'Arama araçları...',
   fromMarketplace: 'Pazar Yerinden',
   installPlugin: 'Eklentiyi yükle',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'Mevcut Dify sürümü bu eklentiyle uyumlu değil, lütfen gerekli minimum sürüme güncelleyin: {{minimalDifyVersion}}',
   requestAPlugin: 'Bir eklenti iste',
+  publishPlugins: 'Eklentileri yayınlayın',
 }
 
 export default translation

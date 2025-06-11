@@ -56,7 +56,7 @@ export type DataSet = {
   doc_form: ChunkingMode
   document_count: number
   total_document_count: number
-  available_document_count?: number
+  total_available_documents?: number
   word_count: number
   provider: string
   embedding_model: string

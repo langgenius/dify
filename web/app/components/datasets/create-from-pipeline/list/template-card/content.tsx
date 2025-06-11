@@ -9,17 +9,17 @@ type ContentProps = {
   name: string
   description: string
   iconInfo: IconInfo
-  docForm: ChunkingMode
+  chunkStructure: ChunkingMode
 }
 
 const Content = ({
   name,
   description,
   iconInfo,
-  docForm,
+  chunkStructure,
 }: ContentProps) => {
   const { t } = useTranslation()
-  const Icon = DOC_FORM_ICON_WITH_BG[docForm] || General
+  const Icon = DOC_FORM_ICON_WITH_BG[chunkStructure] || General
 
   return (
     <>
@@ -44,7 +44,7 @@ const Content = ({
             {name}
           </div>
           <div className='system-2xs-medium-uppercase text-text-tertiary'>
-            {t(`dataset.chunkingMode.${DOC_FORM_TEXT[docForm]}`)}
+            {t(`dataset.chunkingMode.${DOC_FORM_TEXT[chunkStructure]}`)}
           </div>
         </div>
       </div>

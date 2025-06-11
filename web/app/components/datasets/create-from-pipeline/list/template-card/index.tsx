@@ -139,8 +139,8 @@ const TemplateCard = ({
       <Content
         name={pipeline.name}
         description={pipeline.description}
-        iconInfo={pipeline.icon_info}
-        docForm={pipeline.doc_form}
+        iconInfo={pipeline.icon}
+        chunkStructure={pipeline.chunk_structure}
       />
       <Actions
         onApplyTemplate={openCreateModal}

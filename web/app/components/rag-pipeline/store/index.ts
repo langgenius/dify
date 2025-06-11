@@ -5,10 +5,12 @@ import type {
 } from '@/app/components/workflow/types'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
+import type { IconInfo } from '@/models/datasets'
 
 export type RagPipelineSliceShape = {
   pipelineId: string
   knowledgeName: string
+  knowledgeIcon?: IconInfo
   showInputFieldDialog: boolean
   setShowInputFieldDialog: (showInputFieldPanel: boolean) => void
   nodesDefaultConfigs: Record<string, any>

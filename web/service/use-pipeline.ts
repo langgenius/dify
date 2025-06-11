@@ -28,12 +28,14 @@ import type {
 } from '@/models/pipeline'
 import type { DataSourceItem } from '@/app/components/workflow/block-selector/types'
 import type { ToolCredential } from '@/app/components/tools/types'
+import type { IconInfo } from '@/models/datasets'
 
 const NAME_SPACE = 'pipeline'
 
+export const PipelineTemplateListQueryKeyPrefix = [NAME_SPACE, 'template', 'list']
 export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
   return useQuery<PipelineTemplateListResponse>({
-    queryKey: [NAME_SPACE, 'template', 'list'],
+    queryKey: [...PipelineTemplateListQueryKeyPrefix, params.type],
     queryFn: () => {
       return get<PipelineTemplateListResponse>('/rag/pipeline/templates', { params })
     },
@@ -348,8 +350,22 @@ export const usePublishAsCustomizedPipeline = () => {
     mutationKey: [NAME_SPACE, 'publish-as-customized-pipeline'],
     mutationFn: ({
       pipelineId,
-    }: { pipelineId: string }) => {
-      return post(`/rag/pipelines/${pipelineId}/customized/publish`)
+      name,
+      icon_info,
+      description,
+    }: {
+      pipelineId: string,
+      name: string,
+      icon_info: IconInfo,
+      description?: string,
+    }) => {
+      return post(`/rag/pipelines/${pipelineId}/customized/publish`, {
+        body: {
+          name,
+          icon_info,
+          description,
+        },
+      })
     },
   })
 }
