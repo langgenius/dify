@@ -52,34 +52,35 @@ const TemplateCard = ({
   }, [])
 
   const handleUseTemplate = useCallback(async (payload: Omit<CreateDatasetReq, 'yaml_content'>) => {
-    try {
-      const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
-      if (!pipelineTemplateInfo) {
-        Toast.notify({
-          type: 'error',
-          message: t('datasetPipeline.creation.errorTip'),
-        })
-        return
-      }
-      const request = {
-        ...payload,
-        yaml_content: pipelineTemplateInfo.export_data,
-      }
-      const newDataset = await createEmptyDataset(request)
-      Toast.notify({
-        type: 'success',
-        message: t('app.newApp.appCreated'),
-      })
-      if (newDataset.pipeline_id)
-        await handleCheckPluginDependencies(newDataset.pipeline_id, true)
-      push(`dataset/${newDataset.id}/pipeline`)
-    }
-    catch {
+    const { data: pipelineTemplateInfo } = await getPipelineTemplateInfo()
+    if (!pipelineTemplateInfo) {
       Toast.notify({
         type: 'error',
         message: t('datasetPipeline.creation.errorTip'),
       })
+      return
     }
+    const request = {
+      ...payload,
+      yaml_content: pipelineTemplateInfo.export_data,
+    }
+    await createEmptyDataset(request, {
+      onSuccess: async (newDataset) => {
+        Toast.notify({
+          type: 'success',
+          message: t('app.newApp.appCreated'),
+        })
+        if (newDataset.pipeline_id)
+          await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+        push(`/datasets/${newDataset.id}/pipeline`)
+      },
+      onError: () => {
+        Toast.notify({
+          type: 'error',
+          message: t('datasetPipeline.creation.errorTip'),
+        })
+      },
+    })
   }, [getPipelineTemplateInfo, createEmptyDataset, t, handleCheckPluginDependencies, push])
 
   const handleShowTemplateDetails = useCallback(() => {
