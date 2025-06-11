@@ -50,7 +50,7 @@ from models.workflow import (
     Workflow,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
-    WorkflowType,
+    WorkflowType, WorkflowNodeExecutionModel,
 )
 from services.dataset_service import DatasetService
 from services.datasource_provider_service import DatasourceProviderService
@@ -911,7 +911,7 @@ class RagPipelineService:
         pipeline: Pipeline,
         run_id: str,
         user: Account | EndUser,
-    ) -> list[WorkflowNodeExecution]:
+    ) -> list[WorkflowNodeExecutionModel]:
         """
         Get workflow run node execution list
         """
@@ -930,7 +930,7 @@ class RagPipelineService:
 
         # Use the repository to get the node executions with ordering
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        node_executions = repository.get_by_workflow_run(
+        node_executions = repository.get_db_models_by_workflow_run(
             workflow_run_id=run_id,
             order_config=order_config,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.RAG_PIPELINE_RUN,
