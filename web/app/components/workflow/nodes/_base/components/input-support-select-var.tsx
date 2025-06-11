@@ -13,6 +13,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Tooltip from '@/app/components/base/tooltip'
 import { noop } from 'lodash-es'
+import { useStore } from '@/app/components/workflow/store'
 
 type Props = {
   instanceId?: string
@@ -55,6 +56,9 @@ const Editor: FC<Props> = ({
     onFocusChange?.(isFocus)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFocus])
+
+  const pipelineId = useStore(s => s.pipelineId)
+  const setShowInputFieldDialog = useStore(s => s.setShowInputFieldDialog)
 
   return (
     <div className={cn(className, 'relative')}>
@@ -103,6 +107,8 @@ const Editor: FC<Props> = ({
               }
               return acc
             }, {} as any),
+            showManageInputField: !!pipelineId,
+            onManageInputField: () => setShowInputFieldDialog?.(true),
           }}
           onChange={onChange}
           editable={!readOnly}

@@ -11,6 +11,10 @@ const translation = {
       descriptionPlaceholder: '请输入此 Pipeline 的描述。 (可选)',
     },
   },
+  inputField: {
+    create: '创建用户输入字段',
+    manage: '管理',
+  },
 }
 
 export default translation

@@ -319,6 +319,7 @@ const VarReferencePicker: FC<Props> = ({
 
     return null
   }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
+
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
       <PortalToFollowElem
