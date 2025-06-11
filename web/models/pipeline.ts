@@ -30,17 +30,23 @@ export type PipelineTemplateListResponse = {
 }
 
 export type PipelineTemplateByIdResponse = {
+  id: string
   name: string
   icon: IconInfo
   description: string
   author: string // todo: TBD
   structure: string // todo: TBD
-  graph: {
-    nodes: Node[]
-    edges: Edge[]
-    viewport: Viewport
+  export_data: {
+    workflow: {
+      graph: {
+        nodes: Node[]
+        edges: Edge[]
+        viewport: Viewport
+      }
+      environment_variables?: EnvironmentVariable[]
+      rag_pipeline_variables?: RAGPipelineVariables
+    }
   }
-  export_data: string
 }
 
 export type CreateFormData = {

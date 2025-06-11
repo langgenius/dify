@@ -11,17 +11,19 @@ import WorkflowPreview from '@/app/components/workflow/workflow-preview'
 
 type DetailsProps = {
   id: string
+  type: 'customized' | 'built-in'
   onApplyTemplate: () => void
   onClose: () => void
 }
 
 const Details = ({
   id,
+  type,
   onApplyTemplate,
   onClose,
 }: DetailsProps) => {
   const { t } = useTranslation()
-  const { data: pipelineTemplateInfo } = usePipelineTemplateById(id, true)
+  const { data: pipelineTemplateInfo } = usePipelineTemplateById(id, type, true)
   const appIcon = React.useMemo(() => {
     if (!pipelineTemplateInfo)
       return { type: 'emoji', icon: '📙', background: '#FFF4ED' }
@@ -41,7 +43,7 @@ const Details = ({
     <div className='flex h-full'>
       <div className='flex grow items-center justify-center p-3 pr-0'>
         <WorkflowPreview
-          {...pipelineTemplateInfo.graph}
+          {...pipelineTemplateInfo.export_data.workflow.graph}
         />
       </div>
       <div className='relative flex w-[360px] shrink-0 flex-col'>

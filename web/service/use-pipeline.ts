@@ -42,11 +42,11 @@ export const usePipelineTemplateList = (params: PipelineTemplateListParams) => {
   })
 }
 
-export const usePipelineTemplateById = (templateId: string, enabled: boolean) => {
+export const usePipelineTemplateById = (templateId: string, type: string, enabled: boolean) => {
   return useQuery<PipelineTemplateByIdResponse>({
     queryKey: [NAME_SPACE, 'template', templateId],
     queryFn: () => {
-      return get<PipelineTemplateByIdResponse>(`/rag/pipeline/templates/${templateId}`)
+      return get<PipelineTemplateByIdResponse>(`/rag/pipeline/templates/${templateId}?type=${type}`)
     },
     enabled,
   })

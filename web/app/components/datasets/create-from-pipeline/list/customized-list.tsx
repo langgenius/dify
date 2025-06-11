@@ -13,6 +13,7 @@ const CustomizedList = () => {
       {list.map((pipeline, index) => (
         <TemplateCard
           key={index}
+          type='customized'
           pipeline={pipeline}
         />
       ))}

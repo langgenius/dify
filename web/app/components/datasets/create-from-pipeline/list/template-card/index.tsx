@@ -23,11 +23,13 @@ import CreateModal from './create-modal'
 type TemplateCardProps = {
   pipeline: PipelineTemplate
   showMoreOperations?: boolean
+  type: 'customized' | 'built-in'
 }
 
 const TemplateCard = ({
   pipeline,
   showMoreOperations = true,
+  type,
 }: TemplateCardProps) => {
   const { t } = useTranslation()
   const { push } = useRouter()
@@ -36,7 +38,7 @@ const TemplateCard = ({
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
 
-  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(pipeline.id, false)
+  const { refetch: getPipelineTemplateInfo } = usePipelineTemplateById(pipeline.id, type, false)
   const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
   const { handleCheckPluginDependencies } = usePluginDependencies()
 
@@ -179,6 +181,7 @@ const TemplateCard = ({
         >
           <Details
             id={pipeline.id}
+            type={type}
             onClose={closeDetailsModal}
             onApplyTemplate={openCreateModal}
           />
