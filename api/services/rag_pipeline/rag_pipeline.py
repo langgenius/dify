@@ -126,7 +126,7 @@ class RagPipelineService:
         Delete customized pipeline template.
         """
         customized_template: PipelineCustomizedTemplate | None = (
-            db.query(PipelineCustomizedTemplate)
+            db.session.query(PipelineCustomizedTemplate)
             .filter(
                 PipelineCustomizedTemplate.id == template_id,
                 PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
@@ -135,8 +135,8 @@ class RagPipelineService:
         )
         if not customized_template:
             raise ValueError("Customized pipeline template not found.")
-        db.delete(customized_template)
-        db.commit()
+        db.session.delete(customized_template)
+        db.session.commit()
 
     def get_draft_workflow(self, pipeline: Pipeline) -> Optional[Workflow]:
         """
