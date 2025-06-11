@@ -11,6 +11,10 @@ const translation = {
       descriptionPlaceholder: 'Please enter the description of this Knowledge Pipeline. (Optional) ',
     },
   },
+  inputField: {
+    create: 'Create user input field',
+    manage: 'Manage',
+  },
 }
 
 export default translation

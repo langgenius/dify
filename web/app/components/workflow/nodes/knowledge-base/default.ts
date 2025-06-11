@@ -13,7 +13,7 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
     index_chunk_variable_selector: [],
     keyword_number: 10,
     retrieval_model: {
-      top_k: 2,
+      top_k: 3,
       score_threshold_enabled: false,
       score_threshold: 0.5,
     },
