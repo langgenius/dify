@@ -52,6 +52,7 @@ class WorkflowTaskState(TaskState):
     answer: str = ""
     outputs: Optional[Mapping[str, Any]] = None
 
+
 class StreamEvent(Enum):
     """
     Stream event
