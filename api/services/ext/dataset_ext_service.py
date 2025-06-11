@@ -16,7 +16,7 @@ from controllers.console.app.error import (
 )
 from extensions.ext_database import db
 from services.dataset_service import DatasetService, DocumentService
-from configs.ext_config import get_init_knowledge_config
+from configs.ext_config import get_init_knowledge_config,get_init_full_text_knowledge_config
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 
 class DatasetExtService:
@@ -29,6 +29,29 @@ class DatasetExtService:
                  .filter(Dataset.tenant_id == tenant_id,Dataset.target_tenant_id == target_tenant_id)
                  .all())
         return datasets
+
+    @staticmethod
+    def get_datasets_config(dataset_id=None,tenant_id=None, default_config:dict=None) -> dict:
+        # 取默认的值
+        dataset_ids = [dataset_id]
+        datasets, total = DatasetService.get_datasets_by_ids(ids=dataset_ids, tenant_id=tenant_id)
+        args = {}
+        if total > 0:
+            dataset_dict=datasets[0].__dict__
+            if 'FULL_TEXT' in dataset_dict["name"]:
+                args = get_init_full_text_knowledge_config({})
+            else:
+                args = get_init_knowledge_config({})
+            keys_to_override = ['indexing_technique', 'process_rule', 'doc_form'
+                ,'doc_language','retrieval_model','embedding_model','embedding_model_provider']
+
+            args.update({k: dataset_dict[k] for k in keys_to_override if k in dataset_dict and dataset_dict[k] is not None})
+
+        if default_config is not None:
+            args={**args,**default_config}
+
+        # validate args
+        return args
 
     @staticmethod
     def init_dataset(tenant:Tenant=None, target_tenant_id:str=None,target_tenant_name:str=None, account:Account=None) -> list[Dataset]:

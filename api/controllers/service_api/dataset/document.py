@@ -4,7 +4,7 @@ from flask import request
 from flask_restful import marshal, reqparse
 from sqlalchemy import desc, select
 from werkzeug.exceptions import NotFound
-
+from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 import services
 from controllers.common.errors import FilenameNotExistsError
 from controllers.service_api import api
@@ -27,6 +27,7 @@ from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
+from services.ext.dataset_ext_service import DatasetExtService
 from services.file_service import FileService
 from configs.ext_config import get_init_knowledge_config
 
@@ -180,8 +181,8 @@ class DocumentAddByFileApi(DatasetApiResource):
             raise ValueError("Dataset does not exist.")
 
         indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
-        if not indexing_technique:
-            raise ValueError("indexing_technique is required.")
+        # if not indexing_technique:
+        #     raise ValueError("indexing_technique is required.")
         args["indexing_technique"] = indexing_technique
 
         # save file info
@@ -210,10 +211,9 @@ class DocumentAddByFileApi(DatasetApiResource):
         }
         args["data_source"] = data_source
 
-        # 取默认的值
-        args = get_init_knowledge_config(args)
+        config_args = DatasetExtService.get_datasets_config(dataset_id=dataset_id,tenant_id=tenant_id,default_config=args)
         # validate args
-        knowledge_config = KnowledgeConfig(**args)
+        knowledge_config = KnowledgeConfig(**config_args)
         DocumentService.document_create_args_validate(knowledge_config)
 
         dataset_process_rule = dataset.latest_process_rule if "process_rule" not in args else None

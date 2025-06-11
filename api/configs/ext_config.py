@@ -4,6 +4,9 @@ from pathlib import Path
 def get_init_knowledge_config(config:dict) -> dict :
     return get_ext_config(file_name="dataset_config.yml", config=config)
 
+def get_init_full_text_knowledge_config(config:dict) -> dict :
+    return get_ext_config(file_name="full_text_dataset_config.yml", config=config)
+
 def get_ext_config(file_name:str, config:dict = None,params : dict = None) -> dict :
     # 获取当前脚本所在的目录
     current_dir = Path(__file__).resolve().parent
