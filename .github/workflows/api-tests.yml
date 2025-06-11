@@ -46,7 +46,7 @@ jobs:
 
       - name: Run Unit tests
         run: |
-          dev/pytest/pytest_unit_tests.sh
+          uv run --project api bash dev/pytest/pytest_unit_tests.sh
           echo "ls"
           ls
           echo "ls api"
