@@ -46,8 +46,10 @@ jobs:
 
       - name: Run Unit tests
         run: |
-          uv run --project api bash dev/pytest/pytest_unit_tests.sh
+          uv run --directory api pytest tests/unit_tests
+          echo "ls"
           ls
+          echo "ls api"
           ls ./api
 
       - name: Coverage summary
