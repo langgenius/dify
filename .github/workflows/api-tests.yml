@@ -55,7 +55,7 @@ jobs:
       - name: Coverage summary
         run: |
           # Extract coverage percentage and create a summary
-          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("coverage.json"))["totals"]["percent_covered_display"])')
+          TOTAL_COVERAGE=$(python -c 'import json; print(json.load(open("api/coverage.json"))["totals"]["percent_covered_display"])')
 
           # Create a detailed coverage summary
           echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
