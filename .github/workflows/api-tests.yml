@@ -48,6 +48,7 @@ jobs:
         run: |
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
           ls
+          ls ./api
 
       - name: Coverage summary
         if: false
