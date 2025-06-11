@@ -21,7 +21,7 @@ const DialogWrapper = ({
   const close = useCallback(() => onClose?.(), [onClose])
   return (
     <Transition appear show={show} as={Fragment}>
-      <Dialog as='div' className='relative z-40' onClose={close}>
+      <Dialog as='div' className='relative z-[2000]' onClose={close}>
         <TransitionChild>
           <div className={cn(
             'fixed inset-0 bg-black/25',

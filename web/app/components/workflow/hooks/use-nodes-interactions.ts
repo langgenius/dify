@@ -1251,7 +1251,7 @@ export const useNodesInteractions = () => {
     }
     else {
       // If no nodeId is provided, fall back to the current behavior
-      const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.DataSource
+      const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.DataSource && node.data.type !== BlockEnum.KnowledgeBase
         && !node.data.isInIteration && !node.data.isInLoop)
 
       if (bundledNodes.length) {

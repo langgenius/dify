@@ -24,6 +24,7 @@ import { FILE_STRUCT } from '@/app/components/workflow/constants'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { noop } from 'lodash-es'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
+import ManageInputField from './manage-input-field'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -266,6 +267,8 @@ type Props = {
   maxHeightClass?: string
   onClose?: () => void
   onBlur?: () => void
+  showManageInputField?: boolean
+  onManageInputField?: () => void
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
@@ -277,6 +280,8 @@ const VarReferenceVars: FC<Props> = ({
   maxHeightClass,
   onClose,
   onBlur,
+  showManageInputField,
+  onManageInputField,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -367,6 +372,13 @@ const VarReferenceVars: FC<Props> = ({
           }
         </div>
         : <div className='pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500'>{t('workflow.common.noVar')}</div>}
+      {
+        showManageInputField && (
+          <ManageInputField
+            onManage={onManageInputField || noop}
+          />
+        )
+      }
     </>
   )
 }
