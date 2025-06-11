@@ -13,7 +13,13 @@ const Empty: FC = () => {
       <div className='flex flex-col gap-1'>
         <div className='system-sm-semibold text-text-secondary'>{t('workflow.debug.variableInspect.title')}</div>
         <div className='system-xs-regular text-text-tertiary'>{t('workflow.debug.variableInspect.emptyTip')}</div>
-        <a className='system-xs-regular cursor-pointer text-text-accent'>{t('workflow.debug.variableInspect.emptyLink')}</a>
+        <a
+          className='system-xs-regular cursor-pointer text-text-accent'
+          href='https://docs.dify.ai/guides/workflow/debug-and-preview/variable-inspect'
+          target='_blank'
+          rel='noopener noreferrer'>
+            {t('workflow.debug.variableInspect.emptyLink')}
+        </a>
       </div>
     </div>
   )
