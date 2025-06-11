@@ -10,6 +10,7 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
   defaultValue: {
     tool_parameters: {},
     tool_configurations: {},
+    version: '2',
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

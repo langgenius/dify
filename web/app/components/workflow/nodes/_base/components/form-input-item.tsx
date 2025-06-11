@@ -157,6 +157,16 @@ const FormInputItem: FC<Props> = ({
     })
   }
 
+  const handleAppOrModelSelect = (newValue: any) => {
+    onChange({
+      ...value,
+      [variable]: {
+        ...varInput,
+        ...newValue,
+      },
+    })
+  }
+
   const handleVariableSelectorChange = (newValue: ValueSelector | string, variable: string) => {
     onChange({
       ...value,
@@ -248,7 +258,7 @@ const FormInputItem: FC<Props> = ({
           disabled={readOnly}
           scope={scope || 'all'}
           value={varInput?.value as any}
-          onSelect={handleValueChange}
+          onSelect={handleAppOrModelSelect}
         />
       )}
       {isModelSelector && isConstant && (
@@ -257,7 +267,7 @@ const FormInputItem: FC<Props> = ({
           isAdvancedMode
           isInWorkflow
           value={varInput?.value as any}
-          setModel={handleValueChange}
+          setModel={handleAppOrModelSelect}
           readonly={readOnly}
           scope={scope}
         />

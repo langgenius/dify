@@ -14,8 +14,7 @@ import {
 } from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import { VarType as VarVarType } from '@/app/components/workflow/types'
-import type { InputVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { InputVar, ValueSelector } from '@/app/components/workflow/types'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import {
   useFetchToolsData,
@@ -42,7 +41,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const workflowTools = useStore(s => s.workflowTools)
   const mcpTools = useStore(s => s.mcpTools)
 
-  const currentTools = (() => {
+  const currentTools = useMemo(() => {
     switch (provider_type) {
       case CollectionType.builtIn:
         return buildInTools
@@ -55,7 +54,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       default:
         return []
     }
-  })()
+  }, [buildInTools, customTools, mcpTools, provider_type, workflowTools])
   const currCollection = currentTools.find(item => canFindTool(item.id, provider_id))
 
   // Auth
@@ -99,10 +98,10 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const value = newConfig[key]
         if (schema?.type === 'boolean') {
           if (typeof value === 'string')
-            newConfig[key] = Number.parseInt(value, 10)
+            newConfig[key] = value === 'true' || value === '1'
 
-          if (typeof value === 'boolean')
-            newConfig[key] = value ? 1 : 0
+          if (typeof value === 'number')
+            newConfig[key] = value === 1
         }
 
         if (schema?.type === 'number-input') {
@@ -128,24 +127,20 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     })
   }, [inputs, setInputs])
 
+  const formattingParameters = () => {
+    const inputsWithDefaultValue = produce(inputs, (draft) => {
+      if (!draft.tool_configurations || Object.keys(draft.tool_configurations).length === 0)
+        draft.tool_configurations = getConfiguredValue(tool_configurations, toolSettingSchema)
+      if (!draft.tool_parameters || Object.keys(draft.tool_parameters).length === 0)
+        draft.tool_parameters = getConfiguredValue(tool_parameters, toolInputVarSchema)
+    })
+    return inputsWithDefaultValue
+  }
+
   useEffect(() => {
     if (!currTool)
       return
-    const inputsWithDefaultValue = produce(inputs, (draft) => {
-      if (!draft.tool_configurations || Object.keys(draft.tool_configurations).length === 0) {
-        draft.tool_configurations = getConfiguredValue(tool_configurations, toolSettingSchema)
-      }
-      else {
-        // TODO
-      }
-
-      if (!draft.tool_parameters || Object.keys(draft.tool_configurations).length === 0) {
-        draft.tool_parameters = getConfiguredValue(tool_parameters, toolInputVarSchema)
-      }
-      else {
-        // TODO: boolean & model & app formatting BOTH configuration & parameters
-      }
-    })
+    const inputsWithDefaultValue = formattingParameters()
     setInputs(inputsWithDefaultValue)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currTool])
@@ -157,19 +152,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       tool_parameters: value,
     })
   }, [inputs, setInputs])
-
-  const [currVarIndex, setCurrVarIndex] = useState(-1)
-  const currVarType = toolInputVarSchema[currVarIndex]?._type
-  const handleOnVarOpen = useCallback((index: number) => {
-    setCurrVarIndex(index)
-  }, [])
-
-  const filterVar = useCallback((varPayload: Var) => {
-    if (currVarType)
-      return varPayload.type === currVarType
-
-    return varPayload.type !== VarVarType.arrayFile
-  }, [currVarType])
 
   const isLoading = currTool && (isBuiltIn ? !currCollection : false)
 
@@ -314,8 +296,6 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     setToolSettingValue,
     toolInputVarSchema,
     setInputVar,
-    handleOnVarOpen,
-    filterVar,
     currCollection,
     isShowAuthBtn,
     showSetAuth,

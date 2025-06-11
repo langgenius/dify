@@ -110,16 +110,22 @@ export const getConfiguredValue = (value: Record<string, any>, formSchemas: { va
 
       if (formSchema.type === 'boolean') {
         if (typeof value === 'string')
-          newValues[formSchema.variable].value = value === 'true'
+          newValues[formSchema.variable].value = value === 'true' || value === '1'
 
         if (typeof value === 'boolean')
           newValues[formSchema.variable].value = value
+
+        if (typeof value === 'number')
+          newValues[formSchema.variable].value = value === 1
       }
 
       if (formSchema.type === 'number-input') {
         if (typeof value === 'string' && value !== '')
           newValues[formSchema.variable].value = Number.parseFloat(value)
       }
+
+      if (formSchema.type === 'app-selector' || formSchema.type === 'model-selector')
+        newValues[formSchema.variable] = value
     }
   })
   return newValues
