@@ -254,7 +254,7 @@ const Editor: FC<Props> = ({
                     workflowVariableBlock={{
                       show: true,
                       variables: nodesOutputVars || [],
-                      getVarType,
+                      getVarType: getVarType as any,
                       workflowNodesMap: availableNodes.reduce((acc, node) => {
                         acc[node.id] = {
                           title: node.data.title,

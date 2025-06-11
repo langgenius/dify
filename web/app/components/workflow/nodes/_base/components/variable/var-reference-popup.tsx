@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import VarReferenceVars from './var-reference-vars'
@@ -8,6 +8,7 @@ import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflo
 import ListEmpty from '@/app/components/base/list-empty'
 import { LanguagesSupported } from '@/i18n/language'
 import I18n from '@/context/i18n'
+import { useStore } from '@/app/components/workflow/store'
 
 type Props = {
   vars: NodeOutPutVar[]
@@ -25,6 +26,9 @@ const VarReferencePopup: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
+  const pipelineId = useStore(s => s.pipelineId)
+  const showManageRagInputFields = useMemo(() => !!pipelineId, [pipelineId])
+  const setShowInputFieldDialog = useStore(s => s.setShowInputFieldDialog)
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
     <div className='space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg' style={{
@@ -57,6 +61,8 @@ const VarReferencePopup: FC<Props> = ({
           onChange={onChange}
           itemWidth={itemWidth}
           isSupportFileVar={isSupportFileVar}
+          showManageInputField={showManageRagInputFields}
+          onManageInputField={() => setShowInputFieldDialog?.(true)}
         />
       }
     </div >
