@@ -47,15 +47,6 @@ jobs:
       - name: Run Unit tests
         run: |
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
-          echo "ls1"
-          ls
-          echo "ls2"
-          ls ./api
-          cp api/coverage.json ./coverage.json
-          echo "ls3"
-          ls
-          echo "ls4"
-          ls ./api
 
       - name: Coverage summary
         run: |
