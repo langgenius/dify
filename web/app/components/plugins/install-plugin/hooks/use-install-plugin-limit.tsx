@@ -21,8 +21,8 @@ export function pluginInstallLimit(plugin: PluginProps, systemFeatures: SystemFe
       canInstall: false,
     }
   }
-  const verification = plugin.verification
-  if (plugin.verification && !plugin.verification.authorized_category)
+  const verification = plugin.verification || {}
+  if (!plugin.verification || !plugin.verification.authorized_category)
     verification.authorized_category = 'langgenius'
 
   if (systemFeatures.plugin_installation_permission.plugin_installation_scope === InstallationScope.OFFICIAL_ONLY) {
