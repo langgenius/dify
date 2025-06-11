@@ -276,7 +276,7 @@ class RagPipelineDslService:
             nodes = graph.get("nodes", [])
             dataset_id = None
             for node in nodes:
-                if node.get("data", {}).get("type") == "knowledge_index":
+                if node.get("data", {}).get("type") == "knowledge-index":
                     knowledge_configuration = KnowledgeConfiguration(**node.get("data", {}))
                     if (
                         dataset
