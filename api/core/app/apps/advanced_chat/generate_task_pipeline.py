@@ -182,7 +182,12 @@ class AdvancedChatAppGenerateTaskPipeline:
                 extras = {}
                 if stream_response.metadata:
                     extras["metadata"] = stream_response.metadata
-                final_outputs = self._task_state.metadata.outputs if self._task_state.metadata and hasattr(self._task_state.metadata, 'outputs') else {}
+                
+                # Retrieve outputs from task state metadata, which is populated earlier
+                final_outputs = {}
+                if self._task_state.metadata and hasattr(self._task_state.metadata, 'outputs'):
+                    final_outputs = self._task_state.metadata.outputs
+
                 return ChatbotAppBlockingResponse(
                     task_id=stream_response.task_id,
                     data=ChatbotAppBlockingResponse.Data(
@@ -505,7 +510,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
                     )
-                    self._task_state.metadata.outputs = workflow_finish_resp.data.outputs.get('outputs', {}).get('outputs')
+                    workflow_outputs_data = workflow_finish_resp.data.outputs.get('outputs', {})
+                    self._task_state.metadata.outputs = workflow_outputs_data.get('outputs')
                 yield workflow_finish_resp
                 self._base_task_pipeline._queue_manager.publish(
                     QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE
