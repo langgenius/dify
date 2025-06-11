@@ -47,6 +47,7 @@ jobs:
       - name: Run Unit tests
         run: |
           uv run --project api bash dev/pytest/pytest_unit_tests.sh
+          cp api/coverage.json ./coverage.json
 
       - name: Coverage summary
         run: |
