@@ -59,7 +59,7 @@ export const useUpdateTemplateInfo = (
     mutationKey: [NAME_SPACE, 'template', 'update'],
     mutationFn: (request: UpdateTemplateInfoRequest) => {
       const { template_id, ...rest } = request
-      return patch<UpdateTemplateInfoResponse>(`/rag/customized/templates/${template_id}`, {
+      return patch<UpdateTemplateInfoResponse>(`/rag/pipeline/customized/templates/${template_id}`, {
         body: rest,
       })
     },
@@ -73,7 +73,7 @@ export const useDeleteTemplate = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'template', 'delete'],
     mutationFn: (templateId: string) => {
-      return del<DeleteTemplateResponse>(`/rag/customized/templates/${templateId}`)
+      return del<DeleteTemplateResponse>(`/rag/pipeline/customized/templates/${templateId}`)
     },
     ...mutationOptions,
   })
@@ -85,7 +85,7 @@ export const useExportTemplateDSL = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'dsl-export'],
     mutationFn: (templateId: string) => {
-      return get<ExportTemplateDSLResponse>(`/rag/customized/templates/${templateId}`)
+      return post<ExportTemplateDSLResponse>(`/rag/pipeline/customized/templates/${templateId}`)
     },
     ...mutationOptions,
   })

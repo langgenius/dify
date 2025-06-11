@@ -60,7 +60,7 @@ export type CreateFormData = {
 export type UpdateTemplateInfoRequest = {
   template_id: string
   name: string
-  icon: IconInfo
+  icon_info: IconInfo
   description: string
 }
 
