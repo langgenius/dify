@@ -42,6 +42,7 @@ type ChatInputAreaProps = {
   isResponding?: boolean
   disabled?: boolean
 }
+const CONTINUE_ASK_KEY = 'continue_ask_flag_key'
 const ChatInputArea = ({
   showFeatureBar,
   showFileUpload,
@@ -68,6 +69,7 @@ const ChatInputArea = ({
   } = useTextAreaHeight()
   const [query, setQuery] = useState('')
   const [showVoiceInput, setShowVoiceInput] = useState(false)
+  const [continueAsk, setContinueAsk] = useState(localStorage.getItem(CONTINUE_ASK_KEY) === '1')
   const filesStore = useFileStore()
   const {
     handleDragFileEnter,
@@ -98,6 +100,9 @@ const ChatInputArea = ({
         return
       }
       if (checkInputsForm(inputs, inputsForm)) {
+        Object.assign(inputs, {
+          continue_asking_flag: continueAsk,
+        })
         onSend(query, files)
         setQuery('')
         setFiles([])
@@ -161,6 +166,11 @@ const ChatInputArea = ({
       speechToTextConfig={speechToTextConfig}
       onShowVoiceInput={handleShowVoiceInput}
       onSend={handleSend}
+      continueAsk={continueAsk}
+      onContinueAskChange={(isContinue: boolean) => {
+        localStorage.setItem(CONTINUE_ASK_KEY, isContinue ? '1' : '0')
+        setContinueAsk(isContinue)
+      }}
       theme={theme}
     />
   )
