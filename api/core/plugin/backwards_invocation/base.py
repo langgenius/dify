@@ -11,14 +11,12 @@ class BaseBackwardsInvocation:
             try:
                 for chunk in response:
                     if isinstance(chunk, BaseModel | dict):
-                        yield BaseBackwardsInvocationResponse(data=chunk).model_dump_json().encode() + b"\n\n"
-                    elif isinstance(chunk, str):
-                        yield f"event: {chunk}\n\n".encode()
+                        yield BaseBackwardsInvocationResponse(data=chunk).model_dump_json().encode()
             except Exception as e:
                 error_message = BaseBackwardsInvocationResponse(error=str(e)).model_dump_json()
-                yield f"{error_message}\n\n".encode()
+                yield error_message.encode()
         else:
-            yield BaseBackwardsInvocationResponse(data=response).model_dump_json().encode() + b"\n\n"
+            yield BaseBackwardsInvocationResponse(data=response).model_dump_json().encode()
 
 
 T = TypeVar("T", bound=dict | Mapping | str | bool | int | BaseModel)
