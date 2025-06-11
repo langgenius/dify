@@ -22,7 +22,7 @@ class FirecrawlApp:
             "formats": ["markdown"],
             "onlyMainContent": True,
             "timeout": 30000,
-            "integration": "dify"
+            "integration": "dify",
         }
         if params:
             json_data.update(params)
@@ -125,8 +125,7 @@ class FirecrawlApp:
 
     def _handle_error(self, response, action) -> None:
         error_message = response.json().get("error", "Unknown error occurred")
-        raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")
-        return  # Explicit return for mypy compliance
+        raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")  # type: ignore[return]
 
     def search(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
         # Documentation: https://docs.firecrawl.dev/api-reference/endpoint/search
@@ -139,7 +138,7 @@ class FirecrawlApp:
             "timeout": 60000,
             "ignoreInvalidURLs": False,
             "scrapeOptions": {},
-            "integration": "dify"
+            "integration": "dify",
         }
         if params:
             json_data.update(params)
