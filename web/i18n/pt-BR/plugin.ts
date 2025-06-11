@@ -62,6 +62,7 @@ const translation = {
       descriptionPlaceholder: 'Breve descrição da finalidade da ferramenta, por exemplo, obter a temperatura para um local específico.',
       uninstalledTitle: 'Ferramenta não instalada',
       unsupportedTitle: 'Ação sem suporte',
+      toolSetting: 'Configurações da Ferramenta',
     },
     serviceOk: 'Serviço OK',
     endpointsTip: 'Este plug-in fornece funcionalidades específicas por meio de endpoints e você pode configurar vários conjuntos de endpoints para o workspace atual.',
@@ -210,6 +211,7 @@ const translation = {
     title: 'Plugins',
   },
   difyVersionNotCompatible: 'A versão atual do Dify não é compatível com este plugin, por favor atualize para a versão mínima exigida: {{minimalDifyVersion}}',
+  requestAPlugin: 'Solicitar um plugin',
 }
 
 export default translation

@@ -676,6 +676,7 @@ const translation = {
         },
         json: 'उपकरण द्वारा उत्पन्न JSON',
       },
+      authorize: 'अधिकृत करें',
     },
     questionClassifiers: {
       model: 'मॉडल',

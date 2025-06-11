@@ -3,7 +3,7 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFavicon, useTitle } from 'ahooks'
 
 export default function useDocumentTitle(title: string) {
-  const isPending = useGlobalPublicStore(s => s.isPending)
+  const isPending = useGlobalPublicStore(s => s.isGlobalPending)
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const prefix = title ? `${title} - ` : ''
   let titleStr = ''

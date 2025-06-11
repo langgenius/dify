@@ -145,6 +145,8 @@ const translation = {
     newDataset: 'Wissen erstellen',
     tools: 'Werkzeuge',
     exploreMarketplace: 'Marketplace erkunden',
+    appDetail: 'App-Details',
+    account: 'Konto',
   },
   userProfile: {
     settings: 'Einstellungen',
@@ -550,7 +552,7 @@ const translation = {
       vectorHash: 'Vektorhash:',
       hitScore: 'Abrufwertung:',
     },
-    inputPlaceholder: 'Sprechen Sie mit dem Bot',
+    inputPlaceholder: 'Sprechen Sie mit dem {{botName}}',
     thought: 'Gedanke',
     thinking: 'Denken...',
     resend: 'Erneut senden',
@@ -644,6 +646,7 @@ const translation = {
   license: {
     expiring: 'Läuft an einem Tag ab',
     expiring_plural: 'Läuft in {{count}} Tagen ab',
+    unlimited: 'Unbegrenzt',
   },
   pagination: {
     perPage: 'Artikel pro Seite',
@@ -667,6 +670,7 @@ const translation = {
     browse: 'blättern',
     supportedFormats: 'Unterstützt PNG, JPG, JPEG, WEBP und GIF',
   },
+  you: 'Du',
 }
 
 export default translation

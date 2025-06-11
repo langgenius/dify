@@ -865,10 +865,10 @@ const StepTwo = ({
             <>
               <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
                 <header className='mb-4 pt-6'>
-                  <h2 className='text-lg font-semibold'>
+                  <h2 className='text-lg font-semibold text-text-primary'>
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
                   </h2>
-                  <p className='mt-2 text-sm font-normal'>
+                  <p className='mt-2 text-sm font-normal text-text-secondary'>
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
                   </p>
                 </header>
@@ -928,7 +928,7 @@ const StepTwo = ({
           </div>
         )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-          <div className='system-xs-medium mt-2'>
+          <div className='system-xs-medium mt-2 text-text-tertiary'>
             {t('datasetCreation.stepTwo.indexSettingTip')}
             <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
           </div>

@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Optional, Protocol
 
-from core.workflow.entities.node_execution_entities import NodeExecution
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution
 
 
 @dataclass
@@ -26,7 +26,7 @@ class WorkflowNodeExecutionRepository(Protocol):
     application domains or deployment scenarios.
     """
 
-    def save(self, execution: NodeExecution) -> None:
+    def save(self, execution: WorkflowNodeExecution) -> None:
         """
         Save or update a NodeExecution instance.
 
@@ -39,7 +39,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    def get_by_node_execution_id(self, node_execution_id: str) -> Optional[NodeExecution]:
+    def get_by_node_execution_id(self, node_execution_id: str) -> Optional[WorkflowNodeExecution]:
         """
         Retrieve a NodeExecution by its node_execution_id.
 
@@ -55,7 +55,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         self,
         workflow_run_id: str,
         order_config: Optional[OrderConfig] = None,
-    ) -> Sequence[NodeExecution]:
+    ) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all NodeExecution instances for a specific workflow run.
 
@@ -70,7 +70,7 @@ class WorkflowNodeExecutionRepository(Protocol):
         """
         ...
 
-    def get_running_executions(self, workflow_run_id: str) -> Sequence[NodeExecution]:
+    def get_running_executions(self, workflow_run_id: str) -> Sequence[WorkflowNodeExecution]:
         """
         Retrieve all running NodeExecution instances for a specific workflow run.
 

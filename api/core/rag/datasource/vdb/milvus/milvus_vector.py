@@ -97,6 +97,10 @@ class MilvusVector(BaseVector):
 
         try:
             milvus_version = self._client.get_server_version()
+            # Check if it's Zilliz Cloud - it supports full-text search with Milvus 2.5 compatibility
+            if "Zilliz Cloud" in milvus_version:
+                return True
+            # For standard Milvus installations, check version number
             return version.parse(milvus_version).base_version >= version.parse("2.5.0").base_version
         except Exception as e:
             logger.warning(f"Failed to check Milvus version: {str(e)}. Disabling hybrid search.")
