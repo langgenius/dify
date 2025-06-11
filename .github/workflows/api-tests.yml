@@ -51,7 +51,7 @@ jobs:
           ls
           echo "ls2"
           ls ./api
-          mv api/coverage.json ./coverage.json
+          cp api/coverage.json ./coverage.json
           echo "ls3"
           ls
           echo "ls4"
