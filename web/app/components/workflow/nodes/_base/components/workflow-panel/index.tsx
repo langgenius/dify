@@ -142,7 +142,8 @@ const BasePanel: FC<BasePanelProps> = ({
     saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange)
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
-  const isSupportSingleRun = canRunBySingle(data.type)
+  const isChildNode = !!(data.isInIteration || data.isInLoop)
+  const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
   const appDetail = useAppStore(state => state.appDetail)
 
   const {

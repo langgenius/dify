@@ -36,6 +36,7 @@ const NodeControl: FC<NodeControlProps> = ({
     setOpen(newOpen)
   }, [])
 
+  const isChildNode = !!(data.isInIteration || data.isInLoop)
   return (
     <div
       className={`
@@ -49,7 +50,7 @@ const NodeControl: FC<NodeControlProps> = ({
         onClick={e => e.stopPropagation()}
       >
         {
-          canRunBySingle(data.type) && (
+          canRunBySingle(data.type, isChildNode) && (
             <div
               className='flex h-5 w-5 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
               onClick={() => {

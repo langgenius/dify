@@ -19,7 +19,10 @@ import {
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 
-export const canRunBySingle = (nodeType: BlockEnum) => {
+export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
+  // child node means in iteration or loop. Set value to iteration(or loop) may cause variable not exit problem in backend.
+  if(isChildNode && nodeType === BlockEnum.Assigner)
+    return false
   return nodeType === BlockEnum.LLM
     || nodeType === BlockEnum.KnowledgeRetrieval
     || nodeType === BlockEnum.Code

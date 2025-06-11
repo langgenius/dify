@@ -29,7 +29,6 @@ const useSingleRunFormParams = ({
                     && item.operation !== WriteMode.removeFirst && item.operation !== WriteMode.removeLast
                     && !writeModeTypesNum.includes(item.operation)
   }).map(item => item.value as ValueSelector)
-  console.log(vars)
 
   const forms = useMemo(() => {
     const varInputs = varSelectorsToVarInputs(vars)
