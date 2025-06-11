@@ -205,13 +205,13 @@ const translation = {
   searchTools: 'เครื่องมือค้นหา...',
   installFrom: 'ติดตั้งจาก',
   fromMarketplace: 'จาก Marketplace',
-  submitPlugin: 'ส่งปลั๊กอิน',
   allCategories: 'หมวดหมู่ทั้งหมด',
   metadata: {
     title: 'ปลั๊กอิน',
   },
   difyVersionNotCompatible: 'เวอร์ชั่นปัจจุบันของ Dify ไม่สามารถใช้งานร่วมกับปลั๊กอินนี้ได้ กรุณาอัปเกรดไปยังเวอร์ชั่นขั้นต่ำที่ต้องการ: {{minimalDifyVersion}}',
   requestAPlugin: 'ขอปลั๊กอิน',
+  publishPlugins: 'เผยแพร่ปลั๊กอิน',
 }
 
 export default translation

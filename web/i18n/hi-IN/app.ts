@@ -213,12 +213,14 @@ const translation = {
     anyone: 'कोई भी वेब ऐप तक पहुँच सकता है',
     organization: 'संस्थान के किसी भी व्यक्ति को वेब ऐप तक पहुंच प्राप्त है',
     specific: 'केवल विशेष समूह या सदस्य ही वेब ऐप तक पहुंच सकते हैं',
+    external: 'केवल प्रमाणित बाहरी उपयोगकर्ता वेब अनुप्रयोग तक पहुँच सकते हैं',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'लिंक के साथ कोई भी',
       specific: 'विशिष्ट समूह या सदस्य',
       organization: 'केवल उद्यम के भीतर के सदस्य',
+      external: 'प्रमाणित बाहरी उपयोगकर्ता',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'समूहों और सदस्यों की खोज करें',

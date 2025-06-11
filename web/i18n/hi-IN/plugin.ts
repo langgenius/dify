@@ -196,7 +196,6 @@ const translation = {
   fromMarketplace: 'मार्केटप्लेस से',
   searchPlugins: 'खोज प्लगइन्स',
   install: '{{num}} इंस्टॉलेशन',
-  submitPlugin: 'प्लगइन सबमिट करें',
   allCategories: 'सभी श्रेणियाँ',
   search: 'खोज',
   searchTools: 'खोज उपकरण...',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'वर्तमान डिफाई संस्करण इस प्लगइन के साथ संगत नहीं है, कृपया आवश्यक न्यूनतम संस्करण में अपग्रेड करें: {{minimalDifyVersion}}',
   requestAPlugin: 'एक प्लगइन का अनुरोध करें',
+  publishPlugins: 'प्लगइन प्रकाशित करें',
 }
 
 export default translation

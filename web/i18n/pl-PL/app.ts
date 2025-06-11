@@ -220,12 +220,14 @@ const translation = {
     anyone: 'Każdy może uzyskać dostęp do aplikacji webowej',
     specific: 'Tylko określone grupy lub członkowie mogą uzyskać dostęp do aplikacji internetowej',
     organization: 'Każdy w organizacji ma dostęp do aplikacji internetowej.',
+    external: 'Tylko uwierzytelnieni zewnętrzni użytkownicy mogą uzyskać dostęp do aplikacji internetowej.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Każdy z linkiem',
       specific: 'Specyficzne grupy lub członkowie',
       organization: 'Tylko członkowie w obrębie przedsiębiorstwa',
+      external: 'Uwierzytelnieni użytkownicy zewnętrzni',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Szukaj grup i członków',

@@ -13,7 +13,7 @@ const translation = {
   input: {
     title: 'ソーステキスト',
     placeholder: 'テキストを入力してください。短い記述文がおすすめです。',
-    countWarning: '最大200文字まで入力できます。',
+    countWarning: '最大 200 文字まで入力できます。',
     indexWarning: '高品質のナレッジのみ。',
     testing: 'テスト中',
   },
