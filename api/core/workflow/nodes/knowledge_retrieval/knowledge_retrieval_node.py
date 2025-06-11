@@ -533,10 +533,16 @@ class KnowledgeRetrievalNode(LLMNode):
             case "≥" | ">=":
                 filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) >= value)
             case "in":
-                if value is None or value == "":
+                values = []
+                if isinstance(value, str):
+                    if value.strip():  # 非空字符串
+                        values = [v.strip() for v in value.split(',')]
+                elif isinstance(value, list):
+                    values = value  # 或者进行其他处理
+
+                if not values:
                     filters.append(1 == 2)
                 else:
-                    values = value.split(',')
                     filters.append(
                         (text("documents.doc_metadata ->> :key in :value")).params(key=metadata_name, value=tuple(values))
                     )

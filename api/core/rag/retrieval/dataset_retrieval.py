@@ -1058,6 +1058,20 @@ class DatasetRetrieval:
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) <= value)
             case "≥" | ">=":
                 filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) >= value)
+            case "in":
+                values = []
+                if isinstance(value, str):
+                    if value.strip():  # 非空字符串
+                        values = [v.strip() for v in value.split(',')]
+                elif isinstance(value, list):
+                    values = value  # 或者进行其他处理
+
+                if not values:
+                    filters.append(1 == 2)
+                else:
+                    filters.append(
+                        (text("documents.doc_metadata ->> :key in :value")).params(key=metadata_name, value=tuple(values))
+                    )
             case _:
                 pass
         return filters
