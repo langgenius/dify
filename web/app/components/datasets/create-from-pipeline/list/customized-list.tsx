@@ -3,7 +3,7 @@ import { usePipelineTemplateList } from '@/service/use-pipeline'
 
 const CustomizedList = () => {
   const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'customized' })
-  const list = pipelineList?.pipelines
+  const list = pipelineList?.pipeline_templates
 
   if (isLoading || !list)
     return null

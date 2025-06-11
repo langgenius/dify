@@ -36,6 +36,8 @@ import {
   usePublishAsCustomizedPipeline,
 } from '@/service/use-pipeline'
 import Confirm from '@/app/components/base/confirm'
+import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
+import type { IconInfo } from '@/models/datasets'
 
 const PUBLISH_SHORTCUT = ['⌘', '⇧', 'P']
 
@@ -62,9 +64,16 @@ const Popup = () => {
     setTrue: showPublishing,
   }] = useBoolean(false)
   const {
-    mutate: publishAsCustomizedPipeline,
-    isPending: isPublishingAsCustomizedPipeline,
+    mutateAsync: publishAsCustomizedPipeline,
   } = usePublishAsCustomizedPipeline()
+  const [showPublishAsKnowledgePipelineModal, {
+    setFalse: hidePublishAsKnowledgePipelineModal,
+    setTrue: setShowPublishAsKnowledgePipelineModal,
+  }] = useBoolean(false)
+  const [isPublishingAsCustomizedPipeline, {
+    setFalse: hidePublishingAsCustomizedPipeline,
+    setTrue: showPublishingAsCustomizedPipeline,
+  }] = useBoolean(false)
 
   const invalidPublishedPipelineInfo = useInvalid([...publishedPipelineInfoQueryKeyPrefix, pipelineId])
 
@@ -116,6 +125,35 @@ const Popup = () => {
   const goToAddDocuments = useCallback(() => {
     push(`/datasets/${datasetId}/documents/create-from-pipeline`)
   }, [datasetId, push])
+
+  const handlePublishAsKnowledgePipeline = useCallback(async (
+    name: string,
+    icon: IconInfo,
+    description?: string,
+  ) => {
+    try {
+      showPublishingAsCustomizedPipeline()
+      await publishAsCustomizedPipeline({
+        pipelineId: pipelineId || '',
+        name,
+        icon_info: icon,
+        description,
+      })
+      notify({ type: 'success', message: t('common.api.actionSuccess') })
+    }
+    finally {
+      hidePublishingAsCustomizedPipeline()
+      hidePublishAsKnowledgePipelineModal()
+    }
+  }, [
+    pipelineId,
+    publishAsCustomizedPipeline,
+    showPublishingAsCustomizedPipeline,
+    hidePublishingAsCustomizedPipeline,
+    hidePublishAsKnowledgePipelineModal,
+    notify,
+    t,
+  ])
 
   return (
     <div className='w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5'>
@@ -192,7 +230,7 @@ const Popup = () => {
         <Button
           className='w-full hover:bg-state-accent-hover hover:text-text-accent'
           variant='tertiary'
-          onClick={() => publishAsCustomizedPipeline({ pipelineId: pipelineId || '' })}
+          onClick={setShowPublishAsKnowledgePipelineModal}
           disabled={!publishedAt || isPublishingAsCustomizedPipeline}
         >
           <div className='flex grow items-center'>
@@ -210,6 +248,15 @@ const Popup = () => {
             onCancel={hideConfirm}
             onConfirm={handlePublish}
             isDisabled={publishing}
+          />
+        )
+      }
+      {
+        showPublishAsKnowledgePipelineModal && (
+          <PublishAsKnowledgePipelineModal
+            confirmDisabled={isPublishingAsCustomizedPipeline}
+            onConfirm={handlePublishAsKnowledgePipeline}
+            onCancel={hidePublishAsKnowledgePipelineModal}
           />
         )
       }

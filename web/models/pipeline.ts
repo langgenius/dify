@@ -26,7 +26,7 @@ export type PipelineTemplate = {
 }
 
 export type PipelineTemplateListResponse = {
-  pipelines: PipelineTemplate[]
+  pipeline_templates: PipelineTemplate[]
 }
 
 export type PipelineTemplateByIdResponse = {
