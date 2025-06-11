@@ -62,19 +62,19 @@ const DatasetCard = ({
   }
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
   const documentCount = useMemo(() => {
-    const availableDocCount = dataset.available_document_count || dataset.document_count
+    const availableDocCount = dataset.total_available_documents ?? 0
     if (availableDocCount === dataset.document_count)
       return `${dataset.document_count}`
     if (availableDocCount < dataset.document_count)
       return `${availableDocCount} / ${dataset.document_count}`
-  }, [dataset.document_count, dataset.available_document_count])
+  }, [dataset.document_count, dataset.total_available_documents])
   const documentCountTooltip = useMemo(() => {
-    const availableDocCount = dataset.available_document_count || dataset.document_count
+    const availableDocCount = dataset.total_available_documents ?? 0
     if (availableDocCount === dataset.document_count)
       return t('dataset.docAllEnabled', { count: availableDocCount })
     if (availableDocCount < dataset.document_count)
       return t('dataset.docAllEnabled', { count: dataset.document_count, num: availableDocCount })
-  }, [t, dataset.document_count, dataset.available_document_count])
+  }, [t, dataset.document_count, dataset.total_available_documents])
 
   const language = useGetLanguage()
   const formatTimeFromNow = useCallback((time: number) => {
