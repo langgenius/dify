@@ -64,35 +64,50 @@ export const addDefaultValue = (value: Record<string, any>, formSchemas: { varia
   return newValues
 }
 
-export const generateFormValue = (value: Record<string, any>, formSchemas: { variable: string; default?: any }[], isReasoning = false) => {
+const correctInitialData = (type: string, target: any, defaultValue: any) => {
+  if (type === 'text-input' || type === 'secret-input')
+    target.type = 'mixed'
+
+  if (type === 'boolean') {
+    if (typeof defaultValue === 'string')
+      target.value = defaultValue === 'true' || defaultValue === '1'
+
+    if (typeof defaultValue === 'boolean')
+      target.value = defaultValue
+
+    if (typeof defaultValue === 'number')
+      target.value = defaultValue === 1
+  }
+
+  if (type === 'number-input') {
+    if (typeof defaultValue === 'string' && defaultValue !== '')
+      target.value = Number.parseFloat(defaultValue)
+  }
+
+  if (type === 'app-selector' || type === 'model-selector')
+    target.value = defaultValue
+
+  return target
+}
+
+export const generateFormValue = (value: Record<string, any>, formSchemas: { variable: string; default?: any; type: string }[], isReasoning = false) => {
   const newValues = {} as any
   formSchemas.forEach((formSchema) => {
     const itemValue = value[formSchema.variable]
     if ((formSchema.default !== undefined) && (value === undefined || itemValue === null || itemValue === '' || itemValue === undefined)) {
+      const value = formSchema.default
       newValues[formSchema.variable] = {
-        ...(isReasoning ? { value: null, auto: 1 } : { value: formSchema.default }),
+        value: {
+          type: 'constant',
+          value: formSchema.default,
+        },
+        ...(isReasoning ? { auto: 1, value: null } : {}),
       }
+      if (!isReasoning)
+        newValues[formSchema.variable].value = correctInitialData(formSchema.type, newValues[formSchema.variable].value, value)
     }
   })
   return newValues
-}
-
-export const getPlainValue = (value: Record<string, any>) => {
-  const plainValue = { ...value }
-  Object.keys(plainValue).forEach((key) => {
-    plainValue[key] = value[key].value
-  })
-  return plainValue
-}
-
-export const getStructureValue = (value: Record<string, any>) => {
-  const newValue = { ...value } as any
-  Object.keys(newValue).forEach((key) => {
-    newValue[key] = {
-      value: value[key],
-    }
-  })
-  return newValue
 }
 
 export const getConfiguredValue = (value: Record<string, any>, formSchemas: { variable: string; type: string; default?: any }[]) => {
@@ -105,27 +120,7 @@ export const getConfiguredValue = (value: Record<string, any>, formSchemas: { va
         type: 'constant',
         value: formSchema.default,
       }
-      if (formSchema.type === 'text-input' || formSchema.type === 'secret-input')
-        newValues[formSchema.variable].type = 'mixed'
-
-      if (formSchema.type === 'boolean') {
-        if (typeof value === 'string')
-          newValues[formSchema.variable].value = value === 'true' || value === '1'
-
-        if (typeof value === 'boolean')
-          newValues[formSchema.variable].value = value
-
-        if (typeof value === 'number')
-          newValues[formSchema.variable].value = value === 1
-      }
-
-      if (formSchema.type === 'number-input') {
-        if (typeof value === 'string' && value !== '')
-          newValues[formSchema.variable].value = Number.parseFloat(value)
-      }
-
-      if (formSchema.type === 'app-selector' || formSchema.type === 'model-selector')
-        newValues[formSchema.variable] = value
+      newValues[formSchema.variable] = correctInitialData(formSchema.type, newValues[formSchema.variable], value)
     }
   })
   return newValues

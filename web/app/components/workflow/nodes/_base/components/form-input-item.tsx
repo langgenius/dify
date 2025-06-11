@@ -117,7 +117,7 @@ const FormInputItem: FC<Props> = ({
   const getVarKindType = () => {
     if (isFile)
       return VarKindType.variable
-    if (isSelect || isAppSelector || isModelSelector || isBoolean)
+    if (isSelect || isBoolean || isNumber)
       return VarKindType.constant
     if (isString)
       return VarKindType.mixed

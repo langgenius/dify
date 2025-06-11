@@ -11,6 +11,7 @@ export type AgentNodeType = CommonNodeType & {
   output_schema: Record<string, any>
   plugin_unique_identifier?: string
   memory?: Memory
+  version?: string
 }
 
 export enum AgentFeature {
