@@ -34,7 +34,6 @@ jobs:
       - name: Free Disk Space
         uses: endersonmenezes/free-disk-space@v2
         with:
-          remove_android: true
           remove_dotnet: true
 
       - name: Setup UV and Python
@@ -65,7 +64,7 @@ jobs:
             tidb
             tiflash
 
-      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
+      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase, OceanBase)
         uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
@@ -82,7 +81,7 @@ jobs:
             elasticsearch
             oceanbase
 
-      - name: Check TiDB, Oceanbase Ready
+      - name: Check VDB Ready (TiDB, Oceanbase)
         run: |
           uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
           uv run --project api python api/tests/integration_tests/vdb/oceanbase/check_oceanbase_ready.py

@@ -1,4 +1,3 @@
-import logging
 import time
 
 import pymysql
@@ -11,29 +10,10 @@ def check_ocean_ready() -> bool:
             port=2881,
             user="root",
             password="difyai123456",
-            connect_timeout=15,
-            read_timeout=20,
-            autocommit=True,
         )
-        connection.ping(reconnect=True)
-        a = connection.query("select 1")
-        print(f"Oceanbase query result: {a}")
-        if a == 1:
-            return True
-        else:
-            return False
-
-        # with connection.cursor() as cursor:
-        #     # SELECT 1;
-        #     # """
-        #     # cursor.execute(select_query)
-        #     # result = cursor.fetchall()
-        #     # return result is not None and len(result) > 0
-        #     cursor.execute("SELECT 1")
-        #     return cursor.fetchone() is not None
-
+        affected_rows = connection.query("SELECT 1")
+        return affected_rows == 1
     except Exception as e:
-        logging.exception("Error checking OceanBase readiness")
         print(f"Oceanbase is not ready. Exception: {e}")
         return False
     finally:
