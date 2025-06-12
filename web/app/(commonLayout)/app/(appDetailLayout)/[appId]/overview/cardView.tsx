@@ -36,6 +36,8 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
 
+  const showMCPCard = isInPanel && (appDetail?.mode === 'advanced-chat' || appDetail?.mode === 'workflow')
+
   const updateAppDetail = async () => {
     try {
       const res = await fetchAppDetail({ url: '/apps', id: appId })
@@ -138,7 +140,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
         isInPanel={isInPanel}
         onChangeStatus={onChangeApiStatus}
       />
-      {isInPanel && (
+      {showMCPCard && (
         <MCPServiceCard
           appInfo={appDetail}
         />

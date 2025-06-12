@@ -70,8 +70,10 @@ function MCPServiceCard({
   const onChangeStatus = async (state: boolean) => {
     setActivated(state)
     if (state) {
-      if (!serverPublished)
+      if (!serverPublished) {
         setShowMCPServerModal(true)
+        return
+      }
 
       await updateMCPServer({
         appID: appInfo.id,
