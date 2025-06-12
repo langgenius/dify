@@ -706,6 +706,18 @@ class IndexingRunner:
                     tenant_id=dataset.tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
+                
+        # Get LLM model instance if semantic chunking is enabled
+        llm_model_instance = None
+        if process_rule.get("rules", {}).get("chunking_strategy") == "semantic":
+            try:
+                llm_model_instance = self.model_manager.get_default_model_instance(
+                    tenant_id=dataset.tenant_id,
+                    model_type=ModelType.LLM,
+                )
+            except Exception as e:
+                # Fall back to fixed chunking if we can't get an LLM model
+                process_rule["rules"]["chunking_strategy"] = "fixed"
 
         documents = index_processor.transform(
             text_docs,
@@ -713,6 +725,7 @@ class IndexingRunner:
             process_rule=process_rule,
             tenant_id=dataset.tenant_id,
             doc_language=doc_language,
+            llm_model_instance=llm_model_instance
         )
 
         return documents
@@ -746,6 +759,160 @@ class IndexingRunner:
             },
         )
         pass
+
+    def _process_document(self, flask_app, process_rule, document, dataset, tenant_id, user, document_plan):
+        if not self._start_document(document.id, tenant_id):
+            return
+
+        try:
+            is_automatic = process_rule.get("mode") == "automatic" or process_rule.get("mode") == "hierarchical"
+            with flask_app.app_context():
+                # check document is paused
+                self._check_document_paused_status(document.id)
+
+                # get embedding model instance
+                embedding_model_name = dataset.embedding_model
+                embedding_model_provider = dataset.embedding_model_provider
+
+                model_manager = ModelManager()
+
+                embedding_model_instance = model_manager.get_model_instance(
+                    tenant_id=tenant_id,
+                    provider=embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=embedding_model_name,
+                )
+                
+                # Get LLM model instance if semantic chunking is used
+                llm_model_instance = None
+                if process_rule.get("rules", {}).get("chunking_strategy") == "semantic":
+                    try:
+                        llm_model_instance = model_manager.get_default_model_instance(ModelType.LLM)
+                    except Exception as e:
+                        # Fall back to fixed chunking if we can't get an LLM model
+                        process_rule["rules"]["chunking_strategy"] = "fixed"
+                
+                # extract
+                index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
+
+                text_docs = []
+                completed_segments = 0
+                total_segments = 0
+
+                # resume document indexing
+                stopped_segment_ids = []
+                stopped_segments = (
+                    db.session.query(DocumentSegment)
+                    .filter(
+                        DocumentSegment.document_id == document.id,
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed",
+                    )
+                    .all()
+                )
+                stopped_segment_ids = [segment.id for segment in stopped_segments]
+
+                original_extract_setting = parse_extract_setting(document, dataset)
+                original_extract_setting.is_automatic = is_automatic
+                if stopped_segment_ids:
+                    # remove original content if document is stopped
+                    original_extract_setting.content = None
+
+                text_docs = IndexingRunner.load_document(
+                    document_id=document.id,
+                    dataset_id=dataset.id,
+                    tenant_id=tenant_id,
+                    extract_setting=original_extract_setting,
+                    process_rule_mode=process_rule.get("mode"),
+                )
+
+                # index
+                if text_docs:
+                    # transform
+                    chunk_docs = index_processor.transform(
+                        text_docs,
+                        process_rule=process_rule,
+                        dataset_id=dataset.id,
+                        tenant_id=tenant_id,
+                        doc_language=document.doc_language,
+                        embedding_model_instance=embedding_model_instance,
+                        llm_model_instance=llm_model_instance
+                    )
+
+                    # save segment
+                    self._load_segments(dataset, document, chunk_docs)
+
+                    # load
+                    self._load(
+                        index_processor=index_processor,
+                        dataset=dataset,
+                        dataset_document=document,
+                        documents=chunk_docs,
+                    )
+
+                    # update document status to completed
+                    self._update_document_index_status(
+                        document_id=document.id,
+                        after_indexing_status="completed",
+                        extra_update_params={
+                            DatasetDocument.tokens: sum(len(text_doc.page_content) for text_doc in text_docs),
+                            DatasetDocument.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                            DatasetDocument.indexing_latency: time.perf_counter() - indexing_start_at,
+                            DatasetDocument.error: None,
+                        },
+                    )
+
+                    completed_segments = len(text_docs)
+                    total_segments = len(text_docs)
+
+                    # update segment status to completed
+                    self._update_segments_by_document(
+                        dataset_document_id=document.id,
+                        update_params={
+                            DocumentSegment.status: "completed",
+                            DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                        },
+                    )
+
+                else:
+                    # update document status to completed
+                    self._update_document_index_status(
+                        document_id=document.id,
+                        after_indexing_status="completed",
+                        extra_update_params={
+                            DatasetDocument.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                            DatasetDocument.error: None,
+                        },
+                    )
+
+                    # update segment status to completed
+                    self._update_segments_by_document(
+                        dataset_document_id=document.id,
+                        update_params={
+                            DocumentSegment.status: "completed",
+                            DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
+                        },
+                    )
+
+                    completed_segments = 0
+                    total_segments = 0
+
+                # update document plan
+                self._update_document_plan(document_plan, completed_segments, total_segments)
+
+        except DocumentIsPausedError:
+            raise DocumentIsPausedError("Document paused, document id: {}".format(document.id))
+        except ProviderTokenNotInitError as e:
+            document.indexing_status = "error"
+            document.error = str(e.description)
+            document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            db.session.commit()
+        except Exception as e:
+            logging.exception("consume document failed")
+            document.indexing_status = "error"
+            document.error = str(e)
+            document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+            db.session.commit()
 
 
 class DocumentIsPausedError(Exception):

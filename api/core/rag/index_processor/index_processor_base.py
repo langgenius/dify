@@ -1,7 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Literal
 
 from configs import dify_config
 from core.model_manager import ModelInstance
@@ -11,6 +11,7 @@ from core.rag.splitter.fixed_text_splitter import (
     EnhanceRecursiveCharacterTextSplitter,
     FixedRecursiveCharacterTextSplitter,
 )
+from core.rag.splitter.semantic_text_splitter import SemanticTextSplitter
 from core.rag.splitter.text_splitter import TextSplitter
 from models.dataset import Dataset, DatasetProcessRule
 
@@ -52,10 +53,60 @@ class BaseIndexProcessor(ABC):
         chunk_overlap: int,
         separator: str,
         embedding_model_instance: Optional[ModelInstance],
+        chunking_strategy: Optional[Literal["fixed", "semantic"]] = None,
+        llm_model_instance: Optional[ModelInstance] = None,
     ) -> TextSplitter:
         """
-        Get the NodeParser object according to the processing rule.
+        Get the splitter object according to the processing rule and chunking strategy.
+        
+        Args:
+            processing_rule_mode: The processing rule mode (custom, hierarchical, etc.)
+            max_tokens: Maximum tokens per chunk
+            chunk_overlap: Overlap between chunks
+            separator: Separator string for chunking
+            embedding_model_instance: Model instance for embeddings
+            chunking_strategy: Chunking strategy to use (fixed or semantic)
+            llm_model_instance: LLM model instance for semantic chunking
+            
+        Returns:
+            A TextSplitter instance
         """
+        # Use semantic chunking if explicitly requested and LLM model is available
+        if chunking_strategy == "semantic" and llm_model_instance:
+            # Create a fallback splitter first based on the processing rule mode
+            if processing_rule_mode in ["custom", "hierarchical"]:
+                max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+                if max_tokens < 50 or max_tokens > max_segmentation_tokens_length:
+                    raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
+
+                if separator:
+                    separator = separator.replace("\\n", "\n")
+
+                fallback_splitter = FixedRecursiveCharacterTextSplitter.from_encoder(
+                    chunk_size=max_tokens,
+                    chunk_overlap=chunk_overlap,
+                    fixed_separator=separator,
+                    separators=["\n\n", "。", ". ", " ", ""],
+                    embedding_model_instance=embedding_model_instance,
+                )
+            else:
+                # Automatic segmentation
+                fallback_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
+                    chunk_size=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["max_tokens"],
+                    chunk_overlap=DatasetProcessRule.AUTOMATIC_RULES["segmentation"]["chunk_overlap"],
+                    separators=["\n\n", "。", ". ", " ", ""],
+                    embedding_model_instance=embedding_model_instance,
+                )
+                
+            # Return a semantic text splitter with the appropriate fallback
+            return SemanticTextSplitter(
+                llm_model_instance=llm_model_instance,
+                fallback_splitter=fallback_splitter,
+                chunk_size=max_tokens,
+                chunk_overlap=chunk_overlap
+            )
+
+        # Default to traditional chunking methods
         if processing_rule_mode in ["custom", "hierarchical"]:
             # The user-defined segmentation rule
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
