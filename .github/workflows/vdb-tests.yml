@@ -31,6 +31,12 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Free Disk Space
+        uses: endersonmenezes/free-disk-space@v2
+        with:
+          remove_android: true
+          remove_dotnet: true
+
       - name: Setup UV and Python
         uses: ./.github/actions/setup-uv
         with:
@@ -50,14 +56,6 @@ jobs:
 
       - name: Expose Service Ports
         run: sh .github/workflows/expose_service_ports.sh
-
-      - name: Set up Vector Stores (ob)
-        uses: hoverkraft-tech/compose-action@v2.0.2
-        with:
-          compose-file: |
-            docker/docker-compose.yaml
-          services: |
-            oceanbase
 
       - name: Set up Vector Store (TiDB)
         uses: hoverkraft-tech/compose-action@v2.0.2
@@ -82,6 +80,7 @@ jobs:
             pgvector
             chroma
             elasticsearch
+            oceanbase
 
       - name: Check TiDB, Oceanbase Ready
         run: |
