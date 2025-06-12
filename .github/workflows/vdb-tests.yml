@@ -35,6 +35,7 @@ jobs:
         uses: endersonmenezes/free-disk-space@v2
         with:
           remove_dotnet: true
+          remove_haskell: true
 
       - name: Setup UV and Python
         uses: ./.github/actions/setup-uv
