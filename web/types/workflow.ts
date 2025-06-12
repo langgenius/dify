@@ -201,6 +201,7 @@ export type FileResponse = {
   type: string
   url: string
   upload_file_id: string
+  remote_url: string
 }
 
 export type NodeFinishedResponse = {

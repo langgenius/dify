@@ -13,7 +13,7 @@ import {
   validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
+import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { TransferMethod } from '@/types/app'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
@@ -47,9 +47,9 @@ const ValueContent = ({
   const fileFeature = useFeatures(s => s.features.file)
   const [fileValue, setFileValue] = useState<any>(
     currentVar.value_type === 'array[file]'
-    ? currentVar.value || []
+    ? getProcessedFilesFromResponse(currentVar.value || [])
     : currentVar.value
-      ? [currentVar.value]
+      ? getProcessedFilesFromResponse([currentVar.value])
       : [],
   )
 
@@ -68,11 +68,12 @@ const ValueContent = ({
       setJson(currentVar.value ? JSON.stringify(currentVar.value, null, 2) : '')
 
     if (showFileEditor) {
+      console.log(getProcessedFilesFromResponse(currentVar.value || []))
       setFileValue(
         (currentVar.value_type === 'array[file]' || isSysFiles)
-        ? currentVar.value || []
+        ? getProcessedFilesFromResponse(currentVar.value || [])
         : currentVar.value
-          ? [currentVar.value]
+          ? getProcessedFilesFromResponse([currentVar.value])
           : [],
         )
     }
