@@ -940,7 +940,7 @@ services:
 
   # OceanBase vector database
   oceanbase:
-    image: oceanbase/oceanbase-ce:4.3.5.1-101000042025031818
+    image: oceanbase/oceanbase-ce:4.3.5-lts
     container_name: oceanbase
     profiles:
       - oceanbase
