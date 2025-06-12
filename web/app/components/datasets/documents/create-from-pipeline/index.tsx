@@ -331,7 +331,7 @@ const CreateFormPipeline = () => {
               onlineDocuments={onlineDocuments}
               websitePages={websitePages}
               isIdle={isIdle}
-              isPending={isPending}
+              isPending={isPending && isPreview.current}
               estimateData={estimateData}
               onPreview={onClickPreview}
               handlePreviewFileChange={handlePreviewFileChange}

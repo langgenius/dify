@@ -12,7 +12,6 @@ import Keywords from './completed/common/keywords'
 import ChunkContent from './completed/common/chunk-content'
 import AddAnother from './completed/common/add-another'
 import Dot from './completed/common/dot'
-import { useDocumentContext } from './index'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { ChunkingMode, type SegmentUpdater } from '@/models/datasets'
@@ -20,6 +19,8 @@ import classNames from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Divider from '@/app/components/base/divider'
 import { useAddSegment } from '@/service/knowledge/use-segment'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { IndexingType } from '../../create/step-two'
 
 type NewSegmentModalProps = {
   onCancel: () => void
@@ -44,7 +45,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   const [addAnother, setAddAnother] = useState(true)
   const fullScreen = useSegmentListContext(s => s.fullScreen)
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
-  const mode = useDocumentContext(s => s.mode)
+  const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
   const { appSidebarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
   })))
@@ -137,6 +138,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [question.length, answer.length, isQAModel])
 
+  const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
+
   return (
     <div className={'flex h-full flex-col'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
@@ -182,7 +185,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
             isEditMode={true}
           />
         </div>
-        {mode === 'custom' && <Keywords
+        {isECOIndexing && <Keywords
           className={fullScreen ? 'w-1/5' : ''}
           actionType='add'
           keywords={keywords}
