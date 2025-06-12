@@ -239,7 +239,10 @@ def test_code_default_value_continue_on_error():
         "edges": DEFAULT_VALUE_EDGE,
         "nodes": [
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
-            {"data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}", "outputs": []}, "id": "answer"},
+            {
+                "data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}", "outputs": []},
+                "id": "answer",
+            },
             ContinueOnErrorTestHelper.get_code_node(
                 error_code, "default-value", [{"key": "result", "type": "number", "value": 132123}]
             ),
@@ -292,7 +295,10 @@ def test_http_node_default_value_continue_on_error():
         "edges": DEFAULT_VALUE_EDGE,
         "nodes": [
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
-            {"data": {"title": "answer", "type": "answer", "answer": "{{#node.response#}}", "outputs": []}, "id": "answer"},
+            {
+                "data": {"title": "answer", "type": "answer", "answer": "{{#node.response#}}", "outputs": []},
+                "id": "answer",
+            },
             ContinueOnErrorTestHelper.get_http_node(
                 "default-value", [{"key": "response", "type": "string", "value": "http node got error response"}]
             ),
@@ -395,7 +401,10 @@ def test_llm_node_default_value_continue_on_error():
         "edges": DEFAULT_VALUE_EDGE,
         "nodes": [
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
-            {"data": {"title": "answer", "type": "answer", "answer": "{{#node.answer#}}", "outputs": []}, "id": "answer"},
+            {
+                "data": {"title": "answer", "type": "answer", "answer": "{{#node.answer#}}", "outputs": []},
+                "id": "answer",
+            },
             ContinueOnErrorTestHelper.get_llm_node(
                 "default-value", [{"key": "answer", "type": "string", "value": "default LLM response"}]
             ),
@@ -499,7 +508,10 @@ def test_no_node_in_fail_branch_continue_on_error():
         "edges": FAIL_BRANCH_EDGES[:-1],
         "nodes": [
             {"data": {"title": "Start", "type": "start", "variables": []}, "id": "start"},
-            {"data": {"title": "success", "type": "answer", "answer": "HTTP request successful", "outputs": []}, "id": "success"},
+            {
+                "data": {"title": "success", "type": "answer", "answer": "HTTP request successful", "outputs": []},
+                "id": "success",
+            },
             ContinueOnErrorTestHelper.get_http_node(),
         ],
     }

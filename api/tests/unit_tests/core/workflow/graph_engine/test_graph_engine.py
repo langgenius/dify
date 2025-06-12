@@ -398,7 +398,13 @@ def test_run_branch(mock_close, mock_remove):
                 "id": "start",
             },
             {
-                "data": {"answer": "1 {{#start.uid#}}", "title": "Answer", "type": "answer", "variables": [], "outputs": []},
+                "data": {
+                    "answer": "1 {{#start.uid#}}",
+                    "title": "Answer",
+                    "type": "answer",
+                    "variables": [],
+                    "outputs": [],
+                },
                 "id": "answer-1",
             },
             {
