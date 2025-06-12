@@ -1,3 +1,3 @@
 from .app_config import DifyConfig
 
-dify_config = DifyConfig()  # type: ignore
+dify_config = DifyConfig()
