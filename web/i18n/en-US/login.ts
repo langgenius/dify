@@ -9,6 +9,7 @@ const translation = {
   namePlaceholder: 'Your username',
   forget: 'Forgot your password?',
   signBtn: 'Sign in',
+  testButton: 'Test Button',
   continueWithCode: 'Continue With Code',
   sendVerificationCode: 'Send Verification Code',
   usePassword: 'Use Password',

@@ -181,6 +181,16 @@ const NormalForm = () => {
               </div>
             </div>
           </>}
+          {/* Test Button */}
+          <div className="mt-4 flex justify-center">
+            <button 
+              className="btn-primary btn-md"
+              onClick={() => alert('Test button clicked')}
+            >
+              {t('login.testButton')}
+            </button>
+          </div>
+
           {!systemFeatures.branding.enabled && <>
             <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
               {t('login.tosDesc')}
