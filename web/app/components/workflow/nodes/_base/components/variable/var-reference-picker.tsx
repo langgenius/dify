@@ -437,6 +437,7 @@ const VarReferencePicker: FC<Props> = ({
               onChange={handleVarReferenceChange}
               itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
               isSupportFileVar={isSupportFileVar}
+              zIndex={zIndex}
             />
           )}
         </PortalToFollowElemContent>

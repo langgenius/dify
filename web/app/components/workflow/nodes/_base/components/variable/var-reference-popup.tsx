@@ -15,6 +15,7 @@ type Props = {
   onChange: (value: ValueSelector, varDetail: Var) => void
   itemWidth?: number
   isSupportFileVar?: boolean
+  zIndex?: number
 }
 const VarReferencePopup: FC<Props> = ({
   vars,
@@ -22,6 +23,7 @@ const VarReferencePopup: FC<Props> = ({
   onChange,
   itemWidth,
   isSupportFileVar = true,
+  zIndex,
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
@@ -57,6 +59,7 @@ const VarReferencePopup: FC<Props> = ({
           onChange={onChange}
           itemWidth={itemWidth}
           isSupportFileVar={isSupportFileVar}
+          zIndex={zIndex}
         />
       }
     </div >
