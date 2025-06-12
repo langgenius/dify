@@ -61,14 +61,17 @@ class VariableAssignerNode(BaseNode[VariableAssignerData]):
         node_id: str,
         node_data: VariableAssignerData,
     ) -> Mapping[str, Sequence[str]]:
+        mapping = {}
         assigned_variable_node_id = node_data.assigned_variable_selector[0]
-        if assigned_variable_node_id != CONVERSATION_VARIABLE_NODE_ID:
-            return {}
-        selector_key = ".".join(node_data.assigned_variable_selector)
+        if assigned_variable_node_id == CONVERSATION_VARIABLE_NODE_ID:
+            selector_key = ".".join(node_data.assigned_variable_selector)
+            key = f"{node_id}.#{selector_key}#"
+            mapping[key] = node_data.assigned_variable_selector
+
+        selector_key = ".".join(node_data.input_variable_selector)
         key = f"{node_id}.#{selector_key}#"
-        return {
-            key: node_data.assigned_variable_selector,
-        }
+        mapping[key] = node_data.input_variable_selector
+        return mapping
 
     def _run(self) -> NodeRunResult:
         assigned_variable_selector = self.node_data.assigned_variable_selector

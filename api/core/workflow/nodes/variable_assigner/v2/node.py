@@ -1,9 +1,10 @@
 import json
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
 from typing import Any, ClassVar, TypeAlias, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
+from core.variables.consts import MIN_SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.entities.node_entities import NodeRunResult
@@ -16,17 +17,41 @@ from core.workflow.nodes.variable_assigner.common.impl import conversation_varia
 
 from . import helpers
 from .constants import EMPTY_VALUE_MAPPING
-from .entities import VariableAssignerNodeData
+from .entities import VariableAssignerNodeData, VariableOperationItem
 from .enums import InputType, Operation
 from .exc import (
     ConversationIDNotFoundError,
     InputTypeNotSupportedError,
+    InvalidDataError,
     InvalidInputValueError,
     OperationNotSupportedError,
     VariableNotFoundError,
 )
 
 _CONV_VAR_UPDATER_FACTORY: TypeAlias = Callable[[], ConversationVariableUpdater]
+
+
+def _target_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_id: str, item: VariableOperationItem):
+    selector_node_id = item.variable_selector[0]
+    if selector_node_id != CONVERSATION_VARIABLE_NODE_ID:
+        return
+    selector_str = ".".join(item.variable_selector)
+    key = f"{node_id}.#{selector_str}#"
+    mapping[key] = item.variable_selector
+
+
+def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_id: str, item: VariableOperationItem):
+    # Keep this in sync with the logic in _run methods...
+    if item.input_type != InputType.VARIABLE:
+        return
+    selector = item.value
+    if not isinstance(selector, list):
+        raise InvalidDataError(f"selector is not a list, {node_id=}, {item=}")
+    if len(selector) < MIN_SELECTORS_LENGTH:
+        raise InvalidDataError(f"selector too short, {node_id=}, {item=}")
+    selector_str = ".".join(selector)
+    key = f"{node_id}.#{selector_str}#"
+    mapping[key] = selector
 
 
 class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
@@ -49,12 +74,8 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
     ) -> Mapping[str, Sequence[str]]:
         var_mapping: dict[str, Sequence[str]] = {}
         for item in node_data.items:
-            selector_node_id = item.variable_selector[0]
-            if selector_node_id != CONVERSATION_VARIABLE_NODE_ID:
-                continue
-            selector_str = ".".join(item.variable_selector)
-            key = f"{node_id}.#{selector_str}#"
-            var_mapping[key] = item.variable_selector
+            _target_mapping_from_item(var_mapping, node_id, item)
+            _source_mapping_from_item(var_mapping, node_id, item)
         return var_mapping
 
     def _run(self) -> NodeRunResult:

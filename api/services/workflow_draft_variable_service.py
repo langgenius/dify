@@ -703,11 +703,11 @@ class DraftVariableSaver:
             Raw variable value if found, None otherwise
         """
         outputs_dict = node_exec.outputs_dict or {}
-        process_data_dict = node_exec.process_data_dict or {}
 
         # Note: Based on the implementation in `_build_from_variable_assigner_mapping`,
         # VariableAssignerNode (both v1 and v2) can only create conversation draft variables.
         # For consistency, we should simply return when processing VARIABLE_ASSIGNER nodes.
+        #
         # This implementation must remain synchronized with the `_build_from_variable_assigner_mapping`
         # and `save` methods.
 
