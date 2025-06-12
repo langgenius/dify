@@ -19,6 +19,6 @@ jobs:
         with:
           host: ${{ secrets.RAG_SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.RAG_SSH_PRIVATE_KEY }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}
