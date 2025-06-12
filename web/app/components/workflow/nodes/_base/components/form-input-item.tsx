@@ -152,7 +152,7 @@ const FormInputItem: FC<Props> = ({
       [variable]: {
         ...varInput,
         type: getVarKindType(),
-        value: newValue,
+        value: isNumber ? Number.parseFloat(newValue) : newValue,
       },
     })
   }

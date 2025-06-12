@@ -23,7 +23,7 @@ import Textarea from '@/app/components/base/textarea'
 import Divider from '@/app/components/base/divider'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import ReasoningConfigForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form'
-import { generateFormValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 import { useAppContext } from '@/context/app-context'
 import {
@@ -172,9 +172,10 @@ const ToolSelector: FC<Props> = ({
   const paramsFormSchemas = useMemo(() => toolParametersToFormSchemas(currentToolParams), [currentToolParams])
 
   const handleSettingsFormChange = (v: Record<string, any>) => {
+    const newValue = getStructureValue(v)
     const toolValue = {
       ...value,
-      settings: v,
+      settings: newValue,
     }
     onSelect(toolValue as any)
   }
@@ -402,7 +403,7 @@ const ToolSelector: FC<Props> = ({
                           readOnly={false}
                           nodeId={nodeId}
                           schema={settingsFormSchemas as any}
-                          value={value?.settings || {}}
+                          value={getPlainValue(value?.settings || {})}
                           onChange={handleSettingsFormChange}
                         />
                       </div>

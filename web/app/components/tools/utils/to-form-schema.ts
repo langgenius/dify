@@ -1,4 +1,7 @@
 import type { ToolCredential, ToolParameter } from '../types'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+
 export const toType = (type: string) => {
   switch (type) {
     case 'string':
@@ -110,6 +113,26 @@ export const generateFormValue = (value: Record<string, any>, formSchemas: { var
   return newValues
 }
 
+export const getPlainValue = (value: Record<string, any>) => {
+  const plainValue = { ...value }
+  Object.keys(plainValue).forEach((key) => {
+    plainValue[key] = {
+      ...value[key].value,
+    }
+  })
+  return plainValue
+}
+
+export const getStructureValue = (value: Record<string, any>) => {
+  const newValue = { ...value } as any
+  Object.keys(newValue).forEach((key) => {
+    newValue[key] = {
+      value: value[key],
+    }
+  })
+  return newValue
+}
+
 export const getConfiguredValue = (value: Record<string, any>, formSchemas: { variable: string; type: string; default?: any }[]) => {
   const newValues = { ...value }
   formSchemas.forEach((formSchema) => {
@@ -123,5 +146,51 @@ export const getConfiguredValue = (value: Record<string, any>, formSchemas: { va
       newValues[formSchema.variable] = correctInitialData(formSchema.type, newValues[formSchema.variable], value)
     }
   })
+  return newValues
+}
+
+const getVarKindType = (type: FormTypeEnum) => {
+    if (type === FormTypeEnum.file || type === FormTypeEnum.files)
+      return VarKindType.variable
+    if (type === FormTypeEnum.select || type === FormTypeEnum.boolean || type === FormTypeEnum.textNumber)
+      return VarKindType.constant
+    if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
+      return VarKindType.mixed
+  }
+
+export const generateAgentToolValue = (value: Record<string, any>, formSchemas: { variable: string; default?: any; type: string }[], isReasoning = false) => {
+  const newValues = {} as any
+  if (!isReasoning) {
+    formSchemas.forEach((formSchema) => {
+      const itemValue = value[formSchema.variable]
+      newValues[formSchema.variable] = {
+        value: {
+          type: 'constant',
+          value: itemValue.value,
+        },
+      }
+      newValues[formSchema.variable].value = correctInitialData(formSchema.type, newValues[formSchema.variable].value, itemValue.value)
+    })
+  }
+  else {
+    formSchemas.forEach((formSchema) => {
+      const itemValue = value[formSchema.variable]
+      if (itemValue.auto === 1) {
+        newValues[formSchema.variable] = {
+          auto: 1,
+          value: null,
+        }
+      }
+      else {
+        newValues[formSchema.variable] = {
+          auto: 0,
+          value: itemValue.value || {
+            type: getVarKindType(formSchema.type as FormTypeEnum),
+            value: null,
+          },
+        }
+      }
+    })
+  }
   return newValues
 }

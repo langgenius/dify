@@ -27,7 +27,6 @@ import type { QuestionClassifierNodeType } from '../nodes/question-classifier/ty
 import type { IfElseNodeType } from '../nodes/if-else/types'
 import { branchNameCorrect } from '../nodes/if-else/utils'
 import type { IterationNodeType } from '../nodes/iteration/types'
-import type { AgentNodeType } from '../nodes/agent/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import {
@@ -303,13 +302,6 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         });
         (node as Node<ToolNodeType>).data.tool_configurations = newValues
       }
-    }
-
-    if (node.data.type === BlockEnum.Agent && !(node as Node<AgentNodeType>).data.version) {
-      // TODO: formatting legacy agent node data
-      // (node as Node<ToolNodeType>).data.version = '2'
-      // const toolData = (node as Node<AgentNodeType>).data.agent_parameters?.tool
-      // const multipleTools = (node as Node<AgentNodeType>).data.agent_parameters?.multiple_tools
     }
 
     return node
