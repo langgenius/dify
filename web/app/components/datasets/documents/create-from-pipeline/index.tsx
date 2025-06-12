@@ -32,10 +32,7 @@ const CreateFormPipeline = () => {
   const { t } = useTranslation()
   const plan = useProviderContextSelector(state => state.plan)
   const enableBilling = useProviderContextSelector(state => state.enableBilling)
-  const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const indexingType = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
-  const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict.search_method)
   const [datasource, setDatasource] = useState<Datasource>()
   const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
   const [batchId, setBatchId] = useState('')
@@ -302,11 +299,8 @@ const CreateFormPipeline = () => {
           {
             currentStep === 3 && (
               <Processing
-                datasetId={datasetId!}
                 batchId={batchId}
                 documents={documents}
-                indexingType={indexingType!}
-                retrievalMethod={retrievalMethod!}
               />
             )
           }
@@ -326,7 +320,7 @@ const CreateFormPipeline = () => {
         currentStep === 2 && (
           <div className='flex h-full w-[752px] shrink-0 pl-2 pt-2'>
             <ChunkPreview
-              datasource={datasource!}
+              dataSourceType={datasource!.type}
               files={fileList.map(file => file.file)}
               onlineDocuments={onlineDocuments}
               websitePages={websitePages}

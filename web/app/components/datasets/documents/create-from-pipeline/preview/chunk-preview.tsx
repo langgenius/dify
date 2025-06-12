@@ -2,7 +2,6 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PreviewContainer } from '../../../preview/container'
 import { PreviewHeader } from '../../../preview/header'
-import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { CrawlResultItem, CustomFile, DocumentItem, FileIndexingEstimateResponse } from '@/models/datasets'
 import { ChunkingMode } from '@/models/datasets'
 import type { NotionPage } from '@/models/common'
@@ -18,7 +17,7 @@ import Button from '@/app/components/base/button'
 import { DatasourceType } from '@/models/pipeline'
 
 type ChunkPreviewProps = {
-  datasource: Datasource
+  dataSourceType: DatasourceType
   files: CustomFile[]
   onlineDocuments: NotionPage[]
   websitePages: CrawlResultItem[]
@@ -32,7 +31,7 @@ type ChunkPreviewProps = {
 }
 
 const ChunkPreview = ({
-  datasource,
+  dataSourceType,
   files,
   onlineDocuments,
   websitePages,
@@ -50,8 +49,6 @@ const ChunkPreview = ({
   const [previewFile, setPreviewFile] = useState<DocumentItem>(files[0] as DocumentItem)
   const [previewOnlineDocument, setPreviewOnlineDocument] = useState<NotionPage>(onlineDocuments[0])
   const [previewWebsitePage, setPreviewWebsitePage] = useState<CrawlResultItem>(websitePages[0])
-
-  const dataSourceType = datasource?.type
 
   return (
     <PreviewContainer
@@ -185,9 +182,7 @@ const ChunkPreview = ({
             <p className='text-sm text-text-tertiary'>
               {t('datasetCreation.stepTwo.previewChunkTip')}
             </p>
-            <Button
-              onClick={onPreview}
-            >
+            <Button onClick={onPreview}>
               {t('datasetPipeline.addDocuments.stepTwo.previewChunks')}
             </Button>
           </div>

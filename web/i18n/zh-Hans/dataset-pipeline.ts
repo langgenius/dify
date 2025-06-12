@@ -103,6 +103,9 @@ const translation = {
     },
     characters: '字符',
   },
+  documentSettings: {
+    title: '文档设置',
+  },
 }
 
 export default translation

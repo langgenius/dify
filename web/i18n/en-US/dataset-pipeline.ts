@@ -103,6 +103,9 @@ const translation = {
     },
     characters: 'characters',
   },
+  documentSettings: {
+    title: 'Document Settings',
+  },
 }
 
 export default translation
