@@ -1,3 +1,5 @@
+import logging
+
 from flask_restful import Resource, reqparse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -13,6 +15,8 @@ from core.mcp.types import ClientRequest
 from extensions.ext_database import db
 from libs import helper
 from models.model import App, AppMCPServer, AppMode
+
+logger = logging.getLogger(__name__)
 
 
 class MCPAppApi(Resource):
@@ -31,6 +35,7 @@ class MCPAppApi(Resource):
         parser.add_argument("params", type=dict, required=True, location="json")
         parser.add_argument("id", type=int_or_str, required=True, location="json")
         args = parser.parse_args()
+        logger.info(f"MCP request: {args}")
         server = db.session.query(AppMCPServer).filter(AppMCPServer.server_code == server_code).first()
         if not server:
             raise NotFound("Server Not Found")

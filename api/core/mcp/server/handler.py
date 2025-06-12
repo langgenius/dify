@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
@@ -17,6 +18,8 @@ from services.app_generate_service import AppGenerateService
 """
 Apply to MCP HTTP streamable server with stateless http
 """
+
+logger = logging.getLogger(__name__)
 
 
 class MCPServerReuqestHandler:
@@ -100,6 +103,7 @@ class MCPServerReuqestHandler:
             return self.error_response(INTERNAL_ERROR, f"Internal server error: {str(e)}")
 
     def initialize(self):
+        logger.info(f"Initialize: {self.request}")
         request = cast(types.InitializeRequest, self.request.root)
         client_info = request.params.clientInfo
         clinet_name = f"{client_info.name}@{client_info.version}"
@@ -122,6 +126,7 @@ class MCPServerReuqestHandler:
         )
 
     def list_tools(self):
+        logger.info(f"List tools: {self.request}")
         if not self.end_user:
             raise ValueError("User not found")
         return types.ListToolsResult(
