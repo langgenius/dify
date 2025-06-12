@@ -398,6 +398,7 @@ const ToolSelector: FC<Props> = ({
                     {(currType === 'settings' || userSettingsOnly) && (
                       <div className='px-4 py-2'>
                         <ToolForm
+                          inPanel
                           readOnly={false}
                           nodeId={nodeId}
                           schema={settingsFormSchemas as any}
