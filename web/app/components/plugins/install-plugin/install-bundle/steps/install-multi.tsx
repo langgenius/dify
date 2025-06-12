@@ -1,5 +1,6 @@
 'use client'
-import type { FC } from 'react'
+import type { ForwardRefRenderFunction } from 'react'
+import { useImperativeHandle } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin, VersionInfo } from '../../../types'
 import MarketplaceItem from '../item/marketplace-item'
@@ -9,22 +10,34 @@ import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use
 import produce from 'immer'
 import PackageItem from '../item/package-item'
 import LoadingError from '../../base/loading-error'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { pluginInstallLimit } from '../../hooks/use-install-plugin-limit'
 
 type Props = {
   allPlugins: Dependency[]
   selectedPlugins: Plugin[]
-  onSelect: (plugin: Plugin, selectedIndex: number) => void
+  onSelect: (plugin: Plugin, selectedIndex: number, allCanInstallPluginsLength: number) => void
+  onSelectAll: (plugins: Plugin[], selectedIndexes: number[]) => void
+  onDeSelectAll: () => void
   onLoadedAllPlugin: (installedInfo: Record<string, VersionInfo>) => void
   isFromMarketPlace?: boolean
 }
 
-const InstallByDSLList: FC<Props> = ({
+export type ExposeRefs = {
+  selectAllPlugins: () => void
+  deSelectAllPlugins: () => void
+}
+
+const InstallByDSLList: ForwardRefRenderFunction<ExposeRefs, Props> = ({
   allPlugins,
   selectedPlugins,
   onSelect,
+  onSelectAll,
+  onDeSelectAll,
   onLoadedAllPlugin,
   isFromMarketPlace,
-}) => {
+}, ref) => {
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   // DSL has id, to get plugin info to show more info
   const { isLoading: isFetchingMarketplaceDataById, data: infoGetById, error: infoByIdError } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map((d) => {
     const dependecy = (d as GitHubItemAndMarketPlaceDependency).value
@@ -97,7 +110,8 @@ const InstallByDSLList: FC<Props> = ({
       const sortedList = allPlugins.filter(d => d.type === 'marketplace').map((d) => {
         const p = d as GitHubItemAndMarketPlaceDependency
         const id = p.value.marketplace_plugin_unique_identifier?.split(':')[0]
-        return infoGetById.data.list.find(item => item.plugin.plugin_id === id)?.plugin
+        const retPluginInfo = infoGetById.data.list.find(item => item.plugin.plugin_id === id)?.plugin
+        return { ...retPluginInfo, from: d.type } as Plugin
       })
       const payloads = sortedList
       const failedIndex: number[] = []
@@ -106,7 +120,7 @@ const InstallByDSLList: FC<Props> = ({
           if (payloads[i]) {
             draft[index] = {
               ...payloads[i],
-              version: payloads[i].version || payloads[i].latest_version,
+              version: payloads[i]!.version || payloads[i]!.latest_version,
             }
           }
           else { failedIndex.push(index) }
@@ -181,9 +195,35 @@ const InstallByDSLList: FC<Props> = ({
 
   const handleSelect = useCallback((index: number) => {
     return () => {
-      onSelect(plugins[index]!, index)
+      const canSelectPlugins = plugins.filter((p) => {
+        const { canInstall } = pluginInstallLimit(p!, systemFeatures)
+        return canInstall
+      })
+      onSelect(plugins[index]!, index, canSelectPlugins.length)
     }
-  }, [onSelect, plugins])
+  }, [onSelect, plugins, systemFeatures])
+
+  useImperativeHandle(ref, () => ({
+    selectAllPlugins: () => {
+      const selectedIndexes: number[] = []
+      const selectedPlugins: Plugin[] = []
+      allPlugins.forEach((d, index) => {
+        const p = plugins[index]
+        if (!p)
+          return
+        const { canInstall } = pluginInstallLimit(p, systemFeatures)
+        if (canInstall) {
+          selectedIndexes.push(index)
+          selectedPlugins.push(p)
+        }
+      })
+      onSelectAll(selectedPlugins, selectedIndexes)
+    },
+    deSelectAllPlugins: () => {
+      onDeSelectAll()
+    },
+  }))
+
   return (
     <>
       {allPlugins.map((d, index) => {
@@ -211,7 +251,7 @@ const InstallByDSLList: FC<Props> = ({
               key={index}
               checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
               onCheckedChange={handleSelect(index)}
-              payload={plugin}
+              payload={{ ...plugin, from: d.type } as Plugin}
               version={(d as GitHubItemAndMarketPlaceDependency).value.version! || plugin?.version || ''}
               versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
             />
@@ -234,4 +274,4 @@ const InstallByDSLList: FC<Props> = ({
     </>
   )
 }
-export default React.memo(InstallByDSLList)
+export default React.forwardRef(InstallByDSLList)

@@ -12,9 +12,9 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { useDownloadPlugin } from '@/service/use-plugins'
 import { downloadFile } from '@/utils/format'
+import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = {
   open: boolean
@@ -80,7 +80,7 @@ const OperationDropdown: FC<Props> = ({
       <PortalToFollowElemContent className='z-[9999]'>
         <div className='w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
           <div onClick={handleDownload} className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('common.operation.download')}</div>
-          <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}${theme ? `?theme=${theme}` : ''}`} target='_blank' className='system-md-regular block cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('common.operation.viewDetails')}</a>
+          <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target='_blank' className='system-md-regular block cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('common.operation.viewDetails')}</a>
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
