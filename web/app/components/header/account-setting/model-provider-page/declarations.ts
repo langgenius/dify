@@ -108,6 +108,7 @@ export type FormShowOnObject = {
 
 export type CredentialFormSchemaBase = {
   variable: string
+  inputs?: Array<{ name: string; value: string }>
   label: TypeWithI18N
   type: FormTypeEnum
   required: boolean
