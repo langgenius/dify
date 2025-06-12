@@ -83,6 +83,7 @@ export type DataSet = {
   keyword_number?: number
   pipeline_id?: string
   is_published?: boolean // Indicates if the pipeline is published
+  runtime_mode: 'rag_pipeline' | 'general'
 }
 
 export type ExternalAPIItem = {

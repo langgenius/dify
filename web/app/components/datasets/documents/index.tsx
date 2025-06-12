@@ -173,7 +173,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const routeToDocCreate = () => {
     // if dataset is create from pipeline, redirect to create from pipeline page
-    if (dataset?.pipeline_id) {
+    if (dataset?.runtime_mode === 'rag_pipeline') {
       router.push(`/datasets/${datasetId}/documents/create-from-pipeline`)
       return
     }

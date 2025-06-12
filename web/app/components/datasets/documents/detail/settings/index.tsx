@@ -13,9 +13,10 @@ const Settings = ({
   datasetId,
   documentId,
 }: SettingsProps) => {
-  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const runtimeMode = useDatasetDetailContextWithSelector(s => s.dataset?.runtime_mode)
+  const isGeneralDataset = runtimeMode === 'general'
 
-  if (!pipelineId) {
+  if (isGeneralDataset) {
     return (
       <DocumentSettings
         datasetId={datasetId}

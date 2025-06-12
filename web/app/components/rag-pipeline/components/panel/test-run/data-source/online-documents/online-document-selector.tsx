@@ -50,7 +50,7 @@ const OnlineDocumentSelector = ({
         datasource_type: DatasourceType.onlineDocument,
       }, {
         onSuccess(documentsData) {
-          setDocumentsData(documentsData as DataSourceNotionWorkspace[])
+          setDocumentsData(documentsData.result as DataSourceNotionWorkspace[])
         },
       })
     }
