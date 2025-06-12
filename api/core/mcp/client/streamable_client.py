@@ -18,7 +18,6 @@ from typing import Any, cast
 import httpx
 from httpx_sse import EventSource, ServerSentEvent
 
-from core.helper.ssrf_proxy import create_ssrf_proxy_mcp_http_client, ssrf_proxy_sse_connect
 from core.mcp.types import (
     ClientMessageMetadata,
     ErrorData,
@@ -30,6 +29,7 @@ from core.mcp.types import (
     RequestId,
     SessionMessage,
 )
+from core.mcp.utils import create_ssrf_proxy_mcp_http_client, ssrf_proxy_sse_connect
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,6 @@
 from flask_restful import Resource, reqparse
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.mcp import api
@@ -59,8 +60,9 @@ class MCPAppApi(Resource):
             request = ClientRequest.model_validate(args)
         except ValidationError as e:
             raise ValueError(f"Invalid MCP request: {str(e)}")
-        mcp_server_handler = MCPServerReuqestHandler(app, request, user_input_form)
-        return helper.compact_generate_response(mcp_server_handler.handle())
+        with Session(db.engine) as session:
+            mcp_server_handler = MCPServerReuqestHandler(app, request, user_input_form, session)
+            return helper.compact_generate_response(mcp_server_handler.handle())
 
 
 api.add_resource(MCPAppApi, "/server/<string:server_code>/mcp")

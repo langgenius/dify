@@ -2,6 +2,8 @@ import json
 from collections.abc import Mapping
 from typing import Any, cast
 
+from sqlalchemy.orm import Session
+
 from configs import dify_config
 from controllers.web.passport import generate_session_id
 from core.app.app_config.entities import VariableEntity, VariableEntityType
@@ -9,8 +11,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.mcp import types
 from core.mcp.types import INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND
 from core.model_runtime.utils.encoders import jsonable_encoder
-from extensions.ext_database import db
-from models.model import App, AppMCPServer, EndUser
+from models.model import App, AppMCPServer, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 
 """
@@ -19,12 +20,13 @@ Apply to MCP HTTP streamable server with stateless http
 
 
 class MCPServerReuqestHandler:
-    def __init__(self, app: App, request: types.ClientRequest, user_input_form: list[VariableEntity]):
+    def __init__(self, app: App, request: types.ClientRequest, user_input_form: list[VariableEntity], session: Session):
         self.app = app
         self.request = request
         if not self.app.mcp_server:
             raise ValueError("MCP server not found")
         self.mcp_server: AppMCPServer = self.app.mcp_server
+        self._session = session
         self.end_user = self.retrieve_end_user()
         self.user_input_form = user_input_form
 
@@ -35,19 +37,19 @@ class MCPServerReuqestHandler:
     @property
     def parameter_schema(self):
         parameters, required = self._convert_input_form_to_parameters(self.user_input_form)
+        if self.app.mode in {AppMode.COMPLETION.value, AppMode.WORKFLOW.value}:
+            return {
+                "type": "object",
+                "properties": parameters,
+                "required": required,
+            }
         return {
             "type": "object",
             "properties": {
                 "query": {"type": "string", "description": "User Input/Question content"},
-                "inputs": {
-                    "type": "object",
-                    "description": "Allows the entry of various variable values defined by the App. The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable. If the variable is of file type, specify an object that has the keys described in `files`.",  # noqa: E501
-                    "default": {},
-                    "properties": parameters,
-                    "required": required,
-                },
+                **parameters,
             },
-            "required": ["query", "inputs"],
+            "required": ["query", *required],
         }
 
     @property
@@ -110,9 +112,8 @@ class MCPServerReuqestHandler:
                 session_id=generate_session_id(),
                 external_user_id=self.mcp_server.id,
             )
-            db.session.add(end_user)
-            db.session.commit()
-
+            self._session.add(end_user)
+            self._session.commit()
         return types.InitializeResult(
             protocolVersion=types.LATEST_PROTOCOL_VERSION,
             capabilities=self.capabilities,
@@ -140,14 +141,31 @@ class MCPServerReuqestHandler:
         args = request.params.arguments
         if not args:
             raise ValueError("No arguments provided")
+        if self.app.mode in {AppMode.COMPLETION.value, AppMode.WORKFLOW.value}:
+            args = {"inputs": args}
+        else:
+            args = {"query": args["query"], "inputs": {k: v for k, v in args.items() if k != "query"}}
         response = AppGenerateService.generate(self.app, self.end_user, args, InvokeFrom.MCP_SERVER, streaming=False)
         if isinstance(response, Mapping):
-            return types.CallToolResult(content=[types.TextContent(text=response["answer"], type="text")])
+            answer = ""
+            if self.app.mode in {
+                AppMode.ADVANCED_CHAT.value,
+                AppMode.COMPLETION.value,
+                AppMode.CHAT.value,
+                AppMode.AGENT_CHAT.value,
+            }:
+                answer = response["answer"]
+            elif self.app.mode in {AppMode.WORKFLOW.value}:
+                answer = json.dumps(response["data"]["outputs"], ensure_ascii=False)
+            else:
+                raise ValueError("Invalid app mode")
+            # Not support image yet
+            return types.CallToolResult(content=[types.TextContent(text=answer, type="text")])
         return None
 
     def retrieve_end_user(self):
         return (
-            db.session.query(EndUser)
+            self._session.query(EndUser)
             .filter(EndUser.external_user_id == self.mcp_server.id, EndUser.type == "mcp")
             .first()
         )

@@ -177,6 +177,15 @@ class BaseSession(
         self._receiver_future = self._executor.submit(self._receive_loop)
         return self
 
+    def check_receiver_status(self) -> None:
+        if self._receiver_future.done():
+            try:
+                # 如果Future已完成，获取结果（如果有异常会在这里抛出）
+                self._receiver_future.result()
+            except Exception as e:
+                # 重新抛出线程中的异常
+                raise e
+
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None:
@@ -199,6 +208,7 @@ class BaseSession(
         Do not use this method to emit notifications! Use send_notification()
         instead.
         """
+        self.check_receiver_status()
 
         request_id = self._request_id
         self._request_id = request_id + 1
@@ -224,6 +234,8 @@ class BaseSession(
                     response_or_error = response_queue.get(timeout=timeout)
                     break
                 except queue.Empty:
+                    # 在等待响应的过程中也检查接收线程状态
+                    self.check_receiver_status()
                     continue
 
             if response_or_error is None:
@@ -257,6 +269,8 @@ class BaseSession(
         Emits a notification, which is a one-way message that does not expect
         a response.
         """
+        self.check_receiver_status()
+
         # Some transport implementations may need to set the related_request_id
         # to attribute to the notifications to the request that triggered them.
         jsonrpc_notification = JSONRPCNotification(
@@ -353,6 +367,7 @@ class BaseSession(
                 continue
             except Exception as e:
                 logging.exception("Error in message processing loop")
+                raise
 
     def _received_request(self, responder: RequestResponder[ReceiveRequestT, SendResultT]) -> None:
         """
