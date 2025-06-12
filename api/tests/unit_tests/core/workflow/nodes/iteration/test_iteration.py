@@ -74,6 +74,7 @@ def test_run():
                     "iteration_id": "iteration-1",
                     "title": "answer 2",
                     "type": "answer",
+                    "outputs": [],
                 },
                 "id": "answer-2",
             },
@@ -88,7 +89,7 @@ def test_run():
                 "id": "tt",
             },
             {
-                "data": {"answer": "{{#iteration-1.output#}}88888", "title": "answer 3", "type": "answer"},
+                "data": {"answer": "{{#iteration-1.output#}}88888", "title": "answer 3", "type": "answer", "outputs": []},
                 "id": "answer-3",
             },
             {
@@ -109,7 +110,7 @@ def test_run():
                 "id": "if-else",
             },
             {
-                "data": {"answer": "no hi", "iteration_id": "iteration-1", "title": "answer 4", "type": "answer"},
+                "data": {"answer": "no hi", "iteration_id": "iteration-1", "title": "answer 4", "type": "answer", "outputs": []},
                 "id": "answer-4",
             },
             {
@@ -273,6 +274,7 @@ def test_run_parallel():
                     "iteration_id": "iteration-1",
                     "title": "answer 2",
                     "type": "answer",
+                    "outputs": [],
                 },
                 "id": "answer-2",
             },
@@ -305,7 +307,7 @@ def test_run_parallel():
                 "id": "tt-2",
             },
             {
-                "data": {"answer": "{{#iteration-1.output#}}88888", "title": "answer 3", "type": "answer"},
+                "data": {"answer": "{{#iteration-1.output#}}88888", "title": "answer 3", "type": "answer", "outputs": []},
                 "id": "answer-3",
             },
             {
@@ -326,7 +328,7 @@ def test_run_parallel():
                 "id": "if-else",
             },
             {
-                "data": {"answer": "no hi", "iteration_id": "iteration-1", "title": "answer 4", "type": "answer"},
+                "data": {"answer": "no hi", "iteration_id": "iteration-1", "title": "answer 4", "type": "answer", "outputs": []},
                 "id": "answer-4",
             },
             {
@@ -489,6 +491,7 @@ def test_iteration_run_in_parallel_mode():
                     "iteration_id": "iteration-1",
                     "title": "answer 2",
                     "type": "answer",
+                    "outputs": [],
                 },
                 "id": "answer-2",
             },
@@ -521,7 +524,7 @@ def test_iteration_run_in_parallel_mode():
                 "id": "tt-2",
             },
             {
-                "data": {"answer": "{{#iteration-1.output#}}88888", "title": "answer 3", "type": "answer"},
+                "data": {"answer": "{{#iteration-1.output#}}88888", "title": "answer 3", "type": "answer", "outputs": []},
                 "id": "answer-3",
             },
             {
@@ -542,7 +545,7 @@ def test_iteration_run_in_parallel_mode():
                 "id": "if-else",
             },
             {
-                "data": {"answer": "no hi", "iteration_id": "iteration-1", "title": "answer 4", "type": "answer"},
+                "data": {"answer": "no hi", "iteration_id": "iteration-1", "title": "answer 4", "type": "answer", "outputs": []},
                 "id": "answer-4",
             },
             {
@@ -741,7 +744,7 @@ def test_iteration_run_error_handle():
                 "id": "tt2",
             },
             {
-                "data": {"answer": "{{#iteration-1.output#}}88888", "title": "answer 3", "type": "answer"},
+                "data": {"answer": "{{#iteration-1.output#}}88888", "title": "answer 3", "type": "answer", "outputs": []},
                 "id": "answer-3",
             },
             {
