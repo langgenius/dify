@@ -32,6 +32,7 @@ def get_user(tenant_id: str, user_id: str | None) -> Account | EndUser:
                     )
                     session.add(user_model)
                     session.commit()
+                    session.refresh(user_model)
             else:
                 user_model = AccountService.load_user(user_id)
                 if not user_model:

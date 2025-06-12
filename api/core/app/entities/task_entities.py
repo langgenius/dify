@@ -2,12 +2,29 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
-from core.model_runtime.entities.llm_entities import LLMResult
+from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.node_entities import AgentNodeStrategyInit
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+
+
+class AnnotationReplyAccount(BaseModel):
+    id: str
+    name: str
+
+
+class AnnotationReply(BaseModel):
+    id: str
+    account: AnnotationReplyAccount
+
+
+class TaskStateMetadata(BaseModel):
+    annotation_reply: AnnotationReply | None = None
+    retriever_resources: Sequence[RetrievalSourceMetadata] = Field(default_factory=list)
+    usage: LLMUsage | None = None
 
 
 class TaskState(BaseModel):
@@ -15,7 +32,7 @@ class TaskState(BaseModel):
     TaskState entity
     """
 
-    metadata: dict = {}
+    metadata: TaskStateMetadata = Field(default_factory=TaskStateMetadata)
 
 
 class EasyUITaskState(TaskState):

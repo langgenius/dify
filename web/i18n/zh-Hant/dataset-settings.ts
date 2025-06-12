@@ -30,7 +30,7 @@ const translation = {
     save: '儲存',
     permissionsInvitedMembers: '部分團隊成員',
     me: '（您）',
-    externalKnowledgeID: '外部知識ID',
+    externalKnowledgeID: '外部知識 ID',
     externalKnowledgeAPI: '外部知識 API',
     retrievalSettings: '檢索設置',
     indexMethodChangeToEconomyDisabledTip: '不適用於從 HQ 降級到 ECO',

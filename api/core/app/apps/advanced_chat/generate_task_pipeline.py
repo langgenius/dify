@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from collections.abc import Generator, Mapping
@@ -57,10 +56,9 @@ from core.app.entities.task_entities import (
     WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
-from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
+from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.entities.workflow_execution import WorkflowExecutionStatus, WorkflowType
 from core.workflow.enums import SystemVariableKey
@@ -141,7 +139,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         )
 
         self._task_state = WorkflowTaskState()
-        self._message_cycle_manager = MessageCycleManage(
+        self._message_cycle_manager = MessageCycleManager(
             application_generate_entity=application_generate_entity, task_state=self._task_state
         )
 
@@ -162,7 +160,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         :return:
         """
         # start generate conversation name thread
-        self._conversation_name_generate_thread = self._message_cycle_manager._generate_conversation_name(
+        self._conversation_name_generate_thread = self._message_cycle_manager.generate_conversation_name(
             conversation_id=self._conversation_id, query=self._application_generate_entity.query
         )
 
@@ -605,22 +603,18 @@ class AdvancedChatAppGenerateTaskPipeline:
                 yield self._message_end_to_stream_response()
                 break
             elif isinstance(event, QueueRetrieverResourcesEvent):
-                self._message_cycle_manager._handle_retriever_resources(event)
+                self._message_cycle_manager.handle_retriever_resources(event)
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     message = self._get_message(session=session)
-                    message.message_metadata = (
-                        json.dumps(jsonable_encoder(self._task_state.metadata)) if self._task_state.metadata else None
-                    )
+                    message.message_metadata = self._task_state.metadata.model_dump_json()
                     session.commit()
             elif isinstance(event, QueueAnnotationReplyEvent):
-                self._message_cycle_manager._handle_annotation_reply(event)
+                self._message_cycle_manager.handle_annotation_reply(event)
 
                 with Session(db.engine, expire_on_commit=False) as session:
                     message = self._get_message(session=session)
-                    message.message_metadata = (
-                        json.dumps(jsonable_encoder(self._task_state.metadata)) if self._task_state.metadata else None
-                    )
+                    message.message_metadata = self._task_state.metadata.model_dump_json()
                     session.commit()
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
@@ -637,12 +631,12 @@ class AdvancedChatAppGenerateTaskPipeline:
                     tts_publisher.publish(queue_message)
 
                 self._task_state.answer += delta_text
-                yield self._message_cycle_manager._message_to_stream_response(
+                yield self._message_cycle_manager.message_to_stream_response(
                     answer=delta_text, message_id=self._message_id, from_variable_selector=event.from_variable_selector
                 )
             elif isinstance(event, QueueMessageReplaceEvent):
                 # published by moderation
-                yield self._message_cycle_manager._message_replace_to_stream_response(
+                yield self._message_cycle_manager.message_replace_to_stream_response(
                     answer=event.text, reason=event.reason
                 )
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
@@ -654,7 +648,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                 )
                 if output_moderation_answer:
                     self._task_state.answer = output_moderation_answer
-                    yield self._message_cycle_manager._message_replace_to_stream_response(
+                    yield self._message_cycle_manager.message_replace_to_stream_response(
                         answer=output_moderation_answer,
                         reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
@@ -683,9 +677,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         message = self._get_message(session=session)
         message.answer = self._task_state.answer
         message.provider_response_latency = time.perf_counter() - self._base_task_pipeline._start_at
-        message.message_metadata = (
-            json.dumps(jsonable_encoder(self._task_state.metadata)) if self._task_state.metadata else None
-        )
+        message.message_metadata = self._task_state.metadata.model_dump_json()
         message_files = [
             MessageFile(
                 message_id=message.id,
@@ -713,9 +705,9 @@ class AdvancedChatAppGenerateTaskPipeline:
             message.answer_price_unit = usage.completion_price_unit
             message.total_price = usage.total_price
             message.currency = usage.currency
-            self._task_state.metadata["usage"] = jsonable_encoder(usage)
+            self._task_state.metadata.usage = usage
         else:
-            self._task_state.metadata["usage"] = jsonable_encoder(LLMUsage.empty_usage())
+            self._task_state.metadata.usage = LLMUsage.empty_usage()
         message_was_created.send(
             message,
             application_generate_entity=self._application_generate_entity,
@@ -726,18 +718,16 @@ class AdvancedChatAppGenerateTaskPipeline:
         Message end to stream response.
         :return:
         """
-        extras = {}
-        if self._task_state.metadata:
-            extras["metadata"] = self._task_state.metadata.copy()
+        extras = self._task_state.metadata.model_dump()
 
-            if "annotation_reply" in extras["metadata"]:
-                del extras["metadata"]["annotation_reply"]
+        if self._task_state.metadata.annotation_reply:
+            del extras["annotation_reply"]
 
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=self._message_id,
             files=self._recorded_files,
-            metadata=extras.get("metadata", {}),
+            metadata=extras,
         )
 
     def _handle_output_moderation_chunk(self, text: str) -> bool:

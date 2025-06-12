@@ -31,8 +31,7 @@ from core.plugin.impl.exc import (
     PluginUniqueIdentifierError,
 )
 
-plugin_daemon_inner_api_baseurl = dify_config.PLUGIN_DAEMON_URL
-plugin_daemon_inner_api_key = dify_config.PLUGIN_DAEMON_KEY
+plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
@@ -53,9 +52,9 @@ class BasePluginClient:
         """
         Make a request to the plugin daemon inner API.
         """
-        url = URL(str(plugin_daemon_inner_api_baseurl)) / path
+        url = plugin_daemon_inner_api_baseurl / path
         headers = headers or {}
-        headers["X-Api-Key"] = plugin_daemon_inner_api_key
+        headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
         headers["Accept-Encoding"] = "gzip, deflate, br"
 
         if headers.get("Content-Type") == "application/json" and isinstance(data, dict):

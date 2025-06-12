@@ -35,6 +35,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.entities.context_entities import DocumentContext
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
 from core.rag.index_processor.constant.index_type import IndexType
@@ -198,21 +199,21 @@ class DatasetRetrieval:
 
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
-        document_context_list = []
-        retrieval_resource_list = []
+        document_context_list: list[DocumentContext] = []
+        retrieval_resource_list: list[RetrievalSourceMetadata] = []
         # deal with external documents
         for item in external_documents:
             document_context_list.append(DocumentContext(content=item.page_content, score=item.metadata.get("score")))
-            source = {
-                "dataset_id": item.metadata.get("dataset_id"),
-                "dataset_name": item.metadata.get("dataset_name"),
-                "document_id": item.metadata.get("document_id") or item.metadata.get("title"),
-                "document_name": item.metadata.get("title"),
-                "data_source_type": "external",
-                "retriever_from": invoke_from.to_source(),
-                "score": item.metadata.get("score"),
-                "content": item.page_content,
-            }
+            source = RetrievalSourceMetadata(
+                dataset_id=item.metadata.get("dataset_id"),
+                dataset_name=item.metadata.get("dataset_name"),
+                document_id=item.metadata.get("document_id") or item.metadata.get("title"),
+                document_name=item.metadata.get("title"),
+                data_source_type="external",
+                retriever_from=invoke_from.to_source(),
+                score=item.metadata.get("score"),
+                content=item.page_content,
+            )
             retrieval_resource_list.append(source)
         # deal with dify documents
         if dify_documents:
@@ -248,32 +249,32 @@ class DatasetRetrieval:
                             .first()
                         )
                         if dataset and document:
-                            source = {
-                                "dataset_id": dataset.id,
-                                "dataset_name": dataset.name,
-                                "document_id": document.id,
-                                "document_name": document.name,
-                                "data_source_type": document.data_source_type,
-                                "segment_id": segment.id,
-                                "retriever_from": invoke_from.to_source(),
-                                "score": record.score or 0.0,
-                                "doc_metadata": document.doc_metadata,
-                            }
+                            source = RetrievalSourceMetadata(
+                                dataset_id=dataset.id,
+                                dataset_name=dataset.name,
+                                document_id=document.id,
+                                document_name=document.name,
+                                data_source_type=document.data_source_type,
+                                segment_id=segment.id,
+                                retriever_from=invoke_from.to_source(),
+                                score=record.score or 0.0,
+                                doc_metadata=document.doc_metadata,
+                            )
 
                             if invoke_from.to_source() == "dev":
-                                source["hit_count"] = segment.hit_count
-                                source["word_count"] = segment.word_count
-                                source["segment_position"] = segment.position
-                                source["index_node_hash"] = segment.index_node_hash
+                                source.hit_count = segment.hit_count
+                                source.word_count = segment.word_count
+                                source.segment_position = segment.position
+                                source.index_node_hash = segment.index_node_hash
                             if segment.answer:
-                                source["content"] = f"question:{segment.content} \nanswer:{segment.answer}"
+                                source.content = f"question:{segment.content} \nanswer:{segment.answer}"
                             else:
-                                source["content"] = segment.content
+                                source.content = segment.content
                             retrieval_resource_list.append(source)
         if hit_callback and retrieval_resource_list:
-            retrieval_resource_list = sorted(retrieval_resource_list, key=lambda x: x.get("score") or 0.0, reverse=True)
+            retrieval_resource_list = sorted(retrieval_resource_list, key=lambda x: x.score or 0.0, reverse=True)
             for position, item in enumerate(retrieval_resource_list, start=1):
-                item["position"] = position
+                item.position = position
             hit_callback.return_retriever_resource_info(retrieval_resource_list)
         if document_context_list:
             document_context_list = sorted(document_context_list, key=lambda x: x.score or 0.0, reverse=True)
@@ -936,6 +937,9 @@ class DatasetRetrieval:
         return metadata_filter_document_ids, metadata_condition
 
     def _replace_metadata_filter_value(self, text: str, inputs: dict) -> str:
+        if not inputs:
+            return text
+
         def replacer(match):
             key = match.group(1)
             return str(inputs.get(key, f"{{{{{key}}}}}"))

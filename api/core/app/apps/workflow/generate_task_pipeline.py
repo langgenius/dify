@@ -50,7 +50,6 @@ from core.app.entities.task_entities import (
     WorkflowAppStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
-    WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
@@ -130,9 +129,7 @@ class WorkflowAppGenerateTaskPipeline:
         )
 
         self._application_generate_entity = application_generate_entity
-        self._workflow_id = workflow.id
         self._workflow_features_dict = workflow.features_dict
-        self._task_state = WorkflowTaskState()
         self._workflow_run_id = ""
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -543,7 +540,6 @@ class WorkflowAppGenerateTaskPipeline:
                 if tts_publisher:
                     tts_publisher.publish(queue_message)
 
-                self._task_state.answer += delta_text
                 yield self._text_chunk_to_stream_response(
                     delta_text, from_variable_selector=event.from_variable_selector
                 )
