@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Any
 
 from pydantic.fields import FieldInfo
@@ -99,5 +100,11 @@ class DifyConfig(
             RemoteSettingsSourceFactory(settings_cls),
             dotenv_settings,
             file_secret_settings,
-            TomlConfigSettingsSource(settings_cls, toml_file="pyproject.toml"),
+            TomlConfigSettingsSource(settings_cls=settings_cls, toml_file=cls.get_pyproject_toml_path()),
         )
+
+    @classmethod
+    def get_pyproject_toml_path(cls) -> Path:
+        current_file_path = Path(__file__)
+        pyproject_toml_path = current_file_path.parent.parent / "pyproject.toml"
+        return pyproject_toml_path
