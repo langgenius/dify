@@ -52,7 +52,7 @@ jobs:
         run: sh .github/workflows/expose_service_ports.sh
 
       - name: Set up Vector Stores (ob)
-        uses: hoverkraft-tech/compose-action@v2.0.2.0.2
+        uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
             docker/docker-compose.yaml
@@ -60,7 +60,7 @@ jobs:
             oceanbase
 
       - name: Set up Vector Store (TiDB)
-        uses: hoverkraft-tech/compose-action@v2.0.2.0.2
+        uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: docker/tidb/docker-compose.yaml
           services: |
@@ -68,7 +68,7 @@ jobs:
             tiflash
 
       - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
-        uses: hoverkraft-tech/compose-action@v2.0.2.0.2
+        uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
             docker/docker-compose.yaml
