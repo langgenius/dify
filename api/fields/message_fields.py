@@ -38,6 +38,7 @@ retriever_resource_fields = {
     "index_node_hash": fields.String,
     "content": fields.String,
     "created_at": TimestampField,
+    "doc_metadata": fields.Raw,
 }
 
 message_fields = {
