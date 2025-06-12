@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from './create-from-dsl-modal'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { useTranslation } from 'react-i18next'
+import { useResetDatasetList } from '@/service/knowledge/use-dataset'
 
 const CreateOptions = () => {
   const { t } = useTranslation()
@@ -17,6 +18,7 @@ const CreateOptions = () => {
   const searchParams = useSearchParams()
   const { replace } = useRouter()
   const dslUrl = searchParams.get('remoteInstallUrl') || undefined
+  const resetDatasetList = useResetDatasetList()
 
   const activeTab = useMemo(() => {
     if (dslUrl)
@@ -45,7 +47,8 @@ const CreateOptions = () => {
 
   const onImportFromDSLSuccess = useCallback(() => {
     onPlanInfoChanged()
-  }, [onPlanInfoChanged])
+    resetDatasetList()
+  }, [onPlanInfoChanged, resetDatasetList])
 
   return (
     <div className='flex items-center gap-x-3 px-16 py-2'>

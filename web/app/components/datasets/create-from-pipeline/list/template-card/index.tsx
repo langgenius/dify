@@ -21,6 +21,7 @@ import type { CreateDatasetReq } from '@/models/datasets'
 import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
 import CreateModal from './create-modal'
 import { useInvalid } from '@/service/use-base'
+import { useResetDatasetList } from '@/service/knowledge/use-dataset'
 
 type TemplateCardProps = {
   pipeline: PipelineTemplate
@@ -46,6 +47,7 @@ const TemplateCard = ({
   }, false)
   const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
   const { handleCheckPluginDependencies } = usePluginDependencies()
+  const resetDatasetList = useResetDatasetList()
 
   const openCreateModal = useCallback(() => {
     setShowCreateModal(true)
@@ -70,8 +72,10 @@ const TemplateCard = ({
           type: 'success',
           message: t('app.newApp.appCreated'),
         })
+        resetDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+        setShowCreateModal(false)
         push(`/datasets/${newDataset.id}/pipeline`)
       },
       onError: () => {
@@ -81,7 +85,7 @@ const TemplateCard = ({
         })
       },
     })
-  }, [getPipelineTemplateInfo, createEmptyDataset, t, handleCheckPluginDependencies, push])
+  }, [getPipelineTemplateInfo, createEmptyDataset, t, handleCheckPluginDependencies, push, resetDatasetList])
 
   const handleShowTemplateDetails = useCallback(() => {
     setShowDetailModal(true)

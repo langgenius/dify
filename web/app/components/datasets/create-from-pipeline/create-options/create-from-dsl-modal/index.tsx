@@ -86,59 +86,57 @@ const CreateFromDSLModal = ({
     if (isCreatingRef.current)
       return
     isCreatingRef.current = true
-    try {
-      let response
-      if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
-        response = await importDSL({
-          mode: DSLImportMode.YAML_CONTENT,
-          yaml_content: fileContent || '',
-        })
-      }
-      if (currentTab === CreateFromDSLModalTab.FROM_URL) {
-        response = await importDSL({
-          mode: DSLImportMode.YAML_URL,
-          yaml_url: dslUrlValue || '',
-        })
-      }
-
-      if (!response)
-        return
-      const { id, status, pipeline_id, dataset_id, imported_dsl_version, current_dsl_version } = response
-      if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
-        if (onSuccess)
-          onSuccess()
-        if (onClose)
-          onClose()
-
-        notify({
-          type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-          message: t(status === DSLImportStatus.COMPLETED ? 'app.newApp.appCreated' : 'app.newApp.caution'),
-          children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
-        })
-        if (pipeline_id)
-          await handleCheckPluginDependencies(pipeline_id, true)
-        push(`datasets/${dataset_id}/pipeline`)
-      }
-      else if (status === DSLImportStatus.PENDING) {
-        setVersions({
-          importedVersion: imported_dsl_version ?? '',
-          systemVersion: current_dsl_version ?? '',
-        })
-        if (onClose)
-          onClose()
-        setTimeout(() => {
-          setShowErrorModal(true)
-        }, 300)
-        setImportId(id)
-      }
-      else {
-        notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
-      }
+    let response
+    if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
+      response = await importDSL({
+        mode: DSLImportMode.YAML_CONTENT,
+        yaml_content: fileContent || '',
+      })
     }
-    catch {
+    if (currentTab === CreateFromDSLModalTab.FROM_URL) {
+      response = await importDSL({
+        mode: DSLImportMode.YAML_URL,
+        yaml_url: dslUrlValue || '',
+      })
+    }
+
+    if (!response) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      isCreatingRef.current = false
+      return
     }
-    finally {
+    const { id, status, pipeline_id, dataset_id, imported_dsl_version, current_dsl_version } = response
+    if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
+      if (onSuccess)
+        onSuccess()
+      if (onClose)
+        onClose()
+
+      notify({
+        type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
+        message: t(status === DSLImportStatus.COMPLETED ? 'app.newApp.appCreated' : 'app.newApp.caution'),
+        children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
+      })
+      if (pipeline_id)
+        await handleCheckPluginDependencies(pipeline_id, true)
+      push(`/datasets/${dataset_id}/pipeline`)
+      isCreatingRef.current = false
+    }
+    else if (status === DSLImportStatus.PENDING) {
+      setVersions({
+        importedVersion: imported_dsl_version ?? '',
+        systemVersion: current_dsl_version ?? '',
+      })
+      if (onClose)
+        onClose()
+      setTimeout(() => {
+        setShowErrorModal(true)
+      }, 300)
+      setImportId(id)
+      isCreatingRef.current = false
+    }
+    else {
+      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
       isCreatingRef.current = false
     }
   }
@@ -153,32 +151,32 @@ const CreateFromDSLModal = ({
   const { mutateAsync: importDSLConfirm } = useImportPipelineDSLConfirm()
 
   const onDSLConfirm = async () => {
-    try {
-      if (!importId)
-        return
-      const response = await importDSLConfirm(importId)
+    if (!importId)
+      return
+    const response = await importDSLConfirm(importId)
 
-      const { status, pipeline_id, dataset_id } = response
-
-      if (status === DSLImportStatus.COMPLETED) {
-        if (onSuccess)
-          onSuccess()
-        if (onClose)
-          onClose()
-
-        notify({
-          type: 'success',
-          message: t('app.newApp.appCreated'),
-        })
-        if (pipeline_id)
-          await handleCheckPluginDependencies(pipeline_id, true)
-        push(`datasets/${dataset_id}/pipeline`)
-      }
-      else if (status === DSLImportStatus.FAILED) {
-        notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
-      }
+    if (!response) {
+      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      return
     }
-    catch {
+
+    const { status, pipeline_id, dataset_id } = response
+
+    if (status === DSLImportStatus.COMPLETED) {
+      if (onSuccess)
+        onSuccess()
+      if (onClose)
+        onClose()
+
+      notify({
+        type: 'success',
+        message: t('app.newApp.appCreated'),
+      })
+      if (pipeline_id)
+        await handleCheckPluginDependencies(pipeline_id, true)
+      push(`datasets/${dataset_id}/pipeline`)
+    }
+    else if (status === DSLImportStatus.FAILED) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }
