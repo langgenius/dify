@@ -246,30 +246,27 @@ class WorkflowDraftVariableService:
             self._session.flush()
             return None
 
-        def _extract_pair_from_dict(d: dict[str, Any], needle: str) -> dict[str, Any]:
-            result: dict[str, Any] = {}
-            for key, value in d:
-                if key == needle:
-                    result[needle] = value
-                    return result
-
-            return result
-
-        to_save_process_data = _extract_pair_from_dict(node_exec.process_data_dict or {}, variable.name)
-        to_save_outputs = _extract_pair_from_dict(node_exec.outputs_dict or {}, variable.name)
-
+        # Get node type for proper value extraction
         node_config = workflow.get_node_config_by_id(variable.node_id)
         node_type = workflow.get_node_type_from_node_config(node_config)
 
-        saver = DraftVariableSaver(
-            session=self._session,
-            app_id=workflow.app_id,
-            node_id=variable.node_id,
-            node_type=node_type,
-            invoke_from=InvokeFrom.DEBUGGER,
-            node_execution_id=variable.node_execution_id,
+        # Extract variable value using unified logic
+        old_value = DraftVariableSaver.extract_variable_value_from_execution_data(
+            node_exec,
+            variable.name,
+            node_type,
         )
-        saver.save(to_save_process_data, to_save_outputs)
+
+        if old_value is not None:
+            variable.set_value(old_value)
+            variable.last_edited_at = None  # Reset to indicate this is a reset operation
+            self._session.flush()
+            return variable
+        else:
+            # If variable not found in execution data, delete the variable
+            self._session.delete(instance=variable)
+            self._session.flush()
+            return None
 
     def reset_variable(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
         variable_type = variable.get_variable_type()
@@ -689,6 +686,35 @@ class DraftVariableSaver:
         else:
             draft_vars = self._build_variables_from_mapping(outputs)
         _batch_upsert_draft_varaible(self._session, draft_vars)
+
+    @staticmethod
+    def extract_variable_value_from_execution_data(
+        node_exec: "WorkflowNodeExecutionModel", variable_name: str, node_type: NodeType
+    ) -> Segment | None:
+        """
+        Extract variable value from execution data using unified logic.
+
+        Args:
+            node_exec: Workflow node execution record
+            variable_name: Name of the variable to extract
+            node_type: Type of the workflow node
+
+        Returns:
+            Raw variable value if found, None otherwise
+        """
+        outputs_dict = node_exec.outputs_dict or {}
+        process_data_dict = node_exec.process_data_dict or {}
+
+        # Note: Based on the implementation in `_build_from_variable_assigner_mapping`,
+        # VariableAssignerNode (both v1 and v2) can only create conversation draft variables.
+        # For consistency, we should simply return when processing VARIABLE_ASSIGNER nodes.
+        # This implementation must remain synchronized with the `_build_from_variable_assigner_mapping`
+        # and `save` methods.
+
+        if variable_name not in outputs_dict:
+            return None
+        value = outputs_dict[variable_name]
+        return _build_segment_for_value(value)
 
     @staticmethod
     def _should_variable_be_editable(node_id: str, name: str) -> bool:
