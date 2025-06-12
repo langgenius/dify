@@ -937,6 +937,9 @@ class ToolManager:
             # save tool parameter to tool entity memory
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
                 if variable_pool:
+                    config = tool_configurations.get(parameter.name, {})
+                    if not (config and isinstance(config, dict) and config.get("value") is not None):
+                        continue
                     tool_input = ToolNodeData.ToolInput(**tool_configurations.get(parameter.name, {}))
                     if tool_input.type == "variable":
                         variable = variable_pool.get(tool_input.value)
