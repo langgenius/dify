@@ -7,6 +7,7 @@ export enum PluginType {
   model = 'model',
   extension = 'extension',
   agent = 'agent-strategy',
+  datasource = 'datasource',
 }
 
 export enum PluginSource {

@@ -6,6 +6,7 @@ import type { MetadataFilteringVariableType } from '@/app/components/workflow/no
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
 import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
+import type { DatasourceType } from './pipeline'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -318,7 +319,7 @@ export type InitialDocumentDetail = {
   batch: string
   position: number
   dataset_id: string
-  data_source_type: DataSourceType
+  data_source_type: DataSourceType | DatasourceType
   data_source_info: DataSourceInfo
   dataset_process_rule_id: string
   name: string

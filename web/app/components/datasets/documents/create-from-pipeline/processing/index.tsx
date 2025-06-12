@@ -4,34 +4,30 @@ import { useTranslation } from 'react-i18next'
 import { RiBookOpenLine } from '@remixicon/react'
 import { useGetDocLanguage } from '@/context/i18n'
 import EmbeddingProcess from './embedding-process'
-import type { IndexingType } from '../../../create/step-two'
-import type { RETRIEVE_METHOD } from '@/types/app'
 import type { InitialDocumentDetail } from '@/models/pipeline'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 
 type ProcessingProps = {
-  datasetId: string
-  indexingType: IndexingType
-  retrievalMethod: RETRIEVE_METHOD
   batchId: string
   documents: InitialDocumentDetail[]
 }
 
 const Processing = ({
-  datasetId,
   batchId,
   documents,
-  indexingType,
-  retrievalMethod,
 }: ProcessingProps) => {
   const { t } = useTranslation()
   const docLanguage = useGetDocLanguage()
+  const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
+  const indexingType = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
+  const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict.search_method)
 
   return (
     <div className='flex h-full w-full justify-center overflow-hidden'>
       <div className='h-full w-3/5 overflow-y-auto pb-8 pt-10'>
         <div className='max-w-[640px]'>
           <EmbeddingProcess
-            datasetId={datasetId}
+            datasetId={datasetId!}
             batchId={batchId}
             documents={documents}
             indexingType={indexingType}

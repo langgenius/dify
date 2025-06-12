@@ -21,6 +21,7 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
   tool: PluginType.tool,
   agent: PluginType.agent,
   extension: PluginType.extension,
+  datasource: PluginType.datasource,
   bundle: 'bundle',
 }
 type PluginTypeSwitchProps = {
@@ -54,6 +55,11 @@ const PluginTypeSwitch = ({
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
       text: t('plugin.category.tools'),
+      icon: <RiHammerLine className='mr-1.5 h-4 w-4' />,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.datasource,
+      text: t('plugin.category.datasources'),
       icon: <RiHammerLine className='mr-1.5 h-4 w-4' />,
     },
     {
