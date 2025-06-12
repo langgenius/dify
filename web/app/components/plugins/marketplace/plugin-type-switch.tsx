@@ -2,6 +2,7 @@
 import {
   RiArchive2Line,
   RiBrain2Line,
+  RiDatabase2Line,
   RiHammerLine,
   RiPuzzle2Line,
   RiSpeakAiLine,
@@ -60,7 +61,7 @@ const PluginTypeSwitch = ({
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
       text: t('plugin.category.datasources'),
-      icon: <RiHammerLine className='mr-1.5 h-4 w-4' />,
+      icon: <RiDatabase2Line className='mr-1.5 h-4 w-4' />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,

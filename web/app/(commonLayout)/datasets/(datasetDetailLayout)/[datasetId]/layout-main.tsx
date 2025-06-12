@@ -125,7 +125,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       return true
     if (datasetRes.provider === 'external')
       return false
-    if (!datasetRes.pipeline_id)
+    if (datasetRes.runtime_mode === 'general')
       return false
     return !datasetRes.is_published
   }, [datasetRes])
@@ -149,7 +149,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
-      if (datasetRes?.pipeline_id) {
+      if (datasetRes?.runtime_mode === 'rag_pipeline') {
         baseNavigation.unshift({
           name: t('common.datasetMenus.pipeline'),
           href: `/datasets/${datasetId}/pipeline`,
@@ -168,7 +168,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetRes?.pipeline_id])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetRes?.runtime_mode])
 
   useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 

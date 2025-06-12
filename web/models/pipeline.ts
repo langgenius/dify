@@ -167,7 +167,7 @@ export type PipelineDatasourceNodeRunRequest = {
 export type PipelineDatasourceNodeRunResponse = {
   job_id?: string
   status: 'processing' | 'completed'
-  result: Record<string, any>
+  result: any
   provider_type: DatasourceType
 }
 

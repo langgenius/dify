@@ -50,8 +50,8 @@ const DatasetCard = ({
     return dataset.provider === EXTERNAL_PROVIDER
   }, [dataset.provider])
   const isPipelineUnpublished = useMemo(() => {
-    return !!dataset.pipeline_id && !dataset.is_published
-  }, [dataset.pipeline_id, dataset.is_published])
+    return dataset.runtime_mode === 'rag_pipeline' && !dataset.is_published
+  }, [dataset.runtime_mode, dataset.is_published])
   const chunkingModeIcon = dataset.doc_form ? DOC_FORM_ICON_WITH_BG[dataset.doc_form] : React.Fragment
   const Icon = isExternalProvider ? DOC_FORM_ICON_WITH_BG.external : chunkingModeIcon
   const iconInfo = dataset.icon_info || {
