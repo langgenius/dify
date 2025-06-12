@@ -21,6 +21,7 @@ def oceanbase_vector():
             user="root",
             database="test",
             password="difyai123456",
+            enable_hybrid_search=True,
         ),
     )
 
@@ -29,14 +30,6 @@ class OceanBaseVectorTest(AbstractVectorTest):
     def __init__(self, vector: OceanBaseVector):
         super().__init__()
         self.vector = vector
-
-    # def search_by_vector(self):
-    #     hits_by_vector = self.vector.search_by_vector(query_vector=self.example_embedding)
-    #     assert len(hits_by_vector) == 1
-
-    def search_by_full_text(self):
-        hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
-        assert len(hits_by_full_text) == 0
 
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
