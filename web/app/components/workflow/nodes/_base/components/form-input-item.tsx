@@ -29,7 +29,7 @@ type Props = {
   schema: CredentialFormSchema
   value: ToolVarInputs
   onChange: (value: any) => void
-  hideTypeSwitch?: boolean
+  inPanel?: boolean
 }
 
 const FormInputItem: FC<Props> = ({
@@ -38,7 +38,7 @@ const FormInputItem: FC<Props> = ({
   schema,
   value,
   onChange,
-  hideTypeSwitch,
+  inPanel,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
@@ -192,7 +192,7 @@ const FormInputItem: FC<Props> = ({
 
   return (
     <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
-      {showTypeSwitch && !hideTypeSwitch && (
+      {showTypeSwitch && (
         <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange}/>
       )}
       {isString && (
@@ -274,6 +274,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {showVariableSelector && (
         <VarReferencePicker
+          zIndex={inPanel ? 1000 : undefined}
           className='h-8 grow'
           readonly={readOnly}
           isShowNodeName

@@ -19,6 +19,7 @@ type Props = {
   schema: CredentialFormSchema
   value: ToolVarInputs
   onChange: (value: ToolVarInputs) => void
+  inPanel?: boolean
 }
 
 const ToolFormItem: FC<Props> = ({
@@ -27,6 +28,7 @@ const ToolFormItem: FC<Props> = ({
   schema,
   value,
   onChange,
+  inPanel,
 }) => {
   const language = useLanguage()
   const { name, label, type, required, tooltip, input_schema } = schema
@@ -78,6 +80,7 @@ const ToolFormItem: FC<Props> = ({
         schema={schema}
         value={value}
         onChange={onChange}
+        inPanel={inPanel}
       />
 
       {isShowSchema && (

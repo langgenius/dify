@@ -11,6 +11,7 @@ type Props = {
   value: ToolVarInputs
   onChange: (value: ToolVarInputs) => void
   onOpen?: (index: number) => void
+  inPanel?: boolean
 }
 
 const ToolForm: FC<Props> = ({
@@ -19,6 +20,7 @@ const ToolForm: FC<Props> = ({
   schema,
   value,
   onChange,
+  inPanel,
 }) => {
   return (
     <div className='space-y-1'>
@@ -31,6 +33,7 @@ const ToolForm: FC<Props> = ({
             schema={schema}
             value={value}
             onChange={onChange}
+            inPanel={inPanel}
           />
         ))
       }
