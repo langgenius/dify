@@ -214,6 +214,7 @@ class DocumentExtService:
             search_data = {
                 "title": segment.document_name,
                 "content": segment.segment_content,
+                "doc_metadata": segment.metadata,
                 "query": query_text
             }
             search_datas.append(search_data)
@@ -223,7 +224,7 @@ class DocumentExtService:
     def get_full_search_segments(dataset_ids: list[str], query_text: str):
 
         sql = text("""
-            SELECT s.id segment_id, s.document_id, s.content segment_content, d.name document_name
+            SELECT s.id segment_id, s.document_id, s.content segment_content, d.name document_name,d.doc_metadata
             FROM document_segments s
                 left join documents d on d.id = s.document_id
             WHERE content ILIKE :keyword and d.dataset_id::text = ANY(:dataset_ids)
@@ -236,7 +237,8 @@ class DocumentExtService:
             SELECT d.id AS document_id,
                    d.name AS document_name,
                    s.id AS segment_id,
-                   s.content AS segment_content
+                   s.content AS segment_content,
+                   d.doc_metadata
             FROM documents d
             JOIN (
                 SELECT s1.*
