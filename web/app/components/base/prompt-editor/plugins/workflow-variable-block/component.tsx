@@ -27,12 +27,13 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
-import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
+import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
@@ -54,7 +55,8 @@ const WorkflowVariableBlockComponent = ({
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length
-  const isShowAPart = variablesLength > 2
+  const isRagVar = isRagVariableVar(variables)
+  const isShowAPart = variablesLength > 2 && !isRagVar
   const varName = (
     () => {
       const isSystem = isSystemVar(variables)
@@ -113,7 +115,7 @@ const WorkflowVariableBlockComponent = ({
       className={cn(
         'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px] hover:border-state-accent-solid hover:bg-state-accent-hover',
         isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
-        !node && !isEnv && !isChatVar && '!border-state-destructive-solid !bg-state-destructive-hover',
+        !node && !isEnv && !isChatVar && !isRagVar && '!border-state-destructive-solid !bg-state-destructive-hover',
       )}
       onClick={(e) => {
         e.stopPropagation()
@@ -121,7 +123,7 @@ const WorkflowVariableBlockComponent = ({
       }}
       ref={ref}
     >
-      {!isEnv && !isChatVar && (
+      {!isEnv && !isChatVar && !isRagVar && (
         <div className='flex items-center'>
           {
             node?.type && (
@@ -146,17 +148,19 @@ const WorkflowVariableBlockComponent = ({
       )}
 
       <div className='flex items-center text-text-accent'>
-        {!isEnv && !isChatVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0', isException && 'text-text-warning')} />}
+        {!isEnv && !isChatVar && !isRagVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0', isException && 'text-text-warning')} />}
         {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
         {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
+        {isRagVar && <InputField className='h-3.5 w-3.5 text-text-accent' />}
         <div className={cn(
           'ml-0.5 shrink-0 truncate text-xs font-medium',
           isEnv && 'text-util-colors-violet-violet-600',
           isChatVar && 'text-util-colors-teal-teal-700',
           isException && 'text-text-warning',
+          isRagVar && 'text-text-accent',
         )} title={varName}>{varName}</div>
         {
-          !node && !isEnv && !isChatVar && (
+          !node && !isEnv && !isChatVar && !isRagVar && (
             <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-text-destructive' />
           )
         }
@@ -164,7 +168,7 @@ const WorkflowVariableBlockComponent = ({
     </div>
   )
 
-  if (!node && !isEnv && !isChatVar) {
+  if (!node && !isEnv && !isChatVar && !isRagVar) {
     return (
       <Tooltip popupContent={t('workflow.errorMsg.invalidVariable')}>
         {Item}
