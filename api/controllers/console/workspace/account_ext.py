@@ -95,16 +95,18 @@ class FullSearchTextApi(Resource):
             help='List of names'
         )
         parser.add_argument("query_text", type=str, required=True, location="json")
+        parser.add_argument("file_ids", type=str, required=True, location="json")
         args = parser.parse_args()
         dataset_names = args.dataset_names
         query_text = args.query_text
-
+        file_ids = args.file_ids
         current_user = flask_login.current_user
         tenant = current_user.current_tenant
         search_datas = DocumentExtService.get_full_search_data(
             dataset_names=dataset_names,
             tenant_id=tenant.id,
-            query_text=query_text
+            query_text=query_text,
+            file_ids=file_ids
         )
 
         return search_datas
