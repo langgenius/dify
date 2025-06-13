@@ -5,7 +5,6 @@ import { useGetState, useInfiniteScroll } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import produce from 'immer'
-import TypeIcon from '../type-icon'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
@@ -15,6 +14,7 @@ import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
 import { basePath } from '@/utils/var'
+import AppIcon from '@/app/components/base/app-icon'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -91,6 +91,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const handleSelect = () => {
     onSelect(selected)
   }
+
   return (
     <Modal
       isShow={isShow}
@@ -135,7 +136,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
               >
                 <div className='mr-1 flex items-center overflow-hidden'>
                   <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
-                    <TypeIcon type="upload_file" size='md' />
+                    <AppIcon
+                      size='tiny'
+                      iconType={item.icon_info.icon_type}
+                      icon={item.icon_info.icon}
+                      background={item.icon_info.icon_type === 'image' ? undefined : item.icon_info.icon_background}
+                      imageUrl={item.icon_info.icon_type === 'image' ? item.icon_info.icon_url : undefined}
+                    />
                   </div>
                   <div className={cn('max-w-[200px] truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && '!max-w-[120px] opacity-30')}>{item.name}</div>
                   {!item.embedding_available && (
