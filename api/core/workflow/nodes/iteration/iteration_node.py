@@ -502,18 +502,52 @@ class IterationNode(BaseNode[IterationNodeData]):
                             )
                             return
                         elif self.node_data.error_handle_mode == ErrorHandleMode.TERMINATED:
-                            yield IterationRunFailedEvent(
-                                iteration_id=self.id,
-                                iteration_node_id=self.node_id,
-                                iteration_node_type=self.node_type,
-                                iteration_node_data=self.node_data,
-                                start_at=start_at,
-                                inputs=inputs,
-                                outputs={"output": None},
-                                steps=len(iterator_list_value),
-                                metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
-                                error=event.error,
+                            yield NodeInIterationFailedEvent(
+                                **metadata_event.model_dump(),
                             )
+                            outputs[current_index] = None
+
+                            # clean nodes res
+                            for node_id in iteration_graph.node_ids:
+                                variable_pool.remove([node_id])
+
+                            # iteration run failed
+                            if self.node_data.is_parallel:
+                                yield IterationRunFailedEvent(
+                                    iteration_id=self.id,
+                                    iteration_node_id=self.node_id,
+                                    iteration_node_type=self.node_type,
+                                    iteration_node_data=self.node_data,
+                                    parallel_mode_run_id=parallel_mode_run_id,
+                                    start_at=start_at,
+                                    inputs=inputs,
+                                    outputs={"output": outputs},
+                                    steps=len(iterator_list_value),
+                                    metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
+                                    error=event.error,
+                                )
+                            else:
+                                yield IterationRunFailedEvent(
+                                    iteration_id=self.id,
+                                    iteration_node_id=self.node_id,
+                                    iteration_node_type=self.node_type,
+                                    iteration_node_data=self.node_data,
+                                    start_at=start_at,
+                                    inputs=inputs,
+                                    outputs={"output": outputs},
+                                    steps=len(iterator_list_value),
+                                    metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
+                                    error=event.error,
+                                )
+
+                            # stop the iterator
+                            yield RunCompletedEvent(
+                                run_result=NodeRunResult(
+                                    status=WorkflowNodeExecutionStatus.FAILED,
+                                    error=event.error,
+                                )
+                            )
+                            return
                     yield metadata_event
 
             current_output_segment = variable_pool.get(self.node_data.output_selector)
