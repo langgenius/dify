@@ -60,11 +60,13 @@ type WorkflowPreviewProps = {
   nodes: Node[]
   edges: Edge[]
   viewport: Viewport
+  className?: string
 }
 const WorkflowPreview = ({
   nodes,
   edges,
   viewport,
+  className,
 }: WorkflowPreviewProps) => {
   const [nodesData, setNodesData] = useState(initialNodes(nodes, edges))
   const [edgesData, setEdgesData] = useState(initialEdges(edges, nodes))
@@ -83,6 +85,7 @@ const WorkflowPreview = ({
       id='workflow-container'
       className={cn(
         'relative h-full w-full',
+        className,
       )}
     >
       <>
@@ -125,7 +128,7 @@ const WorkflowPreview = ({
         <Background
           gap={[14, 14]}
           size={2}
-          className="bg-workflow-canvas-workflow-bg"
+          className='bg-workflow-canvas-workflow-bg'
           color='var(--color-workflow-canvas-workflow-dot-color)'
         />
       </ReactFlow>

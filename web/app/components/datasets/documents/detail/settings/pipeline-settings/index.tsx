@@ -78,7 +78,7 @@ const PipelineSettings = ({
 
   return (
     <div
-      className='relative flex h-[calc(100vh-56px)] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
+      className='relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
     >
       <div className='flex h-full flex-1 flex-col px-14'>
         <LeftHeader title={t('datasetPipeline.documentSettings.title')} />
@@ -93,7 +93,7 @@ const PipelineSettings = ({
         </div>
       </div>
       {/* Preview */}
-      <div className='flex h-full flex-1 shrink-0 pl-2 pt-2'>
+      <div className='flex h-full flex-1 pl-2 pt-2'>
         <ChunkPreview
           dataSourceType={documentDetail!.data_source_type as DatasourceType}
           // @ts-expect-error mock data // todo: remove mock data

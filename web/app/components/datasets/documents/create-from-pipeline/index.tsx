@@ -18,7 +18,7 @@ import Loading from '@/app/components/base/loading'
 import type { Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import FilePreview from './preview/file-preview'
-import NotionPagePreview from './preview/notion-page-preview'
+import OnlineDocumentPreview from './preview/online-document-preview'
 import WebsitePreview from './preview/web-preview'
 import ProcessDocuments from './process-documents'
 import ChunkPreview from './preview/chunk-preview'
@@ -223,9 +223,9 @@ const CreateFormPipeline = () => {
 
   return (
     <div
-      className='relative flex h-[calc(100vh-56px)] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
+      className='relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
     >
-      <div className='flex h-full min-w-[760px] flex-1 flex-col px-14'>
+      <div className='flex h-full flex-1 flex-col px-14'>
         <LeftHeader
           steps={steps}
           title={t('datasetPipeline.addDocuments.title')}
@@ -309,16 +309,16 @@ const CreateFormPipeline = () => {
       {/* Preview */}
       {
         currentStep === 1 && (
-          <div className='flex h-full w-[752px] shrink-0 pl-2 pt-2'>
+          <div className='flex h-full flex-1 pl-2 pt-2'>
             {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
-            {currentDocuments && <NotionPagePreview currentPage={currentDocuments} hidePreview={hideOnlineDocumentPreview} />}
+            {currentDocuments && <OnlineDocumentPreview currentPage={currentDocuments} hidePreview={hideOnlineDocumentPreview} />}
             {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
           </div>
         )
       }
       {
         currentStep === 2 && (
-          <div className='flex h-full w-[752px] shrink-0 pl-2 pt-2'>
+          <div className='flex h-full flex-1 pl-2 pt-2'>
             <ChunkPreview
               dataSourceType={datasource!.type}
               files={fileList.map(file => file.file)}

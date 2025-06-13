@@ -189,7 +189,7 @@ const TemplateCard = ({
         <Modal
           isShow={showDetailModal}
           onClose={closeDetailsModal}
-          className='h-[calc(100vh-64px)] max-w-[1680px] p-0'
+          className='h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0'
         >
           <Details
             id={pipeline.id}
