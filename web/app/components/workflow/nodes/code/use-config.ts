@@ -9,7 +9,10 @@ import type { CodeNodeType, OutputVar } from './types'
 import { CodeLanguage } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import { fetchNodeDefault } from '@/service/workflow'
+import {
+  fetchNodeDefault,
+  fetchPipelineNodeDefault,
+} from '@/service/workflow'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
@@ -18,6 +21,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
   const appId = useStore(s => s.appId)
+  const pipelineId = useStore(s => s.pipelineId)
 
   const [allLanguageDefault, setAllLanguageDefault] = useState<Record<CodeLanguage, CodeNodeType> | null>(null)
   useEffect(() => {
@@ -32,6 +36,19 @@ const useConfig = (id: string, payload: CodeNodeType) => {
       })()
     }
   }, [appId])
+
+  useEffect(() => {
+    if (pipelineId) {
+      (async () => {
+        const { config: javaScriptConfig } = await fetchPipelineNodeDefault(pipelineId, BlockEnum.Code, { code_language: CodeLanguage.javascript }) as any
+        const { config: pythonConfig } = await fetchPipelineNodeDefault(pipelineId, BlockEnum.Code, { code_language: CodeLanguage.python3 }) as any
+        setAllLanguageDefault({
+          [CodeLanguage.javascript]: javaScriptConfig as CodeNodeType,
+          [CodeLanguage.python3]: pythonConfig as CodeNodeType,
+        } as any)
+      })()
+    }
+  }, [pipelineId])
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const { inputs, setInputs } = useNodeCrud<CodeNodeType>(id, payload)
