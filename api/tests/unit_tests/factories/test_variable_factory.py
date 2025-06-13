@@ -1,5 +1,6 @@
 import math
 from dataclasses import dataclass
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -19,8 +20,21 @@ from core.variables import (
     StringVariable,
 )
 from core.variables.exc import VariableError
-from core.variables.segments import ArrayAnySegment
+from core.variables.segments import (
+    ArrayAnySegment,
+    ArrayFileSegment,
+    ArrayNumberSegment,
+    ArrayObjectSegment,
+    ArrayStringSegment,
+    FloatSegment,
+    IntegerSegment,
+    NoneSegment,
+    ObjectSegment,
+    StringSegment,
+)
+from core.variables.types import SegmentType
 from factories import variable_factory
+from factories.variable_factory import TypeMismatchError, build_segment_with_type
 
 
 def test_string_variable():
@@ -503,3 +517,329 @@ def test_build_segment_type_for_scalar():
     for idx, c in enumerate(cases, 1):
         segment = variable_factory.build_segment(c.value)
         assert segment.value_type == c.expected_type, f"test case {idx} failed."
+
+
+class TestBuildSegmentWithType:
+    """Test cases for build_segment_with_type function."""
+
+    def test_string_type(self):
+        """Test building a string segment with correct type."""
+        result = build_segment_with_type(SegmentType.STRING, "hello")
+        assert isinstance(result, StringSegment)
+        assert result.value == "hello"
+        assert result.value_type == SegmentType.STRING
+
+    def test_number_type_integer(self):
+        """Test building a number segment with integer value."""
+        result = build_segment_with_type(SegmentType.NUMBER, 42)
+        assert isinstance(result, IntegerSegment)
+        assert result.value == 42
+        assert result.value_type == SegmentType.NUMBER
+
+    def test_number_type_float(self):
+        """Test building a number segment with float value."""
+        result = build_segment_with_type(SegmentType.NUMBER, 3.14)
+        assert isinstance(result, FloatSegment)
+        assert result.value == 3.14
+        assert result.value_type == SegmentType.NUMBER
+
+    def test_object_type(self):
+        """Test building an object segment with correct type."""
+        test_obj = {"key": "value", "nested": {"inner": 123}}
+        result = build_segment_with_type(SegmentType.OBJECT, test_obj)
+        assert isinstance(result, ObjectSegment)
+        assert result.value == test_obj
+        assert result.value_type == SegmentType.OBJECT
+
+    def test_none_type(self):
+        """Test building a none segment with None value."""
+        result = build_segment_with_type(SegmentType.NONE, None)
+        assert isinstance(result, NoneSegment)
+        assert result.value is None
+        assert result.value_type == SegmentType.NONE
+
+    def test_empty_array_string(self):
+        """Test building an empty array[string] segment."""
+        result = build_segment_with_type(SegmentType.ARRAY_STRING, [])
+        assert isinstance(result, ArrayStringSegment)
+        assert result.value == []
+        assert result.value_type == SegmentType.ARRAY_STRING
+
+    def test_empty_array_number(self):
+        """Test building an empty array[number] segment."""
+        result = build_segment_with_type(SegmentType.ARRAY_NUMBER, [])
+        assert isinstance(result, ArrayNumberSegment)
+        assert result.value == []
+        assert result.value_type == SegmentType.ARRAY_NUMBER
+
+    def test_empty_array_object(self):
+        """Test building an empty array[object] segment."""
+        result = build_segment_with_type(SegmentType.ARRAY_OBJECT, [])
+        assert isinstance(result, ArrayObjectSegment)
+        assert result.value == []
+        assert result.value_type == SegmentType.ARRAY_OBJECT
+
+    def test_empty_array_file(self):
+        """Test building an empty array[file] segment."""
+        result = build_segment_with_type(SegmentType.ARRAY_FILE, [])
+        assert isinstance(result, ArrayFileSegment)
+        assert result.value == []
+        assert result.value_type == SegmentType.ARRAY_FILE
+
+    def test_empty_array_any(self):
+        """Test building an empty array[any] segment."""
+        result = build_segment_with_type(SegmentType.ARRAY_ANY, [])
+        assert isinstance(result, ArrayAnySegment)
+        assert result.value == []
+        assert result.value_type == SegmentType.ARRAY_ANY
+
+    def test_array_with_values(self):
+        """Test building array segments with actual values."""
+        # Array of strings
+        result = build_segment_with_type(SegmentType.ARRAY_STRING, ["hello", "world"])
+        assert isinstance(result, ArrayStringSegment)
+        assert result.value == ["hello", "world"]
+        assert result.value_type == SegmentType.ARRAY_STRING
+
+        # Array of numbers
+        result = build_segment_with_type(SegmentType.ARRAY_NUMBER, [1, 2, 3.14])
+        assert isinstance(result, ArrayNumberSegment)
+        assert result.value == [1, 2, 3.14]
+        assert result.value_type == SegmentType.ARRAY_NUMBER
+
+        # Array of objects
+        result = build_segment_with_type(SegmentType.ARRAY_OBJECT, [{"a": 1}, {"b": 2}])
+        assert isinstance(result, ArrayObjectSegment)
+        assert result.value == [{"a": 1}, {"b": 2}]
+        assert result.value_type == SegmentType.ARRAY_OBJECT
+
+    def test_type_mismatch_string_to_number(self):
+        """Test type mismatch when expecting number but getting string."""
+        with pytest.raises(TypeMismatchError) as exc_info:
+            build_segment_with_type(SegmentType.NUMBER, "not_a_number")
+
+        assert "Type mismatch" in str(exc_info.value)
+        assert "expected number" in str(exc_info.value)
+        assert "str" in str(exc_info.value)
+
+    def test_type_mismatch_number_to_string(self):
+        """Test type mismatch when expecting string but getting number."""
+        with pytest.raises(TypeMismatchError) as exc_info:
+            build_segment_with_type(SegmentType.STRING, 123)
+
+        assert "Type mismatch" in str(exc_info.value)
+        assert "expected string" in str(exc_info.value)
+        assert "int" in str(exc_info.value)
+
+    def test_type_mismatch_none_to_string(self):
+        """Test type mismatch when expecting string but getting None."""
+        with pytest.raises(TypeMismatchError) as exc_info:
+            build_segment_with_type(SegmentType.STRING, None)
+
+        assert "Expected string, but got None" in str(exc_info.value)
+
+    def test_type_mismatch_empty_list_to_non_array(self):
+        """Test type mismatch when expecting non-array type but getting empty list."""
+        with pytest.raises(TypeMismatchError) as exc_info:
+            build_segment_with_type(SegmentType.STRING, [])
+
+        assert "Expected string, but got empty list" in str(exc_info.value)
+
+    def test_type_mismatch_object_to_array(self):
+        """Test type mismatch when expecting array but getting object."""
+        with pytest.raises(TypeMismatchError) as exc_info:
+            build_segment_with_type(SegmentType.ARRAY_STRING, {"key": "value"})
+
+        assert "Type mismatch" in str(exc_info.value)
+        assert "expected array[string]" in str(exc_info.value)
+
+    def test_compatible_number_types(self):
+        """Test that int and float are both compatible with NUMBER type."""
+        # Integer should work
+        result_int = build_segment_with_type(SegmentType.NUMBER, 42)
+        assert isinstance(result_int, IntegerSegment)
+        assert result_int.value_type == SegmentType.NUMBER
+
+        # Float should work
+        result_float = build_segment_with_type(SegmentType.NUMBER, 3.14)
+        assert isinstance(result_float, FloatSegment)
+        assert result_float.value_type == SegmentType.NUMBER
+
+    @pytest.mark.parametrize(
+        ("segment_type", "value", "expected_class"),
+        [
+            (SegmentType.STRING, "test", StringSegment),
+            (SegmentType.NUMBER, 42, IntegerSegment),
+            (SegmentType.NUMBER, 3.14, FloatSegment),
+            (SegmentType.OBJECT, {}, ObjectSegment),
+            (SegmentType.NONE, None, NoneSegment),
+            (SegmentType.ARRAY_STRING, [], ArrayStringSegment),
+            (SegmentType.ARRAY_NUMBER, [], ArrayNumberSegment),
+            (SegmentType.ARRAY_OBJECT, [], ArrayObjectSegment),
+            (SegmentType.ARRAY_ANY, [], ArrayAnySegment),
+        ],
+    )
+    def test_parametrized_valid_types(self, segment_type, value, expected_class):
+        """Parametrized test for valid type combinations."""
+        result = build_segment_with_type(segment_type, value)
+        assert isinstance(result, expected_class)
+        assert result.value == value
+        assert result.value_type == segment_type
+
+    @pytest.mark.parametrize(
+        ("segment_type", "value"),
+        [
+            (SegmentType.STRING, 123),
+            (SegmentType.NUMBER, "not_a_number"),
+            (SegmentType.OBJECT, "not_an_object"),
+            (SegmentType.ARRAY_STRING, "not_an_array"),
+            (SegmentType.STRING, None),
+            (SegmentType.NUMBER, None),
+        ],
+    )
+    def test_parametrized_type_mismatches(self, segment_type, value):
+        """Parametrized test for type mismatches that should raise TypeMismatchError."""
+        with pytest.raises(TypeMismatchError):
+            build_segment_with_type(segment_type, value)
+
+
+# Test cases for ValueError scenarios in build_segment function
+class TestBuildSegmentValueErrors:
+    """Test cases for ValueError scenarios in the build_segment function."""
+
+    @dataclass(frozen=True)
+    class ValueErrorTestCase:
+        """Test case data for ValueError scenarios."""
+
+        name: str
+        description: str
+        test_value: Any
+
+    def _get_test_cases(self):
+        """Get all test cases for ValueError scenarios."""
+
+        # Define inline classes for complex test cases
+        class CustomType:
+            pass
+
+        def unsupported_function():
+            return "test"
+
+        def gen():
+            yield 1
+            yield 2
+
+        return [
+            self.ValueErrorTestCase(
+                name="unsupported_custom_type",
+                description="custom class that doesn't match any supported type",
+                test_value=CustomType(),
+            ),
+            self.ValueErrorTestCase(
+                name="unsupported_set_type",
+                description="set (unsupported collection type)",
+                test_value={1, 2, 3},
+            ),
+            self.ValueErrorTestCase(
+                name="unsupported_tuple_type", description="tuple (unsupported type)", test_value=(1, 2, 3)
+            ),
+            self.ValueErrorTestCase(
+                name="unsupported_bytes_type",
+                description="bytes (unsupported type)",
+                test_value=b"hello world",
+            ),
+            self.ValueErrorTestCase(
+                name="unsupported_function_type",
+                description="function (unsupported type)",
+                test_value=unsupported_function,
+            ),
+            self.ValueErrorTestCase(
+                name="unsupported_module_type", description="module (unsupported type)", test_value=math
+            ),
+            self.ValueErrorTestCase(
+                name="array_with_unsupported_element_types",
+                description="array with unsupported element types",
+                test_value=[CustomType()],
+            ),
+            self.ValueErrorTestCase(
+                name="mixed_array_with_unsupported_types",
+                description="array with mix of supported and unsupported types",
+                test_value=["valid_string", 42, CustomType()],
+            ),
+            self.ValueErrorTestCase(
+                name="nested_unsupported_types",
+                description="nested structures containing unsupported types",
+                test_value=[{"valid": "data"}, CustomType()],
+            ),
+            self.ValueErrorTestCase(
+                name="complex_number_type",
+                description="complex number (unsupported type)",
+                test_value=3 + 4j,
+            ),
+            self.ValueErrorTestCase(
+                name="range_type", description="range object (unsupported type)", test_value=range(10)
+            ),
+            self.ValueErrorTestCase(
+                name="generator_type",
+                description="generator (unsupported type)",
+                test_value=gen(),
+            ),
+            self.ValueErrorTestCase(
+                name="exception_message_contains_value",
+                description="set to verify error message contains the actual unsupported value",
+                test_value={1, 2, 3},
+            ),
+            self.ValueErrorTestCase(
+                name="array_with_mixed_unsupported_segment_types",
+                description="array processing with unsupported segment types in match",
+                test_value=[CustomType()],
+            ),
+            self.ValueErrorTestCase(
+                name="frozenset_type",
+                description="frozenset (unsupported type)",
+                test_value=frozenset([1, 2, 3]),
+            ),
+            self.ValueErrorTestCase(
+                name="memoryview_type",
+                description="memoryview (unsupported type)",
+                test_value=memoryview(b"hello"),
+            ),
+            self.ValueErrorTestCase(
+                name="slice_type", description="slice object (unsupported type)", test_value=slice(1, 10, 2)
+            ),
+            self.ValueErrorTestCase(name="type_object", description="type object (unsupported type)", test_value=type),
+            self.ValueErrorTestCase(
+                name="generic_object", description="generic object (unsupported type)", test_value=object()
+            ),
+            self.ValueErrorTestCase(name="nested_list", description="nested list (unsupported type)", test_value=[[1]]),
+        ]
+
+    def test_build_segment_unsupported_types(self):
+        """Table-driven test for all ValueError scenarios in build_segment function."""
+        test_cases = self._get_test_cases()
+
+        for index, test_case in enumerate(test_cases, 1):
+            # Use test value directly
+            test_value = test_case.test_value
+
+            with pytest.raises(ValueError) as exc_info:
+                variable_factory.build_segment(test_value)
+
+            error_message = str(exc_info.value)
+            assert "not supported value" in error_message, (
+                f"Test case {index} ({test_case.name}): Expected 'not supported value' in error message, "
+                f"but got: {error_message}"
+            )
+
+    def test_build_segment_boolean_type_note(self):
+        """Note: Boolean values are actually handled as integers in Python, so they don't raise ValueError."""
+        # Boolean values in Python are subclasses of int, so they get processed as integers
+        # True becomes IntegerSegment(value=1) and False becomes IntegerSegment(value=0)
+        true_segment = variable_factory.build_segment(True)
+        false_segment = variable_factory.build_segment(False)
+
+        # Verify they are processed as integers, not as errors
+        assert true_segment.value == 1, "Test case 1 (boolean_true): Expected True to be processed as integer 1"
+        assert false_segment.value == 0, "Test case 2 (boolean_false): Expected False to be processed as integer 0"
+        assert true_segment.value_type == SegmentType.NUMBER
+        assert false_segment.value_type == SegmentType.NUMBER
