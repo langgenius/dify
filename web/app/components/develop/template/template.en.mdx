@@ -57,8 +57,8 @@ The text generation application offers non-session support and is ideal for tran
         <i>Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.</i>
       </Property>
       <Property name='user' type='string' key='user'>
-        User identifier, used to define the identity of the end-user, convenient for retrieval and statistics.
-        The rules are defined by the developer and need to ensure that the user identifier is unique within the application. The Service API does not share conversations created by the WebApp.
+          User identifier, used to define the identity of the end-user, convenient for retrieval and statistics.
+          The rules are defined by the developer and need to ensure that the user identifier is unique within the application. The Service API does not share conversations created by the WebApp.
       </Property>
       <Property name='files' type='array[object]' key='files'>
           File list, suitable for inputting files (images) combined with text understanding and answering questions, available only when the model supports Vision capability.
@@ -290,7 +290,7 @@ The text generation application offers non-session support and is ideal for tran
   - `task_id` (string) Task ID, can be obtained from the streaming chunk return
   Request Body
   - `user` (string) Required
-      User identifier, used to define the identity of the end-user, must be consistent with the user passed in the send message interface. The Service API does not share conversations created by the WebApp.
+    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the send message interface. The Service API does not share conversations created by the WebApp.
   ### Response
   - `result` (string) Always returns "success"
   </Col>
