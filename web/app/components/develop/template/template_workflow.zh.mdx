@@ -615,6 +615,8 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   - `name` (string) 应用名称
   - `description` (string) 应用描述
   - `tags` (array[string]) 应用标签
+  - `mode` (string) 应用模式
+  - 'author_name' (string) 作者名称
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -631,7 +633,9 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "workflow",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>

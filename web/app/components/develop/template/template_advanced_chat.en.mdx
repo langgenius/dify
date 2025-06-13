@@ -1123,6 +1123,8 @@ Chat applications support session persistence, allowing previous chat history to
   - `name` (string) application name
   - `description` (string) application description
   - `tags` (array[string]) application tags
+  - `mode` (string) application mode
+  - `author_name` (string) application author name
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -1139,7 +1141,9 @@ Chat applications support session persistence, allowing previous chat history to
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "advanced-chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>

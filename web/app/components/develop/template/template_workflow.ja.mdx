@@ -628,6 +628,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `name` (string) アプリケーションの名前
   - `description` (string) アプリケーションの説明
   - `tags` (array[string]) アプリケーションのタグ
+  - `mode` (string) アプリケーションのモード
+  - `author_name` (string) 作者の名前
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -644,7 +646,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "workflow",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>
