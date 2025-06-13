@@ -307,47 +307,48 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     yield response
             elif isinstance(event, QueueLLMChunkEvent | QueueAgentMessageEvent):
                 chunk = event.chunk
+
                 delta_text = chunk.delta.message.content
                 if delta_text is None:
                     continue
-                if isinstance(chunk.delta.message.content, list):
-                    delta_text = ""
-                    for content in chunk.delta.message.content:
-                        logger.debug(
-                            "The content type %s in LLM chunk delta message content.: %r", type(content), content
-                        )
+                if isinstance(delta_text, list):
+                    delta_text_parts = []
+                    for content in delta_text:
                         if isinstance(content, TextPromptMessageContent):
-                            delta_text += content.data
+                            delta_text_parts.append(content.data)
                         elif isinstance(content, str):
-                            delta_text += content  # failback to str
+                            delta_text_parts.append(content)
                         else:
                             logger.warning(
-                                "Unsupported content type %s in LLM chunk delta message content.: %r",
+                                "Unsupported content type %s in LLM chunk delta message content: %r",
                                 type(content),
                                 content,
                             )
                             continue
+                    delta_text = "".join(delta_text_parts)
+                else:
+                    delta_text = str(delta_text)
 
                 if not self._task_state.llm_result.prompt_messages:
                     self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
                 # handle output moderation chunk
-                should_direct_answer = self._handle_output_moderation_chunk(cast(str, delta_text))
+                should_direct_answer = self._handle_output_moderation_chunk(delta_text)
                 if should_direct_answer:
                     continue
 
                 current_content = cast(str, self._task_state.llm_result.message.content)
-                current_content += cast(str, delta_text)
+                current_content += delta_text
                 self._task_state.llm_result.message.content = current_content
 
                 if isinstance(event, QueueLLMChunkEvent):
                     yield self._message_cycle_manager.message_to_stream_response(
-                        answer=cast(str, delta_text),
+                        answer=delta_text,
                         message_id=self._message_id,
                     )
                 else:
                     yield self._agent_message_to_stream_response(
-                        answer=cast(str, delta_text),
+                        answer=delta_text,
                         message_id=self._message_id,
                     )
             elif isinstance(event, QueueMessageReplaceEvent):
