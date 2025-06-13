@@ -41,18 +41,20 @@ const ValueContent = ({
   const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query' && currentVar.name !== 'files')
   const JSONEditorDisabled = currentVar.value_type === 'array[any]'
 
+  const formatFileValue = (value: VarInInspect) => {
+    if (value.value_type === 'file')
+      return value.value ? getProcessedFilesFromResponse([value.value]) : []
+    if (value.value_type === 'array[file]' || (value.type === VarInInspectType.system && currentVar.name === 'files'))
+      return value.value && value.value.length > 0 ? getProcessedFilesFromResponse(value.value) : []
+    return []
+  }
+
   const [value, setValue] = useState<any>()
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
   const fileFeature = useFeatures(s => s.features.file)
-  const [fileValue, setFileValue] = useState<any>(
-    currentVar.value_type === 'array[file]'
-    ? getProcessedFilesFromResponse(currentVar.value || [])
-    : currentVar.value
-      ? getProcessedFilesFromResponse([currentVar.value])
-      : [],
-  )
+  const [fileValue, setFileValue] = useState<any>(formatFileValue(currentVar))
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
 
@@ -68,16 +70,8 @@ const ValueContent = ({
     if (showJSONEditor)
       setJson(currentVar.value ? JSON.stringify(currentVar.value, null, 2) : '')
 
-    if (showFileEditor) {
-      console.log(getProcessedFilesFromResponse(currentVar.value || []))
-      setFileValue(
-        (currentVar.value_type === 'array[file]' || isSysFiles)
-        ? getProcessedFilesFromResponse(currentVar.value || [])
-        : currentVar.value
-          ? getProcessedFilesFromResponse([currentVar.value])
-          : [],
-        )
-    }
+    if (showFileEditor)
+      setFileValue(formatFileValue(currentVar))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentVar.id, currentVar.value])
 
