@@ -12,7 +12,7 @@ const LogContent = (props) => {
       dataIndex: 'timestamp',
       width: 150,
       render: (value) => {
-        return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
+        return dayjs(value / 1000).format('YYYY-MM-DD HH:mm:ss')
       },
     },
     {
