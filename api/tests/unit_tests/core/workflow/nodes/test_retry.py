@@ -27,7 +27,10 @@ def test_retry_default_value_partial_success():
         "edges": DEFAULT_VALUE_EDGE,
         "nodes": [
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
-            {"data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}"}, "id": "answer"},
+            {
+                "data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}", "outputs": []},
+                "id": "answer",
+            },
             ContinueOnErrorTestHelper.get_http_node(
                 "default-value",
                 [{"key": "result", "type": "string", "value": "http node got error response"}],
@@ -50,7 +53,10 @@ def test_retry_failed():
         "edges": DEFAULT_VALUE_EDGE,
         "nodes": [
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
-            {"data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}"}, "id": "answer"},
+            {
+                "data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}", "outputs": []},
+                "id": "answer",
+            },
             ContinueOnErrorTestHelper.get_http_node(
                 None,
                 None,

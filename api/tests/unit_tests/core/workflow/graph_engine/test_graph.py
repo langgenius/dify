@@ -43,7 +43,7 @@ def test_init():
                 "id": "llm",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer",
             },
             {
@@ -57,7 +57,7 @@ def test_init():
                 "id": "http",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer2",
             },
         ],
@@ -126,7 +126,7 @@ def test__init_iteration_graph():
                 "id": "llm",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer",
             },
             {
@@ -148,7 +148,7 @@ def test__init_iteration_graph():
                 "parentId": "iteration",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer-in-iteration",
                 "parentId": "iteration",
             },
@@ -235,7 +235,7 @@ def test_parallels_graph():
                 "id": "llm3",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer",
             },
         ],
@@ -310,7 +310,7 @@ def test_parallels_graph2():
                 "id": "llm3",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer",
             },
         ],
@@ -373,7 +373,7 @@ def test_parallels_graph3():
                 "id": "llm3",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer",
             },
         ],
@@ -480,7 +480,7 @@ def test_parallels_graph4():
                 "id": "code3",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer",
             },
         ],
@@ -606,7 +606,7 @@ def test_parallels_graph5():
                 "id": "code3",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer",
             },
             {
@@ -745,7 +745,7 @@ def test_parallels_graph6():
                 "id": "code3",
             },
             {
-                "data": {"type": "answer", "title": "answer", "answer": "1"},
+                "data": {"type": "answer", "title": "answer", "answer": "1", "outputs": []},
                 "id": "answer",
             },
         ],
