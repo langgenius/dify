@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Optional, Union
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -151,11 +151,11 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             existing = session.scalar(select(WorkflowRun).where(WorkflowRun.id == domain_model.id_))
             if not existing:
                 # For new records, get the next sequence number
-                stmt = select(WorkflowRun.sequence_number).where(
+                stmt = select(func.max(WorkflowRun.sequence_number)).where(
                     WorkflowRun.app_id == self._app_id,
                     WorkflowRun.tenant_id == self._tenant_id,
                 )
-                max_sequence = session.scalar(stmt.order_by(WorkflowRun.sequence_number.desc()))
+                max_sequence = session.scalar(stmt)
                 db_model.sequence_number = (max_sequence or 0) + 1
             else:
                 # For updates, keep the existing sequence number
