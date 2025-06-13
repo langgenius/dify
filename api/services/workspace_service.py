@@ -20,7 +20,6 @@ class WorkspaceService:
             "created_at": tenant.created_at,
             "trial_end_reason": None,
             "role": "normal",
-            "beta_config": tenant.beta_config_dict,
         }
 
         # Get role of user

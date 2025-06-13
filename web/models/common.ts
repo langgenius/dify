@@ -135,9 +135,6 @@ export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
     remove_webapp_brand?: boolean
     replace_webapp_logo?: string
   },
-  beta_config?: {
-    workflow_var_check?: boolean
-  }
 }
 
 export type DataSourceNotionPage = {

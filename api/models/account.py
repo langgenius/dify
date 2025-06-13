@@ -199,7 +199,6 @@ class Tenant(Base):
     plan = db.Column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     custom_config = db.Column(db.Text)
-    beta_config = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
@@ -217,14 +216,6 @@ class Tenant(Base):
     @custom_config_dict.setter
     def custom_config_dict(self, value: dict):
         self.custom_config = json.dumps(value)
-
-    @property
-    def beta_config_dict(self) -> dict:
-        return json.loads(self.beta_config) if self.beta_config else {}
-
-    @beta_config_dict.setter
-    def beta_config_dict(self, value: dict):
-        self.beta_config = json.dumps(value)
 
 
 class TenantAccountJoin(Base):

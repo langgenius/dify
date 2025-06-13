@@ -15,8 +15,6 @@ import {
   RiMoneyDollarCircleLine,
   RiPuzzle2Fill,
   RiPuzzle2Line,
-  RiTestTubeFill,
-  RiTestTubeLine,
   RiTranslate2,
 } from '@remixicon/react'
 import Button from '../../base/button'
@@ -33,7 +31,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import Input from '@/app/components/base/input'
-import BatePage from './beta-page'
 
 const iconClassName = `
   w-5 h-5 mr-2
@@ -59,7 +56,7 @@ export default function AccountSetting({
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
-  const { isCurrentWorkspaceDatasetOperator, currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const workplaceGroupItems = (() => {
     if (isCurrentWorkspaceDatasetOperator)
       return []
@@ -101,12 +98,6 @@ export default function AccountSetting({
         name: t('custom.custom'),
         icon: <RiColorFilterLine className={iconClassName} />,
         activeIcon: <RiColorFilterFill className={iconClassName} />,
-      },
-      {
-        key: currentWorkspace.role === 'owner' ? 'beta' : false,
-        name: t('common.beta.beta'),
-        icon: <RiTestTubeLine className={iconClassName} />,
-        activeIcon: <RiTestTubeFill className={iconClassName} />,
       },
     ].filter(item => !!item.key) as GroupItem[]
   })()
@@ -228,7 +219,6 @@ export default function AccountSetting({
               {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
               {activeMenu === 'custom' && <CustomPage />}
               {activeMenu === 'language' && <LanguagePage />}
-              {activeMenu === 'beta' && <BatePage />}
             </div>
           </div>
         </div>
