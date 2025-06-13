@@ -551,6 +551,17 @@ class DraftVariableSaver:
         self._node_execution_id = node_execution_id
         self._enclosing_node_id = enclosing_node_id
 
+    def _create_dummy_output_variable(self):
+        return WorkflowDraftVariable.new_node_variable(
+            app_id=self._app_id,
+            node_id=self._node_id,
+            name=self._DUMMY_OUTPUT_IDENTITY,
+            node_execution_id=self._node_execution_id,
+            value=_build_segment_for_value(self._DUMMY_OUTPUT_VALUE),
+            visible=False,
+            editable=False,
+        )
+
     def _should_save_output_variables_for_draft(self) -> bool:
         # Only save output variables for debugging execution of workflow.
         if self._invoke_from != InvokeFrom.DEBUGGER:
@@ -581,6 +592,8 @@ class DraftVariableSaver:
                     value=segment,
                 )
             )
+        # Add a dummy output variable to indicate that this node is executed.
+        draft_vars.append(self._create_dummy_output_variable())
         return draft_vars
 
     def _build_variables_from_start_mapping(self, output: Mapping[str, Any]) -> list[WorkflowDraftVariable]:
@@ -624,17 +637,7 @@ class DraftVariableSaver:
                     )
                 )
         if not has_non_sys_variables:
-            draft_vars.append(
-                WorkflowDraftVariable.new_node_variable(
-                    app_id=self._app_id,
-                    node_id=self._node_id,
-                    name=self._DUMMY_OUTPUT_IDENTITY,
-                    node_execution_id=self._node_execution_id,
-                    value=_build_segment_for_value(self._DUMMY_OUTPUT_VALUE),
-                    visible=False,
-                    editable=False,
-                )
-            )
+            draft_vars.append(self._create_dummy_output_variable())
         return draft_vars
 
     def _normalize_variable_for_start_node(self, name: str) -> tuple[str, str]:
@@ -710,6 +713,8 @@ class DraftVariableSaver:
         #
         # This implementation must remain synchronized with the `_build_from_variable_assigner_mapping`
         # and `save` methods.
+        if node_type == NodeType.VARIABLE_ASSIGNER:
+            return None
 
         if variable_name not in outputs_dict:
             return None
