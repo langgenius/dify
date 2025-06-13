@@ -15,7 +15,7 @@ from core.plugin.entities.parameters import (
     init_frontend_parameter,
 )
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolLabelEnum
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolLabelEnum
 
 
 class DatasourceProviderType(enum.StrEnum):
@@ -207,12 +207,6 @@ class DatasourceInvokeFrom(Enum):
     RAG_PIPELINE = "rag_pipeline"
 
 
-class GetOnlineDocumentPagesRequest(BaseModel):
-    """
-    Get online document pages request
-    """
-
-
 class OnlineDocumentPage(BaseModel):
     """
     Online document page
@@ -237,7 +231,7 @@ class OnlineDocumentInfo(BaseModel):
     pages: list[OnlineDocumentPage] = Field(..., description="The pages of the online document")
 
 
-class GetOnlineDocumentPagesResponse(BaseModel):
+class OnlineDocumentPagesMessage(BaseModel):
     """
     Get online document pages response
     """
@@ -300,3 +294,32 @@ class WebsiteCrawlMessage(BaseModel):
     Get website crawl response
     """
     result: WebSiteInfo = WebSiteInfo(status="", web_info_list=[], total=0, completed=0)
+
+class DatasourceMessage(ToolInvokeMessage):
+    pass
+
+
+class DatasourceInvokeMessage(ToolInvokeMessage):
+    """
+    Datasource Invoke Message.
+    """
+
+    class WebsiteCrawlMessage(BaseModel):
+        """
+        Website crawl message
+        """
+
+        job_id: str = Field(..., description="The job id")
+        status: str = Field(..., description="The status of the job")
+        web_info_list: Optional[list[WebSiteInfoDetail]] = []
+
+    class OnlineDocumentMessage(BaseModel):
+        """
+        Online document message
+        """
+
+        workspace_id: str = Field(..., description="The workspace id")
+        workspace_name: str = Field(..., description="The workspace name")
+        workspace_icon: str = Field(..., description="The workspace icon")
+        total: int = Field(..., description="The total number of documents")
+        pages: list[OnlineDocumentPage] = Field(..., description="The pages of the online document")

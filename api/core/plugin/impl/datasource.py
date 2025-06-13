@@ -4,8 +4,7 @@ from typing import Any
 from core.datasource.entities.datasource_entities import (
     DatasourceInvokeMessage,
     GetOnlineDocumentPageContentRequest,
-    GetOnlineDocumentPageContentResponse,
-    GetOnlineDocumentPagesResponse,
+    OnlineDocumentPagesMessage,
     WebsiteCrawlMessage,
 )
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
@@ -129,7 +128,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> Generator[DatasourceInvokeMessage, None, None]:
+    ) -> Generator[OnlineDocumentPagesMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -139,7 +138,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_pages",
-            DatasourceInvokeMessage,
+            OnlineDocumentPagesMessage,
             data={
                 "user_id": user_id,
                 "data": {

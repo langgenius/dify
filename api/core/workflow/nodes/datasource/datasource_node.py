@@ -1,5 +1,5 @@
-from collections.abc import Mapping, Sequence
-from typing import Any, Generator, cast
+from collections.abc import Generator, Mapping, Sequence
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -9,7 +9,6 @@ from core.datasource.entities.datasource_entities import (
     DatasourceParameter,
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
-    GetOnlineDocumentPageContentResponse,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.datasource.utils.message_transformer import DatasourceFileMessageTransformer

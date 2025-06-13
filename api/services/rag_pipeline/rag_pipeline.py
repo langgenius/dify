@@ -16,7 +16,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
-    GetOnlineDocumentPagesResponse,
+    OnlineDocumentPagesMessage,
     WebsiteCrawlMessage,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
@@ -532,7 +532,7 @@ class RagPipelineService:
         match datasource_type:
             case DatasourceProviderType.ONLINE_DOCUMENT:
                 datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                online_document_result: GetOnlineDocumentPagesResponse = datasource_runtime._get_online_document_pages(
+                online_document_result: OnlineDocumentPagesMessage = datasource_runtime._get_online_document_pages(
                     user_id=account.id,
                     datasource_parameters=user_inputs,
                     provider_type=datasource_runtime.datasource_provider_type(),
