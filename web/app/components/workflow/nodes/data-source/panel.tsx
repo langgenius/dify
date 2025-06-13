@@ -159,8 +159,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
       }
       <OutputVars>
         {
-          COMMON_OUTPUT.map(item => (
+          COMMON_OUTPUT.map((item, index) => (
             <VarItem
+              key={index}
               name={item.name}
               type={item.type}
               description={item.description}
@@ -168,8 +169,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
           ))
         }
         {
-          isLocalFile && LOCAL_FILE_OUTPUT.map(item => (
+          isLocalFile && LOCAL_FILE_OUTPUT.map((item, index) => (
             <VarItem
+              key={index}
               name={item.name}
               type={item.type}
               description={item.description}
@@ -182,8 +184,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
           ))
         }
         {
-          isWebsiteCrawl && WEBSITE_CRAWL_OUTPUT.map(item => (
+          isWebsiteCrawl && WEBSITE_CRAWL_OUTPUT.map((item, index) => (
             <VarItem
+              key={index}
               name={item.name}
               type={item.type}
               description={item.description}
@@ -191,8 +194,9 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
           ))
         }
         {
-          isOnlineDocument && ONLINE_DOCUMENT_OUTPUT.map(item => (
+          isOnlineDocument && ONLINE_DOCUMENT_OUTPUT.map((item, index) => (
             <VarItem
+              key={index}
               name={item.name}
               type={item.type}
               description={item.description}
