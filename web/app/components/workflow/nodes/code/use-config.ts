@@ -10,7 +10,6 @@ import { CodeLanguage } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { fetchNodeDefault } from '@/service/workflow'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
@@ -18,7 +17,7 @@ import {
 const useConfig = (id: string, payload: CodeNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
 
-  const appId = useAppStore.getState().appDetail?.id
+  const appId = useStore(s => s.appId)
 
   const [allLanguageDefault, setAllLanguageDefault] = useState<Record<CodeLanguage, CodeNodeType> | null>(null)
   useEffect(() => {
@@ -34,7 +33,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     }
   }, [appId])
 
-  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
   const { inputs, setInputs } = useNodeCrud<CodeNodeType>(id, payload)
   const { handleVarListChange, handleAddVariable } = useVarList<CodeNodeType>({
     inputs,
