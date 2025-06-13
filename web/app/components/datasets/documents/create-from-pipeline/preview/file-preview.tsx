@@ -40,7 +40,7 @@ const FilePreview = ({
   }
 
   return (
-    <div className='h-full w-full rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
+    <div className='flex h-full w-full flex-col rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
       <div className='flex gap-x-2 border-b border-divider-subtle pb-3 pl-6 pr-4 pt-4'>
         <div className='flex grow flex-col gap-y-1'>
           <div className='system-2xs-semibold-uppercase text-text-accent'>{t('datasetPipeline.addDocuments.stepOne.preview')}</div>
@@ -70,9 +70,15 @@ const FilePreview = ({
           <RiCloseLine className='size-[18px]' />
         </button>
       </div>
-      {isFetching && <Loading />}
+      {isFetching && (
+        <div className='grow'>
+          <Loading />
+        </div>
+      )}
       {!isFetching && fileData && (
-        <div className='body-md-regular overflow-hidden px-6 py-5 text-text-secondary'>{fileData.content}</div>
+        <div className='body-md-regular grow overflow-hidden px-6 py-5 text-text-secondary'>
+          {fileData.content}
+        </div>
       )}
     </div>
   )

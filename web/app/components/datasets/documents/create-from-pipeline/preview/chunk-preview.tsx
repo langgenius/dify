@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PreviewContainer } from '../../../preview/container'
+import PreviewContainer from '../../../preview/container'
 import { PreviewHeader } from '../../../preview/header'
 import type { CrawlResultItem, CustomFile, DocumentItem, FileIndexingEstimateResponse } from '@/models/datasets'
 import { ChunkingMode } from '@/models/datasets'
@@ -189,7 +189,7 @@ const ChunkPreview = ({
         </div>
       )}
       {isPending && (
-        <div className='space-y-6'>
+        <div className='h-full w-full space-y-6 overflow-hidden'>
           {Array.from({ length: 10 }, (_, i) => (
             <SkeletonContainer key={i}>
               <SkeletonRow>

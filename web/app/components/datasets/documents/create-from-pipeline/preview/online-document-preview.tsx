@@ -8,17 +8,18 @@ import { formatNumberAbbreviated } from '@/utils/format'
 import Loading from './loading'
 import { Notion } from '@/app/components/base/icons/src/public/common'
 
-type NotionPagePreviewProps = {
+type OnlineDocumentPreviewProps = {
   currentPage: NotionPage
   hidePreview: () => void
 }
 
-const NotionPagePreview = ({
+const OnlineDocumentPreview = ({
   currentPage,
   hidePreview,
-}: NotionPagePreviewProps) => {
+}: OnlineDocumentPreviewProps) => {
   const { t } = useTranslation()
 
+  // todo: replace with a generic hook for previewing online documents
   const { data: notionPageData, isFetching } = usePreviewNotionPage({
     workspaceID: currentPage.workspace_id,
     pageID: currentPage.page_id,
@@ -26,8 +27,8 @@ const NotionPagePreview = ({
   })
 
   return (
-    <div className='h-full rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
-      <div className='flex gap-x-2 pb-3 pl-6 pr-4 pt-4'>
+    <div className='flex h-full w-full flex-col rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
+      <div className='flex gap-x-2 border-b border-divider-subtle pb-3 pl-6 pr-4 pt-4'>
         <div className='flex grow flex-col gap-y-1'>
           <div className='system-2xs-semibold-uppercase'>{t('datasetPipeline.addDocuments.stepOne.preview')}</div>
           <div className='title-md-semi-bold text-tex-primary'>{currentPage?.page_name}</div>
@@ -52,14 +53,18 @@ const NotionPagePreview = ({
           <RiCloseLine className='size-[18px]' />
         </button>
       </div>
-      <div className='px-6 py-5'>
-        {isFetching && <Loading />}
-        {!isFetching && notionPageData && (
-          <div className='body-md-regular overflow-hidden text-text-secondary'>{notionPageData.content}</div>
-        )}
-      </div>
+      {isFetching && (
+        <div className='grow'>
+          <Loading />
+        </div>
+      )}
+      {!isFetching && notionPageData && (
+        <div className='body-md-regular grow overflow-hidden px-6 py-5 text-text-secondary'>
+          {notionPageData.content}
+        </div>
+      )}
     </div>
   )
 }
 
-export default NotionPagePreview
+export default OnlineDocumentPreview
