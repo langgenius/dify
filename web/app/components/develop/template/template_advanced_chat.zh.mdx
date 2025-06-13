@@ -50,7 +50,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         默认 `{}`
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
-        - `streaming` 流式模式（推荐）。 基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现类似打字机输出方式的流式返回。
+        - `streaming` 流式模式（推荐）。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现类似打字机输出方式的流式返回。
         - `blocking` 阻塞模式，等待执行完毕后返回结果。（请求若流程较长可能会被中断）。
         <i>由于 Cloudflare 限制，请求会在 100 秒超时无返回后中断。</i>
       </Property>
@@ -428,7 +428,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
-
 ---
 
 <Heading
