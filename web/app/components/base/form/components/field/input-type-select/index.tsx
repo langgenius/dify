@@ -50,7 +50,7 @@ const InputTypeSelectField = ({
         }}
         popupProps={{
           className: 'w-[368px]',
-          wrapperClassName: 'z-40',
+          wrapperClassName: 'z-[9999999]',
           itemClassName: 'gap-x-1',
         }}
         CustomTrigger={renderTrigger}
