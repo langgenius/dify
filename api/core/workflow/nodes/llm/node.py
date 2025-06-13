@@ -525,6 +525,8 @@ class LLMNode(BaseNode[LLMNodeData]):
                 # Set appropriate response format based on model capabilities
                 self._set_response_format(completion_params, model_schema.parameter_rules)
         model_config_with_cred.parameters = completion_params
+        # NOTE(-LAN-): This line modify the `self.node_data.model`, which is used in `_invoke_llm()`.
+        node_data_model.completion_params = completion_params
         return model, model_config_with_cred
 
     def _fetch_prompt_messages(
