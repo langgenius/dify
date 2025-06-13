@@ -43,10 +43,12 @@ class QueryFullLogsTool(BuiltinTool):
 
         raw_logs = resp.json().get('logs', [])
         contents = []
-        for raw_log in raw_logs:
-            content = raw_log.get('content','')
-            timestamp = raw_log.get('timestamp')
-            contents.append({'body': content, 'timestamp':timestamp})
+        if raw_logs:
+            for raw_log in raw_logs:
+                content = raw_log.get('content','')
+                timestamp = raw_log.get('timestamp')
+                tags = raw_log.get('tags', {})
+                contents.append({'body': content, 'timestamp':timestamp, 'tags': tags})
 
         list = json.dumps({
             'type': 'log',
