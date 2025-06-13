@@ -100,11 +100,7 @@ class DifyConfig(
             RemoteSettingsSourceFactory(settings_cls),
             dotenv_settings,
             file_secret_settings,
-            TomlConfigSettingsSource(settings_cls=settings_cls, toml_file=cls.get_pyproject_toml_path()),
+            TomlConfigSettingsSource(
+                settings_cls=settings_cls, toml_file=Path(__file__).parent.parent / "pyproject.toml"
+            ),
         )
-
-    @classmethod
-    def get_pyproject_toml_path(cls) -> Path:
-        current_file_path = Path(__file__)
-        pyproject_toml_path = current_file_path.parent.parent / "pyproject.toml"
-        return pyproject_toml_path
