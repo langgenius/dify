@@ -42,30 +42,30 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### リクエストボディ
 
     <Properties>
-      
       <Property name='inputs' type='object' key='inputs'>
-          アプリで定義された各種変数値を入力できます。
-          `inputs`パラメータには複数のキー/値ペアが含まれ、各キーは特定の変数に対応し、各値はその変数の具体的な値となります。
-          テキスト生成アプリケーションでは、少なくとも1つのキー/値ペアの入力が必要です。
-          - `query` (string) 必須
-            入力テキスト、処理される内容。
+        （任意）アプリで定義された各変数の値を渡すことができます。
+        inputs パラメータには複数のキーと値のペア（Key/Value pairs）が含まれ、各ペアのキーは特定の変数に対応し、各ペアの値はその変数の具体的な値です。
+        テキスト生成アプリでは、少なくとも1つのキーと値のペアを渡す必要があります。
+        - `query` (string) 必須
+          ユーザーが入力したテキストコンテンツ。
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
-        レスポンス返却モード、以下をサポート：
-        - `streaming` ストリーミングモード（推奨）、SSE（[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)）によるタイプライター風の出力を実装。
-        - `blocking` ブロッキングモード、実行完了後に結果を返却。（処理が長い場合はリクエストが中断される可能性があります）
-        <i>Cloudflareの制限により、100秒後に返却なしで中断されます。</i>
+        - `streaming` ストリーミングモード（推奨）。SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）に基づいて、タイプライターのような出力方法でストリーミング応答を実現します。
+        - `blocking`ブロッキングモード、実行が完了するまで待ってから結果を返します。（リクエストの処理が長い場合、中断される可能性があります）。
+        <i>Cloudflare の制限により、リクエストは100秒後にタイムアウトし、応答なしで中断されます。</i>
       </Property>
       <Property name='user' type='string' key='user'>
-          ユーザー識別子、エンドユーザーの身元を定義し、取得や統計に使用します。
-          アプリケーション内で開発者が一意に定義する必要があります。
+        ユーザー識別子、エンドユーザーの身元を定義するために使用され、検索や統計に便利です。
+        ルールは開発者によって定義され、アプリケーション内でユーザー識別子がユニークであることを保証する必要があります。サービス API は WebApp によって作成された会話を共有しません。
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          ファイルリスト、モデルがVision機能をサポートしている場合のみ、テキスト理解と質問応答を組み合わせたファイル（画像）の入力に適しています。
-          - `type` (string) サポートされるタイプ：`image`（現在は画像タイプのみサポート）
-          - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
-          - `url` (string) 画像URL（転送方法が`remote_url`の場合）
-          - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じてアップロードする必要があります（転送方法が`local_file`の場合）
+          アップロードされたファイル。
+          - `type` (string) サポートタイプ：画像 `image`（現在画像形式のみサポート）。
+          - `transfer_method` (string)  転送方法：
+            - `remote_url`: 画像URL。
+            - `local_file`: ファイルアップロード。
+          - `url` 画像URL。（転送方法が `remote_url` の場合のみ）。
+          - `upload_file_id` アップロードファイルID。（転送方法が `local_file `の場合のみ）。
       </Property>
     </Properties>
 
@@ -220,7 +220,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `file` (File) 必須
     アップロードするファイル。
   - `user` (string) 必須
-    開発者のルールで定義されたユーザー識別子。アプリケーション内で一意である必要があります。
+    ユーザー識別子。エンドユーザーの身元を定義するために使用され、メッセージ送信インターフェースで渡されたユーザーと一致する必要があります。サービス API は WebApp によって作成された会話を共有しません。
 
   ### レスポンス
   アップロードが成功すると、サーバーはファイルの ID と関連情報を返します。
@@ -289,7 +289,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `task_id` (string) タスク ID、ストリーミングチャンクの返信から取得可能
   リクエストボディ
   - `user` (string) 必須
-    ユーザー識別子。エンドユーザーの身元を定義するために使用され、メッセージ送信インターフェースで渡されたユーザーと一致する必要があります。
+    ユーザー識別子。エンドユーザーの身元を定義するために使用され、メッセージ送信インターフェースで渡されたユーザーと一致する必要があります。サービス API は WebApp によって作成された会話を共有しません。
   ### レスポンス
   - `result` (string) 常に"success"を返します
   </Col>
