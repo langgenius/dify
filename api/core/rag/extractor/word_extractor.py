@@ -62,7 +62,7 @@ class WordExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""
-        content = self.parse_docx(self.file_path, "storage")
+        content = self.parse_docx(self.file_path)
         return [
             Document(
                 page_content=content,
@@ -189,23 +189,8 @@ class WordExtractor(BaseExtractor):
                 paragraph_content.append(run.text)
         return "".join(paragraph_content).strip()
 
-    def _parse_paragraph(self, paragraph, image_map):
-        paragraph_content = []
-        for run in paragraph.runs:
-            if run.element.xpath(".//a:blip"):
-                for blip in run.element.xpath(".//a:blip"):
-                    embed_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
-                    if embed_id:
-                        rel_target = run.part.rels[embed_id].target_ref
-                        if rel_target in image_map:
-                            paragraph_content.append(image_map[rel_target])
-            if run.text.strip():
-                paragraph_content.append(run.text.strip())
-        return " ".join(paragraph_content) if paragraph_content else ""
-
-    def parse_docx(self, docx_path, image_folder):
+    def parse_docx(self, docx_path):
         doc = DocxDocument(docx_path)
-        os.makedirs(image_folder, exist_ok=True)
 
         content = []
 
