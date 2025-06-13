@@ -1,8 +1,5 @@
-import logging
-
 from flask_restful import Resource, reqparse
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.mcp import api
@@ -11,12 +8,10 @@ from controllers.web.error import (
 )
 from core.app.app_config.entities import VariableEntity
 from core.mcp.server.handler import MCPServerReuqestHandler
-from core.mcp.types import ClientRequest
+from core.mcp.types import ClientNotification, ClientRequest
 from extensions.ext_database import db
 from libs import helper
 from models.model import App, AppMCPServer, AppMode
-
-logger = logging.getLogger(__name__)
 
 
 class MCPAppApi(Resource):
@@ -27,15 +22,14 @@ class MCPAppApi(Resource):
             elif isinstance(value, str):
                 return int(value)
             else:
-                raise ValueError("Invalid id")
+                return None
 
         parser = reqparse.RequestParser()
         parser.add_argument("jsonrpc", type=str, required=True, location="json")
         parser.add_argument("method", type=str, required=True, location="json")
-        parser.add_argument("params", type=dict, required=True, location="json")
-        parser.add_argument("id", type=int_or_str, required=True, location="json")
+        parser.add_argument("params", type=dict, required=False, location="json")
+        parser.add_argument("id", type=int_or_str, required=False, location="json")
         args = parser.parse_args()
-        logger.info(f"MCP request: {args}")
         server = db.session.query(AppMCPServer).filter(AppMCPServer.server_code == server_code).first()
         if not server:
             raise NotFound("Server Not Found")
@@ -62,12 +56,17 @@ class MCPAppApi(Resource):
         except ValidationError as e:
             raise ValueError(f"Invalid user_input_form: {str(e)}")
         try:
-            request = ClientRequest.model_validate(args)
+            request: ClientRequest | ClientNotification = ClientRequest.model_validate(args)
         except ValidationError as e:
-            raise ValueError(f"Invalid MCP request: {str(e)}")
-        with Session(db.engine) as session:
-            mcp_server_handler = MCPServerReuqestHandler(app, request, user_input_form, session)
-            return helper.compact_generate_response(mcp_server_handler.handle())
+            try:
+                notification = ClientNotification.model_validate(args)
+                request = notification
+            except ValidationError as e:
+                raise ValueError(f"Invalid MCP request: {str(e)}")
+
+        mcp_server_handler = MCPServerReuqestHandler(app, request, user_input_form)
+        response = mcp_server_handler.handle()
+        return helper.compact_generate_response(response)
 
 
 api.add_resource(MCPAppApi, "/server/<string:server_code>/mcp")

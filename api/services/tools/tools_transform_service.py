@@ -367,7 +367,7 @@ class ToolTransformService:
 
         def process_properties(props: dict, required: list, prefix: str = "") -> list[ToolParameter]:
             """Process properties recursively"""
-            TYPE_MAPPING = {"integer": "number"}
+            TYPE_MAPPING = {"integer": "number", "float": "number"}
             COMPLEX_TYPES = ["array", "object"]
 
             parameters = []
