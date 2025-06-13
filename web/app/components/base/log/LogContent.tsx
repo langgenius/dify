@@ -10,8 +10,8 @@ const LogContent = (props) => {
     {
       title: 'Date',
       dataIndex: 'timestamp',
-      customWidth: 150,
-      render: ({ value }) => {
+      width: 150,
+      render: (value) => {
         return dayjs(value).format('YYYY-MM-DD HH:mm:ss')
       },
     },
