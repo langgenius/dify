@@ -49,7 +49,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         默认 `{}`
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
-        - `streaming` 流式模式（推荐）。 基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现类似打字机输出方式的流式返回。
+        - `streaming` 流式模式（推荐）。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现类似打字机输出方式的流式返回。
         - `blocking` 阻塞模式，等待执行完毕后返回结果。（请求若流程较长可能会被中断）。
         <i>由于 Cloudflare 限制，请求会在 100 秒超时无返回后中断。</i>
         注：Agent模式下不允许blocking。
@@ -900,7 +900,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     <Properties>
       <Property name='name' type='string' key='name'>
-        （选填）名称，若 `auto_generate` 为 `true`，该参数可不传。
+        （选填）名称，若 `auto_generate` 为 `true` 时，该参数可不传。
       </Property>
       <Property name='auto_generate' type='bool' key='auto_generate'>
         （选填）自动生成标题，默认 false。
@@ -1252,7 +1252,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'\\\n--header 'Authorization: Bearer {api_key}'`}>
 
-       ```bash {{ title: 'cURL' }}
+    ```bash {{ title: 'cURL' }}
     curl -X GET '${props.appDetail.api_base_url}/parameters' \
     --header 'Authorization: Bearer {api_key}'
     ```
