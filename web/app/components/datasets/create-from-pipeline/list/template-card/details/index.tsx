@@ -50,7 +50,10 @@ const Details = ({
   return (
     <div className='flex h-full'>
       <div className='flex grow items-center justify-center p-3 pr-0'>
-        <WorkflowPreview {...pipelineTemplateInfo.graph} />
+        <WorkflowPreview
+          {...pipelineTemplateInfo.graph}
+          className='overflow-hidden rounded-2xl'
+        />
       </div>
       <div className='relative flex w-[360px] shrink-0 flex-col'>
         <button
