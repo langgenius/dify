@@ -404,7 +404,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `task_id` (string) タスク ID、ストリーミングチャンクの返り値から取得可能
   ### リクエストボディ
   - `user` (string) 必須
-    ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用され、送信メッセージインターフェースで渡されたユーザーと一致している必要があります。
+    ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用され、送信メッセージインターフェースで渡されたユーザーと一致している必要があります。サービス API は WebApp によって作成された会話を共有しません。
   ### 応答
   - `result` (string) 常に"success"を返します
   </Col>
@@ -451,7 +451,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   - `file` (File) 必須
     アップロードするファイル。
   - `user` (string) 必須
-    ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+    ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。サービス API は WebApp によって作成された会話を共有しません。
 
   ### 応答
   アップロードが成功すると、サーバーはファイルの ID と関連情報を返します。

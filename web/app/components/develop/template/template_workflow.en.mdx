@@ -64,6 +64,8 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `user` (string) Required
         User identifier, used to define the identity of the end-user for retrieval and statistics.
         Should be uniquely defined by the developer within the application.
+        <br/>
+        <i>The user identifier should be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.</i>
 
     ### Response
     When `response_mode` is `blocking`, return a CompletionResponse object.
@@ -401,7 +403,7 @@ Workflow applications offers non-session support and is ideal for translation, a
   - `task_id` (string) Task ID, can be obtained from the streaming chunk return
   ### Request Body
   - `user` (string) Required
-    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the send message interface.
+    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the message sending interface. The Service API does not share conversations created by the WebApp.
   ### Response
   - `result` (string) Always returns "success"
   </Col>
@@ -448,7 +450,7 @@ Workflow applications offers non-session support and is ideal for translation, a
   - `file` (File) Required
     The file to be uploaded.
   - `user` (string) Required
-    User identifier, defined by the developer's rules, must be unique within the application.
+    User identifier, defined by the developer's rules, must be unique within the application. The Service API does not share conversations created by the WebApp.
 
   ### Response
   After a successful upload, the server will return the file's ID and related information.
