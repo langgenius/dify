@@ -1,7 +1,8 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Generator
 
 from core.datasource.entities.datasource_entities import (
+    DatasourceInvokeMessage,
     GetOnlineDocumentPageContentRequest,
     GetOnlineDocumentPageContentResponse,
     GetOnlineDocumentPagesResponse,
@@ -93,7 +94,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> GetWebsiteCrawlResponse:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -103,7 +104,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_website_crawl",
-            GetWebsiteCrawlResponse,
+            DatasourceInvokeMessage,
             data={
                 "user_id": user_id,
                 "data": {
@@ -118,10 +119,7 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        for resp in response:
-            return resp
-
-        raise Exception("No response from plugin daemon")
+        yield from response
 
     def get_online_document_pages(
         self,
@@ -132,7 +130,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> GetOnlineDocumentPagesResponse:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -142,7 +140,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_pages",
-            GetOnlineDocumentPagesResponse,
+            DatasourceInvokeMessage,
             data={
                 "user_id": user_id,
                 "data": {
@@ -157,10 +155,7 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        for resp in response:
-            return resp
-
-        raise Exception("No response from plugin daemon")
+        yield from response
 
     def get_online_document_page_content(
         self,
@@ -171,7 +166,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: GetOnlineDocumentPageContentRequest,
         provider_type: str,
-    ) -> GetOnlineDocumentPageContentResponse:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -181,7 +176,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_page_content",
-            GetOnlineDocumentPageContentResponse,
+            DatasourceInvokeMessage,
             data={
                 "user_id": user_id,
                 "data": {
@@ -196,10 +191,7 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        for resp in response:
-            return resp
-
-        raise Exception("No response from plugin daemon")
+        yield from response
 
     def validate_provider_credentials(
         self, tenant_id: str, user_id: str, provider: str, plugin_id: str, credentials: dict[str, Any]

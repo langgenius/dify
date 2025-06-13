@@ -1,10 +1,11 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Generator
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
+    DatasourceInvokeMessage,
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
     GetOnlineDocumentPageContentResponse,
@@ -38,7 +39,7 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
         user_id: str,
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> GetOnlineDocumentPagesResponse:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         manager = PluginDatasourceManager()
 
         return manager.get_online_document_pages(
@@ -56,7 +57,7 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
         user_id: str,
         datasource_parameters: GetOnlineDocumentPageContentRequest,
         provider_type: str,
-    ) -> GetOnlineDocumentPageContentResponse:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         manager = PluginDatasourceManager()
 
         return manager.get_online_document_page_content(
