@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from typing import Any
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
@@ -6,7 +6,7 @@ from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
     DatasourceProviderType,
-    GetWebsiteCrawlResponse,
+    WebsiteCrawlMessage,
 )
 from core.plugin.impl.datasource import PluginDatasourceManager
 
@@ -31,12 +31,12 @@ class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
         self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
 
-    def _get_website_crawl(
+    def get_website_crawl(
         self,
         user_id: str,
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> GetWebsiteCrawlResponse:
+    ) -> Generator[WebsiteCrawlMessage, None, None]:
         manager = PluginDatasourceManager()
 
         return manager.get_website_crawl(

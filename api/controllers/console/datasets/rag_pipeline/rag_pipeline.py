@@ -1,6 +1,5 @@
 import logging
 
-import yaml
 from flask import request
 from flask_restful import Resource, reqparse
 from sqlalchemy.orm import Session

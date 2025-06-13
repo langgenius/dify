@@ -17,11 +17,10 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     GetOnlineDocumentPagesResponse,
-    GetWebsiteCrawlResponse,
+    WebsiteCrawlMessage,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
@@ -43,14 +42,14 @@ from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
 from models.dataset import Document, Pipeline, PipelineCustomizedTemplate  # type: ignore
-from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import EndUser
-from models.oauth import DatasourceProvider
 from models.workflow import (
     Workflow,
+    WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
-    WorkflowType, WorkflowNodeExecutionModel,
+    WorkflowType,
 )
 from services.dataset_service import DatasetService
 from services.datasource_provider_service import DatasourceProviderService
@@ -468,15 +467,16 @@ class RagPipelineService:
 
             case DatasourceProviderType.WEBSITE_CRAWL:
                 datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-                website_crawl_result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
+                website_crawl_results: list[WebsiteCrawlMessage] = []
+                for website_message in datasource_runtime.get_website_crawl(
                     user_id=account.id,
                     datasource_parameters={"job_id": job_id},
                     provider_type=datasource_runtime.datasource_provider_type(),
-                )
+                ):
+                    website_crawl_results.append(website_message)
                 return {
-                    "result": [result for result in website_crawl_result.result],
-                    "job_id": website_crawl_result.result.job_id,
-                    "status": website_crawl_result.result.status,
+                    "result": [result for result in website_crawl_results.result],
+                    "status": website_crawl_results.result.status,
                     "provider_type": datasource_node_data.get("provider_type"),
                 }
             case _:
@@ -544,14 +544,15 @@ class RagPipelineService:
 
             case DatasourceProviderType.WEBSITE_CRAWL:
                 datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
-                website_crawl_result: GetWebsiteCrawlResponse = datasource_runtime._get_website_crawl(
+                website_crawl_results: list[WebsiteCrawlMessage] = []
+                for website_crawl_result in datasource_runtime.get_website_crawl(
                     user_id=account.id,
                     datasource_parameters=user_inputs,
                     provider_type=datasource_runtime.datasource_provider_type(),
-                )
+                ):
+                        website_crawl_results.append(website_crawl_result)
                 return {
                     "result": [result.model_dump() for result in website_crawl_result.result.web_info_list] if website_crawl_result.result.web_info_list else [],
-                    "job_id": website_crawl_result.result.job_id,
                     "status": website_crawl_result.result.status,
                     "provider_type": datasource_node_data.get("provider_type"),
                 }

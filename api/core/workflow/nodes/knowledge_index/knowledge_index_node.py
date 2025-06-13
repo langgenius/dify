@@ -1,7 +1,7 @@
 import datetime
 import logging
-from collections.abc import Mapping
 import time
+from collections.abc import Mapping
 from typing import Any, cast
 
 from sqlalchemy import func

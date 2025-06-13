@@ -15,7 +15,7 @@ from core.plugin.entities.parameters import (
     init_frontend_parameter,
 )
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolLabelEnum, ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolLabelEnum
 
 
 class DatasourceProviderType(enum.StrEnum):
@@ -290,40 +290,13 @@ class WebSiteInfo(BaseModel):
     """
     Website info
     """
-    job_id: str = Field(..., description="The job id")
-    status: str = Field(..., description="The status of the job")
+    status: Optional[str] = Field(..., description="crawl job status")
     web_info_list: Optional[list[WebSiteInfoDetail]] = []
+    total: Optional[int] = Field(default=0, description="The total number of websites")
+    completed: Optional[int] = Field(default=0, description="The number of completed websites")
 
-
-class GetWebsiteCrawlResponse(BaseModel):
+class WebsiteCrawlMessage(BaseModel):
     """
     Get website crawl response
     """
-
-    result: WebSiteInfo = WebSiteInfo(job_id="", status="", web_info_list=[])
-
-
-class DatasourceInvokeMessage(ToolInvokeMessage):
-    """
-    Datasource Invoke Message.
-    """
-
-    class WebsiteCrawlMessage(BaseModel):
-        """
-        Website crawl message
-        """
-
-        job_id: str = Field(..., description="The job id")
-        status: str = Field(..., description="The status of the job")
-        web_info_list: Optional[list[WebSiteInfoDetail]] = []
-
-    class OnlineDocumentMessage(BaseModel):
-        """
-        Online document message
-        """
-
-        workspace_id: str = Field(..., description="The workspace id")
-        workspace_name: str = Field(..., description="The workspace name")
-        workspace_icon: str = Field(..., description="The workspace icon")
-        total: int = Field(..., description="The total number of documents")
-        pages: list[OnlineDocumentPage] = Field(..., description="The pages of the online document")
+    result: WebSiteInfo = WebSiteInfo(status="", web_info_list=[], total=0, completed=0)
