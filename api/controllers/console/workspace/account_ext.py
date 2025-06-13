@@ -6,6 +6,7 @@ from unstructured.utils import first
 from controllers.console import api
 from controllers.console.wraps import setup_required
 from services.ext.account_ext_service import AccountExtService, TenantExtService
+from services.ext.dataset_ext_service import DocumentExtService
 from models.account import (
     Account,
     Tenant,
@@ -81,7 +82,35 @@ class TenantInitApi(Resource):
         tenant_data = TenantExtService.init_tenant(target_tenant_id=target_tenant_id,target_tenant_name=target_tenant_name)
         return tenant_data.to_dict(),200
 
+class FullSearchTextApi(Resource):
+
+    @setup_required
+    def post(self):
+
+        parser = reqparse.RequestParser()
+
+        parser.add_argument(
+            'dataset_names',
+            action='append',
+            help='List of names'
+        )
+        parser.add_argument("query_text", type=str, required=True, location="json")
+        args = parser.parse_args()
+        dataset_names = args.dataset_names
+        query_text = args.query_text
+
+        current_user = flask_login.current_user
+        tenant = current_user.current_tenant
+        search_datas = DocumentExtService.get_full_search_data(
+            dataset_names=dataset_names,
+            tenant_id=tenant.id,
+            query_text=query_text
+        )
+
+        return search_datas
+
 api.add_resource(AccountsApi, "/accounts/update")
 api.add_resource(TenantEnableApi, "/tenant/enable")
 api.add_resource(TenantInitApi, "/tenant/init")
 api.add_resource(LoginAccountsApi, "/login/account/info")
+api.add_resource(FullSearchTextApi, "/full/search")
