@@ -176,6 +176,7 @@ class CustomConfigWorkspaceApi(Resource):
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
 
+
 class WebappLogoWorkspaceApi(Resource):
     @setup_required
     @login_required
