@@ -1254,7 +1254,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         error_handle_mode: terminated
@@ -1349,7 +1349,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -1499,7 +1499,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -1525,7 +1525,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         context:
           enabled: false
@@ -1566,7 +1566,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 89
+      height: 95
       id: '1741506766037'
       parentId: '1741497176064'
       position:
@@ -1579,7 +1579,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef main(arg: str) -> dict:\n    data = json.loads(arg)\n\
@@ -1625,7 +1625,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         context:
           enabled: false
@@ -1691,7 +1691,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 89
+      height: 95
       id: '1741512806512'
       position:
         x: 11744
@@ -1703,7 +1703,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         selected: false
@@ -1723,7 +1723,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -1746,7 +1746,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -1863,7 +1863,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         output_type: string
@@ -1877,7 +1877,7 @@ workflow:
           - result
         - - '1742629595400'
           - text
-      height: 150
+      height: 152
       id: '1741597274153'
       position:
         x: 1242
@@ -1889,7 +1889,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "\ndef main(arg1: str, arg2: str, arg3: str) -> dict:\n    data = {\n\
           \        \"data\": {\n            \"timeseries\": [\n                {\n\
@@ -1932,7 +1932,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         cases:
         - case_id: 'true'
@@ -1998,7 +1998,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         isInIteration: true
@@ -2146,7 +2146,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -2289,7 +2289,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         isInIteration: true
@@ -2437,7 +2437,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "def get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
@@ -2502,7 +2502,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         isInIteration: true
@@ -2677,7 +2677,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -2853,7 +2853,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -2980,7 +2980,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3107,7 +3107,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3234,7 +3234,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3361,7 +3361,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3488,7 +3488,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "\ndef main(arg1: str) -> dict:\n    data = json.loads(arg1)\n    return\
@@ -3528,7 +3528,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3657,7 +3657,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -3831,7 +3831,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         context:
@@ -3874,7 +3874,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 89
+      height: 95
       id: '17430596469370'
       position:
         x: 4878
@@ -3886,7 +3886,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4015,7 +4015,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4192,7 +4192,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4321,7 +4321,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4478,7 +4478,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4607,7 +4607,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4758,7 +4758,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -4884,7 +4884,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -5032,7 +5032,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
@@ -5073,7 +5073,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
           \ {}).get('timeseries', [])\n        \n    normal = 0.05\n    filtered =\
@@ -5113,7 +5113,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='epoll')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5131,56 +5131,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
-          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
-          \        if not common_ts:\n            continue\n            \n       \
-          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
-          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get('labels',\
+          \ {}).get('tid_key','')\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data or []:\n        chart\
-          \ = data.get('chart', {})\n\n        tid = data.get('labels', {}).get('tid','')\n\
-          \        if tid == '':\n            continue\n\n        # find which downstream\
-          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ = data.get('chart', {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n\
+          \        if tid_key == '':\n            continue\n\n        # find which\
+          \ downstream pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data or []:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -5215,7 +5218,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5224,7 +5227,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -5261,7 +5264,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='runq')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5279,57 +5282,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get(\"labels\"\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get(\"labels\"\
           , {}).get(id_key, \"\")\n        \n        common_ts = set(chart.keys())\
           \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
           \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
           \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
           \        \n        similarity = cosine_sim(a, b)\n        if similarity\
-          \ >= threshold:\n            similar.append((tid, similarity))\n    \n \
-          \   similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
           \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
           \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data or []:\n        chart\
-          \ = data.get('chart', {})\n\n        tid = data.get('labels', {}).get('tid','')\n\
-          \        if tid == '':\n            continue\n\n        # find which downstream\
-          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ = data.get('chart', {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n\
+          \        if tid_key == '':\n            continue\n\n        # find which\
+          \ downstream pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -5364,7 +5369,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='net')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5382,57 +5387,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get(\"labels\"\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get(\"labels\"\
           , {}).get(id_key, \"\")\n        \n        common_ts = set(chart.keys())\
           \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
           \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
           \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
           \        \n        similarity = cosine_sim(a, b)\n        if similarity\
-          \ >= threshold:\n            similar.append((tid, similarity))\n    \n \
-          \   similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
           \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
           \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
-          \ tid == '':\n            continue\n\n        # find which downstream pod\
-          \ is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n  \
+          \      if tid_key == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -5467,7 +5474,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='file')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5485,57 +5492,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get(\"labels\"\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get(\"labels\"\
           , {}).get(id_key, \"\")\n        \n        common_ts = set(chart.keys())\
           \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
           \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
           \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
           \        \n        similarity = cosine_sim(a, b)\n        if similarity\
-          \ >= threshold:\n            similar.append((tid, similarity))\n    \n \
-          \   similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
           \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
           \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data or []:\n        chart\
-          \ = data.get('chart', {})\n\n        tid = data.get('labels', {}).get('tid','')\n\
-          \        if tid == '':\n            continue\n\n        # find which downstream\
-          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ = data.get('chart', {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n\
+          \        if tid_key == '':\n            continue\n\n        # find which\
+          \ downstream pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -5570,7 +5579,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='cpu')\
           \ -> dict:\n    data = json.loads(data_json)\n    proof_data = json.loads(proof_json)\n\
@@ -5588,57 +5597,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get(\"labels\"\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get(\"labels\"\
           , {}).get(id_key, \"\")\n        \n        common_ts = set(chart.keys())\
           \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
           \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
           \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
           \        \n        similarity = cosine_sim(a, b)\n        if similarity\
-          \ >= threshold:\n            similar.append((tid, similarity))\n    \n \
-          \   similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
           \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
           \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data or []:\n        chart\
-          \ = data.get('chart', {})\n\n        tid = data.get('labels', {}).get('tid','')\n\
-          \        if tid == '':\n            continue\n\n        # find which downstream\
-          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ = data.get('chart', {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n\
+          \        if tid_key == '':\n            continue\n\n        # find which\
+          \ downstream pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -5673,7 +5684,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5682,7 +5693,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -5719,7 +5730,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5728,7 +5739,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -5765,7 +5776,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5774,7 +5785,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -5811,7 +5822,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
           \ndef json_to_markdown(data, analysis_type):\n    markdown = [\n       \
@@ -5820,7 +5831,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -5857,7 +5868,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
           \ {}).get('timeseries', [])\n        \n    normal = 0.05\n    filtered =\
@@ -5900,7 +5911,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "def main(data_json: str) -> dict:\n    timeseries = json.loads(data_json).get('data',\
@@ -5944,7 +5955,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='cpu')\
@@ -5963,56 +5974,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
-          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
-          \        if not common_ts:\n            continue\n            \n       \
-          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
-          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get('labels',\
+          \ {}).get('tid_key','')\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
-          \ tid == '':\n            continue\n\n        # find which downstream pod\
-          \ is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n  \
+          \      if tid_key == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -6050,7 +6064,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='file')\
@@ -6069,56 +6083,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
-          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
-          \        if not common_ts:\n            continue\n            \n       \
-          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
-          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get('labels',\
+          \ {}).get('tid_key','')\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
-          \ tid == '':\n            continue\n\n        # find which downstream pod\
-          \ is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n  \
+          \      if tid_key == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -6152,11 +6169,11 @@ workflow:
       positionAbsolute:
         x: 6971.29888573095
         y: 1376.9469710210046
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='net')\
@@ -6175,56 +6192,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
-          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
-          \        if not common_ts:\n            continue\n            \n       \
-          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
-          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get('labels',\
+          \ {}).get('tid_key','')\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
-          \ tid == '':\n            continue\n\n        # find which downstream pod\
-          \ is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n  \
+          \      if tid_key == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -6262,7 +6282,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='epoll')\
@@ -6281,56 +6301,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
-          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
-          \        if not common_ts:\n            continue\n            \n       \
-          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
-          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get('labels',\
+          \ {}).get('tid_key','')\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
-          \ tid == '':\n            continue\n\n        # find which downstream pod\
-          \ is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n  \
+          \      if tid_key == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -6368,7 +6391,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\n\ndef main(data_json: str, proof_json: str, type='runq')\
@@ -6387,56 +6410,59 @@ workflow:
           \  proof_chart = {}\n    if len(timeseries) > 0:\n        proof_chart =\
           \ timeseries[0].get('chart', {}).get('chartData', {})\n    related_threads\
           \ = find_similar_charts(abnormal_data=abnormal_data, proof_chart=proof_chart,\
-          \ id_key='tid')    \n    \n    return {\n        'abnormalAnalysis': analysis,\n\
-          \        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
+          \ id_key='tid_key')    \n    \n    return {\n        'abnormalAnalysis':\
+          \ analysis,\n        'related': related_threads\n    }\n\ndef find_similar_charts(abnormal_data,\
           \ proof_chart, id_key: str, threshold=0.8):\n    if not abnormal_data or\
           \ not proof_chart:\n        return []\n\n    def cosine_sim(a, b):\n   \
           \     dot_product = sum(x * y for x, y in zip(a, b))\n        norm_a = sum(x**2\
           \ for x in a) ** 0.5\n        norm_b = sum(y**2 for y in b) ** 0.5\n   \
           \     if norm_a == 0 or norm_b == 0:\n            return 0.0\n        return\
           \ dot_product / (norm_a * norm_b)\n\n    similar = []\n    for data in abnormal_data\
-          \ or []:\n        chart = data['chart']\n        tid = data.get('labels',\
-          \ {}).get('tid','')\n        \n        common_ts = set(chart.keys()) & set(proof_chart.keys())\n\
-          \        if not common_ts:\n            continue\n            \n       \
-          \ sorted_ts = sorted(common_ts)\n        a = [chart[ts] for ts in sorted_ts]\n\
-          \        b = [proof_chart[ts] for ts in sorted_ts]\n        \n        similarity\
-          \ = cosine_sim(a, b)\n        if similarity >= threshold:\n            similar.append((tid,\
-          \ similarity))\n    \n    similar.sort(key=lambda x: x[1], reverse=True)\n\
-          \    return [item[0] for item in similar]\n\ndef net_analyze(abnormal_data:\
-          \ list, proof_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
+          \ or []:\n        chart = data['chart']\n        tid_key = data.get('labels',\
+          \ {}).get('tid_key','')\n        \n        common_ts = set(chart.keys())\
+          \ & set(proof_chart.keys())\n        if not common_ts:\n            continue\n\
+          \            \n        sorted_ts = sorted(common_ts)\n        a = [chart[ts]\
+          \ for ts in sorted_ts]\n        b = [proof_chart[ts] for ts in sorted_ts]\n\
+          \        \n        similarity = cosine_sim(a, b)\n        if similarity\
+          \ >= threshold:\n            similar.append((tid_key, similarity))\n   \
+          \ \n    similar.sort(key=lambda x: x[1], reverse=True)\n    return [item[0]\
+          \ for item in similar]\n\ndef net_analyze(abnormal_data: list, proof_data:\
+          \ list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
           \n    related = []\n    for data in abnormal_data:\n        chart = data.get('chart',\
-          \ {})\n\n        tid = data.get('labels', {}).get('tid','')\n        if\
-          \ tid == '':\n            continue\n\n        # find which downstream pod\
-          \ is related to this thread\n        res = find_similar_charts(proof_data,\
-          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid':\
-          \ tid,\n            'relatedItems': res,\n        })\n    \n    return {\n\
-          \        'abnormalAnalysis': analysis,\n        'related': related\n   \
-          \ }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis = get_analysis_data(abnormal_data=abnormal_data)\n\
-          \n    return {\n        'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
+          \ {})\n\n        tid_key = data.get('labels', {}).get('tid_key','')\n  \
+          \      if tid_key == '':\n            continue\n\n        # find which downstream\
+          \ pod is related to this thread\n        res = find_similar_charts(proof_data,\
+          \ chart, id_key='dst_pod')\n\n        related.append({\n            'tid_key':\
+          \ tid_key,\n            'relatedItems': res,\n        })\n    \n    return\
+          \ {\n        'abnormalAnalysis': analysis,\n        'related': related\n\
+          \    }\n\ndef runq_analyze(abnormal_data: list) -> dict:\n    analysis =\
+          \ get_analysis_data(abnormal_data=abnormal_data)\n\n    return {\n     \
+          \   'abnormalAnalysis': analysis,\n    }\n\ndef get_analysis_data(abnormal_data):\n\
           \    \"\"\"Get abnormal count, chart, spikes, avg\"\"\"\n    analysis =\
           \ []\n\n    for data in abnormal_data:\n        chart = data['chart']\n\
           \        abnormal_count = data['abnormalCount']\n        unit = data['unit']\n\
           \        \n        values = sorted(chart.values(), reverse=True)\n     \
           \   spikes = values[:abnormal_count]\n        analysis.append({\n      \
-          \      'tid': data.get('labels', {}).get('tid', \"\"),\n            'abnormalCount':\
-          \ abnormal_count,\n            'spikes': spikes,\n            'avg': data['avg'],\n\
-          \            'unit': unit\n        })\n\n    return analysis\n\ndef get_summary(analysis:\
-          \ dict, type: str) -> str:\n    \"\"\"\n    生成异常线程报告\n    :param abnormal_count:\
-          \ 异常线程数量 (int)\n    :param related_items: 相关项列表 (list)\n    :param item_type:\
-          \ 相关项类型名称 (str, default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\
-          \n    if analysis == {}:\n        good_str = f\"Thread consumption on {type}\
-          \ is normal.\"\n        return 'No abnormal data was observed. ' + good_str\n\
-          \    \n    item_type = ''\n    item_str = ''\n    if type == 'net' or type\
-          \ == 'epoll':\n        item_type = 'downstream pods'\n        for item in\
-          \ analysis.get(\"related\", []):\n            tid = item.get(\"tid\", \"\
-          \")\n            if tid == '':\n                continue\n\n           \
-          \ pods = item.get(\"relatedItems\", [])\n            pods = item.get(\"\
-          relatedItems\", [])\n            if len(pods) == 0 :\n                continue\n\
-          \    \n            pods_str = \", \".join(pods)\n            item_str +=\
-          \ f\"thread {tid}: affected by {pods_str}. The RTT between them raised about\
-          \ 20% than 0.05s over 20% time samples.\"\n            \n            \n\
-          \    else:\n        item_type = 'threads'\n\n        threads = analysis.get(\"\
-          related\", [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
+          \      'tid_key': data.get('labels', {}).get('tid_key', \"\"),\n       \
+          \     'abnormalCount': abnormal_count,\n            'spikes': spikes,\n\
+          \            'avg': data['avg'],\n            'unit': unit\n        })\n\
+          \n    return analysis\n\ndef get_summary(analysis: dict, type: str) -> str:\n\
+          \    \"\"\"\n    生成异常线程报告\n    :param abnormal_count: 异常线程数量 (int)\n   \
+          \ :param related_items: 相关项列表 (list)\n    :param item_type: 相关项类型名称 (str,\
+          \ default: \"threads\")\n    :return: 格式化报告字符串\n    \"\"\"\n    if analysis\
+          \ == {}:\n        good_str = f\"Thread consumption on {type} is normal.\"\
+          \n        return 'No abnormal data was observed. ' + good_str\n    \n  \
+          \  item_type = ''\n    item_str = ''\n    if type == 'net' or type == 'epoll':\n\
+          \        item_type = 'downstream pods'\n        for item in analysis.get(\"\
+          related\", []):\n            tid_key = item.get(\"tid_key\", \"\")\n   \
+          \         if tid_key == '':\n                continue\n\n            pods\
+          \ = item.get(\"relatedItems\", [])\n            pods = item.get(\"relatedItems\"\
+          , [])\n            if len(pods) == 0 :\n                continue\n    \n\
+          \            pods_str = \", \".join(pods)\n            item_str += f\"thread\
+          \ {tid_key}: affected by {pods_str}. The RTT between them raised about 20%\
+          \ than 0.05s over 20% time samples.\"\n            \n            \n    else:\n\
+          \        item_type = 'threads'\n\n        threads = analysis.get(\"related\"\
+          , [])\n        threads_str = \", \".join(threads)\n        if len(threads_str)\
           \ > 0:\n            item_str += threads_str + \". \"\n\n    related_str\
           \ = ''\n    if len(item_str) > 0:\n        related_str = f\"The most related\
           \ {item_type} are {item_str}. \"\n    return f\"There are {len(analysis['abnormalAnalysis'])}\
@@ -6474,7 +6500,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6484,7 +6510,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -6524,7 +6550,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6534,7 +6560,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -6574,7 +6600,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6584,7 +6610,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -6616,15 +6642,15 @@ workflow:
       parentId: '1741497176064'
       position:
         x: 2397.0575190597137
-        y: 576.2913937324586
+        y: 573.1165915837507
       positionAbsolute:
         x: 7578.057519059714
-        y: 1480.2913937324586
+        y: 1477.1165915837507
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6634,7 +6660,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -6674,7 +6700,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         code: "import json\n\ndef format_number(num):\n    return \"{:,}\".format(num)\n\
@@ -6684,7 +6710,7 @@ workflow:
           \ analysis.\\n\"\n    ]\n    \n    if 'abnormalAnalysis' in data and data['abnormalAnalysis']:\n\
           \        markdown.append(\"## Abnormal Thread Details\")\n        for analysis\
           \ in data['abnormalAnalysis']:\n            unit = analysis['unit']\n  \
-          \          markdown.extend([\n                f\"### Thread {analysis['tid']}\"\
+          \          markdown.extend([\n                f\"### Thread {analysis['tid_key']}\"\
           ,\n                f\"- ​**​Abnormal data count​**​: {analysis['abnormalCount']}\"\
           ,\n                f\"- ​**​Spike values​**​: ({unit})\",\n            \
           \    *[f\"  - {format_number(spike)}{unit}\" for spike in sorted(analysis['spikes'],\
@@ -6724,7 +6750,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -6782,7 +6808,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -6839,7 +6865,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -6896,7 +6922,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -6953,7 +6979,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -7010,7 +7036,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         isInIteration: true
@@ -7070,7 +7096,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -7131,7 +7157,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -7192,7 +7218,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -7253,7 +7279,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -7314,7 +7340,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         default_value:
@@ -7496,7 +7522,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         default_value:
         - key: text
@@ -7681,7 +7707,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         default_value:
         - key: text
@@ -7862,7 +7888,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         cases:
         - case_id: 'true'
@@ -7892,7 +7918,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         selected: false
@@ -7912,7 +7938,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -7935,7 +7961,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         cases:
         - case_id: 'true'
@@ -7972,7 +7998,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -8126,7 +8152,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         isInIteration: true
@@ -8278,11 +8304,11 @@ workflow:
       positionAbsolute:
         x: 2757
         y: 1362
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -8340,7 +8366,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -8397,7 +8423,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\ndef main(data_json):\n    data = json.loads(data_json)\n\
           \    for instance in data:\n        chart = instance['chart']\n        abnormal_count\
@@ -8454,7 +8480,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import json\n\ndef main(data_json):\n    data = json.loads(data_json)\n\
           \    \n    for instance in data:\n        chart = instance['chart']\n  \
@@ -8512,7 +8538,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         context:
           enabled: false
@@ -8550,7 +8576,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 89
+      height: 95
       id: '17473569800940'
       position:
         x: 3666
@@ -8562,7 +8588,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
       zIndex: 1002
     - data:
         desc: ''
@@ -8586,8 +8612,8 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     viewport:
-      x: -901.9051067237931
-      y: -287.18452633582376
-      zoom: 0.4796228446520448
+      x: -1313.6818334450036
+      y: -107.54208703435972
+      zoom: 0.25

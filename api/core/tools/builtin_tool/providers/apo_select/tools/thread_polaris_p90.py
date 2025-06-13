@@ -49,10 +49,10 @@ class ThreadPolarisP90(BuiltinTool):
         stats = {}
 
         for entry in results:
-            tid = entry["metric"]["tid"]
+            tid_key = entry["metric"]["tid_key"]
             values = [float(value[1]) for value in entry["values"]]
     
-            stats[tid] = {
+            stats[tid_key] = {
                 "avg": sum(values) / len(values),
             }
 

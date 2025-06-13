@@ -25,9 +25,14 @@ class PolarisTimeByPidTool(BuiltinTool):
         resource_type = tool_parameters.get('type', '.*')
         step = APOUtils.get_step(start_time=start_time, end_time=end_time)
         interval = APOUtils.vec_from_duration(step * 1000)
+        if len(pid) == 0:
+            pid = '.*'
+        if len(resource_type) == 0:
+            resource_type = '.*'
+
         query = f"""
         increase(
-          sum without (tid) (
+          sum without (tid_key) (
             originx_thread_polaris_nanoseconds_sum{{
               container_id!="",
               type=~"{resource_type}",

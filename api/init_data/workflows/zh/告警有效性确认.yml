@@ -936,7 +936,7 @@ workflow:
           required: false
           type: file
           variable: input
-      height: 192
+      height: 193
       id: '1741157526222'
       position:
         x: 30
@@ -948,7 +948,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -959,7 +959,7 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 88
+      height: 89
       id: '1741157560922'
       position:
         x: 3363
@@ -971,7 +971,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         classes:
         - id: '1'
@@ -1080,7 +1080,7 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 874
+      height: 881
       id: '1741158559444'
       position:
         x: 939
@@ -1092,7 +1092,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         output_type: string
@@ -1130,7 +1130,7 @@ workflow:
           - text
         - - '1748272742118'
           - text
-      height: 415
+      height: 416
       id: '1741162531836'
       position:
         x: 1848
@@ -1142,7 +1142,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         output_type: string
@@ -1156,7 +1156,7 @@ workflow:
           - class_name
         - - '1744339618961'
           - abnormal
-      height: 151
+      height: 152
       id: '1741311394752'
       position:
         x: 3060
@@ -1168,7 +1168,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -1301,7 +1301,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328045214'
       position:
         x: 1242
@@ -1313,7 +1313,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -1446,7 +1446,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328076453'
       position:
         x: 1242
@@ -1458,7 +1458,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -1600,7 +1600,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328197695'
       position:
         x: 1242
@@ -1608,11 +1608,11 @@ workflow:
       positionAbsolute:
         x: 1242
         y: 821
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -1710,14 +1710,14 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328213545'
       position:
         x: 1242
@@ -1729,7 +1729,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -1827,14 +1827,14 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328346220'
       position:
         x: 1242
@@ -1846,7 +1846,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -1944,14 +1944,14 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328423453'
       position:
         x: 1242
@@ -1963,7 +1963,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2061,14 +2061,14 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328466394'
       position:
         x: 1242
@@ -2080,7 +2080,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2178,14 +2178,14 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328742817'
       position:
         x: 1242
@@ -2197,7 +2197,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2295,14 +2295,14 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328773213'
       position:
         x: 1242
@@ -2314,7 +2314,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2412,14 +2412,14 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741328799030'
       position:
         x: 1242
@@ -2431,7 +2431,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2564,7 +2564,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1741329632798'
       position:
         x: 1242
@@ -2576,7 +2576,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         context:
           enabled: false
@@ -2610,7 +2610,9 @@ workflow:
 
             如果最终MetricsData回到正常范围或低位值，则认为告警无效。
 
-            如果有历史数据，则需要对比分析历史数据，如果相比历史数据升高，告警也为有效
+            如果有历史数据，则需要对比分析历史数据，如果相比历史数据升高，告警也为有效。
+
+            如果没有相关数据，则认为告警有效。
 
             ##输出
 
@@ -2637,7 +2639,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 95
       id: '1742366141890'
       position:
         x: 2454
@@ -2649,7 +2651,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         classes:
         - id: '1'
@@ -2684,7 +2686,7 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 166
+      height: 173
       id: '1742366303110'
       position:
         x: 2757
@@ -2696,7 +2698,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "SECOND = 1000000  # microseconds\nMINUTE = 60 * SECOND\nHOUR = 60 *\
           \ MINUTE\n\ndef main(arg1: int, arg2: int) -> dict:\n    \n    return {\n\
@@ -2727,7 +2729,7 @@ workflow:
           - '1741157526222'
           - endTime
           variable: arg2
-      height: 78
+      height: 79
       id: '1742433446760'
       position:
         x: 636
@@ -2739,7 +2741,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -2872,7 +2874,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424339242280'
       position:
         x: 1545
@@ -2884,7 +2886,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         output_type: string
@@ -2922,7 +2924,7 @@ workflow:
           - text
         - - '17482728139340'
           - text
-      height: 415
+      height: 416
       id: '1742434016239'
       position:
         x: 2151
@@ -2934,7 +2936,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3067,7 +3069,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424342365860'
       position:
         x: 1545
@@ -3079,7 +3081,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3212,7 +3214,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424344697090'
       position:
         x: 1545
@@ -3224,7 +3226,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3366,7 +3368,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424345080000'
       position:
         x: 1545
@@ -3378,7 +3380,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3476,14 +3478,14 @@ workflow:
             - history_et
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424345315500'
       position:
         x: 1545
@@ -3495,7 +3497,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3593,14 +3595,14 @@ workflow:
             - history_et
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424345826170'
       position:
         x: 1545
@@ -3612,7 +3614,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3710,14 +3712,14 @@ workflow:
             - history_et
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424346884650'
       position:
         x: 1545
@@ -3729,7 +3731,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3827,14 +3829,14 @@ workflow:
             - history_et
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424347242840'
       position:
         x: 1545
@@ -3846,7 +3848,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -3944,14 +3946,14 @@ workflow:
             - history_et
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424348206030'
       position:
         x: 1545
@@ -3963,7 +3965,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -4061,14 +4063,14 @@ workflow:
             - history_et
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424348526540'
       position:
         x: 1545
@@ -4080,7 +4082,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -4178,14 +4180,14 @@ workflow:
             - history_et
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17424348570980'
       position:
         x: 1545
@@ -4197,9 +4199,9 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
-        code: "  \ndef get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
+        code: "def get_value(data, keys): \n  for key in keys: \n    value = data.get(key)\
           \ \n    if value is not None: \n      return value \n  return \"\" \n\n\
           import json \n\ndef main(arg: str) -> dict:\n  data = json.loads(arg) \n\
           \  return { \n  \"node\": get_value(data, [\"svc_node\", \"node\", \"nodename\"\
@@ -4208,7 +4210,8 @@ workflow:
           ]), \n  \"pod\": get_value(data,[\"pod\", \"src_pod\", \"pod_name\"]), \n\
           \  \"namespace\": get_value(data,[\"namespace\", \"src_namespace\"]), \n\
           \  \"pid\": get_value(data,[\"pid\"]),\n  \"containerId\": get_value(data,[\"\
-          container_id\", \"containerID\"]),\n}"
+          container_id\", \"containerID\"]),\n  \"instanceName\": get_value(data,\
+          \ [\"instance_name\", \"instanceName\"])\n}"
         code_language: python3
         desc: ''
         outputs:
@@ -4216,6 +4219,9 @@ workflow:
             children: null
             type: string
           endpoint:
+            children: null
+            type: string
+          instanceName:
             children: null
             type: string
           namespace:
@@ -4241,7 +4247,7 @@ workflow:
           - '1741157526222'
           - params
           variable: arg
-      height: 52
+      height: 53
       id: '1742806924635'
       position:
         x: 333
@@ -4253,7 +4259,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -4412,7 +4418,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742979394268'
       position:
         x: 1242
@@ -4424,7 +4430,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -4583,7 +4589,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742979595004'
       position:
         x: 1242
@@ -4595,7 +4601,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -4754,7 +4760,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17429797453350'
       position:
         x: 1242
@@ -4766,7 +4772,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -4925,7 +4931,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17429797664440'
       position:
         x: 1545
@@ -4937,7 +4943,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -5060,14 +5066,14 @@ workflow:
             - endTime
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1742979828391'
       position:
         x: 1242
@@ -5079,7 +5085,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -5202,14 +5208,14 @@ workflow:
             - history_et
           node:
             type: mixed
-            value: '{{#1742806924635.node#}}'
+            value: '{{#1742806924635.instanceName#}}'
           startTime:
             type: variable
             value:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17429798797920'
       position:
         x: 1545
@@ -5221,7 +5227,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -5380,7 +5386,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17429835599060'
       position:
         x: 1545
@@ -5392,7 +5398,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -5551,7 +5557,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '17429835940550'
       position:
         x: 1545
@@ -5563,7 +5569,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -5724,7 +5730,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1744093337863'
       position:
         x: 1242
@@ -5736,7 +5742,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -5747,7 +5753,7 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 88
+      height: 89
       id: '1744093385250'
       position:
         x: 2151
@@ -5759,7 +5765,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         context:
           enabled: false
@@ -5798,7 +5804,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 88
+      height: 95
       id: '1744093428286'
       position:
         x: 1545
@@ -5810,7 +5816,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         selected: false
@@ -5818,7 +5824,7 @@ workflow:
         title: 模板转换
         type: template-transform
         variables: []
-      height: 52
+      height: 53
       id: '1744093531084'
       position:
         x: 1848
@@ -5830,7 +5836,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "import requests\nimport json\n\nAPO_URL = \"http://apo-backend-svc:8080\"\
           \n\nAPO_VM = \"http://apo-victoria-metrics-single-server-svc:8428\"\n\n\
@@ -5857,14 +5863,14 @@ workflow:
           \ {\n            \"step\": step,\n            \"stepStr\": stepStr,\n  \
           \      }\n\n    @staticmethod\n    def get_avg(data_json) -> dict:\n   \
           \     results = data_json[\"data\"][\"result\"]\n\n        stats = {}\n\n\
-          \        for entry in results:\n            tid = entry[\"metric\"][\"tid\"\
-          ]\n            values = [float(value[1]) for value in entry[\"values\"]]\n\
-          \n            stats[tid] = {\n                \"avg\": sum(values) / len(values),\n\
-          \            }\n\n        return stats\n\n    @staticmethod\n    def extract_values(thread_data:\
-          \ dict):\n        return [float(item[1]) for item in thread_data[\"values\"\
-          ]]\n\n    @staticmethod\n    def extract_rtt_values(rtt_data):\n       \
-          \ \"\"\"从RTT数据中提取时间戳和值\"\"\"\n        chart_data = rtt_data[\"chart\"][\"\
-          chartData\"]\n        return list(chart_data.values())\n\n    @staticmethod\n\
+          \        for entry in results:\n            tid_key = entry[\"metric\"][\"\
+          tid_key\"]\n            values = [float(value[1]) for value in entry[\"\
+          values\"]]\n\n            stats[tid_key] = {\n                \"avg\": sum(values)\
+          \ / len(values),\n            }\n\n        return stats\n\n    @staticmethod\n\
+          \    def extract_values(thread_data: dict):\n        return [float(item[1])\
+          \ for item in thread_data[\"values\"]]\n\n    @staticmethod\n    def extract_rtt_values(rtt_data):\n\
+          \        \"\"\"从RTT数据中提取时间戳和值\"\"\"\n        chart_data = rtt_data[\"chart\"\
+          ][\"chartData\"]\n        return list(chart_data.values())\n\n    @staticmethod\n\
           \    def net_rtt_trend_analysis(current_metrics: dict, pid: str) -> dict:\n\
           \        rtt_threshold = 0.05\n        majority_point_threshold = 0.5\n\n\
           \        num_rtt_sets = len(current_metrics[\"result\"][\"timeseries\"])\n\
@@ -5893,8 +5899,8 @@ workflow:
           \ = 0.4\n\n        thread_details = {}\n        anomalous_threads = 0\n\
           \        num_threads = len(current_metrics[\"data\"][\"result\"])\n\n  \
           \      for item in current_metrics[\"data\"][\"result\"] or []:\n      \
-          \      tid = item[\"metric\"][\"tid\"]\n            points = Utils.extract_values(item)\n\
-          \            num_points = len(points)\n            avg = avg_metrics.get(tid,\
+          \      tid_key = item[\"metric\"][\"tid_key\"]\n            points = Utils.extract_values(item)\n\
+          \            num_points = len(points)\n            avg = avg_metrics.get(tid_key,\
           \ {}).get(\"avg\", 0)\n            # 计算每个点相对于历史均值的百分比变化\n            if\
           \ avg != 0:\n                percent_changes = [(p - avg) / avg * 100 for\
           \ p in points]\n            else:\n                percent_changes = [float(\"\
@@ -5904,7 +5910,7 @@ workflow:
           \         # 判断是否“大多数情况”异常升高\n            is_anomaly_increase = exceed_ratio\
           \ >= majority_point_threshold\n            if avg == 0:\n              \
           \  is_anomaly_increase = False\n            if is_anomaly_increase:\n  \
-          \              anomalous_threads += 1\n\n            thread_details[tid]\
+          \              anomalous_threads += 1\n\n            thread_details[tid_key]\
           \ = {\n                \"points\": points,\n                \"historical_avg\"\
           : avg,\n                \"exceed_count\": exceed_count,\n              \
           \  \"exceed_ratio\": exceed_ratio,\n                \"percent_changes\"\
@@ -6049,7 +6055,7 @@ workflow:
           - '1741157526222'
           - endTime
           variable: end
-      height: 52
+      height: 53
       id: '1744339618961'
       position:
         x: 2454
@@ -6057,11 +6063,11 @@ workflow:
       positionAbsolute:
         x: 2454
         y: 2199
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -6076,7 +6082,7 @@ workflow:
         selected: false
         title: 结束 3
         type: end
-      height: 114
+      height: 115
       id: '1744343454355'
       position:
         x: 3060
@@ -6088,7 +6094,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         code: "from datetime import datetime\nimport requests\n\nAPO_URL = \"http://apo-backend-svc:8080\"\
           \n\nAPO_VM = \"http://apo-victoria-metrics-single-server-svc:8428\"\n\n\
@@ -6216,7 +6222,7 @@ workflow:
           - '1741157526222'
           - endTime
           variable: end
-      height: 52
+      height: 53
       id: '1744599772545'
       position:
         x: 1848
@@ -6228,7 +6234,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         cases:
         - case_id: 'true'
@@ -6246,7 +6252,7 @@ workflow:
         selected: false
         title: 条件分支
         type: if-else
-      height: 124
+      height: 125
       id: '1744599891369'
       position:
         x: 2151
@@ -6258,7 +6264,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -6273,7 +6279,7 @@ workflow:
         selected: false
         title: 结束 4
         type: end
-      height: 114
+      height: 115
       id: '1744599930141'
       position:
         x: 2454
@@ -6285,7 +6291,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         output_type: string
@@ -6297,7 +6303,7 @@ workflow:
           - conclusion
         - - '1744339618961'
           - conclusion
-      height: 129
+      height: 130
       id: '1744627472534'
       position:
         x: 2757
@@ -6309,7 +6315,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -6473,7 +6479,7 @@ workflow:
             - '1741157526222'
             - startTime
         type: tool
-      height: 52
+      height: 53
       id: '1748272742118'
       position:
         x: 1242
@@ -6485,7 +6491,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         is_team_authorization: true
@@ -6649,7 +6655,7 @@ workflow:
             - '1742433446760'
             - history_st
         type: tool
-      height: 52
+      height: 53
       id: '17482728139340'
       position:
         x: 1545
@@ -6661,7 +6667,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         selected: false
@@ -6669,7 +6675,7 @@ workflow:
         title: 未知
         type: template-transform
         variables: []
-      height: 52
+      height: 53
       id: '1748340985944'
       position:
         x: 1242
@@ -6681,7 +6687,7 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     - data:
         desc: ''
         outputs:
@@ -6692,7 +6698,7 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 88
+      height: 89
       id: '1748341014888'
       position:
         x: 1545
@@ -6704,8 +6710,8 @@ workflow:
       sourcePosition: right
       targetPosition: left
       type: custom
-      width: 243
+      width: 244
     viewport:
-      x: -417.35774577655206
-      y: -305.92096666780355
-      zoom: 0.6171138784972154
+      x: -359.2386162672112
+      y: -514.25383253666
+      zoom: 0.39685025179919353
