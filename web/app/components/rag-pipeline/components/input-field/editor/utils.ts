@@ -25,23 +25,34 @@ export const convertToInputFieldFormData = (data?: InputVar): FormData => {
     allowed_file_extensions,
   } = data || getNewInputVarInRagPipeline()
 
-  return {
+  const formData: FormData = {
     type,
     label,
     variable,
     maxLength: max_length,
-    default: default_value,
     required,
-    tooltips,
     options,
-    placeholder,
-    unit,
-    allowedFileUploadMethods: allowed_file_upload_methods,
-    allowedTypesAndExtensions: {
+    allowedTypesAndExtensions: {},
+  }
+
+  if (default_value !== undefined && default_value !== null)
+    formData.default = default_value
+  if (tooltips !== undefined && tooltips !== null)
+    formData.tooltips = tooltips
+  if (placeholder !== undefined && placeholder !== null)
+    formData.placeholder = placeholder
+  if (unit !== undefined && unit !== null)
+    formData.unit = unit
+  if (allowed_file_upload_methods)
+    formData.allowedFileUploadMethods = allowed_file_upload_methods
+  if (allowed_file_types && allowed_file_extensions) {
+    formData.allowedTypesAndExtensions = {
       allowedFileTypes: allowed_file_types,
       allowedFileExtensions: allowed_file_extensions,
-    },
+    }
   }
+
+  return formData
 }
 
 export const convertFormDataToINputField = (data: FormData): InputVar => {
