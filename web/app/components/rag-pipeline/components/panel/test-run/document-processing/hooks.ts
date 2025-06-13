@@ -14,6 +14,7 @@ const VAR_TYPE_MAP: Record<PipelineInputVarType, BaseFieldType> = {
   [PipelineInputVarType.number]: BaseFieldType.numberInput,
   [PipelineInputVarType.checkbox]: BaseFieldType.checkbox,
 }
+
 export const useConfigurations = (datasourceNodeId: string) => {
   const pipelineId = useStore(state => state.pipelineId)
   const { data: paramsConfig } = useDraftPipelineProcessingParams({
@@ -50,7 +51,6 @@ export const useConfigurations = (datasourceNodeId: string) => {
         value: option,
       })),
       showConditions: [],
-      default: item.default_value,
       placeholder: item.placeholder,
       tooltip: item.tooltips,
       unit: item.unit,

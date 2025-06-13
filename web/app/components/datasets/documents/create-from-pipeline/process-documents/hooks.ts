@@ -4,12 +4,13 @@ import { usePublishedPipelineProcessingParams } from '@/service/use-pipeline'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 
-type PartialInputVarType = PipelineInputVarType.textInput | PipelineInputVarType.number | PipelineInputVarType.select | PipelineInputVarType.checkbox
-
-const VAR_TYPE_MAP: Record<PartialInputVarType, BaseFieldType> = {
+const VAR_TYPE_MAP: Record<PipelineInputVarType, BaseFieldType> = {
   [PipelineInputVarType.textInput]: BaseFieldType.textInput,
-  [PipelineInputVarType.number]: BaseFieldType.numberInput,
+  [PipelineInputVarType.paragraph]: BaseFieldType.paragraph,
   [PipelineInputVarType.select]: BaseFieldType.select,
+  [PipelineInputVarType.singleFile]: BaseFieldType.file,
+  [PipelineInputVarType.multiFiles]: BaseFieldType.fileList,
+  [PipelineInputVarType.number]: BaseFieldType.numberInput,
   [PipelineInputVarType.checkbox]: BaseFieldType.checkbox,
 }
 
@@ -23,15 +24,15 @@ export const useConfigurations = (datasourceNodeId: string) => {
   const initialData = useMemo(() => {
     const variables = paramsConfig?.variables || []
     return variables.reduce((acc, item) => {
-      const type = VAR_TYPE_MAP[item.type as PartialInputVarType]
-      if (type === BaseFieldType.textInput)
-        acc[item.variable] = ''
+      const type = VAR_TYPE_MAP[item.type]
+      if ([BaseFieldType.textInput, BaseFieldType.paragraph, BaseFieldType.select].includes(type))
+        acc[item.variable] = item.default_value ?? ''
       if (type === BaseFieldType.numberInput)
-        acc[item.variable] = 0
-      if (type === BaseFieldType.select)
-        acc[item.variable] = item.options?.[0] || ''
+        acc[item.variable] = item.default_value ?? 0
       if (type === BaseFieldType.checkbox)
         acc[item.variable] = true
+      if ([BaseFieldType.file, BaseFieldType.fileList].includes(type))
+        acc[item.variable] = []
       return acc
     }, {} as Record<string, any>)
   }, [paramsConfig])
@@ -39,7 +40,7 @@ export const useConfigurations = (datasourceNodeId: string) => {
   const configurations = useMemo(() => {
     const variables = paramsConfig?.variables || []
     const configs = variables.map(item => ({
-      type: VAR_TYPE_MAP[item.type as PartialInputVarType],
+      type: VAR_TYPE_MAP[item.type],
       variable: item.variable,
       label: item.label,
       required: item.required,
@@ -49,7 +50,12 @@ export const useConfigurations = (datasourceNodeId: string) => {
         value: option,
       })),
       showConditions: [],
-      default: item.default_value,
+      placeholder: item.placeholder,
+      tooltip: item.tooltips,
+      unit: item.unit,
+      allowedFileTypes: item.allowed_file_types,
+      allowedFileExtensions: item.allowed_file_extensions,
+      allowedFileUploadMethods: item.allowed_file_upload_methods,
     }))
     return configs
   }, [paramsConfig])
