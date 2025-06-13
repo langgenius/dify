@@ -6,6 +6,7 @@ from typing import Any, Optional, Union, cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from configs.app_config import DifyConfig
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
@@ -43,6 +44,7 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.file import FILE_MODEL_IDENTITY, File
+from core.repositories.workflow_execution_repo_mode import WorkflowExecRepoMode
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.workflow_execution import WorkflowExecution
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
@@ -89,27 +91,29 @@ class WorkflowResponseConverter:
         workflow_execution: WorkflowExecution,
     ) -> WorkflowFinishStreamResponse:
         created_by = None
-        workflow_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == workflow_execution.id_))
-        assert workflow_run is not None
-        if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
-            stmt = select(Account).where(Account.id == workflow_run.created_by)
-            account = session.scalar(stmt)
-            if account:
-                created_by = {
-                    "id": account.id,
-                    "name": account.name,
-                    "email": account.email,
-                }
-        elif workflow_run.created_by_role == CreatorUserRole.END_USER:
-            stmt = select(EndUser).where(EndUser.id == workflow_run.created_by)
-            end_user = session.scalar(stmt)
-            if end_user:
-                created_by = {
-                    "id": end_user.id,
-                    "user": end_user.session_id,
-                }
-        else:
-            raise NotImplementedError(f"unknown created_by_role: {workflow_run.created_by_role}")
+        config = DifyConfig()
+        if config.WORKFLOW_NODE_EXECUTION_REPO_MODE == WorkflowExecRepoMode.SQL:
+            workflow_run = session.scalar(select(WorkflowRun).where(WorkflowRun.id == workflow_execution.id_))
+            assert workflow_run is not None
+            if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
+                stmt = select(Account).where(Account.id == workflow_run.created_by)
+                account = session.scalar(stmt)
+                if account:
+                    created_by = {
+                        "id": account.id,
+                        "name": account.name,
+                        "email": account.email,
+                    }
+            elif workflow_run.created_by_role == CreatorUserRole.END_USER:
+                stmt = select(EndUser).where(EndUser.id == workflow_run.created_by)
+                end_user = session.scalar(stmt)
+                if end_user:
+                    created_by = {
+                        "id": end_user.id,
+                        "user": end_user.session_id,
+                    }
+            else:
+                raise NotImplementedError(f"unknown created_by_role: {workflow_run.created_by_role}")
 
         # Handle the case where finished_at is None by using current time as default
         finished_at_timestamp = (
