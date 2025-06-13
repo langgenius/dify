@@ -171,6 +171,236 @@ def test_array_none_variable():
     assert var.value == [None, None, None, None]
 
 
+def test_build_segment_none_type():
+    """Test building NoneSegment from None value."""
+    segment = variable_factory.build_segment(None)
+    assert isinstance(segment, NoneSegment)
+    assert segment.value is None
+    assert segment.value_type == SegmentType.NONE
+
+
+def test_build_segment_none_type_properties():
+    """Test NoneSegment properties and methods."""
+    segment = variable_factory.build_segment(None)
+    assert segment.text == ""
+    assert segment.log == ""
+    assert segment.markdown == ""
+    assert segment.to_object() is None
+
+
+def test_build_segment_array_file_single_file():
+    """Test building ArrayFileSegment from list with single file."""
+    file = File(
+        id="test_file_id",
+        tenant_id="test_tenant_id",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://test.example.com/test-file.png",
+        filename="test-file",
+        extension=".png",
+        mime_type="image/png",
+        size=1000,
+    )
+    segment = variable_factory.build_segment([file])
+    assert isinstance(segment, ArrayFileSegment)
+    assert len(segment.value) == 1
+    assert segment.value[0] == file
+    assert segment.value_type == SegmentType.ARRAY_FILE
+
+
+def test_build_segment_array_file_multiple_files():
+    """Test building ArrayFileSegment from list with multiple files."""
+    file1 = File(
+        id="test_file_id_1",
+        tenant_id="test_tenant_id",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://test.example.com/test-file1.png",
+        filename="test-file1",
+        extension=".png",
+        mime_type="image/png",
+        size=1000,
+    )
+    file2 = File(
+        id="test_file_id_2",
+        tenant_id="test_tenant_id",
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="test_relation_id",
+        filename="test-file2",
+        extension=".txt",
+        mime_type="text/plain",
+        size=500,
+    )
+    segment = variable_factory.build_segment([file1, file2])
+    assert isinstance(segment, ArrayFileSegment)
+    assert len(segment.value) == 2
+    assert segment.value[0] == file1
+    assert segment.value[1] == file2
+    assert segment.value_type == SegmentType.ARRAY_FILE
+
+
+def test_build_segment_array_file_empty_list():
+    """Test building ArrayFileSegment from empty list should create ArrayAnySegment."""
+    segment = variable_factory.build_segment([])
+    assert isinstance(segment, ArrayAnySegment)
+    assert segment.value == []
+    assert segment.value_type == SegmentType.ARRAY_ANY
+
+
+def test_build_segment_array_any_mixed_types():
+    """Test building ArrayAnySegment from list with mixed types."""
+    mixed_values = ["string", 42, 3.14, {"key": "value"}, None]
+    segment = variable_factory.build_segment(mixed_values)
+    assert isinstance(segment, ArrayAnySegment)
+    assert segment.value == mixed_values
+    assert segment.value_type == SegmentType.ARRAY_ANY
+
+
+def test_build_segment_array_any_with_nested_arrays():
+    """Test building ArrayAnySegment from list containing arrays."""
+    nested_values = [["nested", "array"], [1, 2, 3], "string"]
+    segment = variable_factory.build_segment(nested_values)
+    assert isinstance(segment, ArrayAnySegment)
+    assert segment.value == nested_values
+    assert segment.value_type == SegmentType.ARRAY_ANY
+
+
+def test_build_segment_array_any_mixed_with_files():
+    """Test building ArrayAnySegment from list with files and other types."""
+    file = File(
+        id="test_file_id",
+        tenant_id="test_tenant_id",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://test.example.com/test-file.png",
+        filename="test-file",
+        extension=".png",
+        mime_type="image/png",
+        size=1000,
+    )
+    mixed_values = [file, "string", 42]
+    segment = variable_factory.build_segment(mixed_values)
+    assert isinstance(segment, ArrayAnySegment)
+    assert segment.value == mixed_values
+    assert segment.value_type == SegmentType.ARRAY_ANY
+
+
+def test_build_segment_array_any_all_none_values():
+    """Test building ArrayAnySegment from list with all None values."""
+    none_values = [None, None, None]
+    segment = variable_factory.build_segment(none_values)
+    assert isinstance(segment, ArrayAnySegment)
+    assert segment.value == none_values
+    assert segment.value_type == SegmentType.ARRAY_ANY
+
+
+def test_build_segment_array_file_properties():
+    """Test ArrayFileSegment properties and methods."""
+    file1 = File(
+        id="test_file_id_1",
+        tenant_id="test_tenant_id",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://test.example.com/test-file1.png",
+        filename="test-file1",
+        extension=".png",
+        mime_type="image/png",
+        size=1000,
+    )
+    file2 = File(
+        id="test_file_id_2",
+        tenant_id="test_tenant_id",
+        type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://test.example.com/test-file2.txt",
+        filename="test-file2",
+        extension=".txt",
+        mime_type="text/plain",
+        size=500,
+    )
+    segment = variable_factory.build_segment([file1, file2])
+
+    # Test properties
+    assert segment.text == ""  # ArrayFileSegment text property returns empty string
+    assert segment.log == ""  # ArrayFileSegment log property returns empty string
+    assert segment.markdown == f"{file1.markdown}\n{file2.markdown}"
+    assert segment.to_object() == [file1, file2]
+
+
+def test_build_segment_array_any_properties():
+    """Test ArrayAnySegment properties and methods."""
+    mixed_values = ["string", 42, None]
+    segment = variable_factory.build_segment(mixed_values)
+
+    # Test properties
+    assert segment.text == str(mixed_values)
+    assert segment.log == str(mixed_values)
+    assert segment.markdown == "string\n42\nNone"
+    assert segment.to_object() == mixed_values
+
+
+def test_build_segment_edge_cases():
+    """Test edge cases for build_segment function."""
+    # Test with complex nested structures
+    complex_structure = [{"nested": {"deep": [1, 2, 3]}}, [{"inner": "value"}], "mixed"]
+    segment = variable_factory.build_segment(complex_structure)
+    assert isinstance(segment, ArrayAnySegment)
+    assert segment.value == complex_structure
+
+    # Test with single None in list
+    single_none = [None]
+    segment = variable_factory.build_segment(single_none)
+    assert isinstance(segment, ArrayAnySegment)
+    assert segment.value == single_none
+
+
+def test_build_segment_file_array_with_different_file_types():
+    """Test ArrayFileSegment with different file types."""
+    image_file = File(
+        id="image_id",
+        tenant_id="test_tenant_id",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://test.example.com/image.png",
+        filename="image",
+        extension=".png",
+        mime_type="image/png",
+        size=1000,
+    )
+
+    video_file = File(
+        id="video_id",
+        tenant_id="test_tenant_id",
+        type=FileType.VIDEO,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="video_relation_id",
+        filename="video",
+        extension=".mp4",
+        mime_type="video/mp4",
+        size=5000,
+    )
+
+    audio_file = File(
+        id="audio_id",
+        tenant_id="test_tenant_id",
+        type=FileType.AUDIO,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        related_id="audio_relation_id",
+        filename="audio",
+        extension=".mp3",
+        mime_type="audio/mpeg",
+        size=3000,
+    )
+
+    segment = variable_factory.build_segment([image_file, video_file, audio_file])
+    assert isinstance(segment, ArrayFileSegment)
+    assert len(segment.value) == 3
+    assert segment.value[0].type == FileType.IMAGE
+    assert segment.value[1].type == FileType.VIDEO
+    assert segment.value[2].type == FileType.AUDIO
+
+
 @st.composite
 def _generate_file(draw) -> File:
     file_id = draw(st.text(min_size=1, max_size=10))
@@ -220,7 +450,7 @@ def _generate_file(draw) -> File:
     return file
 
 
-def _scalar_value() -> st.SearchStrategy[int | float | str | File]:
+def _scalar_value() -> st.SearchStrategy[int | float | str | File | None]:
     return st.one_of(
         st.none(),
         st.integers(),
