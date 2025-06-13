@@ -73,6 +73,7 @@ jobs:
           services: |
             weaviate
             qdrant
+            couchbase-server
             etcd
             minio
             milvus-standalone
