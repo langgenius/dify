@@ -223,7 +223,7 @@ const CreateFormPipeline = () => {
 
   return (
     <div
-      className='relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
+      className='relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
     >
       <div className='flex h-full flex-1 flex-col px-14'>
         <LeftHeader
@@ -309,7 +309,7 @@ const CreateFormPipeline = () => {
       {/* Preview */}
       {
         currentStep === 1 && (
-          <div className='flex h-full flex-1 shrink-0 pl-2 pt-2'>
+          <div className='flex h-full flex-1 pl-2 pt-2'>
             {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
             {currentDocuments && <OnlineDocumentPreview currentPage={currentDocuments} hidePreview={hideOnlineDocumentPreview} />}
             {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
@@ -318,7 +318,7 @@ const CreateFormPipeline = () => {
       }
       {
         currentStep === 2 && (
-          <div className='flex h-full flex-1 shrink-0 pl-2 pt-2'>
+          <div className='flex h-full flex-1 pl-2 pt-2'>
             <ChunkPreview
               dataSourceType={datasource!.type}
               files={fileList.map(file => file.file)}

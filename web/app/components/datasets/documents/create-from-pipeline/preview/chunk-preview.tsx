@@ -122,7 +122,7 @@ const ChunkPreview = ({
       className='relative flex h-full w-full shrink-0'
       mainClassName='space-y-6'
     >
-      {currentDocForm === ChunkingMode.qa && estimateData?.qa_preview && (
+      {!isPending && currentDocForm === ChunkingMode.qa && estimateData?.qa_preview && (
         estimateData?.qa_preview.map((item, index) => (
           <ChunkContainer
             key={item.question}
@@ -133,7 +133,7 @@ const ChunkPreview = ({
           </ChunkContainer>
         ))
       )}
-      {currentDocForm === ChunkingMode.text && estimateData?.preview && (
+      {!isPending && currentDocForm === ChunkingMode.text && estimateData?.preview && (
         estimateData?.preview.map((item, index) => (
           <ChunkContainer
             key={item.content}
@@ -144,7 +144,7 @@ const ChunkPreview = ({
           </ChunkContainer>
         ))
       )}
-      {currentDocForm === ChunkingMode.parentChild && estimateData?.preview && (
+      {!isPending && currentDocForm === ChunkingMode.parentChild && estimateData?.preview && (
         estimateData?.preview?.map((item, index) => {
           const indexForLabel = index + 1
           // const childChunks = parentChildConfig.chunkForContext === 'full-doc'

@@ -93,7 +93,7 @@ const PipelineSettings = ({
         </div>
       </div>
       {/* Preview */}
-      <div className='flex h-full flex-1 shrink-0 pl-2 pt-2'>
+      <div className='flex h-full flex-1 pl-2 pt-2'>
         <ChunkPreview
           dataSourceType={documentDetail!.data_source_type as DatasourceType}
           // @ts-expect-error mock data // todo: remove mock data
