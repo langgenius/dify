@@ -35,4 +35,17 @@ export const useGetPricingPageLanguage = () => {
   return getPricingPageLanguage(locale)
 }
 
+const defaultDocBaseUrl = 'https://docs.dify.ai'
+export const useDocLink = (baseUrl?: string): ((path?: string, pathMap?: { [index: string]: string }) => string) => {
+    let baseDocUrl = baseUrl || defaultDocBaseUrl
+    baseDocUrl = (baseDocUrl.endsWith('/')) ? baseDocUrl.slice(0, -1) : baseDocUrl
+    const { locale } = useI18N()
+    const docLanguage = getDocLanguage(locale)
+    return (path?: string, pathMap?: { [index: string]: string }): string => {
+        const pathUrl = path || ''
+        let targetPath = (pathMap) ? pathMap[locale] || pathUrl : pathUrl
+        targetPath = (targetPath.startsWith('/')) ? targetPath.slice(0, -1) : targetPath
+        return `${baseDocUrl}/${docLanguage}/${targetPath}`
+    }
+}
 export default I18NContext
