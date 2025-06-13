@@ -169,16 +169,13 @@ const useInspectVarsCrud = () => {
   }
 
   const editInspectVarValue = useCallback(async (nodeId: string, varId: string, value: any) => {
-    if (nodeId === VarInInspectType.conversation) {
+    await doEditInspectorVar({
+      varId,
+      value,
+    })
+    setInspectVarValue(nodeId, varId, value)
+    if (nodeId === VarInInspectType.conversation)
       invalidateConversationVarValues()
-    }
-    else {
-      await doEditInspectorVar({
-        varId,
-        value,
-      })
-      setInspectVarValue(nodeId, varId, value)
-    }
     if (nodeId === VarInInspectType.system)
       invalidateSysVarValues()
   }, [doEditInspectorVar, invalidateConversationVarValues, invalidateSysVarValues, setInspectVarValue])

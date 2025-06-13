@@ -58,10 +58,10 @@ const ValueContent = ({
   // update default value when id changed
   useEffect(() => {
     if (showTextEditor) {
-      if (!currentVar.value)
-        return setValue('')
       if (currentVar.value_type === 'number')
         return setValue(JSON.stringify(currentVar.value))
+      if (!currentVar.value)
+        return setValue('')
       setValue(currentVar.value)
     }
     if (showJSONEditor)
@@ -86,9 +86,10 @@ const ValueContent = ({
 
     if (currentVar.value_type === 'number') {
       if (/^-?\d+(\.)?(\d+)?$/.test(value))
-        setValue(value)
+        setValue(Number.parseFloat(value))
     }
-    debounceValueChange(currentVar.id, value)
+    const newValue = currentVar.value_type === 'number' ? Number.parseFloat(value) : value
+    debounceValueChange(currentVar.id, newValue)
   }
 
   const jsonValueValidate = (value: string, type: string) => {

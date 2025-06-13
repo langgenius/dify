@@ -109,14 +109,14 @@ const Right = ({
                   <span className='system-2xs-semibold-uupercase'>{t('workflow.debug.variableInspect.edited')}</span>
                 </Badge>
               )}
-              {currentNodeVar.var.edited && (
+              {currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
                 <Tooltip popupContent={t('workflow.debug.variableInspect.reset')}>
                   <ActionButton onClick={resetValue}>
                     <RiArrowGoBackLine className='h-4 w-4' />
                   </ActionButton>
                 </Tooltip>
               )}
-              {currentNodeVar.var.type === VarInInspectType.conversation && (
+              {currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
                 <Tooltip popupContent={t('workflow.debug.variableInspect.resetConversationVar')}>
                   <ActionButton onClick={handleClear}>
                     <RiArrowGoBackLine className='h-4 w-4' />
