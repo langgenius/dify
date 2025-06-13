@@ -7,6 +7,7 @@ type SchemaEditorProps = {
   onUpdate: (schema: string) => void
   hideTopMenu?: boolean
   className?: string
+  readonly?: boolean
 }
 
 const SchemaEditor: FC<SchemaEditorProps> = ({
@@ -14,9 +15,11 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
   onUpdate,
   hideTopMenu,
   className,
+  readonly = false,
 }) => {
   return (
     <CodeEditor
+      readOnly={readonly}
       className={cn('rounded-xl', className)}
       editorWrapperClassName='grow'
       value={schema}

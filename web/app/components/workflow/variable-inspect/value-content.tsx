@@ -36,9 +36,10 @@ const ValueContent = ({
   const [editorHeight, setEditorHeight] = useState(0)
   const showTextEditor = currentVar.value_type === 'secret' || currentVar.value_type === 'string' || currentVar.value_type === 'number'
   const isSysFiles = currentVar.type === VarInInspectType.system && currentVar.name === 'files'
-  const showJSONEditor = !isSysFiles && (currentVar.value_type === 'object' || currentVar.value_type === 'array[string]' || currentVar.value_type === 'array[number]' || currentVar.value_type === 'array[object]')
+  const showJSONEditor = !isSysFiles && (currentVar.value_type === 'object' || currentVar.value_type === 'array[string]' || currentVar.value_type === 'array[number]' || currentVar.value_type === 'array[object]' || currentVar.value_type === 'array[any]')
   const showFileEditor = isSysFiles || currentVar.value_type === 'file' || currentVar.value_type === 'array[file]'
   const textEditorDisabled = currentVar.type === VarInInspectType.environment || (currentVar.type === VarInInspectType.system && currentVar.name !== 'query' && currentVar.name !== 'files')
+  const JSONEditorDisabled = currentVar.value_type === 'array[any]'
 
   const [value, setValue] = useState<any>()
   const [json, setJson] = useState('')
@@ -185,6 +186,7 @@ const ValueContent = ({
         )}
         {showJSONEditor && (
           <SchemaEditor
+            readonly={JSONEditorDisabled}
             className='overflow-y-auto'
             hideTopMenu
             schema={json}
