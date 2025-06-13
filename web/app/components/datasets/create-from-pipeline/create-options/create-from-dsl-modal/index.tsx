@@ -12,8 +12,6 @@ import {
   DSLImportMode,
   DSLImportStatus,
 } from '@/models/app'
-import { useProviderContextSelector } from '@/context/provider-context'
-import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { noop } from 'lodash-es'
 import Uploader from './uploader'
@@ -70,9 +68,10 @@ const CreateFromDSLModal = ({
       setFileContent('')
   }
 
-  const plan = useProviderContextSelector(state => state.plan)
-  const enableBilling = useProviderContextSelector(state => state.enableBilling)
-  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  // todo: TBD billing plan
+  // const plan = useProviderContextSelector(state => state.plan)
+  // const enableBilling = useProviderContextSelector(state => state.enableBilling)
+  // const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const isCreatingRef = useRef(false)
 
@@ -182,14 +181,12 @@ const CreateFromDSLModal = ({
   }
 
   const buttonDisabled = useMemo(() => {
-    if (isAppsFull)
-      return true
     if (currentTab === CreateFromDSLModalTab.FROM_FILE)
       return !currentFile
     if (currentTab === CreateFromDSLModalTab.FROM_URL)
       return !dslUrlValue
     return false
-  }, [isAppsFull, currentTab, currentFile, dslUrlValue])
+  }, [currentTab, currentFile, dslUrlValue])
 
   return (
     <>
@@ -226,11 +223,6 @@ const CreateFromDSLModal = ({
             )
           }
         </div>
-        {isAppsFull && (
-          <div className='px-6'>
-            <AppsFull className='mt-0' loc='app-create-dsl' />
-          </div>
-        )}
         <div className='flex justify-end gap-x-2 p-6 pt-5'>
           <Button onClick={onClose}>
             {t('app.newApp.Cancel')}
