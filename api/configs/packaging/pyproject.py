@@ -11,5 +11,7 @@ class PyProjectTomlConfig(BaseSettings):
     configs in api/pyproject.toml
     """
 
-    # [project] section
-    project: PyProjectConfig = Field(default=PyProjectConfig())
+    project: PyProjectConfig = Field(
+        description="configs in the project section of pyproject.toml",
+        default=PyProjectConfig(),
+    )
