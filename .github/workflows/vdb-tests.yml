@@ -36,6 +36,7 @@ jobs:
         with:
           remove_dotnet: true
           remove_haskell: true
+          remove_tool_cache: true
 
       - name: Setup UV and Python
         uses: ./.github/actions/setup-uv
