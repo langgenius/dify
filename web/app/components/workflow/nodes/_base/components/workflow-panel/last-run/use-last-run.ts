@@ -99,7 +99,7 @@ const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
   }
 }
 
-type Params<T> = OneStepRunParams<T>
+type Params<T> = Omit<OneStepRunParams<T>, 'isRunAfterSingleRun'>
 const useLastRun = <T>({
   ...oneStepRunParams
 }: Params<T>) => {
@@ -112,6 +112,8 @@ const useLastRun = <T>({
   const {
     getData: getDataForCheckMore,
   } = useGetDataForCheckMoreHooks<T>(blockType)(oneStepRunParams.id, oneStepRunParams.data)
+  const [isRunAfterSingleRun, setIsRunAfterSingleRun] = useState(false)
+
   const {
     id,
     data,
@@ -120,6 +122,7 @@ const useLastRun = <T>({
     ...oneStepRunParams,
     iteratorInputKey: blockType === BlockEnum.Iteration ? `${id}.input_selector` : '',
     moreDataForCheckValid: getDataForCheckMore(),
+    isRunAfterSingleRun,
   })
 
   const {
@@ -180,7 +183,6 @@ const useLastRun = <T>({
   }
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
-  const [isRunAfterSingleRun, setIsRunAfterSingleRun] = useState(false)
   const handleRunWithParams = async (data: Record<string, any>) => {
     setIsRunAfterSingleRun(true)
     setTabType(TabType.lastRun)

@@ -77,6 +77,7 @@ export type Params<T> = {
   moreDataForCheckValid?: any
   iteratorInputKey?: string
   loopInputKey?: string
+  isRunAfterSingleRun: boolean
 }
 
 const varTypeToInputVarType = (type: VarType, {
@@ -109,6 +110,7 @@ const useOneStepRun = <T>({
   moreDataForCheckValid,
   iteratorInputKey,
   loopInputKey,
+  isRunAfterSingleRun,
 }: Params<T>) => {
   const { t } = useTranslation()
   const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } = useWorkflow() as any
@@ -170,8 +172,15 @@ const useOneStepRun = <T>({
     invalidateSysVarValues,
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
+  const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
+
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
-    doSetRunResult(data)
+    const canRunLastRun = !isRunAfterSingleRun || runningStatus === NodeRunningStatus.Succeeded
+    if(!canRunLastRun) {
+      doSetRunResult(data)
+      return
+    }
+
     // run fail may also update the inspect vars when the node set the error default output.
     const vars = await fetchNodeInspectVars(appId!, id)
     const { getNodes } = store.getState()
@@ -183,7 +192,7 @@ const useOneStepRun = <T>({
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [invalidLastRun, appId, id, store, appendNodeInspectVars, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
+  }, [isRunAfterSingleRun, runningStatus, appId, id, store, appendNodeInspectVars, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)
@@ -239,7 +248,6 @@ const useOneStepRun = <T>({
       },
     })
   }
-  const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
   const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
   const handleRun = async (submitData: Record<string, any>) => {
