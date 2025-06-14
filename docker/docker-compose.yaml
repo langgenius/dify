@@ -231,7 +231,7 @@ x-shared-env: &shared-api-worker-env
   OPENSEARCH_VERIFY_CERTS: ${OPENSEARCH_VERIFY_CERTS:-true}
   OPENSEARCH_AUTH_METHOD: ${OPENSEARCH_AUTH_METHOD:-basic}
   OPENSEARCH_USER: ${OPENSEARCH_USER:-admin}
-  OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-admin}
+  OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-Qazwsxedc!@#123}
   OPENSEARCH_AWS_REGION: ${OPENSEARCH_AWS_REGION:-ap-southeast-1}
   OPENSEARCH_AWS_SERVICE: ${OPENSEARCH_AWS_SERVICE:-aoss}
   TENCENT_VECTOR_DB_URL: ${TENCENT_VECTOR_DB_URL:-http://127.0.0.1}
@@ -1064,8 +1064,9 @@ services:
         hard: ${OPENSEARCH_NOFILE_HARD:-65536}
     volumes:
       - ./volumes/opensearch/data:/usr/share/opensearch/data
-    networks:
-      - opensearch-net
+    ports:
+      - 9200:9200
+      - 9600:9600
 
   opensearch-dashboards:
     container_name: opensearch-dashboards
@@ -1076,8 +1077,8 @@ services:
       OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
     volumes:
       - ./volumes/opensearch/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
-    networks:
-      - opensearch-net
+    ports:
+      - 5601:5601
     depends_on:
       - opensearch
 
@@ -1205,3 +1206,4 @@ networks:
 volumes:
   oradata:
   dify_es01_data:
+
