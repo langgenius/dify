@@ -61,6 +61,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     availableStringNodesWithParent,
     availableNumberVars,
     availableNumberNodesWithParent,
+    availableArrayVars,
+    availableArrayNodesWithParent,
   } = useConfig(id, data)
 
   const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
@@ -149,6 +151,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           availableStringNodesWithParent={availableStringNodesWithParent}
           availableNumberVars={availableNumberVars}
           availableNumberNodesWithParent={availableNumberNodesWithParent}
+          availableArrayVars={availableArrayVars}
+          availableArrayNodesWithParent={availableArrayNodesWithParent}
         />
       </div>
       <Split />
