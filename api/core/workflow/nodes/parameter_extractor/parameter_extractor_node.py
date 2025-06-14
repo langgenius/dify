@@ -109,6 +109,10 @@ class ParameterExtractorNode(BaseNode):
             }
         }
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self):
         """
         Run the node.

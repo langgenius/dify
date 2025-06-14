@@ -10,6 +10,10 @@ class StartNode(BaseNode[StartNodeData]):
     _node_data_cls = StartNodeData
     _node_type = NodeType.START
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
         node_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
         system_inputs = self.graph_runtime_state.variable_pool.system_variables
@@ -18,5 +22,6 @@ class StartNode(BaseNode[StartNodeData]):
         # Set system variables as node outputs.
         for var in system_inputs:
             node_inputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
+        outputs = dict(node_inputs)
 
-        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=node_inputs, outputs=node_inputs)
+        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=node_inputs, outputs=outputs)

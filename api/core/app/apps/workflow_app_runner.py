@@ -1,6 +1,8 @@
 from collections.abc import Mapping
 from typing import Any, Optional, cast
 
+from sqlalchemy.orm import Session
+
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.queue_entities import (
@@ -33,6 +35,7 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.graph_engine.entities.event import (
     AgentLogEvent,
+    BaseNodeEvent,
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
@@ -62,15 +65,23 @@ from core.workflow.graph_engine.entities.event import (
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App
 from models.workflow import Workflow
+from services.workflow_draft_variable_service import (
+    DraftVariableSaver,
+)
 
 
 class WorkflowBasedAppRunner(AppRunner):
-    def __init__(self, queue_manager: AppQueueManager):
+    def __init__(self, queue_manager: AppQueueManager, variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER) -> None:
         self.queue_manager = queue_manager
+        self._variable_loader = variable_loader
+
+    def _get_app_id(self) -> str:
+        raise NotImplementedError("not implemented")
 
     def _init_graph(self, graph_config: Mapping[str, Any]) -> Graph:
         """
@@ -173,6 +184,13 @@ class WorkflowBasedAppRunner(AppRunner):
         except NotImplementedError:
             variable_mapping = {}
 
+        load_into_variable_pool(
+            variable_loader=self._variable_loader,
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+        )
+
         WorkflowEntry.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
             user_inputs=user_inputs,
@@ -262,6 +280,12 @@ class WorkflowBasedAppRunner(AppRunner):
             )
         except NotImplementedError:
             variable_mapping = {}
+        load_into_variable_pool(
+            self._variable_loader,
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+        )
 
         WorkflowEntry.mapping_user_inputs_to_variable_pool(
             variable_mapping=variable_mapping,
@@ -376,6 +400,8 @@ class WorkflowBasedAppRunner(AppRunner):
                     in_loop_id=event.in_loop_id,
                 )
             )
+            self._save_draft_var_for_event(event)
+
         elif isinstance(event, NodeRunFailedEvent):
             self._publish_event(
                 QueueNodeFailedEvent(
@@ -438,6 +464,8 @@ class WorkflowBasedAppRunner(AppRunner):
                     in_loop_id=event.in_loop_id,
                 )
             )
+            self._save_draft_var_for_event(event)
+
         elif isinstance(event, NodeInIterationFailedEvent):
             self._publish_event(
                 QueueNodeInIterationFailedEvent(
@@ -690,3 +718,30 @@ class WorkflowBasedAppRunner(AppRunner):
 
     def _publish_event(self, event: AppQueueEvent) -> None:
         self.queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
+
+    def _save_draft_var_for_event(self, event: BaseNodeEvent):
+        run_result = event.route_node_state.node_run_result
+        if run_result is None:
+            return
+        process_data = run_result.process_data
+        outputs = run_result.outputs
+        with Session(bind=db.engine) as session, session.begin():
+            draft_var_saver = DraftVariableSaver(
+                session=session,
+                app_id=self._get_app_id(),
+                node_id=event.node_id,
+                node_type=event.node_type,
+                # FIXME(QuantumGhost): rely on private state of queue_manager is not ideal.
+                invoke_from=self.queue_manager._invoke_from,
+                node_execution_id=event.id,
+                enclosing_node_id=event.in_loop_id or event.in_iteration_id or None,
+            )
+            draft_var_saver.save(process_data=process_data, outputs=outputs)
+
+
+def _remove_first_element_from_variable_string(key: str) -> str:
+    """
+    Remove the first element from the prefix.
+    """
+    prefix, remaining = key.split(".", maxsplit=1)
+    return remaining

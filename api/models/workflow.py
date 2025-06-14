@@ -7,10 +7,16 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 from uuid import uuid4
 
 from flask_login import current_user
+from sqlalchemy import orm
 
+from core.file.models import File
 from core.variables import utils as variable_utils
+from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from core.workflow.nodes.enums import NodeType
 from factories.variable_factory import build_segment
+
+from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
     from models.model import AppMode
@@ -70,6 +76,10 @@ class WorkflowType(Enum):
 
         app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(app_mode)
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
+
+
+class _InvalidGraphDefinitionError(Exception):
+    pass
 
 
 class Workflow(Base):
@@ -136,6 +146,8 @@ class Workflow(Base):
         "conversation_variables", db.Text, nullable=False, server_default="{}"
     )
 
+    VERSION_DRAFT = "draft"
+
     @classmethod
     def new(
         cls,
@@ -179,7 +191,70 @@ class Workflow(Base):
 
     @property
     def graph_dict(self) -> Mapping[str, Any]:
+        # TODO(QuantumGhost): Consider caching `graph_dict` to avoid repeated JSON decoding.
+        #
+        # Using `functools.cached_property` could help, but some code in the codebase may
+        # modify the returned dict, which can cause issues elsewhere.
+        #
+        # For example, changing this property to a cached property led to errors like the
+        # following when single stepping an `Iteration` node:
+        #
+        #     Root node id 1748401971780start not found in the graph
+        #
+        # There is currently no standard way to make a dict deeply immutable in Python,
+        # and tracking modifications to the returned dict is difficult. For now, we leave
+        # the code as-is to avoid these issues.
+        #
+        # Currently, the following functions / methods would mutate the returned dict:
+        #
+        # - `_get_graph_and_variable_pool_of_single_iteration`.
+        # - `_get_graph_and_variable_pool_of_single_loop`.
         return json.loads(self.graph) if self.graph else {}
+
+    def get_node_config_by_id(self, node_id: str) -> Mapping[str, Any]:
+        """Extract a node configuration from the workflow graph by node ID.
+        A node configuration is a dictionary containing the node's properties, including
+        the node's id, title, and its data as a dict.
+        """
+        workflow_graph = self.graph_dict
+
+        if not workflow_graph:
+            raise WorkflowDataError(f"workflow graph not found, workflow_id={self.id}")
+
+        nodes = workflow_graph.get("nodes")
+        if not nodes:
+            raise WorkflowDataError("nodes not found in workflow graph")
+
+        try:
+            node_config = next(filter(lambda node: node["id"] == node_id, nodes))
+        except StopIteration:
+            raise NodeNotFoundError(node_id)
+        return node_config
+
+    @staticmethod
+    def get_node_type_from_node_config(node_config: Mapping[str, Any]) -> NodeType:
+        """Extract type of a node from the node configuration returned by `get_node_config_by_id`."""
+        node_config_data = node_config.get("data", {})
+        # Get node class
+        node_type = NodeType(node_config_data.get("type"))
+        return node_type
+
+    @staticmethod
+    def get_enclosing_node_type_and_id(node_config: Mapping[str, Any]) -> tuple[NodeType, str] | None:
+        in_loop = node_config.get("isInLoop", False)
+        in_iteration = node_config.get("isInIteration", False)
+        if in_loop:
+            loop_id = node_config.get("loop_id")
+            if loop_id is None:
+                raise _InvalidGraphDefinitionError("invalid graph")
+            return NodeType.LOOP, loop_id
+        elif in_iteration:
+            iteration_id = node_config.get("iteration_id")
+            if iteration_id is None:
+                raise _InvalidGraphDefinitionError("invalid graph")
+            return NodeType.ITERATION, iteration_id
+        else:
+            return None
 
     @property
     def features(self) -> str:
@@ -375,6 +450,10 @@ class Workflow(Base):
             {var.name: var.model_dump() for var in value},
             ensure_ascii=False,
         )
+
+    @staticmethod
+    def version_from_datetime(d: datetime) -> str:
+        return str(d)
 
 
 class WorkflowRun(Base):
@@ -838,8 +917,18 @@ def _naive_utc_datetime():
 
 
 class WorkflowDraftVariable(Base):
+    """`WorkflowDraftVariable` record variables and outputs generated during
+    debugging worfklow or chatflow.
+
+    IMPORTANT: This model maintains multiple invariant rules that must be preserved.
+    Do not instantiate this class directly with the constructor.
+
+    Instead, use the factory methods (`new_conversation_variable`, `new_sys_variable`,
+    `new_node_variable`) defined below to ensure all invariants are properly maintained.
+    """
+
     @staticmethod
-    def unique_columns() -> list[str]:
+    def unique_app_id_node_id_name() -> list[str]:
         return [
             "app_id",
             "node_id",
@@ -847,7 +936,9 @@ class WorkflowDraftVariable(Base):
         ]
 
     __tablename__ = "workflow_draft_variables"
-    __table_args__ = (UniqueConstraint(*unique_columns()),)
+    __table_args__ = (UniqueConstraint(*unique_app_id_node_id_name()),)
+    # Required for instance variable annotation.
+    __allow_unmapped__ = True
 
     # id is the unique identifier of a draft variable.
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
@@ -928,6 +1019,36 @@ class WorkflowDraftVariable(Base):
         default=None,
     )
 
+    # Cache for deserialized value
+    #
+    # NOTE(QuantumGhost): This field serves two purposes:
+    #
+    # 1. Caches deserialized values to reduce repeated parsing costs
+    # 2. Allows modification of the deserialized value after retrieval,
+    #    particularly important for `File`` variables which require database
+    #    lookups to obtain storage_key and other metadata
+    #
+    # Use double underscore prefix for better encapsulation,
+    # making this attribute harder to access from outside the class.
+    __value: Segment | None
+
+    def __init__(self, *args, **kwargs):
+        """
+        The constructor of `WorkflowDraftVariable` is not intended for
+        direct use outside this file. Its solo purpose is setup private state
+        used by the model instance.
+
+        Please use the factory methods
+        (`new_conversation_variable`, `new_sys_variable`, `new_node_variable`)
+        defined below to create instances of this class.
+        """
+        super().__init__(*args, **kwargs)
+        self.__value = None
+
+    @orm.reconstructor
+    def _init_on_load(self):
+        self.__value = None
+
     def get_selector(self) -> list[str]:
         selector = json.loads(self.selector)
         if not isinstance(selector, list):
@@ -942,15 +1063,55 @@ class WorkflowDraftVariable(Base):
     def _set_selector(self, value: list[str]):
         self.selector = json.dumps(value)
 
-    def get_value(self) -> Segment | None:
-        return build_segment(json.loads(self.value))
+    def _loads_value(self) -> Segment:
+        value = json.loads(self.value)
+        value_type = self.value_type
+        if value_type == SegmentType.FILE:
+            file = File.model_validate(value)
+            return FileSegment(value=file)
+        elif value_type == SegmentType.ARRAY_FILE:
+            files = [File.model_validate(i) for i in value]
+            return ArrayFileSegment(value=files)
+        else:
+            return build_segment(value)
+
+    def get_value(self) -> Segment:
+        """Decode the serialized value into its corresponding `Segment` object.
+
+        This method caches the result, so repeated calls will return the same
+        object instance without re-parsing the serialized data.
+
+        If you need to modify the returned `Segment`, use `value.model_copy()`
+        to create a copy first to avoid affecting the cached instance.
+
+        For more information about the caching mechanism, see the documentation
+        of the `__value` field.
+
+        Returns:
+            Segment: The deserialized value as a Segment object.
+        """
+
+        if self.__value is not None:
+            return self.__value
+        value = self._loads_value()
+        self.__value = value
+        return value
 
     def set_name(self, name: str):
         self.name = name
         self._set_selector([self.node_id, name])
 
     def set_value(self, value: Segment):
-        self.value = json.dumps(value.value)
+        """Updates the `value` and corresponding `value_type` fields in the database model.
+
+        This method also stores the provided Segment object in the deserialized cache
+        without creating a copy, allowing for efficient value access.
+
+        Args:
+            value: The Segment object to store as the variable's value.
+        """
+        self.__value = value
+        self.value = json.dumps(value, cls=variable_utils.SegmentJSONEncoder)
         self.value_type = value.value_type
 
     def get_node_id(self) -> str | None:
@@ -976,6 +1137,7 @@ class WorkflowDraftVariable(Base):
         node_id: str,
         name: str,
         value: Segment,
+        node_execution_id: str | None,
         description: str = "",
     ) -> "WorkflowDraftVariable":
         variable = WorkflowDraftVariable()
@@ -987,6 +1149,7 @@ class WorkflowDraftVariable(Base):
         variable.name = name
         variable.set_value(value)
         variable._set_selector(list(variable_utils.to_selector(node_id, name)))
+        variable.node_execution_id = node_execution_id
         return variable
 
     @classmethod
@@ -996,12 +1159,15 @@ class WorkflowDraftVariable(Base):
         app_id: str,
         name: str,
         value: Segment,
+        description: str = "",
     ) -> "WorkflowDraftVariable":
         variable = cls._new(
             app_id=app_id,
             node_id=CONVERSATION_VARIABLE_NODE_ID,
             name=name,
             value=value,
+            description=description,
+            node_execution_id=None,
         )
         return variable
 
@@ -1012,9 +1178,16 @@ class WorkflowDraftVariable(Base):
         app_id: str,
         name: str,
         value: Segment,
+        node_execution_id: str,
         editable: bool = False,
     ) -> "WorkflowDraftVariable":
-        variable = cls._new(app_id=app_id, node_id=SYSTEM_VARIABLE_NODE_ID, name=name, value=value)
+        variable = cls._new(
+            app_id=app_id,
+            node_id=SYSTEM_VARIABLE_NODE_ID,
+            name=name,
+            node_execution_id=node_execution_id,
+            value=value,
+        )
         variable.editable = editable
         return variable
 
@@ -1026,11 +1199,19 @@ class WorkflowDraftVariable(Base):
         node_id: str,
         name: str,
         value: Segment,
+        node_execution_id: str,
         visible: bool = True,
+        editable: bool = True,
     ) -> "WorkflowDraftVariable":
-        variable = cls._new(app_id=app_id, node_id=node_id, name=name, value=value)
+        variable = cls._new(
+            app_id=app_id,
+            node_id=node_id,
+            name=name,
+            node_execution_id=node_execution_id,
+            value=value,
+        )
         variable.visible = visible
-        variable.editable = True
+        variable.editable = editable
         return variable
 
     @property

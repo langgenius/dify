@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import ArrayStringVariable, StringVariable
+from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
@@ -63,10 +64,11 @@ def test_overwrite_string_variable():
         name="test_string_variable",
         value="the second value",
     )
+    conversation_id = str(uuid.uuid4())
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.CONVERSATION_ID: "conversation_id"},
+        system_variables={SystemVariableKey.CONVERSATION_ID: conversation_id},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -76,6 +78,9 @@ def test_overwrite_string_variable():
         [DEFAULT_NODE_ID, input_variable.name],
         input_variable,
     )
+
+    mock_conv_var_updater = mock.Mock(spec=ConversationVariableUpdater)
+    mock_conv_var_updater_factory = mock.Mock(return_value=mock_conv_var_updater)
 
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
@@ -91,11 +96,20 @@ def test_overwrite_string_variable():
                 "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
             },
         },
+        conv_var_updater_factory=mock_conv_var_updater_factory,
     )
 
-    with mock.patch("core.workflow.nodes.variable_assigner.common.helpers.update_conversation_variable") as mock_run:
-        list(node.run())
-        mock_run.assert_called_once()
+    list(node.run())
+    expected_var = StringVariable(
+        id=conversation_variable.id,
+        name=conversation_variable.name,
+        description=conversation_variable.description,
+        selector=conversation_variable.selector,
+        value_type=conversation_variable.value_type,
+        value=input_variable.value,
+    )
+    mock_conv_var_updater.update.assert_called_once_with(conversation_id=conversation_id, variable=expected_var)
+    mock_conv_var_updater.flush.assert_called_once()
 
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
@@ -148,9 +162,10 @@ def test_append_variable_to_array():
         name="test_string_variable",
         value="the second value",
     )
+    conversation_id = str(uuid.uuid4())
 
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.CONVERSATION_ID: "conversation_id"},
+        system_variables={SystemVariableKey.CONVERSATION_ID: conversation_id},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -159,6 +174,9 @@ def test_append_variable_to_array():
         [DEFAULT_NODE_ID, input_variable.name],
         input_variable,
     )
+
+    mock_conv_var_updater = mock.Mock(spec=ConversationVariableUpdater)
+    mock_conv_var_updater_factory = mock.Mock(return_value=mock_conv_var_updater)
 
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
@@ -174,11 +192,22 @@ def test_append_variable_to_array():
                 "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
             },
         },
+        conv_var_updater_factory=mock_conv_var_updater_factory,
     )
 
-    with mock.patch("core.workflow.nodes.variable_assigner.common.helpers.update_conversation_variable") as mock_run:
-        list(node.run())
-        mock_run.assert_called_once()
+    list(node.run())
+    expected_value = list(conversation_variable.value)
+    expected_value.append(input_variable.value)
+    expected_var = ArrayStringVariable(
+        id=conversation_variable.id,
+        name=conversation_variable.name,
+        description=conversation_variable.description,
+        selector=conversation_variable.selector,
+        value_type=conversation_variable.value_type,
+        value=expected_value,
+    )
+    mock_conv_var_updater.update.assert_called_once_with(conversation_id=conversation_id, variable=expected_var)
+    mock_conv_var_updater.flush.assert_called_once()
 
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
@@ -225,12 +254,16 @@ def test_clear_array():
         value=["the first value"],
     )
 
+    conversation_id = str(uuid.uuid4())
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.CONVERSATION_ID: "conversation_id"},
+        system_variables={SystemVariableKey.CONVERSATION_ID: conversation_id},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
     )
+
+    mock_conv_var_updater = mock.Mock(spec=ConversationVariableUpdater)
+    mock_conv_var_updater_factory = mock.Mock(return_value=mock_conv_var_updater)
 
     node = VariableAssignerNode(
         id=str(uuid.uuid4()),
@@ -246,11 +279,20 @@ def test_clear_array():
                 "input_variable_selector": [],
             },
         },
+        conv_var_updater_factory=mock_conv_var_updater_factory,
     )
 
-    with mock.patch("core.workflow.nodes.variable_assigner.common.helpers.update_conversation_variable") as mock_run:
-        list(node.run())
-        mock_run.assert_called_once()
+    list(node.run())
+    expected_var = ArrayStringVariable(
+        id=conversation_variable.id,
+        name=conversation_variable.name,
+        description=conversation_variable.description,
+        selector=conversation_variable.selector,
+        value_type=conversation_variable.value_type,
+        value=[],
+    )
+    mock_conv_var_updater.update.assert_called_once_with(conversation_id=conversation_id, variable=expected_var)
+    mock_conv_var_updater.flush.assert_called_once()
 
     got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
