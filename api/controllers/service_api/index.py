@@ -9,7 +9,7 @@ class IndexApi(Resource):
         return {
             "welcome": "Dify OpenAPI",
             "api_version": "v1",
-            "server_version": dify_config.CURRENT_VERSION,
+            "server_version": dify_config.project.version,
         }
 
 
