@@ -1,8 +1,9 @@
 import logging
 
 import sendgrid
-from sendgrid.helpers.mail import Mail, Email, To, Content
-from python_http_client.exceptions import UnauthorizedError, ForbiddenError
+from python_http_client.exceptions import ForbiddenError, UnauthorizedError
+from sendgrid.helpers.mail import Content, Email, Mail, To
+
 
 class SendGridClient:
     def __init__(
@@ -37,7 +38,7 @@ class SendGridClient:
             logging.exception("SendGridClient Timeout occurred while sending email")
             raise
         except (UnauthorizedError, ForbiddenError) as e:
-            logging.exception("SendGridClient Authentication failed. Verify that your credentials and the 'from' address are correct.")
+            logging.exception("SendGridClient Authentication failed. Verify that your credentials and the 'from")
             raise
         except Exception as e:
             logging.exception(f"SendGridClient Unexpected error occurred while sending email to {_to}")
