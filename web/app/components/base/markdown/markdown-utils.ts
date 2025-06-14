@@ -28,7 +28,7 @@ export const preprocessLaTeX = (content: string) => {
 }
 
 export const preprocessThinkTag = (content: string) => {
-  const thinkOpenTagRegex = /<think>\n/g
+  const thinkOpenTagRegex = /(<think>\n)+/g
   const thinkCloseTagRegex = /\n<\/think>/g
   return flow([
     (str: string) => str.replace(thinkOpenTagRegex, '<details data-think=true>\n'),
