@@ -3,7 +3,7 @@ import time
 import pymysql
 
 
-def check_ocean_ready() -> bool:
+def check_oceanbase_ready() -> bool:
     try:
         connection = pymysql.connect(
             host="localhost",
@@ -27,7 +27,7 @@ def main():
     is_oceanbase_ready = False
     for attempt in range(max_attempts):
         try:
-            is_oceanbase_ready = check_ocean_ready()
+            is_oceanbase_ready = check_oceanbase_ready()
         except Exception as e:
             print(f"Oceanbase is not ready. Exception: {e}")
             is_oceanbase_ready = False
