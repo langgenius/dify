@@ -95,6 +95,7 @@ class WorkflowTool(Tool):
             streaming=False,
             call_depth=self.workflow_call_depth + 1,
             workflow_thread_pool_id=self.thread_pool_id,
+            conversation_id=conversation_id,
         )
         assert isinstance(result, dict)
         data = result.get("data", {})
