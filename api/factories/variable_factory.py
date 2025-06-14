@@ -39,10 +39,6 @@ from core.variables.variables import (
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 
 
-class InvalidSelectorError(ValueError):
-    pass
-
-
 class UnsupportedSegmentTypeError(Exception):
     pass
 

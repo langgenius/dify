@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 
 
 class RunCompletedEvent(BaseModel):
@@ -39,11 +38,3 @@ class RunRetryEvent(BaseModel):
     error: str = Field(..., description="error")
     retry_index: int = Field(..., description="Retry attempt number")
     start_at: datetime = Field(..., description="Retry start time")
-
-
-class SingleStepRetryEvent(NodeRunResult):
-    """Single step retry event"""
-
-    status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RETRY
-
-    elapsed_time: float = Field(..., description="elapsed time")
