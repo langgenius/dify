@@ -163,7 +163,7 @@ def exchange_token_for_existing_web_user(app_code: str, enterprise_user_decoded:
         )
         db.session.add(end_user)
         db.session.commit()
-    exp_dt = datetime.now(UTC) + timedelta(hours=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES * 24)
+    exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
     exp = int(exp_dt.timestamp())
     payload = {
         "iss": site.id,
