@@ -213,7 +213,7 @@ export default combine(
     settings: {
       tailwindcss: {
         // These are the default values but feel free to customize
-        callees: ['classnames', 'clsx', 'ctl', 'cn'],
+        callees: ['classnames', 'clsx', 'ctl', 'cn', 'classNames'],
         config: 'tailwind.config.js', // returned from `loadConfig()` utility if not provided
         cssFiles: [
           '**/*.css',
