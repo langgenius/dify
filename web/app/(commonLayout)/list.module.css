@@ -86,11 +86,11 @@
 }
 
 /* .newItemIconChat {
-  background-image: url("~@/app/components/base/icons/assets/public/header-nav/studio/Robot.svg");
+  background-image: url("@/app/components/base/icons/assets/public/header-nav/studio/Robot.svg");
 }
 
 .selected .newItemIconChat {
-  background-image: url("~@/app/components/base/icons/assets/public/header-nav/studio/Robot-Active.svg");
+  background-image: url("@/app/components/base/icons/assets/public/header-nav/studio/Robot-Active.svg");
 } */
 
 .newItemIconComplete {
@@ -120,7 +120,7 @@
 .deleteDatasetIcon {
   @apply hidden grow-0 shrink-0 basis-8 w-8 h-8 rounded-lg transition-colors duration-200 ease-in-out bg-white border border-gray-200 hover:bg-gray-100 bg-center bg-no-repeat;
   background-size: 16px;
-  background-image: url('~@/assets/delete.svg');
+  background-image: url('/assets/delete.svg');
 }
 
 .listItem:hover .deleteDatasetIcon {
