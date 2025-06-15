@@ -507,7 +507,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                             )
                             outputs[current_index] = None
 
-                            # clean nodes res
+                            # clean nodes resources
                             for node_id in iteration_graph.node_ids:
                                 variable_pool.remove([node_id])
 
