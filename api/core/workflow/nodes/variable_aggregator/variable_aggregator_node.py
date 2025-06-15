@@ -9,6 +9,10 @@ class VariableAggregatorNode(BaseNode[VariableAssignerNodeData]):
     _node_data_cls = VariableAssignerNodeData
     _node_type = NodeType.VARIABLE_AGGREGATOR
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
         # Get variables
         outputs = {}
