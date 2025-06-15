@@ -21,6 +21,7 @@ class InvokeFrom(Enum):
     WEB_APP = "web-app"
     EXPLORE = "explore"
     DEBUGGER = "debugger"
+    MCP_SERVER = "mcp-server"
 
     @classmethod
     def value_of(cls, value: str):
@@ -49,6 +50,8 @@ class InvokeFrom(Enum):
             return "explore_app"
         elif self == InvokeFrom.SERVICE_API:
             return "api"
+        elif self == InvokeFrom.MCP_SERVER:
+            return "mcp_server"
 
         return "dev"
 
