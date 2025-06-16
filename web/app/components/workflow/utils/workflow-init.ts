@@ -293,7 +293,7 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       if (toolConfigurations && Object.keys(toolConfigurations).length > 0) {
         const newValues = { ...toolConfigurations }
         Object.keys(toolConfigurations).forEach((key) => {
-          if (typeof toolConfigurations[key] !== 'object') {
+          if (typeof toolConfigurations[key] !== 'object' || toolConfigurations[key] === null) {
             newValues[key] = {
               type: 'constant',
               value: toolConfigurations[key],
