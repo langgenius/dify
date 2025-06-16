@@ -61,8 +61,7 @@ class Mail:
                     raise ValueError("SENDGRID_API_KEY are required for SendGrid mail type")
 
                 self._client = SendGridClient(
-                    sendgrid_api_key=dify_config.SENDGRID_API_KEY,
-                    _from=dify_config.MAIL_DEFAULT_SEND_FROM or ""
+                    sendgrid_api_key=dify_config.SENDGRID_API_KEY, _from=dify_config.MAIL_DEFAULT_SEND_FROM or ""
                 )
             case _:
                 raise ValueError("Unsupported mail type {}".format(mail_type))
