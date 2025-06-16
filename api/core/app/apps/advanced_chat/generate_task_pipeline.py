@@ -165,7 +165,6 @@ class AdvancedChatAppGenerateTaskPipeline:
         )
 
         generator = self._wrapper_process_stream_response(trace_manager=self._application_generate_entity.trace_manager)
-
         if self._base_task_pipeline._stream:
             return self._to_stream_response(generator)
         else:
@@ -184,11 +183,17 @@ class AdvancedChatAppGenerateTaskPipeline:
                 if stream_response.metadata:
                     extras["metadata"] = stream_response.metadata
 
+                # Retrieve outputs from task state metadata, which is populated earlier
+                final_outputs = {}
+                if self._task_state.metadata and hasattr(self._task_state.metadata, "outputs"):
+                    final_outputs = self._task_state.metadata.outputs
+
                 return ChatbotAppBlockingResponse(
                     task_id=stream_response.task_id,
                     data=ChatbotAppBlockingResponse.Data(
                         id=self._message_id,
                         mode=self._conversation_mode,
+                        outputs=final_outputs,
                         conversation_id=self._conversation_id,
                         message_id=self._message_id,
                         answer=self._task_state.answer,
@@ -359,7 +364,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                     self._recorded_files.extend(
                         self._workflow_response_converter.fetch_files_from_node_outputs(event.outputs or {})
                     )
-
                 with Session(db.engine, expire_on_commit=False) as session:
                     workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_success(
                         event=event
@@ -501,13 +505,13 @@ class AdvancedChatAppGenerateTaskPipeline:
                         conversation_id=self._conversation_id,
                         trace_manager=trace_manager,
                     )
-
                     workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
                         session=session,
                         task_id=self._application_generate_entity.task_id,
                         workflow_execution=workflow_execution,
                     )
-
+                    workflow_outputs_data = workflow_finish_resp.data.outputs.get("outputs", {})
+                    self._task_state.metadata.outputs = workflow_outputs_data.get("outputs")
                 yield workflow_finish_resp
                 self._base_task_pipeline._queue_manager.publish(
                     QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE
@@ -652,7 +656,6 @@ class AdvancedChatAppGenerateTaskPipeline:
                         answer=output_moderation_answer,
                         reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
-
                 # Save message
                 with Session(db.engine, expire_on_commit=False) as session:
                     self._save_message(session=session, graph_runtime_state=graph_runtime_state)
