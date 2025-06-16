@@ -1,10 +1,11 @@
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Generator
 
 from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
+    DatasourceInvokeMessage,
     DatasourceProviderType,
     GetWebsiteCrawlResponse,
 )
@@ -36,7 +37,7 @@ class WebsiteCrawlDatasourcePlugin(DatasourcePlugin):
         user_id: str,
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> GetWebsiteCrawlResponse:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         manager = PluginDatasourceManager()
 
         return manager.get_website_crawl(
