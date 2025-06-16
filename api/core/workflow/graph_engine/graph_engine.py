@@ -53,7 +53,7 @@ from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
-from libs.flask_utils import flask_context_manager
+from libs.flask_utils import preserve_flask_contexts
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
@@ -539,7 +539,7 @@ class GraphEngine:
         Run parallel nodes
         """
 
-        with flask_context_manager(flask_app, context_vars=context):
+        with preserve_flask_contexts(flask_app, context_vars=context):
             try:
                 q.put(
                     ParallelBranchRunStartedEvent(

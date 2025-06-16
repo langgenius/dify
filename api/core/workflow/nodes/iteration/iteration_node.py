@@ -37,7 +37,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
-from libs.flask_utils import flask_context_manager
+from libs.flask_utils import preserve_flask_contexts
 
 from .exc import (
     InvalidIteratorValueError,
@@ -585,7 +585,7 @@ class IterationNode(BaseNode[IterationNodeData]):
         run single iteration in parallel mode
         """
 
-        with flask_context_manager(flask_app, context_vars=context):
+        with preserve_flask_contexts(flask_app, context_vars=context):
             parallel_mode_run_id = uuid.uuid4().hex
             graph_engine_copy = graph_engine.create_copy()
             variable_pool_copy = graph_engine_copy.graph_runtime_state.variable_pool

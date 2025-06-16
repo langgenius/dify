@@ -23,7 +23,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
-from libs.flask_utils import flask_context_manager
+from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
@@ -228,7 +228,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :return:
         """
 
-        with flask_context_manager(flask_app, context_vars=context):
+        with preserve_flask_contexts(flask_app, context_vars=context):
             try:
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)

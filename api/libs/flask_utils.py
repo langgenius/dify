@@ -9,7 +9,7 @@ T = TypeVar("T")
 
 
 @contextmanager
-def flask_context_manager(
+def preserve_flask_contexts(
     flask_app: Flask,
     context_vars: contextvars.Context,
 ) -> Iterator[None]:
@@ -36,7 +36,7 @@ def flask_context_manager(
 
     Example:
         ```python
-        with flask_context_manager(flask_app, context_vars=context_vars):
+        with preserve_flask_contexts(flask_app, context_vars=context_vars):
             # Code that needs Flask app context and context variables
             # Current user will be preserved if available
         ```

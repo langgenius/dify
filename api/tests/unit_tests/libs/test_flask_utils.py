@@ -6,7 +6,7 @@ import pytest
 from flask import Flask
 from flask_login import LoginManager, UserMixin, current_user, login_user
 
-from libs.flask_utils import flask_context_manager
+from libs.flask_utils import preserve_flask_contexts
 
 
 class User(UserMixin):
@@ -45,9 +45,9 @@ def test_user() -> User:
 
 def test_current_user_not_accessible_across_threads(login_app: Flask, test_user: User):
     """
-    Test that current_user is not accessible in a different thread without flask_context_manager.
+    Test that current_user is not accessible in a different thread without preserve_flask_contexts.
 
-    This test demonstrates that without the flask_context_manager, we cannot access
+    This test demonstrates that without the preserve_flask_contexts, we cannot access
     current_user in a different thread, even with app_context.
     """
     # Log in the user in the main thread
@@ -65,7 +65,7 @@ def test_current_user_not_accessible_across_threads(login_app: Flask, test_user:
                 # Try to access current_user in a different thread with app_context
                 with login_app.app_context():
                     # This should fail because current_user is not accessible across threads
-                    # without flask_context_manager
+                    # without preserve_flask_contexts
                     result["user_accessible"] = current_user.is_authenticated
             except Exception as e:
                 result["error"] = str(e)  # type: ignore
@@ -79,11 +79,11 @@ def test_current_user_not_accessible_across_threads(login_app: Flask, test_user:
         assert result["error"] is not None or (result["user_accessible"] is not None and not result["user_accessible"])
 
 
-def test_current_user_accessible_with_flask_context_manager(login_app: Flask, test_user: User):
+def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, test_user: User):
     """
-    Test that current_user is accessible in a different thread with flask_context_manager.
+    Test that current_user is accessible in a different thread with preserve_flask_contexts.
 
-    This test demonstrates that with the flask_context_manager, we can access
+    This test demonstrates that with the preserve_flask_contexts, we can access
     current_user in a different thread.
     """
     # Log in the user in the main thread
@@ -101,8 +101,8 @@ def test_current_user_accessible_with_flask_context_manager(login_app: Flask, te
         # Define a function to run in a separate thread
         def check_user_in_thread_with_manager():
             try:
-                # Use flask_context_manager to access current_user in a different thread
-                with flask_context_manager(login_app, context_vars):
+                # Use preserve_flask_contexts to access current_user in a different thread
+                with preserve_flask_contexts(login_app, context_vars):
                     from flask_login import current_user
 
                     if current_user:
