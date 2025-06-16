@@ -165,9 +165,9 @@ const translation = {
       title: 'Weave',
       description: 'Weave is an open-source platform for evaluating, testing, and monitoring LLM applications.',
     },
-    cms: {
-      title: 'Aliyun',
-      description: 'Aliyun Demo',
+    aliyun: {
+      title: 'LLM observability',
+      description: 'The SaaS observability platform provided by Alibaba Cloud enables out of box monitoring, tracing, and evaluation of Dify applications.',
     },
     inUse: 'In use',
     configProvider: {

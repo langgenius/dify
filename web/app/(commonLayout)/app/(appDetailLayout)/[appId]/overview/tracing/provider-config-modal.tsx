@@ -156,8 +156,13 @@ const ProviderConfigModal: FC<Props> = ({
     }
 
     if (type === TracingProvider.aliyun) {
-      // todo: check
-      // const postData = config as AliyunConfig
+      const postData = config as AliyunConfig
+      if (!errorMessage && !postData.app_name)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'App Name' })
+      if (!errorMessage && !postData.license_key)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'License Key' })
+      if (!errorMessage && !postData.endpoint)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Endpoint' })
     }
 
     return errorMessage
@@ -224,7 +229,7 @@ const ProviderConfigModal: FC<Props> = ({
                             labelClassName='!text-sm'
                             value={(config as AliyunConfig).endpoint}
                             onChange={handleConfigChange('endpoint')}
-                            placeholder={'https://arms.console.aliyun.com/'}
+                            placeholder={'https://tracing.arms.aliyuncs.com'}
                           />
                           <Field
                             label='App Name'

@@ -1,9 +1,15 @@
 import datetime
+import hashlib
+import logging
+import random
 import socket
+import threading
 import uuid
+from collections import deque
 from collections.abc import Sequence
 from typing import Optional
 
+import requests
 from opentelemetry import trace as trace_api
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
@@ -13,11 +19,16 @@ from opentelemetry.semconv.resource import ResourceAttributes
 
 from configs import dify_config
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
-from core.rag.models.document import Document
+
+INVALID_SPAN_ID = 0x0000000000000000
+INVALID_TRACE_ID = 0x00000000000000000000000000000000
+
+logger = logging.getLogger(__name__)
 
 
 class TraceClient:
-    def __init__(self, service_name, endpoint):
+    def __init__(self, service_name:str, endpoint:str,max_queue_size:int=1000,
+                 schedule_delay_sec:int=5, max_export_batch_size:int=50):
         self.endpoint = endpoint
         self.resource = Resource(
             attributes={
@@ -30,13 +41,78 @@ class TraceClient:
         self.span_builder = SpanBuilder(self.resource)
         self.exporter = OTLPSpanExporter(endpoint=endpoint)
 
-    def add_span(self, span_data: SpanData):
-        span: ReadableSpan = self.span_builder.build_span(span_data)
-        self.export([span])
+        self.max_queue_size = max_queue_size
+        self.schedule_delay_sec = schedule_delay_sec
+        self.max_export_batch_size = max_export_batch_size
+
+        self.queue = deque(maxlen=max_queue_size)
+        self.condition = threading.Condition(threading.Lock())
+        self.done = False
+
+        self.worker_thread = threading.Thread(target=self._worker, daemon=True)
+        self.worker_thread.start()
+
+        self._spans_dropped = False
+
 
     def export(self, spans: Sequence[ReadableSpan]):
         self.exporter.export(spans)
 
+    def api_check(self):
+        try:
+            response = requests.head(self.endpoint, timeout=5)
+            if response.status_code == 405:
+                return True
+            else:
+                logger.debug(f"AliyunTrace API check failed: Unexpected status code: {response.status_code}")
+                return False
+        except requests.exceptions.RequestException as e:
+            logger.debug(f"AliyunTrace API check failed: {str(e)}")
+            raise ValueError(f"AliyunTrace API check failed: {str(e)}")
+
+    def get_project_url(self):
+        return 'https://arms.console.aliyun.com/#/llm'
+
+    def add_span(self, span_data: SpanData):
+        if span_data is None:
+            return
+        span: ReadableSpan = self.span_builder.build_span(span_data)
+        with self.condition:
+            if len(self.queue) == self.max_queue_size:
+                if not self._spans_dropped:
+                    logger.warning("Queue is full, likely spans will be dropped.")
+                    self._spans_dropped = True
+
+            self.queue.appendleft(span)
+            if len(self.queue) >= self.max_export_batch_size:
+                self.condition.notify()
+
+    def _worker(self):
+        while not self.done:
+            with self.condition:
+                if len(self.queue) < self.max_export_batch_size and not self.done:
+                    self.condition.wait(timeout=self.schedule_delay_sec)
+            self._export_batch()
+
+    def _export_batch(self):
+        spans_to_export = []
+        with self.condition:
+            while len(spans_to_export) < self.max_export_batch_size and self.queue:
+                spans_to_export.append(self.queue.pop())
+
+        if spans_to_export:
+            try:
+                self.exporter.export(spans_to_export)
+            except Exception as e:
+                logger.debug(f"Error exporting spans: {e}")
+
+    def shutdown(self):
+        with self.condition:
+            self.done = True
+            self.condition.notify_all()
+        self.worker_thread.join()
+        self._export_batch()
+        self.exporter.shutdown()
 
 class SpanBuilder:
     def __init__(self, resource):
@@ -83,6 +159,11 @@ class SpanBuilder:
         )
         return span
 
+def generate_span_id() -> int:
+    span_id = random.getrandbits(64)
+    while span_id == INVALID_SPAN_ID:
+        span_id = random.getrandbits(64)
+    return span_id
 
 def convert_to_trace_id(uuid_v4: str) -> int:
     try:
@@ -91,17 +172,15 @@ def convert_to_trace_id(uuid_v4: str) -> int:
     except Exception as e:
         raise ValueError(f"Invalid UUID input: {e}")
 
-
 def convert_to_span_id(uuid_v4: str, span_type: str) -> int:
     try:
         uuid_obj = uuid.UUID(uuid_v4)
     except Exception as e:
         raise ValueError(f"Invalid UUID input: {e}")
 
-    type_hash = hash(span_type) & 0xFFFFFFFFFFFFFFFF
+    type_hash = consistent_hash(span_type) & 0xFFFFFFFFFFFFFFFF
     span_id = (uuid_obj.int & 0xFFFFFFFFFFFFFFFF) ^ type_hash
     return span_id
-
 
 def convert_datetime_to_nanoseconds(start_time_a: Optional[datetime]) -> Optional[int]:
     if start_time_a is None:
@@ -110,18 +189,6 @@ def convert_datetime_to_nanoseconds(start_time_a: Optional[datetime]) -> Optiona
     timestamp_in_nanoseconds = int(timestamp_in_seconds * 1e9)
     return timestamp_in_nanoseconds
 
-
-def extract_retrieval_documents(documents: list[Document]):
-    documents_data = []
-    for document in documents:
-        document_data = {
-            "content": document.page_content,
-            "metadata": {
-                "dataset_id": document.metadata.get('dataset_id'),
-                "doc_id": document.metadata.get('doc_id'),
-                "document_id": document.metadata.get('document_id'),
-            },
-            "score": document.metadata.get('score'),
-        }
-        documents_data.append(document_data)
-    return documents_data
+def consistent_hash(s: str) -> int:
+    sha256_hash = hashlib.sha256(s.encode()).hexdigest()
+    return int(sha256_hash[:16], 16)
