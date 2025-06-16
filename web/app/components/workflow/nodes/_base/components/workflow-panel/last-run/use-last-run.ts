@@ -138,6 +138,7 @@ const useLastRun = <T>({
     runResult,
     iterationRunResult,
     loopRunResult,
+    setNodeRunning,
   } = oneStepRunRes
 
   const {
@@ -174,10 +175,11 @@ const useLastRun = <T>({
     return formattedData
   }, [isIterationNode, isLoopNode, singleRunParams?.allVarObject, id])
 
-  const callRunApi = (data: Record<string, any>) => {
+  const callRunApi = (data: Record<string, any>, cb?: () => void) => {
     handleSyncWorkflowDraft(true, true, {
       onSuccess() {
         doCallRunApi(toSubmitData(data))
+        cb?.()
       },
     })
   }
@@ -254,9 +256,11 @@ const useLastRun = <T>({
   const handleSingleRun = () => {
     // no need to input params
     if (isAllVarsHasValue(singleRunParams?.getDependentVars?.())) {
-      callRunApi({})
-      setIsRunAfterSingleRun(true)
-      setTabType(TabType.lastRun)
+      callRunApi({}, async () => {
+        setIsRunAfterSingleRun(true)
+        setNodeRunning()
+        setTabType(TabType.lastRun)
+      })
     }
     else {
       showSingleRun()

@@ -3,7 +3,7 @@ import type { ResultPanelProps } from '@/app/components/workflow/run/result-pane
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import NoData from './no-data'
 import { useLastRun } from '@/service/use-workflow'
 import { RiLoader2Line } from '@remixicon/react'
@@ -31,10 +31,15 @@ const LastRun: FC<Props> = ({
   singleRunResult,
   ...otherResultPanelProps
 }) => {
-  const isRunning = oneStepRunRunningStatus === NodeRunningStatus.Running
   const isOneStepRunSucceed = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
   const canRunLastRun = !isRunAfterSingleRun || isOneStepRunSucceed
   const { data: lastRunResult, isFetching, error } = useLastRun(appId, nodeId, canRunLastRun)
+  const isRunning = useMemo(() => {
+    if(!isRunAfterSingleRun)
+      return isFetching
+    return [NodeRunningStatus.Running, NodeRunningStatus.NotStart].includes(oneStepRunRunningStatus!)
+  }, [isFetching, isRunAfterSingleRun, oneStepRunRunningStatus])
+
   const noLastRun = (error as any)?.status === 404
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || {}
 
