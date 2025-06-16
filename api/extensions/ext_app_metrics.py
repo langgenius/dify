@@ -12,14 +12,14 @@ def init_app(app: DifyApp):
     @app.after_request
     def after_request(response):
         """Add Version headers to the response."""
-        response.headers.add("X-Version", dify_config.CURRENT_VERSION)
+        response.headers.add("X-Version", dify_config.project.version)
         response.headers.add("X-Env", dify_config.DEPLOY_ENV)
         return response
 
     @app.route("/health")
     def health():
         return Response(
-            json.dumps({"pid": os.getpid(), "status": "ok", "version": dify_config.CURRENT_VERSION}),
+            json.dumps({"pid": os.getpid(), "status": "ok", "version": dify_config.project.version}),
             status=200,
             content_type="application/json",
         )

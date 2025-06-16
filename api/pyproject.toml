@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-dynamic = ["version"]
+version="1.4.2"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -61,8 +61,8 @@ dependencies = [
     "psycogreen~=1.0.2",
     "psycopg2-binary~=2.9.6",
     "pycryptodome==3.19.1",
-    "pydantic~=2.11.4",
-    "pydantic-extra-types~=2.10.3",
+    "pydantic~=2.11.6",
+    "pydantic-extra-types~=2.10.5",
     "pydantic-settings~=2.9.1",
     "pyjwt~=2.8.0",
     "pypdfium2==4.30.0",
