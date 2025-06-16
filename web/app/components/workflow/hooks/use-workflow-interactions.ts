@@ -401,3 +401,23 @@ export const useDSL = () => {
     handleExportDSL,
   }
 }
+
+export const useWorkflowCanvasMaximize = () => {
+  const maximizeCanvas = useStore(s => s.maximizeCanvas)
+  const setMaximizeCanvas = useStore(s => s.setMaximizeCanvas)
+  const {
+    getNodesReadOnly,
+  } = useNodesReadOnly()
+
+  const handleToggleMaximizeCanvas = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    setMaximizeCanvas(!maximizeCanvas)
+    localStorage.setItem('workflow-canvas-maximize', String(!maximizeCanvas))
+  }, [getNodesReadOnly, maximizeCanvas, setMaximizeCanvas])
+
+  return {
+    handleToggleMaximizeCanvas,
+  }
+}

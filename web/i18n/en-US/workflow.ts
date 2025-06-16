@@ -307,6 +307,8 @@ const translation = {
     organizeBlocks: 'Organize blocks',
     change: 'Change',
     optional: '(optional)',
+    maximize: 'Maximize Canvas',
+    minimize: 'Exit Full Screen',
   },
   nodes: {
     common: {

@@ -18,6 +18,8 @@ export type LayoutSliceShape = {
   setBottomPanelHeight: (height: number) => void
   variableInspectPanelHeight: number // min-height = 120px; default-height = 320px;
   setVariableInspectPanelHeight: (height: number) => void
+  maximizeCanvas: boolean
+  setMaximizeCanvas: (maximize: boolean) => void
 }
 
 export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
@@ -37,4 +39,6 @@ export const createLayoutSlice: StateCreator<LayoutSliceShape> = set => ({
   setBottomPanelHeight: height => set(() => ({ bottomPanelHeight: height })),
   variableInspectPanelHeight: localStorage.getItem('workflow-variable-inpsect-panel-height') ? Number.parseFloat(localStorage.getItem('workflow-variable-inpsect-panel-height')!) : 320,
   setVariableInspectPanelHeight: height => set(() => ({ variableInspectPanelHeight: height })),
+  maximizeCanvas: localStorage.getItem('workflow-canvas-maximize') === 'true',
+  setMaximizeCanvas: maximize => set(() => ({ maximizeCanvas: maximize })),
 })

@@ -4,6 +4,8 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiAspectRatioFill,
+  RiAspectRatioLine,
   RiCursorLine,
   RiFunctionAddLine,
   RiHand,
@@ -11,6 +13,7 @@ import {
 } from '@remixicon/react'
 import {
   useNodesReadOnly,
+  useWorkflowCanvasMaximize,
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '../hooks'
@@ -28,6 +31,7 @@ import cn from '@/utils/classnames'
 const Control = () => {
   const { t } = useTranslation()
   const controlMode = useStore(s => s.controlMode)
+  const maximizeCanvas = useStore(s => s.maximizeCanvas)
   const { handleModePointer, handleModeHand } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
@@ -35,6 +39,7 @@ const Control = () => {
     nodesReadOnly,
     getNodesReadOnly,
   } = useNodesReadOnly()
+  const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
 
   const addNote = (e: MouseEvent<HTMLDivElement>) => {
     if (getNodesReadOnly())
@@ -94,6 +99,19 @@ const Control = () => {
           onClick={handleLayout}
         >
           <RiFunctionAddLine className='h-4 w-4' />
+        </div>
+      </TipPopup>
+      <TipPopup title={maximizeCanvas ? t('workflow.panel.minimize') : t('workflow.panel.maximize')} shortcuts={['f']}>
+        <div
+          className={cn(
+            'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
+            maximizeCanvas ? 'bg-state-accent-active text-text-accent' : 'hover:bg-state-base-hover hover:text-text-secondary',
+            `${nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled'}`,
+          )}
+          onClick={handleToggleMaximizeCanvas}
+        >
+          {maximizeCanvas && <RiAspectRatioFill className='h-4 w-4' />}
+          {!maximizeCanvas && <RiAspectRatioLine className='h-4 w-4' />}
         </div>
       </TipPopup>
     </div>

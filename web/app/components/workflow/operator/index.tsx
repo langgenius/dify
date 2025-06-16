@@ -39,7 +39,7 @@ const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
         resizeContainerObserver.disconnect()
       }
     }
-  }, [setBottomPanelHeight])
+  }, [setBottomPanelHeight, setBottomPanelWidth])
 
   return (
     <div
