@@ -1,7 +1,7 @@
 import contextvars
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Optional, TypeVar, Union
+from typing import TypeVar
 
 from flask import Flask, g, has_request_context
 
@@ -11,9 +11,7 @@ T = TypeVar("T")
 @contextmanager
 def flask_context_manager(
     flask_app: Flask,
-    context_vars: Optional[
-        Union[Mapping[contextvars.ContextVar[T], Any], dict[contextvars.ContextVar[Any], Any]]
-    ] = None,
+    context_vars: contextvars.Context,
 ) -> Iterator[None]:
     """
     A context manager that handles:
@@ -27,14 +25,14 @@ def flask_context_manager(
 
     Args:
         flask_app: The Flask application instance
-        context_vars: Optional dictionary mapping ContextVar instances to their values
+        context_vars: contextvars.Context object containing context variables to be set in the new context
 
     Yields:
         None
 
     Example:
         ```python
-        with flask_context_manager(flask_app, context_vars={my_var: my_value}):
+        with flask_context_manager(flask_app, context_vars=context_vars):
             # Code that needs Flask app context and context variables
             # Current user will be preserved if available
         ```
