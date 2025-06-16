@@ -31,7 +31,7 @@ const PluginsNav = ({
     )}>
       <div
         className={classNames(
-          'relative flex flex-row h-8 p-1.5 gap-0.5 border border-transparent items-center justify-center rounded-xl system-sm-medium-uppercase',
+          'relative flex flex-row h-8 p-1.5 gap-0.5 border border-transparent items-center justify-center rounded-xl system-sm-medium',
           activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active shadow-md text-components-main-nav-nav-button-text',
           !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
           (isInstallingWithError || isFailed) && !activated && 'border-components-panel-border-subtle',
