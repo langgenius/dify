@@ -1,4 +1,4 @@
-import React, { type FC, useCallback, useEffect, useRef } from 'react'
+import React, { type FC, useCallback, useEffect, useMemo, useRef } from 'react'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import classNames from '@/utils/classnames'
@@ -30,6 +30,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   const { theme } = useTheme()
   const monacoRef = useRef<any>(null)
   const editorRef = useRef<any>(null)
+  const [isMounted, setIsMounted] = React.useState(false)
 
   useEffect(() => {
     if (monacoRef.current) {
@@ -64,6 +65,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
       },
     })
     monaco.editor.setTheme('light-theme')
+    setIsMounted(true)
   }, [])
 
   const formatJsonContent = useCallback(() => {
@@ -75,6 +77,12 @@ const CodeEditor: FC<CodeEditorProps> = ({
     if (value !== undefined)
       onUpdate?.(value)
   }, [onUpdate])
+
+  const editorTheme = useMemo(() => {
+    if (theme === Theme.light)
+      return 'light-theme'
+    return 'dark-theme'
+  }, [theme])
 
   return (
     <div className={classNames('flex flex-col h-full bg-components-input-bg-normal overflow-hidden', hideTopMenu && 'pt-2', className)}>
@@ -110,6 +118,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
         <Editor
           height='100%'
           defaultLanguage='json'
+          theme={isMounted ? editorTheme : 'default-theme'} // sometimes not load the default theme
           value={value}
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
