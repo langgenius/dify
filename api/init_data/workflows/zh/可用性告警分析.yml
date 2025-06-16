@@ -349,7 +349,7 @@ workflow:
           required: false
           type: paragraph
           variable: nodeName
-      height: 167
+      height: 168
       id: '1741227526517'
       position:
         x: 30
@@ -369,7 +369,7 @@ workflow:
         title: unsupport alert
         type: template-transform
         variables: []
-      height: 53
+      height: 54
       id: '1741592094819'
       position:
         x: 942
@@ -392,7 +392,7 @@ workflow:
         selected: false
         title: End
         type: end
-      height: 89
+      height: 90
       id: '1741592144815'
       position:
         x: 1246
@@ -443,7 +443,7 @@ workflow:
         selected: false
         title: alert instance info
         type: if-else
-      height: 203
+      height: 204
       id: '1742453019576'
       position:
         x: 638
@@ -463,14 +463,15 @@ workflow:
           \ dict:\n    data = json.loads(arg) \n    detail_str = data.get(\"detail\"\
           , \"\")\n    detail = json.loads(detail_str) if detail_str else {}\n   \
           \ description = detail.get(\"description\", \"\")\n    lines = description.split(\"\
-          \\n\")\n    labels_line = lines[1]\n\n    start = labels_line.index(\"[\"\
-          ) + 1\n    end = labels_line.index(\"]\")\n\n    map_content = labels_line[start:end]\n\
-          \n    pairs = map_content.split()\n\n    labels_dict = {pair.split(\":\"\
-          , 1)[0]: pair.split(\":\", 1)[1] for pair in pairs}\n\n    source_from =\
-          \ labels_dict.get(\"source_from\", \"\")\n    \n    return { \n        \"\
-          alertName\": get_value(data, [\"alertname\", \"alertName\", \"alert_name\"\
-          ]),\n        \"service\": get_value(data, [\"svc_name\", \"service\"]),\
-          \ \n        \"endpoint\": get_value(data, [\"endpoint\", \"content_key\"\
+          \\n\")\n    try:\n        labels_line = lines[1]\n        start = labels_line.index(\"\
+          [\") + 1\n        end = labels_line.index(\"]\")\n        map_content =\
+          \ labels_line[start:end]\n        pairs = map_content.split()\n        labels_dict\
+          \ = {pair.split(\":\", 1)[0]: pair.split(\":\", 1)[1] for pair in pairs}\n\
+          \        source_from = labels_dict.get(\"source_from\", \"\")\n    except\
+          \ (IndexError, ValueError):\n      source_from = \"\"\n\n    return { \n\
+          \        \"alertName\": get_value(data, [\"alertname\", \"alertName\", \"\
+          alert_name\"]),\n        \"service\": get_value(data, [\"svc_name\", \"\
+          service\"]), \n        \"endpoint\": get_value(data, [\"endpoint\", \"content_key\"\
           ]), \n        \"pod\": get_value(data, [\"pod\", \"src_pod\", \"pod_name\"\
           ]), \n        \"namespace\": get_value(data, [\"namespace\", \"src_namespace\"\
           ]),\n        \"pid\": get_value(data, [\"pid\"]),\n        \"containerId\"\
@@ -519,7 +520,7 @@ workflow:
           - '1741227526517'
           - nodeName
           variable: node
-      height: 53
+      height: 54
       id: '1742807803325'
       position:
         x: 335.35157092107124
@@ -564,7 +565,7 @@ workflow:
         type: question-classifier
         vision:
           enabled: false
-      height: 245
+      height: 240
       id: '17430590082510'
       position:
         x: 942
@@ -688,7 +689,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1744878296971'
       position:
         x: 2158
@@ -1045,14 +1046,14 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '1744878298576'
       position:
-        x: 1246
-        y: 463
+        x: 1252.3492475354071
+        y: 422.7880989424209
       positionAbsolute:
-        x: 1246
-        y: 463
+        x: 1252.3492475354071
+        y: 422.7880989424209
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1108,7 +1109,7 @@ workflow:
           - '1742807803325'
           - sourceFrom
           variable: sourceFrom
-      height: 53
+      height: 54
       id: '1744878352649'
       position:
         x: 1854
@@ -1185,7 +1186,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 95
+      height: 90
       id: '1744878372490'
       position:
         x: 2766
@@ -1221,7 +1222,7 @@ workflow:
           - '1744878298576'
           - text
           variable: data_json
-      height: 53
+      height: 54
       id: '1744878389686'
       position:
         x: 1550
@@ -1344,7 +1345,7 @@ workflow:
             - '1741227526517'
             - startTime
         type: tool
-      height: 53
+      height: 54
       id: '17448784142480'
       position:
         x: 2158
@@ -1398,7 +1399,7 @@ workflow:
           - '1742807803325'
           - containerId
           variable: containerId
-      height: 53
+      height: 54
       id: '17448784268890'
       position:
         x: 1854
@@ -1406,7 +1407,7 @@ workflow:
       positionAbsolute:
         x: 1854
         y: 463
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1483,7 +1484,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 95
+      height: 90
       id: '17448784398000'
       position:
         x: 2766
@@ -1491,7 +1492,7 @@ workflow:
       positionAbsolute:
         x: 2766
         y: 463
-      selected: false
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -1507,7 +1508,7 @@ workflow:
           - text
         - - '17448784398000'
           - text
-      height: 130
+      height: 131
       id: '1744878466157'
       position:
         x: 3070
@@ -1530,7 +1531,7 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 89
+      height: 90
       id: '1744878476249'
       position:
         x: 3374
@@ -1553,23 +1554,20 @@ workflow:
           \ bytes)):\n        return False\n    for regex in ERROR_REGEXES:\n    \
           \    if regex.search(line):\n            return True\n    return False\n\
           \ndef main(data_json: str) -> dict:\n    logs = json.loads(data_json).get(\"\
-          data\", {}).get(\"logs\", [])\n\n    error_logs = []\n    simplified_logs\
-          \ = []\n    for log in logs or []:\n        source = log.get(\"tags\", {}).get(\"\
-          source\", \"\")\n        level = log.get(\"logFields\", {}).get(\"level\"\
-          , \"\")\n        content = log.get(\"content\", \"\")\n        pod = log.get(\"\
-          k8s_pod_name\", \"\")\n        timestamp = log.get(\"timestamp\")\n\n  \
-          \      simplified_log = {\n            \"content\": content,\n         \
-          \   \"level\": level,\n            \"pod\": pod,\n            \"timestamp\"\
-          : timestamp,\n        }\n\n        if is_error_log(level) or source == \"\
-          stderr\" or is_error_log(content):\n            error_logs.append(simplified_log)\n\
-          \        \n        if len(simplified_logs) < 100:\n            simplified_logs.append(simplified_log)\n\
-          \n    error_logs = error_logs[:100]\n    if not error_logs:\n        error_logs\
-          \ = simplified_logs[:100]\n\n    MAX_LENGTH = 80000 \n    error_logs_str\
-          \ = json.dumps(error_logs, separators=(\",\", \":\"))\n    \n    while len(error_logs_str)\
-          \ > MAX_LENGTH and len(error_logs) > 0:\n        remove_count = max(1, len(error_logs)\
-          \ // 10)\n        error_logs = error_logs[:-remove_count]\n        error_logs_str\
-          \ = json.dumps(error_logs, separators=(\",\", \":\"))\n\n    return {\"\
-          logs\": error_logs_str}"
+          data\", {}).get(\"logContents\", {}).get(\"contents\", [])\n    \n    error_logs\
+          \ = []\n    all_logs = []\n    \n    for log in logs or []:\n        content\
+          \ = log.get(\"body\", \"\")\n        timestamp = log.get(\"timestamp\")\n\
+          \        tags = log.get('tags', {})\n        \n        simplified_log =\
+          \ {\n            \"content\": content,\n            \"timestamp\": timestamp,\n\
+          \            \"tags\": tags\n        }\n        \n        all_logs.append(simplified_log)\n\
+          \        if is_error_log(content):\n            error_logs.append(simplified_log)\n\
+          \    \n    result_logs = error_logs if error_logs else all_logs[:100]\n\
+          \    \n    MAX_LENGTH = 80000\n    result_logs_str = json.dumps(result_logs,\
+          \ separators=(\",\", \":\"))\n    \n    while len(result_logs_str) > MAX_LENGTH\
+          \ and len(result_logs) > 0:\n        remove_count = max(1, len(result_logs)\
+          \ // 10)\n        result_logs = result_logs[:-remove_count]\n        result_logs_str\
+          \ = json.dumps(result_logs, separators=(\",\", \":\"))\n    \n    return\
+          \ {\"logs\": result_logs_str}"
         code_language: python3
         desc: ''
         outputs:
@@ -1584,7 +1582,7 @@ workflow:
           - '1744878296971'
           - text
           variable: data_json
-      height: 53
+      height: 54
       id: '1744901266309'
       position:
         x: 2462
@@ -1607,23 +1605,20 @@ workflow:
           \ bytes)):\n        return False\n    for regex in ERROR_REGEXES:\n    \
           \    if regex.search(line):\n            return True\n    return False\n\
           \ndef main(data_json: str) -> dict:\n    logs = json.loads(data_json).get(\"\
-          data\", {}).get(\"logs\", [])\n\n    error_logs = []\n    simplified_logs\
-          \ = []\n    for log in logs or []:\n        source = log.get(\"tags\", {}).get(\"\
-          source\", \"\")\n        level = log.get(\"logFields\", {}).get(\"level\"\
-          , \"\")\n        content = log.get(\"content\", \"\")\n        pod = log.get(\"\
-          k8s_pod_name\", \"\")\n        timestamp = log.get(\"timestamp\")\n\n  \
-          \      simplified_log = {\n            \"content\": content,\n         \
-          \   \"level\": level,\n            \"pod\": pod,\n            \"timestamp\"\
-          : timestamp,\n        }\n\n        if is_error_log(level) or source == \"\
-          stderr\" or is_error_log(content):\n            error_logs.append(simplified_log)\n\
-          \        \n        if len(simplified_logs) < 100:\n            simplified_logs.append(simplified_log)\n\
-          \n    error_logs = error_logs[:100]\n    if not error_logs:\n        error_logs\
-          \ = simplified_logs[:100]\n\n    MAX_LENGTH = 80000\n    error_logs_str\
-          \ = json.dumps(error_logs, separators=(\",\", \":\"))\n    \n    while len(error_logs_str)\
-          \ > MAX_LENGTH and len(error_logs) > 0:\n        remove_count = max(1, len(error_logs)\
-          \ // 10)\n        error_logs = error_logs[:-remove_count]\n        error_logs_str\
-          \ = json.dumps(error_logs, separators=(\",\", \":\"))\n\n    return {\"\
-          logs\": error_logs_str}"
+          data\", {}).get(\"logContents\", {}).get(\"contents\", [])\n    \n    error_logs\
+          \ = []\n    all_logs = []\n    \n    for log in logs or []:\n        content\
+          \ = log.get(\"body\", \"\")\n        timestamp = log.get(\"timestamp\")\n\
+          \        tags = log.get('tags', {})\n        \n        simplified_log =\
+          \ {\n            \"content\": content,\n            \"timestamp\": timestamp,\n\
+          \            \"tags\": tags\n        }\n        \n        all_logs.append(simplified_log)\n\
+          \        if is_error_log(content):\n            error_logs.append(simplified_log)\n\
+          \    \n    result_logs = error_logs if error_logs else all_logs[:100]\n\
+          \    \n    MAX_LENGTH = 80000\n    result_logs_str = json.dumps(result_logs,\
+          \ separators=(\",\", \":\"))\n    \n    while len(result_logs_str) > MAX_LENGTH\
+          \ and len(result_logs) > 0:\n        remove_count = max(1, len(result_logs)\
+          \ // 10)\n        result_logs = result_logs[:-remove_count]\n        result_logs_str\
+          \ = json.dumps(result_logs, separators=(\",\", \":\"))\n    \n    return\
+          \ {\"logs\": result_logs_str}"
         code_language: python3
         desc: ''
         outputs:
@@ -1638,7 +1633,7 @@ workflow:
           - '17448784142480'
           - text
           variable: data_json
-      height: 53
+      height: 54
       id: '17449013347930'
       position:
         x: 2462
@@ -1661,7 +1656,7 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 89
+      height: 90
       id: '1745313574375'
       position:
         x: 1550
@@ -1685,14 +1680,14 @@ workflow:
           - '1742807803325'
           - alertName
           variable: alertName
-      height: 53
+      height: 54
       id: '1745313576757'
       position:
-        x: 1246
-        y: 593
+        x: 1258.6984950708145
+        y: 557
       positionAbsolute:
-        x: 1246
-        y: 593
+        x: 1258.6984950708145
+        y: 557
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1728,7 +1723,7 @@ workflow:
         variables: []
         vision:
           enabled: false
-      height: 95
+      height: 90
       id: '1745391138767'
       position:
         x: 1246
@@ -1751,7 +1746,7 @@ workflow:
         selected: false
         title: 结束
         type: end
-      height: 89
+      height: 90
       id: '1745391142578'
       position:
         x: 1550
@@ -1765,6 +1760,6 @@ workflow:
       type: custom
       width: 244
     viewport:
-      x: -124.44408070987106
-      y: 70.12039850408078
-      zoom: 0.2957447130261642
+      x: -349.98141784261156
+      y: 52.56501584401272
+      zoom: 0.48872262970053
