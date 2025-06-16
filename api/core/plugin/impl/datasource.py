@@ -1,12 +1,11 @@
-from collections.abc import Mapping
-from typing import Any, Generator
+from collections.abc import Generator, Mapping
+from typing import Any
 
 from core.datasource.entities.datasource_entities import (
     DatasourceInvokeMessage,
     GetOnlineDocumentPageContentRequest,
-    GetOnlineDocumentPageContentResponse,
-    GetOnlineDocumentPagesResponse,
-    GetWebsiteCrawlResponse,
+    OnlineDocumentPagesMessage,
+    WebsiteCrawlMessage,
 )
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import (
@@ -94,17 +93,17 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> Generator[DatasourceInvokeMessage, None, None]:
+    ) -> Generator[WebsiteCrawlMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
 
         datasource_provider_id = GenericProviderID(datasource_provider)
 
-        response = self._request_with_plugin_daemon_response_stream(
+        return self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_website_crawl",
-            DatasourceInvokeMessage,
+            WebsiteCrawlMessage,
             data={
                 "user_id": user_id,
                 "data": {
@@ -119,7 +118,6 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        yield from response
 
     def get_online_document_pages(
         self,
@@ -130,7 +128,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> Generator[DatasourceInvokeMessage, None, None]:
+    ) -> Generator[OnlineDocumentPagesMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -140,7 +138,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_pages",
-            DatasourceInvokeMessage,
+            OnlineDocumentPagesMessage,
             data={
                 "user_id": user_id,
                 "data": {

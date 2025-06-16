@@ -15,7 +15,7 @@ from core.plugin.entities.parameters import (
     init_frontend_parameter,
 )
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolLabelEnum, ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolLabelEnum
 
 
 class DatasourceProviderType(enum.StrEnum):
@@ -207,12 +207,6 @@ class DatasourceInvokeFrom(Enum):
     RAG_PIPELINE = "rag_pipeline"
 
 
-class GetOnlineDocumentPagesRequest(BaseModel):
-    """
-    Get online document pages request
-    """
-
-
 class OnlineDocumentPage(BaseModel):
     """
     Online document page
@@ -237,7 +231,7 @@ class OnlineDocumentInfo(BaseModel):
     pages: list[OnlineDocumentPage] = Field(..., description="The pages of the online document")
 
 
-class GetOnlineDocumentPagesResponse(BaseModel):
+class OnlineDocumentPagesMessage(BaseModel):
     """
     Get online document pages response
     """
@@ -290,17 +284,19 @@ class WebSiteInfo(BaseModel):
     """
     Website info
     """
-    job_id: str = Field(..., description="The job id")
-    status: str = Field(..., description="The status of the job")
+    status: Optional[str] = Field(..., description="crawl job status")
     web_info_list: Optional[list[WebSiteInfoDetail]] = []
+    total: Optional[int] = Field(default=0, description="The total number of websites")
+    completed: Optional[int] = Field(default=0, description="The number of completed websites")
 
-
-class GetWebsiteCrawlResponse(BaseModel):
+class WebsiteCrawlMessage(BaseModel):
     """
     Get website crawl response
     """
+    result: WebSiteInfo = WebSiteInfo(status="", web_info_list=[], total=0, completed=0)
 
-    result: WebSiteInfo = WebSiteInfo(job_id="", status="", web_info_list=[])
+class DatasourceMessage(ToolInvokeMessage):
+    pass
 
 
 class DatasourceInvokeMessage(ToolInvokeMessage):
