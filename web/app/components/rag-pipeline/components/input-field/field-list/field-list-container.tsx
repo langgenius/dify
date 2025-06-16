@@ -30,6 +30,8 @@ const FieldListContainer = ({
     return inputFields.map((content) => {
       return ({
         id: content.variable,
+        chosen: false,
+        selected: false,
         ...content,
       })
     })
