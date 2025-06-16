@@ -135,7 +135,7 @@ class MCPServerReuqestHandler:
         return types.ListToolsResult(
             tools=[
                 types.Tool(
-                    name=self.mcp_server.name,
+                    name=self.app.name,
                     description=self.mcp_server.description,
                     inputSchema=self.parameter_schema,
                 )

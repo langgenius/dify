@@ -108,7 +108,10 @@ class MCPClient:
         except MCPAuthError:
             if not self.authed:
                 raise
-            auth(self.provider, self.server_url, self.authorization_code)
+            try:
+                auth(self.provider, self.server_url, self.authorization_code)
+            except Exception as e:
+                raise ValueError(f"Failed to authenticate: {e}")
             self.token = self.provider.tokens()
             if first_try:
                 return self.connect_server(client_factory, method_name, first_try=False)

@@ -193,9 +193,11 @@ def auth(
     client_information = provider.client_information()
     if not client_information:
         if authorization_code is not None:
-            raise Exception("Existing OAuth client information is required when exchanging an authorization code")
-
-        full_information = register_client(server_url, metadata, provider.client_metadata)
+            raise ValueError("Existing OAuth client information is required when exchanging an authorization code")
+        try:
+            full_information = register_client(server_url, metadata, provider.client_metadata)
+        except requests.RequestException as e:
+            raise ValueError(f"Could not register OAuth client: {e}")
         provider.save_client_information(full_information)
         client_information = full_information
 
@@ -222,7 +224,7 @@ def auth(
             provider.save_tokens(new_tokens)
             return {"result": "success"}
         except Exception as e:
-            print(f"Could not refresh OAuth tokens: {e}")
+            raise ValueError(f"Could not refresh OAuth tokens: {e}")
 
     # Start new authorization flow
     authorization_url, code_verifier = start_authorization(
