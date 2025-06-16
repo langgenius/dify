@@ -16,7 +16,7 @@ from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.variables.segment_group import SegmentGroup
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
-from factories.variable_factory import build_segment
+from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import App, AppMode, db
 from models.workflow import WorkflowDraftVariable
@@ -236,7 +236,8 @@ class VariableApi(Resource):
     def patch(self, app_model: App, variable_id: str):
         parser = reqparse.RequestParser()
         parser.add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
-        parser.add_argument(self._PATCH_VALUE_FIELD, type=build_segment, required=False, nullable=True, location="json")
+        # Parse 'value' field as-is to maintain its original data structure
+        parser.add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
 
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
@@ -250,10 +251,13 @@ class VariableApi(Resource):
             raise NotFoundError(description=f"variable not found, id={variable_id}")
 
         new_name = args.get(self._PATCH_NAME_FIELD, None)
-        new_value = args.get(self._PATCH_VALUE_FIELD, None)
-
-        if new_name is None and new_value is None:
+        raw_value = args.get(self._PATCH_VALUE_FIELD, None)
+        if new_name is None and raw_value is None:
             return variable
+
+        new_value = None
+        if raw_value is not None:
+            new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()
         return variable
