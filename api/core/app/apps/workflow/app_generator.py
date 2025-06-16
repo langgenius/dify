@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Literal, Optional, Union, overload
 
-from flask import Flask, copy_current_request_context, current_app
+from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy.orm import sessionmaker
 
@@ -210,19 +210,16 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # new thread with request context and contextvars
         context = contextvars.copy_context()
 
-        @copy_current_request_context
-        def worker_with_context():
-            # Run the worker within the copied context
-            return context.run(
-                self._generate_worker,
-                flask_app=current_app._get_current_object(),  # type: ignore
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
-                context=context,
-                workflow_thread_pool_id=workflow_thread_pool_id,
-            )
-
-        worker_thread = threading.Thread(target=worker_with_context)
+        worker_thread = threading.Thread(
+            target=self._generate_worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),  # type: ignore
+                "application_generate_entity": application_generate_entity,
+                "queue_manager": queue_manager,
+                "context": context,
+                "workflow_thread_pool_id": workflow_thread_pool_id,
+            },
+        )
 
         worker_thread.start()
 
