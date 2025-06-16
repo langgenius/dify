@@ -63,6 +63,23 @@ const nextConfig = {
       },
     ]
   },
+  async rewrites() {
+    // development service rewrite
+    if (process.env.NEXT_PUBLIC_DEPLOY_ENV !== 'production' && process.env.NEXT_DEV_API_PROXY_BASE_URL) {
+      const apiBase = process.env.NEXT_DEV_API_PROXY_BASE_URL
+      return [
+        {
+          source: '/api/:path*', // match /api/*
+          destination: `${apiBase}/api/:path*`, // rewrite
+        },
+        {
+          source: '/console/api/:path*', // match /console/api/*
+          destination: `${apiBase}/console/api/:path*`, // rewrite
+        },
+      ]
+    }
+    return []
+  },
   output: 'standalone',
 }
 
