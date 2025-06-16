@@ -54,9 +54,9 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
         const field = param.name
         const value = inputs.agent_parameters?.[field]?.value
         if (value) {
-          (value as unknown as any[]).forEach((item) => {
+          (value as unknown as any[]).forEach((item, idx) => {
             tools.push({
-              id: `${param.name}-${i}`,
+              id: `${param.name}-${idx}`,
               providerName: item.provider_name,
             })
           })

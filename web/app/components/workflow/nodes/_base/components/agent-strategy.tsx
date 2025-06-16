@@ -118,6 +118,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             title={<>
               {renderI18nObject(def.label)} {def.required && <span className='text-red-500'>*</span>}
             </>}
+            key={def.variable}
             tooltip={def.tooltip && renderI18nObject(def.tooltip)}
             inline
           >
