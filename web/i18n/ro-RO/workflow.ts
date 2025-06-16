@@ -188,6 +188,7 @@ const translation = {
     nodeDescriptionChange: 'Descrierea nodului a fost modificată',
     edgeDelete: 'Nod deconectat',
     nodeAdd: 'Nod adăugat',
+    nodeDragStop: 'Nod mutat',
   },
   errorMsg: {
     fieldRequired: '{{field}} este obligatoriu',
