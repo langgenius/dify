@@ -1,0 +1,134 @@
+name: Reusable deployment job
+
+on:
+  workflow_call:
+    inputs:
+      APPLICATION_NAME:
+        default: 'oneapi'
+        type: string
+      AWS_REGION:
+        default: 'us-east-2'
+        type: string
+      DEPLOYMENT_ENV:
+        required: true
+        type: string
+      ECR_REPOSITORY:
+        required: true
+        type: string
+      ECS_CLUSTER:
+        required: true
+        type: string
+      SECURITY_GROUP_IDS_SSM:
+        required: true
+        type: string
+      SUBNET_IDS_SSM:
+        required: true
+        type: string
+      VPC_ID_SSM:
+        required: true
+        type: string
+      SNS_TO_LARK_LAMBDA_ARN:
+        required: true
+        type: string
+      CERERTIFICATE_US_EAST_2_ARN: 
+        required: true
+        type: string
+      ECS_EXECUTION_ROLE_ARN:
+        required: true
+        type: string
+      DOCKER_IMAGE_NAME:
+        required: true
+        type: string
+      MODE:
+        required: true
+        type: string
+      APP_PORT:
+        required: true
+        type: number
+      HEALTH_CHECK:
+        required: true
+        type: string
+      TEMPLATE:
+        required: true
+        type: string
+      DOCKERFILEDIR:
+        required: true
+        type: string
+      
+    
+    secrets:
+      DEPLOYMENT_AWS_ACCESS_KEY_ID:
+        required: true
+      DEPLOYMENT_AWS_SECRET_ACCESS_KEY:
+        required: true
+      ED25519_CI_KEY: 
+        required: true
+      PAT:
+        required: true
+env:
+  ECS_CONTAINER_ENV_FILE_S3_PATH: ${{ inputs.DEPLOYMENT_ENV }}-dify-ai/.env
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.DEPLOYMENT_ENV }}
+    runs-on: ubuntu-latest
+    concurrency: deployment-${{ inputs.APPLICATION_NAME }}-${{ inputs.DEPLOYMENT_ENV }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.DEPLOYMENT_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEPLOYMENT_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.AWS_REGION }}
+
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set SHORT_SHA
+        id: set_short_sha
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >>$GITHUB_ENV
+      - name: Set IMAGE_TAG
+        id: set_image_tag
+        run: echo "IMAGE_TAG=${{ inputs.APPLICATION_NAME }}-$SHORT_SHA" >> $GITHUB_ENV
+      - name: Set GIT_BRANCH
+        id: set_git_branch
+        run: echo "GIT_BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        
+        run: |
+          cd ${{ inputs.DOCKERFILEDIR }}
+          docker build --build-arg GIT_BRANCH=$GIT_BRANCH --build-arg GIT_PAT_TOKEN=${{ secrets.PAT }}  -t $ECR_REGISTRY/${{ inputs.ECR_REPOSITORY }}:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/${{ inputs.ECR_REPOSITORY }}:$IMAGE_TAG
+          echo "::set-output name=image::$ECR_REGISTRY/${{ inputs.ECR_REPOSITORY }}:$IMAGE_TAG"
+
+      - name: Deploy CloudFormation
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ inputs.APPLICATION_NAME }}-${{ inputs.DEPLOYMENT_ENV }}
+          template: aws/${{ inputs.TEMPLATE }}
+          no-fail-on-empty-changeset: "1"
+          parameter-overrides: >-
+            CertificateArn=${{ inputs.CERERTIFICATE_US_EAST_2_ARN }},
+            ExecutionRoleArn=${{ inputs.ECS_EXECUTION_ROLE_ARN }},
+            ECSClusterName=${{ inputs.ECS_CLUSTER }},
+            ApplicationName=${{ inputs.APPLICATION_NAME }},
+            EnvName=${{ inputs.DEPLOYMENT_ENV }},
+            SecurityGroupIDs=${{ inputs.SECURITY_GROUP_IDS_SSM }},
+            SubnetIDs=${{ inputs.SUBNET_IDS_SSM }},
+            VpcID=${{ inputs.VPC_ID_SSM }},
+            DockerImageUrl=${{ steps.build-image.outputs.image }},
+            EnvironmentFileUrl=arn:aws:s3:::${{ env.ECS_CONTAINER_ENV_FILE_S3_PATH }},
+            SnsToLarkLambda=${{ inputs.SNS_TO_LARK_LAMBDA_ARN }},
+            AppPort=${{ inputs.APP_PORT }},
+            Mode=${{ inputs.MODE }},
+            DockerImageName=${{ inputs.DOCKER_IMAGE_NAME }},
+            HealthCheck=${{ inputs.HEALTH_CHECK }}

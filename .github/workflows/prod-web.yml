@@ -1,0 +1,34 @@
+name: Web Prod Deployment
+
+on:
+  workflow_dispatch:
+
+jobs:
+  call-deployment-in-local-repo:
+    if: contains('carloschen6688,yvan-65535', github.actor)
+    uses: ./.github/workflows/prod-deploy.yml
+    with:
+      APPLICATION_NAME: dify-web
+      DEPLOYMENT_ENV: prod
+      ECR_REPOSITORY: ai-dify-web
+      ECS_CLUSTER: ai-dify
+      SECURITY_GROUP_IDS_SSM: /prod/security-groups
+      SUBNET_IDS_SSM: /prod/subnet-ids
+      VPC_ID_SSM: /prod/vpc-id
+      SNS_TO_LARK_LAMBDA_ARN: /prod/lambda/sns-to-lark
+      CERERTIFICATE_US_EAST_2_ARN: /prod/certificate
+      ECS_EXECUTION_ROLE_ARN: /prod/ecs-execution-role
+      APP_PORT: 3000
+      MODE: web
+      DOCKER_IMAGE_NAME: dify-web
+      HEALTH_CHECK: /apps
+      TEMPLATE: cloudformation-ecs-service-template.yml
+      DOCKERFILEDIR: web
+
+
+    secrets:
+      DEPLOYMENT_AWS_ACCESS_KEY_ID: ${{ secrets.DEPLOYMENT_AWS_ACCESS_KEY_ID_PROD }}
+      DEPLOYMENT_AWS_SECRET_ACCESS_KEY: ${{ secrets.DEPLOYMENT_AWS_SECRET_ACCESS_KEY_PROD }}
+      ED25519_CI_KEY: ${{ secrets.ED25519_CI_KEY }}
+      PAT: ${{ secrets.PAT }}
+ 

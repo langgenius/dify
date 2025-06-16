@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The template used to create an ECS Service without Load Balancer.
+Parameters:
+  CertificateArn:
+    Type: AWS::SSM::Parameter::Value<AWS::CertificateManager::Certificate::ARN>
+  ExecutionRoleArn:
+    Type: AWS::SSM::Parameter::Value<AWS::IAM::Role::ARN>
+  ECSClusterName:
+    Type: String
+  ApplicationName:
+    Type: String
+  EnvName:
+    Type: String
+  SecurityGroupIDs:
+    Type: AWS::SSM::Parameter::Value<List<AWS::EC2::SecurityGroup::Id>>
+  SubnetIDs:
+    Type: AWS::SSM::Parameter::Value<List<AWS::EC2::Subnet::Id>>
+  VpcID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+  DockerImageUrl:
+    Type: String
+  EnvironmentFileUrl:
+    Type: String
+    Description: The s3 url that contains the list of ecs container environment variables
+  TaskDesiredCount:
+    Type: Number
+    Default: 1
+  TaskCpuSetting:
+    Type: Number
+    Default: 1024
+  TaskMemorySetting:
+    Type: Number
+    Default: 4096
+  AppPort:
+    Type: Number
+    Default: 3000
+  SnsToLarkLambda:
+    Type: AWS::SSM::Parameter::Value<AWS::Lambda::ARN>
+  RedisPass:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ai-dify/REDIS_PASSWORD
+  PgPass:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ai-dify/PG_PASS
+  OpenserchPass:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ai-dify/ES_PASS
+  S3SecretsKey:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ai-dify/S3_KEY
+  Mode:
+    Type: String
+  HealthCheck:
+    Type: String
+  DockerImageName:
+    Type: String
+  CeleryBrokerUrl:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /ai-dify/REDIS_URL
+Resources:
+  ECSService:
+    Type: 'AWS::ECS::Service'
+    Properties:
+      Cluster: !Ref ECSClusterName
+      CapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Base: 0
+          Weight: 1
+      TaskDefinition: !Ref TaskDefinition
+      ServiceName: !Sub ${ApplicationName}-${EnvName}
+      DesiredCount: !Ref TaskDesiredCount
+      EnableExecuteCommand: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: !Ref SecurityGroupIDs
+          Subnets: !Ref SubnetIDs
+      DeploymentConfiguration:
+        MaximumPercent: 200 
+        MinimumHealthyPercent: 100
+      DeploymentController:
+        Type: ECS
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${ApplicationName}-${EnvName}
+      Cpu: !Ref TaskCpuSetting
+      Memory: !Ref TaskMemorySetting
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Ref ExecutionRoleArn
+      TaskRoleArn: !Ref ExecutionRoleArn
+      ContainerDefinitions:
+        - Name: !Sub ${ApplicationName}-${EnvName}
+          Image: !Ref DockerImageUrl
+          Environment:
+            - Name: REDIS_PASSWORD
+              Value: !Ref RedisPass
+            - Name: DB_PASSWORD
+              Value: !Ref PgPass
+            - Name: OPENSEARCH_PASSWORD
+              Value: !Ref OpenserchPass
+            - Name: S3_SECRET_KEY
+              Value: !Ref S3SecretsKey
+            - Name: MODE
+              Value: !Ref Mode
+            - Name: CELERY_BROKER_URL
+              Value: !Ref CeleryBrokerUrl
+          EnvironmentFiles:
+            - Type: s3
+              Value: !Ref EnvironmentFileUrl
+          PortMappings:
+            - ContainerPort: !Ref AppPort
+              HostPort: !Ref AppPort
+          LogConfiguration:
+            LogDriver: "awslogs"
+            Options:
+              awslogs-create-group: true
+              awslogs-group: !Sub ${ApplicationName}-${EnvName}
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: ecs
+
+  LarkTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${ApplicationName}-${EnvName}
+      Subscription:
+        - Endpoint: !Ref SnsToLarkLambda
+          Protocol: "LAMBDA"
+
+# ASG setting begin
+  AutoScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+      Policies:
+        - PolicyName: allow-ecs-cw-scaling
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:DescribeAlarms
+                  - cloudwatch:PutMetricAlarm
+                Resource: '*'
+  AutoScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MinCapacity: !Ref TaskDesiredCount
+      MaxCapacity: 10
+      ResourceId: !Join ["/", [service, !Ref ECSClusterName, !GetAtt ECSService.Name]]
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+      RoleARN: !GetAtt AutoScalingRole.Arn
+  AutoScalingPolicyForCPU:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: ecs-cpu-utilization-ScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref AutoScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 120
+        TargetValue: 70.0
+  AutoScalingPolicyForMemory:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: ecs-memory-utilization-ScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref AutoScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageMemoryUtilization
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 120
+        TargetValue: 75.0
+# ASG setting end
+
+Outputs:
+  ClusterName:
+    Description: The cluster used to create the service.
+    Value: !Ref ECSClusterName
+  ECSService:
+    Description: The created service.
+    Value: !Ref ECSService
+  LarkTopic:
+    Description: The created Lark Topic.
+    Value: !Ref LarkTopic
