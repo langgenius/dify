@@ -15,7 +15,9 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.variables.segment_group import SegmentGroup
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
+from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
+from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
 from models import App, AppMode, db
@@ -234,6 +236,27 @@ class VariableApi(Resource):
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
     def patch(self, app_model: App, variable_id: str):
+        # Request payload for file types:
+        #
+        # Local File:
+        #
+        #     {
+        #         "type": "image",
+        #         "transfer_method": "local_file",
+        #         "url": "",
+        #         "upload_file_id": "daded54f-72c7-4f8e-9d18-9b0abdd9f190"
+        #     }
+        #
+        # Remote File:
+        #
+        #
+        #     {
+        #         "type": "image",
+        #         "transfer_method": "remote_url",
+        #         "url": "http://127.0.0.1:5001/files/1602650a-4fe4-423c-85a2-af76c083e3c4/file-preview?timestamp=1750041099&nonce=...&sign=...=",
+        #         "upload_file_id": "1602650a-4fe4-423c-85a2-af76c083e3c4"
+        #     }
+
         parser = reqparse.RequestParser()
         parser.add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
         # Parse 'value' field as-is to maintain its original data structure
@@ -257,6 +280,16 @@ class VariableApi(Resource):
 
         new_value = None
         if raw_value is not None:
+            if variable.value_type == SegmentType.FILE:
+                if not isinstance(raw_value, dict):
+                    raise InvalidArgumentError(description=f"expected dict for file, got {type(raw_value)}")
+                raw_value = build_from_mapping(mapping=raw_value, tenant_id=app_model.tenant_id)
+            elif variable.value_type == SegmentType.ARRAY_FILE:
+                if not isinstance(raw_value, list):
+                    raise InvalidArgumentError(description=f"expected list for files, got {type(raw_value)}")
+                if len(raw_value) > 0 and not isinstance(raw_value[0], dict):
+                    raise InvalidArgumentError(description=f"expected dict for files[0], got {type(raw_value)}")
+                raw_value = build_from_mappings(mappings=raw_value, tenant_id=app_model.tenant_id)
             new_value = build_segment_with_type(variable.value_type, raw_value)
         draft_var_srv.update_variable(variable, name=new_name, value=new_value)
         db.session.commit()

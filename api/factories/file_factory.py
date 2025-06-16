@@ -91,6 +91,8 @@ def build_from_mappings(
     tenant_id: str,
     strict_type_validation: bool = False,
 ) -> Sequence[File]:
+    # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
+    # Implement batch processing to reduce database load when handling multiple files.
     files = [
         build_from_mapping(
             mapping=mapping,
