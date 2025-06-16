@@ -1,5 +1,8 @@
 name: Deploy RAG Dev
 
+permissions:
+  contents: read
+
 on:
   workflow_run:
     workflows: ["Build and Push API & Web"]
