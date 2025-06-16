@@ -226,7 +226,6 @@ const BasePanel: FC<BasePanelProps> = ({
             {...passedLogParams}
             existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
             filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
-            result={<></>}
           />
         </div>
       </div>

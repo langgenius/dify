@@ -25,7 +25,6 @@ export type BeforeRunFormProps = {
   onRun: (submitData: Record<string, any>) => void
   onStop: () => void
   runningStatus: NodeRunningStatus
-  result?: React.JSX.Element
   forms: FormProps[]
   showSpecialResultPanel?: boolean
   existVarValuesInForms: Record<string, any>[]

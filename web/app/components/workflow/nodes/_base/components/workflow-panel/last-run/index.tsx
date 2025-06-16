@@ -32,7 +32,8 @@ const LastRun: FC<Props> = ({
   ...otherResultPanelProps
 }) => {
   const isOneStepRunSucceed = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
-  const canRunLastRun = !isRunAfterSingleRun || isOneStepRunSucceed
+  const isOneStepRunFailed = oneStepRunRunningStatus === NodeRunningStatus.Failed
+  const canRunLastRun = !isRunAfterSingleRun || isOneStepRunSucceed || isOneStepRunFailed
   const { data: lastRunResult, isFetching, error } = useLastRun(appId, nodeId, canRunLastRun)
   const isRunning = useMemo(() => {
     if(!isRunAfterSingleRun)

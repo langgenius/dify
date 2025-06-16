@@ -498,12 +498,7 @@ const useOneStepRun = <T>({
     catch (e: any) {
       console.error(e)
       hasError = true
-      const result = res || {}
-      setRunResult({
-        ...result,
-        error: e.message,
-        status: NodeRunningStatus.Failed,
-      })
+      invalidLastRun()
       if (!isIteration && !isLoop) {
         handleNodeDataUpdate({
           id,
