@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 import secrets
 import string
 from collections.abc import Mapping
@@ -177,6 +178,9 @@ class Executor:
                     if len(data) != 1:
                         raise RequestBodyError("json body type should have exactly one item")
                     json_string = self.variable_pool.convert_template(data[0].value).text
+                    # Compatible with non-standard spaces
+                    pattern = r"[\u00a0\u1680\u180e\u2000-\u200a\u202f\u205f\u3000]"
+                    json_string = re.sub(pattern, " ", json_string)
                     try:
                         json_object = json.loads(json_string, strict=False)
                     except json.JSONDecodeError as e:
