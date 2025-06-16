@@ -221,9 +221,7 @@ const BasePanel: FC<BasePanelProps> = ({
             nodeName={data.title}
             nodeType={data.type}
             onHide={hideSingleRun}
-            runningStatus={runningStatus}
             onRun={handleRunWithParams}
-            onStop={handleStop}
             {...singleRunParams!}
             {...passedLogParams}
             existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}

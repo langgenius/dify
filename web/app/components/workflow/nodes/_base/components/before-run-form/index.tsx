@@ -2,21 +2,16 @@
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiLoader2Line,
-} from '@remixicon/react'
 import type { Props as FormProps } from './form'
 import Form from './form'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
-import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
+import { InputVarType } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import type { BlockEnum } from '@/app/components/workflow/types'
+import type { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import PanelWrap from './panel-wrap'
@@ -66,17 +61,12 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   nodeName,
   onHide,
   onRun,
-  onStop,
-  runningStatus,
-  result,
   forms,
   filteredExistVarForms,
   existVarValuesInForms,
 }) => {
   const { t } = useTranslation()
 
-  const isFinished = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed || runningStatus === NodeRunningStatus.Exception
-  const isRunning = runningStatus === NodeRunningStatus.Running
   const isFileLoaded = (() => {
     if (!forms || forms.length === 0)
       return true
@@ -172,27 +162,10 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           ))}
         </div>
         <div className='mt-4 flex justify-between space-x-2 px-4' >
-          {isRunning && (
-            <div
-              className='cursor-pointer rounded-lg border border-divider-regular bg-components-button-secondary-bg p-2 shadow-xs'
-              onClick={onStop}
-            >
-              <StopCircle className='h-4 w-4 text-text-tertiary' />
-            </div>
-          )}
-          <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
-            {isRunning && <RiLoader2Line className='h-4 w-4 animate-spin' />}
-            <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
+          <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
+            <div>{t(`${i18nPrefix}.startRun`)}</div>
           </Button>
         </div>
-        {isRunning && (
-          <ResultPanel status='running' showSteps={false} />
-        )}
-        {isFinished && (
-          <>
-            {result}
-          </>
-        )}
       </div>
     </PanelWrap>
   )
