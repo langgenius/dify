@@ -1,0 +1,63 @@
+import contextvars
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from typing import Any, Optional, TypeVar, Union
+
+from flask import Flask, g, has_request_context
+
+T = TypeVar("T")
+
+
+@contextmanager
+def flask_context_manager(
+    flask_app: Flask,
+    context_vars: Optional[
+        Union[Mapping[contextvars.ContextVar[T], Any], dict[contextvars.ContextVar[Any], Any]]
+    ] = None,
+) -> Iterator[None]:
+    """
+    A context manager that handles:
+    1. flask-login's UserProxy copy
+    2. ContextVars copy
+    3. flask_app.app_context()
+
+    This context manager ensures that the Flask application context is properly set up,
+    the current user is preserved across context boundaries, and any provided context variables
+    are set within the new context.
+
+    Args:
+        flask_app: The Flask application instance
+        context_vars: Optional dictionary mapping ContextVar instances to their values
+
+    Yields:
+        None
+
+    Example:
+        ```python
+        with flask_context_manager(flask_app, context_vars={my_var: my_value}):
+            # Code that needs Flask app context and context variables
+            # Current user will be preserved if available
+        ```
+    """
+    # Set context variables if provided
+    if context_vars:
+        for var, val in context_vars.items():
+            var.set(val)
+
+    # Save current user before entering new app context
+    saved_user = None
+    if has_request_context() and hasattr(g, "_login_user"):
+        saved_user = g._login_user
+
+    # Enter Flask app context
+    with flask_app.app_context():
+        try:
+            # Restore user in new app context if it was saved
+            if saved_user is not None:
+                g._login_user = saved_user
+
+            # Yield control back to the caller
+            yield
+        finally:
+            # Any cleanup can be added here if needed
+            pass

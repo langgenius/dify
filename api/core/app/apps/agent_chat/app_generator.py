@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Literal, Union, overload
 
-from flask import Flask, copy_current_request_context, current_app, has_request_context
+from flask import Flask, copy_current_request_context, current_app
 from pydantic import ValidationError
 
 from configs import dify_config
@@ -19,6 +19,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskSt
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
+from core.helper import flask_context_manager
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
@@ -229,24 +230,9 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param message_id: message ID
         :return:
         """
-        for var, val in context.items():
-            var.set(val)
 
-        # FIXME(-LAN-): Save current user before entering new app context
-        from flask import g
-
-        saved_user = None
-        if has_request_context() and hasattr(g, "_login_user"):
-            saved_user = g._login_user
-
-        with flask_app.app_context():
+        with flask_context_manager(flask_app, context_vars=context):
             try:
-                # Restore user in new app context
-                if saved_user is not None:
-                    from flask import g
-
-                    g._login_user = saved_user
-
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
