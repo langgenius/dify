@@ -64,7 +64,6 @@ def get_text_index_score(text_indexs: list[TextIndex],search_texts: list[str]):
     return 100 - deduct_points
 
 def get_full_search_text_max_score(search_texts: list[str], target_text: str) -> (int, list[TextIndex]):
-    import pdb; pdb.set_trace()
     # 1. 建立 source 中每个字符的索引映射
     # pos_map = defaultdict(list)
     text_index_groups:list[list[TextIndex]] = []
@@ -74,7 +73,6 @@ def get_full_search_text_max_score(search_texts: list[str], target_text: str) ->
         # pos_map[search_text].extend(text_indexs)
         text_index_groups.append(text_indexs)
 
-    import pdb; pdb.set_trace()
     # groups:list[list[TextIndex]] = []
     max_score = -100000
     max_index_list:list[TextIndex]
@@ -105,7 +103,6 @@ def get_full_search_text_max_score(search_texts: list[str], target_text: str) ->
     #         texts.append(text)
     #     print("--------------------------")
     #     print("".join(texts))
-    import pdb; pdb.set_trace()
     return (max_score,max_index_list)
 
 if __name__ == "__main__":

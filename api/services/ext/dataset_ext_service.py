@@ -226,7 +226,6 @@ class DocumentExtService:
                              tenant_id : str,
                              query_text: str,
                              file_ids: str) -> list[dict]:
-        import pdb; pdb.set_trace()
         if not file_ids:
             return []
 
@@ -243,7 +242,6 @@ class DocumentExtService:
         segments_rows = DocumentExtService.filter_rows_by_file_ids(segments_rows, file_ids)
         # 过滤文件ID
         document_rows = DocumentExtService.filter_rows_by_file_ids(document_rows, file_ids)
-        import pdb; pdb.set_trace()
         # 计算分值高的数据
         segment_datas = DocumentExtService.get_full_search_segments_by_score(
             keywords=keywords,
@@ -307,7 +305,6 @@ class DocumentExtService:
     def get_keywords(query_text: str) -> Keywords:
         # 分词器分词关键词
         keyword_texts = list(jieba.cut(query_text))
-        import pdb; pdb.set_trace()
         # 判断关键词的长度
         jieba.analyse.set_stop_words("services/ext/stopwords.txt")
         # def get_text():
@@ -423,7 +420,6 @@ class DocumentExtService:
 
         # 按照分值排序
         max_score_segments = sorted(max_score_segments, key=lambda x: x['score'], reverse=True)
-        import pdb; pdb.set_trace()
         return max_score_segments
 
     def filter_rows_by_file_ids(search_datas: list[Row], file_ids: str) -> list[Row]:
