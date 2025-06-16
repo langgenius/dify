@@ -23,6 +23,10 @@ def flask_context_manager(
     the current user is preserved across context boundaries, and any provided context variables
     are set within the new context.
 
+    Note:
+        This manager aims to allow use current_user cross thread and app context,
+        but it's not the recommend use, it's better to pass user directly in parameters.
+
     Args:
         flask_app: The Flask application instance
         context_vars: contextvars.Context object containing context variables to be set in the new context
