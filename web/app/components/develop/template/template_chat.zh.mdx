@@ -56,7 +56,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，用于定义终端用户的身份，方便检索、统计。
-        由开发者定义规则，需保证用户标识在应用内唯一。
+        由开发者定义规则，需保证用户标识在应用内唯一。服务 API 不会共享 WebApp 创建的对话。
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
       （选填）会话 ID，需要基于之前的聊天记录继续对话，必须传之前消息的 conversation_id。
@@ -306,7 +306,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         要上传的文件。
       </Property>
       <Property name='user' type='string' key='user'>
-          用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+          用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。服务 API 不会共享 WebApp 创建的对话。
       </Property>
     </Properties>
 
@@ -373,7 +373,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
   ### Request Body
   - `user` (string) Required
-    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。API 无法访问 WebApp 创建的会话。
   ### Response
   - `result` (string) 固定返回 success
   </Col>
@@ -425,7 +425,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
          点赞 like, 点踩 dislike,  撤销点赞 null
       </Property>
       <Property name='user' type='string' key='user'>
-          用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+          用户标识，由开发者定义规则，需保证用户标识在应用内唯一。服务 API 不会共享 WebApp 创建的对话。
       </Property>
       <Property name='content' type='string' key='content'>
           消息反馈的具体信息。
@@ -1162,6 +1162,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   - `name` (string) 应用名称
   - `description` (string) 应用描述
   - `tags` (array[string]) 应用标签
+  - `mode` (string) 应用模式
+  - 'author_name' (string) 作者名称
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -1178,7 +1180,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>

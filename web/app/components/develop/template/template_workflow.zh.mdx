@@ -59,7 +59,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         <i>由于 Cloudflare 限制，请求会在 100 秒超时无返回后中断。</i>
       - `user` (string) Required
         用户标识，用于定义终端用户的身份，方便检索、统计。
-        由开发者定义规则，需保证用户标识在应用内唯一。
+        由开发者定义规则，需保证用户标识在应用内唯一。API 无法访问 WebApp 创建的会话。
 
 
     ### Response
@@ -394,7 +394,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     - `task_id` (string) 任务 ID，可在流式返回 Chunk 中获取
     ### Request Body
     - `user` (string) Required
-      用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+      用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。API 无法访问 WebApp 创建的会话。
     ### Response
     - `result` (string) 固定返回 "success"
   </Col>
@@ -443,7 +443,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         要上传的文件。
       </Property>
       <Property name='user' type='string' key='user'>
-          用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+          用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。服务 API 不会共享 WebApp 创建的对话。
       </Property>
     </Properties>
 
@@ -615,6 +615,8 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   - `name` (string) 应用名称
   - `description` (string) 应用描述
   - `tags` (array[string]) 应用标签
+  - `mode` (string) 应用模式
+  - 'author_name' (string) 作者名称
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -631,7 +633,9 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "workflow",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>

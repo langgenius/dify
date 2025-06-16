@@ -11,6 +11,7 @@ import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/ec
 import Button from '@/app/components/base/button'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDocLink } from '@/context/i18n'
 
 type Props = {
   indexMethod: string
@@ -29,6 +30,7 @@ const ModifyRetrievalModal: FC<Props> = ({
 }) => {
   const ref = useRef(null)
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const [retrievalConfig, setRetrievalConfig] = useState(value)
 
   // useClickAway(() => {
@@ -72,7 +74,7 @@ const ModifyRetrievalModal: FC<Props> = ({
             <a
               target='_blank'
               rel='noopener noreferrer'
-              href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings'
+              href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings')}
               className='text-text-accent'
             >
               {t('datasetSettings.form.retrievalSetting.learnMore')}
