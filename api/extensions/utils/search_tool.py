@@ -45,7 +45,6 @@ def get_text_max_score(search_texts: list[str],search_index: int, pos_map,root_l
 def get_text_index_score(text_indexs: list[TextIndex],search_texts: list[str]):
 
     deduct_points = 0
-    search_text_count = len("".join(search_texts))
     text_count = 0
     for idx,text_index in enumerate(text_indexs):
         text_count += len(text_index.text_text)
@@ -60,6 +59,7 @@ def get_text_index_score(text_indexs: list[TextIndex],search_texts: list[str]):
             deduct_points += t_score
             if deduct_points > 50:
                 return 0
+    search_text_count = len("".join(search_texts))
     deduct_points += (search_text_count - text_count) * 3
     return 100 - deduct_points
 
@@ -75,11 +75,11 @@ def get_full_search_text_max_score(search_texts: list[str], target_text: str) ->
 
     # groups:list[list[TextIndex]] = []
     max_score = -100000
-    max_index_list:list[TextIndex]
+    max_index_list:list[TextIndex]=[]
     for text_index_s in itertools.product(*text_index_groups):
         text_index_list:list[TextIndex] = list(text_index_s)
         score_ = get_text_index_score(text_indexs=text_index_list,search_texts=search_texts)
-        if score_ < 50:
+        if score_ < 80:
             continue
         if score_ > max_score:
             max_score = score_

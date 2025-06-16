@@ -234,6 +234,7 @@ class DocumentExtService:
         # 精准查询的向量片段
         # fetch_segments = DocumentExtService.get_full_search_segments(dataset_ids=dataset_ids,query_text=query_text)
         keywords = DocumentExtService.get_keywords(query_text=query_text)
+        print(keywords.__dict__)
         segments_rows, document_rows = DocumentExtService.get_keyword_search_segments(
             dataset_ids=dataset_ids,
             keywords=keywords,
@@ -312,22 +313,26 @@ class DocumentExtService:
         # 提取关键词，默认 topK=30，withWeight=True
         main_keywords_texts__ = jieba.analyse.extract_tags(query_text, topK=200, withWeight=False)
 
-        main_keywords_texts = []
-        for text in keyword_texts:
-            if text in main_keywords_texts__:
-                main_keywords_texts.append(text)
-
-        keyword_len = len(main_keywords_texts)
+        keyword_len = len(main_keywords_texts__)
         main_keywords_len = 0
+        # import pdb; pdb.set_trace()
         # 提取80%
         if keyword_len > 2:
             main_keywords_len = int(keyword_len * 0.8)
         else:
             main_keywords_len = keyword_len
 
-        main_keywords_len = len(main_keywords_texts) if main_keywords_len > len(main_keywords_texts) else main_keywords_len
+        main_keywords_len = keyword_len if main_keywords_len > keyword_len else main_keywords_len
         # 得出最关键的分词
-        search_keywords_texts = main_keywords_texts[:main_keywords_len + 1]
+        search_keywords_texts__ = main_keywords_texts__[:main_keywords_len]
+
+        main_keywords_texts = []
+        search_keywords_texts = []
+        for text in keyword_texts:
+            if text in main_keywords_texts__:
+                main_keywords_texts.append(text)
+            if text in search_keywords_texts__:
+                search_keywords_texts.append(text)
 
         search_sql = ' & '.join(search_keywords_texts)
         # 按照最关键的分词查询
@@ -382,27 +387,29 @@ class DocumentExtService:
         segment_datas = []
         for document in document_rows:
             score, s_list = get_full_search_text_max_score(search_texts=keywords.main_texts,target_text=document.document_name)
-            segment_data = {
-                "document_id" : str(document.document_id),
-                "title": document.document_name,
-                "content": document.segment_content,
-                "doc_metadata": document.doc_metadata,
-                "query": query_text,
-                "score": score,
-            }
-            segment_datas.append(segment_data)
+            if score > 80:
+                segment_data = {
+                    "document_id" : str(document.document_id),
+                    "title": document.document_name,
+                    "content": document.segment_content,
+                    "doc_metadata": document.doc_metadata,
+                    "query": query_text,
+                    "score": score,
+                }
+                segment_datas.append(segment_data)
 
         for segment in segments_rows:
             score,s_list  = get_full_search_text_max_score(search_texts=keywords.main_texts,target_text=segment.segment_content)
-            segment_data = {
-                "document_id" : str(segment.document_id),
-                "title": segment.document_name,
-                "content": segment.segment_content,
-                "doc_metadata": segment.doc_metadata,
-                "query": query_text,
-                "score": score,
-            }
-            segment_datas.append(segment_data)
+            if score > 80:
+                segment_data = {
+                    "document_id" : str(segment.document_id),
+                    "title": segment.document_name,
+                    "content": segment.segment_content,
+                    "doc_metadata": segment.doc_metadata,
+                    "query": query_text,
+                    "score": score,
+                }
+                segment_datas.append(segment_data)
 
         grouped = defaultdict(list)
 
