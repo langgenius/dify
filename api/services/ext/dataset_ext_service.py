@@ -21,6 +21,27 @@ from services.entities.knowledge_entities.knowledge_entities import KnowledgeCon
 from sqlalchemy import text, bindparam,select,func
 from collections import defaultdict
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.engine import Row
+import jieba
+import jieba.analyse
+import difflib
+from extensions.utils.search_tool import get_full_search_text_max_score
+import json
+
+class Keywords:
+    def __init__(self, texts, main_texts, search_texts, search_sql):
+        self.texts = texts
+        self.main_texts = main_texts
+        self.search_texts=search_texts
+        self.search_sql=search_sql
+
+    def to_dict(self):
+        return {
+            "texts": self.texts,
+            "main_texts": self.main_texts,
+            "search_texts": self.search_texts,
+            "search_sql": self.search_sql,
+        }
 
 class DatasetExtService:
     resource_type = "dataset"
@@ -201,32 +222,36 @@ class DocumentExtService:
                     break
         return next_segment
 
-
     def get_full_search_data(dataset_names: list[str],
                              tenant_id : str,
                              query_text: str,
                              file_ids: str) -> list[dict]:
-
+        import pdb; pdb.set_trace()
         if not file_ids:
             return []
 
         datasets = db.session.query(Dataset).filter(Dataset.name.in_(dataset_names),Dataset.tenant_id == tenant_id).all()
         dataset_ids = [dataset.id for dataset in datasets]
         # 精准查询的向量片段
-        fetch_segments = DocumentExtService.get_full_search_segments(dataset_ids=dataset_ids,query_text=query_text)
-
-        search_datas = []
-        for segment in fetch_segments:
-            search_data = {
-                "title": segment.document_name,
-                "content": segment.segment_content,
-                "doc_metadata": segment.doc_metadata,
-                "query": query_text
-            }
-            search_datas.append(search_data)
-
-        search_datas = DocumentExtService.filter_by_file_ids(search_datas=search_datas, file_ids=file_ids)
-        return search_datas
+        # fetch_segments = DocumentExtService.get_full_search_segments(dataset_ids=dataset_ids,query_text=query_text)
+        keywords = DocumentExtService.get_keywords(query_text=query_text)
+        segments_rows, document_rows = DocumentExtService.get_keyword_search_segments(
+            dataset_ids=dataset_ids,
+            keywords=keywords,
+        )
+        # 过滤文件ID
+        segments_rows = DocumentExtService.filter_rows_by_file_ids(segments_rows, file_ids)
+        # 过滤文件ID
+        document_rows = DocumentExtService.filter_rows_by_file_ids(document_rows, file_ids)
+        import pdb; pdb.set_trace()
+        # 计算分值高的数据
+        segment_datas = DocumentExtService.get_full_search_segments_by_score(
+            keywords=keywords,
+            query_text=query_text,
+            segments_rows=segments_rows,
+            document_rows=document_rows
+        )
+        return segment_datas
 
     def get_full_search_segments(dataset_ids: list[str], query_text: str):
 
@@ -279,9 +304,144 @@ class DocumentExtService:
                 fetch_segments.append(segment_list[1])
         return fetch_segments
 
+    def get_keywords(query_text: str) -> Keywords:
+        # 分词器分词关键词
+        keyword_texts = list(jieba.cut(query_text))
+        import pdb; pdb.set_trace()
+        # 判断关键词的长度
+        jieba.analyse.set_stop_words("services/ext/stopwords.txt")
+        # def get_text():
+        #     return text
+        # 提取关键词，默认 topK=30，withWeight=True
+        main_keywords_texts__ = jieba.analyse.extract_tags(query_text, topK=200, withWeight=False)
+
+        main_keywords_texts = []
+        for text in keyword_texts:
+            if text in main_keywords_texts__:
+                main_keywords_texts.append(text)
+
+        keyword_len = len(main_keywords_texts)
+        main_keywords_len = 0
+        # 提取80%
+        if keyword_len > 2:
+            main_keywords_len = int(keyword_len * 0.8)
+        else:
+            main_keywords_len = keyword_len
+
+        main_keywords_len = len(main_keywords_texts) if main_keywords_len > len(main_keywords_texts) else main_keywords_len
+        # 得出最关键的分词
+        search_keywords_texts = main_keywords_texts[:main_keywords_len + 1]
+
+        search_sql = ' & '.join(search_keywords_texts)
+        # 按照最关键的分词查询
+        keywords = Keywords(
+            texts=main_keywords_texts,
+            main_texts=main_keywords_texts,
+            search_texts=search_keywords_texts,
+            search_sql=search_sql
+        )
+        return keywords
+
+    def get_keyword_search_segments(dataset_ids: list[str],
+                                    keywords: Keywords
+                                ) -> (list[Row],list[Row]):
+
+        sql = text(f"""
+            SELECT s.id segment_id, s.document_id, s.content segment_content, d.name document_name,d.doc_metadata
+            FROM document_segments s
+                left join documents d on d.id = s.document_id
+            WHERE to_tsvector('chinese', s.content) @@ to_tsquery(:keywords) and d.dataset_id::text = ANY(:dataset_ids)
+        """)
+
+        segments_rows = db.session.execute(sql, {"keywords": keywords.search_sql, "dataset_ids" : dataset_ids}).fetchall()
+
+        sql = text("""
+            SELECT d.id AS document_id,
+                   d.name AS document_name,
+                   s.id AS segment_id,
+                   s.content AS segment_content,
+                   d.doc_metadata
+            FROM documents d
+            JOIN (
+                SELECT s1.*
+                FROM document_segments s1
+                INNER JOIN (
+                    SELECT document_id, MIN(position) AS first_position
+                    FROM document_segments
+                    GROUP BY document_id
+                ) s2 ON s1.document_id = s2.document_id AND s1.position = s2.first_position
+            ) s ON d.id = s.document_id
+            WHERE to_tsvector('chinese', d.name) @@ to_tsquery(:keywords) and d.dataset_id::text = ANY(:dataset_ids_)
+        """)
+        document_rows = db.session.execute(sql, {"keywords": keywords.search_sql, "dataset_ids_" : dataset_ids}).fetchall()
+        return segments_rows, document_rows
+
+    # 计算分值
+    def get_full_search_segments_by_score(keywords : Keywords,
+                              query_text : str,
+                              segments_rows: list[Row],
+                              document_rows: list[Row]) -> list[dict]:
+
+        segment_datas = []
+        for document in document_rows:
+            score, s_list = get_full_search_text_max_score(search_texts=keywords.main_texts,target_text=document.document_name)
+            segment_data = {
+                "document_id" : str(document.document_id),
+                "title": document.document_name,
+                "content": document.segment_content,
+                "doc_metadata": document.doc_metadata,
+                "query": query_text,
+                "score": score,
+            }
+            segment_datas.append(segment_data)
+
+        for segment in segments_rows:
+            score,s_list  = get_full_search_text_max_score(search_texts=keywords.main_texts,target_text=segment.segment_content)
+            segment_data = {
+                "document_id" : str(segment.document_id),
+                "title": segment.document_name,
+                "content": segment.segment_content,
+                "doc_metadata": segment.doc_metadata,
+                "query": query_text,
+                "score": score,
+            }
+            segment_datas.append(segment_data)
+
+        grouped = defaultdict(list)
+
+        for segment in segment_datas:
+            grouped[segment["document_id"]].append(segment)
+
+        max_score_segments = []
+        # 遍历 grouped
+        for document_id, segment_list in grouped.items():
+            if len(segment_list) == 1:
+                max_score_segments.append(segment_list[0])
+            else:
+                max_segment = max(segment_list[1:], key=lambda x: x['score'])
+                max_score_segments.append(max_segment)
+
+        # 按照分值排序
+        max_score_segments = sorted(max_score_segments, key=lambda x: x['score'], reverse=True)
+        import pdb; pdb.set_trace()
+        return max_score_segments
+
+    def filter_rows_by_file_ids(search_datas: list[Row], file_ids: str) -> list[Row]:
+        file_id_list = file_ids.split(",")
+
+        filter_rows = []
+        for item in search_datas:
+            doc_metadata = item.doc_metadata
+            if not doc_metadata:
+                doc_metadata = {}
+            if doc_metadata["file_id"] and doc_metadata["file_id"] in file_id_list:
+                filter_rows.append(item)
+
+        return filter_rows
+
     def filter_by_file_ids(search_datas: list[dict], file_ids: str) -> list[dict]:
         file_id_list = file_ids.split(",")
         return [
             item for item in search_datas
-            if item.get("doc_metadata", {}).get("file_id") in file_ids
+            if item.get("doc_metadata", {}).get("file_id") in file_id_list
         ]
