@@ -310,7 +310,16 @@ const Form = () => {
                 <div>
                   <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                   <div className='body-xs-regular text-text-tertiary'>
-                    <a target='_blank' rel='noopener noreferrer' href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings')} className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                    <a
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting', {
+                        'zh-Hans': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#指定检索方式',
+                        'ja-JP': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#検索方法の指定',
+                      })}
+                      className='text-text-accent'>
+                      {t('datasetSettings.form.retrievalSetting.learnMore')}
+                    </a>
                     {t('datasetSettings.form.retrievalSetting.description')}
                   </div>
                 </div>
