@@ -522,6 +522,7 @@ class DraftVariableSaver:
     # that aren't meant to be directly edited or viewed by users.
     _EXCLUDE_VARIABLE_NAMES_MAPPING: dict[NodeType, frozenset[str]] = {
         NodeType.LLM: frozenset(["finish_reason"]),
+        NodeType.LOOP: frozenset(["loop_round"]),
     }
 
     # Database session used for persisting draft variables.
