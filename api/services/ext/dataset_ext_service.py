@@ -25,23 +25,10 @@ from sqlalchemy.engine import Row
 import jieba
 import jieba.analyse
 import difflib
-from extensions.utils.search_tool import get_full_search_text_max_score
+from extensions.utils.search_tool import get_full_search_text_max_score,Keywords,get_keywords
 import json
 
-class Keywords:
-    def __init__(self, texts, main_texts, search_texts, search_sql):
-        self.texts = texts
-        self.main_texts = main_texts
-        self.search_texts=search_texts
-        self.search_sql=search_sql
 
-    def to_dict(self):
-        return {
-            "texts": self.texts,
-            "main_texts": self.main_texts,
-            "search_texts": self.search_texts,
-            "search_sql": self.search_sql,
-        }
 
 class DatasetExtService:
     resource_type = "dataset"
@@ -233,7 +220,7 @@ class DocumentExtService:
         dataset_ids = [dataset.id for dataset in datasets]
         # 精准查询的向量片段
         # fetch_segments = DocumentExtService.get_full_search_segments(dataset_ids=dataset_ids,query_text=query_text)
-        keywords = DocumentExtService.get_keywords(query_text=query_text)
+        keywords = get_keywords(query_text=query_text)
         print(keywords.__dict__)
         segments_rows, document_rows = DocumentExtService.get_keyword_search_segments(
             dataset_ids=dataset_ids,
@@ -303,46 +290,6 @@ class DocumentExtService:
                 fetch_segments.append(segment_list[1])
         return fetch_segments
 
-    def get_keywords(query_text: str) -> Keywords:
-        # 分词器分词关键词
-        keyword_texts = list(jieba.cut(query_text))
-        # 判断关键词的长度
-        jieba.analyse.set_stop_words("services/ext/stopwords.txt")
-        # def get_text():
-        #     return text
-        # 提取关键词，默认 topK=30，withWeight=True
-        main_keywords_texts__ = jieba.analyse.extract_tags(query_text, topK=200, withWeight=False)
-
-        keyword_len = len(main_keywords_texts__)
-        main_keywords_len = 0
-        # import pdb; pdb.set_trace()
-        # 提取80%
-        if keyword_len > 2:
-            main_keywords_len = int(keyword_len * 0.8)
-        else:
-            main_keywords_len = keyword_len
-
-        main_keywords_len = keyword_len if main_keywords_len > keyword_len else main_keywords_len
-        # 得出最关键的分词
-        search_keywords_texts__ = main_keywords_texts__[:main_keywords_len]
-
-        main_keywords_texts = []
-        search_keywords_texts = []
-        for text in keyword_texts:
-            if text in main_keywords_texts__:
-                main_keywords_texts.append(text)
-            if text in search_keywords_texts__:
-                search_keywords_texts.append(text)
-
-        search_sql = ' & '.join(search_keywords_texts)
-        # 按照最关键的分词查询
-        keywords = Keywords(
-            texts=main_keywords_texts,
-            main_texts=main_keywords_texts,
-            search_texts=search_keywords_texts,
-            search_sql=search_sql
-        )
-        return keywords
 
     def get_keyword_search_segments(dataset_ids: list[str],
                                     keywords: Keywords
@@ -351,10 +298,10 @@ class DocumentExtService:
         sql = text(f"""
             SELECT s.id segment_id, s.document_id, s.content segment_content, d.name document_name,d.doc_metadata
             FROM document_segments s
-                left join documents d on d.id = s.document_id
-            WHERE to_tsvector('chinese', s.content) @@ to_tsquery(:keywords) and d.dataset_id::text = ANY(:dataset_ids)
+                LEFT JOIN documents d ON d.id = s.document_id
+            WHERE to_tsvector('chinese', s.content) @@ to_tsquery(:keywords) AND d.dataset_id::text = ANY(:dataset_ids)
         """)
-
+        print(sql,keywords.search_sql,dataset_ids[0])
         segments_rows = db.session.execute(sql, {"keywords": keywords.search_sql, "dataset_ids" : dataset_ids}).fetchall()
 
         sql = text("""
@@ -383,7 +330,7 @@ class DocumentExtService:
                               query_text : str,
                               segments_rows: list[Row],
                               document_rows: list[Row]) -> list[dict]:
-
+        # import pdb; pdb.set_trace()
         segment_datas = []
         for document in document_rows:
             score, s_list = get_full_search_text_max_score(search_texts=keywords.main_texts,target_text=document.document_name)

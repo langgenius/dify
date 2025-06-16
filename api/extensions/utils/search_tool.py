@@ -2,7 +2,24 @@ import difflib
 from collections import defaultdict, Counter
 import itertools
 import re
+import jieba
+import jieba.analyse
+import json
 
+class Keywords:
+    def __init__(self, texts, main_texts, search_texts, search_sql):
+        self.texts = texts
+        self.main_texts = main_texts
+        self.search_texts=search_texts
+        self.search_sql=search_sql
+
+    def to_dict(self):
+        return {
+            "texts": self.texts,
+            "main_texts": self.main_texts,
+            "search_texts": self.search_texts,
+            "search_sql": self.search_sql,
+        }
 class TextIndex:
     def __init__(self, text_text, index):
         self.text_text = text_text
@@ -104,6 +121,94 @@ def get_full_search_text_max_score(search_texts: list[str], target_text: str) ->
     #     print("--------------------------")
     #     print("".join(texts))
     return (max_score,max_index_list)
+
+def get_keywords(query_text: str) -> Keywords:
+    # 分词器分词关键词
+    keyword_texts = list(jieba.cut(query_text))
+    keyword_texts_for_search = list(jieba.cut_for_search(query_text))
+
+    print("keyword_texts:",keyword_texts)
+    print("keyword_texts_for_search:",keyword_texts_for_search)
+    # import pdb; pdb.set_trace()
+    # 判断关键词的长度
+    jieba.analyse.set_stop_words("extensions/utils/stopwords.txt")
+    # def get_text():
+    #     return text
+    # 提取关键词，默认 topK=30，withWeight=True
+    main_keywords_texts__ = jieba.analyse.extract_tags(query_text, topK=200, withWeight=False)
+    keyword_len = len(main_keywords_texts__)
+    main_keywords_len = 0
+    # import pdb; pdb.set_trace()
+    # 提取80%
+    if keyword_len > 4:
+        main_keywords_len = int(keyword_len * 0.8)
+    else:
+        main_keywords_len = keyword_len
+
+    main_keywords_len = keyword_len if main_keywords_len > keyword_len else main_keywords_len
+    # 得出最关键的分词
+    search_keywords_texts__ = main_keywords_texts__[:main_keywords_len]
+
+    main_keywords_texts = []
+    search_keywords_texts = []
+    for text in keyword_texts:
+        if text in main_keywords_texts__:
+            main_keywords_texts.append(text)
+        if text in search_keywords_texts__:
+            search_keywords_texts.append(text)
+
+    search_sql = get_search_keywords_texts_sql(search_keywords_texts=search_keywords_texts)
+    # search_sql = ' & '.join(search_keywords_texts)
+    # 按照最关键的分词查询
+    keywords = Keywords(
+        texts=main_keywords_texts,
+        main_texts=main_keywords_texts,
+        search_texts=search_keywords_texts,
+        search_sql=search_sql
+    )
+    return keywords
+
+def get_search_keywords_texts_sql(search_keywords_texts:list[str]):
+
+    texts = []
+    for text in search_keywords_texts:
+        # 将元素才拆成可查询用的分词
+        texts_for_search:list[str] = list(jieba.cut_for_search(text))
+        min_texts:list[str] = get_min_search_keywords_texts(texts=texts_for_search)
+        texts.extend(min_texts)
+    # import pdb; pdb.set_trace()
+    texts_len = len(texts)
+    sql = ""
+    if texts_len == 1:
+        sql = texts[0]
+    elif texts_len == 2:
+        sql = f"{texts[0]} & {texts[1]} | {texts[0]}{texts[1]}"
+    else:
+        sql_texts:list[str] = []
+        for idx,text in enumerate(texts):
+            if idx == 0:
+                sql_texts.append(f"({text} | {text}{texts[idx + 1]})")
+            elif idx == texts_len - 2:
+                sql_texts.append(f"({text} | {text}{texts[idx + 1]} | {texts[idx-1]}{text} & {texts[idx + 1]})")
+            elif idx == texts_len - 1:
+                sql_texts.append(f"({text} | {texts[idx - 1]}{text})")
+            else:
+                sql_texts.append(f"({text} | {text}{texts[idx + 1]} | {texts[idx-1]}{text} & ({texts[idx + 1]} | {texts[idx + 1]}{texts[idx + 2]}))")
+        sql = " & ".join(sql_texts)
+    print(sql)
+    return sql
+
+def get_min_search_keywords_texts(texts:list[str]):
+    # import pdb; pdb.set_trace()
+    min_texts = []
+    for text in texts:
+        b = True
+        for text2 in texts:
+            if text != text2 and text2 in text:
+                b = False
+        if b:
+            min_texts.append(text)
+    return min_texts
 
 if __name__ == "__main__":
     search_texts=["湖人","阵容"]
