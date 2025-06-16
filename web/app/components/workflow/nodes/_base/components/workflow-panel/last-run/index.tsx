@@ -18,6 +18,7 @@ type Props = {
   runningStatus?: NodeRunningStatus
   onSingleRunClicked: () => void
   singleRunResult?: NodeTracing
+  isPaused?: boolean
 } & Partial<ResultPanelProps>
 
 const LastRun: FC<Props> = ({
@@ -29,6 +30,7 @@ const LastRun: FC<Props> = ({
   runningStatus: oneStepRunRunningStatus,
   onSingleRunClicked,
   singleRunResult,
+  isPaused,
   ...otherResultPanelProps
 }) => {
   const isOneStepRunSucceed = oneStepRunRunningStatus === NodeRunningStatus.Succeeded
@@ -36,10 +38,13 @@ const LastRun: FC<Props> = ({
   const canRunLastRun = !isRunAfterSingleRun || isOneStepRunSucceed || isOneStepRunFailed
   const { data: lastRunResult, isFetching, error } = useLastRun(appId, nodeId, canRunLastRun)
   const isRunning = useMemo(() => {
+    if(isPaused)
+      return false
+
     if(!isRunAfterSingleRun)
       return isFetching
     return [NodeRunningStatus.Running, NodeRunningStatus.NotStart].includes(oneStepRunRunningStatus!)
-  }, [isFetching, isRunAfterSingleRun, oneStepRunRunningStatus])
+  }, [isFetching, isPaused, isRunAfterSingleRun, oneStepRunRunningStatus])
 
   const noLastRun = (error as any)?.status === 404
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || {}
@@ -64,6 +69,7 @@ const LastRun: FC<Props> = ({
       <ResultPanel
         {...runResult as any}
         {...otherResultPanelProps}
+        status={isPaused ? NodeRunningStatus.Stopped : ((runResult as any).status || otherResultPanelProps.status)}
         total_tokens={(runResult as any)?.execution_metadata?.total_tokens || otherResultPanelProps?.total_tokens}
         created_by={(runResult as any)?.created_by_account?.created_by || otherResultPanelProps?.created_by}
         nodeInfo={nodeInfo}

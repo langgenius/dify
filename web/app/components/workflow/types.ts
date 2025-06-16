@@ -329,6 +329,7 @@ export enum NodeRunningStatus {
   Failed = 'failed',
   Exception = 'exception',
   Retry = 'retry',
+  Stopped = 'stopped',
 }
 
 export type OnNodeAdd = (

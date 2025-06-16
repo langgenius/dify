@@ -78,6 +78,7 @@ export type Params<T> = {
   iteratorInputKey?: string
   loopInputKey?: string
   isRunAfterSingleRun: boolean
+  isPaused: boolean
 }
 
 const varTypeToInputVarType = (type: VarType, {
@@ -111,6 +112,7 @@ const useOneStepRun = <T>({
   iteratorInputKey,
   loopInputKey,
   isRunAfterSingleRun,
+  isPaused,
 }: Params<T>) => {
   const { t } = useTranslation()
   const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } = useWorkflow() as any
@@ -173,8 +175,14 @@ const useOneStepRun = <T>({
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
-  const isPaused = !data._isSingleRun
+  const isPausedRef = useRef(isPaused)
+  useEffect(() => {
+    isPausedRef.current = isPaused
+  }, [isPaused])
+
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
+    const isPaused = isPausedRef.current
+
     // The backend don't support pause the single run, so the frontend handle the pause state.
     if(isPaused)
       return
@@ -196,7 +204,7 @@ const useOneStepRun = <T>({
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [isPaused, isRunAfterSingleRun, runningStatus, appId, id, store, appendNodeInspectVars, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
+  }, [isRunAfterSingleRun, runningStatus, appId, id, store, appendNodeInspectVars, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const setNodeRunning = () => {
@@ -303,6 +311,8 @@ const useOneStepRun = <T>({
           {
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
+              if(isPausedRef.current)
+                return
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -380,6 +390,8 @@ const useOneStepRun = <T>({
               setIterationRunResult(newIterationRunResult)
             },
             onError: () => {
+              if(isPausedRef.current)
+                return
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -402,6 +414,8 @@ const useOneStepRun = <T>({
           {
             onWorkflowStarted: noop,
             onWorkflowFinished: (params) => {
+              if(isPausedRef.current)
+                return
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -480,6 +494,8 @@ const useOneStepRun = <T>({
               setLoopRunResult(newLoopRunResult)
             },
             onError: () => {
+              if(isPausedRef.current)
+                return
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -500,6 +516,8 @@ const useOneStepRun = <T>({
       hasError = true
       invalidLastRun()
       if (!isIteration && !isLoop) {
+        if(isPausedRef.current)
+          return
         handleNodeDataUpdate({
           id,
           data: {
@@ -512,7 +530,7 @@ const useOneStepRun = <T>({
       }
     }
     finally {
-      if (!isIteration && !isLoop && res) {
+      if (!isPausedRef.current && !isIteration && !isLoop && res) {
         setRunResult({
           ...res,
           total_tokens: res.execution_metadata?.total_tokens || 0,
@@ -520,7 +538,12 @@ const useOneStepRun = <T>({
         })
       }
     }
+    if(isPausedRef.current)
+      return
+
     if (!isIteration && !isLoop && !hasError) {
+      if(isPausedRef.current)
+        return
       handleNodeDataUpdate({
         id,
         data: {

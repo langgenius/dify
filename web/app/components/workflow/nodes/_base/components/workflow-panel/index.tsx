@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useState,
 } from 'react'
 import {
   RiCloseLine,
@@ -74,7 +75,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
   })))
-    const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
+  const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
 
   const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
@@ -146,6 +147,19 @@ const BasePanel: FC<BasePanelProps> = ({
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
   const appDetail = useAppStore(state => state.appDetail)
 
+  const [hasClickRunning, setHasClickRunning] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  useEffect(() => {
+    if(data._singleRunningStatus === NodeRunningStatus.Running) {
+      setHasClickRunning(true)
+      setIsPaused(false)
+    }
+    else if(data._singleRunningStatus === undefined) {
+      setIsPaused(true)
+      setHasClickRunning(false)
+    }
+  }, [data._singleRunningStatus])
+
   const {
     isShowSingleRun,
     hideSingleRun,
@@ -170,7 +184,12 @@ const BasePanel: FC<BasePanelProps> = ({
     id,
     data,
     defaultRunInputData: NODES_EXTRA_DATA[data.type]?.defaultRunInputData || {},
+    isPaused,
   })
+
+  useEffect(() => {
+    setIsPaused(false)
+  }, [tabType])
 
   const logParams = useLogs()
   const passedLogParams = (() => {
@@ -380,6 +399,7 @@ const BasePanel: FC<BasePanelProps> = ({
             onSingleRunClicked={handleSingleRun}
             nodeInfo={nodeInfo}
             singleRunResult={runResult!}
+            isPaused={isPaused}
             {...passedLogParams}
           />
         )}
