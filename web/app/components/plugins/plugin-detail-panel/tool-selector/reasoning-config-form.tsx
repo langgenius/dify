@@ -7,7 +7,7 @@ import {
 } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
-import MixedInput from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import Input from '@/app/components/base/input'
 import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
 import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
@@ -59,18 +59,6 @@ const ReasoningConfigForm: React.FC<Props> = ({
     if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
       return VarKindType.mixed
   }
-
-  const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
-  const handleInputFocus = useCallback((variable: string) => {
-    return (value: boolean) => {
-      setInputsIsFocus((prev) => {
-        return {
-          ...prev,
-          [variable]: value,
-        }
-      })
-    }
-  }, [])
 
   const handleAutomatic = (key: string, val: any, type: FormTypeEnum) => {
     onChange({
@@ -259,15 +247,11 @@ const ReasoningConfigForm: React.FC<Props> = ({
               <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange(variable, defaultValue)}/>
             )}
             {isString && (
-              <MixedInput
-                className={cn(inputsIsFocus[variable] ? 'border-gray-300 bg-gray-50 shadow-xs' : 'border-gray-100 bg-gray-100', 'grow rounded-lg border px-3 py-[6px]')}
+              <MixedVariableTextInput
                 value={varInput?.value as string || ''}
                 onChange={handleValueChange(variable, type)}
                 nodesOutputVars={nodeOutputVars}
                 availableNodes={availableNodes}
-                onFocusChange={handleInputFocus(variable)}
-                placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
-                placeholderClassName='!leading-[21px]'
               />
             )}
             {isNumber && isConstant && (

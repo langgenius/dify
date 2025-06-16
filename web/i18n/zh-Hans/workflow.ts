@@ -660,6 +660,8 @@ const translation = {
       toAuthorize: '授权',
       inputVars: '输入变量',
       settings: '设置',
+      insertPlaceholder1: '键入',
+      insertPlaceholder2: '插入变量',
       outputVars: {
         text: '工具生成的内容',
         files: {

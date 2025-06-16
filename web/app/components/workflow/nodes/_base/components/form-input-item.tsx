@@ -1,7 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -11,17 +9,17 @@ import { VarType } from '@/app/components/workflow/types'
 
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import FormInputTypeSwitch from './form-input-type-switch'
-import MixedInput from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
+import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import FormInputBoolean from './form-input-boolean'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import cn from '@/utils/classnames'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import cn from '@/utils/classnames'
 
 type Props = {
   readOnly: boolean
@@ -40,7 +38,6 @@ const FormInputItem: FC<Props> = ({
   onChange,
   inPanel,
 }) => {
-  const { t } = useTranslation()
   const language = useLanguage()
 
   const {
@@ -178,34 +175,18 @@ const FormInputItem: FC<Props> = ({
     })
   }
 
-  const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
-  const handleInputFocus = useCallback((variable: string) => {
-    return (value: boolean) => {
-      setInputsIsFocus((prev) => {
-        return {
-          ...prev,
-          [variable]: value,
-        }
-      })
-    }
-  }, [])
-
   return (
     <div className={cn('gap-1', !(isShowJSONEditor && isConstant) && 'flex')}>
       {showTypeSwitch && (
         <FormInputTypeSwitch value={varInput?.type || VarKindType.constant} onChange={handleTypeChange}/>
       )}
       {isString && (
-        <MixedInput
-          className={cn(inputsIsFocus[variable] ? 'border-gray-300 bg-gray-50 shadow-xs' : 'border-gray-100 bg-gray-100', 'grow rounded-lg border px-3 py-[6px]')}
+        <MixedVariableTextInput
+          readOnly={readOnly}
           value={varInput?.value as string || ''}
           onChange={handleValueChange}
-          readOnly={readOnly}
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
-          onFocusChange={handleInputFocus(variable)}
-          placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
-          placeholderClassName='!leading-[21px]'
         />
       )}
       {isNumber && isConstant && (
