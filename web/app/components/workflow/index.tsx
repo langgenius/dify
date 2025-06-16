@@ -302,7 +302,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <SyncingDataModal />
       <CandidateNode />
       <div
-        className='absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1'
+        className='absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
         style={{ height: controlHeight }}
       >
         <Control />

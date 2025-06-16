@@ -403,6 +403,8 @@ export const useDSL = () => {
 }
 
 export const useWorkflowCanvasMaximize = () => {
+  const { eventEmitter } = useEventEmitterContextContext()
+
   const maximizeCanvas = useStore(s => s.maximizeCanvas)
   const setMaximizeCanvas = useStore(s => s.setMaximizeCanvas)
   const {
@@ -415,7 +417,11 @@ export const useWorkflowCanvasMaximize = () => {
 
     setMaximizeCanvas(!maximizeCanvas)
     localStorage.setItem('workflow-canvas-maximize', String(!maximizeCanvas))
-  }, [getNodesReadOnly, maximizeCanvas, setMaximizeCanvas])
+    eventEmitter?.emit({
+      type: 'workflow-canvas-maximize',
+      payload: !maximizeCanvas,
+    } as any)
+  }, [eventEmitter, getNodesReadOnly, maximizeCanvas, setMaximizeCanvas])
 
   return {
     handleToggleMaximizeCanvas,
