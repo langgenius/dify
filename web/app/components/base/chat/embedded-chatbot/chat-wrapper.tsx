@@ -25,6 +25,7 @@ import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested
 import { Markdown } from '@/app/components/base/markdown'
 import cn from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
+import Avatar from '../../avatar'
 
 const ChatWrapper = () => {
   const {
@@ -49,6 +50,7 @@ const ChatWrapper = () => {
     setClearChatList,
     setIsResponding,
     allInputsHidden,
+    initUserVariables,
   } = useEmbeddedChatbotContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -261,6 +263,14 @@ const ChatWrapper = () => {
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       inputDisabled={inputDisabled}
       isMobile={isMobile}
+      questionIcon={
+        initUserVariables?.avatar_url
+          ? <Avatar
+            avatar={initUserVariables.avatar_url}
+            name={initUserVariables.name || 'user'}
+            size={40}
+          /> : undefined
+      }
     />
   )
 }
