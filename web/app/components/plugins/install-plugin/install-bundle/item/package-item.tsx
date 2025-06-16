@@ -29,7 +29,7 @@ const PackageItem: FC<Props> = ({
   const plugin = pluginManifestToCardPluginProps(payload.value.manifest)
   return (
     <LoadedItem
-      payload={plugin}
+      payload={{ ...plugin, from: payload.type }}
       checked={checked}
       onCheckedChange={onCheckedChange}
       isFromMarketPlace={isFromMarketPlace}

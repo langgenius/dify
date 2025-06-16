@@ -33,8 +33,9 @@ import { useGetLanguage } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
-import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
+import { API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
+import { getMarketplaceUrl } from '@/utils/var'
 
 const i18nPrefix = 'plugin.action'
 
@@ -87,7 +88,7 @@ const DetailHeader = ({
     if (isFromGitHub)
       return `https://github.com/${meta!.repo}`
     if (isFromMarketplace)
-      return `${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}${theme ? `?theme=${theme}` : ''}`
+      return getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })
     return ''
   }, [author, isFromGitHub, isFromMarketplace, meta, name, theme])
 
