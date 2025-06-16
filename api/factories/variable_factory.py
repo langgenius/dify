@@ -42,10 +42,6 @@ from core.workflow.constants import (
 )
 
 
-class InvalidSelectorError(ValueError):
-    pass
-
-
 class UnsupportedSegmentTypeError(Exception):
     pass
 

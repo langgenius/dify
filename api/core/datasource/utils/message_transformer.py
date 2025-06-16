@@ -39,7 +39,7 @@ class DatasourceFileMessageTransformer:
                         conversation_id=conversation_id,
                     )
 
-                    url = f"/files/datasources/{file.id}{guess_extension(file.mimetype) or '.png'}"
+                    url = f"/files/datasources/{file.id}{guess_extension(file.mime_type) or '.png'}"
 
                     yield DatasourceInvokeMessage(
                         type=DatasourceInvokeMessage.MessageType.IMAGE_LINK,
@@ -77,7 +77,7 @@ class DatasourceFileMessageTransformer:
                     filename=filename,
                 )
 
-                url = cls.get_datasource_file_url(datasource_file_id=file.id, extension=guess_extension(file.mimetype))
+                url = cls.get_datasource_file_url(datasource_file_id=file.id, extension=guess_extension(file.mime_type))
 
                 # check if file is image
                 if "image" in mimetype:
@@ -98,7 +98,7 @@ class DatasourceFileMessageTransformer:
                 if isinstance(file, File):
                     if file.transfer_method == FileTransferMethod.TOOL_FILE:
                         assert file.related_id is not None
-                        url = cls.get_tool_file_url(tool_file_id=file.related_id, extension=file.extension)
+                        url = cls.get_datasource_file_url(datasource_file_id=file.related_id, extension=file.extension)
                         if file.type == FileType.IMAGE:
                             yield DatasourceInvokeMessage(
                                 type=DatasourceInvokeMessage.MessageType.IMAGE_LINK,

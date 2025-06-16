@@ -273,3 +273,8 @@ class AgentLogEvent(BaseAgentEvent):
 
 
 InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent | BaseAgentEvent | BaseLoopEvent
+
+
+class DatasourceRunEvent(BaseModel):
+    status: str = Field(..., description="status")
+    result: dict[str, Any] = Field(..., description="result")

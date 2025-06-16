@@ -8,6 +8,7 @@ from flask_restful.inputs import int_range  # type: ignore
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 import services
 from configs import dify_config
 from controllers.console import api
@@ -453,7 +454,7 @@ class RagPipelineDrafDatasourceNodeRunApi(Resource):
             raise ValueError("missing datasource_type")
 
         rag_pipeline_service = RagPipelineService()
-        result = rag_pipeline_service.run_datasource_workflow_node(
+        return helper.compact_generate_response(rag_pipeline_service.run_datasource_workflow_node(
             pipeline=pipeline,
             node_id=node_id,
             user_inputs=inputs,
@@ -461,8 +462,7 @@ class RagPipelineDrafDatasourceNodeRunApi(Resource):
             datasource_type=datasource_type,
             is_published=False
         )
-
-        return result
+        )
 
 
 class RagPipelinePublishedNodeRunApi(Resource):

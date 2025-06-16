@@ -1,4 +1,3 @@
-from core.datasource.__base import datasource_provider
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType

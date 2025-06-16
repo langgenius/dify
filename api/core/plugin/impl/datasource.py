@@ -1,11 +1,11 @@
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from typing import Any
 
 from core.datasource.entities.datasource_entities import (
+    DatasourceInvokeMessage,
     GetOnlineDocumentPageContentRequest,
-    GetOnlineDocumentPageContentResponse,
-    GetOnlineDocumentPagesResponse,
-    GetWebsiteCrawlResponse,
+    OnlineDocumentPagesMessage,
+    WebsiteCrawlMessage,
 )
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
 from core.plugin.entities.plugin_daemon import (
@@ -93,17 +93,17 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> GetWebsiteCrawlResponse:
+    ) -> Generator[WebsiteCrawlMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
 
         datasource_provider_id = GenericProviderID(datasource_provider)
 
-        response = self._request_with_plugin_daemon_response_stream(
+        return self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_website_crawl",
-            GetWebsiteCrawlResponse,
+            WebsiteCrawlMessage,
             data={
                 "user_id": user_id,
                 "data": {
@@ -118,10 +118,6 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        for resp in response:
-            return resp
-
-        raise Exception("No response from plugin daemon")
 
     def get_online_document_pages(
         self,
@@ -132,7 +128,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: Mapping[str, Any],
         provider_type: str,
-    ) -> GetOnlineDocumentPagesResponse:
+    ) -> Generator[OnlineDocumentPagesMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -142,7 +138,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_pages",
-            GetOnlineDocumentPagesResponse,
+            OnlineDocumentPagesMessage,
             data={
                 "user_id": user_id,
                 "data": {
@@ -157,10 +153,7 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        for resp in response:
-            return resp
-
-        raise Exception("No response from plugin daemon")
+        yield from response
 
     def get_online_document_page_content(
         self,
@@ -171,7 +164,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: GetOnlineDocumentPageContentRequest,
         provider_type: str,
-    ) -> GetOnlineDocumentPageContentResponse:
+    ) -> Generator[DatasourceInvokeMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -181,7 +174,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_page_content",
-            GetOnlineDocumentPageContentResponse,
+            DatasourceInvokeMessage,
             data={
                 "user_id": user_id,
                 "data": {
@@ -196,10 +189,7 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        for resp in response:
-            return resp
-
-        raise Exception("No response from plugin daemon")
+        yield from response
 
     def validate_provider_credentials(
         self, tenant_id: str, user_id: str, provider: str, plugin_id: str, credentials: dict[str, Any]
