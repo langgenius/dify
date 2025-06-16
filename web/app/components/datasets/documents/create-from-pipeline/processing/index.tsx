@@ -2,7 +2,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiBookOpenLine } from '@remixicon/react'
-import { useGetDocLanguage } from '@/context/i18n'
+import { useDocLink } from '@/context/i18n'
 import EmbeddingProcess from './embedding-process'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
@@ -17,7 +17,7 @@ const Processing = ({
   documents,
 }: ProcessingProps) => {
   const { t } = useTranslation()
-  const docLanguage = useGetDocLanguage()
+  const docLink = useDocLink()
   const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
   const indexingType = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
   const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict.search_method)
@@ -44,7 +44,7 @@ const Processing = ({
             <div className='system-xl-semibold text-text-secondary'>{t('datasetCreation.stepThree.sideTipTitle')}</div>
             <div className='system-sm-regular text-text-tertiary'>{t('datasetCreation.stepThree.sideTipContent')}</div>
             <a
-              href={`https://docs.dify.ai/${docLanguage}/guides/knowledge-base/integrate-knowledge-within-application`}
+              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
               target='_blank'
               rel='noreferrer noopener'
               className='system-sm-regular text-text-accent'
