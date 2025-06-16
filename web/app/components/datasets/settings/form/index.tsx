@@ -37,7 +37,7 @@ import Divider from '@/app/components/base/divider'
 import ChunkStructure from '../chunk-structure'
 import Toast from '@/app/components/base/toast'
 import { RiAlertFill } from '@remixicon/react'
-import { useGetDocLanguage } from '@/context/i18n'
+import { useDocLink } from '@/context/i18n'
 
 const rowClass = 'flex gap-x-1'
 const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
@@ -57,6 +57,7 @@ const DEFAULT_APP_ICON: IconInfo = {
 
 const Form = () => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { mutate } = useSWRConfig()
   const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
@@ -91,7 +92,6 @@ const Form = () => {
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const previousAppIcon = useRef(DEFAULT_APP_ICON)
-  const docLanguage = useGetDocLanguage()
 
   const getMembers = async () => {
     const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
@@ -283,7 +283,7 @@ const Form = () => {
                   <a
                     target='_blank'
                     rel='noopener noreferrer'
-                    href={`https://docs.dify.ai/${docLanguage}/guides/knowledge-base/create-knowledge-and-upload-documents/chunking-and-cleaning-text`}
+                    href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/chunking-and-cleaning-text')}
                     className='text-text-accent'
                   >
                     {t('datasetSettings.form.chunkStructure.learnMore')}
@@ -423,7 +423,10 @@ const Form = () => {
                       <a
                         target='_blank'
                         rel='noopener noreferrer'
-                        href={`https://docs.dify.ai/${docLanguage}/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods`}
+                        href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting', {
+                          'zh-Hans': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#指定检索方式',
+                          'ja-JP': '/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#検索方法の指定',
+                        })}
                         className='text-text-accent'
                       >
                         {t('datasetSettings.form.retrievalSetting.learnMore')}
