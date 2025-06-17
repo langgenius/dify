@@ -668,6 +668,7 @@ class MailConfig(BaseSettings):
         default=None,
     )
 
+
 class RagEtlConfig(BaseSettings):
     """
     Configuration for RAG ETL processes

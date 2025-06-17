@@ -1,15 +1,12 @@
 import logging
 
-import sendgrid
+import sendgrid  # type: ignore
 from python_http_client.exceptions import ForbiddenError, UnauthorizedError
-from sendgrid.helpers.mail import Content, Email, Mail, To
+from sendgrid.helpers.mail import Content, Email, Mail, To  # type: ignore
 
 
 class SendGridClient:
-    def __init__(
-        self, sendgrid_api_key: str,_from: str
-    ):
-
+    def __init__(self, sendgrid_api_key: str, _from: str):
         self.sendgrid_api_key = sendgrid_api_key
         self._from = _from
 
@@ -28,7 +25,7 @@ class SendGridClient:
             subject = mail["subject"]
             content = Content("text/html", mail["html"])
             mail = Mail(from_email, to_email, subject, content)
-            mail_json = mail.get()
+            mail_json = mail.get()  # type: ignore
             response = sg.client.mail.send.post(request_body=mail_json)
             logging.debug(response.status_code)
             logging.debug(response.body)
