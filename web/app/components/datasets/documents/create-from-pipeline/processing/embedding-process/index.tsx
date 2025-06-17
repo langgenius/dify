@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import useSWR from 'swr'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { omit } from 'lodash-es'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
 import {
   RiCheckboxCircleFill,
@@ -13,14 +11,12 @@ import {
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import type { IndexingStatusResponse } from '@/models/datasets'
-import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchProcessRule } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { Plan } from '@/app/components/billing/type'
 import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
-import { sleep } from '@/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
@@ -28,6 +24,7 @@ import RuleDetail from './rule-detail'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { DatasourceType, type InitialDocumentDetail } from '@/models/pipeline'
+import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
 
 type EmbeddingProcessProps = {
   datasetId: string
@@ -45,64 +42,43 @@ const EmbeddingProcess = ({
   retrievalMethod,
 }: EmbeddingProcessProps) => {
   const { t } = useTranslation()
+  const router = useRouter()
   const { enableBilling, plan } = useProviderContext()
-
-  const firstDocument = documents[0]
-
   const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse[]>([])
-  const fetchIndexingStatus = async () => {
-    const status = await doFetchIndexingStatus({ datasetId, batchId })
-    setIndexingStatusDetail(status.data)
-    return status.data
-  }
-
-  const [isStopQuery, setIsStopQuery] = useState(false)
-  const isStopQueryRef = useRef(isStopQuery)
-  useEffect(() => {
-    isStopQueryRef.current = isStopQuery
-  }, [isStopQuery])
-  const stopQueryStatus = () => {
-    setIsStopQuery(true)
-  }
-
-  const startQueryStatus = async () => {
-    if (isStopQueryRef.current)
-      return
-
-    try {
-      const indexingStatusBatchDetail = await fetchIndexingStatus()
-      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status))
-      if (isCompleted) {
-        stopQueryStatus()
-        return
-      }
-      await sleep(2500)
-      await startQueryStatus()
-    }
-    catch {
-      await sleep(2500)
-      await startQueryStatus()
-    }
-  }
+  const [shouldPoll, setShouldPoll] = useState(true)
+  const { mutateAsync: fetchIndexingStatus } = useIndexingStatusBatch({ datasetId, batchId })
 
   useEffect(() => {
-    setIsStopQuery(false)
-    startQueryStatus()
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const fetchData = async () => {
+      await fetchIndexingStatus(undefined, {
+        onSuccess: (res) => {
+          const indexingStatusDetailList = res.data
+          setIndexingStatusDetail(indexingStatusDetailList)
+          const isCompleted = indexingStatusDetailList.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status))
+          if (isCompleted)
+            setShouldPoll(false)
+        },
+        onSettled: () => {
+          if (shouldPoll)
+            timeoutId = setTimeout(fetchData, 2500)
+        },
+      })
+    }
+
+    fetchData()
+
     return () => {
-      stopQueryStatus()
+      clearTimeout(timeoutId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [shouldPoll])
 
   // get rule
-  const { data: ruleDetail } = useSWR({
-    action: 'fetchProcessRule',
-    params: { documentId: firstDocument.id },
-  }, apiParams => fetchProcessRule(omit(apiParams, 'action')), {
-    revalidateOnFocus: false,
-  })
+  const firstDocument = documents[0]
+  const { data: ruleDetail } = useProcessRule(firstDocument.id)
 
-  const router = useRouter()
   const invalidDocumentList = useInvalidDocumentList()
   const navToDocumentList = () => {
     invalidDocumentList()
@@ -136,7 +112,6 @@ const EmbeddingProcess = ({
     const doc = documents.find(document => document.id === id)
     return doc?.data_source_type
   }
-
   const getIcon = (id: string) => {
     const doc = documents.find(document => document.id === id)
 
@@ -176,7 +151,10 @@ const EmbeddingProcess = ({
             indexingStatusDetail.indexing_status === 'error' && 'bg-state-destructive-hover-alt',
           )}>
             {isSourceEmbedding(indexingStatusDetail) && (
-              <div className='absolute left-0 top-0 h-full min-w-0.5 border-r-[2px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress' style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }} />
+              <div
+                className='absolute left-0 top-0 h-full min-w-0.5 border-r-[2px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress'
+                style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}
+              />
             )}
             <div className='z-[1] flex h-full items-center gap-1 pl-[6px] pr-2'>
               {getSourceType(indexingStatusDetail.id) === DatasourceType.localFile && (
