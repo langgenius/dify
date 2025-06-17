@@ -6,20 +6,20 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks/use-workflow'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { API_PREFIX } from '@/config'
+import { useWorkflowRefreshDraft } from '.'
 
 export const useNodesSyncDraft = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
+  const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const params = useParams()
 
   const getPostParams = useCallback(() => {

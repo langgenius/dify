@@ -32,7 +32,6 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import MessageLogModal from '@/app/components/base/message-log-modal'
-import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -191,13 +190,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
-    showPromptLogModal: state.showPromptLogModal,
-    setShowPromptLogModal: state.setShowPromptLogModal,
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
@@ -357,7 +354,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   }
 
   useEffect(() => {
-    adjustModalWidth()
+    const raf = requestAnimationFrame(adjustModalWidth)
+    return () => cancelAnimationFrame(raf)
   }, [])
 
   return (
@@ -429,6 +427,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   text_to_speech: {
                     enabled: true,
                   },
+                  questionEditEnable: false,
                   supportAnnotation: true,
                   annotation_reply: {
                     enabled: true,
@@ -484,6 +483,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                     text_to_speech: {
                       enabled: true,
                     },
+                    questionEditEnable: false,
                     supportAnnotation: true,
                     annotation_reply: {
                       enabled: true,
@@ -514,16 +514,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             setShowMessageLogModal(false)
           }}
           defaultTab={currentLogModalActiveTab}
-        />
-      )}
-      {showPromptLogModal && (
-        <PromptLogModal
-          width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowPromptLogModal(false)
-          }}
         />
       )}
     </div>

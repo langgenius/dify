@@ -21,7 +21,7 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
-from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.nodes.llm import llm_utils
 from models.account import Tenant
 
 
@@ -55,20 +55,21 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             def handle() -> Generator[LLMResultChunk, None, None]:
                 for chunk in response:
                     if chunk.delta.usage:
-                        LLMNode.deduct_llm_quota(
+                        llm_utils.deduct_llm_quota(
                             tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage
                         )
+                    chunk.prompt_messages = []
                     yield chunk
 
             return handle()
         else:
             if response.usage:
-                LLMNode.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
+                llm_utils.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(
                     model=response.model,
-                    prompt_messages=response.prompt_messages,
+                    prompt_messages=[],
                     system_fingerprint=response.system_fingerprint,
                     delta=LLMResultChunkDelta(
                         index=0,
@@ -239,8 +240,8 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         content = payload.text
 
         SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
-and you can quickly aimed at the main point of an webpage and reproduce it in your own words but 
-retain the original meaning and keep the key points. 
+and you can quickly aimed at the main point of an webpage and reproduce it in your own words but
+retain the original meaning and keep the key points.
 however, the text you got is too long, what you got is possible a part of the text.
 Please summarize the text you got.
 

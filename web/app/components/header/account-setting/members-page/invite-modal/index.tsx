@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +18,7 @@ import I18n from '@/context/i18n'
 import 'react-multi-email/dist/style.css'
 import { noop } from 'lodash-es'
 
+import { useProviderContextSelector } from '@/context/provider-context'
 type IInviteModalProps = {
   isEmailSetup: boolean
   onCancel: () => void
@@ -30,13 +31,27 @@ const InviteModal = ({
   onSend,
 }: IInviteModalProps) => {
   const { t } = useTranslation()
+  const licenseLimit = useProviderContextSelector(s => s.licenseLimit)
+  const refreshLicenseLimit = useProviderContextSelector(s => s.refreshLicenseLimit)
   const [emails, setEmails] = useState<string[]>([])
   const { notify } = useContext(ToastContext)
+  const [isLimited, setIsLimited] = useState(false)
+  const [isLimitExceeded, setIsLimitExceeded] = useState(false)
+  const [usedSize, setUsedSize] = useState(licenseLimit.workspace_members.size ?? 0)
+  useEffect(() => {
+    const limited = licenseLimit.workspace_members.limit > 0
+    const used = emails.length + licenseLimit.workspace_members.size
+    setIsLimited(limited)
+    setUsedSize(used)
+    setIsLimitExceeded(limited && (used > licenseLimit.workspace_members.limit))
+  }, [licenseLimit, emails])
 
   const { locale } = useContext(I18n)
   const [role, setRole] = useState<string>('normal')
 
   const handleSend = useCallback(async () => {
+    if (isLimitExceeded)
+      return
     if (emails.map((email: string) => emailRegex.test(email)).every(Boolean)) {
       try {
         const { result, invitation_results } = await inviteMember({
@@ -45,6 +60,7 @@ const InviteModal = ({
         })
 
         if (result === 'success') {
+          refreshLicenseLimit()
           onCancel()
           onSend(invitation_results)
         }
@@ -54,7 +70,7 @@ const InviteModal = ({
     else {
       notify({ type: 'error', message: t('common.members.emailInvalid') })
     }
-  }, [role, emails, notify, onCancel, onSend, t])
+  }, [isLimitExceeded, emails, role, locale, onCancel, onSend, notify, t])
 
   return (
     <div className={cn(s.wrap)}>
@@ -82,7 +98,7 @@ const InviteModal = ({
 
         <div>
           <div className='mb-2 text-sm font-medium text-text-primary'>{t('common.members.email')}</div>
-          <div className='mb-8 flex h-36 items-stretch'>
+          <div className='mb-8 flex h-36 flex-col items-stretch'>
             <ReactMultiEmail
               className={cn('w-full border-components-input-border-active !bg-components-input-bg-normal px-3 pt-2 outline-none',
                 'appearance-none overflow-y-auto rounded-lg text-sm !text-text-primary',
@@ -101,6 +117,14 @@ const InviteModal = ({
               }
               placeholder={t('common.members.emailPlaceholder') || ''}
             />
+            <div className={
+              cn('system-xs-regular flex items-center justify-end text-text-tertiary',
+                (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')}
+            >
+              <span>{usedSize}</span>
+              <span>/</span>
+              <span>{isLimited ? licenseLimit.workspace_members.limit : t('common.license.unlimited')}</span>
+            </div>
           </div>
           <div className='mb-6'>
             <RoleSelector value={role} onChange={setRole} />
@@ -109,7 +133,7 @@ const InviteModal = ({
             tabIndex={0}
             className='w-full'
             onClick={handleSend}
-            disabled={!emails.length}
+            disabled={!emails.length || isLimitExceeded}
             variant='primary'
           >
             {t('common.members.sendInvite')}

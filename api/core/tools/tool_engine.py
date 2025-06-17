@@ -32,7 +32,7 @@ from core.tools.errors import (
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import Message, MessageFile
 
 
@@ -246,7 +246,7 @@ class ToolEngine:
                     + "you do not need to create it, just tell the user to check it now."
                 )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
-                result = json.dumps(
+                result += json.dumps(
                     cast(ToolInvokeMessage.JsonMessage, response.message).json_object, ensure_ascii=False
                 )
             else:
@@ -339,9 +339,9 @@ class ToolEngine:
                 url=message.url,
                 upload_file_id=tool_file_id,
                 created_by_role=(
-                    CreatedByRole.ACCOUNT
+                    CreatorUserRole.ACCOUNT
                     if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                    else CreatedByRole.END_USER
+                    else CreatorUserRole.END_USER
                 ),
                 created_by=user_id,
             )

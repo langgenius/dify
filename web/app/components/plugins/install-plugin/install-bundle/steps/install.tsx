@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next'
 import InstallMulti from './install-multi'
 import { useInstallOrUpdate } from '@/service/use-plugins'
 import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
+import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-permission'
+import { useMittContextSelector } from '@/context/mitt-context'
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
@@ -28,6 +30,7 @@ const Install: FC<Props> = ({
   isHideButton,
 }) => {
   const { t } = useTranslation()
+  const emit = useMittContextSelector(s => s.emit)
   const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
   const [selectedIndexes, setSelectedIndexes] = React.useState<number[]>([])
   const selectedPluginsNum = selectedPlugins.length
@@ -62,8 +65,12 @@ const Install: FC<Props> = ({
         })
       }))
       const hasInstallSuccess = res.some(r => r.success)
-      if (hasInstallSuccess)
+      if (hasInstallSuccess) {
         refreshPluginList(undefined, true)
+        emit('plugin:install:success', selectedPlugins.map((p) => {
+          return `${p.plugin_id}/${p.name}`
+        }))
+      }
     },
   })
   const handleInstall = () => {
@@ -74,6 +81,7 @@ const Install: FC<Props> = ({
       installedInfo: installedInfo!,
     })
   }
+  const { canInstallPluginFromMarketplace } = useCanInstallPluginFromMarketplace()
   return (
     <>
       <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
@@ -101,7 +109,7 @@ const Install: FC<Props> = ({
           <Button
             variant='primary'
             className='flex min-w-[72px] space-x-0.5'
-            disabled={!canInstall || isInstalling || selectedPlugins.length === 0}
+            disabled={!canInstall || isInstalling || selectedPlugins.length === 0 || !canInstallPluginFromMarketplace}
             onClick={handleInstall}
           >
             {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}

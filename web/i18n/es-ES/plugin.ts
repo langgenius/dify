@@ -62,6 +62,7 @@ const translation = {
       unsupportedTitle: 'Acción no admitida',
       params: 'CONFIGURACIÓN DE RAZONAMIENTO',
       uninstalledLink: 'Administrar en Plugins',
+      toolSetting: 'Configuraciones de la herramienta',
     },
     endpointDeleteContent: '¿Te gustaría eliminar {{nombre}}?',
     endpointDisableTip: 'Deshabilitar punto de conexión',
@@ -180,6 +181,8 @@ const translation = {
     discover: 'Descubrir',
     and: 'y',
     difyMarketplace: 'Mercado de Dify',
+    verifiedTip: 'Verificado por Dify',
+    partnerTip: 'Verificado por un socio de Dify',
   },
   task: {
     installing: 'Instalando plugins {{installingLength}}, 0 hecho.',
@@ -192,7 +195,6 @@ const translation = {
   fromMarketplace: 'De Marketplace',
   endpointsEnabled: '{{num}} conjuntos de puntos finales habilitados',
   from: 'De',
-  submitPlugin: 'Enviar plugin',
   installAction: 'Instalar',
   install: '{{num}} instalaciones',
   allCategories: 'Todas las categorías',
@@ -204,6 +206,12 @@ const translation = {
   findMoreInMarketplace: 'Más información en Marketplace',
   installPlugin: 'Instalar plugin',
   searchPlugins: 'Plugins de búsqueda',
+  metadata: {
+    title: 'Complementos',
+  },
+  difyVersionNotCompatible: 'La versión actual de Dify no es compatible con este plugin, por favor actualiza a la versión mínima requerida: {{minimalDifyVersion}}',
+  requestAPlugin: 'Solicitar un plugin',
+  publishPlugins: 'Publicar plugins',
 }
 
 export default translation

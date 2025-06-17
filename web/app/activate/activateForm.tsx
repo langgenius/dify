@@ -7,8 +7,10 @@ import Button from '@/app/components/base/button'
 
 import { invitationCheck } from '@/service/common'
 import Loading from '@/app/components/base/loading'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 const ActivateForm = () => {
+  useDocumentTitle('')
   const router = useRouter()
   const { t } = useTranslation()
   const searchParams = useSearchParams()

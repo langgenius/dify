@@ -6,11 +6,11 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
-from models.workflow import WorkflowNodeExecutionStatus
 
 from . import helpers
 from .constants import EMPTY_VALUE_MAPPING
@@ -64,7 +64,7 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
                 # Get value from variable pool
                 if (
                     item.input_type == InputType.VARIABLE
-                    and item.operation != Operation.CLEAR
+                    and item.operation not in {Operation.CLEAR, Operation.REMOVE_FIRST, Operation.REMOVE_LAST}
                     and item.value is not None
                 ):
                     value = self.graph_runtime_state.variable_pool.get(item.value)
@@ -165,5 +165,15 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
                 return variable.value * value
             case Operation.DIVIDE:
                 return variable.value / value
+            case Operation.REMOVE_FIRST:
+                # If array is empty, do nothing
+                if not variable.value:
+                    return variable.value
+                return variable.value[1:]
+            case Operation.REMOVE_LAST:
+                # If array is empty, do nothing
+                if not variable.value:
+                    return variable.value
+                return variable.value[:-1]
             case _:
                 raise OperationNotSupportedError(operation=operation, variable_type=variable.value_type)

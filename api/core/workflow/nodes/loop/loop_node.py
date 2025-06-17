@@ -15,7 +15,8 @@ from core.variables import (
     SegmentType,
     StringSegment,
 )
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
     BaseNodeEvent,
@@ -37,7 +38,6 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.loop.entities import LoopNodeData
 from core.workflow.utils.condition.processor import ConditionProcessor
-from models.workflow import WorkflowNodeExecutionStatus
 
 if TYPE_CHECKING:
     from core.workflow.entities.variable_pool import VariablePool
@@ -187,10 +187,10 @@ class LoopNode(BaseNode[LoopNodeData]):
                 outputs=self.node_data.outputs,
                 steps=loop_count,
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
                     "completed_reason": "loop_break" if check_break_result else "loop_completed",
-                    NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
-                    NodeRunMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
+                    WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
+                    WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                 },
             )
 
@@ -198,9 +198,9 @@ class LoopNode(BaseNode[LoopNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     metadata={
-                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
-                        NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
-                        NodeRunMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
+                        WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                     },
                     outputs=self.node_data.outputs,
                     inputs=inputs,
@@ -221,8 +221,8 @@ class LoopNode(BaseNode[LoopNodeData]):
                 metadata={
                     "total_tokens": graph_engine.graph_runtime_state.total_tokens,
                     "completed_reason": "error",
-                    NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
-                    NodeRunMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
+                    WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
+                    WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                 },
                 error=str(e),
             )
@@ -232,9 +232,9 @@ class LoopNode(BaseNode[LoopNodeData]):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
                     metadata={
-                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
-                        NodeRunMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
-                        NodeRunMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
+                        WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                     },
                 )
             )
@@ -322,7 +322,9 @@ class LoopNode(BaseNode[LoopNodeData]):
                         inputs=inputs,
                         steps=current_index,
                         metadata={
-                            NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                            WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: (
+                                graph_engine.graph_runtime_state.total_tokens
+                            ),
                             "completed_reason": "error",
                         },
                         error=event.error,
@@ -331,13 +333,17 @@ class LoopNode(BaseNode[LoopNodeData]):
                         run_result=NodeRunResult(
                             status=WorkflowNodeExecutionStatus.FAILED,
                             error=event.error,
-                            metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
+                            metadata={
+                                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: (
+                                    graph_engine.graph_runtime_state.total_tokens
+                                )
+                            },
                         )
                     )
                     return {"check_break_result": True}
             elif isinstance(event, NodeRunFailedEvent):
                 # Loop run failed
-                yield event
+                yield self._handle_event_metadata(event=event, iter_run_index=current_index)
                 yield LoopRunFailedEvent(
                     loop_id=self.id,
                     loop_node_id=self.node_id,
@@ -347,7 +353,7 @@ class LoopNode(BaseNode[LoopNodeData]):
                     inputs=inputs,
                     steps=current_index,
                     metadata={
-                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
                         "completed_reason": "error",
                     },
                     error=event.error,
@@ -356,7 +362,9 @@ class LoopNode(BaseNode[LoopNodeData]):
                     run_result=NodeRunResult(
                         status=WorkflowNodeExecutionStatus.FAILED,
                         error=event.error,
-                        metadata={NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens},
+                        metadata={
+                            WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens
+                        },
                     )
                 )
                 return {"check_break_result": True}
@@ -411,11 +419,11 @@ class LoopNode(BaseNode[LoopNodeData]):
             metadata = event.route_node_state.node_run_result.metadata
             if not metadata:
                 metadata = {}
-            if NodeRunMetadataKey.LOOP_ID not in metadata:
+            if WorkflowNodeExecutionMetadataKey.LOOP_ID not in metadata:
                 metadata = {
                     **metadata,
-                    NodeRunMetadataKey.LOOP_ID: self.node_id,
-                    NodeRunMetadataKey.LOOP_INDEX: iter_run_index,
+                    WorkflowNodeExecutionMetadataKey.LOOP_ID: self.node_id,
+                    WorkflowNodeExecutionMetadataKey.LOOP_INDEX: iter_run_index,
                 }
                 event.route_node_state.node_run_result.metadata = metadata
         return event

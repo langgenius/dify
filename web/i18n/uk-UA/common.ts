@@ -54,6 +54,10 @@ const translation = {
     viewDetails: 'Перегляд докладних відомостей',
     copied: 'Скопійовані',
     in: 'В',
+    format: 'Формат',
+    downloadFailed: 'Не вдалося завантажити. Будь ласка, спробуйте ще раз пізніше.',
+    more: 'Більше',
+    downloadSuccess: 'Завантаження завершено.',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',
@@ -141,6 +145,8 @@ const translation = {
     newDataset: 'Створити знання',
     tools: 'Інструменти',
     exploreMarketplace: 'Дізнайтеся більше про Marketplace',
+    appDetail: 'Деталі програми',
+    account: 'Обліковий запис',
   },
   userProfile: {
     settings: 'Налаштування',
@@ -153,6 +159,9 @@ const translation = {
     community: 'Спільнота',
     about: 'Про нас',
     logout: 'Вийти',
+    compliance: 'Відповідність',
+    support: 'Підтримка',
+    github: 'Гітхаб',
   },
   settings: {
     accountGroup: 'ОБЛІКОВИЙ ЗАПИС',
@@ -202,6 +211,9 @@ const translation = {
     deleteSuccessTip: 'Вашому обліковому запису потрібен час, щоб завершити видалення. Ми надішлемо вам електронного листа, коли все буде готово.',
     deleteLabel: 'Для підтвердження, будь ласка, введіть свою електронну пошту нижче',
     deletePlaceholder: 'Будь ласка, введіть свою електронну пошту',
+    workspaceName: 'Назва робочого простору',
+    workspaceIcon: 'Іконка робочого простору',
+    editWorkspaceInfo: 'Редагувати інформацію про робочий простір',
   },
   members: {
     team: 'Команда',
@@ -456,7 +468,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API-розширення забезпечують централізоване керування API, спрощуючи конфігурацію для зручного використання в різних програмах Dify.',
     link: 'Дізнайтеся, як розробити власне розширення API.',
-    linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Додати розширення API',
     selector: {
       title: 'Розширення API',
@@ -544,6 +556,7 @@ const translation = {
     inputPlaceholder: 'Поговоріть з ботом',
     thought: 'Думка',
     thinking: 'Мислення...',
+    resend: 'Відправити знову',
   },
   promptEditor: {
     placeholder: 'Пишіть свої підказки тут, вводьте \'{\', щоб вставити змінну чи \'/\', щоб вставити блок-підказку',
@@ -634,10 +647,31 @@ const translation = {
   license: {
     expiring: 'Термін дії закінчується за один день',
     expiring_plural: 'Термін дії закінчується за {{count}} днів',
+    unlimited: 'Безмежний',
   },
   pagination: {
     perPage: 'Елементів на сторінці',
   },
+  theme: {
+    auto: 'система',
+    dark: 'темний',
+    light: 'світло',
+    theme: 'Тема',
+  },
+  compliance: {
+    professionalUpgradeTooltip: 'Доступно лише з командним планом або вище.',
+    soc2Type2: 'Звіт SOC 2 Тип II',
+    iso27001: 'Сертифікація ISO 27001:2022',
+    soc2Type1: 'Звіт SOC 2 Тип I',
+    sandboxUpgradeTooltip: 'Доступно лише з професійним або командним планом.',
+    gdpr: 'GDPR DPA',
+  },
+  imageInput: {
+    browse: 'перегляд',
+    supportedFormats: 'Підтримує PNG, JPG, JPEG, WEBP і GIF',
+    dropImageHere: 'Перетягніть зображення сюди або',
+  },
+  you: 'Ти',
 }
 
 export default translation

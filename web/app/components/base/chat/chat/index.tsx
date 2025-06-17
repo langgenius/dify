@@ -265,6 +265,7 @@ const Chat: FC<ChatProps> = ({
                     item={item}
                     questionIcon={questionIcon}
                     theme={themeBuilder?.theme}
+                    enableEdit={config?.questionEditEnable}
                     switchSibling={switchSibling}
                   />
                 )
@@ -302,6 +303,7 @@ const Chat: FC<ChatProps> = ({
             {
               !noChatInput && (
                 <ChatInputArea
+                  botName={appData?.site.title || 'Bot'}
                   disabled={inputDisabled}
                   showFeatureBar={showFeatureBar}
                   showFileUpload={showFileUpload}

@@ -8,6 +8,7 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -84,13 +85,17 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
 
         document_context_list = []
         index_node_ids = [document.metadata["doc_id"] for document in all_documents if document.metadata]
-        segments = DocumentSegment.query.filter(
-            DocumentSegment.dataset_id.in_(self.dataset_ids),
-            DocumentSegment.completed_at.isnot(None),
-            DocumentSegment.status == "completed",
-            DocumentSegment.enabled == True,
-            DocumentSegment.index_node_id.in_(index_node_ids),
-        ).all()
+        segments = (
+            db.session.query(DocumentSegment)
+            .filter(
+                DocumentSegment.dataset_id.in_(self.dataset_ids),
+                DocumentSegment.completed_at.isnot(None),
+                DocumentSegment.status == "completed",
+                DocumentSegment.enabled == True,
+                DocumentSegment.index_node_id.in_(index_node_ids),
+            )
+            .all()
+        )
 
         if segments:
             index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
@@ -103,38 +108,42 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 else:
                     document_context_list.append(segment.get_sign_content())
             if self.return_resource:
-                context_list = []
+                context_list: list[RetrievalSourceMetadata] = []
                 resource_number = 1
                 for segment in sorted_segments:
-                    dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
-                    document = Document.query.filter(
-                        Document.id == segment.document_id,
-                        Document.enabled == True,
-                        Document.archived == False,
-                    ).first()
+                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
+                    document = (
+                        db.session.query(Document)
+                        .filter(
+                            Document.id == segment.document_id,
+                            Document.enabled == True,
+                            Document.archived == False,
+                        )
+                        .first()
+                    )
                     if dataset and document:
-                        source = {
-                            "position": resource_number,
-                            "dataset_id": dataset.id,
-                            "dataset_name": dataset.name,
-                            "document_id": document.id,
-                            "document_name": document.name,
-                            "data_source_type": document.data_source_type,
-                            "segment_id": segment.id,
-                            "retriever_from": self.retriever_from,
-                            "score": document_score_list.get(segment.index_node_id, None),
-                            "doc_metadata": document.doc_metadata,
-                        }
+                        source = RetrievalSourceMetadata(
+                            position=resource_number,
+                            dataset_id=dataset.id,
+                            dataset_name=dataset.name,
+                            document_id=document.id,
+                            document_name=document.name,
+                            data_source_type=document.data_source_type,
+                            segment_id=segment.id,
+                            retriever_from=self.retriever_from,
+                            score=document_score_list.get(segment.index_node_id, None),
+                            doc_metadata=document.doc_metadata,
+                        )
 
                         if self.retriever_from == "dev":
-                            source["hit_count"] = segment.hit_count
-                            source["word_count"] = segment.word_count
-                            source["segment_position"] = segment.position
-                            source["index_node_hash"] = segment.index_node_hash
+                            source.hit_count = segment.hit_count
+                            source.word_count = segment.word_count
+                            source.segment_position = segment.position
+                            source.index_node_hash = segment.index_node_hash
                         if segment.answer:
-                            source["content"] = f"question:{segment.content} \nanswer:{segment.answer}"
+                            source.content = f"question:{segment.content} \nanswer:{segment.answer}"
                         else:
-                            source["content"] = segment.content
+                            source.content = segment.content
                         context_list.append(source)
                     resource_number += 1
 
@@ -143,8 +152,6 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
 
             return str("\n".join(document_context_list))
         return ""
-
-        raise RuntimeError("not segments found")
 
     def _retriever(
         self,

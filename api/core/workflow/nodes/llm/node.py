@@ -1,16 +1,13 @@
+import base64
+import io
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 import json_repair
 
-from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.entities.model_entities import ModelStatus
-from core.entities.provider_entities import QuotaUnit
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file import FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -21,7 +18,7 @@ from core.model_runtime.entities import (
     PromptMessageContentType,
     TextPromptMessageContent,
 )
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessageContentUnionTypes,
@@ -38,11 +35,10 @@ from core.model_runtime.entities.model_entities import (
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.entities.plugin import ModelProviderID
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.variables import (
-    ArrayAnySegment,
     ArrayFileSegment,
     ArraySegment,
     FileSegment,
@@ -51,9 +47,10 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base import BaseNode
@@ -68,15 +65,11 @@ from core.workflow.nodes.event import (
 from core.workflow.utils.structured_output.entities import (
     ResponseFormat,
     SpecialModelType,
-    SupportStructuredOutputStatus,
 )
 from core.workflow.utils.structured_output.prompt import STRUCTURED_OUTPUT_PROMPT
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from extensions.ext_database import db
-from models.model import Conversation
-from models.provider import Provider, ProviderType
-from models.workflow import WorkflowNodeExecutionStatus
 
+from . import llm_utils
 from .entities import (
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
@@ -86,7 +79,6 @@ from .entities import (
 from .exc import (
     InvalidContextStructureError,
     InvalidVariableTypeError,
-    LLMModeRequiredError,
     LLMNodeError,
     MemoryRolePrefixRequiredError,
     ModelNotExistError,
@@ -94,9 +86,13 @@ from .exc import (
     TemplateTypeNotSupportError,
     VariableNotFoundError,
 )
+from .file_saver import FileSaverImpl, LLMFileSaver
 
 if TYPE_CHECKING:
     from core.file.models import File
+    from core.workflow.graph_engine.entities.graph import Graph
+    from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
+    from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -105,8 +101,45 @@ class LLMNode(BaseNode[LLMNodeData]):
     _node_data_cls = LLMNodeData
     _node_type = NodeType.LLM
 
+    # Instance attributes specific to LLMNode.
+    # Output variable for file
+    _file_outputs: list["File"]
+
+    _llm_file_saver: LLMFileSaver
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph: "Graph",
+        graph_runtime_state: "GraphRuntimeState",
+        previous_node_id: Optional[str] = None,
+        thread_pool_id: Optional[str] = None,
+        *,
+        llm_file_saver: LLMFileSaver | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph=graph,
+            graph_runtime_state=graph_runtime_state,
+            previous_node_id=previous_node_id,
+            thread_pool_id=thread_pool_id,
+        )
+        # LLM file outputs, used for MultiModal outputs.
+        self._file_outputs: list[File] = []
+
+        if llm_file_saver is None:
+            llm_file_saver = FileSaverImpl(
+                user_id=graph_init_params.user_id,
+                tenant_id=graph_init_params.tenant_id,
+            )
+        self._llm_file_saver = llm_file_saver
+
     def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
-        def process_structured_output(text: str) -> Optional[dict[str, Any] | list[Any]]:
+        def process_structured_output(text: str) -> Optional[dict[str, Any]]:
             """Process structured output if enabled"""
             if not self.node_data.structured_output_enabled or not self.node_data.structured_output:
                 return None
@@ -117,6 +150,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         result_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
+        variable_pool = self.graph_runtime_state.variable_pool
 
         try:
             # init messages template
@@ -135,7 +169,10 @@ class LLMNode(BaseNode[LLMNodeData]):
 
             # fetch files
             files = (
-                self._fetch_files(selector=self.node_data.vision.configs.variable_selector)
+                llm_utils.fetch_files(
+                    variable_pool=variable_pool,
+                    selector=self.node_data.vision.configs.variable_selector,
+                )
                 if self.node_data.vision.enabled
                 else []
             )
@@ -157,15 +194,18 @@ class LLMNode(BaseNode[LLMNodeData]):
             model_instance, model_config = self._fetch_model_config(self.node_data.model)
 
             # fetch memory
-            memory = self._fetch_memory(node_data_memory=self.node_data.memory, model_instance=model_instance)
+            memory = llm_utils.fetch_memory(
+                variable_pool=variable_pool,
+                app_id=self.app_id,
+                node_data_memory=self.node_data.memory,
+                model_instance=model_instance,
+            )
 
             query = None
             if self.node_data.memory:
                 query = self.node_data.memory.query_prompt_template
                 if not query and (
-                    query_variable := self.graph_runtime_state.variable_pool.get(
-                        (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY)
-                    )
+                    query_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY))
                 ):
                     query = query_variable.text
 
@@ -179,7 +219,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 memory_config=self.node_data.memory,
                 vision_enabled=self.node_data.vision.enabled,
                 vision_detail=self.node_data.vision.configs.detail,
-                variable_pool=self.graph_runtime_state.variable_pool,
+                variable_pool=variable_pool,
                 jinja2_variables=self.node_data.prompt_config.jinja2_variables,
             )
 
@@ -208,12 +248,15 @@ class LLMNode(BaseNode[LLMNodeData]):
                     usage = event.usage
                     finish_reason = event.finish_reason
                     # deduct quota
-                    self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
+                    llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
                     break
             outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
             structured_output = process_structured_output(result_text)
             if structured_output:
                 outputs["structured_output"] = structured_output
+            if self._file_outputs is not None:
+                outputs["files"] = self._file_outputs
+
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -221,14 +264,14 @@ class LLMNode(BaseNode[LLMNodeData]):
                     process_data=process_data,
                     outputs=outputs,
                     metadata={
-                        NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                        NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                        NodeRunMetadataKey.CURRENCY: usage.currency,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                        WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
                     },
                     llm_usage=usage,
                 )
             )
-        except LLMNodeError as e:
+        except ValueError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -239,6 +282,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 )
             )
         except Exception as e:
+            logger.exception("error while executing llm node")
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -255,8 +299,6 @@ class LLMNode(BaseNode[LLMNodeData]):
         prompt_messages: Sequence[PromptMessage],
         stop: Optional[Sequence[str]] = None,
     ) -> Generator[NodeEvent, None, None]:
-        db.session.close()
-
         invoke_result = model_instance.invoke_llm(
             prompt_messages=list(prompt_messages),
             model_parameters=node_data_model.completion_params,
@@ -267,55 +309,45 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         return self._handle_invoke_result(invoke_result=invoke_result)
 
-    def _handle_invoke_result(self, invoke_result: LLMResult | Generator) -> Generator[NodeEvent, None, None]:
+    def _handle_invoke_result(
+        self, invoke_result: LLMResult | Generator[LLMResultChunk, None, None]
+    ) -> Generator[NodeEvent, None, None]:
+        # For blocking mode
         if isinstance(invoke_result, LLMResult):
-            content = invoke_result.message.content
-            if content is None:
-                message_text = ""
-            elif isinstance(content, str):
-                message_text = content
-            elif isinstance(content, list):
-                # Assuming the list contains PromptMessageContent objects with a "data" attribute
-                message_text = "".join(
-                    item.data if hasattr(item, "data") and isinstance(item.data, str) else str(item) for item in content
-                )
-            else:
-                message_text = str(content)
-
-            yield ModelInvokeCompletedEvent(
-                text=message_text,
-                usage=invoke_result.usage,
-                finish_reason=None,
-            )
+            event = self._handle_blocking_result(invoke_result=invoke_result)
+            yield event
             return
 
-        model = None
+        # For streaming mode
+        model = ""
         prompt_messages: list[PromptMessage] = []
-        full_text = ""
-        usage = None
+
+        usage = LLMUsage.empty_usage()
         finish_reason = None
+        full_text_buffer = io.StringIO()
         for result in invoke_result:
-            text = result.delta.message.content
-            full_text += text
+            contents = result.delta.message.content
+            for text_part in self._save_multimodal_output_and_convert_result_to_markdown(contents):
+                full_text_buffer.write(text_part)
+                yield RunStreamChunkEvent(chunk_content=text_part, from_variable_selector=[self.node_id, "text"])
 
-            yield RunStreamChunkEvent(chunk_content=text, from_variable_selector=[self.node_id, "text"])
-
-            if not model:
+            # Update the whole metadata
+            if not model and result.model:
                 model = result.model
-
-            if not prompt_messages:
-                prompt_messages = result.prompt_messages
-
-            if not usage and result.delta.usage:
+            if len(prompt_messages) == 0:
+                # TODO(QuantumGhost): it seems that this update has no visable effect.
+                # What's the purpose of the line below?
+                prompt_messages = list(result.prompt_messages)
+            if usage.prompt_tokens == 0 and result.delta.usage:
                 usage = result.delta.usage
-
-            if not finish_reason and result.delta.finish_reason:
+            if finish_reason is None and result.delta.finish_reason:
                 finish_reason = result.delta.finish_reason
 
-        if not usage:
-            usage = LLMUsage.empty_usage()
+        yield ModelInvokeCompletedEvent(text=full_text_buffer.getvalue(), usage=usage, finish_reason=finish_reason)
 
-        yield ModelInvokeCompletedEvent(text=full_text, usage=usage, finish_reason=finish_reason)
+    def _image_file_to_markdown(self, file: "File", /):
+        text_chunk = f"![]({file.generate_url()})"
+        return text_chunk
 
     def _transform_chat_messages(
         self, messages: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate, /
@@ -412,18 +444,6 @@ class LLMNode(BaseNode[LLMNodeData]):
 
         return inputs
 
-    def _fetch_files(self, *, selector: Sequence[str]) -> Sequence["File"]:
-        variable = self.graph_runtime_state.variable_pool.get(selector)
-        if variable is None:
-            return []
-        elif isinstance(variable, FileSegment):
-            return [variable.value]
-        elif isinstance(variable, ArrayFileSegment):
-            return variable.value
-        elif isinstance(variable, NoneSegment | ArrayAnySegment):
-            return []
-        raise InvalidVariableTypeError(f"Invalid variable type: {type(variable)}")
-
     def _fetch_context(self, node_data: LLMNodeData):
         if not node_data.context.enabled:
             return
@@ -437,7 +457,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 yield RunRetrieverResourceEvent(retriever_resources=[], context=context_value_variable.value)
             elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
-                original_retriever_resource = []
+                original_retriever_resource: list[RetrievalSourceMetadata] = []
                 for item in context_value_variable.value:
                     if isinstance(item, str):
                         context_str += item + "\n"
@@ -455,7 +475,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     retriever_resources=original_retriever_resource, context=context_str.strip()
                 )
 
-    def _convert_to_original_retriever_resource(self, context_dict: dict) -> Optional[dict]:
+    def _convert_to_original_retriever_resource(self, context_dict: dict):
         if (
             "metadata" in context_dict
             and "_source" in context_dict["metadata"]
@@ -463,24 +483,24 @@ class LLMNode(BaseNode[LLMNodeData]):
         ):
             metadata = context_dict.get("metadata", {})
 
-            source = {
-                "position": metadata.get("position"),
-                "dataset_id": metadata.get("dataset_id"),
-                "dataset_name": metadata.get("dataset_name"),
-                "document_id": metadata.get("document_id"),
-                "document_name": metadata.get("document_name"),
-                "data_source_type": metadata.get("document_data_source_type"),
-                "segment_id": metadata.get("segment_id"),
-                "retriever_from": metadata.get("retriever_from"),
-                "score": metadata.get("score"),
-                "hit_count": metadata.get("segment_hit_count"),
-                "word_count": metadata.get("segment_word_count"),
-                "segment_position": metadata.get("segment_position"),
-                "index_node_hash": metadata.get("segment_index_node_hash"),
-                "content": context_dict.get("content"),
-                "page": metadata.get("page"),
-                "doc_metadata": metadata.get("doc_metadata"),
-            }
+            source = RetrievalSourceMetadata(
+                position=metadata.get("position"),
+                dataset_id=metadata.get("dataset_id"),
+                dataset_name=metadata.get("dataset_name"),
+                document_id=metadata.get("document_id"),
+                document_name=metadata.get("document_name"),
+                data_source_type=metadata.get("data_source_type"),
+                segment_id=metadata.get("segment_id"),
+                retriever_from=metadata.get("retriever_from"),
+                score=metadata.get("score"),
+                hit_count=metadata.get("segment_hit_count"),
+                word_count=metadata.get("segment_word_count"),
+                segment_position=metadata.get("segment_position"),
+                index_node_hash=metadata.get("segment_index_node_hash"),
+                content=context_dict.get("content"),
+                page=metadata.get("page"),
+                doc_metadata=metadata.get("doc_metadata"),
+            )
 
             return source
 
@@ -489,95 +509,25 @@ class LLMNode(BaseNode[LLMNodeData]):
     def _fetch_model_config(
         self, node_data_model: ModelConfig
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
-        model_name = node_data_model.name
-        provider_name = node_data_model.provider
-
-        model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
-            tenant_id=self.tenant_id, model_type=ModelType.LLM, provider=provider_name, model=model_name
+        model, model_config_with_cred = llm_utils.fetch_model_config(
+            tenant_id=self.tenant_id, node_data_model=node_data_model
         )
+        completion_params = model_config_with_cred.parameters
 
-        provider_model_bundle = model_instance.provider_model_bundle
-        model_type_instance = model_instance.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
-        model_credentials = model_instance.credentials
-
-        # check model
-        provider_model = provider_model_bundle.configuration.get_provider_model(
-            model=model_name, model_type=ModelType.LLM
-        )
-
-        if provider_model is None:
-            raise ModelNotExistError(f"Model {model_name} not exist.")
-
-        if provider_model.status == ModelStatus.NO_CONFIGURE:
-            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
-        elif provider_model.status == ModelStatus.NO_PERMISSION:
-            raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support.")
-        elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
-            raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
-
-        # model config
-        completion_params = node_data_model.completion_params
-        stop = []
-        if "stop" in completion_params:
-            stop = completion_params["stop"]
-            del completion_params["stop"]
-
-        # get model mode
-        model_mode = node_data_model.mode
-        if not model_mode:
-            raise LLMModeRequiredError("LLM mode is required.")
-
-        model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
-
+        model_schema = model.model_type_instance.get_model_schema(node_data_model.name, model.credentials)
         if not model_schema:
-            raise ModelNotExistError(f"Model {model_name} not exist.")
-        support_structured_output = self._check_model_structured_output_support()
-        if support_structured_output == SupportStructuredOutputStatus.SUPPORTED:
-            completion_params = self._handle_native_json_schema(completion_params, model_schema.parameter_rules)
-        elif support_structured_output == SupportStructuredOutputStatus.UNSUPPORTED:
-            # Set appropriate response format based on model capabilities
-            self._set_response_format(completion_params, model_schema.parameter_rules)
-        return model_instance, ModelConfigWithCredentialsEntity(
-            provider=provider_name,
-            model=model_name,
-            model_schema=model_schema,
-            mode=model_mode,
-            provider_model_bundle=provider_model_bundle,
-            credentials=model_credentials,
-            parameters=completion_params,
-            stop=stop,
-        )
+            raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
 
-    def _fetch_memory(
-        self, node_data_memory: Optional[MemoryConfig], model_instance: ModelInstance
-    ) -> Optional[TokenBufferMemory]:
-        if not node_data_memory:
-            return None
-
-        # get conversation id
-        conversation_id_variable = self.graph_runtime_state.variable_pool.get(
-            ["sys", SystemVariableKey.CONVERSATION_ID.value]
-        )
-        if not isinstance(conversation_id_variable, StringSegment):
-            return None
-        conversation_id = conversation_id_variable.value
-
-        # get conversation
-        conversation = (
-            db.session.query(Conversation)
-            .filter(Conversation.app_id == self.app_id, Conversation.id == conversation_id)
-            .first()
-        )
-
-        if not conversation:
-            return None
-
-        memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
-
-        return memory
+        if self.node_data.structured_output_enabled:
+            if model_schema.support_structure_output:
+                completion_params = self._handle_native_json_schema(completion_params, model_schema.parameter_rules)
+            else:
+                # Set appropriate response format based on model capabilities
+                self._set_response_format(completion_params, model_schema.parameter_rules)
+        model_config_with_cred.parameters = completion_params
+        # NOTE(-LAN-): This line modify the `self.node_data.model`, which is used in `_invoke_llm()`.
+        node_data_model.completion_params = completion_params
+        return model, model_config_with_cred
 
     def _fetch_prompt_messages(
         self,
@@ -752,73 +702,44 @@ class LLMNode(BaseNode[LLMNodeData]):
                 "No prompt found in the LLM configuration. "
                 "Please ensure a prompt is properly configured before proceeding."
             )
-        support_structured_output = self._check_model_structured_output_support()
-        if support_structured_output == SupportStructuredOutputStatus.UNSUPPORTED:
-            filtered_prompt_messages = self._handle_prompt_based_schema(
-                prompt_messages=filtered_prompt_messages,
-            )
-        stop = model_config.stop
-        return filtered_prompt_messages, stop
 
-    def _parse_structured_output(self, result_text: str) -> dict[str, Any] | list[Any]:
-        structured_output: dict[str, Any] | list[Any] = {}
+        model = ModelManager().get_model_instance(
+            tenant_id=self.tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.provider,
+            model=model_config.model,
+        )
+        model_schema = model.model_type_instance.get_model_schema(
+            model=model_config.model,
+            credentials=model.credentials,
+        )
+        if not model_schema:
+            raise ModelNotExistError(f"Model {model_config.model} not exist.")
+        if self.node_data.structured_output_enabled:
+            if not model_schema.support_structure_output:
+                filtered_prompt_messages = self._handle_prompt_based_schema(
+                    prompt_messages=filtered_prompt_messages,
+                )
+        return filtered_prompt_messages, model_config.stop
+
+    def _parse_structured_output(self, result_text: str) -> dict[str, Any]:
+        structured_output: dict[str, Any] = {}
         try:
             parsed = json.loads(result_text)
-            if not isinstance(parsed, (dict | list)):
+            if not isinstance(parsed, dict):
                 raise LLMNodeError(f"Failed to parse structured output: {result_text}")
             structured_output = parsed
         except json.JSONDecodeError as e:
             # if the result_text is not a valid json, try to repair it
             parsed = json_repair.loads(result_text)
-            if not isinstance(parsed, (dict | list)):
-                raise LLMNodeError(f"Failed to parse structured output: {result_text}")
+            if not isinstance(parsed, dict):
+                # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
+                if isinstance(parsed, list):
+                    parsed = next((item for item in parsed if isinstance(item, dict)), {})
+                else:
+                    raise LLMNodeError(f"Failed to parse structured output: {result_text}")
             structured_output = parsed
         return structured_output
-
-    @classmethod
-    def deduct_llm_quota(cls, tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:
-        provider_model_bundle = model_instance.provider_model_bundle
-        provider_configuration = provider_model_bundle.configuration
-
-        if provider_configuration.using_provider_type != ProviderType.SYSTEM:
-            return
-
-        system_configuration = provider_configuration.system_configuration
-
-        quota_unit = None
-        for quota_configuration in system_configuration.quota_configurations:
-            if quota_configuration.quota_type == system_configuration.current_quota_type:
-                quota_unit = quota_configuration.quota_unit
-
-                if quota_configuration.quota_limit == -1:
-                    return
-
-                break
-
-        used_quota = None
-        if quota_unit:
-            if quota_unit == QuotaUnit.TOKENS:
-                used_quota = usage.total_tokens
-            elif quota_unit == QuotaUnit.CREDITS:
-                used_quota = dify_config.get_model_credits(model_instance.model)
-            else:
-                used_quota = 1
-
-        if used_quota is not None and system_configuration.current_quota_type is not None:
-            db.session.query(Provider).filter(
-                Provider.tenant_id == tenant_id,
-                # TODO: Use provider name with prefix after the data migration.
-                Provider.provider_name == ModelProviderID(model_instance.provider).provider_name,
-                Provider.provider_type == ProviderType.SYSTEM.value,
-                Provider.quota_type == system_configuration.current_quota_type.value,
-                Provider.quota_limit > Provider.quota_used,
-            ).update(
-                {
-                    "quota_used": Provider.quota_used + used_quota,
-                    "last_used": datetime.now(tz=UTC).replace(tzinfo=None),
-                }
-            )
-            db.session.commit()
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
@@ -861,7 +782,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             variable_mapping["#context#"] = node_data.context.variable_selector
 
         if node_data.vision.enabled:
-            variable_mapping["#files#"] = ["sys", SystemVariableKey.FILES.value]
+            variable_mapping["#files#"] = node_data.vision.configs.variable_selector
 
         if node_data.memory:
             variable_mapping["#sys.query#"] = ["sys", SystemVariableKey.QUERY.value]
@@ -972,6 +893,42 @@ class LLMNode(BaseNode[LLMNodeData]):
                     prompt_messages.append(prompt_message)
 
         return prompt_messages
+
+    def _handle_blocking_result(self, *, invoke_result: LLMResult) -> ModelInvokeCompletedEvent:
+        buffer = io.StringIO()
+        for text_part in self._save_multimodal_output_and_convert_result_to_markdown(invoke_result.message.content):
+            buffer.write(text_part)
+
+        return ModelInvokeCompletedEvent(
+            text=buffer.getvalue(),
+            usage=invoke_result.usage,
+            finish_reason=None,
+        )
+
+    def _save_multimodal_image_output(self, content: ImagePromptMessageContent) -> "File":
+        """_save_multimodal_output saves multi-modal contents generated by LLM plugins.
+
+        There are two kinds of multimodal outputs:
+
+          - Inlined data encoded in base64, which would be saved to storage directly.
+          - Remote files referenced by an url, which would be downloaded and then saved to storage.
+
+        Currently, only image files are supported.
+        """
+        # Inject the saver somehow...
+        _saver = self._llm_file_saver
+
+        # If this
+        if content.url != "":
+            saved_file = _saver.save_remote_url(content.url, FileType.IMAGE)
+        else:
+            saved_file = _saver.save_binary_string(
+                data=base64.b64decode(content.base64_data),
+                mime_type=content.mime_type,
+                file_type=FileType.IMAGE,
+            )
+        self._file_outputs.append(saved_file)
+        return saved_file
 
     def _handle_native_json_schema(self, model_parameters: dict, rules: list[ParameterRule]) -> dict:
         """
@@ -1107,31 +1064,40 @@ class LLMNode(BaseNode[LLMNodeData]):
         except json.JSONDecodeError:
             raise LLMNodeError("structured_output_schema is not valid JSON format")
 
-    def _check_model_structured_output_support(self) -> SupportStructuredOutputStatus:
-        """
-        Check if the current model supports structured output.
+    def _save_multimodal_output_and_convert_result_to_markdown(
+        self,
+        contents: str | list[PromptMessageContentUnionTypes] | None,
+    ) -> Generator[str, None, None]:
+        """Convert intermediate prompt messages into strings and yield them to the caller.
 
-        Returns:
-            SupportStructuredOutput: The support status of structured output
+        If the messages contain non-textual content (e.g., multimedia like images or videos),
+        it will be saved separately, and the corresponding Markdown representation will
+        be yielded to the caller.
         """
-        # Early return if structured output is disabled
-        if (
-            not isinstance(self.node_data, LLMNodeData)
-            or not self.node_data.structured_output_enabled
-            or not self.node_data.structured_output
-        ):
-            return SupportStructuredOutputStatus.DISABLED
-        # Get model schema and check if it exists
-        model_schema = self._fetch_model_schema(self.node_data.model.provider)
-        if not model_schema:
-            return SupportStructuredOutputStatus.DISABLED
 
-        # Check if model supports structured output feature
-        return (
-            SupportStructuredOutputStatus.SUPPORTED
-            if bool(model_schema.features and ModelFeature.STRUCTURED_OUTPUT in model_schema.features)
-            else SupportStructuredOutputStatus.UNSUPPORTED
-        )
+        # NOTE(QuantumGhost): This function should yield results to the caller immediately
+        # whenever new content or partial content is available. Avoid any intermediate buffering
+        # of results. Additionally, do not yield empty strings; instead, yield from an empty list
+        # if necessary.
+        if contents is None:
+            yield from []
+            return
+        if isinstance(contents, str):
+            yield contents
+        elif isinstance(contents, list):
+            for item in contents:
+                if isinstance(item, TextPromptMessageContent):
+                    yield item.data
+                elif isinstance(item, ImagePromptMessageContent):
+                    file = self._save_multimodal_image_output(item)
+                    self._file_outputs.append(file)
+                    yield self._image_file_to_markdown(file)
+                else:
+                    logger.warning("unknown item type encountered, type=%s", type(item))
+                    yield str(item)
+        else:
+            logger.warning("unknown contents type encountered, type=%s", type(contents))
+            yield str(contents)
 
 
 def _combine_message_content_with_role(

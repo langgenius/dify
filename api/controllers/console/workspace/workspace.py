@@ -1,8 +1,9 @@
 import logging
 
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from sqlalchemy import select
 from werkzeug.exceptions import Unauthorized
 
 import services
@@ -67,16 +68,24 @@ class TenantListApi(Resource):
     @account_initialization_required
     def get(self):
         tenants = TenantService.get_join_tenants(current_user)
+        tenant_dicts = []
 
         for tenant in tenants:
             features = FeatureService.get_features(tenant.id)
-            if features.billing.enabled:
-                tenant.plan = features.billing.subscription.plan
-            else:
-                tenant.plan = "sandbox"
-            if tenant.id == current_user.current_tenant_id:
-                tenant.current = True  # Set current=True for current tenant
-        return {"workspaces": marshal(tenants, tenants_fields)}, 200
+
+            # Create a dictionary with tenant attributes
+            tenant_dict = {
+                "id": tenant.id,
+                "name": tenant.name,
+                "status": tenant.status,
+                "created_at": tenant.created_at,
+                "plan": features.billing.subscription.plan if features.billing.enabled else "sandbox",
+                "current": tenant.id == current_user.current_tenant_id,
+            }
+
+            tenant_dicts.append(tenant_dict)
+
+        return {"workspaces": marshal(tenant_dicts, tenants_fields)}, 200
 
 
 class WorkspaceListApi(Resource):
@@ -88,9 +97,8 @@ class WorkspaceListApi(Resource):
         parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
 
-        tenants = Tenant.query.order_by(Tenant.created_at.desc()).paginate(
-            page=args["page"], per_page=args["limit"], error_out=False
-        )
+        stmt = select(Tenant).order_by(Tenant.created_at.desc())
+        tenants = db.paginate(select=stmt, page=args["page"], per_page=args["limit"], error_out=False)
         has_more = False
 
         if tenants.has_next:
@@ -162,7 +170,7 @@ class CustomConfigWorkspaceApi(Resource):
         parser.add_argument("replace_webapp_logo", type=str, location="json")
         args = parser.parse_args()
 
-        tenant = Tenant.query.filter(Tenant.id == current_user.current_tenant_id).one_or_404()
+        tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
 
         custom_config_dict = {
             "remove_webapp_brand": args["remove_webapp_brand"],
@@ -226,7 +234,7 @@ class WorkspaceInfoApi(Resource):
         parser.add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        tenant = Tenant.query.filter(Tenant.id == current_user.current_tenant_id).one_or_404()
+        tenant = db.get_or_404(Tenant, current_user.current_tenant_id)
         tenant.name = args["name"]
         db.session.commit()
 

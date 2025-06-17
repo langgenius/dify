@@ -7,12 +7,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig } from './type'
+import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ConfigButton from './config-button'
 import cn from '@/utils/classnames'
-import { LangfuseIcon, LangsmithIcon, OpikIcon } from '@/app/components/base/icons/src/public/tracing'
+import { LangfuseIcon, LangsmithIcon, OpikIcon, WeaveIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
@@ -23,19 +23,6 @@ import Divider from '@/app/components/base/divider'
 
 const I18N_PREFIX = 'app.tracing'
 
-const Title = ({
-  className,
-}: {
-  className?: string
-}) => {
-  const { t } = useTranslation()
-
-  return (
-    <div className={cn('system-xl-semibold flex items-center text-text-primary', className)}>
-      {t('common.appMenus.overview')}
-    </div>
-  )
-}
 const Panel: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -82,12 +69,15 @@ const Panel: FC = () => {
         ? LangfuseIcon
         : inUseTracingProvider === TracingProvider.opik
           ? OpikIcon
-          : LangsmithIcon
+          : inUseTracingProvider === TracingProvider.weave
+            ? WeaveIcon
+            : LangsmithIcon
 
   const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig)
+  const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig)
 
   const fetchTracingConfig = async () => {
     const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
@@ -99,6 +89,9 @@ const Panel: FC = () => {
     const { tracing_config: opikConfig, has_not_configured: OpikHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.opik })
     if (!OpikHasNotConfig)
       setOpikConfig(opikConfig as OpikConfig)
+    const { tracing_config: weaveConfig, has_not_configured: weaveHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.weave })
+    if (!weaveHasNotConfig)
+      setWeaveConfig(weaveConfig as WeaveConfig)
   }
 
   const handleTracingConfigUpdated = async (provider: TracingProvider) => {
@@ -110,6 +103,8 @@ const Panel: FC = () => {
       setLangFuseConfig(tracing_config as LangFuseConfig)
     else if (provider === TracingProvider.opik)
       setOpikConfig(tracing_config as OpikConfig)
+    else if (provider === TracingProvider.weave)
+      setWeaveConfig(tracing_config as WeaveConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
@@ -119,6 +114,8 @@ const Panel: FC = () => {
       setLangFuseConfig(null)
     else if (provider === TracingProvider.opik)
       setOpikConfig(null)
+    else if (provider === TracingProvider.weave)
+      setWeaveConfig(null)
     if (provider === inUseTracingProvider) {
       handleTracingStatusChange({
         enabled: false,
@@ -144,7 +141,6 @@ const Panel: FC = () => {
   if (!isLoaded) {
     return (
       <div className='mb-3 flex items-center justify-between'>
-        <Title className='h-[41px]' />
         <div className='w-[200px]'>
           <Loading />
         </div>
@@ -153,8 +149,7 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className={cn('mb-3 flex items-center justify-between')}>
-      <Title className='h-[41px]' />
+    <div className={cn('flex items-center justify-between')}>
       <div
         className={cn(
           'flex cursor-pointer items-center rounded-xl border-l-[0.5px] border-t border-effects-highlight bg-background-default-dodge p-2 shadow-xs hover:border-effects-highlight-lightmode-off hover:bg-background-default-lighter',
@@ -178,6 +173,7 @@ const Panel: FC = () => {
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}
+                weaveConfig={weaveConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}
@@ -212,6 +208,7 @@ const Panel: FC = () => {
                 langSmithConfig={langSmithConfig}
                 langFuseConfig={langFuseConfig}
                 opikConfig={opikConfig}
+                weaveConfig={weaveConfig}
                 onConfigUpdated={handleTracingConfigUpdated}
                 onConfigRemoved={handleTracingConfigRemoved}
                 controlShowPopup={controlShowPopup}

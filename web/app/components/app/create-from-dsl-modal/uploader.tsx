@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import {
   RiDeleteBinLine,
+  RiUploadCloud2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -10,8 +11,7 @@ import { formatFileSize } from '@/utils/format'
 import cn from '@/utils/classnames'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
 import { ToastContext } from '@/app/components/base/toast'
-import { UploadCloud01 } from '@/app/components/base/icons/src/vender/line/general'
-import Button from '@/app/components/base/button'
+import ActionButton from '@/app/components/base/action-button'
 
 export type Props = {
   file: File | undefined
@@ -102,19 +102,19 @@ const Uploader: FC<Props> = ({
       />
       <div ref={dropRef}>
         {!file && (
-          <div className={cn('flex h-12 items-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-sm font-normal', dragging && 'border border-[#B2CCFF] bg-[#F5F8FF]')}>
+          <div className={cn('flex h-12 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
             <div className='flex w-full items-center justify-center space-x-2'>
-              <UploadCloud01 className='mr-2 h-6 w-6' />
-              <div className='text-gray-500'>
+              <RiUploadCloud2Line className='h-6 w-6 text-text-tertiary' />
+              <div className='text-text-tertiary'>
                 {t('datasetCreation.stepOne.uploader.button')}
-                <span className='cursor-pointer pl-1 text-[#155eef]' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
+                <span className='cursor-pointer pl-1 text-text-accent' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
               </div>
             </div>
             {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
           </div>
         )}
         {file && (
-          <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', 'hover:border-[#B2CCFF] hover:bg-[#F5F8FF]')}>
+          <div className={cn('group flex items-center rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs', ' hover:bg-components-panel-on-panel-item-bg-hover')}>
             <div className='flex items-center justify-center p-3'>
               <YamlIcon className="h-6 w-6 shrink-0" />
             </div>
@@ -126,12 +126,10 @@ const Uploader: FC<Props> = ({
                 <span>{formatFileSize(file.size)}</span>
               </div>
             </div>
-            <div className='hidden items-center group-hover:flex'>
-              <Button onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
-              <div className='mx-2 h-4 w-px bg-gray-200' />
-              <div className='cursor-pointer p-2' onClick={removeFile}>
+            <div className='hidden items-center pr-3 group-hover:flex'>
+              <ActionButton onClick={removeFile}>
                 <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
-              </div>
+              </ActionButton>
             </div>
           </div>
         )}

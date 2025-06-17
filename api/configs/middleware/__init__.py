@@ -1,8 +1,8 @@
 import os
 from typing import Any, Literal, Optional
-from urllib.parse import quote_plus
+from urllib.parse import parse_qsl, quote_plus
 
-from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
+from pydantic import Field, NonNegativeFloat, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
 from .cache.redis_config import RedisConfig
@@ -39,6 +39,7 @@ from .vdb.tencent_vector_config import TencentVectorDBConfig
 from .vdb.tidb_on_qdrant_config import TidbOnQdrantConfig
 from .vdb.tidb_vector_config import TiDBVectorConfig
 from .vdb.upstash_config import UpstashConfig
+from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
 
@@ -172,17 +173,31 @@ class DatabaseConfig(BaseSettings):
 
     RETRIEVAL_SERVICE_EXECUTORS: NonNegativeInt = Field(
         description="Number of processes for the retrieval service, default to CPU cores.",
-        default=os.cpu_count(),
+        default=os.cpu_count() or 1,
     )
 
-    @computed_field
+    @computed_field  # type: ignore[misc]
+    @property
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
+        # Parse DB_EXTRAS for 'options'
+        db_extras_dict = dict(parse_qsl(self.DB_EXTRAS))
+        options = db_extras_dict.get("options", "")
+        # Always include timezone
+        timezone_opt = "-c timezone=UTC"
+        if options:
+            # Merge user options and timezone
+            merged_options = f"{options} {timezone_opt}"
+        else:
+            merged_options = timezone_opt
+
+        connect_args = {"options": merged_options}
+
         return {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
             "max_overflow": self.SQLALCHEMY_MAX_OVERFLOW,
             "pool_recycle": self.SQLALCHEMY_POOL_RECYCLE,
             "pool_pre_ping": self.SQLALCHEMY_POOL_PRE_PING,
-            "connect_args": {"options": "-c timezone=UTC"},
+            "connect_args": connect_args,
         }
 
 
@@ -241,6 +256,25 @@ class InternalTestConfig(BaseSettings):
     )
 
 
+class DatasetQueueMonitorConfig(BaseSettings):
+    """
+    Configuration settings for Dataset Queue Monitor
+    """
+
+    QUEUE_MONITOR_THRESHOLD: Optional[NonNegativeInt] = Field(
+        description="Threshold for dataset queue monitor",
+        default=200,
+    )
+    QUEUE_MONITOR_ALERT_EMAILS: Optional[str] = Field(
+        description="Emails for dataset queue monitor alert, separated by commas",
+        default=None,
+    )
+    QUEUE_MONITOR_INTERVAL: Optional[NonNegativeFloat] = Field(
+        description="Interval for dataset queue monitor in minutes",
+        default=30,
+    )
+
+
 class MiddlewareConfig(
     # place the configs in alphabet order
     CeleryConfig,
@@ -270,6 +304,7 @@ class MiddlewareConfig(
     OpenSearchConfig,
     OracleConfig,
     PGVectorConfig,
+    VastbaseVectorConfig,
     PGVectoRSConfig,
     QdrantConfig,
     RelytConfig,
@@ -287,5 +322,6 @@ class MiddlewareConfig(
     BaiduVectorDBConfig,
     OpenGaussConfig,
     TableStoreConfig,
+    DatasetQueueMonitorConfig,
 ):
     pass

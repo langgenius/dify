@@ -1,10 +1,13 @@
-from typing import Any
+from typing import Any, Optional, cast
 
 from pydantic import BaseModel, Field
 
+from core.app.app_config.entities import DatasetRetrieveConfigEntity, ModelConfig
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.entities.context_entities import DocumentContext
 from core.rag.models.document import Document as RetrievalDocument
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
@@ -12,7 +15,7 @@ from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
-default_retrieval_model = {
+default_retrieval_model: dict[str, Any] = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
@@ -33,6 +36,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     args_schema: type[BaseModel] = DatasetRetrieverToolInput
     description: str = "use this to retrieve a dataset. "
     dataset_id: str
+    user_id: Optional[str] = None
+    retrieve_config: DatasetRetrieveConfigEntity
+    inputs: dict
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
@@ -58,13 +64,29 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             return ""
         for hit_callback in self.hit_callbacks:
             hit_callback.on_query(query, dataset.id)
+        dataset_retrieval = DatasetRetrieval()
+        metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
+            [dataset.id],
+            query,
+            self.tenant_id,
+            self.user_id or "unknown",
+            cast(str, self.retrieve_config.metadata_filtering_mode),
+            cast(ModelConfig, self.retrieve_config.metadata_model_config),
+            self.retrieve_config.metadata_filtering_conditions,
+            self.inputs,
+        )
+        if metadata_filter_document_ids:
+            document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
+        else:
+            document_ids_filter = None
         if dataset.provider == "external":
-            results = []
+            results: list[RetrievalDocument] = []
             external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                 tenant_id=dataset.tenant_id,
                 dataset_id=dataset.id,
                 query=query,
                 external_retrieval_parameters=dataset.retrieval_model,
+                metadata_condition=metadata_condition,
             )
             for external_document in external_documents:
                 document = RetrievalDocument(
@@ -79,33 +101,40 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     document.metadata["dataset_name"] = dataset.name
                     results.append(document)
             # deal with external documents
-            context_list = []
+            context_list: list[RetrievalSourceMetadata] = []
             for position, item in enumerate(results, start=1):
                 if item.metadata is not None:
-                    source = {
-                        "position": position,
-                        "dataset_id": item.metadata.get("dataset_id"),
-                        "dataset_name": item.metadata.get("dataset_name"),
-                        "document_id": item.metadata.get("document_id") or item.metadata.get("title"),
-                        "document_name": item.metadata.get("title"),
-                        "data_source_type": "external",
-                        "retriever_from": self.retriever_from,
-                        "score": item.metadata.get("score"),
-                        "title": item.metadata.get("title"),
-                        "content": item.page_content,
-                    }
+                    source = RetrievalSourceMetadata(
+                        position=position,
+                        dataset_id=item.metadata.get("dataset_id"),
+                        dataset_name=item.metadata.get("dataset_name"),
+                        document_id=item.metadata.get("document_id") or item.metadata.get("title"),
+                        document_name=item.metadata.get("title"),
+                        data_source_type="external",
+                        retriever_from=self.retriever_from,
+                        score=item.metadata.get("score"),
+                        title=item.metadata.get("title"),
+                        content=item.page_content,
+                    )
                     context_list.append(source)
             for hit_callback in self.hit_callbacks:
                 hit_callback.return_retriever_resource_info(context_list)
 
             return str("\n".join([item.page_content for item in results]))
         else:
+            if metadata_condition and not document_ids_filter:
+                return ""
             # get retrieval model , if the model is not setting , using default
             retrieval_model: dict[str, Any] = dataset.retrieval_model or default_retrieval_model
+            retrieval_resource_list: list[RetrievalSourceMetadata] = []
             if dataset.indexing_technique == "economy":
                 # use keyword table query
                 documents = RetrievalService.retrieve(
-                    retrieval_method="keyword_search", dataset_id=dataset.id, query=query, top_k=self.top_k
+                    retrieval_method="keyword_search",
+                    dataset_id=dataset.id,
+                    query=query,
+                    top_k=self.top_k,
+                    document_ids_filter=document_ids_filter,
                 )
                 return str("\n".join([document.page_content for document in documents]))
             else:
@@ -124,6 +153,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         else None,
                         reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
                         weights=retrieval_model.get("weights"),
+                        document_ids_filter=document_ids_filter,
                     )
                 else:
                     documents = []
@@ -134,7 +164,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     for item in documents:
                         if item.metadata is not None and item.metadata.get("score"):
                             document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
-                document_context_list = []
+                document_context_list: list[DocumentContext] = []
                 records = RetrievalService.format_retrieval_documents(documents)
                 if records:
                     for record in records:
@@ -153,48 +183,52 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                     score=record.score,
                                 )
                             )
-                    retrieval_resource_list = []
+
                     if self.return_resource:
                         for record in records:
                             segment = record.segment
-                            dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
-                            document = DatasetDocument.query.filter(
-                                DatasetDocument.id == segment.document_id,
-                                DatasetDocument.enabled == True,
-                                DatasetDocument.archived == False,
-                            ).first()
+                            dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
+                            document = (
+                                db.session.query(DatasetDocument)  # type: ignore
+                                .filter(
+                                    DatasetDocument.id == segment.document_id,
+                                    DatasetDocument.enabled == True,
+                                    DatasetDocument.archived == False,
+                                )
+                                .first()
+                            )
                             if dataset and document:
-                                source = {
-                                    "dataset_id": dataset.id,
-                                    "dataset_name": dataset.name,
-                                    "document_id": document.id,  # type: ignore
-                                    "document_name": document.name,  # type: ignore
-                                    "data_source_type": document.data_source_type,  # type: ignore
-                                    "segment_id": segment.id,
-                                    "retriever_from": self.retriever_from,
-                                    "score": record.score or 0.0,
-                                    "doc_metadata": document.doc_metadata,  # type: ignore
-                                }
+                                source = RetrievalSourceMetadata(
+                                    dataset_id=dataset.id,
+                                    dataset_name=dataset.name,
+                                    document_id=document.id,  # type: ignore
+                                    document_name=document.name,  # type: ignore
+                                    data_source_type=document.data_source_type,  # type: ignore
+                                    segment_id=segment.id,
+                                    retriever_from=self.retriever_from,
+                                    score=record.score or 0.0,
+                                    doc_metadata=document.doc_metadata,  # type: ignore
+                                )
 
                                 if self.retriever_from == "dev":
-                                    source["hit_count"] = segment.hit_count
-                                    source["word_count"] = segment.word_count
-                                    source["segment_position"] = segment.position
-                                    source["index_node_hash"] = segment.index_node_hash
+                                    source.hit_count = segment.hit_count
+                                    source.word_count = segment.word_count
+                                    source.segment_position = segment.position
+                                    source.index_node_hash = segment.index_node_hash
                                 if segment.answer:
-                                    source["content"] = f"question:{segment.content} \nanswer:{segment.answer}"
+                                    source.content = f"question:{segment.content} \nanswer:{segment.answer}"
                                 else:
-                                    source["content"] = segment.content
+                                    source.content = segment.content
                                 retrieval_resource_list.append(source)
 
             if self.return_resource and retrieval_resource_list:
                 retrieval_resource_list = sorted(
                     retrieval_resource_list,
-                    key=lambda x: x.get("score") or 0.0,
+                    key=lambda x: x.score or 0.0,
                     reverse=True,
                 )
                 for position, item in enumerate(retrieval_resource_list, start=1):  # type: ignore
-                    item["position"] = position  # type: ignore
+                    item.position = position  # type: ignore
                 for hit_callback in self.hit_callbacks:
                     hit_callback.return_retriever_resource_info(retrieval_resource_list)
             if document_context_list:

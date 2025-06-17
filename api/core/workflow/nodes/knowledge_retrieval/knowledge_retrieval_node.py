@@ -6,8 +6,9 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
-from sqlalchemy import Integer, and_, func, or_, text
+from sqlalchemy import Float, and_, func, or_, text
 from sqlalchemy import cast as sqlalchemy_cast
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -24,6 +25,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.variables import StringSegment
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event.event import ModelInvokeCompletedEvent
 from core.workflow.nodes.knowledge_retrieval.template_prompts import (
@@ -32,16 +34,15 @@ from core.workflow.nodes.knowledge_retrieval.template_prompts import (
     METADATA_FILTER_COMPLETION_PROMPT,
     METADATA_FILTER_SYSTEM_PROMPT,
     METADATA_FILTER_USER_PROMPT_1,
+    METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
 from core.workflow.nodes.llm.entities import LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate
 from core.workflow.nodes.llm.node import LLMNode
-from core.workflow.nodes.question_classifier.template_prompts import QUESTION_CLASSIFIER_USER_PROMPT_2
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
-from models.workflow import WorkflowNodeExecutionStatus
 from services.feature_service import FeatureService
 
 from .entities import KnowledgeRetrievalNodeData, ModelConfig
@@ -85,30 +86,31 @@ class KnowledgeRetrievalNode(LLMNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Query is required."
             )
+        # TODO(-LAN-): Move this check outside.
         # check rate limit
-        if self.tenant_id:
-            knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(self.tenant_id)
-            if knowledge_rate_limit.enabled:
-                current_time = int(time.time() * 1000)
-                key = f"rate_limit_{self.tenant_id}"
-                redis_client.zadd(key, {current_time: current_time})
-                redis_client.zremrangebyscore(key, 0, current_time - 60000)
-                request_count = redis_client.zcard(key)
-                if request_count > knowledge_rate_limit.limit:
+        knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(self.tenant_id)
+        if knowledge_rate_limit.enabled:
+            current_time = int(time.time() * 1000)
+            key = f"rate_limit_{self.tenant_id}"
+            redis_client.zadd(key, {current_time: current_time})
+            redis_client.zremrangebyscore(key, 0, current_time - 60000)
+            request_count = redis_client.zcard(key)
+            if request_count > knowledge_rate_limit.limit:
+                with Session(db.engine) as session:
                     # add ratelimit record
                     rate_limit_log = RateLimitLog(
                         tenant_id=self.tenant_id,
                         subscription_plan=knowledge_rate_limit.subscription_plan,
                         operation="knowledge",
                     )
-                    db.session.add(rate_limit_log)
-                    db.session.commit()
-                    return NodeRunResult(
-                        status=WorkflowNodeExecutionStatus.FAILED,
-                        inputs=variables,
-                        error="Sorry, you have reached the knowledge base request rate limit of your subscription.",
-                        error_type="RateLimitExceeded",
-                    )
+                    session.add(rate_limit_log)
+                    session.commit()
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=variables,
+                    error="Sorry, you have reached the knowledge base request rate limit of your subscription.",
+                    error_type="RateLimitExceeded",
+                )
 
         # retrieve knowledge
         try:
@@ -173,7 +175,9 @@ class KnowledgeRetrievalNode(LLMNode):
         dataset_retrieval = DatasetRetrieval()
         if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE.value:
             # fetch model config
-            model_instance, model_config = self._fetch_model_config(node_data.single_retrieval_config.model)  # type: ignore
+            if node_data.single_retrieval_config is None:
+                raise ValueError("single_retrieval_config is required")
+            model_instance, model_config = self.get_model_config(node_data.single_retrieval_config.model)
             # check model is support tool calling
             model_type_instance = model_config.provider_model_bundle.model_type_instance
             model_type_instance = cast(LargeLanguageModel, model_type_instance)
@@ -264,6 +268,7 @@ class KnowledgeRetrievalNode(LLMNode):
                     "data_source_type": "external",
                     "retriever_from": "workflow",
                     "score": item.metadata.get("score"),
+                    "doc_metadata": item.metadata,
                 },
                 "title": item.metadata.get("title"),
                 "content": item.page_content,
@@ -275,12 +280,16 @@ class KnowledgeRetrievalNode(LLMNode):
             if records:
                 for record in records:
                     segment = record.segment
-                    dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
-                    document = Document.query.filter(
-                        Document.id == segment.document_id,
-                        Document.enabled == True,
-                        Document.archived == False,
-                    ).first()
+                    dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()  # type: ignore
+                    document = (
+                        db.session.query(Document)
+                        .filter(
+                            Document.id == segment.document_id,
+                            Document.enabled == True,
+                            Document.archived == False,
+                        )
+                        .first()
+                    )
                     if dataset and document:
                         source = {
                             "metadata": {
@@ -289,7 +298,7 @@ class KnowledgeRetrievalNode(LLMNode):
                                 "dataset_name": dataset.name,
                                 "document_id": document.id,
                                 "document_name": document.name,
-                                "document_data_source_type": document.data_source_type,
+                                "data_source_type": document.data_source_type,
                                 "segment_id": segment.id,
                                 "retriever_from": "workflow",
                                 "score": record.score or 0.0,
@@ -356,12 +365,12 @@ class KnowledgeRetrievalNode(LLMNode):
                 )
         elif node_data.metadata_filtering_mode == "manual":
             if node_data.metadata_filtering_conditions:
-                metadata_condition = MetadataCondition(**node_data.metadata_filtering_conditions.model_dump())
+                conditions = []
                 if node_data.metadata_filtering_conditions:
                     for sequence, condition in enumerate(node_data.metadata_filtering_conditions.conditions):  # type: ignore
                         metadata_name = condition.name
                         expected_value = condition.value
-                        if expected_value is not None or condition.comparison_operator in ("empty", "not empty"):
+                        if expected_value is not None and condition.comparison_operator not in ("empty", "not empty"):
                             if isinstance(expected_value, str):
                                 expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                     expected_value
@@ -372,13 +381,24 @@ class KnowledgeRetrievalNode(LLMNode):
                                     expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
                                 else:
                                     raise ValueError("Invalid expected metadata value type")
-                            filters = self._process_metadata_filter_func(
-                                sequence,
-                                condition.comparison_operator,
-                                metadata_name,
-                                expected_value,
-                                filters,
+                        conditions.append(
+                            Condition(
+                                name=metadata_name,
+                                comparison_operator=condition.comparison_operator,
+                                value=expected_value,
                             )
+                        )
+                        filters = self._process_metadata_filter_func(
+                            sequence,
+                            condition.comparison_operator,
+                            metadata_name,
+                            expected_value,
+                            filters,
+                        )
+                metadata_condition = MetadataCondition(
+                    logical_operator=node_data.metadata_filtering_conditions.logical_operator,
+                    conditions=conditions,
+                )
         else:
             raise ValueError("Invalid metadata filtering mode")
         if filters:
@@ -408,7 +428,7 @@ class KnowledgeRetrievalNode(LLMNode):
             raise ValueError("metadata_model_config is required")
         # get metadata model instance
         # fetch model config
-        model_instance, model_config = self._fetch_model_config(node_data.metadata_model_config)  # type: ignore
+        model_instance, model_config = self.get_model_config(metadata_model_config)
         # fetch prompt messages
         prompt_template = self._get_prompt_template(
             node_data=node_data,
@@ -493,24 +513,24 @@ class KnowledgeRetrievalNode(LLMNode):
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')
                 else:
-                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) == value)
+                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) == value)
             case "is not" | "≠":
                 if isinstance(value, str):
                     filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
                 else:
-                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) != value)
+                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) != value)
             case "empty":
                 filters.append(Document.doc_metadata[metadata_name].is_(None))
             case "not empty":
                 filters.append(Document.doc_metadata[metadata_name].isnot(None))
             case "before" | "<":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) < value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) < value)
             case "after" | ">":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) > value)
-            case "≤" | ">=":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) <= value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) > value)
+            case "≤" | "<=":
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) <= value)
             case "≥" | ">=":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Integer) >= value)
+                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) >= value)
             case _:
                 pass
         return filters
@@ -534,14 +554,7 @@ class KnowledgeRetrievalNode(LLMNode):
         variable_mapping[node_id + ".query"] = node_data.query_variable_selector
         return variable_mapping
 
-    def _fetch_model_config(self, model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:  # type: ignore
-        """
-        Fetch model config
-        :param model: model
-        :return:
-        """
-        if model is None:
-            raise ValueError("model is required")
+    def get_model_config(self, model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         model_name = model.name
         provider_name = model.provider
 
@@ -618,7 +631,7 @@ class KnowledgeRetrievalNode(LLMNode):
             )
             prompt_messages.append(assistant_prompt_message_1)
             user_prompt_message_2 = LLMNodeChatModelMessage(
-                role=PromptMessageRole.USER, text=QUESTION_CLASSIFIER_USER_PROMPT_2
+                role=PromptMessageRole.USER, text=METADATA_FILTER_USER_PROMPT_2
             )
             prompt_messages.append(user_prompt_message_2)
             assistant_prompt_message_2 = LLMNodeChatModelMessage(

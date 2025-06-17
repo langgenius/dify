@@ -313,7 +313,6 @@ export const useWorkflowZoom = () => {
 
 export const useWorkflowUpdate = () => {
   const reactflow = useReactFlow()
-  const workflowStore = useWorkflowStore()
   const { eventEmitter } = useEventEmitterContextContext()
 
   const handleUpdateWorkflowCanvas = useCallback((payload: WorkflowDataUpdater) => {
@@ -333,32 +332,8 @@ export const useWorkflowUpdate = () => {
     setViewport(viewport)
   }, [eventEmitter, reactflow])
 
-  const handleRefreshWorkflowDraft = useCallback(() => {
-    const {
-      appId,
-      setSyncWorkflowDraftHash,
-      setIsSyncingWorkflowDraft,
-      setEnvironmentVariables,
-      setEnvSecrets,
-      setConversationVariables,
-    } = workflowStore.getState()
-    setIsSyncingWorkflowDraft(true)
-    fetchWorkflowDraft(`/apps/${appId}/workflows/draft`).then((response) => {
-      handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdater)
-      setSyncWorkflowDraftHash(response.hash)
-      setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
-        acc[env.id] = env.value
-        return acc
-      }, {} as Record<string, string>))
-      setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
-      // #TODO chatVar sync#
-      setConversationVariables(response.conversation_variables || [])
-    }).finally(() => setIsSyncingWorkflowDraft(false))
-  }, [handleUpdateWorkflowCanvas, workflowStore])
-
   return {
     handleUpdateWorkflowCanvas,
-    handleRefreshWorkflowDraft,
   }
 }
 

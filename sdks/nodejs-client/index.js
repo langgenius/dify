@@ -334,12 +334,12 @@ export class ChatClient extends DifyClient {
 
 export class WorkflowClient extends DifyClient {
   run(inputs,user,stream) {
-    const data = { 
-      inputs, 
+    const data = {
+      inputs,
       response_mode: stream ? "streaming" : "blocking",
-      user 
+      user
     };
-  
+
     return this.sendRequest(
         routes.runWorkflow.method,
         routes.runWorkflow.url(),

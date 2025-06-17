@@ -27,6 +27,7 @@ const translation = {
       learnMore: 'Aprende más',
       description: ' sobre el método de recuperación.',
       longDescription: ' sobre el método de recuperación, puedes cambiar esto en cualquier momento en la configuración del conjunto de datos.',
+      method: 'Método de recuperación',
     },
     save: 'Guardar',
     retrievalSettings: 'Configuración de recuperación',

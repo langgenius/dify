@@ -145,6 +145,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
           </div>
           <NodePanel
             nodeInfo={node!}
+            allExecutions={list}
             onShowIterationDetail={handleShowIterationResultList}
             onShowLoopDetail={handleShowLoopResultList}
             onShowRetryDetail={handleShowRetryResultList}

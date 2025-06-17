@@ -1,11 +1,11 @@
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.manager.exc import PluginPermissionDeniedError
+from core.plugin.impl.exc import PluginPermissionDeniedError
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 

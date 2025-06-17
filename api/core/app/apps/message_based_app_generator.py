@@ -25,7 +25,7 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
 from models import Account
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
@@ -153,6 +153,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             query = application_generate_entity.query or "New conversation"
         else:
             query = next(iter(application_generate_entity.inputs.values()), "New conversation")
+            if isinstance(query, int):
+                query = str(query)
         query = query or "New conversation"
         conversation_name = (query[:20] + "…") if len(query) > 20 else query
 
@@ -221,7 +223,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 belongs_to="user",
                 url=file.remote_url,
                 upload_file_id=file.related_id,
-                created_by_role=(CreatedByRole.ACCOUNT if account_id else CreatedByRole.END_USER),
+                created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
                 created_by=account_id or end_user_id or "",
             )
             db.session.add(message_file)

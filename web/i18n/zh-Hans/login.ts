@@ -59,12 +59,12 @@ const translation = {
     emailInValid: '请输入有效的邮箱地址',
     nameEmpty: '用户名不能为空',
     passwordEmpty: '密码不能为空',
-    passwordInvalid: '密码必须包含字母和数字，且长度不小于8位',
+    passwordInvalid: '密码必须包含字母和数字，且长度不小于 8 位',
     passwordLengthInValid: '密码必须至少为 8 个字符',
     registrationNotAllowed: '账户不存在，请联系系统管理员注册账户',
   },
   license: {
-    tip: '启动 Dify 社区版之前, 请阅读 GitHub 上的',
+    tip: '启动 Dify 社区版之前，请阅读 GitHub 上的',
     link: '开源协议',
   },
   join: '加入 ',
@@ -105,6 +105,11 @@ const translation = {
   licenseLostTip: '无法连接 Dify 许可证服务器，请联系管理员以继续使用 Dify。',
   licenseInactive: '许可证未激活',
   licenseInactiveTip: '您所在空间的 Dify Enterprise 许可证尚未激活，请联系管理员以继续使用 Dify。',
+  webapp: {
+    noLoginMethod: 'Web 应用未配置身份认证方式',
+    noLoginMethodTip: '请联系系统管理员添加身份认证方式',
+    disabled: 'Web 应用身份认证已禁用，请联系系统管理员启用。您也可以尝试直接使用应用。',
+  },
 }
 
 export default translation

@@ -1,4 +1,4 @@
-from flask_restful import Resource  # type: ignore
+from flask_restful import Resource
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import api
@@ -29,7 +29,7 @@ from core.plugin.entities.request import (
     RequestRequestUploadFile,
 )
 from core.tools.entities.tool_entities import ToolProviderType
-from libs.helper import compact_generate_response
+from libs.helper import length_prefixed_response
 from models.account import Account, Tenant
 from models.model import EndUser
 
@@ -44,7 +44,7 @@ class PluginInvokeLLMApi(Resource):
             response = PluginModelBackwardsInvocation.invoke_llm(user_model.id, tenant_model, payload)
             return PluginModelBackwardsInvocation.convert_to_event_stream(response)
 
-        return compact_generate_response(generator())
+        return length_prefixed_response(0xF, generator())
 
 
 class PluginInvokeTextEmbeddingApi(Resource):
@@ -101,7 +101,7 @@ class PluginInvokeTTSApi(Resource):
             )
             return PluginModelBackwardsInvocation.convert_to_event_stream(response)
 
-        return compact_generate_response(generator())
+        return length_prefixed_response(0xF, generator())
 
 
 class PluginInvokeSpeech2TextApi(Resource):
@@ -162,7 +162,7 @@ class PluginInvokeToolApi(Resource):
                 ),
             )
 
-        return compact_generate_response(generator())
+        return length_prefixed_response(0xF, generator())
 
 
 class PluginInvokeParameterExtractorNodeApi(Resource):
@@ -228,7 +228,7 @@ class PluginInvokeAppApi(Resource):
             files=payload.files,
         )
 
-        return compact_generate_response(PluginAppBackwardsInvocation.convert_to_event_stream(response))
+        return length_prefixed_response(0xF, PluginAppBackwardsInvocation.convert_to_event_stream(response))
 
 
 class PluginInvokeEncryptApi(Resource):

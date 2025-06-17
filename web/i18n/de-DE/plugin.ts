@@ -62,6 +62,7 @@ const translation = {
       uninstalledTitle: 'Tool nicht installiert',
       toolLabel: 'Werkzeug',
       uninstalledContent: 'Dieses Plugin wird aus dem lokalen/GitHub-Repository installiert. Bitte nach der Installation verwenden.',
+      toolSetting: 'Werkzeugs Einstellungen',
     },
     strategyNum: '{{num}} {{Strategie}} IINKLUSIVE',
     configureApp: 'App konfigurieren',
@@ -180,6 +181,8 @@ const translation = {
     pluginsResult: '{{num}} Ergebnisse',
     empower: 'Unterstützen Sie Ihre KI-Entwicklung',
     and: 'und',
+    partnerTip: 'Von einem Dify-Partner verifiziert',
+    verifiedTip: 'Von Dify überprüft',
   },
   task: {
     clearAll: 'Alle löschen',
@@ -192,7 +195,6 @@ const translation = {
   allCategories: 'Alle Kategorien',
   install: '{{num}} Installationen',
   installAction: 'Installieren',
-  submitPlugin: 'Plugin einreichen',
   from: 'Von',
   fromMarketplace: 'Aus dem Marketplace',
   search: 'Suchen',
@@ -204,6 +206,12 @@ const translation = {
   findMoreInMarketplace: 'Weitere Informationen finden Sie im Marketplace',
   installPlugin: 'Plugin installieren',
   installFrom: 'INSTALLIEREN VON',
+  metadata: {
+    title: 'Plugins',
+  },
+  difyVersionNotCompatible: 'Die aktuelle Dify-Version ist mit diesem Plugin nicht kompatibel, bitte aktualisieren Sie auf die erforderliche Mindestversion: {{minimalDifyVersion}}',
+  requestAPlugin: 'Ein Plugin anfordern',
+  publishPlugins: 'Plugins veröffentlichen',
 }
 
 export default translation

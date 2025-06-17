@@ -1,12 +1,13 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ValidationInfo, field_validator
 
 
-class TracingProviderEnum(Enum):
+class TracingProviderEnum(StrEnum):
     LANGFUSE = "langfuse"
     LANGSMITH = "langsmith"
     OPIK = "opik"
+    WEAVE = "weave"
 
 
 class BaseTracingConfig(BaseModel):
@@ -85,6 +86,36 @@ class OpikConfig(BaseTracingConfig):
         if not v.endswith("/api/"):
             raise ValueError("url should ends with /api/")
 
+        return v
+
+
+class WeaveConfig(BaseTracingConfig):
+    """
+    Model class for Weave tracing config.
+    """
+
+    api_key: str
+    entity: str | None = None
+    project: str
+    endpoint: str = "https://trace.wandb.ai"
+    host: str | None = None
+
+    @field_validator("endpoint")
+    @classmethod
+    def set_value(cls, v, info: ValidationInfo):
+        if v is None or v == "":
+            v = "https://trace.wandb.ai"
+        if not v.startswith("https://"):
+            raise ValueError("endpoint must start with https://")
+
+        return v
+
+    @field_validator("host")
+    @classmethod
+    def validate_host(cls, v, info: ValidationInfo):
+        if v is not None and v != "":
+            if not v.startswith(("https://", "http://")):
+                raise ValueError("host must start with https:// or http://")
         return v
 
 

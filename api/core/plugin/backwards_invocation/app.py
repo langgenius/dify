@@ -72,7 +72,7 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                 raise ValueError("missing query")
 
             return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files)
-        elif app.mode == AppMode.WORKFLOW.value:
+        elif app.mode == AppMode.WORKFLOW:
             return cls.invoke_workflow_app(app, user, stream, inputs, files)
         elif app.mode == AppMode.COMPLETION:
             return cls.invoke_completion_app(app, user, stream, inputs, files)

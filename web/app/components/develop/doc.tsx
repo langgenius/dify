@@ -264,8 +264,55 @@ const Doc = ({ appDetail }: IDocProps) => {
             </button>
           )}
       </div>
-      <article className={cn('prose-xl prose mx-1 overflow-auto rounded-t-xl bg-background-default px-4 pt-16 sm:mx-12', theme === Theme.dark && 'dark:prose-invert')}>
-        {Template}
+      <article className={cn('prose-xl prose', theme === Theme.dark && 'prose-invert')} >
+        {(appDetail?.mode === 'chat' || appDetail?.mode === 'agent-chat') && (
+          (() => {
+            switch (locale) {
+              case LanguagesSupported[1]:
+                return <TemplateChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
+              case LanguagesSupported[7]:
+                return <TemplateChatJa appDetail={appDetail} variables={variables} inputs={inputs} />
+              default:
+                return <TemplateChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
+            }
+          })()
+        )}
+        {appDetail?.mode === 'advanced-chat' && (
+          (() => {
+            switch (locale) {
+              case LanguagesSupported[1]:
+                return <TemplateAdvancedChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
+              case LanguagesSupported[7]:
+                return <TemplateAdvancedChatJa appDetail={appDetail} variables={variables} inputs={inputs} />
+              default:
+                return <TemplateAdvancedChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
+            }
+          })()
+        )}
+        {appDetail?.mode === 'workflow' && (
+          (() => {
+            switch (locale) {
+              case LanguagesSupported[1]:
+                return <TemplateWorkflowZh appDetail={appDetail} variables={variables} inputs={inputs} />
+              case LanguagesSupported[7]:
+                return <TemplateWorkflowJa appDetail={appDetail} variables={variables} inputs={inputs} />
+              default:
+                return <TemplateWorkflowEn appDetail={appDetail} variables={variables} inputs={inputs} />
+            }
+          })()
+        )}
+        {appDetail?.mode === 'completion' && (
+          (() => {
+            switch (locale) {
+              case LanguagesSupported[1]:
+                return <TemplateZh appDetail={appDetail} variables={variables} inputs={inputs} />
+              case LanguagesSupported[7]:
+                return <TemplateJa appDetail={appDetail} variables={variables} inputs={inputs} />
+              default:
+                return <TemplateEn appDetail={appDetail} variables={variables} inputs={inputs} />
+            }
+          })()
+        )}
       </article>
     </div>
   )

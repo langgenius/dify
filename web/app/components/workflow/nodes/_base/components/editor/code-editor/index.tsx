@@ -12,9 +12,10 @@ import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import './style.css'
 import { noop } from 'lodash-es'
+import { basePath } from '@/utils/var'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
-loader.config({ paths: { vs: '/vs' } })
+loader.config({ paths: { vs: `${basePath}/vs` } })
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 

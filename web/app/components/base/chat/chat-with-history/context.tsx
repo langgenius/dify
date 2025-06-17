@@ -22,6 +22,7 @@ export type ChatWithHistoryContextValue = {
   appInfoLoading?: boolean
   appMeta?: AppMeta
   appData?: AppData
+  userCanAccess?: boolean
   appParams?: ChatConfig
   appChatListDataLoading?: boolean
   currentConversationId: string
@@ -57,9 +58,11 @@ export type ChatWithHistoryContextValue = {
   setIsResponding: (state: boolean) => void,
   currentConversationInputs: Record<string, any> | null,
   setCurrentConversationInputs: (v: Record<string, any>) => void,
+  allInputsHidden: boolean,
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
+  userCanAccess: false,
   currentConversationId: '',
   appPrevChatTree: [],
   pinnedConversationList: [],
@@ -90,5 +93,6 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   setIsResponding: noop,
   currentConversationInputs: {},
   setCurrentConversationInputs: noop,
+  allInputsHidden: false,
 })
 export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)

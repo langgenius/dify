@@ -64,7 +64,7 @@ export type GetVarType = (payload: {
 export type WorkflowVariableBlockType = {
   show?: boolean
   variables?: NodeOutPutVar[]
-  workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type'>>
+  workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'>>
   onInsert?: () => void
   onDelete?: () => void
   getVarType?: GetVarType

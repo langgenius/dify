@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo } from 'react'
+import { useTheme } from 'next-themes'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -38,6 +39,7 @@ const PluginItem: FC<Props> = ({
   plugin,
 }) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
   const { categoriesMap } = useSingleCategories()
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
@@ -106,7 +108,7 @@ const PluginItem: FC<Props> = ({
               }><RiErrorWarningLine color='red' className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" /></Tooltip>}
               <Badge className='ml-1 shrink-0'
                 text={source === PluginSource.github ? plugin.meta!.version : plugin.version}
-                hasRedCornerMark={(source === PluginSource.marketplace) && !!plugin.latest_unique_identifier && plugin.latest_unique_identifier !== plugin_unique_identifier}
+                hasRedCornerMark={(source === PluginSource.marketplace) && !!plugin.latest_version && plugin.latest_version !== plugin.version}
               />
             </div>
             <div className='flex items-center justify-between'>
@@ -164,7 +166,7 @@ const PluginItem: FC<Props> = ({
           }
           {source === PluginSource.marketplace
             && <>
-              <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`} target='_blank' className='flex items-center gap-0.5'>
+              <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}${theme ? `?theme=${theme}` : ''}`} target='_blank' className='flex items-center gap-0.5'>
                 <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('plugin.from')} <span className='text-text-secondary'>marketplace</span></div>
                 <RiArrowRightUpLine className='h-3 w-3 text-text-tertiary' />
               </a>

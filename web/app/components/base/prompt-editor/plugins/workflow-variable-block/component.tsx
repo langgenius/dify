@@ -1,5 +1,6 @@
 import {
   memo,
+  useCallback,
   useEffect,
   useState,
 } from 'react'
@@ -13,6 +14,7 @@ import {
   RiErrorWarningFill,
   RiMoreLine,
 } from '@remixicon/react'
+import { useReactFlow, useStoreApi } from 'reactflow'
 import { useSelectOrDelete } from '../../hooks'
 import type { WorkflowNodesMap } from './node'
 import { WorkflowVariableBlockNode } from './node'
@@ -66,6 +68,9 @@ const WorkflowVariableBlockComponent = ({
   const isChatVar = isConversationVar(variables)
   const isException = isExceptionVariable(varName, node?.type)
 
+  const reactflow = useReactFlow()
+  const store = useStoreApi()
+
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
       throw new Error('WorkflowVariableBlockPlugin: WorkflowVariableBlock not registered on editor')
@@ -83,6 +88,26 @@ const WorkflowVariableBlockComponent = ({
     )
   }, [editor])
 
+  const handleVariableJump = useCallback(() => {
+    const workflowContainer = document.getElementById('workflow-container')
+    const {
+      clientWidth,
+      clientHeight,
+    } = workflowContainer!
+
+    const {
+      setViewport,
+    } = reactflow
+    const { transform } = store.getState()
+    const zoom = transform[2]
+    const position = node.position
+    setViewport({
+      x: (clientWidth - 400 - node.width! * zoom) / 2 - position!.x * zoom,
+      y: (clientHeight - node.height! * zoom) / 2 - position!.y * zoom,
+      zoom: transform[2],
+    })
+  }, [node, reactflow, store])
+
   const Item = (
     <div
       className={cn(
@@ -90,6 +115,10 @@ const WorkflowVariableBlockComponent = ({
         isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
         !node && !isEnv && !isChatVar && '!border-state-destructive-solid !bg-state-destructive-hover',
       )}
+      onClick={(e) => {
+        e.stopPropagation()
+        handleVariableJump()
+      }}
       ref={ref}
     >
       {!isEnv && !isChatVar && (
@@ -144,7 +173,7 @@ const WorkflowVariableBlockComponent = ({
   }
 
   if (!node)
-    return null
+    return Item
 
   return (
     <Tooltip

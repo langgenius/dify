@@ -46,6 +46,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
       <div className='space-y-4 px-4'>
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
+          required
         >
           <VarReferencePicker
             readonly={readOnly}
@@ -96,16 +97,14 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           {inputs.extract_by?.enabled
             ? (
               <div className='flex items-center justify-between'>
-                {hasSubVariable && (
-                  <div className='mr-2 grow'>
-                    <ExtractInput
-                      value={inputs.extract_by.serial as string}
-                      onChange={handleExtractsChange}
-                      readOnly={readOnly}
-                      nodeId={id}
-                    />
-                  </div>
-                )}
+                <div className='mr-2 grow'>
+                  <ExtractInput
+                    value={inputs.extract_by.serial as string}
+                    onChange={handleExtractsChange}
+                    readOnly={readOnly}
+                    nodeId={id}
+                  />
+                </div>
               </div>
             )
             : null}

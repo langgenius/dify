@@ -22,7 +22,7 @@ const translation = {
     },
     uploader: {
       title: 'Télécharger le fichier texte',
-      button: 'Glisser et déposer le fichier, ou',
+      button: 'Faites glisser et déposez des fichiers ou des dossiers, ou',
       browse: 'Parcourir',
       tip: 'Prend en charge {{supportTypes}}. Max {{size}}MB chacun.',
       validation: {
@@ -61,7 +61,7 @@ const translation = {
       preview: 'Aperçu',
       crawlSubPage: 'Explorer les sous-pages',
       configure: 'Configurer',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
+      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       maxDepth: 'Profondeur maximale',
       fireCrawlNotConfigured: 'Firecrawl n’est pas configuré',
       firecrawlTitle: 'Extraire du contenu web avec 🔥Firecrawl',
@@ -82,6 +82,14 @@ const translation = {
       jinaReaderNotConfigured: 'Jina Reader n’est pas configuré',
       chooseProvider: 'Sélectionnez un fournisseur',
       jinaReaderTitle: 'Convertir l’intégralité du site en Markdown',
+      watercrawlTitle: 'Extraire du contenu web avec Watercrawl',
+      watercrawlDoc: 'Documents Watercrawl',
+      waterCrawlNotConfiguredDescription: 'Configurez Watercrawl avec la clé API pour l\'utiliser.',
+      configureJinaReader: 'Configurer le lecteur Jina',
+      configureWatercrawl: 'Configurer Watercrawl',
+      waterCrawlNotConfigured: 'Watercrawl n\'est pas configuré',
+      watercrawlDocLink: 'https://docs.dify.ai/fr/guide/base-de-connaissances/créer-des-connaissances-et-télécharger-des-documents/importer-des-données-de-contenu/synchroniser-depuis-un-site-web',
+      configureFirecrawl: 'Configurer Firecrawl',
     },
     cancel: 'Annuler',
   },
@@ -199,6 +207,11 @@ const translation = {
     learnMore: 'Pour en savoir plus',
     description: 'Actuellement, la base de connaissances de Dify ne dispose que de sources de données limitées. Contribuer à une source de données dans la base de connaissances Dify est un moyen fantastique d’améliorer la flexibilité et la puissance de la plateforme pour tous les utilisateurs. Notre guide de contribution facilite la prise en main. Veuillez cliquer sur le lien ci-dessous pour en savoir plus.',
     title: 'Se connecter à d’autres sources de données ?',
+  },
+  watercrawl: {
+    apiKeyPlaceholder: 'Clé API de watercrawl.dev',
+    configWatercrawl: 'Configurer Watercrawl',
+    getApiKeyLinkText: 'Obtenez votre clé API sur watercrawl.dev',
   },
 }
 

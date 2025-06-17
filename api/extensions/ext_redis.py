@@ -1,6 +1,7 @@
 from typing import Any, Union
 
 import redis
+from redis.cache import CacheConfig
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
@@ -51,6 +52,14 @@ def init_app(app: DifyApp):
     connection_class: type[Union[Connection, SSLConnection]] = Connection
     if dify_config.REDIS_USE_SSL:
         connection_class = SSLConnection
+    resp_protocol = dify_config.REDIS_SERIALIZATION_PROTOCOL
+    if dify_config.REDIS_ENABLE_CLIENT_SIDE_CACHE:
+        if resp_protocol >= 3:
+            clientside_cache_config = CacheConfig()
+        else:
+            raise ValueError("Client side cache is only supported in RESP3")
+    else:
+        clientside_cache_config = None
 
     redis_params: dict[str, Any] = {
         "username": dify_config.REDIS_USERNAME,
@@ -59,6 +68,8 @@ def init_app(app: DifyApp):
         "encoding": "utf-8",
         "encoding_errors": "strict",
         "decode_responses": False,
+        "protocol": resp_protocol,
+        "cache_config": clientside_cache_config,
     }
 
     if dify_config.REDIS_USE_SENTINEL:
@@ -82,14 +93,22 @@ def init_app(app: DifyApp):
             ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
             for node in dify_config.REDIS_CLUSTERS.split(",")
         ]
-        # FIXME: mypy error here, try to figure out how to fix it
-        redis_client.initialize(RedisCluster(startup_nodes=nodes, password=dify_config.REDIS_CLUSTERS_PASSWORD))  # type: ignore
+        redis_client.initialize(
+            RedisCluster(
+                startup_nodes=nodes,
+                password=dify_config.REDIS_CLUSTERS_PASSWORD,
+                protocol=resp_protocol,
+                cache_config=clientside_cache_config,
+            )
+        )
     else:
         redis_params.update(
             {
                 "host": dify_config.REDIS_HOST,
                 "port": dify_config.REDIS_PORT,
                 "connection_class": connection_class,
+                "protocol": resp_protocol,
+                "cache_config": clientside_cache_config,
             }
         )
         pool = redis.ConnectionPool(**redis_params)

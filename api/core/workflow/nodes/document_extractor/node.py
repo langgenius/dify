@@ -7,10 +7,12 @@ import tempfile
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
+import chardet
 import docx
 import pandas as pd
 import pypandoc  # type: ignore
 import pypdfium2  # type: ignore
+import webvtt  # type: ignore
 import yaml  # type: ignore
 from docx.document import Document
 from docx.oxml.table import CT_Tbl
@@ -24,9 +26,9 @@ from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
 from core.variables.segments import FileSegment
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import DocumentExtractorNodeData
 from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
@@ -132,6 +134,10 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
             return _extract_text_from_json(file_content)
         case "application/x-yaml" | "text/yaml":
             return _extract_text_from_yaml(file_content)
+        case "text/vtt":
+            return _extract_text_from_vtt(file_content)
+        case "text/properties":
+            return _extract_text_from_properties(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -139,7 +145,7 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
 def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
-        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml" | ".vtt":
+        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml":
             return _extract_text_from_plain_text(file_content)
         case ".json":
             return _extract_text_from_json(file_content)
@@ -165,32 +171,74 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_eml(file_content)
         case ".msg":
             return _extract_text_from_msg(file_content)
+        case ".vtt":
+            return _extract_text_from_vtt(file_content)
+        case ".properties":
+            return _extract_text_from_properties(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported Extension Type: {file_extension}")
 
 
 def _extract_text_from_plain_text(file_content: bytes) -> str:
     try:
-        return file_content.decode("utf-8", "ignore")
-    except UnicodeDecodeError as e:
-        raise TextExtractionError("Failed to decode plain text file") from e
+        # Detect encoding using chardet
+        result = chardet.detect(file_content)
+        encoding = result["encoding"]
+
+        # Fallback to utf-8 if detection fails
+        if not encoding:
+            encoding = "utf-8"
+
+        return file_content.decode(encoding, errors="ignore")
+    except (UnicodeDecodeError, LookupError) as e:
+        # If decoding fails, try with utf-8 as last resort
+        try:
+            return file_content.decode("utf-8", errors="ignore")
+        except UnicodeDecodeError:
+            raise TextExtractionError(f"Failed to decode plain text file: {e}") from e
 
 
 def _extract_text_from_json(file_content: bytes) -> str:
     try:
-        json_data = json.loads(file_content.decode("utf-8", "ignore"))
+        # Detect encoding using chardet
+        result = chardet.detect(file_content)
+        encoding = result["encoding"]
+
+        # Fallback to utf-8 if detection fails
+        if not encoding:
+            encoding = "utf-8"
+
+        json_data = json.loads(file_content.decode(encoding, errors="ignore"))
         return json.dumps(json_data, indent=2, ensure_ascii=False)
-    except (UnicodeDecodeError, json.JSONDecodeError) as e:
-        raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
+    except (UnicodeDecodeError, LookupError, json.JSONDecodeError) as e:
+        # If decoding fails, try with utf-8 as last resort
+        try:
+            json_data = json.loads(file_content.decode("utf-8", errors="ignore"))
+            return json.dumps(json_data, indent=2, ensure_ascii=False)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
 
 
 def _extract_text_from_yaml(file_content: bytes) -> str:
     """Extract the content from yaml file"""
     try:
-        yaml_data = yaml.safe_load_all(file_content.decode("utf-8", "ignore"))
+        # Detect encoding using chardet
+        result = chardet.detect(file_content)
+        encoding = result["encoding"]
+
+        # Fallback to utf-8 if detection fails
+        if not encoding:
+            encoding = "utf-8"
+
+        yaml_data = yaml.safe_load_all(file_content.decode(encoding, errors="ignore"))
         return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
-    except (UnicodeDecodeError, yaml.YAMLError) as e:
-        raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
+    except (UnicodeDecodeError, LookupError, yaml.YAMLError) as e:
+        # If decoding fails, try with utf-8 as last resort
+        try:
+            yaml_data = yaml.safe_load_all(file_content.decode("utf-8", errors="ignore"))
+            return cast(str, yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False))
+        except (UnicodeDecodeError, yaml.YAMLError):
+            raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
 
 
 def _extract_text_from_pdf(file_content: bytes) -> str:
@@ -214,8 +262,8 @@ def _extract_text_from_doc(file_content: bytes) -> str:
     """
     from unstructured.partition.api import partition_via_api
 
-    if not (dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY):
-        raise TextExtractionError("UNSTRUCTURED_API_URL and UNSTRUCTURED_API_KEY must be set")
+    if not dify_config.UNSTRUCTURED_API_URL:
+        raise TextExtractionError("UNSTRUCTURED_API_URL must be set")
 
     try:
         with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as temp_file:
@@ -226,7 +274,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
                     file=file,
                     metadata_filename=temp_file.name,
                     api_url=dify_config.UNSTRUCTURED_API_URL,
-                    api_key=dify_config.UNSTRUCTURED_API_KEY,
+                    api_key=dify_config.UNSTRUCTURED_API_KEY,  # type: ignore
                 )
             os.unlink(temp_file.name)
         return "\n".join([getattr(element, "text", "") for element in elements])
@@ -329,26 +377,64 @@ def _extract_text_from_file(file: File):
 
 def _extract_text_from_csv(file_content: bytes) -> str:
     try:
-        csv_file = io.StringIO(file_content.decode("utf-8", "ignore"))
+        # Detect encoding using chardet
+        result = chardet.detect(file_content)
+        encoding = result["encoding"]
+
+        # Fallback to utf-8 if detection fails
+        if not encoding:
+            encoding = "utf-8"
+
+        try:
+            csv_file = io.StringIO(file_content.decode(encoding, errors="ignore"))
+        except (UnicodeDecodeError, LookupError):
+            # If decoding fails, try with utf-8 as last resort
+            csv_file = io.StringIO(file_content.decode("utf-8", errors="ignore"))
+
         csv_reader = csv.reader(csv_file)
         rows = list(csv_reader)
 
         if not rows:
             return ""
 
-        # Create Markdown table
-        markdown_table = "| " + " | ".join(rows[0]) + " |\n"
-        markdown_table += "| " + " | ".join(["---"] * len(rows[0])) + " |\n"
-        for row in rows[1:]:
-            markdown_table += "| " + " | ".join(row) + " |\n"
+        # Combine multi-line text in the header row
+        header_row = [cell.replace("\n", " ").replace("\r", "") for cell in rows[0]]
 
-        return markdown_table.strip()
+        # Create Markdown table
+        markdown_table = "| " + " | ".join(header_row) + " |\n"
+        markdown_table += "| " + " | ".join(["-" * len(col) for col in rows[0]]) + " |\n"
+
+        # Process each data row and combine multi-line text in each cell
+        for row in rows[1:]:
+            processed_row = [cell.replace("\n", " ").replace("\r", "") for cell in row]
+            markdown_table += "| " + " | ".join(processed_row) + " |\n"
+
+        return markdown_table
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from CSV: {str(e)}") from e
 
 
 def _extract_text_from_excel(file_content: bytes) -> str:
     """Extract text from an Excel file using pandas."""
+
+    def _construct_markdown_table(df: pd.DataFrame) -> str:
+        """Manually construct a Markdown table from a DataFrame."""
+        # Construct the header row
+        header_row = "| " + " | ".join(df.columns) + " |"
+
+        # Construct the separator row
+        separator_row = "| " + " | ".join(["-" * len(col) for col in df.columns]) + " |"
+
+        # Construct the data rows
+        data_rows = []
+        for _, row in df.iterrows():
+            data_row = "| " + " | ".join(map(str, row)) + " |"
+            data_rows.append(data_row)
+
+        # Combine all rows into a single string
+        markdown_table = "\n".join([header_row, separator_row] + data_rows)
+        return markdown_table
+
     try:
         excel_file = pd.ExcelFile(io.BytesIO(file_content))
         markdown_table = ""
@@ -356,8 +442,15 @@ def _extract_text_from_excel(file_content: bytes) -> str:
             try:
                 df = excel_file.parse(sheet_name=sheet_name)
                 df.dropna(how="all", inplace=True)
-                # Create Markdown table two times to separate tables with a newline
-                markdown_table += df.to_markdown(index=False) + "\n\n"
+
+                # Combine multi-line text in each cell into a single line
+                df = df.applymap(lambda x: " ".join(str(x).splitlines()) if isinstance(x, str) else x)  # type: ignore
+
+                # Combine multi-line text in column names into a single line
+                df.columns = pd.Index([" ".join(col.splitlines()) for col in df.columns])
+
+                # Manually construct the Markdown table
+                markdown_table += _construct_markdown_table(df) + "\n\n"
             except Exception as e:
                 continue
         return markdown_table
@@ -462,3 +555,68 @@ def _extract_text_from_msg(file_content: bytes) -> str:
         return "\n".join([str(element) for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from MSG: {str(e)}") from e
+
+
+def _extract_text_from_vtt(vtt_bytes: bytes) -> str:
+    text = _extract_text_from_plain_text(vtt_bytes)
+
+    # remove bom
+    text = text.lstrip("\ufeff")
+
+    raw_results = []
+    for caption in webvtt.from_string(text):
+        raw_results.append((caption.voice, caption.text))
+
+    # Merge consecutive utterances by the same speaker
+    merged_results = []
+    if raw_results:
+        current_speaker, current_text = raw_results[0]
+
+        for i in range(1, len(raw_results)):
+            spk, txt = raw_results[i]
+            if spk == None:
+                merged_results.append((None, current_text))
+                continue
+
+            if spk == current_speaker:
+                # If it is the same speaker, merge the utterances (joined by space)
+                current_text += " " + txt
+            else:
+                # If the speaker changes, register the utterance so far and move on
+                merged_results.append((current_speaker, current_text))
+                current_speaker, current_text = spk, txt
+
+        # Add the last element
+        merged_results.append((current_speaker, current_text))
+    else:
+        merged_results = raw_results
+
+    # Return the result in the specified format: Speaker "text" style
+    formatted = [f'{spk or ""} "{txt}"' for spk, txt in merged_results]
+    return "\n".join(formatted)
+
+
+def _extract_text_from_properties(file_content: bytes) -> str:
+    try:
+        text = _extract_text_from_plain_text(file_content)
+        lines = text.splitlines()
+        result = []
+        for line in lines:
+            line = line.strip()
+            # Preserve comments and empty lines
+            if not line or line.startswith("#") or line.startswith("!"):
+                result.append(line)
+                continue
+
+            if "=" in line:
+                key, value = line.split("=", 1)
+            elif ":" in line:
+                key, value = line.split(":", 1)
+            else:
+                key, value = line, ""
+
+            result.append(f"{key.strip()}: {value.strip()}")
+
+        return "\n".join(result)
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from properties file: {str(e)}") from e

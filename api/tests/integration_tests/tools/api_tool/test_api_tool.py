@@ -34,10 +34,11 @@ parameters = {
 def test_api_tool(setup_http_mock):
     tool = ApiTool(
         entity=ToolEntity(
-            identity=ToolIdentity(provider="", author="", name="", label=I18nObject()),
+            identity=ToolIdentity(provider="", author="", name="", label=I18nObject(en_US="test tool")),
         ),
         api_bundle=ApiToolBundle(**tool_bundle),
         runtime=ToolRuntime(tenant_id="", credentials={"auth_type": "none"}),
+        provider_id="test_tool",
     )
     headers = tool.assembling_request(parameters)
     response = tool.do_http_request(tool.api_bundle.server_url, tool.api_bundle.method, headers, parameters)

@@ -4,12 +4,13 @@ import time
 from functools import wraps
 
 from flask import abort, request
-from flask_login import current_user  # type: ignore
+from flask_login import current_user
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
@@ -24,7 +25,7 @@ def account_initialization_required(view):
         # check account initialization
         account = current_user
 
-        if account.status == "uninitialized":
+        if account.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
 
         return view(*args, **kwargs)
@@ -36,6 +37,17 @@ def only_edition_cloud(view):
     @wraps(view)
     def decorated(*args, **kwargs):
         if dify_config.EDITION != "CLOUD":
+            abort(404)
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def only_edition_enterprise(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        if not dify_config.ENTERPRISE_ENABLED:
             abort(404)
 
         return view(*args, **kwargs)

@@ -16,6 +16,8 @@ import Button from '@/app/components/base/button'
 
 import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/common'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useDocLink } from '@/context/i18n'
 
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
@@ -33,7 +35,9 @@ const accountFormSchema = z.object({
 type AccountFormValues = z.infer<typeof accountFormSchema>
 
 const InstallForm = () => {
+  useDocumentTitle('')
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const router = useRouter()
   const [showPassword, setShowPassword] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
@@ -172,7 +176,7 @@ const InstallForm = () => {
               <Link
                 className='text-text-accent'
                 target='_blank' rel='noopener noreferrer'
-                href={'https://docs.dify.ai/user-agreement/open-source'}
+                href={docLink('/policies/open-source')}
               >{t('login.license.link')}</Link>
             </div>
           </div>

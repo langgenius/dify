@@ -5,12 +5,12 @@ const translation = {
   },
   orchestrate: 'オーケストレーション',
   promptMode: {
-    simple: 'エキスパートモードに切り替えて、PROMPT全体を編集します',
+    simple: 'エキスパートモードに切り替えて、PROMPT 全体を編集します',
     advanced: 'エキスパートモード',
     switchBack: '基本モードに戻る',
     advancedWarning: {
-      title: 'エキスパートモードに切り替えました。PROMPTを変更すると、基本モードに戻ることはできません。',
-      description: 'エキスパートモードでは、PROMPT全体を編集できます。',
+      title: 'エキスパートモードに切り替えました。PROMPT を変更すると、基本モードに戻ることはできません。',
+      description: 'エキスパートモードでは、PROMPT 全体を編集できます。',
       learnMore: '詳細はこちら',
       ok: 'OK',
     },
@@ -33,14 +33,14 @@ const translation = {
     userAction: 'ユーザー',
   },
   notSetAPIKey: {
-    title: 'LLMプロバイダーキーが設定されていません',
+    title: 'LLM プロバイダーキーが設定されていません',
     trailFinished: 'トライアル終了',
-    description: 'LLMプロバイダーキーが設定されていません。デバッグする前に設定する必要があります。',
+    description: 'LLM プロバイダーキーが設定されていません。デバッグする前に設定する必要があります。',
     settingBtn: '設定に移動',
   },
   trailUseGPT4Info: {
-    title: '現在、gpt-4はサポートされていません',
-    description: 'gpt-4を使用するには、APIキーを設定してください。',
+    title: '現在、gpt-4 はサポートされていません',
+    description: 'gpt-4 を使用するには、API キーを設定してください。',
   },
   feature: {
     groupChat: {
@@ -52,12 +52,12 @@ const translation = {
     },
     conversationOpener: {
       title: '会話の開始',
-      description: 'チャットアプリでは、AIがユーザーに最初にアクティブに話しかける最初の文は、通常、歓迎メッセージとして使用されます。',
+      description: 'チャットアプリでは、AI がユーザーに最初にアクティブに話しかける最初の文は、通常、歓迎メッセージとして使用されます。',
     },
     suggestedQuestionsAfterAnswer: {
       title: 'フォローアップ',
       description: '次の質問の提案を設定すると、ユーザーにより良いチャットが提供されます。',
-      resDes: 'ユーザーの次の質問に関する3つの提案。',
+      resDes: 'ユーザーの次の質問に関する 3 つの提案。',
       tryToAsk: '質問してみてください',
     },
     moreLikeThis: {
@@ -128,7 +128,7 @@ const translation = {
     },
     tools: {
       title: 'ツール',
-      tips: 'ツールは、ユーザー入力または変数をリクエストパラメーターとして使用して外部データをコンテキストとしてクエリするための標準的なAPI呼び出し方法を提供します。',
+      tips: 'ツールは、ユーザー入力または変数をリクエストパラメーターとして使用して外部データをコンテキストとしてクエリするための標準的な API 呼び出し方法を提供します。',
       toolsInUse: '{{count}} 個のツールが使用中',
       modal: {
         title: 'ツール',
@@ -162,7 +162,7 @@ const translation = {
     },
     moderation: {
       title: 'コンテンツのモデレーション',
-      description: 'モデレーションAPIを使用するか、機密語リストを維持することで、モデルの出力を安全にします。',
+      description: 'モデレーション API を使用するか、機密語リストを維持することで、モデルの出力を安全にします。',
       contentEnableLabel: 'モデレート・コンテンツを有効にする',
       allEnabled: '入力/出力コンテンツが有効になっています',
       inputEnabled: '入力コンテンツが有効になっています',
@@ -171,16 +171,16 @@ const translation = {
         title: 'コンテンツのモデレーション設定',
         provider: {
           title: 'プロバイダ',
-          openai: 'OpenAIモデレーション',
+          openai: 'OpenAI モデレーション',
           openaiTip: {
-            prefix: 'OpenAIモデレーションには、',
-            suffix: 'にOpenAI APIキーが設定されている必要があります。',
+            prefix: 'OpenAI モデレーションには、',
+            suffix: 'に OpenAI API キーが設定されている必要があります。',
           },
           keywords: 'キーワード',
         },
         keywords: {
-          tip: '1行ごとに1つ、行区切りで入力してください。1行あたり最大100文字。',
-          placeholder: '1行ごとに、行区切りで入力してください',
+          tip: '1 行ごとに 1 つ、行区切りで入力してください。1 行あたり最大 100 文字。',
+          placeholder: '1 行ごとに、行区切りで入力してください',
           line: '行',
         },
         content: {
@@ -188,14 +188,14 @@ const translation = {
           output: '出力コンテンツをモデレート',
           preset: 'プリセット返信',
           placeholder: 'ここにプリセット返信の内容を入力',
-          condition: '少なくとも1つの入力および出力コンテンツをモデレートする',
-          fromApi: 'プリセット返信はAPIによって返されます',
+          condition: '少なくとも 1 つの入力および出力コンテンツをモデレートする',
+          fromApi: 'プリセット返信は API によって返されます',
           errorMessage: 'プリセット返信は空にできません',
-          supportMarkdown: 'Markdownがサポートされています',
+          supportMarkdown: 'Markdown がサポートされています',
         },
         openaiNotConfig: {
-          before: 'OpenAIモデレーションには、',
-          after: 'にOpenAI APIキーが設定されている必要があります。',
+          before: 'OpenAI モデレーションには、',
+          after: 'に OpenAI API キーが設定されている必要があります。',
         },
       },
     },
@@ -214,9 +214,13 @@ const translation = {
       modalTitle: '画像アップロード設置',
     },
     bar: {
-      empty: 'Webアプリのユーザーエクスペリアンスを強化させる機能を有効にする',
+      empty: 'Web アプリのユーザーエクスペリアンスを強化させる機能を有効にする',
       enableText: '有効な機能',
       manage: '管理',
+    },
+    documentUpload: {
+      title: 'ドキュメント',
+      description: 'ドキュメント機能を有効にすると、AI モデルがファイルを処理し、その内容に基づいて質問に回答できるようになります。',
     },
   },
   codegen: {
@@ -224,7 +228,7 @@ const translation = {
     description: 'コードジェネレーターは、設定されたモデルを使用して指示に基づいて高品質なコードを生成します。明確で詳細な指示を提供してください。',
     instruction: '指示',
     instructionPlaceholder: '生成したいコードの詳細な説明を入力してください。',
-    noDataLine1: '左側に使用例を記入してください,',
+    noDataLine1: '左側に使用例を記入してください，',
     noDataLine2: 'コードのプレビューがこちらに表示されます。',
     generate: '生成',
     generatedCodeTitle: '生成されたコード',
@@ -243,9 +247,10 @@ const translation = {
     instructionPlaceHolder: '具体的で明確な指示を入力してください。',
     generate: '生成',
     resTitle: '生成されたプロンプト',
-    noDataLine1: '左側に使用例を記入してください,',
+    noDataLine1: '左側に使用例を記入してください，',
     noDataLine2: 'オーケストレーションのプレビューがこちらに表示されます。',
     apply: '適用',
+    noData: '左側にユースケースを入力すると、こちらでプレビューができます。',
     loading: 'アプリケーションを処理中です',
     overwriteTitle: '既存の設定を上書きしますか？',
     overwriteMessage: 'このプロンプトを適用すると、既存の設定が上書きされます。',
@@ -271,12 +276,12 @@ const translation = {
         instruction: 'ユーザーが簡単に旅行計画を立てられるように設計されたツール',
       },
       SQLSorcerer: {
-        name: 'SQLソーサラー',
-        instruction: '日常言語をSQLクエリに変換する',
+        name: 'SQL ソーサラー',
+        instruction: '日常言語を SQL クエリに変換する',
       },
       GitGud: {
         name: 'Git gud',
-        instruction: 'ユーザーが記述したバージョン管理アクションに対応するGitコマンドを生成する',
+        instruction: 'ユーザーが記述したバージョン管理アクションに対応する Git コマンドを生成する',
       },
       meetingTakeaways: {
         name: '会議の要点',
@@ -293,7 +298,7 @@ const translation = {
     message: '変更が破棄され、最後に公開された構成が復元されます。',
   },
   errorMessage: {
-    nameOfKeyRequired: 'キーの名前: {{key}} が必要です',
+    nameOfKeyRequired: 'キーの名前：{{key}} が必要です',
     valueOfVarRequired: '{{key}} の値は空にできません',
     queryRequired: 'リクエストテキストが必要です。',
     waitForResponse: '前のメッセージへの応答が完了するまでお待ちください。',
@@ -302,12 +307,9 @@ const translation = {
     waitForImgUpload: '画像のアップロードが完了するまでお待ちください',
     waitForFileUpload: 'ファイルのアップロードが完了するまでお待ちください',
   },
-  warningMessage: {
-    timeoutExceeded: 'タイムアウトのため結果が表示されません。完全な結果を手にいれるためには、ログを参照してください。',
-  },
-  chatSubTitle: '手順',
+  chatSubTitle: 'プロンプト',
   completionSubTitle: '接頭辞プロンプト',
-  promptTip: 'プロンプトは、AIの応答を指示と制約で誘導します。 {{input}} のような変数を挿入します。このプロンプトはユーザーには表示されません。',
+  promptTip: 'プロンプトは、AI の応答を指示と制約で誘導します。 {{input}} のような変数を挿入します。このプロンプトはユーザーには表示されません。',
   formattingChangedTitle: '書式が変更されました',
   formattingChangedText: '書式を変更すると、デバッグ領域がリセットされます。よろしいですか？',
   variableTitle: '変数',
@@ -325,7 +327,7 @@ const translation = {
   },
   varKeyError: {
     canNoBeEmpty: '{{key}} は必須です',
-    tooLong: '{{key}} が長すぎます。30文字を超えることはできません',
+    tooLong: '{{key}} が長すぎます。30 文字を超えることはできません',
     notValid: '{{key}} が無効です。文字、数字、アンダースコアのみを含めることができます',
     notStartWithNumber: '{{key}} は数字で始めることはできません',
     keyAlreadyExists: '{{key}} はすでに存在します',
@@ -352,12 +354,12 @@ const translation = {
     'maxLength': '最大長',
     'options': 'オプション',
     'addOption': 'オプションを追加',
-    'apiBasedVar': 'APIベースの変数',
+    'apiBasedVar': 'API ベースの変数',
     'varName': '変数名',
     'labelName': 'ラベル名',
     'inputPlaceholder': '入力してください',
-    'content': 'コンテンツ',
     'required': '必須',
+    'hide': '非表示',
     'file': {
       supportFileTypes: 'サポートされたファイルタイプ',
       image: {
@@ -375,7 +377,7 @@ const translation = {
       custom: {
         name: '他のファイルタイプ',
         description: '他のファイルタイプを指定する。',
-        createPlaceholder: '+ 拡張子, 例：.doc',
+        createPlaceholder: '+ 拡張子，例：.doc',
       },
     },
     'uploadFileTypes': 'アップロードされたファイルのタイプ',
@@ -387,7 +389,7 @@ const translation = {
       varNameRequired: '変数名は必須です',
       labelNameRequired: 'ラベル名は必須です',
       varNameCanBeRepeat: '変数名は繰り返すことができません',
-      atLeastOneOption: '少なくとも1つのオプションが必要です',
+      atLeastOneOption: '少なくとも 1 つのオプションが必要です',
       optionRepeat: '繰り返しオプションがあります',
     },
   },
@@ -452,10 +454,8 @@ const translation = {
     noPrompt: 'プレプロンプト入力にいくつかのプロンプトを記入してみてください',
     userInputField: 'ユーザー入力フィールド',
     noVar: '変数の値を入力してください。新しいセッションが開始されるたびにプロンプトの単語が自動的に置換されます。',
-    chatVarTip:
-      '変数の値を入力してください。新しいセッションが開始されるたびにプロンプトの単語が自動的に置換されます。',
-    completionVarTip:
-      '変数の値を入力してください。質問が送信されるたびにプロンプトの単語が自動的に置換されます。',
+    chatVarTip: '変数の値を入力してください。新しいセッションが開始されるたびにプロンプトの単語が自動的に置換されます。',
+    completionVarTip: '変数の値を入力してください。質問が送信されるたびにプロンプトの単語が自動的に置換されます。',
     previewTitle: 'プロンプトのプレビュー',
     queryTitle: 'クエリ内容',
     queryPlaceholder: 'リクエストテキストを入力してください。',
@@ -474,9 +474,10 @@ const translation = {
       title: 'マルチパスリトリーバル',
       description: 'ユーザーの意図に基づいて、すべてのナレッジをクエリし、複数のソースから関連するテキストを取得し、再順位付け後、ユーザークエリに最適な結果を選択します。再順位付けモデル API の構成が必要です。',
     },
+    embeddingModelRequired: 'Embedding モデルが設定されていない',
     rerankModelRequired: '再順位付けモデルが必要です',
     params: 'パラメータ',
-    top_k: 'トップK',
+    top_k: 'トップ K',
     top_kTip: 'ユーザーの質問に最も類似したチャンクをフィルタリングするために使用されます。システムは、選択したモデルの max_tokens に応じて、動的に Top K の値を調整します。',
     score_threshold: 'スコア閾値',
     score_thresholdTip: 'チャンクフィルタリングの類似性閾値を設定するために使用されます。',
@@ -518,7 +519,7 @@ const translation = {
     promptPlaceholder: 'ここにプロンプトを入力してください',
     tools: {
       name: 'ツール',
-      description: 'ツールを使用すると、インターネットの検索や科学的計算など、LLMの機能を拡張できます',
+      description: 'ツールを使用すると、インターネットの検索や科学的計算など、LLM の機能を拡張できます',
       enabled: '有効',
     },
   },

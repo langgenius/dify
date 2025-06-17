@@ -1,6 +1,6 @@
 from flask import request
-from flask_login import current_user  # type: ignore
-from flask_restful import Resource, marshal, marshal_with, reqparse  # type: ignore
+from flask_login import current_user
+from flask_restful import Resource, marshal, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
@@ -186,7 +186,7 @@ class AnnotationUpdateDeleteApi(Resource):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         AppAnnotationService.delete_app_annotation(app_id, annotation_id)
-        return {"result": "success"}, 200
+        return {"result": "success"}, 204
 
 
 class AnnotationBatchImportApi(Resource):
@@ -208,7 +208,7 @@ class AnnotationBatchImportApi(Resource):
         if len(request.files) > 1:
             raise TooManyFilesError()
         # check file type
-        if not file.filename.endswith(".csv"):
+        if not file.filename or not file.filename.endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
         return AppAnnotationService.batch_import_app_annotations(app_id, file)
 

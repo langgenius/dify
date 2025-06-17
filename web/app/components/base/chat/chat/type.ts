@@ -41,6 +41,7 @@ export type ThoughtItem = {
   tool_input: string
   tool_labels?: { [key: string]: TypeWithI18N }
   message_id: string
+  conversation_id: string
   observation: string
   position: number
   files?: string[]
@@ -142,5 +143,6 @@ export type InputForm = {
   label: string
   variable: any
   required: boolean
+  hide: boolean
   [key: string]: any
 }
