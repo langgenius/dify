@@ -485,7 +485,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API 拡張機能は、Dify のアプリケーション全体での簡単な使用のための設定を簡素化し、集中的な API 管理を提供します。',
     link: '独自の API 拡張機能を開発する方法について学ぶ。',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API 拡張機能を追加',
     selector: {
       title: 'API 拡張機能',
