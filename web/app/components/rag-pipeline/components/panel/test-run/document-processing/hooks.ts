@@ -3,17 +3,7 @@ import type { BaseConfiguration } from '@/app/components/base/form/form-scenario
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import { useStore } from '@/app/components/workflow/store'
 import { useDraftPipelineProcessingParams } from '@/service/use-pipeline'
-import { PipelineInputVarType } from '@/models/pipeline'
-
-const VAR_TYPE_MAP: Record<PipelineInputVarType, BaseFieldType> = {
-  [PipelineInputVarType.textInput]: BaseFieldType.textInput,
-  [PipelineInputVarType.paragraph]: BaseFieldType.paragraph,
-  [PipelineInputVarType.select]: BaseFieldType.select,
-  [PipelineInputVarType.singleFile]: BaseFieldType.file,
-  [PipelineInputVarType.multiFiles]: BaseFieldType.fileList,
-  [PipelineInputVarType.number]: BaseFieldType.numberInput,
-  [PipelineInputVarType.checkbox]: BaseFieldType.checkbox,
-}
+import { VAR_TYPE_MAP } from '@/models/pipeline'
 
 export const useConfigurations = (datasourceNodeId: string) => {
   const pipelineId = useStore(state => state.pipelineId)

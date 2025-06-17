@@ -5,6 +5,7 @@ import type { Dependency } from '@/app/components/plugins/types'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { Viewport } from 'reactflow'
 import type { TransferMethod } from '@/types/app'
+import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 
 export enum DatasourceType {
   localFile = 'local_file',
@@ -117,6 +118,16 @@ export enum PipelineInputVarType {
   singleFile = 'file',
   multiFiles = 'file-list',
   checkbox = 'checkbox',
+}
+
+export const VAR_TYPE_MAP: Record<PipelineInputVarType, BaseFieldType> = {
+  [PipelineInputVarType.textInput]: BaseFieldType.textInput,
+  [PipelineInputVarType.paragraph]: BaseFieldType.paragraph,
+  [PipelineInputVarType.select]: BaseFieldType.select,
+  [PipelineInputVarType.singleFile]: BaseFieldType.file,
+  [PipelineInputVarType.multiFiles]: BaseFieldType.fileList,
+  [PipelineInputVarType.number]: BaseFieldType.numberInput,
+  [PipelineInputVarType.checkbox]: BaseFieldType.checkbox,
 }
 
 export type RAGPipelineVariable = {
