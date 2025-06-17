@@ -275,9 +275,3 @@ class AgentLogEvent(BaseAgentEvent):
 InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent | BaseAgentEvent | BaseLoopEvent
 
 
-class DatasourceRunEvent(BaseModel):
-    status: str = Field(..., description="status")
-    data: Mapping[str, Any] | list = Field(..., description="result")
-    total: Optional[int] = Field(..., description="total")
-    completed: Optional[int] = Field(..., description="completed")
-    time_consuming: Optional[float] = Field(..., description="time consuming")
