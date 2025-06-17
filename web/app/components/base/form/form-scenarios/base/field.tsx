@@ -33,6 +33,7 @@ const BaseField = ({
       allowedFileTypes,
       allowedFileUploadMethods,
       maxLength,
+      unit,
     } = config
 
     const isAllConditionsMet = useStore(form.store, (state) => {
@@ -101,6 +102,7 @@ const BaseField = ({
               placeholder={placeholder}
               max={max}
               min={min}
+              unit={unit}
             />
           )}
         />
