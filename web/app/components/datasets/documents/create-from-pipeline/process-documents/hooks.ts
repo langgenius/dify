@@ -16,7 +16,7 @@ const VAR_TYPE_MAP: Record<PipelineInputVarType, BaseFieldType> = {
 
 export const useConfigurations = (datasourceNodeId: string) => {
   const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
-  const { data: paramsConfig } = usePublishedPipelineProcessingParams({
+  const { data: paramsConfig, isFetching: isFetchingParams } = usePublishedPipelineProcessingParams({
     pipeline_id: pipelineId!,
     node_id: datasourceNodeId,
   })
@@ -61,6 +61,7 @@ export const useConfigurations = (datasourceNodeId: string) => {
   }, [paramsConfig])
 
   return {
+    isFetchingParams,
     initialData,
     configurations,
   }

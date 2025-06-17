@@ -1,3 +1,4 @@
+import React from 'react'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
 import { useConfigurations } from './hooks'
 import Form from './form'
@@ -20,7 +21,7 @@ const ProcessDocuments = ({
   onBack,
   ref,
 }: ProcessDocumentsProps) => {
-  const { initialData, configurations } = useConfigurations(dataSourceNodeId)
+  const { isFetchingParams, initialData, configurations } = useConfigurations(dataSourceNodeId)
   const schema = generateZodSchema(configurations)
 
   return (
@@ -33,9 +34,9 @@ const ProcessDocuments = ({
         onSubmit={onSubmit}
         onPreview={onPreview}
       />
-      <Actions onBack={onBack} onProcess={onProcess} />
+      <Actions runDisabled={isFetchingParams} onBack={onBack} onProcess={onProcess} />
     </div>
   )
 }
 
-export default ProcessDocuments
+export default React.memo(ProcessDocuments)

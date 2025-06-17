@@ -7,11 +7,13 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
 type ActionsProps = {
   formParams: CustomActionsProps
+  runDisabled?: boolean
   onBack: () => void
 }
 
 const Actions = ({
   formParams,
+  runDisabled,
   onBack,
 }: ActionsProps) => {
   const { t } = useTranslation()
@@ -32,7 +34,7 @@ const Actions = ({
         onClick={() => {
           form.handleSubmit()
         }}
-        disabled={isSubmitting || !canSubmit || isRunning}
+        disabled={runDisabled || isSubmitting || !canSubmit || isRunning}
         loading={isSubmitting || isRunning}
       >
         {t('datasetPipeline.operations.process')}

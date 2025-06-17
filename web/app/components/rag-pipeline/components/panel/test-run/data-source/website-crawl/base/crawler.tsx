@@ -54,7 +54,7 @@ const Crawler = ({
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
 
   const usePreProcessingParams = useRef(!isInPipeline ? usePublishedPipelinePreProcessingParams : useDraftPipelinePreProcessingParams)
-  const { data: paramsConfig } = usePreProcessingParams.current({
+  const { data: paramsConfig, isFetching: isFetchingParams } = usePreProcessingParams.current({
     pipeline_id: pipelineId!,
     node_id: nodeId,
   }, !!pipelineId && !!nodeId)
@@ -129,6 +129,10 @@ const Crawler = ({
     setCrawlErrorMessage('')
   }, [runDatasourceNode, nodeId, pipelineId, onCheckedCrawlResultChange, checkCrawlStatus, t])
 
+  const handleSubmit = useCallback((value: Record<string, any>) => {
+    handleRun(value)
+  }, [handleRun])
+
   return (
     <div className='flex flex-col'>
       <Header
@@ -139,10 +143,9 @@ const Crawler = ({
         <Options
           variables={paramsConfig?.variables || []}
           isRunning={isRunning}
+          runDisabled={isFetchingParams}
           controlFoldOptions={controlFoldOptions}
-          onSubmit={(value) => {
-            handleRun(value)
-          }}
+          onSubmit={handleSubmit}
         />
       </div>
       {!isInit && (
