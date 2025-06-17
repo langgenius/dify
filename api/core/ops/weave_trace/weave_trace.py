@@ -6,7 +6,7 @@ from typing import Any, Optional, cast
 
 import wandb
 import weave
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import WeaveConfig
@@ -23,10 +23,10 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.weave_trace.entities.weave_trace_entity import WeaveTraceModel
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.node_entities import NodeRunMetadataKey
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
-from models import Account, App, EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
+from models import EndUser, MessageFile, WorkflowNodeExecutionTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,14 @@ class WeaveDataTrace(BaseTraceInstance):
         self.weave_api_key = weave_config.api_key
         self.project_name = weave_config.project
         self.entity = weave_config.entity
+        self.host = weave_config.host
 
-        # Login with API key first
-        login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+        # Login with API key first, including host if provided
+        if self.host:
+            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
+        else:
+            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+
         if not login_status:
             logger.error("Failed to login to Weights & Biases with the provided API key")
             raise ValueError("Weave login failed")
@@ -133,22 +138,11 @@ class WeaveDataTrace(BaseTraceInstance):
         # through workflow_run_id get all_nodes_execution using repository
         session_factory = sessionmaker(bind=db.engine)
         # Find the app's creator account
-        with Session(db.engine, expire_on_commit=False) as session:
-            # Get the app to find its creator
-            app_id = trace_info.metadata.get("app_id")
-            if not app_id:
-                raise ValueError("No app_id found in trace_info metadata")
+        app_id = trace_info.metadata.get("app_id")
+        if not app_id:
+            raise ValueError("No app_id found in trace_info metadata")
 
-            app = session.query(App).filter(App.id == app_id).first()
-            if not app:
-                raise ValueError(f"App with id {app_id} not found")
-
-            if not app.created_by:
-                raise ValueError(f"App with id {app_id} has no creator (created_by is None)")
-
-            service_account = session.query(Account).filter(Account.id == app.created_by).first()
-            if not service_account:
-                raise ValueError(f"Creator account with id {app.created_by} not found for app {app_id}")
+        service_account = self.get_service_account_with_tenant(app_id)
 
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
@@ -179,7 +173,7 @@ class WeaveDataTrace(BaseTraceInstance):
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
             execution_metadata = node_execution.metadata if node_execution.metadata else {}
-            node_total_tokens = execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS) or 0
+            node_total_tokens = execution_metadata.get(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS) or 0
             attributes = {str(k): v for k, v in execution_metadata.items()}
             attributes.update(
                 {
@@ -397,7 +391,11 @@ class WeaveDataTrace(BaseTraceInstance):
 
     def api_check(self):
         try:
-            login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+            if self.host:
+                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True, host=self.host)
+            else:
+                login_status = wandb.login(key=self.weave_api_key, verify=True, relogin=True)
+
             if not login_status:
                 raise ValueError("Weave login failed")
             else:

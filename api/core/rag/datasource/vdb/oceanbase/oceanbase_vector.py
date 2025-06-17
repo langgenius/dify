@@ -80,6 +80,23 @@ class OceanBaseVector(BaseVector):
 
             self.delete()
 
+            vals = []
+            params = self._client.perform_raw_text_sql("SHOW PARAMETERS LIKE '%ob_vector_memory_limit_percentage%'")
+            for row in params:
+                val = int(row[6])
+                vals.append(val)
+            if len(vals) == 0:
+                raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
+            if any(val == 0 for val in vals):
+                try:
+                    self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
+                except Exception as e:
+                    raise Exception(
+                        "Failed to set ob_vector_memory_limit_percentage. "
+                        + "Maybe the database user has insufficient privilege.",
+                        e,
+                    )
+
             cols = [
                 Column("id", String(36), primary_key=True, autoincrement=False),
                 Column("vector", VECTOR(self._vec_dim)),
@@ -110,22 +127,6 @@ class OceanBaseVector(BaseVector):
                     + "to support fulltext index and vector index in the same table",
                     e,
                 )
-            vals = []
-            params = self._client.perform_raw_text_sql("SHOW PARAMETERS LIKE '%ob_vector_memory_limit_percentage%'")
-            for row in params:
-                val = int(row[6])
-                vals.append(val)
-            if len(vals) == 0:
-                raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
-            if any(val == 0 for val in vals):
-                try:
-                    self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
-                except Exception as e:
-                    raise Exception(
-                        "Failed to set ob_vector_memory_limit_percentage. "
-                        + "Maybe the database user has insufficient privilege.",
-                        e,
-                    )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def _check_hybrid_search_support(self) -> bool:

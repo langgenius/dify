@@ -62,6 +62,7 @@ const translation = {
       settings: 'CÀI ĐẶT NGƯỜI DÙNG',
       empty: 'Nhấp vào nút \'+\' để thêm công cụ. Bạn có thể thêm nhiều công cụ.',
       unsupportedTitle: 'Hành động không được hỗ trợ',
+      toolSetting: 'Cài đặt công cụ',
     },
     switchVersion: 'Chuyển đổi phiên bản',
     endpointDisableTip: 'Tắt điểm cuối',
@@ -197,7 +198,6 @@ const translation = {
   endpointsEnabled: '{{num}} bộ điểm cuối được kích hoạt',
   install: '{{num}} lượt cài đặt',
   findMoreInMarketplace: 'Tìm thêm trong Marketplace',
-  submitPlugin: 'Gửi plugin',
   search: 'Tìm kiếm',
   searchCategories: 'Danh mục tìm kiếm',
   installPlugin: 'Cài đặt plugin',
@@ -210,6 +210,8 @@ const translation = {
     title: 'Plugin',
   },
   difyVersionNotCompatible: 'Phiên bản Dify hiện tại không tương thích với plugin này, vui lòng nâng cấp lên phiên bản tối thiểu cần thiết: {{minimalDifyVersion}}',
+  requestAPlugin: 'Yêu cầu một plugin',
+  publishPlugins: 'Xuất bản plugin',
 }
 
 export default translation

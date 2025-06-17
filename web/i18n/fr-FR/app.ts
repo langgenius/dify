@@ -207,7 +207,45 @@ const translation = {
     modelNotSupported: 'Modèle non pris en charge',
     moreFillTip: 'Affichage d\'un maximum de 10 niveaux d\'imbrication',
     configure: 'Configurer',
+    structured: 'systématique',
   },
+  accessItemsDescription: {
+    anyone: 'Tout le monde peut accéder à l\'application web.',
+    specific: 'Seules des groupes ou membres spécifiques peuvent accéder à l\'application web.',
+    organization: 'Toute personne dans l\'organisation peut accéder à l\'application web.',
+    external: 'Seuls les utilisateurs externes authentifiés peuvent accéder à l\'application Web.',
+  },
+  accessControlDialog: {
+    accessItems: {
+      anyone: 'Quiconque avec le lien',
+      specific: 'Groupes ou membres spécifiques',
+      organization: 'Seuls les membres au sein de l\'entreprise',
+      external: 'Utilisateurs externes authentifiés',
+    },
+    operateGroupAndMember: {
+      searchPlaceholder: 'Rechercher des groupes et des membres',
+      allMembers: 'Tous les membres',
+      expand: 'Développer',
+      noResult: 'Aucun résultat',
+    },
+    title: 'Contrôle d\'accès à l\'application Web',
+    description: 'Définir les autorisations d\'accès à l\'application web',
+    accessLabel: 'Qui a accès',
+    groups_one: '{{count}} GROUPE',
+    groups_other: '{{count}} GROUPES',
+    members_one: '{{count}} MEMBRE',
+    members_other: '{{count}} MEMBRES',
+    noGroupsOrMembers: 'Aucun groupe ou membre sélectionné',
+    webAppSSONotEnabledTip: 'Veuillez contacter l\'administrateur de l\'entreprise pour configurer la méthode d\'authentification de l\'application web.',
+    updateSuccess: 'Mise à jour réussie',
+  },
+  publishApp: {
+    title: 'Qui peut accéder à l\'application web',
+    notSet: 'Non défini',
+    notSetDesc: 'Actuellement, personne ne peut accéder à l\'application web. Veuillez définir les autorisations.',
+  },
+  accessControl: 'Contrôle d\'accès à l\'application Web',
+  noAccessPermission: 'Pas de permission d\'accéder à l\'application web',
 }
 
 export default translation

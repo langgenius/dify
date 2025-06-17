@@ -60,7 +60,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='files' type='array[object]' key='files'>
           上传的文件。
           - `type` (string) 支持类型：图片 `image`（目前仅支持图片格式） 。
-          - `transfer_method` (string)  传递方式:
+          - `transfer_method` (string)  传递方式：
             - `remote_url`: 图片地址。
             - `local_file`: 上传文件。
           - `url` 图片地址。（仅当传递方式为 `remote_url` 时）。
@@ -266,7 +266,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
   ### Request Body
   - `user` (string) Required
-    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。API 无法访问 WebApp 创建的会话。
   ### Response
   - `result` (string) 固定返回 success
   </Col>
@@ -485,6 +485,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   - `name` (string) 应用名称
   - `description` (string) 应用描述
   - `tags` (array[string]) 应用标签
+  - `mode` (string) 应用模式
+  - 'author_name' (string) 作者名称
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -501,7 +503,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>
@@ -622,10 +626,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   用于获取应用的 WebApp 设置
   ### Response
   - `title` (string) WebApp 名称
-  - `chat_color_theme` (string) 聊天颜色主题, hex 格式
+  - `chat_color_theme` (string) 聊天颜色主题，hex 格式
   - `chat_color_theme_inverted` (bool) 聊天颜色主题是否反转
-  - `icon_type` (string) 图标类型, `emoji`-表情, `image`-图片
-  - `icon` (string) 图标, 如果是 `emoji` 类型, 则是 emoji 表情符号, 如果是 `image` 类型, 则是图片 URL
+  - `icon_type` (string) 图标类型，`emoji`-表情，`image`-图片
+  - `icon` (string) 图标，如果是 `emoji` 类型，则是 emoji 表情符号，如果是 `image` 类型，则是图片 URL
   - `icon_background` (string) hex 格式的背景色
   - `icon_url` (string) 图标 URL
   - `description` (string) 描述
@@ -879,10 +883,10 @@ ___
         动作，只能是 'enable' 或 'disable'
       </Property>
       <Property name='embedding_provider_name' type='string' key='embedding_provider_name'>
-        指定的嵌入模型提供商, 必须先在系统内设定好接入的模型，对应的是provider字段
+        指定的嵌入模型提供商，必须先在系统内设定好接入的模型，对应的是 provider 字段
       </Property>
       <Property name='embedding_model_name' type='string' key='embedding_model_name'>
-        指定的嵌入模型，对应的是model字段
+        指定的嵌入模型，对应的是 model 字段
       </Property>
       <Property name='score_threshold' type='number' key='score_threshold'>
         相似度阈值，当相似度大于该阈值时，系统会自动回复，否则不回复
@@ -890,8 +894,8 @@ ___
     </Properties>
   </Col>
   <Col sticky>
-    嵌入模型的提供商和模型名称可以通过以下接口获取：v1/workspaces/current/models/model-types/text-embedding， 具体见：通过 API 维护知识库。 使用的Authorization是Dataset的API Token。
-    该接口是异步执行，所以会返回一个job_id，通过查询job状态接口可以获取到最终的执行结果。
+    嵌入模型的提供商和模型名称可以通过以下接口获取：v1/workspaces/current/models/model-types/text-embedding，具体见：通过 API 维护知识库。使用的 Authorization 是 Dataset 的 API Token。
+    该接口是异步执行，所以会返回一个 job_id，通过查询 job 状态接口可以获取到最终的执行结果。
     <CodeGroup
       title="Request"
       tag="POST"

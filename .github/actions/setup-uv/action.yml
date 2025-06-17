@@ -8,7 +8,7 @@ inputs:
   uv-version:
     description: UV version to set up
     required: true
-    default: '0.6.14'
+    default: '~=0.7.11'
   uv-lockfile:
     description: Path to the UV lockfile to restore cache from
     required: true

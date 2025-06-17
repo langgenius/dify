@@ -31,6 +31,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   const monacoRef = useRef<any>(null)
   const editorRef = useRef<any>(null)
   const [isMounted, setIsMounted] = React.useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (monacoRef.current) {
@@ -83,6 +84,18 @@ const CodeEditor: FC<CodeEditorProps> = ({
       return 'light-theme'
     return 'dark-theme'
   }, [theme])
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(() => {
+      editorRef.current?.layout()
+    })
+
+    if (containerRef.current)
+      resizeObserver.observe(containerRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
 
   return (
     <div className={classNames('flex flex-col h-full bg-components-input-bg-normal overflow-hidden', hideTopMenu && 'pt-2', className)}>
@@ -114,9 +127,8 @@ const CodeEditor: FC<CodeEditorProps> = ({
           </div>
         </div>
       )}
-      <div className={classNames('relative', editorWrapperClassName)}>
+      <div className={classNames('relative overflow-hidden', editorWrapperClassName)}>
         <Editor
-          height='100%'
           defaultLanguage='json'
           theme={isMounted ? editorTheme : 'default-theme'} // sometimes not load the default theme
           value={value}
@@ -130,7 +142,6 @@ const CodeEditor: FC<CodeEditorProps> = ({
             scrollBeyondLastLine: false,
             wordWrap: 'on',
             wrappingIndent: 'same',
-            // Add these options
             overviewRulerBorder: false,
             hideCursorInOverviewRuler: true,
             renderLineHighlightOnlyWhenFocus: false,

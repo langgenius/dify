@@ -1,6 +1,5 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { RiCloseLine, RiInformation2Fill } from '@remixicon/react'
 import DialogWrapper from '@/app/components/base/features/new-feature-panel/dialog-wrapper'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -19,8 +18,7 @@ import Moderation from '@/app/components/base/features/new-feature-panel/moderat
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 import type { PromptVariable } from '@/models/debug'
 import type { InputVar } from '@/app/components/workflow/types'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import { useDocLink } from '@/context/i18n'
 
 type Props = {
   show: boolean
@@ -48,7 +46,7 @@ const NewFeaturePanel = ({
   onAutoAddPromptVariable,
 }: Props) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
 
@@ -80,7 +78,7 @@ const NewFeaturePanel = ({
                   <span>{isChatMode ? t('workflow.common.fileUploadTip') : t('workflow.common.ImageUploadLegacyTip')}</span>
                   <a
                     className='text-text-accent'
-                    href={`https://docs.dify.ai/${locale === LanguagesSupported[1] ? 'v/zh-hans/' : ''}guides/workflow/bulletin`}
+                    href={docLink('/guides/workflow/bulletin')}
                     target='_blank' rel='noopener noreferrer'
                   >{t('workflow.common.featuresDocLink')}</a>
                 </div>

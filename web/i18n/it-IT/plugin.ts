@@ -62,6 +62,7 @@ const translation = {
       descriptionLabel: 'Descrizione dell\'utensile',
       auto: 'Automatico',
       paramsTip2: 'Quando \'Automatico\' è disattivato, viene utilizzato il valore predefinito.',
+      toolSetting: 'Impostazioni degli strumenti',
     },
     modelNum: '{{num}} MODELLI INCLUSI',
     endpointModalTitle: 'Endpoint di configurazione',
@@ -202,7 +203,6 @@ const translation = {
   install: '{{num}} installazioni',
   findMoreInMarketplace: 'Scopri di più su Marketplace',
   installPlugin: 'Installa il plugin',
-  submitPlugin: 'Invia plugin',
   searchPlugins: 'Plugin di ricerca',
   search: 'Ricerca',
   installFrom: 'INSTALLA DA',
@@ -210,6 +210,8 @@ const translation = {
     title: 'Plugin',
   },
   difyVersionNotCompatible: 'L\'attuale versione di Dify non è compatibile con questo plugin, si prega di aggiornare alla versione minima richiesta: {{minimalDifyVersion}}',
+  requestAPlugin: 'Richiedi un plugin',
+  publishPlugins: 'Pubblicare plugin',
 }
 
 export default translation

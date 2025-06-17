@@ -20,7 +20,7 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
   return (
     <CodeEditor
       readOnly={readonly}
-      className={cn('rounded-xl', className)}
+      className={cn('grow rounded-xl', className)}
       editorWrapperClassName='grow'
       value={schema}
       onUpdate={onUpdate}

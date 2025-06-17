@@ -62,6 +62,7 @@ const translation = {
       descriptionPlaceholder: 'Scurtă descriere a scopului instrumentului, de exemplu, obțineți temperatura pentru o anumită locație.',
       toolLabel: 'Unealtă',
       uninstalledTitle: 'Instrumentul nu este instalat',
+      toolSetting: 'Setările instrumentului',
     },
     endpointDeleteContent: 'Doriți să eliminați {{name}}?',
     strategyNum: '{{num}} {{strategie}} INCLUS',
@@ -191,7 +192,6 @@ const translation = {
     installingWithSuccess: 'Instalarea pluginurilor {{installingLength}}, {{successLength}} succes.',
     installing: 'Instalarea pluginurilor {{installingLength}}, 0 terminat.',
   },
-  submitPlugin: 'Trimite plugin',
   fromMarketplace: 'Din Marketplace',
   from: 'Din',
   findMoreInMarketplace: 'Află mai multe în Marketplace',
@@ -210,6 +210,8 @@ const translation = {
     title: 'Pluginuri',
   },
   difyVersionNotCompatible: 'Versiunea curentă Dify nu este compatibilă cu acest plugin, vă rugăm să faceți upgrade la versiunea minimă necesară: {{minimalDifyVersion}}',
+  requestAPlugin: 'Solicitați un plugin',
+  publishPlugins: 'Publicați pluginuri',
 }
 
 export default translation

@@ -62,6 +62,7 @@ const translation = {
       uninstalledTitle: 'Tool nicht installiert',
       toolLabel: 'Werkzeug',
       uninstalledContent: 'Dieses Plugin wird aus dem lokalen/GitHub-Repository installiert. Bitte nach der Installation verwenden.',
+      toolSetting: 'Werkzeugs Einstellungen',
     },
     strategyNum: '{{num}} {{Strategie}} IINKLUSIVE',
     configureApp: 'App konfigurieren',
@@ -194,7 +195,6 @@ const translation = {
   allCategories: 'Alle Kategorien',
   install: '{{num}} Installationen',
   installAction: 'Installieren',
-  submitPlugin: 'Plugin einreichen',
   from: 'Von',
   fromMarketplace: 'Aus dem Marketplace',
   search: 'Suchen',
@@ -210,6 +210,8 @@ const translation = {
     title: 'Plugins',
   },
   difyVersionNotCompatible: 'Die aktuelle Dify-Version ist mit diesem Plugin nicht kompatibel, bitte aktualisieren Sie auf die erforderliche Mindestversion: {{minimalDifyVersion}}',
+  requestAPlugin: 'Ein Plugin anfordern',
+  publishPlugins: 'Plugins veröffentlichen',
 }
 
 export default translation

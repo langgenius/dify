@@ -354,7 +354,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   }
 
   useEffect(() => {
-    adjustModalWidth()
+    const raf = requestAnimationFrame(adjustModalWidth)
+    return () => cancelAnimationFrame(raf)
   }, [])
 
   return (

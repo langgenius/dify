@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     from models.model import AppMode
 
 import sqlalchemy as sa
-from sqlalchemy import UniqueConstraint, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Index, PrimaryKeyConstraint, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
@@ -377,18 +377,6 @@ class Workflow(Base):
         )
 
 
-class WorkflowRunStatus(StrEnum):
-    """
-    Workflow Run Status Enum
-    """
-
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    STOPPED = "stopped"
-    PARTIAL_SUCCEEDED = "partial-succeeded"
-
-
 class WorkflowRun(Base):
     """
     Workflow Run
@@ -449,12 +437,12 @@ class WorkflowRun(Base):
     error: Mapped[Optional[str]] = mapped_column(db.Text)
     elapsed_time: Mapped[float] = mapped_column(db.Float, nullable=False, server_default=sa.text("0"))
     total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"))
-    total_steps: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"))
+    total_steps: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"), nullable=True)
     created_by_role: Mapped[str] = mapped_column(db.String(255))  # account, end_user
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[Optional[datetime]] = mapped_column(db.DateTime)
-    exceptions_count: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"))
+    exceptions_count: Mapped[int] = mapped_column(db.Integer, server_default=db.text("0"), nullable=True)
 
     @property
     def created_by_account(self):
@@ -553,19 +541,7 @@ class WorkflowNodeExecutionTriggeredFrom(StrEnum):
     WORKFLOW_RUN = "workflow-run"
 
 
-class WorkflowNodeExecutionStatus(StrEnum):
-    """
-    Workflow Node Execution Status Enum
-    """
-
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    FAILED = "failed"
-    EXCEPTION = "exception"
-    RETRY = "retry"
-
-
-class WorkflowNodeExecution(Base):
+class WorkflowNodeExecutionModel(Base):
     """
     Workflow Node Execution
 
@@ -614,28 +590,48 @@ class WorkflowNodeExecution(Base):
     """
 
     __tablename__ = "workflow_node_executions"
-    __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
-        db.Index(
-            "workflow_node_execution_workflow_run_idx",
-            "tenant_id",
-            "app_id",
-            "workflow_id",
-            "triggered_from",
-            "workflow_run_id",
-        ),
-        db.Index(
-            "workflow_node_execution_node_run_idx", "tenant_id", "app_id", "workflow_id", "triggered_from", "node_id"
-        ),
-        db.Index(
-            "workflow_node_execution_id_idx",
-            "tenant_id",
-            "app_id",
-            "workflow_id",
-            "triggered_from",
-            "node_execution_id",
-        ),
-    )
+
+    @declared_attr
+    def __table_args__(cls):  # noqa
+        return (
+            PrimaryKeyConstraint("id", name="workflow_node_execution_pkey"),
+            Index(
+                "workflow_node_execution_workflow_run_idx",
+                "tenant_id",
+                "app_id",
+                "workflow_id",
+                "triggered_from",
+                "workflow_run_id",
+            ),
+            Index(
+                "workflow_node_execution_node_run_idx",
+                "tenant_id",
+                "app_id",
+                "workflow_id",
+                "triggered_from",
+                "node_id",
+            ),
+            Index(
+                "workflow_node_execution_id_idx",
+                "tenant_id",
+                "app_id",
+                "workflow_id",
+                "triggered_from",
+                "node_execution_id",
+            ),
+            Index(
+                # The first argument is the index name,
+                # which we leave as `None`` to allow auto-generation by the ORM.
+                None,
+                cls.tenant_id,
+                cls.workflow_id,
+                cls.node_id,
+                # MyPy may flag the following line because it doesn't recognize that
+                # the `declared_attr` decorator passes the receiving class as the first
+                # argument to this method, allowing us to reference class attributes.
+                cls.created_at.desc(),  # type: ignore
+            ),
+        )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id: Mapped[str] = mapped_column(StringUUID)
@@ -909,13 +905,28 @@ class WorkflowDraftVariable(Base):
 
     selector: Mapped[str] = mapped_column(sa.String(255), nullable=False, name="selector")
 
+    # The data type of this variable's value
     value_type: Mapped[SegmentType] = mapped_column(EnumText(SegmentType, length=20))
-    # JSON string
+
+    # The variable's value serialized as a JSON string
     value: Mapped[str] = mapped_column(sa.Text, nullable=False, name="value")
 
-    # visible
+    # Controls whether the variable should be displayed in the variable inspection panel
     visible: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+
+    # Determines whether this variable can be modified by users
     editable: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+
+    # The `node_execution_id` field identifies the workflow node execution that created this variable.
+    # It corresponds to the `id` field in the `WorkflowNodeExecutionModel` model.
+    #
+    # This field is not `None` for system variables and node variables, and is  `None`
+    # for conversation variables.
+    node_execution_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+    )
 
     def get_selector(self) -> list[str]:
         selector = json.loads(self.selector)

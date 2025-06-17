@@ -309,6 +309,7 @@ const translation = {
     'labelName': 'Nazwa etykiety',
     'inputPlaceholder': 'Proszę wpisać',
     'required': 'Wymagane',
+    'hide': 'Ukryj',
     'errorMsg': {
       varNameRequired: 'Wymagana nazwa zmiennej',
       labelNameRequired: 'Wymagana nazwa etykiety',

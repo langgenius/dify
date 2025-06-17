@@ -79,6 +79,7 @@ import {
 } from '@/utils'
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import { supportFunctionCall } from '@/utils/tool-call'
+import { MittProvider } from '@/context/mitt-context'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -908,7 +909,7 @@ const Configuration: FC = () => {
     }}
     >
       <FeaturesProvider features={featuresData}>
-        <>
+        <MittProvider>
           <div className="flex h-full flex-col">
             <div className='relative flex h-[200px] grow pt-14'>
               {/* Header */}
@@ -1060,7 +1061,7 @@ const Configuration: FC = () => {
             />
           )}
           <PluginDependency />
-        </>
+        </MittProvider>
       </FeaturesProvider>
     </ConfigContext.Provider>
   )

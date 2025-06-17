@@ -1,6 +1,6 @@
 from typing import Optional, Protocol
 
-from core.workflow.entities.workflow_execution_entities import WorkflowExecution
+from core.workflow.entities.workflow_execution import WorkflowExecution
 
 
 class WorkflowExecutionRepository(Protocol):
