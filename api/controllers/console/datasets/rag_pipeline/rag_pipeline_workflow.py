@@ -406,10 +406,10 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         args = parser.parse_args()
 
         inputs = args.get("inputs")
-        if inputs == None:
+        if inputs is None:
             raise ValueError("missing inputs")
         datasource_type = args.get("datasource_type")
-        if datasource_type == None:
+        if datasource_type is None:
             raise ValueError("missing datasource_type")
 
         rag_pipeline_service = RagPipelineService()
