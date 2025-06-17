@@ -2,13 +2,12 @@ import logging
 import time
 from datetime import datetime
 
-from sqlalchemy import asc, func, or_
-
 import app
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import App, EndUser, Message, db
 from services.app_generate_service import AppGenerateService
+from sqlalchemy import asc, func, or_
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -67,10 +66,12 @@ def update_user_profile_for_appid(users_to_update: list[EndUser]):
                 new_messages, latest_messages_created_at = fetch_new_messages_for_user(
                     user
                 )
-                process_user_memory(user, new_messages)
-                process_user_health_summary(user, new_messages)
-                user.profile_updated_at = latest_messages_created_at
-                updated_users_count += 1
+
+                if len(new_messages) > 0:
+                    process_user_memory(user, new_messages)
+                    process_user_health_summary(user, new_messages)
+                    user.profile_updated_at = latest_messages_created_at
+                    updated_users_count += 1
 
             # Commit after each batch
             db.session.commit()
@@ -130,14 +131,14 @@ def fetch_new_messages_for_user(user: EndUser) -> tuple[str, datetime]:
         )
     new_messages = message_query.order_by(asc(Message.created_at)).all()
 
+    if len(new_messages) == 0:
+        logger.warning(f"No new messages for user id {user.id}")
+        return "", datetime.now()
+
     # Format messages for input - safely handle missing query attributes
     message_texts = []
     for msg in new_messages:
         message_texts.append(f"user: {msg.query}\nassistant: {msg.answer}\n")
-
-    # If no valid messages remain, exit early
-    if not message_texts:
-        logger.warning(f"No valid message content for user id {user.id}")
 
     return "\n".join(message_texts), new_messages[-1].created_at
 
