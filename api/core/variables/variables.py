@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -104,7 +104,7 @@ class RAGPipelineVariable(BaseModel):
     max_length: int | None = Field(
         description="max length, applicable to text-input, paragraph, and file-list", default=0
     )
-    default_value: str | None = Field(description="default value", default="")
+    default_value: Any = Field(description="default value", default="")
     placeholder: str | None = Field(description="placeholder", default="")
     unit: str | None = Field(description="unit, applicable to Number", default="")
     tooltips: str | None = Field(description="helpful text", default="")

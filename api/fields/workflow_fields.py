@@ -47,6 +47,7 @@ pipeline_variable_fields = {
     "belong_to_node_id": fields.String,
     "max_length": fields.Integer,
     "required": fields.Boolean,
+    "unit": fields.String,
     "default_value": fields.Raw,
     "options": fields.List(fields.String),
     "placeholder": fields.String,
