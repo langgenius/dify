@@ -169,7 +169,7 @@ class PluginVerification(BaseModel):
     authorized_category: AuthorizedCategory = Field(description="The authorized category of the plugin.")
 
 
-class PluginUploadResponse(BaseModel):
+class PluginDecodeResponse(BaseModel):
     unique_identifier: str = Field(description="The unique identifier of the plugin.")
     manifest: PluginDeclaration
     verification: Optional[PluginVerification] = Field(default=None, description="Basic verification information")

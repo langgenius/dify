@@ -9,7 +9,7 @@ from core.plugin.entities.plugin import (
     PluginInstallation,
     PluginInstallationSource,
 )
-from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStartResponse, PluginUploadResponse
+from core.plugin.entities.plugin_daemon import PluginDecodeResponse, PluginInstallTask, PluginInstallTaskStartResponse
 from core.plugin.impl.base import BasePluginClient
 
 
@@ -39,7 +39,7 @@ class PluginInstaller(BasePluginClient):
         tenant_id: str,
         pkg: bytes,
         verify_signature: bool = False,
-    ) -> PluginUploadResponse:
+    ) -> PluginDecodeResponse:
         """
         Upload a plugin package and return the plugin unique identifier.
         """
@@ -54,7 +54,7 @@ class PluginInstaller(BasePluginClient):
         return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/management/install/upload/package",
-            PluginUploadResponse,
+            PluginDecodeResponse,
             files=body,
             data=data,
         )
@@ -160,6 +160,18 @@ class PluginInstaller(BasePluginClient):
             f"plugin/{tenant_id}/management/fetch/manifest",
             PluginDeclaration,
             params={"plugin_unique_identifier": plugin_unique_identifier},
+        )
+
+    def decode_plugin_from_identifier(self, tenant_id: str, plugin_unique_identifier: str) -> PluginDecodeResponse:
+        """
+        Decode a plugin from an identifier.
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/decode/from_identifier",
+            PluginDecodeResponse,
+            data={"plugin_unique_identifier": plugin_unique_identifier},
+            headers={"Content-Type": "application/json"},
         )
 
     def fetch_plugin_installation_by_ids(

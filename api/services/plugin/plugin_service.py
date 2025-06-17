@@ -17,7 +17,7 @@ from core.plugin.entities.plugin import (
     PluginInstallation,
     PluginInstallationSource,
 )
-from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadResponse, PluginVerification
+from core.plugin.entities.plugin_daemon import PluginDecodeResponse, PluginInstallTask, PluginVerification
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
@@ -284,7 +284,7 @@ class PluginService:
         )
 
     @staticmethod
-    def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginUploadResponse:
+    def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginDecodeResponse:
         """
         Upload plugin package files
 
@@ -304,7 +304,7 @@ class PluginService:
     @staticmethod
     def upload_pkg_from_github(
         tenant_id: str, repo: str, version: str, package: str, verify_signature: bool = False
-    ) -> PluginUploadResponse:
+    ) -> PluginDecodeResponse:
         """
         Install plugin from github release package files,
         returns plugin_unique_identifier
