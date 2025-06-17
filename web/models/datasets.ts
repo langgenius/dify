@@ -764,3 +764,18 @@ export type CreateDatasetResponse = {
   updated_at: number
   pipeline_id: string
 }
+
+export type NotionPagePreviewRequest = {
+  workspaceID: string
+  pageID: string
+  pageType: string
+}
+
+export type NotionPagePreviewResponse = {
+  content: string
+}
+
+export type IndexingStatusBatchRequest = {
+  datasetId: string
+  batchId: string
+}

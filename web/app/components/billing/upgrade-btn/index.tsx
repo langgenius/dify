@@ -50,8 +50,8 @@ const UpgradeBtn: FC<Props> = ({
 
   return (
     <PremiumBadge
-      size="m"
-      color="blue"
+      size='m'
+      color='blue'
       allowHover={true}
       onClick={onClick}
     >

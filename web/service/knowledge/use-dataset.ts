@@ -1,5 +1,16 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import type { DataSet, DataSetListResponse, DatasetListRequest, RelatedAppResponse } from '@/models/datasets'
+import type { MutationOptions } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query'
+import type {
+  DataSet,
+  DataSetListResponse,
+  DatasetListRequest,
+  IndexingStatusBatchRequest,
+  IndexingStatusBatchResponse,
+  NotionPagePreviewRequest,
+  NotionPagePreviewResponse,
+  ProcessRuleResponse,
+  RelatedAppResponse,
+} from '@/models/datasets'
 import { get } from '../base'
 import { useReset } from '../use-base'
 import qs from 'qs'
@@ -45,21 +56,30 @@ export const useDatasetRelatedApps = (datasetId: string) => {
   })
 }
 
-type NotionPagePreviewRequest = {
-  workspaceID: string
-  pageID: string
-  pageType: string
-}
-
-type NotionPagePreviewResponse = {
-  content: string
-}
-
 export const usePreviewNotionPage = (params: NotionPagePreviewRequest) => {
   const { workspaceID, pageID, pageType } = params
   return useQuery({
     queryKey: [NAME_SPACE, 'preview-notion-page'],
     queryFn: () => get<NotionPagePreviewResponse>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`),
     enabled: !!workspaceID && !!pageID && !!pageType,
+  })
+}
+
+export const useIndexingStatusBatch = (
+  params: IndexingStatusBatchRequest,
+  mutationOptions: MutationOptions<IndexingStatusBatchResponse, Error> = {},
+) => {
+  const { datasetId, batchId } = params
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'indexing-status-batch', datasetId, batchId],
+    mutationFn: () => get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`),
+    ...mutationOptions,
+  })
+}
+
+export const useProcessRule = (documentId: string) => {
+  return useQuery<ProcessRuleResponse>({
+    queryKey: [NAME_SPACE, 'process-rule', documentId],
+    queryFn: () => get<ProcessRuleResponse>('/datasets/process-rule', { params: { document_id: documentId } }),
   })
 }
