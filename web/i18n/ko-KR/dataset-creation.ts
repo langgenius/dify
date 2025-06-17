@@ -52,7 +52,6 @@ const translation = {
       failed: '생성에 실패했습니다',
     },
     website: {
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       limit: '한계',
       options: '옵션',
       firecrawlDoc: 'Firecrawl 문서',

@@ -80,7 +80,6 @@ const translation = {
       run: 'Run',
       firecrawlTitle: 'Extract web content with 🔥Firecrawl',
       firecrawlDoc: 'Firecrawl docs',
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       watercrawlTitle: 'Extract web content with Watercrawl',
       watercrawlDoc: 'Watercrawl docs',
       jinaReaderTitle: 'Convert the entire site to Markdown',

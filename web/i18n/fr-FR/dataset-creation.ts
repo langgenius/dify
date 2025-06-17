@@ -61,7 +61,6 @@ const translation = {
       preview: 'Aperçu',
       crawlSubPage: 'Explorer les sous-pages',
       configure: 'Configurer',
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       maxDepth: 'Profondeur maximale',
       fireCrawlNotConfigured: 'Firecrawl n’est pas configuré',
       firecrawlTitle: 'Extraire du contenu web avec 🔥Firecrawl',

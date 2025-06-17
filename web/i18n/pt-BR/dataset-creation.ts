@@ -58,7 +58,6 @@ const translation = {
       crawlSubPage: 'Rastrear subpáginas',
       selectAll: 'Selecionar tudo',
       resetAll: 'Redefinir tudo',
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       includeOnlyPaths: 'Incluir apenas caminhos',
       configure: 'Configurar',
       limit: 'Limite',
