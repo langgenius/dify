@@ -17,6 +17,8 @@ export type PanelSliceShape = {
   setPanelMenu: (panelMenu: PanelSliceShape['panelMenu']) => void
   showVariableInspectPanel: boolean
   setShowVariableInspectPanel: (showVariableInspectPanel: boolean) => void
+  initShowLastRunTab: boolean
+  setInitShowLastRunTab: (initShowLastRunTab: boolean) => void
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
@@ -33,4 +35,6 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
   setPanelMenu: panelMenu => set(() => ({ panelMenu })),
   showVariableInspectPanel: false,
   setShowVariableInspectPanel: showVariableInspectPanel => set(() => ({ showVariableInspectPanel })),
+  initShowLastRunTab: false,
+  setInitShowLastRunTab: initShowLastRunTab => set(() => ({ initShowLastRunTab })),
 })

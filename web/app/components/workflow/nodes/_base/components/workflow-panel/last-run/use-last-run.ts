@@ -1,6 +1,6 @@
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import type { Params as OneStepRunParams } from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { TabType } from '../tab'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import useStartSingleRunFormParams from '@/app/components/workflow/nodes/start/use-single-run-form-params'
@@ -31,6 +31,7 @@ import {
 } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { useInvalidLastRun } from '@/service/use-workflow'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
@@ -185,8 +186,17 @@ const useLastRun = <T>({
       },
     })
   }
+  const workflowStore = useWorkflowStore()
+  const { setInitShowLastRunTab } = workflowStore.getState()
+  const initShowLastRunTab = useStore(s => s.initShowLastRunTab)
+  const [tabType, setTabType] = useState<TabType>(initShowLastRunTab ? TabType.lastRun : TabType.settings)
+  useEffect(() => {
+    if(initShowLastRunTab)
+      setTabType(TabType.lastRun)
 
-  const [tabType, setTabType] = useState<TabType>(TabType.settings)
+    setInitShowLastRunTab(false)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initShowLastRunTab])
   const invalidLastRun = useInvalidLastRun(appId!, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {

@@ -289,7 +289,9 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
   }, [store, workflowStore, getNodesReadOnly])
 
-  const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean) => {
+  const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean, initShowLastRunTab?: boolean) => {
+    if(initShowLastRunTab)
+      workflowStore.setState({ initShowLastRunTab: true })
     const {
       getNodes,
       setNodes,

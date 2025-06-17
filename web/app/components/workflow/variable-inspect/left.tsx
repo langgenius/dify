@@ -99,7 +99,7 @@ const Left = ({
             nodeData={group}
             currentVar={currentNodeVar}
             handleSelect={handleVarSelect}
-            handleView={() => handleNodeSelect(group.nodeId)}
+            handleView={() => handleNodeSelect(group.nodeId, false, true)}
             handleClear={() => handleClearNode(group.nodeId)}
           />
         ))}
