@@ -94,9 +94,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
             - <code>semantic_search</code> 语义检索
             - <code>full_text_search</code> 全文检索
           - <code>reranking_enable</code> (bool) 是否开启rerank
-          - <code>reranking_mode</code> (string) rerank模式
-            - <code>reranking_model</code> Rerank 模型
+          - <code>reranking_mode</code> (String) 混合检索
             - <code>weighted_score</code> 权重设置
+            - <code>reranking_model</code> Rerank 模型
           - <code>reranking_model</code> (object) Rerank 模型配置
             - <code>reranking_provider_name</code> (string) Rerank 模型的提供商
             - <code>reranking_model_name</code> (string) Rerank 模型的名称
@@ -291,7 +291,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
         "hit_count": 0,
         "doc_form": "text_model"
       },
-      "batch": "20230921150427533684"
+      "batch": ""
     }
     ```
     </CodeGroup>
@@ -2332,7 +2332,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
                    "zh_Hans": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_large/zh_Hans",
                    "en_US": "http://127.0.0.1:5001/console/api/workspaces/current/model-providers/zhipuai/icon_large/en_US"
                },
-               "status": "pending",
+               "status": "active",
                "models": [
                    {
                        "model": "embedding-3",
