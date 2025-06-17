@@ -52,6 +52,7 @@ from fields.document_fields import (
 )
 from libs.login import login_required
 from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
+from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from tasks.add_document_to_index_task import add_document_to_index_task
@@ -1090,6 +1091,35 @@ class WebsiteDocumentSyncApi(DocumentResource):
         DocumentService.sync_website_document(dataset_id, document)
 
         return {"result": "success"}, 200
+
+
+class DocumentPipelineExecutionLogApi(DocumentResource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, document_id):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        log = (
+            db.session.query(DocumentPipelineExecutionLog)
+            .filter_by(document_id=document_id)
+            .order_by(DocumentPipelineExecutionLog.created_at.desc())
+            .first()
+        )
+        if not log:
+            return {"datasource_info": None, "datasource_type": None, "input_data": None}, 200
+        return {
+            "datasource_info": log.datasource_info,
+            "datasource_type": log.datasource_type,
+            "input_data": log.input_data,
+        }, 200
 
 
 api.add_resource(GetProcessRuleApi, "/datasets/process-rule")

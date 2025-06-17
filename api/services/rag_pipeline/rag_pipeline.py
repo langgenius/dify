@@ -526,20 +526,21 @@ class RagPipelineService:
         datasource_provider_service = DatasourceProviderService()
         credentials = datasource_provider_service.get_real_datasource_credentials(
             tenant_id=pipeline.tenant_id,
-            provider=datasource_node_data.get('provider_name'),
-            plugin_id=datasource_node_data.get('plugin_id'),
+            provider=datasource_node_data.get("provider_name"),
+            plugin_id=datasource_node_data.get("plugin_id"),
         )
         if credentials:
             datasource_runtime.runtime.credentials = credentials[0].get("credentials")
         match datasource_type:
             case DatasourceProviderType.ONLINE_DOCUMENT:
                 datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-                online_document_result: Generator[OnlineDocumentPagesMessage, None, None] =\
+                online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
                     datasource_runtime.get_online_document_pages(
                         user_id=account.id,
                         datasource_parameters=user_inputs,
                         provider_type=datasource_runtime.datasource_provider_type(),
                     )
+                )
                 start_time = time.time()
                 for message in online_document_result:
                     end_time = time.time()
@@ -786,9 +787,7 @@ class RagPipelineService:
             raise ValueError("Datasource node data not found")
         variables = datasource_node_data.get("variables", {})
         if variables:
-            variables_map = {
-                item["variable"]: item for item in variables
-            }
+            variables_map = {item["variable"]: item for item in variables}
         else:
             return []
         datasource_parameters = datasource_node_data.get("datasource_parameters", {})
@@ -818,9 +817,7 @@ class RagPipelineService:
             raise ValueError("Datasource node data not found")
         variables = datasource_node_data.get("variables", {})
         if variables:
-            variables_map = {
-                item["variable"]: item for item in variables
-            }
+            variables_map = {item["variable"]: item for item in variables}
         else:
             return []
         datasource_parameters = datasource_node_data.get("datasource_parameters", {})
@@ -972,11 +969,14 @@ class RagPipelineService:
         if not dataset:
             raise ValueError("Dataset not found")
 
-        max_position = db.session.query(
-            func.max(PipelineCustomizedTemplate.position)).filter(
-            PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id).scalar()
+        max_position = (
+            db.session.query(func.max(PipelineCustomizedTemplate.position))
+            .filter(PipelineCustomizedTemplate.tenant_id == pipeline.tenant_id)
+            .scalar()
+        )
 
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
+
         dsl = RagPipelineDslService.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
 
         pipeline_customized_template = PipelineCustomizedTemplate(

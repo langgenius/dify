@@ -66,7 +66,7 @@ class CustomizedPipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
         )
         if not pipeline_template:
             return None
-        
+
         dsl_data = yaml.safe_load(pipeline_template.yaml_content)
         graph_data = dsl_data.get("workflow", {}).get("graph", {})
 

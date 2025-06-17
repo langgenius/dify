@@ -43,7 +43,6 @@ class WebsiteCrawlDatasourcePluginProviderController(DatasourcePluginProviderCon
         if not datasource_entity:
             raise ValueError(f"Datasource with name {datasource_name} not found")
 
-
         return WebsiteCrawlDatasourcePlugin(
             entity=datasource_entity,
             runtime=DatasourceRuntime(tenant_id=self.tenant_id),

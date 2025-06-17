@@ -284,17 +284,20 @@ class WebSiteInfo(BaseModel):
     """
     Website info
     """
+
     status: Optional[str] = Field(..., description="crawl job status")
     web_info_list: Optional[list[WebSiteInfoDetail]] = []
     total: Optional[int] = Field(default=0, description="The total number of websites")
     completed: Optional[int] = Field(default=0, description="The number of completed websites")
 
+
 class WebsiteCrawlMessage(BaseModel):
     """
     Get website crawl response
     """
+
     result: WebSiteInfo = WebSiteInfo(status="", web_info_list=[], total=0, completed=0)
+
 
 class DatasourceMessage(ToolInvokeMessage):
     pass
-

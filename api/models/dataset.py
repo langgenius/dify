@@ -75,12 +75,16 @@ class Dataset(Base):
 
     @property
     def total_available_documents(self):
-        return db.session.query(func.count(Document.id)).filter(
-            Document.dataset_id == self.id,
-            Document.indexing_status == "completed",
-            Document.enabled == True,
-            Document.archived == False,
-        ).scalar()
+        return (
+            db.session.query(func.count(Document.id))
+            .filter(
+                Document.dataset_id == self.id,
+                Document.indexing_status == "completed",
+                Document.enabled == True,
+                Document.archived == False,
+            )
+            .scalar()
+        )
 
     @property
     def dataset_keyword_table(self):
@@ -324,6 +328,7 @@ class DatasetProcessRule(Base):
             return json.loads(self.rules) if self.rules else None
         except JSONDecodeError:
             return None
+
 
 class Document(Base):
     __tablename__ = "documents"
@@ -1248,3 +1253,20 @@ class Pipeline(Base):  # type: ignore[name-defined]
     @property
     def dataset(self):
         return db.session.query(Dataset).filter(Dataset.pipeline_id == self.id).first()
+
+
+class DocumentPipelineExecutionLog(Base):
+    __tablename__ = "document_pipeline_execution_logs"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="document_pipeline_execution_log_pkey"),
+        db.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    pipeline_id = db.Column(StringUUID, nullable=False)
+    document_id = db.Column(StringUUID, nullable=False)
+    datasource_type = db.Column(db.String(255), nullable=False)
+    datasource_info = db.Column(db.Text, nullable=False)
+    input_data = db.Column(db.JSON, nullable=False)
+    created_by = db.Column(StringUUID, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

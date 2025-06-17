@@ -188,7 +188,7 @@ class WorkflowResponseConverter:
             manager = PluginDatasourceManager()
             provider_entity = manager.fetch_datasource_provider(
                 self._application_generate_entity.app_config.tenant_id,
-                f"{node_data.plugin_id}/{node_data.provider_name}"
+                f"{node_data.plugin_id}/{node_data.provider_name}",
             )
             response.data.extras["icon"] = provider_entity.declaration.identity.icon
 

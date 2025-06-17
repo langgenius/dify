@@ -384,6 +384,7 @@ class PublishedRagPipelineRunApi(Resource):
 #         return result
 #
 
+
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
     @setup_required
     @login_required
@@ -419,7 +420,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
             user_inputs=inputs,
             account=current_user,
             datasource_type=datasource_type,
-            is_published=True
+            is_published=True,
         )
 
         return result
@@ -458,12 +459,12 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
             return helper.compact_generate_response(
                 PipelineGenerator.convert_to_event_stream(
                     rag_pipeline_service.run_datasource_workflow_node(
-                    pipeline=pipeline,
-                    node_id=node_id,
-                    user_inputs=inputs,
-                    account=current_user,
-                    datasource_type=datasource_type,
-                    is_published=False
+                        pipeline=pipeline,
+                        node_id=node_id,
+                        user_inputs=inputs,
+                        account=current_user,
+                        datasource_type=datasource_type,
+                        is_published=False,
                     )
                 )
             )
