@@ -564,6 +564,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                     err = self._base_task_pipeline._handle_error(
                         event=err_event, session=session, message_id=self._message_id
                     )
+                    self._save_message(session=session, graph_runtime_state=graph_runtime_state)
+                    session.commit()
 
                 yield workflow_finish_resp
                 yield self._base_task_pipeline._error_to_stream_response(err)
