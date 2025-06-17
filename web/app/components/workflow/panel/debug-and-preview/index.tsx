@@ -20,7 +20,6 @@ import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
 import ChatWrapper from './chat-wrapper'
 import cn from '@/utils/classnames'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import Tooltip from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { useStore } from '@/app/components/workflow/store'
@@ -35,7 +34,6 @@ const DebugAndPreview = () => {
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
-  const varList = useStore(s => s.conversationVariables)
   const [expanded, setExpanded] = useState(true)
   const nodes = useNodes<StartNodeType>()
   const selectedNode = nodes.find(node => node.data.selected)
@@ -101,15 +99,6 @@ const DebugAndPreview = () => {
                 <RefreshCcw01 className='h-4 w-4' />
               </ActionButton>
             </Tooltip>
-            {varList.length > 0 && (
-              <Tooltip
-                popupContent={t('workflow.chatVariable.panelTitle')}
-              >
-                <ActionButton onClick={() => setShowConversationVariableModal(true)}>
-                  <BubbleX className='h-4 w-4' />
-                </ActionButton>
-              </Tooltip>
-            )}
             {visibleVariables.length > 0 && (
               <div className='relative'>
                 <Tooltip
