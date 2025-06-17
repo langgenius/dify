@@ -9,8 +9,8 @@ class DatasourceStreamEvent(Enum):
     """
     Datasource Stream event
     """
-    PROCESSING = "processing"
-    COMPLETED = "completed"
+    PROCESSING = "datasource_processing"
+    COMPLETED = "datasource_completed"
 
 
 class BaseDatasourceEvent(BaseModel):
