@@ -156,7 +156,7 @@ const Group = ({
             >
               {isEnv && <Env className='h-4 w-4 shrink-0 text-util-colors-violet-violet-600' />}
               {isChatVar && <BubbleX className='h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />}
-              {(isSystem || nodeData) && <Variable02 className='h-4 w-4 shrink-0 text-text-accent' />}
+              {(isSystem || nodeData) && <Variable02 className={cn('h-4 w-4 shrink-0 text-text-accent', ['error_type', 'error_message'].includes(varItem.name) && 'text-text-warning')} />}
               <div className='system-sm-medium grow truncate text-text-secondary'>{varItem.name}</div>
               <div className='system-xs-regular shrink-0 text-text-tertiary'>{varItem.value_type}</div>
             </div>
