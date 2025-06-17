@@ -167,6 +167,7 @@ const ComponentPicker = ({
                         onBlur={handleClose}
                         showManageInputField={workflowVariableBlock.showManageInputField}
                         onManageInputField={workflowVariableBlock.onManageInputField}
+                        autoFocus={false}
                       />
                     </div>
                   )

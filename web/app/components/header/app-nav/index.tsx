@@ -96,7 +96,7 @@ const AppNav = () => {
           link,
         }
       })
-      setNavItems(navItems)
+      setNavItems(navItems as any)
     }
   }, [appsData, isCurrentWorkspaceEditor, setNavItems])
 
