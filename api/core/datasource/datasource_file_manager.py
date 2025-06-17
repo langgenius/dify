@@ -14,7 +14,7 @@ from configs import dify_config
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.enums import CreatedByRole
+from models.enums import CreatorUserRole
 from models.model import MessageFile, UploadFile
 from models.tools import ToolFile
 
@@ -86,7 +86,7 @@ class DatasourceFileManager:
             size=len(file_binary),
             extension=extension,
             mime_type=mimetype,
-            created_by_role=CreatedByRole.ACCOUNT,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=user_id,
             used=False,
             hash=hashlib.sha3_256(file_binary).hexdigest(),
@@ -133,7 +133,7 @@ class DatasourceFileManager:
             size=len(blob),
             extension=extension,
             mime_type=mimetype,
-            created_by_role=CreatedByRole.ACCOUNT,
+            created_by_role=CreatorUserRole.ACCOUNT,
             created_by=user_id,
             used=False,
             hash=hashlib.sha3_256(blob).hexdigest(),
@@ -239,6 +239,6 @@ class DatasourceFileManager:
 
 
 # init tool_file_parser
-from core.file.datasource_file_parser import datasource_file_manager
-
-datasource_file_manager["manager"] = DatasourceFileManager
+# from core.file.datasource_file_parser import datasource_file_manager
+#
+# datasource_file_manager["manager"] = DatasourceFileManager

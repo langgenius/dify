@@ -41,7 +41,8 @@ class DatasourcePluginOauthApi(Resource):
         if not plugin_oauth_config:
             raise NotFound()
         oauth_handler = OAuthHandler()
-        redirect_url = f"{dify_config.CONSOLE_WEB_URL}/oauth/datasource/callback?provider={provider}&plugin_id={plugin_id}"
+        redirect_url = (f"{dify_config.CONSOLE_WEB_URL}/oauth/datasource/callback?"
+                        f"provider={provider}&plugin_id={plugin_id}")
         system_credentials = plugin_oauth_config.system_credentials
         if system_credentials:
             system_credentials["redirect_url"] = redirect_url

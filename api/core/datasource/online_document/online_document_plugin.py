@@ -5,7 +5,7 @@ from core.datasource.__base.datasource_plugin import DatasourcePlugin
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
-    DatasourceInvokeMessage,
+    DatasourceMessage,
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
     OnlineDocumentPagesMessage,
@@ -33,7 +33,7 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
         self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
 
-    def _get_online_document_pages(
+    def get_online_document_pages(
         self,
         user_id: str,
         datasource_parameters: Mapping[str, Any],
@@ -51,12 +51,12 @@ class OnlineDocumentDatasourcePlugin(DatasourcePlugin):
             provider_type=provider_type,
         )
 
-    def _get_online_document_page_content(
+    def get_online_document_page_content(
         self,
         user_id: str,
         datasource_parameters: GetOnlineDocumentPageContentRequest,
         provider_type: str,
-    ) -> Generator[DatasourceInvokeMessage, None, None]:
+    ) -> Generator[DatasourceMessage, None, None]:
         manager = PluginDatasourceManager()
 
         return manager.get_online_document_page_content(

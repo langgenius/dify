@@ -2,7 +2,7 @@ from collections.abc import Generator, Mapping
 from typing import Any
 
 from core.datasource.entities.datasource_entities import (
-    DatasourceInvokeMessage,
+    DatasourceMessage,
     GetOnlineDocumentPageContentRequest,
     OnlineDocumentPagesMessage,
     WebsiteCrawlMessage,
@@ -164,7 +164,7 @@ class PluginDatasourceManager(BasePluginClient):
         credentials: dict[str, Any],
         datasource_parameters: GetOnlineDocumentPageContentRequest,
         provider_type: str,
-    ) -> Generator[DatasourceInvokeMessage, None, None]:
+    ) -> Generator[DatasourceMessage, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -174,7 +174,7 @@ class PluginDatasourceManager(BasePluginClient):
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_page_content",
-            DatasourceInvokeMessage,
+            DatasourceMessage,
             data={
                 "user_id": user_id,
                 "data": {

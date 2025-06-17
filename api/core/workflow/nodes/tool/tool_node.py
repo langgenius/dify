@@ -127,7 +127,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
                     error=f"Failed to transform tool message: {str(e)}",
-                    error_type=type(e).__name__, PipelineGenerator.convert_to_event_strea
+                    error_type=type(e).__name__,
                 )
             )
 
