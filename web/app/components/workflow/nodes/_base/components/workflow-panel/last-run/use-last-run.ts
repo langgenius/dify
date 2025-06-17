@@ -142,6 +142,7 @@ const useLastRun = <T>({
     iterationRunResult,
     loopRunResult,
     setNodeRunning,
+    checkValid,
   } = oneStepRunRes
 
   const {
@@ -200,6 +201,9 @@ const useLastRun = <T>({
   const invalidLastRun = useInvalidLastRun(appId!, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
+    const { isValid } = checkValid()
+    if(!isValid)
+      return
     setIsRunAfterSingleRun(true)
     setTabType(TabType.lastRun)
     callRunApi(data, () => {
@@ -270,6 +274,9 @@ const useLastRun = <T>({
   }
 
   const handleSingleRun = () => {
+    const { isValid } = checkValid()
+    if(!isValid)
+      return
     // no need to input params
     if (isAllVarsHasValue(singleRunParams?.getDependentVars?.())) {
       callRunApi({}, async () => {

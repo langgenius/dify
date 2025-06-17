@@ -152,6 +152,7 @@ const useOneStepRun = <T>({
   }
 
   const checkValid = checkValidFns[data.type]
+
   const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
   const runInputDataRef = useRef(runInputData)
@@ -216,6 +217,25 @@ const useOneStepRun = <T>({
       },
     })
   }
+  const checkValidWrap = () => {
+    if(!checkValid)
+      return { isValid: true, errorMessage: '' }
+    const res = checkValid(data, t, moreDataForCheckValid)
+    if(!res.isValid) {
+        handleNodeDataUpdate({
+          id,
+          data: {
+            ...data,
+            _isSingleRun: false,
+          },
+        })
+        Toast.notify({
+          type: 'error',
+          message: res.errorMessage,
+        })
+    }
+    return res
+  }
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)
   const isShowSingleRun = data._isSingleRun && canShowSingleRun
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[]>([])
@@ -228,21 +248,8 @@ const useOneStepRun = <T>({
     }
 
     if (data._isSingleRun) {
-      const { isValid, errorMessage } = checkValid(data, t, moreDataForCheckValid)
+      const { isValid } = checkValidWrap()
       setCanShowSingleRun(isValid)
-      if (!isValid) {
-        handleNodeDataUpdate({
-          id,
-          data: {
-            ...data,
-            _isSingleRun: false,
-          },
-        })
-        Toast.notify({
-          type: 'error',
-          message: errorMessage,
-        })
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
@@ -645,6 +652,7 @@ const useOneStepRun = <T>({
     iterationRunResult,
     loopRunResult,
     setNodeRunning,
+    checkValid: checkValidWrap,
   }
 }
 
