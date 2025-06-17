@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import DialogWrapper from './dialog-wrapper'
+import DialogWrapper from '../dialog-wrapper'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import DataSource from './data-source'
@@ -24,7 +24,8 @@ const PreviewPanel = ({
     <DialogWrapper
       show={show}
       onClose={onClose}
-      panelWrapperClassName='pr-[424px]'
+      panelWrapperClassName='pr-[424px] justify-start'
+      className='w-[480px] grow rounded-2xl border-[0.5px] bg-components-panel-bg'
     >
       <div className='flex items-center gap-x-2 px-4 pt-1'>
         <div className='grow py-1'>

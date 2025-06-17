@@ -94,6 +94,7 @@ const InputFieldDialog = ({
       <DialogWrapper
         show={!!showInputFieldDialog}
         onClose={closePanel}
+        className='grow rounded-l-2xl border-y-[0.5px] border-l-[0.5px]'
       >
         <div className='flex grow flex-col'>
           <div className='flex items-center p-4 pb-0'>

@@ -1,5 +1,5 @@
 import { RiCloseLine } from '@remixicon/react'
-import DialogWrapper from './dialog-wrapper'
+import DialogWrapper from '../dialog-wrapper'
 import InputFieldForm from './form'
 import { convertFormDataToINputField, convertToInputFieldFormData } from './utils'
 import { useCallback } from 'react'
@@ -33,7 +33,9 @@ const InputFieldEditor = ({
     <DialogWrapper
       show={show}
       onClose={onClose}
-      panelWrapperClassName='pr-[424px]'
+      outerWrapperClassName='overflow-y-auto'
+      panelWrapperClassName='pr-[424px] justify-start'
+      className='w-[400px] rounded-2xl border-[0.5px] bg-components-panel-bg shadow-shadow-shadow-9'
     >
       <div className='system-xl-semibold flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary'>
         {initialData ? t('datasetPipeline.inputFieldPanel.editInputField') : t('datasetPipeline.inputFieldPanel.addInputField')}
