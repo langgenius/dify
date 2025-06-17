@@ -97,7 +97,6 @@ const translation = {
       configureFirecrawl: 'फायरक्रॉल को कॉन्फ़िगर करें',
       watercrawlDoc: 'वाटरक्रॉल दस्तावेज़',
       waterCrawlNotConfiguredDescription: 'इसे उपयोग करने के लिए वॉटरक्रॉल को एपीआई कुंजी के साथ कॉन्फ़िगर करें।',
-      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       configureJinaReader: 'जिना रीडर कॉन्फ़िगर करें',
       configureWatercrawl: 'वाटरक्रॉल कॉन्फ़िगर करें',
     },

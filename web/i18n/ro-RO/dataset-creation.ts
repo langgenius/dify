@@ -86,7 +86,6 @@ const translation = {
       watercrawlTitle: 'Extrageți conținut web cu Watercrawl',
       configureJinaReader: 'Configurează Jina Reader',
       waterCrawlNotConfiguredDescription: 'Configurează Watercrawl cu cheia API pentru a-l folosi.',
-      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       configureFirecrawl: 'Configurează Firecrawl',
       watercrawlDoc: 'Documentele Watercrawl',
       configureWatercrawl: 'Configurează Watercrawl',

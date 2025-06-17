@@ -97,7 +97,6 @@ const translation = {
       waterCrawlNotConfigured: 'Watercrawl ni konfiguriran',
       watercrawlDoc: 'Watercrawl dokumentacija',
       configureJinaReader: 'Konfigurirajte Jina Reader',
-      watercrawlDocLink: 'https://docs.dify.ai/sl/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       configureFirecrawl: 'Konfigurirajte Firecrawl',
       watercrawlTitle: 'Izvleci vsebino z interneta z Watercrawl',
     },

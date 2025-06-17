@@ -87,7 +87,6 @@ const translation = {
       configureFirecrawl: '配置 Firecrawl',
       configureWatercrawl: '配置水爬行',
       watercrawlTitle: '使用 Watercrawl 提取網頁內容',
-      watercrawlDocLink: 'https://docs.dify.ai/zh-TW/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       waterCrawlNotConfiguredDescription: '配置 Watercrawl 並使用 API 金鑰來使用它。',
       configureJinaReader: '配置 Jina Reader',
       waterCrawlNotConfigured: 'Watercrawl 尚未配置',

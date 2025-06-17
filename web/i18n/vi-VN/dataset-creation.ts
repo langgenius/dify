@@ -86,7 +86,6 @@ const translation = {
       configureFirecrawl: 'Cấu hình Firecrawl',
       configureJinaReader: 'Cấu hình Jina Reader',
       waterCrawlNotConfiguredDescription: 'Cấu hình Watercrawl với khóa API để sử dụng nó.',
-      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       watercrawlTitle: 'Trích xuất nội dung web bằng Watercrawl',
       watercrawlDoc: 'Tài liệu Watercrawl',
       waterCrawlNotConfigured: 'Watercrawl chưa được cấu hình',

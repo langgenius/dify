@@ -94,7 +94,6 @@ const translation = {
       maxDepthTooltip: 'ความลึกสูงสุดในการรวบรวมข้อมูลเมื่อเทียบกับ URL ที่ป้อน ความลึก 0 เพียงแค่ขูดหน้าของ URL ที่ป้อนความลึก 1 ขูด url และทุกอย่างหลังจาก enteredURL + หนึ่ง / เป็นต้น',
       watercrawlTitle: 'ดึงเนื้อหาจากเว็บด้วย Watercrawl',
       configureJinaReader: 'ตั้งค่า Jina Reader',
-      watercrawlDocLink: 'https://docs.dify.ai/th/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       configureFirecrawl: 'กำหนดค่า Firecrawl',
       configureWatercrawl: 'กำหนดค่าการเข้าถึงน้ำ',
       waterCrawlNotConfiguredDescription: 'กำหนดค่า Watercrawl ด้วย API key เพื่อใช้งาน.',

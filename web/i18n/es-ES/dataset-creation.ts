@@ -92,7 +92,6 @@ const translation = {
       configureFirecrawl: 'Configurar Firecrawl',
       watercrawlDoc: 'Documentos de Watercrawl',
       configureJinaReader: 'Configurar Jina Reader',
-      watercrawlDocLink: 'https://docs.dify.ai/es/guías/base-de-conocimientos/crear-conocimientos-y-subir-documentos/importar-datos-de-contenido/sincronizar-desde-el-sitio-web',
       configureWatercrawl: 'Configurar Watercrawl',
       waterCrawlNotConfiguredDescription: 'Configura Watercrawl con la clave de API para usarlo.',
     },

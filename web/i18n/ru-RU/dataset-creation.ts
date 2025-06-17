@@ -88,7 +88,6 @@ const translation = {
       jinaReaderTitle: 'Конвертируйте весь сайт в Markdown',
       useSitemapTooltip: 'Следуйте карте сайта, чтобы просканировать сайт. Если нет, Jina Reader будет сканировать итеративно в зависимости от релевантности страницы, выдавая меньшее количество страниц, но более высокого качества.',
       watercrawlTitle: 'Извлечение веб-контента с помощью Watercrawl',
-      watercrawlDocLink: 'https://docs.dify.ai/ru/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       configureWatercrawl: 'Настроить Watercrawl',
       waterCrawlNotConfigured: 'Watercrawl не настроен',
       configureFirecrawl: 'Настроить Firecrawl',

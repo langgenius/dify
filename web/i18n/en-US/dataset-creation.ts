@@ -83,7 +83,6 @@ const translation = {
       firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       watercrawlTitle: 'Extract web content with Watercrawl',
       watercrawlDoc: 'Watercrawl docs',
-      watercrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       jinaReaderTitle: 'Convert the entire site to Markdown',
       jinaReaderDoc: 'Learn more about Jina Reader',
       jinaReaderDocLink: 'https://jina.ai/reader',

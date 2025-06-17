@@ -92,7 +92,6 @@ const translation = {
       waterCrawlNotConfiguredDescription: 'برای استفاده از Watercrawl، آن را با کلید API پیکربندی کنید.',
       waterCrawlNotConfigured: 'Watercrawl پیکربندی نشده است',
       configureJinaReader: 'پیکربندی خواننده جینا',
-      watercrawlDocLink: 'https://docs.dify.ai/fa/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       watercrawlTitle: 'محتوای وب را با واترکرال استخراج کنید',
       configureWatercrawl: 'تنظیم واترکراول',
     },

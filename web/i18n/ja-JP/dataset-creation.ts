@@ -98,7 +98,6 @@ const translation = {
       watercrawlDoc: 'ウォータークローリングの文書',
       watercrawlTitle: 'Watercrawl を使用してウェブコンテンツを抽出する',
       waterCrawlNotConfigured: 'Watercrawl は設定されていません',
-      watercrawlDocLink: 'https://docs.dify.ai/ja/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
     },
   },
   stepTwo: {

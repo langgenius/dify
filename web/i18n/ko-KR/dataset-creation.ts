@@ -86,7 +86,6 @@ const translation = {
       waterCrawlNotConfiguredDescription: 'API 키로 Watercrawl 을 구성하여 사용하십시오.',
       watercrawlTitle: 'Watercrawl 로 웹 콘텐츠 추출하기',
       configureFirecrawl: '파이어크롤 구성하기',
-      watercrawlDocLink: '웹사이트에서 동기화하기',
       configureJinaReader: '지나 리더 설정하기',
       waterCrawlNotConfigured: 'Watercrawl 이 설정되어 있지 않습니다.',
       configureWatercrawl: '워터크롤 구성하기',

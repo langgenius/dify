@@ -85,7 +85,6 @@ const translation = {
       configureJinaReader: 'Jina Reader konfigurieren',
       waterCrawlNotConfigured: 'Watercrawl ist nicht konfiguriert',
       configureWatercrawl: 'Wasserkrabbe konfigurieren',
-      watercrawlDocLink: 'https://docs.dify.ai/de/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       watercrawlTitle: 'Webinhalt mit Watercrawl extrahieren',
       watercrawlDoc: 'Wasserkriechen-Dokumente',
       configureFirecrawl: 'Firecrawl konfigurieren',
