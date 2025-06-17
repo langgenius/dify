@@ -2,13 +2,12 @@ import logging
 import time
 from datetime import datetime
 
-from sqlalchemy import asc, func, or_
-
 import app
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.model import App, EndUser, Message, db
 from services.app_generate_service import AppGenerateService
+from sqlalchemy import asc, func, or_
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -235,6 +234,12 @@ def process_user_health_summary(user: EndUser, new_messages: str):
     import json
 
     result = response["data"]["outputs"]["result"]
+
+    if result is None:
+        logger.warning(
+            f"Health summary generation failed with None result for user {user.id}"
+        )
+        return
 
     # preprocess result in case of ```json xxxx```
     if result.startswith("```json") or result.endswith("```"):
