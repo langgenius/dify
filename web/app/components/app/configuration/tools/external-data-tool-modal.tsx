@@ -245,7 +245,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             <div className='flex h-9 items-center justify-between text-sm font-medium text-gray-900'>
               {t('common.apiBasedExtension.selector.title')}
               <a
-                href={docLink('/guides/extension/api-based-extension/README') || '/'}
+                href={docLink('/guides/extension/api-based-extension/README')}
                 target='_blank' rel='noopener noreferrer'
                 className='group flex items-center text-xs font-normal text-gray-500 hover:text-primary-600'
               >

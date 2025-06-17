@@ -102,7 +102,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         <div className='flex h-9 items-center justify-between text-sm font-medium text-text-primary'>
           {t('common.apiBasedExtension.modal.apiEndpoint.title')}
           <a
-            href={docLink('/guides/extension/api-based-extension/README') || '/'}
+            href={docLink('/guides/extension/api-based-extension/README')}
             target='_blank' rel='noopener noreferrer'
             className='group flex items-center text-xs font-normal text-text-accent'
           >
