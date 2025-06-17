@@ -65,8 +65,6 @@ const NodeControl: FC<NodeControlProps> = ({
                   data: nextData,
                 })
                 handleNodeSelect(id)
-                if (!data._isSingleRun)
-                  handleSyncWorkflowDraft(true)
               }}
             >
               {

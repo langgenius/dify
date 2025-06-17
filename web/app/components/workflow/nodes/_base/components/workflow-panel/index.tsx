@@ -8,6 +8,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import {
@@ -147,18 +148,23 @@ const BasePanel: FC<BasePanelProps> = ({
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
   const appDetail = useAppStore(state => state.appDetail)
 
-  const [hasClickRunning, setHasClickRunning] = useState(false)
+  const hasClickRunning = useRef(false)
   const [isPaused, setIsPaused] = useState(false)
   useEffect(() => {
     if(data._singleRunningStatus === NodeRunningStatus.Running) {
-      setHasClickRunning(true)
+      hasClickRunning.current = true
       setIsPaused(false)
     }
-    else if(data._singleRunningStatus === undefined) {
+    else if(data._singleRunningStatus === undefined && hasClickRunning) {
       setIsPaused(true)
-      setHasClickRunning(false)
+      hasClickRunning.current = false
     }
   }, [data._singleRunningStatus])
+
+  useEffect(() => {
+    // console.log(`id changed: ${id}, hasClickRunning: ${hasClickRunning.current}`)
+    hasClickRunning.current = false
+  }, [id])
 
   const {
     isShowSingleRun,

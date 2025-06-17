@@ -30,6 +30,7 @@ import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
+import { useInvalidLastRun } from '@/service/use-workflow'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
@@ -126,6 +127,7 @@ const useLastRun = <T>({
   })
 
   const {
+    appId,
     hideSingleRun,
     handleRun: doCallRunApi,
     getInputVars,
@@ -185,10 +187,14 @@ const useLastRun = <T>({
   }
 
   const [tabType, setTabType] = useState<TabType>(TabType.settings)
+  const invalidLastRun = useInvalidLastRun(appId!, id)
+
   const handleRunWithParams = async (data: Record<string, any>) => {
     setIsRunAfterSingleRun(true)
     setTabType(TabType.lastRun)
-    callRunApi(data)
+    callRunApi(data, () => {
+      invalidLastRun()
+    })
     hideSingleRun()
   }
 
@@ -259,6 +265,7 @@ const useLastRun = <T>({
       callRunApi({}, async () => {
         setIsRunAfterSingleRun(true)
         setNodeRunning()
+        invalidLastRun()
         setTabType(TabType.lastRun)
       })
     }

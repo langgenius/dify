@@ -59,7 +59,7 @@ const LastRun: FC<Props> = ({
   if (isRunning)
     return <ResultPanel status='running' showSteps={false} />
 
-  if (noLastRun || !runResult) {
+  if (!isPaused && (noLastRun || !runResult)) {
     return (
       <NoData canSingleRun={canSingleRun} onSingleRun={onSingleRunClicked} />
     )

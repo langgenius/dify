@@ -627,6 +627,7 @@ const useOneStepRun = <T>({
   }
 
   return {
+    appId,
     isShowSingleRun,
     hideSingleRun,
     showSingleRun,
