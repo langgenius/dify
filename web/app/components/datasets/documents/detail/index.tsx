@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { createContext, useContextSelector } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { RiArrowLeftLine, RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
@@ -17,9 +17,9 @@ import style from './style.module.css'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
-import { ToastContext } from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
 import type { ChunkingMode, ParentMode, ProcessMode } from '@/models/datasets'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useCheckSegmentBatchImportProgress, useChildSegmentListKey, useSegmentBatchImport, useSegmentListKey } from '@/service/knowledge/use-segment'
@@ -83,8 +83,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { notify } = useContext(ToastContext)
-  const { dataset } = useDatasetDetailContext()
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const embeddingAvailable = !!dataset?.embedding_available
   const [showMetadata, setShowMetadata] = useState(!isMobile)
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
@@ -103,10 +102,10 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
           setTimeout(() => checkProcess(res.job_id), 2500)
         if (res.job_status === ProcessStatus.ERROR)
-          notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
+          Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
       },
       onError: (e) => {
-        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
       },
     })
   }
@@ -124,7 +123,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         checkProcess(res.job_id)
       },
       onError: (e) => {
-        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+        Toast.notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
       },
     })
   }
@@ -171,12 +170,12 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   }
 
   const mode = useMemo(() => {
-    return documentDetail?.document_process_rule?.mode
-  }, [documentDetail?.document_process_rule])
+    return documentDetail?.document_process_rule?.mode || documentDetail?.dataset_process_rule?.mode
+  }, [documentDetail?.document_process_rule?.mode, documentDetail?.dataset_process_rule?.mode])
 
   const parentMode = useMemo(() => {
-    return documentDetail?.document_process_rule?.rules?.parent_mode
-  }, [documentDetail?.document_process_rule])
+    return documentDetail?.document_process_rule?.rules?.parent_mode || documentDetail?.dataset_process_rule?.rules?.parent_mode || 'paragraph'
+  }, [documentDetail?.document_process_rule?.rules?.parent_mode, documentDetail?.dataset_process_rule?.rules?.parent_mode])
 
   const isFullDocMode = useMemo(() => {
     return mode === 'hierarchical' && parentMode === 'full-doc'
@@ -260,7 +259,8 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type='app' />
             : <div className={cn('flex h-full min-w-0 grow flex-col',
-              embedding ? '' : isFullDocMode ? 'relative pl-11 pr-11 pt-4' : 'relative pl-5 pr-11 pt-3',
+              !embedding && isFullDocMode && 'relative pl-11 pr-11 pt-4',
+              !embedding && !isFullDocMode && 'relative pl-5 pr-11 pt-3',
             )}>
               {embedding
                 ? <Embedding
