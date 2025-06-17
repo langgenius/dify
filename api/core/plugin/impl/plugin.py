@@ -181,7 +181,7 @@ class PluginInstaller(BasePluginClient):
         Decode a plugin from an identifier.
         """
         return self._request_with_plugin_daemon_response(
-            "POST",
+            "GET",
             f"plugin/{tenant_id}/management/decode/from_identifier",
             PluginDecodeResponse,
             data={"plugin_unique_identifier": plugin_unique_identifier},
