@@ -120,7 +120,7 @@ class WorkflowEntry:
         workflow: Workflow,
         node_id: str,
         user_id: str,
-        user_inputs: dict,
+        user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
     ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
@@ -326,7 +326,7 @@ class WorkflowEntry:
         cls,
         *,
         variable_mapping: Mapping[str, Sequence[str]],
-        user_inputs: dict,
+        user_inputs: Mapping[str, Any],
         variable_pool: VariablePool,
         tenant_id: str,
     ) -> None:

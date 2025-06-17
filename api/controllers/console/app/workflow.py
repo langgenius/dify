@@ -439,6 +439,7 @@ class DraftWorkflowNodeRunApi(Resource):
             raise ValueError("Workflow not initialized")
         files = _parse_file(draft_workflow, args.get("files"))
         workflow_service = WorkflowService()
+
         workflow_node_execution = workflow_service.run_draft_workflow_node(
             app_model=app_model,
             draft_workflow=draft_workflow,
