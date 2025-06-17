@@ -13,6 +13,10 @@ class LoopStartNode(BaseNode[LoopStartNodeData]):
     _node_data_cls = LoopStartNodeData
     _node_type = NodeType.LOOP_START
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
         """
         Run the node.

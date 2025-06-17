@@ -45,6 +45,10 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
     _node_data_cls = DocumentExtractorNodeData
     _node_type = NodeType.DOCUMENT_EXTRACTOR
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self):
         variable_selector = self.node_data.variable_selector
         variable = self.graph_runtime_state.variable_pool.get(variable_selector)
