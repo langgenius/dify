@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from './form'
 import Form from './form'
@@ -133,8 +133,12 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     onRun(submitData)
   }
-
+  const hasRun = useRef(false)
   useEffect(() => {
+    // React 18 run twice in dev mode
+    if(hasRun.current)
+      return
+    hasRun.current = true
     if(filteredExistVarForms.length === 0)
       onRun({})
   }, [filteredExistVarForms, onRun])
