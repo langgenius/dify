@@ -49,7 +49,7 @@ const LastRun: FC<Props> = ({
   const noLastRun = (error as any)?.status === 404
   const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || {}
 
-  if (isFetching && !runResult) {
+  if (isFetching && !isRunAfterSingleRun) {
     return (
       <div className='flex h-0 grow flex-col items-center justify-center'>
         <RiLoader2Line className='size-4 animate-spin text-text-tertiary' />
