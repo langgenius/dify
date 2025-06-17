@@ -32,7 +32,11 @@ class DatasourceProviderService:
         :param credentials:
         """
         credential_valid = self.provider_manager.validate_provider_credentials(
-            tenant_id=tenant_id, user_id=current_user.id, provider=provider, plugin_id=plugin_id, credentials=credentials
+            tenant_id=tenant_id,
+            user_id=current_user.id,
+            provider=provider,
+            plugin_id=plugin_id,
+            credentials=credentials
         )
         if credential_valid:
             # Get all provider configurations of the current workspace
@@ -104,7 +108,8 @@ class DatasourceProviderService:
         for datasource_provider in datasource_providers:
             encrypted_credentials = datasource_provider.encrypted_credentials
             # Get provider credential secret variables
-            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider_id=f"{plugin_id}/{provider}")
+            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id,
+                                                                        provider_id=f"{plugin_id}/{provider}")
 
             # Obfuscate provider credentials
             copy_credentials = encrypted_credentials.copy()
@@ -144,7 +149,8 @@ class DatasourceProviderService:
         for datasource_provider in datasource_providers:
             encrypted_credentials = datasource_provider.encrypted_credentials
             # Get provider credential secret variables
-            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id, provider_id=f"{plugin_id}/{provider}")
+            credential_secret_variables = self.extract_secret_variables(tenant_id=tenant_id,
+                                                                        provider_id=f"{plugin_id}/{provider}")
 
             # Obfuscate provider credentials
             copy_credentials = encrypted_credentials.copy()
@@ -161,7 +167,12 @@ class DatasourceProviderService:
         return copy_credentials_list
 
 
-    def update_datasource_credentials(self, tenant_id: str, auth_id: str, provider: str, plugin_id: str, credentials: dict) -> None:
+    def update_datasource_credentials(self,
+                                      tenant_id: str,
+                                      auth_id: str,
+                                      provider: str,
+                                      plugin_id: str,
+                                      credentials: dict) -> None:
         """
         update datasource credentials.
         """

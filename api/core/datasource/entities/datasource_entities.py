@@ -298,28 +298,3 @@ class WebsiteCrawlMessage(BaseModel):
 class DatasourceMessage(ToolInvokeMessage):
     pass
 
-
-class DatasourceInvokeMessage(ToolInvokeMessage):
-    """
-    Datasource Invoke Message.
-    """
-
-    class WebsiteCrawlMessage(BaseModel):
-        """
-        Website crawl message
-        """
-
-        job_id: str = Field(..., description="The job id")
-        status: str = Field(..., description="The status of the job")
-        web_info_list: Optional[list[WebSiteInfoDetail]] = []
-
-    class OnlineDocumentMessage(BaseModel):
-        """
-        Online document message
-        """
-
-        workspace_id: str = Field(..., description="The workspace id")
-        workspace_name: str = Field(..., description="The workspace name")
-        workspace_icon: str = Field(..., description="The workspace icon")
-        total: int = Field(..., description="The total number of documents")
-        pages: list[OnlineDocumentPage] = Field(..., description="The pages of the online document")

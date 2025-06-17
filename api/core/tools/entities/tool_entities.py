@@ -188,8 +188,6 @@ class ToolInvokeMessage(BaseModel):
         FILE = "file"
         LOG = "log"
         BLOB_CHUNK = "blob_chunk"
-        WEBSITE_CRAWL = "website_crawl"
-        ONLINE_DOCUMENT = "online_document"
 
     type: MessageType = MessageType.TEXT
     """
