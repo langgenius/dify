@@ -36,7 +36,7 @@ LATEST_PROTOCOL_VERSION = "2024-11-05"
 ProgressToken = str | int
 Cursor = str
 Role = Literal["user", "assistant"]
-RequestId = str | int
+RequestId = Annotated[int | str, Field(union_mode="left_to_right")]
 AnyFunction: TypeAlias = Callable[..., Any]
 
 
@@ -1182,6 +1182,7 @@ class OAuthClientMetadata(BaseModel):
     response_types: Optional[list[str]] = None
     token_endpoint_auth_method: Optional[str] = None
     client_uri: Optional[str] = None
+    scope: Optional[str] = None
 
 
 class OAuthClientInformation(BaseModel):

@@ -180,10 +180,8 @@ class BaseSession(
     def check_receiver_status(self) -> None:
         if self._receiver_future.done():
             try:
-                # 如果Future已完成，获取结果（如果有异常会在这里抛出）
                 self._receiver_future.result()
             except Exception as e:
-                # 重新抛出线程中的异常
                 raise e
 
     def __exit__(
@@ -234,7 +232,6 @@ class BaseSession(
                     response_or_error = response_queue.get(timeout=timeout)
                     break
                 except queue.Empty:
-                    # 在等待响应的过程中也检查接收线程状态
                     self.check_receiver_status()
                     continue
 
