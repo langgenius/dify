@@ -24,6 +24,7 @@ import {
 } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import cn from '@/utils/classnames'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 
@@ -39,6 +40,7 @@ const CustomWebAppBrand = () => {
   const [fileId, setFileId] = useState('')
   const [imgKey, setImgKey] = useState(Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const isSandbox = enableBilling && plan.type === Plan.sandbox
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = currentWorkspace.custom_config?.replace_webapp_logo || ''
@@ -128,7 +130,7 @@ const CustomWebAppBrand = () => {
           <div className='system-xs-regular text-text-tertiary'>{t('custom.webapp.changeLogoTip')}</div>
         </div>
         <div className='flex items-center'>
-          {(uploadDisabled || (!webappLogo && !webappBrandRemoved)) && (
+          {(!uploadDisabled && webappLogo && !webappBrandRemoved) && (
             <>
               <Button
                 variant='ghost'
@@ -244,9 +246,12 @@ const CustomWebAppBrand = () => {
                 {!webappBrandRemoved && (
                   <>
                     <div className='system-2xs-medium-uppercase text-text-tertiary'>POWERED BY</div>
-                    {webappLogo
-                      ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />
-                      : <DifyLogo size='small' />
+                    {
+                      systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                        ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                        : webappLogo
+                          ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />
+                          : <DifyLogo size='small' />
                     }
                   </>
                 )}
@@ -303,9 +308,12 @@ const CustomWebAppBrand = () => {
             {!webappBrandRemoved && (
               <>
                 <div className='system-2xs-medium-uppercase text-text-tertiary'>POWERED BY</div>
-                {webappLogo
-                  ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />
-                  : <DifyLogo size='small' />
+                {
+                  systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                    ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                    : webappLogo
+                      ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='block h-5 w-auto' />
+                      : <DifyLogo size='small' />
                 }
               </>
             )}

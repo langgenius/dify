@@ -2,12 +2,14 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Optional
 
-from flask import request
+from flask import current_app, request
+from flask_login import user_logged_in
 from flask_restful import reqparse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
+from libs.login import _get_user
 from models.account import Account, Tenant
 from models.model import EndUser
 from services.account_service import AccountService
@@ -30,6 +32,7 @@ def get_user(tenant_id: str, user_id: str | None) -> Account | EndUser:
                     )
                     session.add(user_model)
                     session.commit()
+                    session.refresh(user_model)
             else:
                 user_model = AccountService.load_user(user_id)
                 if not user_model:
@@ -80,7 +83,12 @@ def get_user_tenant(view: Optional[Callable] = None):
                 raise ValueError("tenant not found")
 
             kwargs["tenant_model"] = tenant_model
-            kwargs["user_model"] = get_user(tenant_id, user_id)
+
+            user = get_user(tenant_id, user_id)
+            kwargs["user_model"] = user
+
+            current_app.login_manager._update_request_context_with_user(user)  # type: ignore
+            user_logged_in.send(current_app._get_current_object(), user=_get_user())  # type: ignore
 
             return view_func(*args, **kwargs)
 

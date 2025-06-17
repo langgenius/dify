@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import copy from 'copy-to-clipboard'
@@ -32,6 +32,7 @@ import cn from '@/utils/classnames'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { canFindTool } from '@/utils'
+import { useMittContextSelector } from '@/context/mitt-context'
 
 type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
@@ -39,7 +40,6 @@ const AgentTools: FC = () => {
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
   const { modelConfig, setModelConfig, collectionList } = useContext(ConfigContext)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
-
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
   const currentCollection = useMemo(() => {
     if (!currentTool) return null
@@ -61,6 +61,17 @@ const AgentTools: FC = () => {
       collection,
     }
   })
+  const useSubscribe = useMittContextSelector(s => s.useSubscribe)
+  const handleUpdateToolsWhenInstallToolSuccess = useCallback((installedPluginNames: string[]) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.agentConfig.tools.forEach((item: any) => {
+        if (item.isDeleted && installedPluginNames.includes(item.provider_id))
+          item.isDeleted = false
+      })
+    })
+    setModelConfig(newModelConfig)
+  }, [modelConfig, setModelConfig])
+  useSubscribe('plugin:install:success', handleUpdateToolsWhenInstallToolSuccess as any)
 
   const handleToolSettingChange = (value: Record<string, any>) => {
     const newModelConfig = produce(modelConfig, (draft) => {
@@ -132,7 +143,7 @@ const AgentTools: FC = () => {
                   disabled={false}
                   supportAddCustomTool
                   onSelect={handleSelectTool}
-                  selectedTools={tools}
+                  selectedTools={tools as any}
                 />
               </>
             )}

@@ -77,6 +77,7 @@ const translation = {
     modelNum: '{{num}} MODELS INCLUDED',
     toolSelector: {
       title: 'Add tool',
+      toolSetting: 'Tool Settings',
       toolLabel: 'Tool',
       descriptionLabel: 'Tool description',
       descriptionPlaceholder: 'Brief description of the tool\'s purpose, e.g., get the temperature for a specific location.',
@@ -208,7 +209,8 @@ const translation = {
     installedError: '{{errorLength}} plugins failed to install',
     clearAll: 'Clear all',
   },
-  submitPlugin: 'Submit plugin',
+  requestAPlugin: 'Request a plugin',
+  publishPlugins: 'Publish plugins',
   difyVersionNotCompatible: 'The current Dify version is not compatible with this plugin, please upgrade to the minimum version required: {{minimalDifyVersion}}',
 }
 

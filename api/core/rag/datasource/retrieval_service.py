@@ -405,7 +405,29 @@ class RetrievalService:
                     record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")  # type: ignore
                     record["score"] = segment_child_map[record["segment"].id]["max_score"]
 
-            return [RetrievalSegments(**record) for record in records]
+            result = []
+            for record in records:
+                # Extract segment
+                segment = record["segment"]
+
+                # Extract child_chunks, ensuring it's a list or None
+                child_chunks = record.get("child_chunks")
+                if not isinstance(child_chunks, list):
+                    child_chunks = None
+
+                # Extract score, ensuring it's a float or None
+                score_value = record.get("score")
+                score = (
+                    float(score_value)
+                    if score_value is not None and isinstance(score_value, int | float | str)
+                    else None
+                )
+
+                # Create RetrievalSegments object
+                retrieval_segment = RetrievalSegments(segment=segment, child_chunks=child_chunks, score=score)
+                result.append(retrieval_segment)
+
+            return result
         except Exception as e:
             db.session.rollback()
             raise e

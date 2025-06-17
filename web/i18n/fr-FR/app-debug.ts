@@ -268,6 +268,7 @@ const translation = {
     'labelName': 'Label Name',
     'inputPlaceholder': 'Please input',
     'required': 'Required',
+    'hide': 'Caché',
     'errorMsg': {
       varNameRequired: 'Variable name is required',
       labelNameRequired: 'Label name is required',

@@ -10,17 +10,18 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import ModelInvokeCompletedEvent
 from core.workflow.nodes.llm import (
     LLMNode,
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
+    llm_utils,
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from libs.json_in_md_parser import parse_and_check_json_markdown
-from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import QuestionClassifierNodeData
 from .exc import InvalidModelTypeError
@@ -50,7 +51,9 @@ class QuestionClassifierNode(LLMNode):
         # fetch model config
         model_instance, model_config = self._fetch_model_config(node_data.model)
         # fetch memory
-        memory = self._fetch_memory(
+        memory = llm_utils.fetch_memory(
+            variable_pool=variable_pool,
+            app_id=self.app_id,
             node_data_memory=node_data.memory,
             model_instance=model_instance,
         )
@@ -59,7 +62,8 @@ class QuestionClassifierNode(LLMNode):
         node_data.instruction = variable_pool.convert_template(node_data.instruction).text
 
         files = (
-            self._fetch_files(
+            llm_utils.fetch_files(
+                variable_pool=variable_pool,
                 selector=node_data.vision.configs.variable_selector,
             )
             if node_data.vision.enabled
@@ -79,9 +83,13 @@ class QuestionClassifierNode(LLMNode):
             memory=memory,
             max_token_limit=rest_token,
         )
+        # Some models (e.g. Gemma, Mistral) force roles alternation (user/assistant/user/assistant...).
+        # If both self._get_prompt_template and self._fetch_prompt_messages append a user prompt,
+        # two consecutive user prompts will be generated, causing model's error.
+        # To avoid this, set sys_query to an empty string so that only one user prompt is appended at the end.
         prompt_messages, stop = self._fetch_prompt_messages(
             prompt_template=prompt_template,
-            sys_query=query,
+            sys_query="",
             memory=memory,
             model_config=model_config,
             sys_files=files,
@@ -142,9 +150,9 @@ class QuestionClassifierNode(LLMNode):
                 outputs=outputs,
                 edge_source_handle=category_id,
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                    NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                    NodeRunMetadataKey.CURRENCY: usage.currency,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
                 },
                 llm_usage=usage,
             )
@@ -154,9 +162,9 @@ class QuestionClassifierNode(LLMNode):
                 inputs=variables,
                 error=str(e),
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                    NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                    NodeRunMetadataKey.CURRENCY: usage.currency,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
                 },
                 llm_usage=usage,
             )

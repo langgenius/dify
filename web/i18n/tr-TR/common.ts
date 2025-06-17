@@ -149,6 +149,8 @@ const translation = {
     newDataset: 'Bilgi Oluştur',
     tools: 'Araçlar',
     exploreMarketplace: 'Marketplace\'i Keşfedin',
+    appDetail: 'Uygulama Detayı',
+    account: 'Hesap',
   },
   userProfile: {
     settings: 'Ayarlar',
@@ -469,7 +471,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API uzantıları merkezi API yönetimi sağlar, Dify\'nin uygulamaları arasında kolay kullanım için yapılandırmayı basitleştirir.',
     link: 'Kendi API Uzantınızı nasıl geliştireceğinizi öğrenin.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'API Uzantısı Ekle',
     selector: {
       title: 'API Uzantısı',
@@ -554,7 +555,7 @@ const translation = {
       vectorHash: 'Vektör Hash:',
       hitScore: 'Geri Alım Skoru:',
     },
-    inputPlaceholder: 'Bot ile konuş',
+    inputPlaceholder: '{{botName}} ile konuş',
     thought: 'Düşünce',
     thinking: 'Düşünü...',
     resend: 'Yeniden gönder',
@@ -644,6 +645,7 @@ const translation = {
   license: {
     expiring_plural: '{{count}} gün içinde sona eriyor',
     expiring: 'Bir günde sona eriyor',
+    unlimited: 'Sınırsız',
   },
   pagination: {
     perPage: 'Sayfa başına öğe sayısı',
@@ -667,6 +669,7 @@ const translation = {
     dropImageHere: 'Görüntünüzü buraya bırakın veya',
     browse: 'tarayıcı',
   },
+  you: 'Sen',
 }
 
 export default translation

@@ -145,6 +145,8 @@ const translation = {
     newDataset: 'Створити знання',
     tools: 'Інструменти',
     exploreMarketplace: 'Дізнайтеся більше про Marketplace',
+    appDetail: 'Деталі програми',
+    account: 'Обліковий запис',
   },
   userProfile: {
     settings: 'Налаштування',
@@ -466,7 +468,6 @@ const translation = {
   apiBasedExtension: {
     title: 'API-розширення забезпечують централізоване керування API, спрощуючи конфігурацію для зручного використання в різних програмах Dify.',
     link: 'Дізнайтеся, як розробити власне розширення API.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Додати розширення API',
     selector: {
       title: 'Розширення API',
@@ -645,6 +646,7 @@ const translation = {
   license: {
     expiring: 'Термін дії закінчується за один день',
     expiring_plural: 'Термін дії закінчується за {{count}} днів',
+    unlimited: 'Безмежний',
   },
   pagination: {
     perPage: 'Елементів на сторінці',
@@ -668,6 +670,7 @@ const translation = {
     supportedFormats: 'Підтримує PNG, JPG, JPEG, WEBP і GIF',
     dropImageHere: 'Перетягніть зображення сюди або',
   },
+  you: 'Ти',
 }
 
 export default translation

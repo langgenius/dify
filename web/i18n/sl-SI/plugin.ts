@@ -65,6 +65,7 @@ const translation = {
       empty: 'Kliknite gumb \' \' za dodajanje orodij. Dodate lahko več orodij.',
       paramsTip1: 'Nadzoruje parametre sklepanja LLM.',
       paramsTip2: 'Ko je \'Avtomatsko\' izklopljeno, se uporablja privzeta vrednost.',
+      toolSetting: 'Nastavitve orodja',
     },
     endpointDisableContent: 'Ali želite onemogočiti {{name}}?',
     serviceOk: 'Storitve so v redu',
@@ -208,8 +209,9 @@ const translation = {
   findMoreInMarketplace: 'Poiščite več v Tržnici',
   install: '{{num}} namestitev',
   allCategories: 'Vse kategorije',
-  submitPlugin: 'Oddajte vtičnik',
   difyVersionNotCompatible: 'Trenutna različica Dify ni združljiva s to vtičnico, prosimo, posodobite na minimalno zahtevano različico: {{minimalDifyVersion}}',
+  requestAPlugin: 'Zahtevajte vtičnik',
+  publishPlugins: 'Objavljanje vtičnikov',
 }
 
 export default translation

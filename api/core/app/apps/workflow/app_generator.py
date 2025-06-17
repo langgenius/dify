@@ -18,16 +18,20 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.apps.workflow.generate_response_converter import WorkflowAppGenerateResponseConverter
+from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_app_generate_task_pipeline import WorkflowAppGenerateTaskPipeline
+from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from factories import file_factory
+from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
+from models.enums import WorkflowRunTriggeredFrom
 
 logger = logging.getLogger(__name__)
 
@@ -129,16 +133,28 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=invoke_from,
             call_depth=call_depth,
             trace_manager=trace_manager,
-            workflow_run_id=workflow_run_id,
+            workflow_execution_id=workflow_run_id,
         )
 
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
-        # Create workflow node execution repository
+        # Create repositories
+        #
+        # Create session factory
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
-
+        # Create workflow execution(aka workflow run) repository
+        if invoke_from == InvokeFrom.DEBUGGER:
+            workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
+        else:
+            workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
+        workflow_execution_repository = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=session_factory,
+            user=user,
+            app_id=application_generate_entity.app_config.app_id,
+            triggered_from=workflow_triggered_from,
+        )
+        # Create workflow node execution repository
         workflow_node_execution_repository = SQLAlchemyWorkflowNodeExecutionRepository(
             session_factory=session_factory,
             user=user,
@@ -152,6 +168,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             application_generate_entity=application_generate_entity,
             invoke_from=invoke_from,
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
             workflow_thread_pool_id=workflow_thread_pool_id,
@@ -165,6 +182,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Union[Account, EndUser],
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
         workflow_thread_pool_id: Optional[str] = None,
@@ -189,14 +207,16 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_mode=app_model.mode,
         )
 
-        # new thread
+        # new thread with request context and contextvars
+        context = contextvars.copy_context()
+
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
                 "flask_app": current_app._get_current_object(),  # type: ignore
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
-                "context": contextvars.copy_context(),
+                "context": context,
                 "workflow_thread_pool_id": workflow_thread_pool_id,
             },
         )
@@ -209,6 +229,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             stream=streaming,
         )
@@ -256,12 +277,22 @@ class WorkflowAppGenerator(BaseAppGenerator):
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id, inputs=args["inputs"]
             ),
-            workflow_run_id=str(uuid.uuid4()),
+            workflow_execution_id=str(uuid.uuid4()),
         )
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
+        # Create repositories
+        #
+        # Create session factory
+        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+        # Create workflow execution(aka workflow run) repository
+        workflow_execution_repository = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=session_factory,
+            user=user,
+            app_id=application_generate_entity.app_config.app_id,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+        )
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
@@ -278,6 +309,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
         )
@@ -321,12 +353,22 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
             single_loop_run=WorkflowAppGenerateEntity.SingleLoopRunEntity(node_id=node_id, inputs=args["inputs"]),
-            workflow_run_id=str(uuid.uuid4()),
+            workflow_execution_id=str(uuid.uuid4()),
         )
-        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
         contexts.plugin_tool_providers.set({})
         contexts.plugin_tool_providers_lock.set(threading.Lock())
 
+        # Create repositories
+        #
+        # Create session factory
+        session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
+        # Create workflow execution(aka workflow run) repository
+        workflow_execution_repository = SQLAlchemyWorkflowExecutionRepository(
+            session_factory=session_factory,
+            user=user,
+            app_id=application_generate_entity.app_config.app_id,
+            triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+        )
         # Create workflow node execution repository
         session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
@@ -343,6 +385,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
         )
@@ -363,9 +406,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param workflow_thread_pool_id: workflow thread pool id
         :return:
         """
-        for var, val in context.items():
-            var.set(val)
-        with flask_app.app_context():
+
+        with preserve_flask_contexts(flask_app, context_vars=context):
             try:
                 # workflow app
                 runner = WorkflowAppRunner(
@@ -400,6 +442,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow: Workflow,
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
+        workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         stream: bool = False,
     ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -419,8 +462,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
-            stream=stream,
+            workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
+            stream=stream,
         )
 
         try:

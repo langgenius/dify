@@ -28,6 +28,7 @@ import type {
 } from '@/types/workflow'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { hasRetryNode } from '@/app/components/workflow/utils'
+import { useDocLink } from '@/context/i18n'
 
 type Props = {
   className?: string
@@ -65,6 +66,7 @@ const NodePanel: FC<Props> = ({
     doSetCollapseState(state)
   }, [hideProcessDetail])
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   const getTime = (time: number) => {
     if (time < 1)
@@ -195,7 +197,7 @@ const NodePanel: FC<Props> = ({
                 <StatusContainer status='stopped'>
                   {nodeInfo.error}
                   <a
-                    href='https://docs.dify.ai/guides/workflow/error-handling/error-type'
+                    href={docLink('/guides/workflow/error-handling/error-type')}
                     target='_blank'
                     className='text-text-accent'
                   >

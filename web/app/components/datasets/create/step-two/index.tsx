@@ -63,6 +63,7 @@ import CustomDialog from '@/app/components/base/dialog'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { noop } from 'lodash-es'
+import { useDocLink } from '@/context/i18n'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -146,6 +147,7 @@ const StepTwo = ({
   updateRetrievalMethodCache,
 }: StepTwoProps) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { locale } = useContext(I18n)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -865,10 +867,10 @@ const StepTwo = ({
             <>
               <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
                 <header className='mb-4 pt-6'>
-                  <h2 className='text-lg font-semibold'>
+                  <h2 className='text-lg font-semibold text-text-primary'>
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
                   </h2>
-                  <p className='mt-2 text-sm font-normal'>
+                  <p className='mt-2 text-sm font-normal text-text-secondary'>
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
                   </p>
                 </header>
@@ -928,7 +930,7 @@ const StepTwo = ({
           </div>
         )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-          <div className='system-xs-medium mt-2'>
+          <div className='system-xs-medium mt-2 text-text-tertiary'>
             {t('datasetCreation.stepTwo.indexSettingTip')}
             <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
           </div>
@@ -962,7 +964,9 @@ const StepTwo = ({
               <div className={'mb-1'}>
                 <div className='system-md-semibold mb-0.5 text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                 <div className='body-xs-regular text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                  <a target='_blank' rel='noopener noreferrer'
+                     href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents')}
+                     className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                   {t('datasetSettings.form.retrievalSetting.longDescription')}
                 </div>
               </div>

@@ -145,6 +145,8 @@ const translation = {
     newDataset: 'Criar Conhecimento',
     tools: 'Ferramentas',
     exploreMarketplace: 'Explorar Mercado',
+    appDetail: 'Detalhes do aplicativo',
+    account: 'Conta',
   },
   userProfile: {
     settings: 'Configurações',
@@ -465,7 +467,6 @@ const translation = {
   apiBasedExtension: {
     title: 'As extensões de API fornecem gerenciamento centralizado de API, simplificando a configuração para uso fácil em todos os aplicativos da Dify.',
     link: 'Saiba como desenvolver sua própria Extensão de API.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Adicionar Extensão de API',
     selector: {
       title: 'Extensão de API',
@@ -550,7 +551,7 @@ const translation = {
       vectorHash: 'Hash de vetor:',
       hitScore: 'Pontuação de recuperação:',
     },
-    inputPlaceholder: 'Fale com o bot',
+    inputPlaceholder: 'Fale com o {{botName}}',
     thinking: 'Pensante...',
     thought: 'Pensamento',
     resend: 'Reenviar',
@@ -644,6 +645,7 @@ const translation = {
   license: {
     expiring: 'Expirando em um dia',
     expiring_plural: 'Expirando em {{count}} dias',
+    unlimited: 'Ilimitado',
   },
   pagination: {
     perPage: 'Itens por página',
@@ -667,6 +669,7 @@ const translation = {
     supportedFormats: 'Suporta PNG, JPG, JPEG, WEBP e GIF',
     browse: 'navegar',
   },
+  you: 'Você',
 }
 
 export default translation

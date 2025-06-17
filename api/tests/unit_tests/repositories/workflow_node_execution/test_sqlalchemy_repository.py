@@ -4,19 +4,24 @@ Unit tests for the SQLAlchemy implementation of WorkflowNodeExecutionRepository.
 
 import json
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import MagicMock, PropertyMock
 
 import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.entities.node_entities import NodeRunMetadataKey
-from core.workflow.entities.node_execution_entities import NodeExecution, NodeExecutionStatus
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.nodes.enums import NodeType
-from core.workflow.repository.workflow_node_execution_repository import OrderConfig
+from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from models.account import Account, Tenant
-from models.workflow import WorkflowNodeExecution, WorkflowNodeExecutionStatus, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 
 
 def configure_mock_execution(mock_execution):
@@ -80,7 +85,7 @@ def test_save(repository, session):
     """Test save method."""
     session_obj, _ = session
     # Create a mock execution
-    execution = MagicMock(spec=WorkflowNodeExecution)
+    execution = MagicMock(spec=WorkflowNodeExecutionModel)
     execution.tenant_id = None
     execution.app_id = None
     execution.inputs = None
@@ -106,7 +111,7 @@ def test_save_with_existing_tenant_id(repository, session):
     """Test save method with existing tenant_id."""
     session_obj, _ = session
     # Create a mock execution with existing tenant_id
-    execution = MagicMock(spec=WorkflowNodeExecution)
+    execution = MagicMock(spec=WorkflowNodeExecutionModel)
     execution.tenant_id = "existing-tenant"
     execution.app_id = None
     execution.inputs = None
@@ -115,7 +120,7 @@ def test_save_with_existing_tenant_id(repository, session):
     execution.metadata = None
 
     # Create a modified execution that will be returned by _to_db_model
-    modified_execution = MagicMock(spec=WorkflowNodeExecution)
+    modified_execution = MagicMock(spec=WorkflowNodeExecutionModel)
     modified_execution.tenant_id = "existing-tenant"  # Tenant ID should not change
     modified_execution.app_id = repository._app_id  # App ID should be set
 
@@ -142,7 +147,7 @@ def test_get_by_node_execution_id(repository, session, mocker: MockerFixture):
     mock_stmt.where.return_value = mock_stmt
 
     # Create a properly configured mock execution
-    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecution)
+    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecutionModel)
     configure_mock_execution(mock_execution)
     session_obj.scalar.return_value = mock_execution
 
@@ -174,7 +179,7 @@ def test_get_by_workflow_run(repository, session, mocker: MockerFixture):
     mock_stmt.order_by.return_value = mock_stmt
 
     # Create a properly configured mock execution
-    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecution)
+    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecutionModel)
     configure_mock_execution(mock_execution)
     session_obj.scalars.return_value.all.return_value = [mock_execution]
 
@@ -207,7 +212,7 @@ def test_get_running_executions(repository, session, mocker: MockerFixture):
     mock_stmt.where.return_value = mock_stmt
 
     # Create a properly configured mock execution
-    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecution)
+    mock_execution = mocker.MagicMock(spec=WorkflowNodeExecutionModel)
     configure_mock_execution(mock_execution)
     session_obj.scalars.return_value.all.return_value = [mock_execution]
 
@@ -233,7 +238,7 @@ def test_update_via_save(repository, session):
     """Test updating an existing record via save method."""
     session_obj, _ = session
     # Create a mock execution
-    execution = MagicMock(spec=WorkflowNodeExecution)
+    execution = MagicMock(spec=WorkflowNodeExecutionModel)
     execution.tenant_id = None
     execution.app_id = None
     execution.inputs = None
@@ -273,7 +278,7 @@ def test_clear(repository, session, mocker: MockerFixture):
     repository.clear()
 
     # Assert delete was called with correct parameters
-    mock_delete.assert_called_once_with(WorkflowNodeExecution)
+    mock_delete.assert_called_once_with(WorkflowNodeExecutionModel)
     mock_stmt.where.assert_called()
     session_obj.execute.assert_called_once_with(mock_stmt)
     session_obj.commit.assert_called_once()
@@ -282,11 +287,11 @@ def test_clear(repository, session, mocker: MockerFixture):
 def test_to_db_model(repository):
     """Test to_db_model method."""
     # Create a domain model
-    domain_model = NodeExecution(
+    domain_model = WorkflowNodeExecution(
         id="test-id",
         workflow_id="test-workflow-id",
         node_execution_id="test-node-execution-id",
-        workflow_run_id="test-workflow-run-id",
+        workflow_execution_id="test-workflow-run-id",
         index=1,
         predecessor_node_id="test-predecessor-id",
         node_id="test-node-id",
@@ -295,10 +300,13 @@ def test_to_db_model(repository):
         inputs={"input_key": "input_value"},
         process_data={"process_key": "process_value"},
         outputs={"output_key": "output_value"},
-        status=NodeExecutionStatus.RUNNING,
+        status=WorkflowNodeExecutionStatus.RUNNING,
         error=None,
         elapsed_time=1.5,
-        metadata={NodeRunMetadataKey.TOTAL_TOKENS: 100},
+        metadata={
+            WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 100,
+            WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: Decimal("0.0"),
+        },
         created_at=datetime.now(),
         finished_at=None,
     )
@@ -307,13 +315,13 @@ def test_to_db_model(repository):
     db_model = repository.to_db_model(domain_model)
 
     # Assert DB model has correct values
-    assert isinstance(db_model, WorkflowNodeExecution)
+    assert isinstance(db_model, WorkflowNodeExecutionModel)
     assert db_model.id == domain_model.id
     assert db_model.tenant_id == repository._tenant_id
     assert db_model.app_id == repository._app_id
     assert db_model.workflow_id == domain_model.workflow_id
     assert db_model.triggered_from == repository._triggered_from
-    assert db_model.workflow_run_id == domain_model.workflow_run_id
+    assert db_model.workflow_run_id == domain_model.workflow_execution_id
     assert db_model.index == domain_model.index
     assert db_model.predecessor_node_id == domain_model.predecessor_node_id
     assert db_model.node_execution_id == domain_model.node_execution_id
@@ -324,7 +332,7 @@ def test_to_db_model(repository):
     assert db_model.inputs_dict == domain_model.inputs
     assert db_model.process_data_dict == domain_model.process_data
     assert db_model.outputs_dict == domain_model.outputs
-    assert db_model.execution_metadata_dict == domain_model.metadata
+    assert db_model.execution_metadata_dict == jsonable_encoder(domain_model.metadata)
 
     assert db_model.status == domain_model.status
     assert db_model.error == domain_model.error
@@ -341,10 +349,10 @@ def test_to_domain_model(repository):
     inputs_dict = {"input_key": "input_value"}
     process_data_dict = {"process_key": "process_value"}
     outputs_dict = {"output_key": "output_value"}
-    metadata_dict = {str(NodeRunMetadataKey.TOTAL_TOKENS): 100}
+    metadata_dict = {str(WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS): 100}
 
     # Create a DB model using our custom subclass
-    db_model = WorkflowNodeExecution()
+    db_model = WorkflowNodeExecutionModel()
     db_model.id = "test-id"
     db_model.tenant_id = "test-tenant-id"
     db_model.app_id = "test-app-id"
@@ -373,10 +381,10 @@ def test_to_domain_model(repository):
     domain_model = repository._to_domain_model(db_model)
 
     # Assert domain model has correct values
-    assert isinstance(domain_model, NodeExecution)
+    assert isinstance(domain_model, WorkflowNodeExecution)
     assert domain_model.id == db_model.id
     assert domain_model.workflow_id == db_model.workflow_id
-    assert domain_model.workflow_run_id == db_model.workflow_run_id
+    assert domain_model.workflow_execution_id == db_model.workflow_run_id
     assert domain_model.index == db_model.index
     assert domain_model.predecessor_node_id == db_model.predecessor_node_id
     assert domain_model.node_execution_id == db_model.node_execution_id
@@ -386,7 +394,7 @@ def test_to_domain_model(repository):
     assert domain_model.inputs == inputs_dict
     assert domain_model.process_data == process_data_dict
     assert domain_model.outputs == outputs_dict
-    assert domain_model.status == NodeExecutionStatus(db_model.status)
+    assert domain_model.status == WorkflowNodeExecutionStatus(db_model.status)
     assert domain_model.error == db_model.error
     assert domain_model.elapsed_time == db_model.elapsed_time
     assert domain_model.metadata == metadata_dict

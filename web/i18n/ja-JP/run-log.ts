@@ -19,7 +19,7 @@ const translation = {
     steps: '処理ステップ数',
   },
   resultEmpty: {
-    title: '今回の実行ではJSON形式のみが出力されました',
+    title: '今回の実行では JSON 形式のみが出力されました',
     tipLeft: '詳細を確認するには',
     link: '詳細情報パネル',
     tipRight: 'へ移動してください',

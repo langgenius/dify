@@ -28,6 +28,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
   const { theme } = useTheme()
   const monacoRef = useRef<any>(null)
   const editorRef = useRef<any>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (monacoRef.current) {
@@ -74,6 +75,19 @@ const CodeEditor: FC<CodeEditorProps> = ({
       onUpdate?.(value)
   }, [onUpdate])
 
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(() => {
+      editorRef.current?.layout()
+    })
+
+    if (containerRef.current)
+      resizeObserver.observe(containerRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
   return (
     <div className={classNames('flex flex-col h-full bg-components-input-bg-normal overflow-hidden', className)}>
       <div className='flex items-center justify-between pl-2 pr-1 pt-1'>
@@ -102,9 +116,11 @@ const CodeEditor: FC<CodeEditorProps> = ({
           </Tooltip>
         </div>
       </div>
-      <div className={classNames('relative', editorWrapperClassName)}>
+      <div
+        ref={containerRef}
+        className={classNames('relative overflow-hidden', editorWrapperClassName)}
+      >
         <Editor
-          height='100%'
           defaultLanguage='json'
           value={value}
           onChange={handleEditorChange}
@@ -117,7 +133,6 @@ const CodeEditor: FC<CodeEditorProps> = ({
             scrollBeyondLastLine: false,
             wordWrap: 'on',
             wrappingIndent: 'same',
-            // Add these options
             overviewRulerBorder: false,
             hideCursorInOverviewRuler: true,
             renderLineHighlightOnlyWhenFocus: false,
