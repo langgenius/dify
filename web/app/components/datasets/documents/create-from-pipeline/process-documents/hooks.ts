@@ -1,22 +1,12 @@
 import { useMemo } from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import { usePublishedPipelineProcessingParams } from '@/service/use-pipeline'
-import { PipelineInputVarType } from '@/models/pipeline'
+import { VAR_TYPE_MAP } from '@/models/pipeline'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-
-const VAR_TYPE_MAP: Record<PipelineInputVarType, BaseFieldType> = {
-  [PipelineInputVarType.textInput]: BaseFieldType.textInput,
-  [PipelineInputVarType.paragraph]: BaseFieldType.paragraph,
-  [PipelineInputVarType.select]: BaseFieldType.select,
-  [PipelineInputVarType.singleFile]: BaseFieldType.file,
-  [PipelineInputVarType.multiFiles]: BaseFieldType.fileList,
-  [PipelineInputVarType.number]: BaseFieldType.numberInput,
-  [PipelineInputVarType.checkbox]: BaseFieldType.checkbox,
-}
 
 export const useConfigurations = (datasourceNodeId: string) => {
   const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
-  const { data: paramsConfig } = usePublishedPipelineProcessingParams({
+  const { data: paramsConfig, isFetching: isFetchingParams } = usePublishedPipelineProcessingParams({
     pipeline_id: pipelineId!,
     node_id: datasourceNodeId,
   })
@@ -61,6 +51,7 @@ export const useConfigurations = (datasourceNodeId: string) => {
   }, [paramsConfig])
 
   return {
+    isFetchingParams,
     initialData,
     configurations,
   }

@@ -5,11 +5,13 @@ import { RiArrowLeftLine } from '@remixicon/react'
 
 type ActionsProps = {
   onBack: () => void
+  runDisabled?: boolean
   onProcess: () => void
 }
 
 const Actions = ({
   onBack,
+  runDisabled,
   onProcess,
 }: ActionsProps) => {
   const { t } = useTranslation()
@@ -26,6 +28,7 @@ const Actions = ({
       </Button>
       <Button
         variant='primary'
+        disabled={runDisabled}
         onClick={onProcess}
       >
         {t('datasetPipeline.operations.saveAndProcess')}

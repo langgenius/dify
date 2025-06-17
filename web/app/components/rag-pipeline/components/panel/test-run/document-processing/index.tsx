@@ -1,8 +1,8 @@
+import React, { useCallback } from 'react'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
 import { useConfigurations } from './hooks'
 import Options from './options'
 import Actions from './actions'
-import { useCallback } from 'react'
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
 
 type DocumentProcessingProps = {
@@ -16,12 +16,12 @@ const DocumentProcessing = ({
   onProcess,
   onBack,
 }: DocumentProcessingProps) => {
-  const { initialData, configurations } = useConfigurations(dataSourceNodeId)
+  const { isFetchingParams, initialData, configurations } = useConfigurations(dataSourceNodeId)
   const schema = generateZodSchema(configurations)
 
   const renderCustomActions = useCallback((props: CustomActionsProps) => (
-    <Actions formParams={props} onBack={onBack} />
-  ), [onBack])
+    <Actions runDisabled={isFetchingParams} formParams={props} onBack={onBack} />
+  ), [isFetchingParams, onBack])
 
   return (
     <Options
@@ -34,4 +34,4 @@ const DocumentProcessing = ({
   )
 }
 
-export default DocumentProcessing
+export default React.memo(DocumentProcessing)

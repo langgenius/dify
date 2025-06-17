@@ -17,6 +17,7 @@ const I18N_PREFIX = 'datasetCreation.stepOne.website'
 type OptionsProps = {
   variables: RAGPipelineVariables
   isRunning: boolean
+  runDisabled?: boolean
   controlFoldOptions?: number
   onSubmit: (data: Record<string, any>) => void
 }
@@ -24,6 +25,7 @@ type OptionsProps = {
 const Options = ({
   variables,
   isRunning,
+  runDisabled,
   controlFoldOptions,
   onSubmit,
 }: OptionsProps) => {
@@ -90,7 +92,7 @@ const Options = ({
         <Button
           variant='primary'
           onClick={form.handleSubmit}
-          disabled={isRunning}
+          disabled={runDisabled || isRunning}
           loading={isRunning}
           className='shrink-0 gap-x-0.5'
           spinnerClassName='!ml-0'
