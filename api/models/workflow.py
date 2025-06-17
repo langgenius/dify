@@ -9,12 +9,12 @@ from uuid import uuid4
 from flask_login import current_user
 from sqlalchemy import orm
 
+from core.file.constants import maybe_file_object
 from core.file.models import File
 from core.variables import utils as variable_utils
-from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes.enums import NodeType
-from factories.variable_factory import build_segment
+from factories.variable_factory import TypeMismatchError, build_segment_with_type
 
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
@@ -1065,15 +1065,52 @@ class WorkflowDraftVariable(Base):
 
     def _loads_value(self) -> Segment:
         value = json.loads(self.value)
-        value_type = self.value_type
-        if value_type == SegmentType.FILE:
-            file = File.model_validate(value)
-            return FileSegment(value=file)
-        elif value_type == SegmentType.ARRAY_FILE:
-            files = [File.model_validate(i) for i in value]
-            return ArrayFileSegment(value=files)
+        return self.build_segment_with_type(self.value_type, value)
+
+    @staticmethod
+    def rebuild_file_types(value: Any) -> Any:
+        # NOTE(QuantumGhost): Temporary workaround for structured data handling.
+        # By this point, `output` has been converted to dict by
+        # `WorkflowEntry.handle_special_values`, so we need to
+        # reconstruct File objects from their serialized form
+        # to maintain proper variable saving behavior.
+        #
+        # Ideally, we should work with structured data objects directly
+        # rather than their serialized forms.
+        # However, multiple components in the codebase depend on
+        # `WorkflowEntry.handle_special_values`, making a comprehensive migration challenging.
+        if isinstance(value, dict):
+            if not maybe_file_object(value):
+                return value
+            return File.model_validate(value)
+        elif isinstance(value, list) and value:
+            first = value[0]
+            if not maybe_file_object(first):
+                return value
+            return [File.model_validate(i) for i in value]
         else:
-            return build_segment(value)
+            return value
+
+    @classmethod
+    def build_segment_with_type(cls, segment_type: SegmentType, value: Any) -> Segment:
+        # Extends `variable_factory.build_segment_with_type` functionality by
+        # reconstructing `FileSegment`` or `ArrayFileSegment`` objects from
+        # their serialized dictionary or list representations, respectively.
+        if segment_type == SegmentType.FILE:
+            if isinstance(value, File):
+                return build_segment_with_type(segment_type, value)
+            elif isinstance(value, dict):
+                file = cls.rebuild_file_types(value)
+                return build_segment_with_type(segment_type, file)
+            else:
+                raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
+        if segment_type == SegmentType.ARRAY_FILE:
+            if not isinstance(value, list):
+                raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
+            file_list = cls.rebuild_file_types(value)
+            return build_segment_with_type(segment_type=segment_type, value=file_list)
+
+        return build_segment_with_type(segment_type=segment_type, value=value)
 
     def get_value(self) -> Segment:
         """Decode the serialized value into its corresponding `Segment` object.

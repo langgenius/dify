@@ -76,4 +76,4 @@ def load_into_variable_pool(
             variables_to_load.append(list(selector))
     loaded = variable_loader.load_variables(variables_to_load)
     for var in loaded:
-        variable_pool.add(var.selector, var.value)
+        variable_pool.add(var.selector, var)
