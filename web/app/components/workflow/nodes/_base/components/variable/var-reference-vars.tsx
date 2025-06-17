@@ -260,6 +260,7 @@ type Props = {
   maxHeightClass?: string
   onClose?: () => void
   onBlur?: () => void
+  autoFocus?: boolean
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
@@ -271,6 +272,7 @@ const VarReferenceVars: FC<Props> = ({
   maxHeightClass,
   onClose,
   onBlur,
+  autoFocus = true,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -323,7 +325,7 @@ const VarReferenceVars: FC<Props> = ({
                 onKeyDown={handleKeyDown}
                 onClear={() => setSearchText('')}
                 onBlur={onBlur}
-                autoFocus
+                autoFocus={autoFocus}
               />
             </div>
             <div className='relative left-[-4px] h-[0.5px] bg-black/5' style={{
