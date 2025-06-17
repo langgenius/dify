@@ -30,6 +30,7 @@ import type { WorkflowSliceShape } from './workflow-slice'
 import { createWorkflowSlice } from './workflow-slice'
 import { WorkflowContext } from '@/app/components/workflow/context'
 import type { WorkflowSliceShape as WorkflowAppSliceShape } from '@/app/components/workflow-app/store/workflow/workflow-slice'
+import { type SelectPanelSliceShape, createSelectPanelSlice } from './select-node-panel'
 
 export type Shape =
   ChatVariableSliceShape &
@@ -43,7 +44,8 @@ export type Shape =
   VersionSliceShape &
   WorkflowDraftSliceShape &
   WorkflowSliceShape &
-  WorkflowAppSliceShape
+  WorkflowAppSliceShape &
+  SelectPanelSliceShape
 
 type CreateWorkflowStoreParams = {
   injectWorkflowStoreSliceFn?: StateCreator<WorkflowAppSliceShape>
@@ -65,6 +67,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
     ...createWorkflowDraftSlice(...args),
     ...createWorkflowSlice(...args),
     ...(injectWorkflowStoreSliceFn?.(...args) || {} as WorkflowAppSliceShape),
+    ...createSelectPanelSlice(...args),
   }))
 }
 
