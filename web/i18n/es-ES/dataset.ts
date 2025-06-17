@@ -202,6 +202,7 @@ const translation = {
       builtInDescription: 'Los metadatos integrados se extraen y generan automáticamente. Deben estar habilitados antes de su uso y no se pueden editar.',
       name: 'Nombre',
       description: 'Puedes gestionar todos los metadatos en este conocimiento aquí. Las modificaciones se sincronizarán en todos los documentos.',
+      disabled: 'desactivar',
     },
     documentMetadata: {
       technicalParameters: 'Parámetros técnicos',
