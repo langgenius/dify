@@ -349,6 +349,7 @@ def _build_from_datasource_file(
         storage_key=datasource_file.key,
     )
 
+
 def _is_file_valid_with_config(
     *,
     input_file_type: str,

@@ -33,7 +33,7 @@ from core.workflow.repositories.workflow_execution_repository import WorkflowExe
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from extensions.ext_database import db
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
-from models.dataset import Document, Pipeline
+from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.dataset_service import DocumentService
@@ -136,6 +136,16 @@ class PipelineGenerator(BaseAppGenerator):
             document_id = None
             if invoke_from == InvokeFrom.PUBLISHED:
                 document_id = documents[i].id
+                document_pipeline_execution_log = DocumentPipelineExecutionLog(
+                    document_id=document_id,
+                    datasource_type=datasource_type,
+                    datasource_info=datasource_info,
+                    input_data=inputs,
+                    pipeline_id=pipeline.id,
+                    created_by=user.id,
+                )
+                db.session.add(document_pipeline_execution_log)
+                db.session.commit()
             application_generate_entity = RagPipelineGenerateEntity(
                 task_id=str(uuid.uuid4()),
                 app_config=pipeline_config,

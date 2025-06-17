@@ -41,8 +41,9 @@ class DatasourcePluginOauthApi(Resource):
         if not plugin_oauth_config:
             raise NotFound()
         oauth_handler = OAuthHandler()
-        redirect_url = (f"{dify_config.CONSOLE_WEB_URL}/oauth/datasource/callback?"
-                        f"provider={provider}&plugin_id={plugin_id}")
+        redirect_url = (
+            f"{dify_config.CONSOLE_WEB_URL}/oauth/datasource/callback?provider={provider}&plugin_id={plugin_id}"
+        )
         system_credentials = plugin_oauth_config.system_credentials
         if system_credentials:
             system_credentials["redirect_url"] = redirect_url
@@ -123,9 +124,7 @@ class DatasourceAuth(Resource):
         args = parser.parse_args()
         datasource_provider_service = DatasourceProviderService()
         datasources = datasource_provider_service.get_datasource_credentials(
-            tenant_id=current_user.current_tenant_id,
-            provider=args["provider"],
-            plugin_id=args["plugin_id"]
+            tenant_id=current_user.current_tenant_id, provider=args["provider"], plugin_id=args["plugin_id"]
         )
         return {"result": datasources}, 200
 
@@ -146,7 +145,7 @@ class DatasourceAuthUpdateDeleteApi(Resource):
             tenant_id=current_user.current_tenant_id,
             auth_id=auth_id,
             provider=args["provider"],
-            plugin_id=args["plugin_id"]
+            plugin_id=args["plugin_id"],
         )
         return {"result": "success"}, 200
 

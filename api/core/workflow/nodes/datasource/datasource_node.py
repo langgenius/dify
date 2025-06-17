@@ -74,12 +74,12 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
         except DatasourceNodeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                inputs={},
-                metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
-                error=f"Failed to get datasource runtime: {str(e)}",
-                error_type=type(e).__name__,
-            )
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs={},
+                    metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
+                    error=f"Failed to get datasource runtime: {str(e)}",
+                    error_type=type(e).__name__,
+                )
             )
 
         # get parameters
@@ -114,16 +114,17 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                     )
 
                 case DatasourceProviderType.WEBSITE_CRAWL:
-
-                    yield RunCompletedEvent(run_result=NodeRunResult(
-                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                        inputs=parameters_for_log,
-                        metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
-                        outputs={
-                            **datasource_info,
-                            "datasource_type": datasource_type,
-                        },
-                    ))
+                    yield RunCompletedEvent(
+                        run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                            inputs=parameters_for_log,
+                            metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
+                            outputs={
+                                **datasource_info,
+                                "datasource_type": datasource_type,
+                            },
+                        )
+                    )
                 case DatasourceProviderType.LOCAL_FILE:
                     related_id = datasource_info.get("related_id")
                     if not related_id:
@@ -155,33 +156,39 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                             variable_key_list=new_key_list,
                             variable_value=value,
                         )
-                    yield RunCompletedEvent(run_result=NodeRunResult(
-                        status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                        inputs=parameters_for_log,
-                        metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
-                        outputs={
-                            "file_info": datasource_info,
-                            "datasource_type": datasource_type,
-                        },
-                    ))
+                    yield RunCompletedEvent(
+                        run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                            inputs=parameters_for_log,
+                            metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
+                            outputs={
+                                "file_info": datasource_info,
+                                "datasource_type": datasource_type,
+                            },
+                        )
+                    )
                 case _:
                     raise DatasourceNodeError(f"Unsupported datasource provider: {datasource_type}")
         except PluginDaemonClientSideError as e:
-            yield RunCompletedEvent(run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                inputs=parameters_for_log,
-                metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
-                error=f"Failed to transform datasource message: {str(e)}",
-                error_type=type(e).__name__,
-            ))
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=parameters_for_log,
+                    metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
+                    error=f"Failed to transform datasource message: {str(e)}",
+                    error_type=type(e).__name__,
+                )
+            )
         except DatasourceNodeError as e:
-            yield RunCompletedEvent(run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                inputs=parameters_for_log,
-                metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
-                error=f"Failed to invoke datasource: {str(e)}",
-                error_type=type(e).__name__,
-            ))
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=parameters_for_log,
+                    metadata={WorkflowNodeExecutionMetadataKey.DATASOURCE_INFO: datasource_info},
+                    error=f"Failed to invoke datasource: {str(e)}",
+                    error_type=type(e).__name__,
+                )
+            )
 
     def _generate_parameters(
         self,
@@ -285,8 +292,6 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
             result = {node_id + "." + key: value for key, value in result.items()}
 
         return result
-
-
 
     def _transform_message(
         self,

@@ -334,11 +334,15 @@ class DatasetService:
                 dataset.retrieval_model = external_retrieval_model
             dataset.name = data.get("name", dataset.name)
             #  check if dataset name is exists
-            if db.session.query(Dataset).filter(
-                Dataset.id != dataset_id,
-                Dataset.name == dataset.name,
-                Dataset.tenant_id == dataset.tenant_id,
-            ).first():
+            if (
+                db.session.query(Dataset)
+                .filter(
+                    Dataset.id != dataset_id,
+                    Dataset.name == dataset.name,
+                    Dataset.tenant_id == dataset.tenant_id,
+                )
+                .first()
+            ):
                 raise ValueError("Dataset name already exists")
             dataset.description = data.get("description", "")
             permission = data.get("permission")

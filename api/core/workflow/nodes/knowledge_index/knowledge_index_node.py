@@ -123,10 +123,14 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
         # update document status
         document.indexing_status = "completed"
         document.completed_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
-        document.word_count = db.session.query(func.sum(DocumentSegment.word_count)).filter(
-            DocumentSegment.document_id == document.id,
-            DocumentSegment.dataset_id == dataset.id,
-        ).scalar()
+        document.word_count = (
+            db.session.query(func.sum(DocumentSegment.word_count))
+            .filter(
+                DocumentSegment.document_id == document.id,
+                DocumentSegment.dataset_id == dataset.id,
+            )
+            .scalar()
+        )
         db.session.add(document)
         # update document segment status
         db.session.query(DocumentSegment).filter(
