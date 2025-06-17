@@ -408,7 +408,7 @@ export const ssePost = async (
 
                 if (data.code === 'web_sso_auth_required') {
                   removeAccessToken()
-                  requiredWebSSOLogin(data.message, 401)
+                  requiredWebSSOLogin()
                 }
 
                 if (data.code === 'unauthorized') {
@@ -492,7 +492,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       }
       if (code === 'web_sso_auth_required') {
         removeAccessToken()
-        requiredWebSSOLogin(message, 401)
+        requiredWebSSOLogin()
         return Promise.reject(err)
       }
       if (code === 'unauthorized_and_force_logout') {
