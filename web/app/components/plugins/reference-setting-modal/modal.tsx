@@ -7,10 +7,11 @@ import OptionCard from '@/app/components/workflow/nodes/_base/components/option-
 import Button from '@/app/components/base/button'
 import type { Permissions } from '@/app/components/plugins/types'
 import { PermissionType } from '@/app/components/plugins/types'
+import type { AutoUpdateConfig } from './auto-update-setting/types'
 
 const i18nPrefix = 'plugin.privilege'
 type Props = {
-  payload: Permissions
+  payload: Permissions & { autoUpdate: AutoUpdateConfig }
   onHide: () => void
   onSave: (payload: Permissions) => void
 }

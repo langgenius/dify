@@ -24,7 +24,7 @@ import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
-import PermissionSetModal from '@/app/components/plugins/permission-setting-modal/modal'
+import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal/modal'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import {
   useRouter,
@@ -130,7 +130,7 @@ const PluginPage = ({
   const [showPluginSettingModal, {
     setTrue: setShowPluginSettingModal,
     setFalse: setHidePluginSettingModal,
-  }] = useBoolean()
+  }] = useBoolean(true)
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = usePluginPageContext(v => v.containerRef)
   const options = usePluginPageContext(v => v.options)
@@ -276,7 +276,7 @@ const PluginPage = ({
       }
 
       {showPluginSettingModal && (
-        <PermissionSetModal
+        <ReferenceSettingModal
           payload={permissions!}
           onHide={setHidePluginSettingModal}
           onSave={setPermissions}
