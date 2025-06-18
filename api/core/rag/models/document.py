@@ -60,6 +60,20 @@ class ParentChildStructureChunk(BaseModel):
     parent_child_chunks: list[ParentChildChunk]
 
 
+class QAChunk(BaseModel):
+    """
+    QA Chunk.
+    """
+
+    question: str
+    answer: str
+
+class QAStructureChunk(BaseModel):
+    """
+    QAStructureChunk.
+    """
+    qa_chunks: list[QAChunk]
+
 class BaseDocumentTransformer(ABC):
     """Abstract base class for document transformation systems.
 
