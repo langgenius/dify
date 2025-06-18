@@ -39,6 +39,7 @@ def create_app() -> DifyApp:
 def initialize_extensions(app: DifyApp):
     from extensions import (
         ext_app_metrics,
+        ext_audit_log,
         ext_blueprints,
         ext_celery,
         ext_code_based_extension,
@@ -85,6 +86,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_otel,
         ext_request_logging,
+        ext_audit_log,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]
