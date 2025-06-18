@@ -13,8 +13,6 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import login_required
 from models.account import TenantPluginPermission
-from services.errors.plugin import PluginInstallationForbiddenError
-from services.feature_service import FeatureService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
