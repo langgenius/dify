@@ -56,7 +56,7 @@ const useSingleRunFormParams = ({
       Object.keys(inputs.tool_parameters).forEach((key: string) => {
         const { type, value } = inputs.tool_parameters[key]
         if (type === VarType.constant && (value === undefined || value === null))
-          draft.tool_parameters[key].value = value
+          draft[key] = value
       })
     })
     return res
