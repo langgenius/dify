@@ -118,6 +118,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             title={<>
               {renderI18nObject(def.label)} {def.required && <span className='text-red-500'>*</span>}
             </>}
+            key={def.variable}
             tooltip={def.tooltip && renderI18nObject(def.tooltip)}
             inline
           >
@@ -222,7 +223,8 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           description={<div className='text-xs text-text-tertiary'>
             {t('workflow.nodes.agent.strategy.configureTipDesc')} <br />
             <Link href={docLink('/guides/workflow/node/agent#select-an-agent-strategy', {
-              'zh-Hans': '/guides/workflow/node/agent#xuan-ze-agent-ce-le',
+              'zh-Hans': '/guides/workflow/node/agent#选择-agent-策略',
+              'ja-JP': '/guides/workflow/node/agent#エージェント戦略の選択',
             })}
               className='text-text-accent-secondary' target='_blank'>
               {t('workflow.nodes.agent.learnMore')}

@@ -210,3 +210,6 @@ mise.toml
 
 # Next.js build output
 .next/
+
+# AI Assistant
+.roo/

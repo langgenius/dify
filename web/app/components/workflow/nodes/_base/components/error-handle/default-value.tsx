@@ -36,7 +36,9 @@ const DefaultValue = ({
         {t('workflow.nodes.common.errorHandle.defaultValue.desc')}
         &nbsp;
         <a
-          href={docLink('/guides/workflow/error-handling/README')}
+          href={docLink('/guides/workflow/error-handling/README', {
+            'zh-Hans': '/guides/workflow/error-handling/readme',
+          })}
           target='_blank'
           className='text-text-accent'
         >

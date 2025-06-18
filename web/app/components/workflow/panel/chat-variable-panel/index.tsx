@@ -138,10 +138,13 @@ const ChatVariablePanel = () => {
             <div className='system-sm-regular mb-4 mt-1 text-text-secondary'>
               {t('workflow.chatVariable.panelDescription')}
               <a target='_blank' rel='noopener noreferrer' className='text-text-accent'
-                 href={docLink('/guides/workflow/variables#conversation-variables', { 'zh-Hans': '/guides/workflow/variables#hui-hua-bian-liang' })}>
+                href={docLink('/guides/workflow/variables#conversation-variables', {
+                  'zh-Hans': '/guides/workflow/variables#会话变量',
+                  'ja-JP': '/guides/workflow/variables#会話変数',
+                })}>
                 {t('workflow.chatVariable.docLink')}
               </a>
-          </div>
+            </div>
             <div className='flex items-center gap-2'>
               <div className='radius-lg flex flex-col border border-workflow-block-border bg-workflow-block-bg p-3 pb-4 shadow-md'>
                 <BubbleX className='mb-1 h-4 w-4 shrink-0 text-util-colors-teal-teal-700' />
@@ -167,7 +170,7 @@ const ChatVariablePanel = () => {
                 </div>
               </div>
             </div>
-            <div className='absolute right-[38px] top-[-4px] z-10 h-3 w-3 rotate-45 bg-background-section-burn'/>
+            <div className='absolute right-[38px] top-[-4px] z-10 h-3 w-3 rotate-45 bg-background-section-burn' />
           </div>
         </div>
       )}
