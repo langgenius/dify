@@ -188,6 +188,7 @@ const translation = {
     nodeResize: '노드 크기 조정됨',
     nodeDragStop: '노드가 이동했습니다.',
     edgeDelete: '노드가 연결이 끊어졌습니다.',
+    nodeTitleChange: '노드 제목이 변경됨',
   },
   errorMsg: {
     fieldRequired: '{{field}}가 필요합니다',
