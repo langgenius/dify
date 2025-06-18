@@ -112,6 +112,7 @@ const translation = {
     pointerMode: 'Način s kazalcem',
     autoSaved: 'Samodejno shranjeno',
     configure: 'Konfiguriraj',
+    inRunMode: 'V načinu izvajanja',
   },
   env: {
     modal: {
@@ -185,6 +186,7 @@ const translation = {
     clearHistory: 'Počisti zgodovino',
     hintText: 'Vaša dejanja urejanja so sledena v zgodovini sprememb, ki se hrani na vaši napravi za čas trajanja te seje. Ta zgodovina bo izbrisana, ko zapustite urejevalnik.',
     placeholder: 'Še niste spremenili ničesar.',
+    stepForward_one: '{{count}} korak naprej',
   },
   errorMsg: {
     fields: {
@@ -836,6 +838,7 @@ const translation = {
           upload_file_id: 'Naložite ID datoteke',
           title: 'datoteke, ki jih je ustvaril agent',
           url: 'URL slike',
+          transfer_method: 'Metoda prenosa. Vrednost je remote_url ali local_file.',
         },
         json: 'agent generiran json',
         text: 'vsebina, ki jo je ustvaril agent',
