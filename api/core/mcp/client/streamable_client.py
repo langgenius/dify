@@ -436,8 +436,6 @@ def streamablehttp_client(
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         try:
-            logger.info(f"Connecting to StreamableHTTP endpoint: {url}")
-
             with create_ssrf_proxy_mcp_http_client(
                 headers=transport.request_headers,
                 timeout=httpx.Timeout(transport.timeout.seconds, read=transport.sse_read_timeout.seconds),

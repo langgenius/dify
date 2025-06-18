@@ -715,6 +715,7 @@ class ToolMCPAuthApi(Resource):
 
         except MCPAuthError:
             auth_provider = OAuthClientProvider(provider_id, tenant_id)
+
             return auth(auth_provider, server_url, args["authorization_code"])
 
 

@@ -41,7 +41,7 @@ def discover_oauth_metadata(server_url: str, protocol_version: Optional[str] = N
         if response.status_code == 404:
             return None
         if not response.ok:
-            raise Exception(f"HTTP {response.status_code} trying to load well-known OAuth metadata")
+            raise ValueError(f"HTTP {response.status_code} trying to load well-known OAuth metadata")
         return OAuthMetadata.model_validate(response.json())
     except requests.RequestException as e:
         if isinstance(e, requests.ConnectionError):
@@ -49,7 +49,7 @@ def discover_oauth_metadata(server_url: str, protocol_version: Optional[str] = N
             if response.status_code == 404:
                 return None
             if not response.ok:
-                raise Exception(f"HTTP {response.status_code} trying to load well-known OAuth metadata")
+                raise ValueError(f"HTTP {response.status_code} trying to load well-known OAuth metadata")
             return OAuthMetadata.model_validate(response.json())
         raise
 
@@ -68,12 +68,14 @@ def start_authorization(
     if metadata:
         authorization_url = metadata.authorization_endpoint
         if response_type not in metadata.response_types_supported:
-            raise Exception(f"Incompatible auth server: does not support response type {response_type}")
+            raise ValueError(f"Incompatible auth server: does not support response type {response_type}")
         if (
             not metadata.code_challenge_methods_supported
             or code_challenge_method not in metadata.code_challenge_methods_supported
         ):
-            raise Exception(f"Incompatible auth server: does not support code challenge method {code_challenge_method}")
+            raise ValueError(
+                f"Incompatible auth server: does not support code challenge method {code_challenge_method}"
+            )
     else:
         authorization_url = urljoin(server_url, "/authorize")
 
@@ -106,7 +108,7 @@ def exchange_authorization(
     if metadata:
         token_url = metadata.token_endpoint
         if metadata.grant_types_supported and grant_type not in metadata.grant_types_supported:
-            raise Exception(f"Incompatible auth server: does not support grant type {grant_type}")
+            raise ValueError(f"Incompatible auth server: does not support grant type {grant_type}")
     else:
         token_url = urljoin(server_url, "/token")
 
@@ -123,7 +125,7 @@ def exchange_authorization(
 
     response = requests.post(token_url, data=params)
     if not response.ok:
-        raise Exception(f"Token exchange failed: HTTP {response.status_code}")
+        raise ValueError(f"Token exchange failed: HTTP {response.status_code}")
     return OAuthTokens.model_validate(response.json())
 
 
@@ -139,7 +141,7 @@ def refresh_authorization(
     if metadata:
         token_url = metadata.token_endpoint
         if metadata.grant_types_supported and grant_type not in metadata.grant_types_supported:
-            raise Exception(f"Incompatible auth server: does not support grant type {grant_type}")
+            raise ValueError(f"Incompatible auth server: does not support grant type {grant_type}")
     else:
         token_url = urljoin(server_url, "/token")
 
@@ -154,7 +156,7 @@ def refresh_authorization(
 
     response = requests.post(token_url, data=params)
     if not response.ok:
-        raise Exception(f"Token refresh failed: HTTP {response.status_code}")
+        raise ValueError(f"Token refresh failed: HTTP {response.status_code}")
     return OAuthTokens.parse_obj(response.json())
 
 
@@ -166,7 +168,7 @@ def register_client(
     """Performs OAuth 2.0 Dynamic Client Registration."""
     if metadata:
         if not metadata.registration_endpoint:
-            raise Exception("Incompatible auth server: does not support dynamic client registration")
+            raise ValueError("Incompatible auth server: does not support dynamic client registration")
         registration_url = metadata.registration_endpoint
     else:
         registration_url = urljoin(server_url, "/register")

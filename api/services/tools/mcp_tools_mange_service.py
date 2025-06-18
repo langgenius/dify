@@ -1,8 +1,10 @@
 import hashlib
 import json
+from datetime import datetime
 from urllib.parse import urlparse
 
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 from core.helper import encrypter
 from core.mcp.error import MCPAuthError, MCPConnectionError
@@ -103,6 +105,7 @@ class MCPToolManageService:
             raise ValueError(f"Failed to connect to MCP server: {e}")
         mcp_provider.tools = json.dumps([tool.model_dump() for tool in tools])
         mcp_provider.authed = True
+        mcp_provider.updated_at = datetime.now()
         db.session.commit()
         return ToolProviderApiEntity(
             id=mcp_provider.id,
@@ -149,11 +152,41 @@ class MCPToolManageService:
         encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
         mcp_provider.name = name
         mcp_provider.server_url = encrypted_server_url
-        mcp_provider.server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
-        mcp_provider.icon = (
-            json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon
-        )
-        db.session.commit()
+        server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
+        # if the server url is changed, we need to re-auth the tool
+        try:
+            if server_url_hash != mcp_provider.server_url_hash:
+                try:
+                    with MCPClient(
+                        server_url,
+                        provider_id,
+                        tenant_id,
+                        authed=False,
+                    ) as mcp_client:
+                        tools = mcp_client.list_tools()
+                        mcp_provider.authed = True
+                        mcp_provider.tools = json.dumps([tool.model_dump() for tool in tools])
+                except MCPAuthError:
+                    mcp_provider.authed = False
+                    mcp_provider.tools = "[]"
+                mcp_provider.encrypted_credentials = "{}"
+                mcp_provider.server_url_hash = server_url_hash
+            mcp_provider.icon = (
+                json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon
+            )
+            db.session.commit()
+        except IntegrityError as e:
+            db.session.rollback()
+            # Check if the error message contains the constraint name
+            if "unique_mcp_provider_name" in str(e.orig):
+                # Raise your custom exception
+                raise ValueError(f"A provider with name '{name}' already exists.")
+            elif "unique_mcp_provider_server_url" in str(e.orig):
+                # You can define another custom exception for the other constraint
+                raise ValueError(f"A provider for server URL '{server_url}' already exists.")
+            else:
+                # Re-raise the original exception if it's not the one you're handling
+                raise
 
     @classmethod
     def update_mcp_provider_credentials(cls, tenant_id: str, provider_id: str, credentials: dict, authed: bool = False):
