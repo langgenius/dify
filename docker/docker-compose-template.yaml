@@ -84,7 +84,6 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      PGUSER: ${PGUSER:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
