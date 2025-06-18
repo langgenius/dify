@@ -2,8 +2,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useMount } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import { useSWRConfig } from 'swr'
-import { unstable_serialize } from 'swr/infinite'
 import PermissionSelector from '../permission-selector'
 import IndexMethod from '../index-method'
 import RetrievalSettings from '../../external-knowledge-base/create/RetrievalSettings'
@@ -16,7 +14,7 @@ import Textarea from '@/app/components/base/textarea'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { updateDatasetSetting } from '@/service/datasets'
 import type { IconInfo } from '@/models/datasets'
-import { ChunkingMode, type DataSetListResponse, DatasetPermission } from '@/models/datasets'
+import { ChunkingMode, DatasetPermission } from '@/models/datasets'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import type { AppIconType, RetrievalConfig } from '@/types/app'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
@@ -38,15 +36,10 @@ import ChunkStructure from '../chunk-structure'
 import Toast from '@/app/components/base/toast'
 import { RiAlertFill } from '@remixicon/react'
 import { useDocLink } from '@/context/i18n'
+import { useResetDatasetList } from '@/service/knowledge/use-dataset'
 
 const rowClass = 'flex gap-x-1'
 const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
-
-const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
-  if (!pageIndex || previousPageData.has_more)
-    return { url: 'datasets', params: { page: pageIndex + 1, limit: 30 } }
-  return null
-}
 
 const DEFAULT_APP_ICON: IconInfo = {
   icon_type: 'emoji',
@@ -58,7 +51,6 @@ const DEFAULT_APP_ICON: IconInfo = {
 const Form = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { mutate } = useSWRConfig()
   const isCurrentWorkspaceDatasetOperator = useAppContextWithSelector(state => state.isCurrentWorkspaceDatasetOperator)
   const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
   const mutateDatasets = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
@@ -135,6 +127,7 @@ const Form = () => {
     getMembers()
   })
 
+  const resetDatasetList = useResetDatasetList()
   const handleSave = async () => {
     if (loading)
       return
@@ -197,7 +190,7 @@ const Form = () => {
       Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       if (mutateDatasets) {
         await mutateDatasets()
-        mutate(unstable_serialize(getKey))
+        resetDatasetList()
       }
     }
     catch {

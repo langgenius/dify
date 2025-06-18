@@ -22,7 +22,7 @@ const Datasets = ({
   const { t } = useTranslation()
   const isCurrentWorkspaceEditor = useAppContextWithSelector(state => state.isCurrentWorkspaceEditor)
   const {
-    data,
+    data: datasetList,
     fetchNextPage,
     hasNextPage,
     isFetching,
@@ -54,13 +54,13 @@ const Datasets = ({
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-  }, [anchorRef, data, hasNextPage, fetchNextPage])
+  }, [anchorRef, datasetList, hasNextPage, fetchNextPage])
 
   return (
     <>
       <nav className='grid shrink-0 grow grid-cols-1 content-start gap-3 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
         {isCurrentWorkspaceEditor && <NewDatasetCard />}
-        {data?.pages.map(({ data: datasets }) => datasets.map(dataset => (
+        {datasetList?.pages.map(({ data: datasets }) => datasets.map(dataset => (
           <DatasetCard key={dataset.id} dataset={dataset} onSuccess={resetDatasetList} />),
         ))}
       </nav>

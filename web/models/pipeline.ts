@@ -168,34 +168,6 @@ export type PipelinePreProcessingParamsResponse = {
   variables: RAGPipelineVariables
 }
 
-export type PipelineDatasourceNodeRunRequest = {
-  pipeline_id: string
-  node_id: string
-  inputs: Record<string, any>
-  datasource_type: DatasourceType
-}
-
-export type PipelineDatasourceNodeRunResponse = {
-  job_id?: string
-  status: 'processing' | 'completed'
-  result: any
-  provider_type: DatasourceType
-}
-
-export type PipelineDatasourceNodeRunStatusRequest = {
-  pipeline_id: string
-  node_id: string
-  job_id: string
-  datasource_type: DatasourceType
-}
-
-export type PipelineDatasourceNodeRunStatusResponse = {
-  provider_type: DatasourceType
-  result: Record<string, any>
-  status: 'processing' | 'completed'
-  job_id: string
-}
-
 export type PublishedPipelineInfoResponse = {
   id: string
   graph: {
