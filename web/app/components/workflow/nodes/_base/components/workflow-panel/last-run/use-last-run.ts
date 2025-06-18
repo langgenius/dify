@@ -204,6 +204,7 @@ const useLastRun = <T>({
     const { isValid } = checkValid()
     if(!isValid)
       return
+    setNodeRunning()
     setIsRunAfterSingleRun(true)
     setTabType(TabType.lastRun)
     callRunApi(data, () => {

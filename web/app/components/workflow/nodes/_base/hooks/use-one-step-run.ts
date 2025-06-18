@@ -273,7 +273,6 @@ const useOneStepRun = <T>({
       data: {
         ...data,
         _isSingleRun: true,
-        _singleRunningStatus: NodeRunningStatus.Running,
       },
     })
   }
