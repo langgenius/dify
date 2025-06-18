@@ -69,9 +69,11 @@ class IndexingRunner:
                 # extract
                 text_docs = self._extract(index_processor, dataset_document, processing_rule.to_dict())
                 # 对读取的结果做处理
-                text_docs = self.handle_text_docs(dataset_document,text_docs)
-
-                print("text_docs len:",len(text_docs))
+                text_docs = self.handle_text_docs(
+                    dataset=dataset,
+                    dataset_document=dataset_document,
+                    text_docs=text_docs
+                )
                 # transform
                 documents = self._transform(
                     index_processor, dataset, text_docs, dataset_document.doc_language, processing_rule.to_dict()
@@ -102,9 +104,9 @@ class IndexingRunner:
                 dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.commit()
 
-    def handle_text_docs(self, dataset_document: DatasetDocument,text_docs: list[Document]):
+    def handle_text_docs(self, dataset : Dataset, dataset_document: DatasetDocument,text_docs: list[Document]):
         # if dataset_document.doc_metadata and dataset_document.doc_metadata["file_id"] is not None:
-        if dataset_document.doc_metadata is None:
+        if dataset.name == "FULL_TEXT_SEARCH_KNOWLEDGE":
             # 全文检索处理文档页面是，需要完全按照统一token处理，所以要保证所有页面合并到一起处理
             # 添加标题到文本第一行
             contents:list[str] = [f"【{dataset_document.name}】-"]
