@@ -20,6 +20,7 @@ import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/
 import Checkbox from '@/app/components/base/checkbox'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { SimpleSelect } from '@/app/components/base/select'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -234,9 +235,30 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
           )}
           {type === InputVarType.select && (
-            <Field title={t('appDebug.variableConfig.options')}>
-              <ConfigSelect options={options || []} onChange={handlePayloadChange('options')} />
-            </Field>
+            <>
+              <Field title={t('appDebug.variableConfig.options')}>
+                <ConfigSelect options={options || []} onChange={handlePayloadChange('options')} />
+              </Field>
+              {options && options.length > 0 && (
+                <Field title={t('appDebug.variableConfig.defaultValue')}>
+                  <SimpleSelect
+                    key={`default-select-${options.join('-')}`}
+                    className="w-full"
+                    items={[
+                      { value: '', name: t('appDebug.variableConfig.noDefaultValue') },
+                      ...options.filter(opt => opt.trim() !== '').map(option => ({
+                        value: option,
+                        name: option,
+                      })),
+                    ]}
+                    defaultValue={tempPayload.default || ''}
+                    onSelect={item => handlePayloadChange('default')(item.value === '' ? undefined : item.value)}
+                    placeholder={t('appDebug.variableConfig.selectDefaultValue')}
+                    allowSearch={false}
+                  />
+                </Field>
+              )}
+            </>
           )}
 
           {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (
