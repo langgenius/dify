@@ -161,7 +161,7 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
                     .with_for_update()
                 )
                 next_seq = session.scalar(stmt)
-                db_model.sequence_number = next_seq
+                db_model.sequence_number = int(next_seq) if next_seq is not None else 1
             else:
                 # For updates, keep the existing sequence number
                 db_model.sequence_number = existing.sequence_number
