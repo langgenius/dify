@@ -558,21 +558,24 @@ class RagPipelineService:
                     provider_type=datasource_runtime.datasource_provider_type(),
                 )
                 start_time = time.time()
-                for message in website_crawl_result:
-                    end_time = time.time()
-                    if message.result.status == "completed":
-                        crawl_event = DatasourceCompletedEvent(
-                            data=message.result.web_info_list,
-                            total=message.result.total,
-                            completed=message.result.completed,
-                            time_consuming=round(end_time - start_time, 2)
-                        )
-                    else:
-                        crawl_event = DatasourceProcessingEvent(
-                            total=message.result.total,
-                            completed=message.result.completed,
-                        )
-                    yield crawl_event.model_dump()
+                try:
+                    for message in website_crawl_result:
+                        end_time = time.time()
+                        if message.result.status == "completed":
+                            crawl_event = DatasourceCompletedEvent(
+                                data=message.result.web_info_list,
+                                total=message.result.total,
+                                completed=message.result.completed,
+                                time_consuming=round(end_time - start_time, 2)
+                            )
+                        else:
+                            crawl_event = DatasourceProcessingEvent(
+                                total=message.result.total,
+                                completed=message.result.completed,
+                            )
+                        yield crawl_event.model_dump()
+                except Exception as e:
+                    print(str(e))
             case _:
                 raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
 
