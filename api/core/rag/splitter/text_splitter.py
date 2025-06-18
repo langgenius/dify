@@ -69,7 +69,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         self._add_start_index = add_start_index
 
     @abstractmethod
-    def split_text(self, text: str) -> list[str]:
+    def split_text(self, text: str, metadata:Optional[dict] = None) -> list[str]:
         """Split text into multiple components."""
 
     def create_documents(self, texts: list[str], metadatas: Optional[list[dict]] = None) -> list[Document]:
@@ -78,7 +78,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         documents = []
         for i, text in enumerate(texts):
             index = -1
-            for chunk in self.split_text(text):
+            for chunk in self.split_text(text,_metadatas[i]):
                 metadata = copy.deepcopy(_metadatas[i])
                 if self._add_start_index:
                     index = text.find(chunk, index + 1)
