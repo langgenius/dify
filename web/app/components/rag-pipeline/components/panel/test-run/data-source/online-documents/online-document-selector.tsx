@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import WorkspaceSelector from '@/app/components/base/notion-page-selector/workspace-selector'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
 import PageSelector from '@/app/components/base/notion-page-selector/page-selector'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import Header from '@/app/components/datasets/create/website/base/header'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useDraftDatasourceNodeRun, usePublishedDatasourceNodeRun } from '@/service/use-pipeline'
 import { DatasourceType } from '@/models/pipeline'
+import { ssePost } from '@/service/base'
+import Toast from '@/app/components/base/toast'
+import type { DataSourceNodeCompletedResponse } from '@/types/pipeline'
 
 type OnlineDocumentSelectorProps = {
   value?: string[]
@@ -33,28 +35,37 @@ const OnlineDocumentSelector = ({
   nodeId,
   headerInfo,
 }: OnlineDocumentSelectorProps) => {
-  const pipeline_id = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const [documentsData, setDocumentsData] = useState<DataSourceNotionWorkspace[]>([])
   const [searchValue, setSearchValue] = useState('')
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
 
-  const useDatasourceNodeRun = useRef(!isInPipeline ? usePublishedDatasourceNodeRun : useDraftDatasourceNodeRun)
-  const { mutateAsync: crawlOnlineDocuments } = useDatasourceNodeRun.current()
+  const datasourceNodeRunURL = !isInPipeline
+    ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
+    : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const getOnlineDocuments = useCallback(async () => {
-    if (pipeline_id) {
-      await crawlOnlineDocuments({
-        pipeline_id,
-        node_id: nodeId,
-        inputs: {},
-        datasource_type: DatasourceType.onlineDocument,
-      }, {
-        onSuccess(documentsData) {
-          setDocumentsData(documentsData.result as DataSourceNotionWorkspace[])
+    ssePost(
+      datasourceNodeRunURL,
+      {
+        body: {
+          inputs: {},
+          datasource_type: DatasourceType.onlineDocument,
         },
-      })
-    }
-  }, [crawlOnlineDocuments, nodeId, pipeline_id])
+      },
+      {
+        onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
+          setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
+        },
+        onError: (message: string) => {
+          Toast.notify({
+            type: 'error',
+            message,
+          })
+        },
+      },
+    )
+  }, [datasourceNodeRunURL])
 
   useEffect(() => {
     getOnlineDocuments()
