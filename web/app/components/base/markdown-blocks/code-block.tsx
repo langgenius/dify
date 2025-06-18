@@ -89,7 +89,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-  const isDarkMode = theme === Theme.light ? false : true
+  const isDarkMode = theme === Theme.dark
 
   const echartsStyle = useMemo(() => ({
     height: '350px',
@@ -103,21 +103,19 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
   // Debounce resize operations
   const debouncedResize = useCallback(() => {
-    if (resizeTimerRef.current) {
-      clearTimeout(resizeTimerRef.current);
-    }
+    if (resizeTimerRef.current)
+      clearTimeout(resizeTimerRef.current)
 
     resizeTimerRef.current = setTimeout(() => {
-      if (chartInstanceRef.current) {
-        chartInstanceRef.current.resize();
-      }
-      resizeTimerRef.current = null;
-    }, 200);
-  }, []);
+      if (chartInstanceRef.current)
+        chartInstanceRef.current.resize()
+      resizeTimerRef.current = null
+    }, 200)
+  }, [])
 
   // Handle ECharts instance initialization
   const handleChartReady = useCallback((instance: any) => {
-    chartInstanceRef.current = instance;
+    chartInstanceRef.current = instance
 
     // Force resize to ensure timeline displays correctly
     setTimeout(() => {
@@ -148,21 +146,19 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     if (language !== 'echarts' || !chartInstanceRef.current) return
 
     const handleResize = () => {
-      if (chartInstanceRef.current) {
+      if (chartInstanceRef.current)
         // Use debounced resize
-        debouncedResize();
-      }
+        debouncedResize()
     }
 
     window.addEventListener('resize', handleResize)
 
     return () => {
       window.removeEventListener('resize', handleResize)
-      if (resizeTimerRef.current) {
-        clearTimeout(resizeTimerRef.current);
-      }
+      if (resizeTimerRef.current)
+        clearTimeout(resizeTimerRef.current)
     }
-  }, [language, debouncedResize]);
+  }, [language, debouncedResize])
   // Process chart data when content changes
   useEffect(() => {
     // Only process echarts content
