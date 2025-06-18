@@ -61,6 +61,8 @@ const Form: FC<Props> = ({
     }
   }, [valuesRef, onChange, mapKeysWithSameValueSelector])
   const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type)
+  const isIteratorItemFile = inputs[0]?.type === InputVarType.iterator && inputs[0]?.isFileItem
+
   const isContext = inputs[0]?.type === InputVarType.contexts
   const handleAddContext = useCallback(() => {
     const newValues = produce(values, (draft: any) => {
@@ -77,7 +79,7 @@ const Form: FC<Props> = ({
       {label && (
         <div className='mb-1 flex items-center justify-between'>
           <div className='system-xs-medium-uppercase flex h-6 items-center text-text-tertiary'>{label}</div>
-          {isArrayLikeType && (
+          {isArrayLikeType && !isIteratorItemFile && (
             <AddButton onClick={handleAddContext} />
           )}
         </div>

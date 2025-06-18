@@ -5,7 +5,7 @@ import type { IterationNodeType } from './types'
 import { useTranslation } from 'react-i18next'
 import { useIsNodeInIteration, useWorkflow } from '../../hooks'
 import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../_base/components/variable/utils'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 import type { NodeTracing } from '@/types/workflow'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
@@ -124,12 +124,13 @@ const useSingleRunFormParams = ({
           type: InputVarType.iterator,
           required: false,
           getVarValueFromDependent: true,
+          isFileItem: payload.iterator_input_type === VarType.arrayFile,
         }],
         values: { [iteratorInputKey]: iterator },
         onChange: (keyValue: Record<string, any>) => setIterator(keyValue[iteratorInputKey]),
       },
     ]
-  }, [inputVarValues, iterator, iteratorInputKey, setInputVarValues, setIterator, t, usedOutVars])
+  }, [inputVarValues, iterator, iteratorInputKey, payload.iterator_input_type, setInputVarValues, setIterator, t, usedOutVars])
 
   const nodeInfo = formatTracing(iterationRunResult, t)[0]
 

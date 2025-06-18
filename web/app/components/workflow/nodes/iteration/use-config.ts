@@ -28,9 +28,10 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     return [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
-  const handleInputChange = useCallback((input: ValueSelector | string) => {
+  const handleInputChange = useCallback((input: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
     const newInputs = produce(inputs, (draft) => {
       draft.iterator_selector = input as ValueSelector || []
+      draft.iterator_input_type = varInfo?.type || VarType.arrayString
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
