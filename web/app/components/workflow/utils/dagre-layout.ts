@@ -19,19 +19,88 @@ import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 
 export const getLayoutByDagre = (originNodes: Node[], originEdges: Edge[]) => {
-  const dagreGraph = new dagre.graphlib.Graph()
+  const dagreGraph = new dagre.graphlib.Graph({ compound: true })
   dagreGraph.setDefaultEdgeLabel(() => ({}))
+
   const nodes = cloneDeep(originNodes).filter(node => !node.parentId && node.type === CUSTOM_NODE)
   const edges = cloneDeep(originEdges).filter(edge => (!edge.data?.isInIteration && !edge.data?.isInLoop))
+
+// The default dagre layout algorithm often fails to correctly order the branches
+// of an If/Else node, leading to crossed edges.
+//
+// To solve this, we employ a "virtual container" strategy:
+// 1. A virtual, compound parent node (the "container") is created for each If/Else node's branches.
+// 2. Each direct child of the If/Else node is preceded by a virtual dummy node. These dummies are placed inside the container.
+// 3. A rigid, sequential chain of invisible edges is created between these dummy nodes (e.g., dummy_IF -> dummy_ELIF -> dummy_ELSE).
+//
+// This forces dagre to treat the ordered branches as an unbreakable, atomic group,
+// ensuring their layout respects the intended logical sequence.
+  const ifElseNodes = nodes.filter(node => node.data.type === BlockEnum.IfElse)
+  let virtualLogicApplied = false
+
+  ifElseNodes.forEach((ifElseNode) => {
+    const childEdges = edges.filter(e => e.source === ifElseNode.id)
+    if (childEdges.length <= 1)
+      return
+
+    virtualLogicApplied = true
+    const sortedChildEdges = childEdges.sort((edgeA, edgeB) => {
+      const handleA = edgeA.sourceHandle
+      const handleB = edgeB.sourceHandle
+
+      if (handleA && handleB) {
+        const cases = (ifElseNode.data as any).cases || []
+        const isAElse = handleA === 'false'
+        const isBElse = handleB === 'false'
+
+        if (isAElse) return 1
+        if (isBElse) return -1
+
+        const indexA = cases.findIndex((c: any) => c.case_id === handleA)
+        const indexB = cases.findIndex((c: any) => c.case_id === handleB)
+
+        if (indexA !== -1 && indexB !== -1)
+          return indexA - indexB
+      }
+      return 0
+    })
+
+    const parentDummyId = `dummy-parent-${ifElseNode.id}`
+    dagreGraph.setNode(parentDummyId, { width: 1, height: 1 })
+
+    const dummyNodes: string[] = []
+    sortedChildEdges.forEach((edge) => {
+      const dummyNodeId = `dummy-${edge.source}-${edge.target}`
+      dummyNodes.push(dummyNodeId)
+      dagreGraph.setNode(dummyNodeId, { width: 1, height: 1 })
+      dagreGraph.setParent(dummyNodeId, parentDummyId)
+
+      const edgeIndex = edges.findIndex(e => e.id === edge.id)
+      if (edgeIndex > -1)
+        edges.splice(edgeIndex, 1)
+
+      edges.push({ id: `e-${edge.source}-${dummyNodeId}`, source: edge.source, target: dummyNodeId, sourceHandle: edge.sourceHandle } as Edge)
+      edges.push({ id: `e-${dummyNodeId}-${edge.target}`, source: dummyNodeId, target: edge.target, targetHandle: edge.targetHandle } as Edge)
+    })
+
+    for (let i = 0; i < dummyNodes.length - 1; i++) {
+      const sourceDummy = dummyNodes[i]
+      const targetDummy = dummyNodes[i + 1]
+      edges.push({ id: `e-dummy-${sourceDummy}-${targetDummy}`, source: sourceDummy, target: targetDummy } as Edge)
+    }
+  })
+
   dagreGraph.setGraph({
+    compound: true,
     rankdir: 'LR',
     align: 'UL',
     nodesep: 40,
-    ranksep: 60,
+    ranksep: virtualLogicApplied ? 30 : 60,
     ranker: 'tight-tree',
     marginx: 30,
     marginy: 200,
   })
+
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, {
       width: node.width!,
