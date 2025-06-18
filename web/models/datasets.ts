@@ -178,10 +178,10 @@ export type FetchDatasetsParams = {
 
 export type DatasetListRequest = {
   initialPage: number
-  tag_ids: string[]
+  tag_ids?: string[]
   limit: number
-  include_all: boolean
-  keyword: string
+  include_all?: boolean
+  keyword?: string
 }
 
 export type DataSetListResponse = {

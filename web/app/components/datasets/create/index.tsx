@@ -10,10 +10,10 @@ import { TopBar } from './top-bar'
 import { DataSourceType } from '@/models/datasets'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
-import { fetchDatasetDetail } from '@/service/datasets'
 import { DataSourceProvider, type NotionPage } from '@/models/common'
 import { useModalContext } from '@/context/modal-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 
 type DatasetUpdateFormProps = {
   datasetId?: string
@@ -39,7 +39,6 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [retrievalMethodCache, setRetrievalMethodCache] = useState('')
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
-  const [hasError, setHasError] = useState(false)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
@@ -104,21 +103,14 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   }, [])
 
   const [detail, setDetail] = useState<DataSet | null>(null)
-  useEffect(() => {
-    (async () => {
-      if (datasetId) {
-        try {
-          const detail = await fetchDatasetDetail(datasetId)
-          setDetail(detail)
-        }
-        catch {
-          setHasError(true)
-        }
-      }
-    })()
-  }, [datasetId])
 
-  if (hasError)
+  const { data: datasetDetail, error: fetchDatasetDetailError } = useDatasetDetail(datasetId || '')
+  useEffect(() => {
+    if (!datasetDetail) return
+    setDetail(datasetDetail)
+  }, [datasetDetail])
+
+  if (fetchDatasetDetailError)
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
   return (

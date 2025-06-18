@@ -46,6 +46,7 @@ export const useDatasetDetail = (datasetId: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'detail', datasetId],
     queryFn: () => get<DataSet>(`/datasets/${datasetId}`),
+    enabled: !!datasetId,
   })
 }
 
