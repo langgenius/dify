@@ -93,7 +93,6 @@ class PluginService:
             logger.exception("failed to fetch latest plugin version")
             return result
 
-
     @staticmethod
     def _check_marketplace_only_permission():
         """
