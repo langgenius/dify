@@ -68,7 +68,10 @@ class IndexingRunner:
                 index_processor = IndexProcessorFactory(index_type).init_index_processor()
                 # extract
                 text_docs = self._extract(index_processor, dataset_document, processing_rule.to_dict())
+                # 对读取的结果做处理
+                text_docs = self.handle_text_docs(dataset_document,text_docs)
 
+                print("text_docs len:",len(text_docs))
                 # transform
                 documents = self._transform(
                     index_processor, dataset, text_docs, dataset_document.doc_language, processing_rule.to_dict()
@@ -98,6 +101,26 @@ class IndexingRunner:
                 dataset_document.error = str(e)
                 dataset_document.stopped_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.commit()
+
+    def handle_text_docs(self, dataset_document: DatasetDocument,text_docs: list[Document]):
+        # if dataset_document.doc_metadata and dataset_document.doc_metadata["file_id"] is not None:
+        if dataset_document.doc_metadata is None:
+            # 全文检索处理文档页面是，需要完全按照统一token处理，所以要保证所有页面合并到一起处理
+            # 添加标题到文本第一行
+            contents:list[str] = [f"【{dataset_document.name}】-"]
+            # 将多个合并到第一给内
+            for text_doc in text_docs:
+                contents.append(text_doc.page_content)
+            text_docs[0].page_content = "\n".join(contents)
+
+            # char_split：按照字符拆分，保证每个分片的长度基本一致
+            # full_last：最后一个分片，没有达到阈值，用空格匹配
+            if text_docs[0].metadata is not None:
+                text_docs[0].metadata["char_split"] = True
+                text_docs[0].metadata["full_last_text"] = True
+
+            return [text_docs[0]]
+        return text_docs
 
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is splitting."""
@@ -706,7 +729,6 @@ class IndexingRunner:
                     tenant_id=dataset.tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
-
         documents = index_processor.transform(
             text_docs,
             embedding_model_instance=embedding_model_instance,
