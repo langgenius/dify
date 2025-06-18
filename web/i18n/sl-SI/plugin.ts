@@ -140,6 +140,7 @@ const translation = {
     install: 'Namestite',
     pluginLoadError: 'Napaka pri nalaganju vtičnika',
     installPlugin: 'Namestite vtičnik',
+    installWarning: 'Ta vtičnik ni dovoljen za namestitev.',
   },
   installFromGitHub: {
     updatePlugin: 'Posodobite vtičnik iz GitHuba',
