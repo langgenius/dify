@@ -207,6 +207,7 @@ const translation = {
     modelNotSupportedTip: 'El modelo actual no admite esta función y se degrada automáticamente a inyección de comandos.',
     structuredTip: 'Las Salidas Estructuradas son una función que garantiza que el modelo siempre generará respuestas que se ajusten a su esquema JSON proporcionado.',
     modelNotSupported: 'Modelo no soportado',
+    structured: 'sistemático',
   },
   accessItemsDescription: {
     anyone: 'Cualquiera puede acceder a la aplicación web.',
