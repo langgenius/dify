@@ -695,6 +695,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TABLESTORE
                 | VectorType.HUAWEI_CLOUD
                 | VectorType.TENCENT
+                | VectorType.MATRIXONE
             ):
                 return {
                     "retrieval_method": [
@@ -742,6 +743,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.TABLESTORE
                 | VectorType.TENCENT
                 | VectorType.HUAWEI_CLOUD
+                | VectorType.MATRIXONE
             ):
                 return {
                     "retrieval_method": [

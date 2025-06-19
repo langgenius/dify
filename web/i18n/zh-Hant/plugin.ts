@@ -137,6 +137,7 @@ const translation = {
     cancel: '取消',
     installPlugin: '安裝插件',
     installing: '安裝。。。',
+    installWarning: '此插件不允許安裝。',
   },
   installFromGitHub: {
     gitHubRepo: 'GitHub 儲存庫',
@@ -177,7 +178,7 @@ const translation = {
     empower: '為您的 AI 開發提供支援',
     moreFrom: '來自 Marketplace 的更多內容',
     and: '和',
-    sortBy: '黑城',
+    sortBy: '排序方式',
     viewMore: '查看更多',
     difyMarketplace: 'Dify 市場',
     pluginsResult: '{{num}} 個結果',

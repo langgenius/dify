@@ -1860,16 +1860,16 @@ class DocumentService:
                 knowledge_config.embedding_model,  # type: ignore
             )
             dataset_collection_binding_id = dataset_collection_binding.id
-            if knowledge_config.retrieval_model:
-                retrieval_model = knowledge_config.retrieval_model
-            else:
-                retrieval_model = RetrievalModel(
-                    search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
-                    reranking_enable=False,
-                    reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
-                    top_k=2,
-                    score_threshold_enabled=False,
-                )
+        if knowledge_config.retrieval_model:
+            retrieval_model = knowledge_config.retrieval_model
+        else:
+            retrieval_model = RetrievalModel(
+                search_method=RetrievalMethod.SEMANTIC_SEARCH.value,
+                reranking_enable=False,
+                reranking_model=RerankingModel(reranking_provider_name="", reranking_model_name=""),
+                top_k=2,
+                score_threshold_enabled=False,
+            )
         # save dataset
         dataset = Dataset(
             tenant_id=tenant_id,
