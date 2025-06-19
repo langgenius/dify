@@ -190,22 +190,42 @@ def get_search_keywords_texts_sql(search_keywords_texts:list[str]):
     if texts_len == 1:
         sql = texts[0]
     elif texts_len == 2:
-        sql = f"{texts[0]} & {texts[1]} | {texts[0]}{texts[1]}"
+        merge_text = merge_strings(texts[0],texts[1])
+        sql = f"{texts[0]} & {texts[1]} | {merge_text}"
     else:
         sql_texts:list[str] = []
         for idx,text in enumerate(texts):
             if idx == 0:
-                sql_texts.append(f"({text} | {text}{texts[idx + 1]})")
+                merge_text = merge_strings(text,texts[idx + 1])
+                sql_texts.append(f"({text} | {merge_text})")
             elif idx == texts_len - 2:
-                sql_texts.append(f"({text} | {text}{texts[idx + 1]} | {texts[idx-1]}{text} & {texts[idx + 1]})")
+                merge_text1 = merge_strings(text,texts[idx + 1])
+                merge_text2 = merge_strings(texts[idx-1],text)
+                sql_texts.append(f"({text} | {merge_text1} | {merge_text2} & {texts[idx + 1]})")
             elif idx == texts_len - 1:
-                sql_texts.append(f"({text} | {texts[idx - 1]}{text})")
+                merge_text = merge_strings(texts[idx-1],text)
+                sql_texts.append(f"({text} | {merge_text})")
             else:
-                sql_texts.append(f"({text} | {text}{texts[idx + 1]} | {texts[idx-1]}{text} & ({texts[idx + 1]} | {texts[idx + 1]}{texts[idx + 2]}))")
+                merge_text1 = merge_strings(text,texts[idx + 1])
+                merge_text2 = merge_strings(texts[idx-1],text)
+                merge_text3 = merge_strings(texts[idx + 1],texts[idx + 2])
+                sql_texts.append(f"({text} | {merge_text1} | {merge_text2} & ({texts[idx + 1]} | {merge_text3}))")
         sql = " & ".join(sql_texts)
     print(sql)
 
-    return f"{sql} | {query_sql}"
+    return f"({sql}) | ({query_sql})"
+
+def merge_strings(text1, text2):
+    max_overlap = 0
+    min_len = min(len(text1), len(text2))
+
+    # 找出最大重叠部分
+    for i in range(1, min_len + 1):
+        if text1[-i:] == text2[:i]:
+            max_overlap = i
+    # 合并字符串
+    text = text1 + text2[max_overlap:]
+    return text
 
 def get_min_search_keywords_texts(texts:list[str]):
     # import pdb; pdb.set_trace()
@@ -250,9 +270,18 @@ def set_full_search_score(query:str,doc_list:list[dict[str, Any]]):
 def score(value):
     return round(20 * math.exp(-0.4 * value), 2) / 100
 
+def get_main_keywords_texts_test(query_text: str) -> list[str]:
+    # 判断关键词的长度
+    jieba.analyse.set_stop_words("d://stopwords.txt")
+    # jieba.analyse.set_idf_path("extensions/utils/idfwords.txt")
+    # 提取关键词，默认 topK=30，withWeight=True
+    main_keywords_texts__ = jieba.analyse.extract_tags(query_text, topK=200, withWeight=False)
+
+    return main_keywords_texts__
+
 if __name__ == "__main__":
-    print(score(1))
-    # get_keywords("分类码")
+    # print(merge_strings("第二","二层"))
+    get_keywords("我的")
     # search_texts=["湖人","阵容"]
     # score, max_index_list =get_full_search_text_max_score(search_texts=search_texts, source="所以，**严格讲，詹姆斯在湖人确实拥有超级巨星（戴维斯），但不像热火三巨头那样多核并立。**更多时候，他还是湖人阵容的绝对核心和领袖。")
     # print(score, len(max_index_list))

@@ -224,6 +224,7 @@ class DocumentExtService:
         print(keywords.__dict__)
         segments_rows, document_rows = DocumentExtService.get_keyword_search_segments(
             dataset_ids=dataset_ids,
+            query_text=query_text,
             keywords=keywords,
         )
         # 过滤文件ID
@@ -292,19 +293,32 @@ class DocumentExtService:
 
 
     def get_keyword_search_segments(dataset_ids: list[str],
+                                    query_text: str,
                                     keywords: Keywords
                                 ) -> (list[Row],list[Row]):
 
+        params = {"query": query_text, "dataset_ids" : dataset_ids}
+        where = [" s.content ILIKE :query "]
+        if keywords.main_texts:
+            params["keywords"] = keywords.search_sql
+            where.append(f" to_tsvector('chinese', s.content) @@ to_tsquery(:keywords) ")
+        where_str = " or ".join(where)
         sql = text(f"""
             SELECT s.id segment_id, s.document_id, s.content segment_content, d.name document_name,d.doc_metadata
             FROM document_segments s
                 LEFT JOIN documents d ON d.id = s.document_id
-            WHERE to_tsvector('chinese', s.content) @@ to_tsquery(:keywords) AND d.dataset_id::text = ANY(:dataset_ids)
+            WHERE ({where_str}) AND d.dataset_id::text = ANY(:dataset_ids)
         """)
         print(sql,keywords.search_sql,dataset_ids[0])
-        segments_rows = db.session.execute(sql, {"keywords": keywords.search_sql, "dataset_ids" : dataset_ids}).fetchall()
+        segments_rows = db.session.execute(sql, params).fetchall()
 
-        sql = text("""
+        params = {"query": query_text, "dataset_ids" : dataset_ids}
+        where = [f" d.name ILIKE :query "]
+        if keywords.main_texts:
+            params["keywords"] = keywords.search_sql
+            where.append(f" to_tsvector('chinese', d.name) @@ to_tsquery(:keywords) ")
+        where_str = " or ".join(where)
+        sql = text(f"""
             SELECT d.id AS document_id,
                    d.name AS document_name,
                    s.id AS segment_id,
@@ -320,9 +334,9 @@ class DocumentExtService:
                     GROUP BY document_id
                 ) s2 ON s1.document_id = s2.document_id AND s1.position = s2.first_position
             ) s ON d.id = s.document_id
-            WHERE to_tsvector('chinese', d.name) @@ to_tsquery(:keywords) and d.dataset_id::text = ANY(:dataset_ids_)
+            WHERE ({where_str}) and d.dataset_id::text = ANY(:dataset_ids)
         """)
-        document_rows = db.session.execute(sql, {"keywords": keywords.search_sql, "dataset_ids_" : dataset_ids}).fetchall()
+        document_rows = db.session.execute(sql, params).fetchall()
         return segments_rows, document_rows
 
     # 计算分值
