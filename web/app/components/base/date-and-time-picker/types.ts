@@ -54,6 +54,8 @@ export type TimePickerProps = {
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
   renderTrigger?: () => React.ReactNode
+  title?: string
+  popupClassName?: string
 }
 
 export type TimePickerFooterProps = {

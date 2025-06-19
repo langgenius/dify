@@ -5,8 +5,23 @@ import { AUTO_UPDATE_STRATEGY, type AutoUpdateConfig } from './types'
 import Label from '../label'
 import StrategyPicker from './strategy-picker'
 import { useTranslation } from 'react-i18next'
+import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
+import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
 
 const i18nPrefix = 'plugin.autoUpdate'
+
+const timeOfDayToDayjs = (timeOfDay: number): Dayjs => {
+  const hours = Math.floor(timeOfDay / 3600)
+  const minutes = (timeOfDay - hours * 3600) / 60
+  const res = dayjs().startOf('day').hour(hours).minute(minutes)
+  return res
+}
+
+const dayjsToTimeOfDay = (date?: Dayjs): number => {
+  if(!date) return 0
+  return date.hour() * 3600 + date.minute() * 60
+}
 
 type Props = {
   payload: AutoUpdateConfig
@@ -18,7 +33,7 @@ const AutoUpdateSetting: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { strategy_setting } = payload
+  const { strategy_setting, upgrade_time_of_day } = payload
   const strategyDescription = useMemo(() => {
     switch (strategy_setting) {
       case AUTO_UPDATE_STRATEGY.fixOnly:
@@ -53,6 +68,13 @@ const AutoUpdateSetting: FC<Props> = ({
           <>
             <div className='flex items-center justify-between'>
               <Label label={t(`${i18nPrefix}.updateTime`)} />
+              <TimePicker
+                value={timeOfDayToDayjs(upgrade_time_of_day)}
+                onChange={v => handleChange('upgrade_time_of_day')(dayjsToTimeOfDay(v))}
+                onClear={() => handleChange('upgrade_time_of_day')(0)}
+                popupClassName='z-[99]'
+                title={t(`${i18nPrefix}.updateTime`)}
+              />
             </div>
             <div className='flex items-center'>
               <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`)} />
