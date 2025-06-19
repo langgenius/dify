@@ -8,12 +8,16 @@ import Button from '@/app/components/base/button'
 import type { Permissions } from '@/app/components/plugins/types'
 import { PermissionType } from '@/app/components/plugins/types'
 import type { AutoUpdateConfig } from './auto-update-setting/types'
+import AutoUpdateSetting from './auto-update-setting'
+import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/config'
+import Label from './label'
 
+type Payload = Permissions & { autoUpdate: AutoUpdateConfig }
 const i18nPrefix = 'plugin.privilege'
 type Props = {
-  payload: Permissions & { autoUpdate: AutoUpdateConfig }
+  payload: Payload
   onHide: () => void
-  onSave: (payload: Permissions) => void
+  onSave: (payload: Payload) => void
 }
 
 const PluginSettingModal: FC<Props> = ({
@@ -22,7 +26,9 @@ const PluginSettingModal: FC<Props> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const [tempPrivilege, setTempPrivilege] = useState<Permissions>(payload)
+  const { autoUpdate: autoUpdateConfig, ...privilege } = payload || {}
+  const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
+  const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig || autoUpdateDefaultValue)
   const handlePrivilegeChange = useCallback((key: string) => {
     return (value: PermissionType) => {
       setTempPrivilege({
@@ -33,9 +39,12 @@ const PluginSettingModal: FC<Props> = ({
   }, [tempPrivilege])
 
   const handleSave = useCallback(async () => {
-    await onSave(tempPrivilege)
+    await onSave({
+      ...tempPrivilege,
+      autoUpdate: tempAutoUpdateConfig,
+    })
     onHide()
-  }, [onHide, onSave, tempPrivilege])
+  }, [onHide, onSave, tempAutoUpdateConfig, tempPrivilege])
 
   return (
     <Modal
@@ -54,9 +63,7 @@ const PluginSettingModal: FC<Props> = ({
             { title: t(`${i18nPrefix}.whoCanDebug`), key: 'debug_permission', value: tempPrivilege?.debug_permission || PermissionType.noOne },
           ].map(({ title, key, value }) => (
             <div key={key} className='flex flex-col items-start gap-1 self-stretch'>
-              <div className='flex h-6 items-center gap-0.5'>
-                <span className='system-sm-semibold text-text-secondary'>{title}</span>
-              </div>
+              <Label label={title} />
               <div className='flex w-full items-start justify-between gap-2'>
                 {[PermissionType.everyone, PermissionType.admin, PermissionType.noOne].map(option => (
                   <OptionCard
@@ -71,6 +78,8 @@ const PluginSettingModal: FC<Props> = ({
             </div>
           ))}
         </div>
+
+        <AutoUpdateSetting payload={tempAutoUpdateConfig} onChange={setTempAutoUpdateConfig} />
         <div className='flex h-[76px] items-center justify-end gap-2 self-stretch p-6 pt-5'>
           <Button
             className='min-w-[72px]'

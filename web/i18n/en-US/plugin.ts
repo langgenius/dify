@@ -113,6 +113,22 @@ const translation = {
     admins: 'Admins',
     noone: 'No one',
   },
+  autoUpdate: {
+    strategy: {
+      disabled: {
+        name: 'Disabled',
+        description: 'Plugins will not auto-update',
+      },
+      fixOnly: {
+        name: 'Fix Only',
+        description: 'Auto-update for patch versions only (e.g., 1.0.1 → 1.0.2). Minor version changes won\'t trigger updates.',
+      },
+      latest: {
+        name: 'Latest',
+        description: 'Always update to latest version',
+      },
+    },
+  },
   pluginInfoModal: {
     title: 'Plugin info',
     repository: 'Repository',
