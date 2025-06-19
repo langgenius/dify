@@ -47,7 +47,7 @@ export const mergeValidCompletionParams = (
       case 'text': {
         if (typeof value === 'string') {
           if (Array.isArray(rule.options) && rule.options.length) {
-            if (rule.options.some(opt => opt.value === value))
+            if ((rule.options as string[]).includes(value))
               nextParams[key] = value
             else
               removedDetails[key] = 'unsupported option'
