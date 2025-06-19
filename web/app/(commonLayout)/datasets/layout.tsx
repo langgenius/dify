@@ -12,6 +12,8 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
   const router = useRouter()
 
   useEffect(() => {
+    if (typeof isCurrentWorkspaceEditor !== 'boolean' || typeof isCurrentWorkspaceDatasetOperator !== 'boolean')
+      return
     if (!isCurrentWorkspaceEditor && !isCurrentWorkspaceDatasetOperator)
       router.replace('/apps')
   }, [isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, router])
