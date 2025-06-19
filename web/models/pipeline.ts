@@ -242,3 +242,15 @@ export type InitialDocumentDetail = {
   name: string
   position: number
 }
+
+export type PipelineExecutionLogRequest = {
+  dataset_id: string
+  document_id: string
+}
+
+export type PipelineExecutionLogResponse = {
+  datasource_info: Record<string, any>
+  datasource_type: DatasourceType
+  input_data: Record<string, any>
+  datasource_node_id: string
+}

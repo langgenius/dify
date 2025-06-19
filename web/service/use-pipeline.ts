@@ -8,6 +8,8 @@ import type {
   ImportPipelineDSLRequest,
   ImportPipelineDSLResponse,
   PipelineCheckDependenciesResponse,
+  PipelineExecutionLogRequest,
+  PipelineExecutionLogResponse,
   PipelinePreProcessingParamsRequest,
   PipelinePreProcessingParamsResponse,
   PipelineProcessingParamsRequest,
@@ -309,5 +311,16 @@ export const usePublishAsCustomizedPipeline = () => {
         },
       })
     },
+  })
+}
+
+export const usePipelineExecutionLog = (params: PipelineExecutionLogRequest) => {
+  const { dataset_id, document_id } = params
+  return useQuery<PipelineExecutionLogResponse>({
+    queryKey: [NAME_SPACE, 'pipeline-execution-log', dataset_id, document_id],
+    queryFn: () => {
+      return get<PipelineExecutionLogResponse>(`/datasets/${dataset_id}/documents/${document_id}/pipeline-execution-log`)
+    },
+    staleTime: 0,
   })
 }
