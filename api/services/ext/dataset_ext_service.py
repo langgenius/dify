@@ -398,7 +398,7 @@ class DocumentExtService:
             doc_metadata = item.doc_metadata
             if not doc_metadata:
                 doc_metadata = {}
-            if doc_metadata["file_id"] and doc_metadata["file_id"] in file_id_list:
+            if "file_id" in doc_metadata and doc_metadata["file_id"] in file_id_list:
                 filter_rows.append(item)
 
         return filter_rows
