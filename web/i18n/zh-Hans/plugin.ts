@@ -113,6 +113,27 @@ const translation = {
     admins: '管理员',
     noone: '无人',
   },
+  autoUpdate: {
+    automaticUpdates: '自动更新',
+    updateTime: '更新时间',
+    specifyPluginsToUpdate: '指定要更新的插件',
+    strategy: {
+      disabled: {
+        name: '禁用',
+        description: '插件将不会自动更新',
+      },
+      fixOnly: {
+        name: '仅修复',
+        description: '仅自动更新补丁版本（例如，1.0.1 → 1.0.2）。次要版本更改不会触发更新。',
+        selectedDescription: '仅自动更新补丁版本',
+      },
+      latest: {
+        name: '最新',
+        description: '始终更新到最新版本',
+        selectedDescription: '始终更新到最新版本',
+      },
+    },
+  },
   pluginInfoModal: {
     title: '插件信息',
     repository: '仓库',

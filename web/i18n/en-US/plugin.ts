@@ -114,6 +114,9 @@ const translation = {
     noone: 'No one',
   },
   autoUpdate: {
+    automaticUpdates: 'Automatic updates',
+    updateTime: 'Update time',
+    specifyPluginsToUpdate: 'Specify plugins to update',
     strategy: {
       disabled: {
         name: 'Disabled',
@@ -122,10 +125,12 @@ const translation = {
       fixOnly: {
         name: 'Fix Only',
         description: 'Auto-update for patch versions only (e.g., 1.0.1 → 1.0.2). Minor version changes won\'t trigger updates.',
+        selectedDescription: 'Auto-update for patch versions only',
       },
       latest: {
         name: 'Latest',
         description: 'Always update to latest version',
+        selectedDescription: 'Always update to latest version',
       },
     },
   },
