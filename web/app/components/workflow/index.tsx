@@ -119,6 +119,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setShowConfirm,
     setControlPromptEditorRerenderKey,
     setSyncWorkflowDraftHash,
+    setConversationVariables,
+    setEnvironmentVariables,
   } = workflowStore.getState()
   const {
     handleSyncWorkflowDraft,
@@ -138,6 +140,12 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
       if (v.payload.hash)
         setSyncWorkflowDraftHash(v.payload.hash)
+
+      if (v.payload.conversation_variables)
+        setConversationVariables(v.payload.conversation_variables)
+
+      if (v.payload.environment_variables)
+        setEnvironmentVariables(v.payload.environment_variables)
 
       onWorkflowDataUpdate?.(v.payload)
 
