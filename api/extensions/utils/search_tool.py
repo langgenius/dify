@@ -5,6 +5,8 @@ import re
 import jieba
 import jieba.analyse
 import json
+from typing import Any, Optional, cast
+import math
 
 class Keywords:
     def __init__(self, texts, main_texts, search_texts, search_sql):
@@ -122,20 +124,23 @@ def get_full_search_text_max_score(search_texts: list[str], target_text: str) ->
     #     print("".join(texts))
     return (max_score,max_index_list)
 
+def get_main_keywords_texts(query_text: str) -> list[str]:
+    # 判断关键词的长度
+    jieba.analyse.set_stop_words("extensions/utils/stopwords.txt")
+    # jieba.analyse.set_idf_path("extensions/utils/idfwords.txt")
+    # 提取关键词，默认 topK=30，withWeight=True
+    main_keywords_texts__ = jieba.analyse.extract_tags(query_text, topK=200, withWeight=False)
+
+    return main_keywords_texts__
+
 def get_keywords(query_text: str) -> Keywords:
     # 分词器分词关键词
     keyword_texts = list(jieba.cut(query_text))
     keyword_texts_for_search = list(jieba.cut_for_search(query_text))
-
     print("keyword_texts:",keyword_texts)
     print("keyword_texts_for_search:",keyword_texts_for_search)
-    # import pdb; pdb.set_trace()
-    # 判断关键词的长度
-    jieba.analyse.set_stop_words("extensions/utils/stopwords.txt")
-    # def get_text():
-    #     return text
-    # 提取关键词，默认 topK=30，withWeight=True
-    main_keywords_texts__ = jieba.analyse.extract_tags(query_text, topK=200, withWeight=False)
+    main_keywords_texts__ = get_main_keywords_texts(query_text=query_text)
+    print("main_keywords_texts__:",main_keywords_texts__)
     keyword_len = len(main_keywords_texts__)
     main_keywords_len = 0
     # import pdb; pdb.set_trace()
@@ -171,11 +176,14 @@ def get_keywords(query_text: str) -> Keywords:
 def get_search_keywords_texts_sql(search_keywords_texts:list[str]):
 
     texts = []
+    query_sql_list = []
     for text in search_keywords_texts:
         # 将元素才拆成可查询用的分词
         texts_for_search:list[str] = list(jieba.cut_for_search(text))
+        query_sql_list.append(" | ".join(texts_for_search))
         min_texts:list[str] = get_min_search_keywords_texts(texts=texts_for_search)
         texts.extend(min_texts)
+    query_sql = " & ".join(query_sql_list)
     # import pdb; pdb.set_trace()
     texts_len = len(texts)
     sql = ""
@@ -196,7 +204,8 @@ def get_search_keywords_texts_sql(search_keywords_texts:list[str]):
                 sql_texts.append(f"({text} | {text}{texts[idx + 1]} | {texts[idx-1]}{text} & ({texts[idx + 1]} | {texts[idx + 1]}{texts[idx + 2]}))")
         sql = " & ".join(sql_texts)
     print(sql)
-    return sql
+
+    return f"{sql} | {query_sql}"
 
 def get_min_search_keywords_texts(texts:list[str]):
     # import pdb; pdb.set_trace()
@@ -210,7 +219,41 @@ def get_min_search_keywords_texts(texts:list[str]):
             min_texts.append(text)
     return min_texts
 
+# 扩展处理分值（全文检索的方法需要处理分值）
+def set_full_search_score(query:str,doc_list:list[dict[str, Any]]):
+    import pdb; pdb.set_trace()
+    # 根据查询条件的长短
+    main_keywords_texts = get_main_keywords_texts(query_text=query)
+
+    all_texts = []
+    for main_keywords_text in main_keywords_texts:
+        keyword_texts_for_search = list(jieba.cut_for_search(main_keywords_text))
+        all_texts.extend(keyword_texts_for_search)
+
+    sum_lens = len(all_texts)
+    sum_lens = 2 if sum_lens == 1 else sum_lens
+    plus_score = score(sum_lens)
+    print("plus_score",plus_score)
+    if doc_list:
+        for doc in doc_list:
+            metadata = doc["metadata"]
+            if metadata:
+                dataset_name = metadata["dataset_name"]
+                doc_score = metadata["score"]
+                if dataset_name == "FULL_TEXT_SEARCH_KNOWLEDGE" and doc_score:
+                    doc_score += plus_score
+                    doc["metadata"]["score"] = doc_score
+                    print("new score:",doc["metadata"]["score"])
+        for doc in doc_list:
+            if doc["metadata"] and doc["metadata"]["score"]:
+                print("new score:",doc["metadata"]["score"])
+
+def score(value):
+    return round(20 * math.exp(-0.4 * value), 2) / 100
+
 if __name__ == "__main__":
-    search_texts=["湖人","阵容"]
-    score, max_index_list =get_full_search_text_max_score(search_texts=search_texts, source="所以，**严格讲，詹姆斯在湖人确实拥有超级巨星（戴维斯），但不像热火三巨头那样多核并立。**更多时候，他还是湖人阵容的绝对核心和领袖。")
-    print(score, len(max_index_list))
+    print(score(1))
+    # get_keywords("分类码")
+    # search_texts=["湖人","阵容"]
+    # score, max_index_list =get_full_search_text_max_score(search_texts=search_texts, source="所以，**严格讲，詹姆斯在湖人确实拥有超级巨星（戴维斯），但不像热火三巨头那样多核并立。**更多时候，他还是湖人阵容的绝对核心和领袖。")
+    # print(score, len(max_index_list))

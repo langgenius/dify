@@ -15,7 +15,7 @@ process_rule:
         enabled: false
     segmentation:
       separator: "&&&&&"
-      max_tokens: 500
+      max_tokens: 512
       chunk_overlap: 50
   mode: custom
 doc_form: text_model
@@ -30,9 +30,9 @@ retrieval_model:
   weights:
     weight_type: customized
     keyword_setting:
-      keyword_weight: 0.7
+      keyword_weight: 0.3
     vector_setting:
-      vector_weight: 0.3
+      vector_weight: 0.7
       embedding_model_name: text-embedding-v3
       embedding_provider_name: langgenius/tongyi/tongyi
   top_k: 10

@@ -44,7 +44,7 @@ from extensions.ext_redis import redis_client
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.dataset import Dataset, DatasetMetadata, Document, RateLimitLog
 from services.feature_service import FeatureService
-
+from extensions.utils.search_tool import set_full_search_score
 from .entities import KnowledgeRetrievalNodeData, ModelConfig
 from .exc import (
     InvalidModelTypeError,
@@ -115,6 +115,10 @@ class KnowledgeRetrievalNode(LLMNode):
         # retrieve knowledge
         try:
             results = self._fetch_dataset_retriever(node_data=node_data, query=query)
+
+            # 扩展处理分值
+            set_full_search_score(query=query,doc_list=results)
+
             outputs = {"result": results}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, process_data=None, outputs=outputs
