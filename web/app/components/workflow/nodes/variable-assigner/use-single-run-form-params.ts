@@ -56,7 +56,10 @@ const useSingleRunFormParams = ({
         return
       if (!existVarsKey[input.variable]) {
         existVarsKey[input.variable] = true
-        uniqueVarInputs.push(input)
+        uniqueVarInputs.push({
+          ...input,
+          required: false, // just one of the inputs is required
+        })
       }
     })
     return [
@@ -70,14 +73,14 @@ const useSingleRunFormParams = ({
 
   const getDependentVars = () => {
     if(payload.advanced_settings?.group_enabled) {
-      const vars: ValueSelector[] = []
+      const vars: ValueSelector[][] = []
       payload.advanced_settings.groups.forEach((group) => {
         if(group.variables)
-          vars.push(...group.variables)
+          vars.push([...group.variables])
       })
       return vars
     }
-    return payload.variables
+    return [payload.variables]
   }
 
   return {

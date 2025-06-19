@@ -110,6 +110,7 @@ const useLastRun = <T>({
   const isStartNode = blockType === BlockEnum.Start
   const isIterationNode = blockType === BlockEnum.Iteration
   const isLoopNode = blockType === BlockEnum.Loop
+  const isAggregatorNode = blockType === BlockEnum.VariableAggregator
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getData: getDataForCheckMore,
@@ -256,6 +257,15 @@ const useLastRun = <T>({
     })
   }
 
+  const isSomeVarsHasValue = (vars?: ValueSelector[]) => {
+    if(!vars || vars.length === 0)
+      return true
+    return vars.some((varItem) => {
+      const [nodeId, varName] = varItem.slice(0, 2)
+      const inspectVarValue = hasSetInspectVar(nodeId, varName, systemVars, conversationVars) // also detect system var , env and  conversation var
+      return inspectVarValue
+    })
+  }
   const getFilteredExistVarForms = (forms: FormProps[]) => {
     if (!forms || forms.length === 0)
       return []
@@ -274,12 +284,22 @@ const useLastRun = <T>({
     return res
   }
 
+  const checkAggregatorVarsSet = (vars: ValueSelector[][]) => {
+    if(!vars || vars.length === 0)
+      return true
+    // in each group, at last one set is ok
+    return vars.every((varItem) => {
+      return isSomeVarsHasValue(varItem)
+    })
+  }
+
   const handleSingleRun = () => {
     const { isValid } = checkValid()
     if(!isValid)
       return
+    const vars = singleRunParams?.getDependentVars?.()
     // no need to input params
-    if (isAllVarsHasValue(singleRunParams?.getDependentVars?.())) {
+    if (isAggregatorNode ? checkAggregatorVarsSet(vars) : isAllVarsHasValue(vars)) {
       callRunApi({}, async () => {
         setIsRunAfterSingleRun(true)
         setNodeRunning()
