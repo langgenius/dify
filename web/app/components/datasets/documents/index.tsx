@@ -18,8 +18,8 @@ import { createDocument } from '@/service/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
 import type { NotionPage } from '@/models/common'
-import type { CreateDocumentReq } from '@/models/datasets'
-import { DataSourceType, ProcessMode } from '@/models/datasets'
+import type { CreateDocumentReq, ProcessRule } from '@/models/datasets'
+import { DataSourceType } from '@/models/datasets'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
@@ -186,6 +186,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         pages: workspacesMap[workspaceId],
       }
     })
+    const { rules, mode } = documentsRes?.data?.[0]?.dataset_process_rule as ProcessRule
     const params = {
       data_source: {
         type: dataset?.data_source_type,
@@ -209,8 +210,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       },
       indexing_technique: dataset?.indexing_technique,
       process_rule: {
-        rules: {},
-        mode: ProcessMode.general,
+        rules,
+        mode,
       },
     } as CreateDocumentReq
 

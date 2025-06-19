@@ -298,6 +298,7 @@ export type InitialDocumentDetail = {
   data_source_type: DataSourceType
   data_source_info: DataSourceInfo
   dataset_process_rule_id: string
+  dataset_process_rule: ProcessRule
   name: string
   created_from: 'api' | 'web'
   created_by: string
