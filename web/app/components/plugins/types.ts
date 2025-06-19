@@ -96,7 +96,11 @@ export type PluginManifestInMarket = {
   introduction: string
   verified: boolean
   install_count: number
-  badges: string[]
+  badges: string[],
+  verification: {
+    authorized_category: 'langgenius' | 'partner' | 'community'
+  },
+  from: Dependency['type']
 }
 
 export type PluginDetail = {
@@ -147,7 +151,11 @@ export type Plugin = {
     settings: CredentialFormSchemaBase[]
   }
   tags: { name: string }[]
-  badges: string[]
+  badges: string[],
+  verification: {
+    authorized_category: 'langgenius' | 'partner' | 'community'
+  },
+  from: Dependency['type']
 }
 
 export enum PermissionType {

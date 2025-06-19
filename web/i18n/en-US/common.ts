@@ -64,6 +64,8 @@ const translation = {
     skip: 'Skip',
     format: 'Format',
     more: 'More',
+    selectAll: 'Select All',
+    deSelectAll: 'Deselect All',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
