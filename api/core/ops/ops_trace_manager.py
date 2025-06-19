@@ -106,7 +106,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                     "other_keys": ["project", "entity", "endpoint", "host"],
                     "trace_instance": WeaveDataTrace,
                 }
-            case TraceAppConfig.ARIZE:
+            case TracingProviderEnum.ARIZE:
                 from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
                 from core.ops.entities.config_entity import ArizeConfig
 
@@ -116,7 +116,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                     "other_keys": ["project", "endpoint"],
                     "trace_instance": ArizePhoenixDataTrace,
                 }
-            case TraceAppConfig.PHOENIX:
+            case TracingProviderEnum.PHOENIX:
                 from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
                 from core.ops.entities.config_entity import PhoenixConfig
 
