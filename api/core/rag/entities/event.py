@@ -11,10 +11,15 @@ class DatasourceStreamEvent(Enum):
     """
     PROCESSING = "datasource_processing"
     COMPLETED = "datasource_completed"
+    ERROR = "datasource_error"
 
 
 class BaseDatasourceEvent(BaseModel):
     pass
+
+class DatasourceErrorEvent(BaseDatasourceEvent):
+    event: str = DatasourceStreamEvent.ERROR.value
+    error: str = Field(..., description="error message")
 
 class DatasourceCompletedEvent(BaseDatasourceEvent):
     event: str = DatasourceStreamEvent.COMPLETED.value
