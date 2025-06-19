@@ -29,6 +29,7 @@ from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import UploadFile
+from services.datasource_provider_service import DatasourceProviderService
 
 from ...entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from .entities import DatasourceNodeData
@@ -100,13 +101,21 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
             match datasource_type:
                 case DatasourceProviderType.ONLINE_DOCUMENT:
                     datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+                    datasource_provider_service = DatasourceProviderService()
+                    credentials = datasource_provider_service.get_real_datasource_credentials(
+                        tenant_id=self.tenant_id,
+                        provider=node_data.provider_name,
+                        plugin_id=node_data.plugin_id,
+                    )
+                    if credentials:
+                        datasource_runtime.runtime.credentials = credentials[0].get("credentials")
                     online_document_result: Generator[DatasourceMessage, None, None] = (
                         datasource_runtime.get_online_document_page_content(
                             user_id=self.user_id,
                             datasource_parameters=GetOnlineDocumentPageContentRequest(
                                 workspace_id=datasource_info.get("workspace_id"),
                                 page_id=datasource_info.get("page").get("page_id"),
-                                type=datasource_info.get("type"),
+                                type=datasource_info.get("page").get("type"),
                             ),
                             provider_type=datasource_type,
                         )

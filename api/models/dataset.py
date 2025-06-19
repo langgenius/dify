@@ -1267,6 +1267,7 @@ class DocumentPipelineExecutionLog(Base):
     document_id = db.Column(StringUUID, nullable=False)
     datasource_type = db.Column(db.String(255), nullable=False)
     datasource_info = db.Column(db.Text, nullable=False)
+    datasource_node_id = db.Column(db.String(255), nullable=False)
     input_data = db.Column(db.JSON, nullable=False)
     created_by = db.Column(StringUUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())

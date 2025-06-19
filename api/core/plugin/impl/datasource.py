@@ -180,7 +180,7 @@ class PluginDatasourceManager(BasePluginClient):
                     "provider": datasource_provider_id.provider_name,
                     "datasource": datasource_name,
                     "credentials": credentials,
-                    "page": datasource_parameters,
+                    "page": datasource_parameters.model_dump(),
                 },
             },
             headers={
