@@ -4,7 +4,6 @@ from typing import Any, Optional
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
 from core.mcp.types import ImageContent, TextContent
-from core.plugin.utils.converter import convert_parameters_to_plugin_format
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
@@ -40,7 +39,6 @@ class MCPTool(Tool):
     ) -> Generator[ToolInvokeMessage, None, None]:
         try:
             with MCPClient(self.server_url, self.provider_id, self.tenant_id, authed=True) as mcp_client:
-                tool_parameters = convert_parameters_to_plugin_format(tool_parameters)
                 result = mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
         except MCPAuthError as e:
             raise ValueError("Please auth the tool first")
