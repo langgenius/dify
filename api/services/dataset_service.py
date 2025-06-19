@@ -976,12 +976,17 @@ class DocumentService:
                 process_rule = knowledge_config.process_rule
                 if process_rule:
                     if process_rule.mode in ("custom", "hierarchical"):
-                        dataset_process_rule = DatasetProcessRule(
-                            dataset_id=dataset.id,
-                            mode=process_rule.mode,
-                            rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
-                            created_by=account.id,
-                        )
+                        if process_rule.rules:
+                            dataset_process_rule = DatasetProcessRule(
+                                dataset_id=dataset.id,
+                                mode=process_rule.mode,
+                                rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
+                                created_by=account.id,
+                            )
+                        else:
+                            dataset_process_rule = dataset.latest_process_rule
+                            if not dataset_process_rule:
+                                raise ValueError("No process rule found.")
                     elif process_rule.mode == "automatic":
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
