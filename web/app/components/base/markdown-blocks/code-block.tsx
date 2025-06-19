@@ -272,7 +272,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     switch (language) {
       case 'mermaid':
         if (isSVG)
-          return <Flowchart PrimitiveCode={content} />
+          return <Flowchart PrimitiveCode={content} theme={theme} />
         break
       case 'echarts': {
         // Loading state: show loading indicator
