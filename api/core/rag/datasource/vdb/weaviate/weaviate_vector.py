@@ -45,7 +45,8 @@ class WeaviateVector(BaseVector):
         # by changing the connection timeout to pypi.org from 1 second to 0.001 seconds.
         # TODO: This can be removed once weaviate-client is updated to 3.26.7 or higher,
         #       which does not contain the deprecation check.
-        weaviate.connect.connection.PYPI_TIMEOUT = 0.001
+        if hasattr(weaviate.connect.connection, "PYPI_TIMEOUT"):
+            weaviate.connect.connection.PYPI_TIMEOUT = 0.001
 
         try:
             client = weaviate.Client(

@@ -84,7 +84,7 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      PGUSER: ${PGUSER:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
@@ -616,6 +616,18 @@ services:
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
     ports:
       - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
+
+  # Matrixone vector store.
+  matrixone:
+    hostname: matrixone
+    image: matrixorigin/matrixone:2.1.1
+    profiles:
+      - matrixone
+    restart: always
+    volumes:
+      - ./volumes/matrixone/data:/mo-data
+    ports:
+      - ${MATRIXONE_PORT:-6001}:${MATRIXONE_PORT:-6001}
 
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites

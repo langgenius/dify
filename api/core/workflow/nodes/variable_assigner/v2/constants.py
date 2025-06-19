@@ -8,4 +8,5 @@ EMPTY_VALUE_MAPPING = {
     SegmentType.ARRAY_STRING: [],
     SegmentType.ARRAY_NUMBER: [],
     SegmentType.ARRAY_OBJECT: [],
+    SegmentType.ARRAY_FILE: [],
 }

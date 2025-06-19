@@ -367,6 +367,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param user: account or end user
         :param invoke_from: invoke from source
         :param application_generate_entity: application generate entity
+        :param workflow_execution_repository: repository for workflow execution
         :param workflow_node_execution_repository: repository for workflow node execution
         :param conversation: conversation
         :param stream: is stream
