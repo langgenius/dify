@@ -151,17 +151,12 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
             existing = session.scalar(select(WorkflowRun).where(WorkflowRun.id == domain_model.id_))
             if not existing:
                 # For new records, get the next sequence number
-                # in case multiple executions are created concurrently, use for update
-                stmt = (
-                    select(func.coalesce(func.max(WorkflowRun.sequence_number), 0) + 1)
-                    .where(
-                        WorkflowRun.app_id == self._app_id,
-                        WorkflowRun.tenant_id == self._tenant_id,
-                    )
-                    .with_for_update()
+                stmt = select(func.max(WorkflowRun.sequence_number)).where(
+                    WorkflowRun.app_id == self._app_id,
+                    WorkflowRun.tenant_id == self._tenant_id,
                 )
-                next_seq = session.scalar(stmt)
-                db_model.sequence_number = int(next_seq) if next_seq is not None else 1
+                max_sequence = session.scalar(stmt)
+                db_model.sequence_number = (max_sequence or 0) + 1
             else:
                 # For updates, keep the existing sequence number
                 db_model.sequence_number = existing.sequence_number
