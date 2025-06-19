@@ -146,6 +146,11 @@ const translation = {
       },
     },
     updateTimeTitle: 'Update time',
+    upgradeMode: {
+      update_all: 'Update all',
+      exclude: 'Exclude selected',
+      partial: 'Only selected',
+    },
   },
   pluginInfoModal: {
     title: 'Plugin info',
