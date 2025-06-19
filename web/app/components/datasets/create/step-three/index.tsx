@@ -39,7 +39,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrie
                 <div className='title-2xl-semi-bold text-text-primary'>{t('datasetCreation.stepThree.creationTitle')}</div>
                 <div className='system-sm-regular text-text-tertiary'>{t('datasetCreation.stepThree.creationContent')}</div>
               </div>
-              <div className='flex gap-4'>
+              <div className='flex items-center gap-x-4'>
                 <AppIcon
                   size='xxl'
                   iconType={iconInfo.icon_type}
