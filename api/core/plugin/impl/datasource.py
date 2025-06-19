@@ -181,7 +181,7 @@ class PluginDatasourceManager(BasePluginClient):
                     "provider": datasource_provider_id.provider_name,
                     "datasource": datasource_name,
                     "credentials": credentials,
-                    "datasource_parameters": datasource_parameters,
+                    "page": datasource_parameters,
                 },
             },
             headers={

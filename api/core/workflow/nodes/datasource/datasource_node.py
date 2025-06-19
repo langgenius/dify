@@ -103,7 +103,11 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                     online_document_result: Generator[DatasourceMessage, None, None] = (
                         datasource_runtime.get_online_document_page_content(
                             user_id=self.user_id,
-                            datasource_parameters=GetOnlineDocumentPageContentRequest(**parameters),
+                            datasource_parameters=GetOnlineDocumentPageContentRequest(
+                                workspace_id=datasource_info.get("workspace_id"),
+                                page_id=datasource_info.get("page").get("page_id"),
+                                type=datasource_info.get("type"),
+                            ),
                             provider_type=datasource_type,
                         )
                     )
