@@ -58,7 +58,7 @@ class Mail:
                 from libs.sendgrid import SendGridClient
 
                 if not dify_config.SENDGRID_API_KEY:
-                    raise ValueError("SENDGRID_API_KEY are required for SendGrid mail type")
+                    raise ValueError("SENDGRID_API_KEY is required for SendGrid mail type")
 
                 self._client = SendGridClient(
                     sendgrid_api_key=dify_config.SENDGRID_API_KEY, _from=dify_config.MAIL_DEFAULT_SEND_FROM or ""
