@@ -157,9 +157,23 @@ class PluginInstallTaskStartResponse(BaseModel):
     task_id: str = Field(description="The ID of the install task.")
 
 
-class PluginUploadResponse(BaseModel):
+class PluginVerification(BaseModel):
+    """
+    Verification of the plugin.
+    """
+
+    class AuthorizedCategory(StrEnum):
+        Langgenius = "langgenius"
+        Partner = "partner"
+        Community = "community"
+
+    authorized_category: AuthorizedCategory = Field(description="The authorized category of the plugin.")
+
+
+class PluginDecodeResponse(BaseModel):
     unique_identifier: str = Field(description="The unique identifier of the plugin.")
     manifest: PluginDeclaration
+    verification: Optional[PluginVerification] = Field(default=None, description="Basic verification information")
 
 
 class PluginOAuthAuthorizationUrlResponse(BaseModel):

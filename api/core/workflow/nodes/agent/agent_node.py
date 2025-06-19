@@ -219,7 +219,7 @@ class AgentNode(ToolNode):
                         )
                         if tool_runtime.entity.description:
                             tool_runtime.entity.description.llm = (
-                                extra.get("descrption", "") or tool_runtime.entity.description.llm
+                                extra.get("description", "") or tool_runtime.entity.description.llm
                             )
                         for tool_runtime_params in tool_runtime.entity.parameters:
                             tool_runtime_params.form = (

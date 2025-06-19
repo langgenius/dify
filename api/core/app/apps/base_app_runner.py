@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, Union
@@ -32,6 +33,8 @@ from models.model import App, AppMode, Message, MessageAnnotation
 
 if TYPE_CHECKING:
     from core.file.models import File
+
+_logger = logging.getLogger(__name__)
 
 
 class AppRunner:
@@ -298,7 +301,7 @@ class AppRunner:
         )
 
     def _handle_invoke_result_stream(
-        self, invoke_result: Generator, queue_manager: AppQueueManager, agent: bool
+        self, invoke_result: Generator[LLMResultChunk, None, None], queue_manager: AppQueueManager, agent: bool
     ) -> None:
         """
         Handle invoke result
@@ -317,18 +320,28 @@ class AppRunner:
             else:
                 queue_manager.publish(QueueAgentMessageEvent(chunk=result), PublishFrom.APPLICATION_MANAGER)
 
-            text += result.delta.message.content
+            message = result.delta.message
+            if isinstance(message.content, str):
+                text += message.content
+            elif isinstance(message.content, list):
+                for content in message.content:
+                    if not isinstance(content, str):
+                        # TODO(QuantumGhost): Add multimodal output support for easy ui.
+                        _logger.warning("received multimodal output, type=%s", type(content))
+                        text += content.data
+                    else:
+                        text += content  # failback to str
 
             if not model:
                 model = result.model
 
             if not prompt_messages:
-                prompt_messages = result.prompt_messages
+                prompt_messages = list(result.prompt_messages)
 
             if result.delta.usage:
                 usage = result.delta.usage
 
-        if not usage:
+        if usage is None:
             usage = LLMUsage.empty_usage()
 
         llm_result = LLMResult(

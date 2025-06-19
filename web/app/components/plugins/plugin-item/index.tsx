@@ -21,13 +21,14 @@ import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
-import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
+import { API_PREFIX } from '@/config'
 import { useSingleCategories } from '../hooks'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { useAppContext } from '@/context/app-context'
 import { gte } from 'semver'
 import Tooltip from '@/app/components/base/tooltip'
+import { getMarketplaceUrl } from '@/utils/var'
 
 type Props = {
   className?: string
@@ -166,7 +167,7 @@ const PluginItem: FC<Props> = ({
           }
           {source === PluginSource.marketplace
             && <>
-              <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}${theme ? `?theme=${theme}` : ''}`} target='_blank' className='flex items-center gap-0.5'>
+              <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target='_blank' className='flex items-center gap-0.5'>
                 <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('plugin.from')} <span className='text-text-secondary'>marketplace</span></div>
                 <RiArrowRightUpLine className='h-3 w-3 text-text-tertiary' />
               </a>

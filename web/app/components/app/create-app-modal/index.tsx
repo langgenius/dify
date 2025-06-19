@@ -29,6 +29,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 import useTheme from '@/hooks/use-theme'
+import { useDocLink } from '@/context/i18n'
 
 type CreateAppProps = {
   onSuccess: () => void
@@ -303,31 +304,41 @@ function AppTypeCard({ icon, title, description, active, onClick }: AppTypeCardP
 
 function AppPreview({ mode }: { mode: AppMode }) {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const modeToPreviewInfoMap = {
     'chat': {
       title: t('app.types.chatbot'),
       description: t('app.newApp.chatbotUserDescription'),
-      link: 'https://docs.dify.ai/guides/application-orchestrate/readme',
+      link: docLink('/guides/application-orchestrate/chatbot-application'),
     },
     'advanced-chat': {
       title: t('app.types.advanced'),
       description: t('app.newApp.advancedUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/workflow/README',
+      link: docLink('/guides/workflow/README', {
+        'zh-Hans': '/guides/workflow/readme',
+        'ja-JP': '/guides/workflow/concepts',
+      }),
     },
     'agent-chat': {
       title: t('app.types.agent'),
       description: t('app.newApp.agentUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/application-orchestrate/agent',
+      link: docLink('/guides/application-orchestrate/agent'),
     },
     'completion': {
       title: t('app.newApp.completeApp'),
       description: t('app.newApp.completionUserDescription'),
-      link: null,
+      link: docLink('/guides/application-orchestrate/text-generator', {
+        'zh-Hans': '/guides/application-orchestrate/readme',
+        'ja-JP': '/guides/application-orchestrate/README',
+      }),
     },
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: 'https://docs.dify.ai/en/guides/workflow/README',
+      link: docLink('/guides/workflow/README', {
+        'zh-Hans': '/guides/workflow/readme',
+        'ja-JP': '/guides/workflow/concepts',
+      }),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]

@@ -1,5 +1,5 @@
 from services.errors.base import BaseServiceError
 
 
-class CompletionStoppedError(BaseServiceError):
+class PluginInstallationForbiddenError(BaseServiceError):
     pass

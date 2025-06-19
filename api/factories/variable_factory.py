@@ -39,10 +39,6 @@ from core.variables.variables import (
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 
 
-class InvalidSelectorError(ValueError):
-    pass
-
-
 class UnsupportedSegmentTypeError(Exception):
     pass
 
@@ -105,6 +101,8 @@ def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequen
             result = ArrayNumberVariable.model_validate(mapping)
         case SegmentType.ARRAY_OBJECT if isinstance(value, list):
             result = ArrayObjectVariable.model_validate(mapping)
+        case SegmentType.ARRAY_FILE if isinstance(value, list):
+            result = ArrayFileVariable.model_validate(mapping)
         case _:
             raise VariableError(f"not supported value type {value_type}")
     if result.size > dify_config.MAX_VARIABLE_SIZE:
