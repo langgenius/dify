@@ -1,8 +1,23 @@
 export enum TracingProvider {
+  arize = 'arize',
+  phoenix = 'phoenix',
   langSmith = 'langsmith',
   langfuse = 'langfuse',
   opik = 'opik',
   weave = 'weave',
+}
+
+export type ArizeConfig = {
+  api_key: string
+  space_id: string
+  project: string
+  endpoint: string
+}
+
+export type PhoenixConfig = {
+  api_key: string
+  project: string
+  endpoint: string
 }
 
 export type LangSmithConfig = {
