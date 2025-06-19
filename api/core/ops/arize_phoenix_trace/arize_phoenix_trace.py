@@ -84,13 +84,17 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[Tra
         raise
 
 
-def datetime_to_nanos(dt: datetime) -> int:
-    """Convert datetime to nanoseconds since epoch."""
+def datetime_to_nanos(dt: Optional[datetime]) -> int:
+    """Convert datetime to nanoseconds since epoch. If None, use current time."""
+    if dt is None:
+        dt = datetime.now()
     return int(dt.timestamp() * 1_000_000_000)
 
 
-def uuid_to_trace_id(string: str) -> int:
+def uuid_to_trace_id(string: Optional[str]) -> int:
     """Convert UUID string to a valid trace ID (16-byte integer)."""
+    if string is None:
+        string = ""
     hash_object = hashlib.sha256(string.encode())
 
     # Take the first 16 bytes (128 bits) of the hash
@@ -156,6 +160,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span_id = RandomIdGenerator().generate_span_id()
         context = SpanContext(
             trace_id=trace_id,
+            span_id=span_id,
             is_remote=False,
             trace_flags=TraceFlags(TraceFlags.SAMPLED),
             trace_state=TraceState(),
