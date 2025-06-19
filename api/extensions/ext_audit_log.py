@@ -30,14 +30,14 @@ class AuditLogContext:
         return time.time() - self.start_time
 
 
-def _get_genai_ip() -> Optional[str]:
-    """get X-GENAI-IP"""
-    return request.headers.get("X-GENAI-IP")
+def _get_ip() -> Optional[str]:
+    """get IP"""
+    return request.headers.get("operation-ip")
 
 
-def _get_genai_user() -> Optional[str]:
-    """get X-GENAI-USER"""
-    return request.headers.get("X-GENAI-USER")
+def _get_user() -> Optional[str]:
+    """get USER"""
+    return request.headers.get("operation-user")
 
 
 def _determine_action() -> str:
@@ -49,18 +49,7 @@ def _determine_resource() -> str:
     """get resource by path"""
     path = request.path.lower()
 
-    if "/api/apps/" in path:
-        return "APP"
-    elif "/api/datasets/" in path:
-        return "DATASET"
-    elif "/api/messages/" in path:
-        return "MESSAGE"
-    elif "/api/conversations/" in path:
-        return "CONVERSATION"
-    elif "/api/users/" in path:
-        return "USER"
-    else:
-        return "UNKNOWN"
+    return path
 
 
 def _should_log_request() -> bool:
@@ -90,8 +79,8 @@ def _log_request_started(_sender, **_extra):
     g.audit_log = AuditLogContext()
 
     # get user and ip
-    g.audit_log.user = _get_genai_user()
-    g.audit_log.ip = _get_genai_ip()
+    g.audit_log.user = _get_user()
+    g.audit_log.ip = _get_ip()
     
     g.audit_log.action = _determine_action()
     g.audit_log.resource = _determine_resource()
