@@ -534,6 +534,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='limit' type='int' key='limit'>
           1回のリクエストで返すチャット履歴メッセージの数、デフォルトは20。
       </Property>
+      <Property name='created_by_end_user_session_id' type='str' key='created_by_end_user_session_id'>
+           どのendUserによって作成されたか、例えば、`abc-123`。
+      </Property>
+      <Property name='created_by_account' type='str' key='created_by_account'>
+          どのメールアカウントによって作成されたか、例えば、lizb@test.com。
+      </Property>
     </Properties>
 
     ### 応答
