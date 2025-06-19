@@ -1,6 +1,5 @@
 'use client'
-import React, { useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useCallback, useEffect } from 'react'
 import type { FC } from 'react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
@@ -26,29 +25,35 @@ import {
   useInvalidateMCPTools,
   useMCPTools,
   useUpdateMCP,
+  useUpdateMCPAuthorizationToken,
   useUpdateMCPTools,
 } from '@/service/use-tools'
+import { openOAuthPopup } from '@/hooks/use-oauth'
 import cn from '@/utils/classnames'
 
 type Props = {
   detail: ToolWithProvider
   onUpdate: (isDelete?: boolean) => void
   onHide: () => void
+  isCreation: boolean
+  onFirstCreate: () => void
 }
 
 const MCPDetailContent: FC<Props> = ({
   detail,
   onUpdate,
   onHide,
+  isCreation,
+  onFirstCreate,
 }) => {
   const { t } = useTranslation()
-  const router = useRouter()
   const { isCurrentWorkspaceManager } = useAppContext()
 
   const { data, isFetching: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
   const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
+  const { mutateAsync: updateMCPAuthorizationToken } = useUpdateMCPAuthorizationToken()
   const toolList = data?.tools || []
 
   const handleUpdateTools = useCallback(async () => {
@@ -81,7 +86,22 @@ const MCPDetailContent: FC<Props> = ({
     setFalse: hideDeleting,
   }] = useBoolean(false)
 
+  const handleOAuthCallback = async (state: string, code: string) => {
+    if (!isCurrentWorkspaceManager)
+      return
+    if (detail.id !== state)
+      return
+    await updateMCPAuthorizationToken({
+      provider_id: state,
+      authorization_code: code,
+    })
+    handleUpdateTools()
+  }
+
   const handleAuthorize = useCallback(async () => {
+    onFirstCreate()
+    if (!isCurrentWorkspaceManager)
+      return
     if (!detail)
       return
     const res = await authorizeMcp({
@@ -91,7 +111,7 @@ const MCPDetailContent: FC<Props> = ({
       handleUpdateTools()
 
     else if (res.authorization_url)
-      router.push(res.authorization_url)
+      openOAuthPopup(res.authorization_url, handleOAuthCallback)
   }, [detail, updateMCP, hideUpdateModal, onUpdate])
 
   const handleUpdate = useCallback(async (data: any) => {
@@ -118,6 +138,11 @@ const MCPDetailContent: FC<Props> = ({
       onUpdate(true)
     }
   }, [detail, showDeleting, hideDeleting, hideDeleteConfirm, onUpdate])
+
+  useEffect(() => {
+    if (isCreation)
+      handleAuthorize()
+  }, [])
 
   if (!detail)
     return null

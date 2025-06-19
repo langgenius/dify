@@ -20,11 +20,13 @@ import MCPList from './mcp'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useAllToolProviders } from '@/service/use-tools'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useOAuthCallback } from '@/hooks/use-oauth'
 
 const ProviderList = () => {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  useOAuthCallback()
 
   const searchParams = useSearchParams()
   const authCode = searchParams.get('code') || ''

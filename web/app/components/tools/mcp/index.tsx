@@ -1,15 +1,10 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useMemo, useState } from 'react'
 import NewMCPCard from './create-card'
 import MCPCard from './provider-card'
 import MCPDetailPanel from './detail/provider-detail'
 import {
   useAllMCPTools,
-  useAuthorizeMCP,
-  useInvalidateMCPTools,
-  useUpdateMCPAuthorizationToken,
-  useUpdateMCPTools,
 } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
@@ -39,17 +34,8 @@ function renderDefaultCard() {
 const MCPList = ({
   searchText,
 }: Props) => {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const authCode = searchParams.get('code') || ''
-  const providerID = searchParams.get('state') || ''
-
   const { data: list = [], refetch } = useAllMCPTools()
-  const { mutateAsync: authorizeMcp } = useAuthorizeMCP()
-  const { mutateAsync: updateTools } = useUpdateMCPTools()
-  const invalidateMCPTools = useInvalidateMCPTools()
-  const { mutateAsync: updateMCPAuthorizationToken } = useUpdateMCPAuthorizationToken()
+  const [isCreation, setIsCreation] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
@@ -68,39 +54,8 @@ const MCPList = ({
   const handleCreate = async (provider: ToolWithProvider) => {
     await refetch() // update list
     setCurrentProviderID(provider.id)
-    const res = await authorizeMcp({
-      provider_id: provider.id,
-    })
-    if (res.result === 'success') {
-      await refetch() // update authorization in list
-      await updateTools(provider.id)
-      invalidateMCPTools(provider.id)
-      await refetch() // update tool list in provider list
-    }
-    else if (res.authorization_url) {
-      router.push(res.authorization_url)
-    }
+    setIsCreation(true)
   }
-
-  const handleUpdateAuthorization = async (providerID: string, code: string) => {
-    const targetProvider = list.find(provider => provider.id === providerID)
-    router.replace(pathname)
-    if (!targetProvider) return
-    await updateMCPAuthorizationToken({
-      provider_id: providerID,
-      authorization_code: code,
-    })
-    await refetch()
-    setCurrentProviderID(providerID)
-    await updateTools(providerID)
-    invalidateMCPTools(providerID)
-    await refetch()
-  }
-
-  useEffect(() => {
-    if (authCode && providerID && list.length > 0)
-      handleUpdateAuthorization(providerID, authCode)
-  }, [authCode, providerID, list])
 
   return (
     <>
@@ -127,6 +82,8 @@ const MCPList = ({
           detail={currentProvider}
           onHide={() => setCurrentProviderID(undefined)}
           onUpdate={refetch}
+          isCreation={isCreation}
+          onFirstCreate={() => setIsCreation(false)}
         />
       )}
     </>
