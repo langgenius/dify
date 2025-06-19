@@ -5,4 +5,5 @@ export enum ChatVarType {
   ArrayString = 'array[string]',
   ArrayNumber = 'array[number]',
   ArrayObject = 'array[object]',
+  ArrayFile = 'array[file]',
 }
