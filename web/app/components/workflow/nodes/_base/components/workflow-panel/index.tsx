@@ -150,16 +150,27 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const hasClickRunning = useRef(false)
   const [isPaused, setIsPaused] = useState(false)
+
   useEffect(() => {
     if(data._singleRunningStatus === NodeRunningStatus.Running) {
       hasClickRunning.current = true
       setIsPaused(false)
     }
-    else if(data._singleRunningStatus === undefined && hasClickRunning) {
+    else if(data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
       setIsPaused(true)
       hasClickRunning.current = false
     }
-  }, [data._singleRunningStatus])
+  }, [data])
+
+  const updateNodeRunningStatus = useCallback((status: NodeRunningStatus) => {
+    handleNodeDataUpdate({
+      id,
+      data: {
+        ...data,
+        _singleRunningStatus: status,
+      },
+    })
+  }, [handleNodeDataUpdate, id, data])
 
   useEffect(() => {
     // console.log(`id changed: ${id}, hasClickRunning: ${hasClickRunning.current}`)
@@ -402,6 +413,7 @@ const BasePanel: FC<BasePanelProps> = ({
             canSingleRun={isSupportSingleRun}
             runningStatus={runningStatus}
             isRunAfterSingleRun={isRunAfterSingleRun}
+            updateNodeRunningStatus={updateNodeRunningStatus}
             onSingleRunClicked={handleSingleRun}
             nodeInfo={nodeInfo}
             singleRunResult={runResult!}
