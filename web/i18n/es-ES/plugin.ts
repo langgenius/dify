@@ -137,6 +137,7 @@ const translation = {
     dropPluginToInstall: 'Suelte el paquete del complemento aquí para instalarlo',
     readyToInstallPackage: 'A punto de instalar el siguiente plugin',
     installedSuccessfully: 'Instalación exitosa',
+    installWarning: 'Este plugin no está permitido para instalar.',
   },
   installFromGitHub: {
     uploadFailed: 'Error de carga',
@@ -175,7 +176,7 @@ const translation = {
     empower: 'Potencie su desarrollo de IA',
     moreFrom: 'Más de Marketplace',
     viewMore: 'Ver más',
-    sortBy: 'Ciudad negra',
+    sortBy: 'Ordenar por',
     noPluginFound: 'No se ha encontrado ningún plugin',
     pluginsResult: '{{num}} resultados',
     discover: 'Descubrir',
