@@ -221,7 +221,6 @@ def get_min_search_keywords_texts(texts:list[str]):
 
 # 扩展处理分值（全文检索的方法需要处理分值）
 def set_full_search_score(query:str,doc_list:list[dict[str, Any]]):
-    import pdb; pdb.set_trace()
     # 根据查询条件的长短
     main_keywords_texts = get_main_keywords_texts(query_text=query)
 
