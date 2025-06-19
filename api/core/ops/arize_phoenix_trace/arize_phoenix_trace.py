@@ -407,8 +407,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             "message_id": trace_info.message_id,
             "tool_name": "moderation",
             "status": trace_info.message_data.status,
-            "status_message": trace_info.error or "",
-            "level": "ERROR" if trace_info.error else "DEFAULT",
+            "status_message": trace_info.message_data.error or "",
+            "level": "ERROR" if trace_info.message_data.error else "DEFAULT",
         }
         metadata.update(trace_info.metadata)
 
@@ -443,13 +443,13 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         )
 
         try:
-            if trace_info.error:
+            if trace_info.message_data.error:
                 span.add_event(
                     "exception",
                     attributes={
-                        "exception.message": trace_info.error,
+                        "exception.message": trace_info.message_data.error,
                         "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
+                        "exception.stacktrace": trace_info.message_data.error,
                     },
                 )
         finally:
@@ -520,8 +520,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             "message_id": trace_info.message_id,
             "tool_name": "dataset_retrieval",
             "status": trace_info.message_data.status,
-            "status_message": trace_info.error or "",
-            "level": "ERROR" if trace_info.error else "DEFAULT",
+            "status_message": trace_info.message_data.error or "",
+            "level": "ERROR" if trace_info.message_data.error else "DEFAULT",
             "ls_provider": trace_info.message_data.model_provider,
             "ls_model_name": trace_info.message_data.model_id,
         }
@@ -552,13 +552,13 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         )
 
         try:
-            if trace_info.error:
+            if trace_info.message_data.error:
                 span.add_event(
                     "exception",
                     attributes={
-                        "exception.message": trace_info.error,
+                        "exception.message": trace_info.message_data.error,
                         "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
+                        "exception.stacktrace": trace_info.message_data.error,
                     },
                 )
         finally:
@@ -624,8 +624,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             "project_name": self.project,
             "message_id": trace_info.message_id,
             "status": trace_info.message_data.status,
-            "status_message": trace_info.error or "",
-            "level": "ERROR" if trace_info.error else "DEFAULT",
+            "status_message": trace_info.message_data.error or "",
+            "level": "ERROR" if trace_info.message_data.error else "DEFAULT",
         }
         metadata.update(trace_info.metadata)
 
@@ -655,13 +655,13 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         )
 
         try:
-            if trace_info.error:
+            if trace_info.message_data.error:
                 span.add_event(
                     "exception",
                     attributes={
-                        "exception.message": trace_info.error,
+                        "exception.message": trace_info.message_data.error,
                         "exception.type": "Error",
-                        "exception.stacktrace": trace_info.error,
+                        "exception.stacktrace": trace_info.message_data.error,
                     },
                 )
         finally:
