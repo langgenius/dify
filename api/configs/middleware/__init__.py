@@ -24,6 +24,7 @@ from .vdb.couchbase_config import CouchbaseConfig
 from .vdb.elasticsearch_config import ElasticsearchConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
 from .vdb.lindorm_config import LindormConfig
+from .vdb.matrixone_config import MatrixoneConfig
 from .vdb.milvus_config import MilvusConfig
 from .vdb.myscale_config import MyScaleConfig
 from .vdb.oceanbase_config import OceanBaseVectorConfig
@@ -323,5 +324,6 @@ class MiddlewareConfig(
     OpenGaussConfig,
     TableStoreConfig,
     DatasetQueueMonitorConfig,
+    MatrixoneConfig,
 ):
     pass

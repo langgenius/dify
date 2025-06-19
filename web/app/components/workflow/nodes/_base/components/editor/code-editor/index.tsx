@@ -140,6 +140,7 @@ const CodeEditor: FC<Props> = ({
         language={languageMap[language] || 'javascript'}
         theme={isMounted ? theme : 'default-theme'} // sometimes not load the default theme
         value={outPutValue}
+        loading={<span className='text-text-primary'>Loading...</span>}
         onChange={handleEditorChange}
         // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
         options={{

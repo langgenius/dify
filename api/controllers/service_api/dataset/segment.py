@@ -8,6 +8,7 @@ from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_knowledge_limit_check,
+    cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -35,6 +36,7 @@ class SegmentApi(DatasetApiResource):
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, document_id):
         """Create single segment."""
         # check dataset
@@ -139,6 +141,7 @@ class SegmentApi(DatasetApiResource):
 
 
 class DatasetSegmentApi(DatasetApiResource):
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def delete(self, tenant_id, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -162,6 +165,7 @@ class DatasetSegmentApi(DatasetApiResource):
         return 204
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -236,6 +240,7 @@ class ChildChunkApi(DatasetApiResource):
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, document_id, segment_id):
         """Create child chunk."""
         # check dataset
@@ -332,6 +337,7 @@ class DatasetChildChunkApi(DatasetApiResource):
     """Resource for updating child chunks."""
 
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def delete(self, tenant_id, dataset_id, document_id, segment_id, child_chunk_id):
         """Delete child chunk."""
         # check dataset
@@ -370,6 +376,7 @@ class DatasetChildChunkApi(DatasetApiResource):
 
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_knowledge_limit_check("add_segment", "dataset")
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, tenant_id, dataset_id, document_id, segment_id, child_chunk_id):
         """Update child chunk."""
         # check dataset

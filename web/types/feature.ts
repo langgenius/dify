@@ -13,12 +13,23 @@ export enum LicenseStatus {
   LOST = 'lost',
 }
 
+export enum InstallationScope {
+  ALL = 'all',
+  NONE = 'none',
+  OFFICIAL_ONLY = 'official_only',
+  OFFICIAL_AND_PARTNER = 'official_and_specific_partners',
+}
+
 type License = {
   status: LicenseStatus
   expired_at: string | null
 }
 
 export type SystemFeatures = {
+  plugin_installation_permission: {
+    plugin_installation_scope: InstallationScope,
+    restrict_to_marketplace_only: boolean
+  },
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: SSOProtocol | ''
   sso_enforced_for_web: boolean
@@ -50,6 +61,10 @@ export type SystemFeatures = {
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
+  plugin_installation_permission: {
+    plugin_installation_scope: InstallationScope.ALL,
+    restrict_to_marketplace_only: false,
+  },
   sso_enforced_for_signin: false,
   sso_enforced_for_signin_protocol: '',
   sso_enforced_for_web: false,

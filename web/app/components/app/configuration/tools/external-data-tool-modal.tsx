@@ -20,6 +20,7 @@ import type {
 import { useToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { noop } from 'lodash-es'
+import { useDocLink } from '@/context/i18n'
 
 const systemTypes = ['api']
 type ExternalDataToolModalProps = {
@@ -40,6 +41,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   onValidateBeforeSave,
 }) => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { notify } = useToastContext()
   const { locale } = useContext(I18n)
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
@@ -243,7 +245,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
             <div className='flex h-9 items-center justify-between text-sm font-medium text-gray-900'>
               {t('common.apiBasedExtension.selector.title')}
               <a
-                href={t('common.apiBasedExtension.linkUrl') || '/'}
+                href={docLink('/guides/extension/api-based-extension/README')}
                 target='_blank' rel='noopener noreferrer'
                 className='group flex items-center text-xs font-normal text-gray-500 hover:text-primary-600'
               >

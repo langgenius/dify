@@ -154,6 +154,7 @@ const translation = {
     next: 'Next',
     pluginLoadError: 'Plugin load error',
     pluginLoadErrorDesc: 'This plugin will not be installed',
+    installWarning: 'This plugin is not allowed to be installed.',
   },
   installFromGitHub: {
     installPlugin: 'Install plugin from GitHub',
