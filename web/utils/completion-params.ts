@@ -84,4 +84,4 @@ export const mergeValidCompletionParams = (
   })
 
   return { params: nextParams, removedDetails }
-} 
+}
