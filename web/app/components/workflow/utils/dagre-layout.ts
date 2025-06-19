@@ -91,7 +91,6 @@ export const getLayoutByDagre = (originNodes: Node[], originEdges: Edge[]) => {
   })
 
   dagreGraph.setGraph({
-    compound: true,
     rankdir: 'LR',
     align: 'UL',
     nodesep: 40,
