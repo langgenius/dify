@@ -1144,3 +1144,5 @@ api.add_resource(DocumentRetryApi, "/datasets/<uuid:dataset_id>/retry")
 api.add_resource(DocumentRenameApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
 
 api.add_resource(WebsiteDocumentSyncApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
+api.add_resource(DocumentPipelineExecutionLogApi, 
+                 "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/pipeline-execution-log")
