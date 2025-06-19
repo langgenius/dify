@@ -11,7 +11,7 @@ export const mergeValidCompletionParams = (
 
   const acceptedKeys = new Set(rules.map(r => r.name))
   const ruleMap: Record<string, ModelParameterRule> = {}
-  rules.forEach(r => {
+  rules.forEach((r) => {
     ruleMap[r.name] = r
   })
 
@@ -19,53 +19,62 @@ export const mergeValidCompletionParams = (
   const removedDetails: Record<string, string> = {}
 
   Object.entries(oldParams).forEach(([key, value]) => {
-    if (!acceptedKeys.has(key))
-      { removedDetails[key] = 'unsupported'; return }
+    if (!acceptedKeys.has(key)) {
+      removedDetails[key] = 'unsupported'
+      return
+    }
 
     const rule = ruleMap[key]
-    if (!rule)
-      { removedDetails[key] = 'unsupported'; return }
+    if (!rule) {
+      removedDetails[key] = 'unsupported'
+      return
+    }
 
     switch (rule.type) {
       case 'int':
       case 'float': {
-        if (typeof value !== 'number') { removedDetails[key] = 'invalid type'; return }
+        if (typeof value !== 'number') {
+          removedDetails[key] = 'invalid type'
+          return
+        }
         const min = rule.min ?? Number.NEGATIVE_INFINITY
         const max = rule.max ?? Number.POSITIVE_INFINITY
-        if (value < min || value > max) { removedDetails[key] = `out of range (${min}-${max})`; return }
+        if (value < min || value > max) {
+          removedDetails[key] = `out of range (${min}-${max})`
+          return
+        }
         nextParams[key] = value
         return
       }
       case 'boolean': {
-        if (typeof value === 'boolean')
-          nextParams[key] = value
-        else
+        if (typeof value !== 'boolean') {
           removedDetails[key] = 'invalid type'
+          return
+        }
+        nextParams[key] = value
         return
       }
       case 'string':
       case 'text': {
-        if (typeof value === 'string') {
-          if (Array.isArray(rule.options) && rule.options.length) {
-            if ((rule.options as string[]).includes(value))
-              nextParams[key] = value
-            else
-              removedDetails[key] = 'unsupported option'
-          }
-          else {
-            nextParams[key] = value
-          }
-        }
-        else {
+        if (typeof value !== 'string') {
           removedDetails[key] = 'invalid type'
+          return
         }
+        if (Array.isArray(rule.options) && rule.options.length) {
+          if (!(rule.options as string[]).includes(value)) {
+            removedDetails[key] = 'unsupported option'
+            return
+          }
+        }
+        nextParams[key] = value
         return
       }
       case 'tag': {
-        if (Array.isArray(value))
-          nextParams[key] = value
-        else
+        if (!Array.isArray(value)) {
           removedDetails[key] = 'invalid type'
+          return
+        }
+        nextParams[key] = value
         return
       }
       default: {
