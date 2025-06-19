@@ -14,7 +14,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
-from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
     TracingProviderEnum,
