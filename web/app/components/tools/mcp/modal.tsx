@@ -51,6 +51,7 @@ const MCPModal = ({
 }: DuplicateAppModalProps) => {
   const { t } = useTranslation()
 
+  const originalServerUrl = data?.server_url
   const [name, setName] = React.useState(data?.name || '')
   const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
   const [url, setUrl] = React.useState(data?.server_url || '')
@@ -77,7 +78,7 @@ const MCPModal = ({
         <div className='absolute right-5 top-5 z-10 cursor-pointer p-1.5' onClick={onHide}>
           <RiCloseLine className='h-5 w-5 text-text-tertiary' />
         </div>
-        <div className='title-2xl-semi-bold relative pb-3 text-xl text-text-primary'>{t('tools.mcp.modal.title')}</div>
+        <div className='title-2xl-semi-bold relative pb-3 text-xl text-text-primary'>{data ? t('tools.mcp.modal.editTitle') : t('tools.mcp.modal.title')}</div>
         <div className='space-y-5 py-3'>
           <div className='flex space-x-3'>
             <div className='grow pb-1'>
@@ -110,6 +111,11 @@ const MCPModal = ({
               onChange={e => setUrl(e.target.value)}
               placeholder={t('tools.mcp.modal.serverUrlPlaceholder')}
             />
+            {originalServerUrl && originalServerUrl !== url && (
+              <div className='mt-1 flex h-5 items-center'>
+                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.warning')}</span>
+              </div>
+            )}
           </div>
         </div>
         <div className='flex flex-row-reverse pt-5'>

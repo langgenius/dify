@@ -164,10 +164,12 @@ const translation = {
     noTools: 'No tools available',
     modal: {
       title: 'Add MCP Server (HTTP)',
+      editTitle: 'Edit MCP Server (HTTP)',
       name: 'Name & Icon',
       namePlaceholder: 'Name your MCP server',
       serverUrl: 'Server URL',
       serverUrlPlaceholder: 'URL to server endpiont',
+      warning: 'Updating the server address may affect applications currently using this MCP',
       cancel: 'Cancel',
       save: 'Save',
       confirm: 'Add & Authorize',
