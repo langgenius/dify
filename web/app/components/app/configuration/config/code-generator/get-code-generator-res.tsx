@@ -152,13 +152,13 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const renderLoading = (
     <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3'>
       <Loading />
-      <div className='text-[13px] text-gray-400'>{t('appDebug.codegen.loading')}</div>
+      <div className='text-[13px] text-text-tertiary'>{t('appDebug.codegen.loading')}</div>
     </div>
   )
   const renderNoData = (
     <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3 px-8'>
-      <Generator className='h-14 w-14 text-gray-300' />
-      <div className='text-center text-[13px] font-normal leading-5 text-gray-400'>
+      <Generator className='h-14 w-14 text-text-tertiary' />
+      <div className='text-center text-[13px] font-normal leading-5 text-text-tertiary'>
         <div>{t('appDebug.codegen.noDataLine1')}</div>
         <div>{t('appDebug.codegen.noDataLine2')}</div>
       </div>
@@ -175,7 +175,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       <div className='relative flex h-[680px] flex-wrap'>
         <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-8'>
           <div className='mb-8'>
-            <div className={'text-lg font-bold leading-[28px]'}>{t('appDebug.codegen.title')}</div>
+            <div className={'text-lg font-bold leading-[28px] text-text-primary'}>{t('appDebug.codegen.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.codegen.description')}</div>
           </div>
           <div className='mb-8'>
