@@ -1,9 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import type { AutoUpdateConfig } from './types'
+import React, { useCallback, useMemo } from 'react'
+import { AUTO_UPDATE_STRATEGY, type AutoUpdateConfig } from './types'
 import Label from '../label'
 import StrategyPicker from './strategy-picker'
+import { useTranslation } from 'react-i18next'
+
+const i18nPrefix = 'plugin.autoUpdate'
 
 type Props = {
   payload: AutoUpdateConfig
@@ -14,7 +17,18 @@ const AutoUpdateSetting: FC<Props> = ({
   payload,
   onChange,
 }) => {
+  const { t } = useTranslation()
   const { strategy_setting } = payload
+  const strategyDescription = useMemo(() => {
+    switch (strategy_setting) {
+      case AUTO_UPDATE_STRATEGY.fixOnly:
+        return t(`${i18nPrefix}.strategy.fixOnly.selectedDescription`)
+      case AUTO_UPDATE_STRATEGY.latest:
+        return t(`${i18nPrefix}.strategy.latest.selectedDescription`)
+      default:
+        return ''
+    }
+  }, [strategy_setting, t])
   const handleChange = useCallback((key: keyof AutoUpdateConfig) => {
     return (value: AutoUpdateConfig[keyof AutoUpdateConfig]) => {
       onChange({
@@ -32,15 +46,19 @@ const AutoUpdateSetting: FC<Props> = ({
 
       <div className='space-y-4'>
         <div className='flex items-center justify-between'>
-          <Label label='Automatic updates' />
+          <Label label={t(`${i18nPrefix}.automaticUpdates`)} description={strategyDescription} />
           <StrategyPicker value={strategy_setting} onChange={handleChange('strategy_setting')} />
         </div>
-        <div className='flex items-center justify-between'>
-          <Label label='Update time' />
-        </div>
-        <div className='flex items-center'>
-          <Label label='Specify plugins to update' />
-        </div>
+        {strategy_setting !== AUTO_UPDATE_STRATEGY.disabled && (
+          <>
+            <div className='flex items-center justify-between'>
+              <Label label={t(`${i18nPrefix}.updateTime`)} />
+            </div>
+            <div className='flex items-center'>
+              <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`)} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
