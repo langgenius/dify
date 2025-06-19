@@ -4,7 +4,8 @@ import Actions from './actions'
 import Form from '../../../../create-from-pipeline/process-documents/form'
 
 type ProcessDocumentsProps = {
-  documentId: string
+  datasourceNodeId: string
+  lastRunInputData: Record<string, any>
   ref: React.RefObject<any>
   onProcess: () => void
   onPreview: () => void
@@ -12,13 +13,14 @@ type ProcessDocumentsProps = {
 }
 
 const ProcessDocuments = ({
-  documentId,
+  datasourceNodeId,
+  lastRunInputData,
   onProcess,
   onPreview,
   onSubmit,
   ref,
 }: ProcessDocumentsProps) => {
-  const { initialData, configurations } = useConfigurations(documentId)
+  const { isFetchingParams, initialData, configurations } = useConfigurations(lastRunInputData, datasourceNodeId)
   const schema = generateZodSchema(configurations)
 
   return (
@@ -31,7 +33,7 @@ const ProcessDocuments = ({
         onSubmit={onSubmit}
         onPreview={onPreview}
       />
-      <Actions onProcess={onProcess} />
+      <Actions runDisabled={isFetchingParams} onProcess={onProcess} />
     </div>
   )
 }

@@ -147,9 +147,6 @@ const ChunkPreview = ({
       {!isPending && currentDocForm === ChunkingMode.parentChild && estimateData?.preview && (
         estimateData?.preview?.map((item, index) => {
           const indexForLabel = index + 1
-          // const childChunks = parentChildConfig.chunkForContext === 'full-doc'
-          //   ? item.child_chunks.slice(0, FULL_DOC_PREVIEW_LENGTH)
-          //   : item.child_chunks
           return (
             <ChunkContainer
               key={item.content}

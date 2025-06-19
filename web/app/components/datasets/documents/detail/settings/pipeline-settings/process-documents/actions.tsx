@@ -3,11 +3,13 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 
 type ActionsProps = {
+  runDisabled?: boolean
   onProcess: () => void
 }
 
 const Actions = ({
   onProcess,
+  runDisabled,
 }: ActionsProps) => {
   const { t } = useTranslation()
 
@@ -16,6 +18,7 @@ const Actions = ({
       <Button
         variant='primary'
         onClick={onProcess}
+        disabled={runDisabled}
       >
         {t('datasetPipeline.operations.saveAndProcess')}
       </Button>

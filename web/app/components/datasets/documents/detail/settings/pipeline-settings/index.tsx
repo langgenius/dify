@@ -1,15 +1,19 @@
-import { useCallback, useRef, useState } from 'react'
-import type { CrawlResultItem, DocumentItem, FileIndexingEstimateResponse } from '@/models/datasets'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { NotionPage } from '@/models/common'
 import { useTranslation } from 'react-i18next'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useDocumentDetail } from '@/service/knowledge/use-document'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import ChunkPreview from '../../../create-from-pipeline/preview/chunk-preview'
 import Loading from '@/app/components/base/loading'
-import type { DatasourceType } from '@/models/pipeline'
 import ProcessDocuments from './process-documents'
 import LeftHeader from './left-header'
+import { usePipelineExecutionLog, useRunPublishedPipeline } from '@/service/use-pipeline'
+import type { PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
+import { DatasourceType } from '@/models/pipeline'
+import { noop } from 'lodash-es'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useRouter } from 'next/navigation'
+import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 
 type PipelineSettingsProps = {
   datasetId: string
@@ -21,25 +25,100 @@ const PipelineSettings = ({
   documentId,
 }: PipelineSettingsProps) => {
   const { t } = useTranslation()
-  const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
+  const { push } = useRouter()
   const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(undefined)
+  const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
 
   const isPreview = useRef(false)
   const formRef = useRef<any>(null)
 
-  const { data: documentDetail, error, isFetching: isFetchingDocumentDetail } = useDocumentDetail({
-    datasetId,
-    documentId,
-    params: { metadata: 'without' },
+  const { data: lastRunData, isFetching: isFetchingLastRunData, isError } = usePipelineExecutionLog({
+    dataset_id: datasetId,
+    document_id: documentId,
   })
 
-  const handlePreviewChunks = useCallback(async (data: Record<string, any>) => {
-    // todo: Preview
-  }, [])
+  const files = useMemo(() => {
+    const files: CustomFile[] = []
+    if (lastRunData?.datasource_type === DatasourceType.localFile) {
+      const { related_id, name, extension } = lastRunData.datasource_info
+      files.push({
+        id: related_id,
+        name,
+        extension,
+      } as CustomFile)
+    }
+    return files
+  }, [lastRunData])
 
+  const websitePages = useMemo(() => {
+    const websitePages: CrawlResultItem[] = []
+    if (lastRunData?.datasource_type === DatasourceType.websiteCrawl) {
+      const { content, description, source_url, title } = lastRunData.datasource_info
+      websitePages.push({
+        markdown: content,
+        description,
+        source_url,
+        title,
+      })
+    }
+    return websitePages
+  }, [lastRunData])
+
+  const onlineDocuments = useMemo(() => {
+    const onlineDocuments: NotionPage[] = []
+    if (lastRunData?.datasource_type === DatasourceType.onlineDocument) {
+      const { workspace_id, page } = lastRunData.datasource_info
+      onlineDocuments.push({
+        workspace_id,
+        ...page,
+      })
+    }
+    return onlineDocuments
+  }, [lastRunData])
+
+  const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
+
+  const handlePreviewChunks = useCallback(async (data: Record<string, any>) => {
+    if (!lastRunData)
+      return
+    const datasourceInfoList: Record<string, any>[] = []
+    const documentInfo = lastRunData.datasource_info
+    datasourceInfoList.push(documentInfo)
+    await runPublishedPipeline({
+      pipeline_id: pipelineId!,
+      inputs: data,
+      start_node_id: lastRunData.datasource_node_id,
+      datasource_type: lastRunData.datasource_type,
+      datasource_info_list: datasourceInfoList,
+      is_preview: true,
+    }, {
+      onSuccess: (res) => {
+        setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
+      },
+    })
+  }, [lastRunData, pipelineId, runPublishedPipeline])
+
+  const invalidDocumentList = useInvalidDocumentList(datasetId)
   const handleProcess = useCallback(async (data: Record<string, any>) => {
-    // todo: Process
-  }, [])
+    if (!lastRunData)
+      return
+    const datasourceInfoList: Record<string, any>[] = []
+    const documentInfo = lastRunData.datasource_info
+    datasourceInfoList.push(documentInfo)
+    await runPublishedPipeline({
+      pipeline_id: pipelineId!,
+      inputs: data,
+      start_node_id: lastRunData.datasource_node_id,
+      datasource_type: lastRunData.datasource_type,
+      datasource_info_list: datasourceInfoList,
+      is_preview: false,
+    }, {
+      onSuccess: () => {
+        invalidDocumentList()
+        push(`/datasets/${datasetId}/documents/${documentId}`)
+      },
+    })
+  }, [datasetId, documentId, invalidDocumentList, lastRunData, pipelineId, push, runPublishedPipeline])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -55,25 +134,13 @@ const PipelineSettings = ({
     isPreview.current ? handlePreviewChunks(data) : handleProcess(data)
   }, [handlePreviewChunks, handleProcess])
 
-  const handlePreviewFileChange = useCallback((file: DocumentItem) => {
-    onClickPreview()
-  }, [onClickPreview])
-
-  const handlePreviewOnlineDocumentChange = useCallback((page: NotionPage) => {
-    onClickPreview()
-  }, [onClickPreview])
-
-  const handlePreviewWebsiteChange = useCallback((website: CrawlResultItem) => {
-    onClickPreview()
-  }, [onClickPreview])
-
-  if (isFetchingDocumentDetail) {
+  if (isFetchingLastRunData) {
     return (
       <Loading type='app' />
     )
   }
 
-  if (error)
+  if (isError)
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
   return (
@@ -85,7 +152,8 @@ const PipelineSettings = ({
         <div className='grow overflow-y-auto'>
           <ProcessDocuments
             ref={formRef}
-            documentId={documentId}
+            lastRunInputData={lastRunData!.input_data}
+            datasourceNodeId={lastRunData!.datasource_node_id}
             onProcess={onClickProcess}
             onPreview={onClickPreview}
             onSubmit={handleSubmit}
@@ -95,22 +163,17 @@ const PipelineSettings = ({
       {/* Preview */}
       <div className='flex h-full flex-1 pl-2 pt-2'>
         <ChunkPreview
-          dataSourceType={documentDetail!.data_source_type as DatasourceType}
-          // @ts-expect-error mock data // todo: remove mock data
-          files={[{
-            id: '12345678',
-            name: 'test-file',
-            extension: 'txt',
-          }]}
-          onlineDocuments={[]}
-          websitePages={[]}
-          isIdle={true}
-          isPending={true}
+          dataSourceType={lastRunData!.datasource_type}
+          files={files}
+          onlineDocuments={onlineDocuments}
+          websitePages={websitePages}
+          isIdle={isIdle}
+          isPending={isPending && isPreview.current}
           estimateData={estimateData}
           onPreview={onClickPreview}
-          handlePreviewFileChange={handlePreviewFileChange}
-          handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
-          handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
+          handlePreviewFileChange={noop}
+          handlePreviewOnlineDocumentChange={noop}
+          handlePreviewWebsitePageChange={noop}
         />
       </div>
     </div>
