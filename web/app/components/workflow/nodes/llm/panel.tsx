@@ -23,6 +23,9 @@ import Editor from '@/app/components/workflow/nodes/_base/components/prompt/edit
 import StructureOutput from './components/structure-output'
 import Switch from '@/app/components/base/switch'
 import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
+import { mergeValidCompletionParams } from '@/utils/completion-params'
+import { fetchModelParameterRules } from '@/service/common'
+import Toast from '@/app/components/base/toast'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -137,10 +140,21 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     modelId: string
     mode?: string
   }) => {
-    handleCompletionParamsChange({})
-    handleModelChanged(model)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    (async () => {
+      try {
+        const url = `/workspaces/current/model-providers/${model.provider}/models/parameter-rules?model=${model.modelId}`
+        const { data: parameterRules } = await fetchModelParameterRules(url)
+        const { params: filtered, removedDetails } = mergeValidCompletionParams(inputs.model.completion_params, parameterRules ?? [])
+        const keys = Object.keys(removedDetails)
+        if (keys.length)
+          Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ` + keys.map(k => `${k} (${removedDetails[k]})`).join(', ') })
+        handleCompletionParamsChange(filtered)
+      }
+      finally {
+        handleModelChanged(model)
+      }
+    })()
+  }, [inputs.model.completion_params])
 
   return (
     <div className='mt-2'>

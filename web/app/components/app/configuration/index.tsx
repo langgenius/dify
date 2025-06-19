@@ -80,6 +80,9 @@ import {
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { MittProvider } from '@/context/mitt-context'
+import { mergeValidCompletionParams } from '@/utils/completion-params'
+import { fetchModelParameterRules } from '@/service/common'
+import Toast from '@/app/components/base/toast'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -453,7 +456,21 @@ const Configuration: FC = () => {
       ...visionConfig,
       enabled: supportVision,
     }, true)
-    setCompletionParams({})
+
+    // merge and keep only valid completion params for the new model
+    try {
+      const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
+      const { data: parameterRules } = await fetchModelParameterRules(url)
+      const { params: filtered, removedDetails } = mergeValidCompletionParams(completionParams, parameterRules ?? [])
+      if (Object.keys(removedDetails).length)
+        Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ` + Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ') })
+      setCompletionParams(filtered)
+    }
+    catch (e) {
+      // if fetch fails just clear invalid params
+      Toast.notify({ type: 'error', message: t('common.error') })
+      setCompletionParams({})
+    }
   }
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)

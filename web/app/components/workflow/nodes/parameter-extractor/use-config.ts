@@ -17,6 +17,9 @@ import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-cr
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { supportFunctionCall } from '@/utils/tool-call'
+import { mergeValidCompletionParams } from '@/utils/completion-params'
+import { fetchModelParameterRules } from '@/service/common'
+import Toast from '@/app/components/base/toast'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -117,16 +120,31 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
-    const newInputs = produce(inputRef.current, (draft) => {
-      draft.model.provider = model.provider
-      draft.model.name = model.modelId
-      draft.model.mode = model.mode!
-      const isModeChange = model.mode !== inputRef.current.model?.mode
-      if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
-        appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
-    })
-    setInputs(newInputs)
-    setModelChanged(true)
+    (async () => {
+      const newInputs = produce(inputRef.current, (draft) => {
+        draft.model.provider = model.provider
+        draft.model.name = model.modelId
+        draft.model.mode = model.mode!
+        const isModeChange = model.mode !== inputRef.current.model?.mode
+        if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
+          appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
+      })
+
+      // filter completion params
+      try {
+        const url = `/workspaces/current/model-providers/${model.provider}/models/parameter-rules?model=${model.modelId}`
+        const { data: parameterRules } = await fetchModelParameterRules(url)
+        const { params: filtered, removedDetails } = mergeValidCompletionParams(inputRef.current.model.completion_params, parameterRules ?? [])
+        if (Object.keys(removedDetails).length)
+          Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ` + Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ') })
+        newInputs.model.completion_params = filtered
+      }
+      catch {
+        // ignore errors
+      }
+      setInputs(newInputs)
+      setModelChanged(true)
+    })()
   }, [setInputs, defaultConfig, appendDefaultPromptConfig])
 
   useEffect(() => {
