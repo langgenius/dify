@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useMemo,
 } from 'react'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
@@ -13,6 +14,7 @@ import {
   usePipelineRun,
   usePipelineStartRun,
 } from '../hooks'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type RagPipelineMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const RagPipelineMain = ({
@@ -20,6 +22,23 @@ const RagPipelineMain = ({
   edges,
   viewport,
 }: RagPipelineMainProps) => {
+  const workflowStore = useWorkflowStore()
+
+  const handleWorkflowDataUpdate = useCallback((payload: any) => {
+    const {
+      rag_pipeline_variables,
+      environment_variables,
+    } = payload
+    if (rag_pipeline_variables) {
+      const { setRagPipelineVariables } = workflowStore.getState()
+      setRagPipelineVariables?.(rag_pipeline_variables)
+    }
+    if (environment_variables) {
+      const { setEnvironmentVariables } = workflowStore.getState()
+      setEnvironmentVariables(environment_variables)
+    }
+  }, [workflowStore])
+
   const {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -83,6 +102,7 @@ const RagPipelineMain = ({
       edges={edges}
       viewport={viewport}
       hooksStore={hooksStore as any}
+      onWorkflowDataUpdate={handleWorkflowDataUpdate}
     >
       <RagPipelineChildren />
     </WorkflowWithInnerContext>
