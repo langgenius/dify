@@ -245,7 +245,9 @@ class GetOnlineDocumentPageContentRequest(BaseModel):
     Get online document page content request
     """
 
-    online_document_info: OnlineDocumentInfo
+    workspace_id: str = Field(..., description="The workspace id")
+    page_id: str = Field(..., description="The page id")
+    type: str = Field(..., description="The type of the page")
 
 
 class OnlineDocumentPageContent(BaseModel):
