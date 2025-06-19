@@ -38,14 +38,15 @@ def downgrade():
     connection = op.get_bind()
     connection.execute(sa.text("""
         UPDATE workflow_runs
-        SET sequence_number = (
-            SELECT ROW_NUMBER() OVER (
+        SET sequence_number = subquery.row_num
+        FROM (
+            SELECT id, ROW_NUMBER() OVER (
                 PARTITION BY tenant_id, app_id
                 ORDER BY created_at, id
-            )
-            FROM workflow_runs wr2
-            WHERE wr2.id = workflow_runs.id
-        )
+            ) as row_num
+            FROM workflow_runs
+        ) subquery
+        WHERE workflow_runs.id = subquery.id
     """))
 
     # Step 3: Make the column NOT NULL and add the index
