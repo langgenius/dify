@@ -24,18 +24,23 @@ const WorkflowMain = ({
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
-    if (payload.features && featuresStore) {
+    const {
+      features,
+      conversation_variables,
+      environment_variables,
+    } = payload
+    if (features && featuresStore) {
       const { setFeatures } = featuresStore.getState()
 
-      setFeatures(payload.features)
+      setFeatures(features)
     }
-    if (payload.conversation_variables) {
+    if (conversation_variables) {
       const { setConversationVariables } = workflowStore.getState()
-      setConversationVariables(payload.conversation_variables)
+      setConversationVariables(conversation_variables)
     }
-    if (payload.environment_variables) {
+    if (environment_variables) {
       const { setEnvironmentVariables } = workflowStore.getState()
-      setEnvironmentVariables(payload.environment_variables)
+      setEnvironmentVariables(environment_variables)
     }
   }, [featuresStore, workflowStore])
 
