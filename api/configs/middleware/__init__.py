@@ -222,6 +222,10 @@ class CeleryConfig(DatabaseConfig):
         default=None,
     )
 
+    CELERY_SENTINEL_PASSWORD: Optional[str] = Field(
+        description="Password of the Redis Sentinel master.",
+        default=None,
+    )
     CELERY_SENTINEL_SOCKET_TIMEOUT: Optional[PositiveFloat] = Field(
         description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
