@@ -28,7 +28,7 @@ class TemplateTransformer(ABC):
     def extract_result_str_from_response(cls, response: str):
         result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
         if not result:
-            raise ValueError("Failed to parse result")
+            raise ValueError(f"Failed to parse result: no result tag found in response. Response: {response[:200]}...")
         return result.group(1)
 
     @classmethod
@@ -39,13 +39,24 @@ class TemplateTransformer(ABC):
         :return:
         """
         try:
-            result = json.loads(cls.extract_result_str_from_response(response))
-        except json.JSONDecodeError:
-            raise ValueError("failed to parse response")
+            result_str = cls.extract_result_str_from_response(response)
+            result = json.loads(result_str)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse JSON response: {str(e)}. Response content: {result_str[:200]}...")
+        except ValueError as e:
+            # Re-raise ValueError from extract_result_str_from_response
+            raise e
+        except Exception as e:
+            raise ValueError(f"Unexpected error during response transformation: {str(e)}")
+        
+        # Check if the result contains an error
+        if isinstance(result, dict) and "error" in result:
+            raise ValueError(f"JavaScript execution error: {result['error']}")
+        
         if not isinstance(result, dict):
-            raise ValueError("result must be a dict")
+            raise ValueError(f"Result must be a dict, got {type(result).__name__}")
         if not all(isinstance(k, str) for k in result):
-            raise ValueError("result keys must be strings")
+            raise ValueError("Result keys must be strings")
         return result
 
     @classmethod
