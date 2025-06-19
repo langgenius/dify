@@ -133,6 +133,7 @@ const translation = {
         selectedDescription: '始终更新到最新版本',
       },
     },
+    updateTimeTitle: '更新时间',
   },
   pluginInfoModal: {
     title: '插件信息',
