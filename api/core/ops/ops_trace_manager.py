@@ -109,6 +109,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
             case TraceAppConfig.ARIZE:
                 from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
                 from core.ops.entities.config_entity import ArizeConfig
+
                 return {
                     "config_class": ArizeConfig,
                     "secret_keys": ["api_key", "space_id"],
@@ -118,6 +119,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
             case TraceAppConfig.PHOENIX:
                 from core.ops.arize_phoenix_trace.arize_phoenix_trace import ArizePhoenixDataTrace
                 from core.ops.entities.config_entity import PhoenixConfig
+
                 return {
                     "config_class": PhoenixConfig,
                     "secret_keys": ["api_key"],
@@ -129,6 +131,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
 
 
 provider_config_map: dict[str, dict[str, Any]] = OpsTraceProviderConfigMap()
+
 
 class OpsTraceManager:
     ops_trace_instances_cache: LRUCache = LRUCache(maxsize=128)
