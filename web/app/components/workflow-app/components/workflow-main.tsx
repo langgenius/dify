@@ -12,6 +12,7 @@ import {
   useWorkflowRun,
   useWorkflowStartRun,
 } from '../hooks'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type WorkflowMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const WorkflowMain = ({
@@ -20,6 +21,7 @@ const WorkflowMain = ({
   viewport,
 }: WorkflowMainProps) => {
   const featuresStore = useFeaturesStore()
+  const workflowStore = useWorkflowStore()
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     if (payload.features && featuresStore) {
@@ -27,7 +29,15 @@ const WorkflowMain = ({
 
       setFeatures(payload.features)
     }
-  }, [featuresStore])
+    if (payload.conversation_variables) {
+      const { setConversationVariables } = workflowStore.getState()
+      setConversationVariables(payload.conversation_variables)
+    }
+    if (payload.environment_variables) {
+      const { setEnvironmentVariables } = workflowStore.getState()
+      setEnvironmentVariables(payload.environment_variables)
+    }
+  }, [featuresStore, workflowStore])
 
   const {
     doSyncWorkflowDraft,
