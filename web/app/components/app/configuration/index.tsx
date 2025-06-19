@@ -463,7 +463,7 @@ const Configuration: FC = () => {
       const { data: parameterRules } = await fetchModelParameterRules(url)
       const { params: filtered, removedDetails } = mergeValidCompletionParams(completionParams, parameterRules ?? [])
       if (Object.keys(removedDetails).length)
-        Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ` + Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ') })
+        Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
       setCompletionParams(filtered)
     }
     catch (e) {
