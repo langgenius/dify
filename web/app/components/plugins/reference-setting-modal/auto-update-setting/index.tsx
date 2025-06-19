@@ -9,6 +9,7 @@ import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import PluginsPicker from './plugins-picker'
 
 const i18nPrefix = 'plugin.autoUpdate'
 
@@ -38,6 +39,8 @@ const AutoUpdateSetting: FC<Props> = ({
     strategy_setting,
     upgrade_time_of_day,
     upgrade_mode,
+    exclude_plugins,
+    include_plugins,
   } = payload
   const strategyDescription = useMemo(() => {
     switch (strategy_setting) {
@@ -49,6 +52,32 @@ const AutoUpdateSetting: FC<Props> = ({
         return ''
     }
   }, [strategy_setting, t])
+
+  const plugins = useMemo(() => {
+    switch (upgrade_mode) {
+      case AUTO_UPDATE_MODE.partial:
+        return include_plugins
+      case AUTO_UPDATE_MODE.exclude:
+        return exclude_plugins
+      default:
+        return []
+    }
+  }, [upgrade_mode, exclude_plugins, include_plugins])
+
+  const handlePluginsChange = useCallback((newPlugins: string[]) => {
+    if (upgrade_mode === AUTO_UPDATE_MODE.partial) {
+      onChange({
+        ...payload,
+        include_plugins: newPlugins,
+      })
+    }
+    else if (upgrade_mode === AUTO_UPDATE_MODE.exclude) {
+      onChange({
+        ...payload,
+        exclude_plugins: newPlugins,
+      })
+    }
+  }, [payload, upgrade_mode, onChange])
   const handleChange = useCallback((key: keyof AutoUpdateConfig) => {
     return (value: AutoUpdateConfig[keyof AutoUpdateConfig]) => {
       onChange({
@@ -94,6 +123,11 @@ const AutoUpdateSetting: FC<Props> = ({
                   />
                 ))}
               </div>
+
+              <PluginsPicker
+                value={plugins}
+                onChange={handlePluginsChange}
+              />
             </div>
           </>
         )}
