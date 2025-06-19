@@ -147,7 +147,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         const { params: filtered, removedDetails } = mergeValidCompletionParams(inputs.model.completion_params, parameterRules ?? [])
         const keys = Object.keys(removedDetails)
         if (keys.length)
-          Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ` + keys.map(k => `${k} (${removedDetails[k]})`).join(', ') })
+          Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}` })
         handleCompletionParamsChange(filtered)
       }
       finally {
