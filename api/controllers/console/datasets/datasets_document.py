@@ -1,3 +1,4 @@
+import json
 import logging
 from argparse import ArgumentTypeError
 from datetime import UTC, datetime
@@ -1116,7 +1117,7 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
         if not log:
             return {"datasource_info": None, "datasource_type": None, "input_data": None}, 200
         return {
-            "datasource_info": log.datasource_info,
+            "datasource_info": json.loads(log.datasource_info),
             "datasource_type": log.datasource_type,
             "input_data": log.input_data,
         }, 200

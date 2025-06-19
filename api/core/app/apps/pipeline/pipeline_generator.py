@@ -140,7 +140,7 @@ class PipelineGenerator(BaseAppGenerator):
                 document_pipeline_execution_log = DocumentPipelineExecutionLog(
                     document_id=document_id,
                     datasource_type=datasource_type,
-                    datasource_info=datasource_info,
+                    datasource_info=json.dumps(datasource_info),
                     input_data=inputs,
                     pipeline_id=pipeline.id,
                     created_by=user.id,
