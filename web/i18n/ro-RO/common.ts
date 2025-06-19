@@ -58,6 +58,7 @@ const translation = {
     format: 'Format',
     downloadSuccess: 'Descărcarea a fost finalizată.',
     more: 'Mai mult',
+    deSelectAll: 'Deselectați tot',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',

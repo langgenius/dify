@@ -164,6 +164,10 @@ class Vector:
                 from core.rag.datasource.vdb.huawei.huawei_cloud_vector import HuaweiCloudVectorFactory
 
                 return HuaweiCloudVectorFactory
+            case VectorType.MATRIXONE:
+                from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
+
+                return MatrixoneVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 

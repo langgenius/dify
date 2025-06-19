@@ -195,6 +195,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param user: account or end user
         :param application_generate_entity: application generate entity
         :param invoke_from: invoke from source
+        :param workflow_execution_repository: repository for workflow execution
         :param workflow_node_execution_repository: repository for workflow node execution
         :param streaming: is stream
         :param workflow_thread_pool_id: workflow thread pool id

@@ -609,7 +609,7 @@ class MailConfig(BaseSettings):
     """
 
     MAIL_TYPE: Optional[str] = Field(
-        description="Email service provider type ('smtp' or 'resend'), default to None.",
+        description="Email service provider type ('smtp' or 'resend' or 'sendGrid), default to None.",
         default=None,
     )
 
@@ -661,6 +661,11 @@ class MailConfig(BaseSettings):
     EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
         description="Maximum number of emails allowed to be sent from the same IP address in a minute",
         default=50,
+    )
+
+    SENDGRID_API_KEY: Optional[str] = Field(
+        description="API key for SendGrid service",
+        default=None,
     )
 
 
