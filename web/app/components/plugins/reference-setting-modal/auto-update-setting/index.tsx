@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
-import { AUTO_UPDATE_STRATEGY, type AutoUpdateConfig } from './types'
+import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY, type AutoUpdateConfig } from './types'
 import Label from '../label'
 import StrategyPicker from './strategy-picker'
 import { useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
+import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 
 const i18nPrefix = 'plugin.autoUpdate'
 
@@ -33,7 +34,11 @@ const AutoUpdateSetting: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { strategy_setting, upgrade_time_of_day } = payload
+  const {
+    strategy_setting,
+    upgrade_time_of_day,
+    upgrade_mode,
+  } = payload
   const strategyDescription = useMemo(() => {
     switch (strategy_setting) {
       case AUTO_UPDATE_STRATEGY.fixOnly:
@@ -76,8 +81,19 @@ const AutoUpdateSetting: FC<Props> = ({
                 title={t(`${i18nPrefix}.updateTime`)}
               />
             </div>
-            <div className='flex items-center'>
+            <div>
               <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`)} />
+              <div className='mt-1 flex w-full items-start justify-between gap-2'>
+                {[AUTO_UPDATE_MODE.update_all, AUTO_UPDATE_MODE.exclude, AUTO_UPDATE_MODE.partial].map(option => (
+                  <OptionCard
+                    key={option}
+                    title={t(`${i18nPrefix}.upgradeMode.${option}`)}
+                    onSelect={() => handleChange('upgrade_mode')(option)}
+                    selected={upgrade_mode === option}
+                    className="flex-1"
+                  />
+                ))}
+              </div>
             </div>
           </>
         )}
