@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Literal, Union, overload
 
-from flask import Flask, copy_current_request_context, current_app, has_request_context
+from flask import Flask, current_app
 from pydantic import ValidationError
 
 from configs import dify_config
@@ -23,6 +23,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
+from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from services.conversation_service import ConversationService
 from services.errors.message import MessageNotExistsError
@@ -187,20 +188,17 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         # new thread with request context and contextvars
         context = contextvars.copy_context()
 
-        @copy_current_request_context
-        def worker_with_context():
-            # Run the worker within the copied context
-            return context.run(
-                self._generate_worker,
-                flask_app=current_app._get_current_object(),  # type: ignore
-                context=context,
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
-                conversation_id=conversation.id,
-                message_id=message.id,
-            )
-
-        worker_thread = threading.Thread(target=worker_with_context)
+        worker_thread = threading.Thread(
+            target=self._generate_worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),  # type: ignore
+                "context": context,
+                "application_generate_entity": application_generate_entity,
+                "queue_manager": queue_manager,
+                "conversation_id": conversation.id,
+                "message_id": message.id,
+            },
+        )
 
         worker_thread.start()
 
@@ -234,24 +232,9 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param message_id: message ID
         :return:
         """
-        for var, val in context.items():
-            var.set(val)
 
-        # FIXME(-LAN-): Save current user before entering new app context
-        from flask import g
-
-        saved_user = None
-        if has_request_context() and hasattr(g, "_login_user"):
-            saved_user = g._login_user
-
-        with flask_app.app_context():
+        with preserve_flask_contexts(flask_app, context_vars=context):
             try:
-                # Restore user in new app context
-                if saved_user is not None:
-                    from flask import g
-
-                    g._login_user = saved_user
-
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)

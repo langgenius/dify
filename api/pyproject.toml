@@ -56,7 +56,6 @@ dependencies = [
     "opentelemetry-sdk==1.27.0",
     "opentelemetry-semantic-conventions==0.48b0",
     "opentelemetry-util-http==0.48b0",
-    "pandas-stubs~=2.2.3.241009",
     "pandas[excel,output-formatting,performance]~=2.2.2",
     "pandoc~=2.4",
     "psycogreen~=1.0.2",
@@ -82,6 +81,7 @@ dependencies = [
     "weave~=0.51.0",
     "yarl~=1.18.3",
     "webvtt-py~=0.5.1",
+    "sendgrid~=6.12.3",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -104,7 +104,7 @@ dev = [
     "dotenv-linter~=0.5.0",
     "faker~=32.1.0",
     "lxml-stubs~=0.5.1",
-    "mypy~=1.15.0",
+    "mypy~=1.16.0",
     "ruff~=0.11.5",
     "pytest~=8.3.2",
     "pytest-benchmark~=4.0.0",
@@ -153,6 +153,8 @@ dev = [
     "types_pyOpenSSL>=24.1.0",
     "types_cffi>=1.17.0",
     "types_setuptools>=80.9.0",
+    "pandas-stubs~=2.2.3",
+    "scipy-stubs>=1.15.3.0",
 ]
 
 ############################################################
@@ -202,4 +204,5 @@ vdb = [
     "volcengine-compat~=1.0.0",
     "weaviate-client~=3.24.0",
     "xinference-client~=1.2.2",
+    "mo-vector~=0.1.13",
 ]

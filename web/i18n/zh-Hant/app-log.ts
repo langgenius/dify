@@ -71,7 +71,7 @@ const translation = {
       annotated: '已標註改進（{{count}} 項）',
       not_annotated: '未標註',
     },
-    sortBy: '排序方式：',
+    sortBy: '排序：',
     descending: '降序',
     ascending: '升序',
   },

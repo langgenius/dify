@@ -154,6 +154,7 @@ const translation = {
     next: 'Next',
     pluginLoadError: 'Plugin load error',
     pluginLoadErrorDesc: 'This plugin will not be installed',
+    installWarning: 'This plugin is not allowed to be installed.',
   },
   installFromGitHub: {
     installPlugin: 'Install plugin from GitHub',
@@ -210,7 +211,7 @@ const translation = {
     clearAll: 'Clear all',
   },
   requestAPlugin: 'Request a plugin',
-  submitPlugin: 'Submit plugin',
+  publishPlugins: 'Publish plugins',
   difyVersionNotCompatible: 'The current Dify version is not compatible with this plugin, please upgrade to the minimum version required: {{minimalDifyVersion}}',
 }
 

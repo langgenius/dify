@@ -21,8 +21,8 @@ import { MittProvider, VisualEditorContextProvider, useMittContext } from './vis
 import ErrorMessage from './error-message'
 import { useVisualEditorStore } from './visual-editor/store'
 import Toast from '@/app/components/base/toast'
-import { useGetDocLanguage } from '@/context/i18n'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { useDocLink } from '@/context/i18n'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot
@@ -53,7 +53,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation()
-  const docLanguage = useGetDocLanguage()
+  const docLink = useDocLink()
   const [currentTab, setCurrentTab] = useState(SchemaView.VisualEditor)
   const [jsonSchema, setJsonSchema] = useState(defaultSchema || DEFAULT_SCHEMA)
   const [json, setJson] = useState(JSON.stringify(jsonSchema, null, 2))
@@ -252,7 +252,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       <div className='flex items-center gap-x-2 p-6 pt-5'>
         <a
           className='flex grow items-center gap-x-1 text-text-accent'
-          href={`https://docs.dify.ai/${docLanguage}/guides/workflow/structured-outputs`}
+          href={docLink('/guides/workflow/structured-outputs')}
           target='_blank'
           rel='noopener noreferrer'
         >

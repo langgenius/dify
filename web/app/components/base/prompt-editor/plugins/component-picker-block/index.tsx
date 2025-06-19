@@ -165,6 +165,7 @@ const ComponentPicker = ({
                         isSupportFileVar={isSupportFileVar}
                         onClose={handleClose}
                         onBlur={handleClose}
+                        autoFocus={false}
                       />
                     </div>
                   )
