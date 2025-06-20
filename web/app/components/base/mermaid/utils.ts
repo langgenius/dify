@@ -14,45 +14,13 @@ export const prepareMermaidCode = (mermaidCode: string, style: 'classic' | 'hand
 
   let code = mermaidCode.trim()
 
-  // --- Start of robust sanitization for flowcharts ---
+  // Security: Sanitize against javascript: protocol in click events (XSS vector)
+  code = code.replace(/(\bclick\s+\w+\s+")javascript:[^"]*(")/g, '$1#$2')
 
-  // 1. Ensure a direction is present for `graph` or `flowchart`.
-  if (code.startsWith('graph') || code.startsWith('flowchart')) {
-    const firstLine = code.split('\n')[0].trim();
-    if (!/^(graph|flowchart)\s+(TD|TB|LR|RL)/.test(firstLine))
-      code = code.replace(/^(graph|flowchart)/, '$1 TD');
-  }
+  // Convenience: Basic BR replacement. This is a common and safe operation.
+  code = code.replace(/<br\s*\/?>/g, '\n')
 
-  // 2. Fix for subgraph titles with quotes, e.g., subgraph "title"
-  // Converts to the more robust `subgraph id[title]` syntax.
-  const subgraphReplacer = (match: string, title: string): string => {
-    // Create a valid ID from the title by removing any character that is not a
-    // letter, number, or underscore. This supports unicode characters.
-    const id = title.replace(/[^\p{L}\p{N}_]/gu, '');
-
-    // If the ID is empty after sanitization (e.g., title was "---"),
-    // create a random fallback ID.
-    const finalId = id || `gen-id-${Math.random().toString(36).substring(2, 7)}`;
-
-    return `subgraph ${finalId} [${title}]`;
-  };
-
-  code = code.replace(/subgraph\s+"([^"]+)"/g, subgraphReplacer);
-  code = code.replace(/subgraph\s+'([^']+)'/g, subgraphReplacer);
-
-  // 3. Sanitize against javascript: protocol in click events (XSS vector)
-  code = code.replace(/(\bclick\s+\w+\s+")javascript:[^"]*(")/g, '$1#$2');
-
-  // 4. Fix for edge labels with quotes, e.g., -- "text" -->
-  code = code.replace(/(--\s*)"([^"]+)"(\s*--[->]?)/g, '$1$2$3');
-  code = code.replace(/(--\s*)'([^']+)'(\s*--[->]?)/g, '$1$2$3');
-
-  // 5. Basic BR replacement. This should be safe.
-  code = code.replace(/<br\s*\/?>/g, '\n');
-
-  // --- End of sanitization ---
-
-  let finalCode = code;
+  let finalCode = code
 
   // Hand-drawn style requires some specific clean-up.
   if (style === 'handDrawn') {

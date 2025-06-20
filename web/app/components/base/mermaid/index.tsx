@@ -191,18 +191,22 @@ const Flowchart = React.forwardRef((props: {
       setIsInitialized(true)
   }, [])
 
-  // Update theme when prop changes
+  // Update theme when prop changes, but allow internal override.
+  const prevThemeRef = useRef<string>()
   useEffect(() => {
-    if (props.theme && props.theme !== currentTheme) {
-      // When the global theme prop changes, we should clear the cache to ensure
-      // a fresh render.
+    // Only react if the theme prop from the outside has actually changed.
+    if (props.theme && props.theme !== prevThemeRef.current) {
+      // When the global theme prop changes, it should act as the source of truth,
+      // overriding any local theme selection.
       diagramCache.clear()
       setSvgString(null)
       setCurrentTheme(props.theme)
-      // Per user request, also reset the look to 'classic' to ensure a consistent state.
+      // Reset look to classic for a consistent state after a global change.
       setLook('classic')
     }
-  }, [props.theme, currentTheme])
+    // Update the ref to the current prop value for the next render.
+    prevThemeRef.current = props.theme
+  }, [props.theme])
 
   const renderFlowchart = useCallback(async (primitiveCode: string) => {
     if (!isInitialized || !containerRef.current) {
@@ -229,8 +233,9 @@ const Flowchart = React.forwardRef((props: {
       const trimmedCode = primitiveCode.trim()
       const isGantt = trimmedCode.startsWith('gantt')
       const isMindMap = trimmedCode.startsWith('mindmap')
+      const isSequence = trimmedCode.startsWith('sequenceDiagram')
 
-      if (isGantt || isMindMap) {
+      if (isGantt || isMindMap || isSequence) {
         if (isGantt) {
           finalCode = trimmedCode
             .split('\n')
@@ -256,7 +261,7 @@ const Flowchart = React.forwardRef((props: {
             .join('\n')
         }
         else {
-          // For gantt and mindmap charts, which have syntax sensitive to whitespace,
+          // For mindmap and sequence charts, which are sensitive to syntax,
           // pass the code through directly.
           finalCode = trimmedCode
         }
@@ -372,7 +377,6 @@ const Flowchart = React.forwardRef((props: {
         }
       }
 
-      console.log('%c[Mermaid Debug] Mermaid config being applied:', 'color: #ADD8E6;', JSON.parse(JSON.stringify(config)));
       try {
         mermaid.initialize(config)
         return true
@@ -437,8 +441,6 @@ const Flowchart = React.forwardRef((props: {
         containerRef.current.innerHTML = ''
       if (renderTimeoutRef.current)
         clearTimeout(renderTimeoutRef.current)
-      if (codeCompletionCheckRef.current)
-        clearTimeout(codeCompletionCheckRef.current)
     }
   }, [])
 
@@ -450,11 +452,11 @@ const Flowchart = React.forwardRef((props: {
   }
 
   const toggleTheme = () => {
-    // Clear cache only if theme actually changes
-    if (currentTheme !== (currentTheme === 'light' ? Theme.dark : Theme.light)) {
-      diagramCache.clear()
-    }
-    setCurrentTheme(prevTheme => prevTheme === 'light' ? Theme.dark : Theme.light)
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light'
+    // Ensure a full, clean re-render cycle, consistent with global theme change.
+    diagramCache.clear()
+    setSvgString(null)
+    setCurrentTheme(newTheme)
   }
 
   // Style classes for theme-dependent elements
