@@ -5,6 +5,7 @@
 # ==================================================================
 
 x-shared-env: &shared-api-worker-env
+  ZZ_DIFY_STARTED_URL: ${ZZ_DIFY_STARTED_URL:-http://127.0.0.1:8077/ps/api/u/difyStarted}
   CONSOLE_API_URL: ${CONSOLE_API_URL:-}
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
   SERVICE_API_URL: ${SERVICE_API_URL:-}
@@ -517,6 +518,7 @@ services:
       # Startup mode, 'api' starts the API server.
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
+      ZZ_DIFY_STARTED_URL: ${ZZ_DIFY_STARTED_URL:-http://127.0.0.1:8077/ps/api/u/difyStarted}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
       SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
       PLUGIN_REMOTE_INSTALL_HOST: ${EXPOSE_PLUGIN_DEBUGGING_HOST:-localhost}
