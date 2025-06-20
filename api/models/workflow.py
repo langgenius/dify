@@ -1206,6 +1206,7 @@ class WorkflowDraftVariable(Base):
             description=description,
             node_execution_id=None,
         )
+        variable.editable = True
         return variable
 
     @classmethod

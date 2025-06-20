@@ -217,9 +217,6 @@ class WorkflowDraftVariableService:
         return variable
 
     def _reset_conv_var(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
-        # If a variable does not allow updating, it makes no sence to resetting it.
-        if not variable.editable:
-            return variable
         conv_var_by_name = {i.name: i for i in workflow.conversation_variables}
         conv_var = conv_var_by_name.get(variable.name)
 
@@ -238,6 +235,9 @@ class WorkflowDraftVariableService:
         return variable
 
     def _reset_node_var(self, workflow: Workflow, variable: WorkflowDraftVariable) -> WorkflowDraftVariable | None:
+        # If a variable does not allow updating, it makes no sence to resetting it.
+        if not variable.editable:
+            return variable
         # No execution record for this variable, delete the variable instead.
         if variable.node_execution_id is None:
             self._session.delete(instance=variable)

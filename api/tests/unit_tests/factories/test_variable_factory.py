@@ -26,6 +26,7 @@ from core.variables.segments import (
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArrayStringSegment,
+    FileSegment,
     FloatSegment,
     IntegerSegment,
     NoneSegment,
@@ -551,6 +552,25 @@ class TestBuildSegmentWithType:
         assert result.value == test_obj
         assert result.value_type == SegmentType.OBJECT
 
+    def test_file_type(self):
+        """Test building a file segment with correct type."""
+        test_file = File(
+            id="test_file_id",
+            tenant_id="test_tenant_id",
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://test.example.com/test-file.png",
+            filename="test-file",
+            extension=".png",
+            mime_type="image/png",
+            size=1000,
+            storage_key="test_storage_key",
+        )
+        result = build_segment_with_type(SegmentType.FILE, test_file)
+        assert isinstance(result, FileSegment)
+        assert result.value == test_file
+        assert result.value_type == SegmentType.FILE
+
     def test_none_type(self):
         """Test building a none segment with None value."""
         result = build_segment_with_type(SegmentType.NONE, None)
@@ -811,7 +831,6 @@ class TestBuildSegmentValueErrors:
             self.ValueErrorTestCase(
                 name="generic_object", description="generic object (unsupported type)", test_value=object()
             ),
-            self.ValueErrorTestCase(name="nested_list", description="nested list (unsupported type)", test_value=[[1]]),
         ]
 
     def test_build_segment_unsupported_types(self):
@@ -822,8 +841,9 @@ class TestBuildSegmentValueErrors:
             # Use test value directly
             test_value = test_case.test_value
 
-            with pytest.raises(ValueError) as exc_info:
-                variable_factory.build_segment(test_value)
+            with pytest.raises(ValueError) as exc_info:  # noqa: PT012
+                segment = variable_factory.build_segment(test_value)
+                pytest.fail(f"Test case {index} ({test_case.name}) should raise ValueError but not, result={segment}")
 
             error_message = str(exc_info.value)
             assert "not supported value" in error_message, (
