@@ -1,3 +1,4 @@
+import base64
 from collections.abc import Generator
 from typing import Any, Optional
 
@@ -48,7 +49,9 @@ class MCPTool(Tool):
             if isinstance(content, TextContent):
                 yield self.create_text_message(content.text)
             elif isinstance(content, ImageContent):
-                yield self.create_image_message(content.data)
+                yield self.create_blob_message(
+                    blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType}
+                )
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "MCPTool":
         return MCPTool(
