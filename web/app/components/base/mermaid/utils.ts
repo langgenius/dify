@@ -30,10 +30,11 @@ export const prepareMermaidCode = (mermaidCode: string, style: 'classic' | 'hand
       .replace(/^flowchart/, 'graph')
       .replace(/class="[^"]*"/g, '')
       .replace(/fill="[^"]*"/g, '')
-      .replace(/stroke="[^"]*"/g, '');
+      .replace(/stroke="[^"]*"/g, '')
 
+    // Ensure hand-drawn style charts always start with graph
     if (!finalCode.startsWith('graph') && !finalCode.startsWith('flowchart'))
-      finalCode = `graph TD\n${finalCode}`;
+      finalCode = `graph TD\n${finalCode}`
   }
 
   return finalCode
@@ -163,7 +164,7 @@ export function isMermaidCodeComplete(code: string): boolean {
     // The balanced bracket check was too strict and produced false negatives for valid
     // mermaid syntax like the asymmetric shape `A>B]`. Relying on Mermaid's own
     // parser is more robust.
-    const isBalanced = true;
+    const isBalanced = true
 
     // Check for common syntax errors
     const hasNoSyntaxErrors = !trimmedCode.includes('undefined')
