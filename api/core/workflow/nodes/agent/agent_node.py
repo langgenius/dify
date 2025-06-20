@@ -154,7 +154,8 @@ class AgentNode(ToolNode):
                 # variable_pool.convert_template expects a string template,
                 # but if passing a dict, convert to JSON string first before rendering
                 try:
-                    parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                    if not isinstance(agent_input.value, str):
+                        parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
                 except TypeError:
                     parameter_value = str(agent_input.value)
                 segment_group = variable_pool.convert_template(parameter_value)
@@ -162,7 +163,8 @@ class AgentNode(ToolNode):
                 # variable_pool.convert_template returns a string,
                 # so we need to convert it back to a dictionary
                 try:
-                    parameter_value = json.loads(parameter_value)
+                    if not isinstance(agent_input.value, str):
+                        parameter_value = json.loads(parameter_value)
                 except json.JSONDecodeError:
                     parameter_value = parameter_value
             else:
