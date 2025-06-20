@@ -57,6 +57,8 @@
 
 6. Run migrate
 
+   uv run flask db migrate -m "这是生成迁移脚本的命令"
+
    Before the first launch, migrate the database to the latest version.
 
    ```bash

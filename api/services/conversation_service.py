@@ -173,6 +173,25 @@ class ConversationService:
         db.session.commit()
 
     @classmethod
+    def batch_delete(cls, app_model: App, conversation_ids: list[str], user: Optional[Union[Account, EndUser]]):
+        conversations = (
+            db.session.query(Conversation)
+            .filter(
+                Conversation.id.in_(conversation_ids),
+                Conversation.app_id == app_model.id,
+                Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+                Conversation.is_deleted == False,
+            ).all()
+        )
+
+        for conversation in conversations:
+            conversation.is_deleted = True
+            conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        db.session.commit()
+
+    @classmethod
     def get_conversational_variable(
         cls,
         app_model: App,
