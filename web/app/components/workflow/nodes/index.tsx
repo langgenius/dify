@@ -14,6 +14,7 @@ import BasePanel from './_base/panel'
 
 const CustomNode = (props: NodeProps) => {
   const nodeData = props.data
+  console.log('zzq see nodeData', props)
   const NodeComponent = NodeComponentMap[nodeData.type]
 
   return (

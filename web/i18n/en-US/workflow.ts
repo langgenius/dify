@@ -233,6 +233,7 @@ const translation = {
   blocks: {
     'start': 'Start',
     'end': 'End',
+    'MqNode': '消息队列',
     'answer': 'Answer',
     'llm': 'LLM',
     'knowledge-retrieval': 'Knowledge Retrieval',

@@ -100,6 +100,9 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
+        console.log('node', node)
+        console.log('checkData', checkData)
+        console.log('nodesExtraData', nodesExtraData)
         const { errorMessage } = nodesExtraData[node.data.type].checkValid(checkData, t, moreDataForCheckValid)
 
         if (errorMessage || !validNodes.find(n => n.id === node.id)) {

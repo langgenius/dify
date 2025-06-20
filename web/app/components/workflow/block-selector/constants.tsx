@@ -100,6 +100,12 @@ export const BLOCKS: Block[] = [
     type: BlockEnum.Agent,
     title: 'Agent',
   },
+  {
+    classification: BlockClassificationEnum.Utilities,
+    type: BlockEnum.MqNode,
+    title: 'MqNode',
+    description: '一个简单的输入节点',
+  },
 ]
 
 export const BLOCK_CLASSIFICATIONS: string[] = [

@@ -41,6 +41,7 @@ export enum BlockEnum {
   Loop = 'loop',
   LoopStart = 'loop-start',
   LoopEnd = 'loop-end',
+  MqNode = 'MqNode',
 }
 
 export enum ControlMode {

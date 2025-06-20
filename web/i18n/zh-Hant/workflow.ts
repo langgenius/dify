@@ -237,6 +237,7 @@ const translation = {
     'start': '開始',
     'end': '結束',
     'answer': '直接回覆',
+    'MqNode': '消息队列',
     'llm': 'LLM',
     'knowledge-retrieval': '知識檢索',
     'question-classifier': '問題分類器',

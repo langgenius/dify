@@ -168,6 +168,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: HttpRequestDefault.getAvailableNextNodes,
     checkValid: HttpRequestDefault.checkValid,
   },
+  [BlockEnum.MqNode]: {
+    author: 'Zzq',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: HttpRequestDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: HttpRequestDefault.getAvailableNextNodes,
+    checkValid: HttpRequestDefault.checkValid,
+  },
   [BlockEnum.VariableAssigner]: {
     author: 'Dify',
     about: '',
@@ -341,6 +350,13 @@ export const NODES_INITIAL_DATA = {
   },
   [BlockEnum.HttpRequest]: {
     type: BlockEnum.HttpRequest,
+    title: '',
+    desc: '',
+    variables: [],
+    ...HttpRequestDefault.defaultValue,
+  },
+  [BlockEnum.MqNode]: {
+    type: BlockEnum.MqNode,
     title: '',
     desc: '',
     variables: [],

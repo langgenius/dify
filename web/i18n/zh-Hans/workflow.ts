@@ -233,6 +233,7 @@ const translation = {
   },
   blocks: {
     'start': '开始',
+    'MqNode': '消息队列',
     'end': '结束',
     'answer': '直接回复',
     'llm': 'LLM',

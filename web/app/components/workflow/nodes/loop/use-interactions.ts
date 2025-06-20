@@ -116,6 +116,7 @@ export const useNodeLoopInteractions = () => {
     return childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
+      console.log('childNodeType', childNodeType)
       const { newNode } = generateNewNode({
         type: getNodeCustomTypeByNodeDataType(childNodeType),
         data: {
