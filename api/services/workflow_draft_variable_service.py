@@ -14,13 +14,14 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.variables import Segment, StringSegment, Variable
 from core.variables.consts import MIN_SELECTORS_LENGTH
-from core.variables.segments import ArrayFileSegment
+from core.variables.segments import ArrayFileSegment, FileSegment
 from core.variables.types import SegmentType
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
 from core.workflow.variable_loader import VariableLoader
+from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
 from models import App, Conversation
 from models.enums import DraftVariableType
@@ -56,16 +57,19 @@ class DraftVarLoader(VariableLoader):
     _engine: Engine
     # Application ID for which variables are being loaded.
     _app_id: str
+    _tenant_id: str
     _fallback_variables: Sequence[Variable]
 
     def __init__(
         self,
         engine: Engine,
         app_id: str,
+        tenant_id: str,
         fallback_variables: Sequence[Variable] | None = None,
     ) -> None:
         self._engine = engine
         self._app_id = app_id
+        self._tenant_id = tenant_id
         self._fallback_variables = fallback_variables or []
 
     def _selector_to_tuple(self, selector: Sequence[str]) -> tuple[str, str]:
@@ -94,20 +98,17 @@ class DraftVarLoader(VariableLoader):
             selector_tuple = self._selector_to_tuple(variable.selector)
             variable_by_selector[selector_tuple] = variable
 
-        # If a conversation variable is referenced but not present in the draft variables table,
-        # fall back to returning the variable with its default value.
-
-        fallback_var_by_selector = {}
-        for variable in self._fallback_variables:
-            selector_tuple = self._selector_to_tuple(variable.selector)
-            fallback_var_by_selector[selector_tuple] = variable
-
-        for selector in selectors:
-            selector_tuple = self._selector_to_tuple(selector)
-            if selector_tuple in variable_by_selector:
-                continue
-            if selector_tuple in fallback_var_by_selector:
-                variable_by_selector[selector_tuple] = fallback_var_by_selector[selector_tuple]
+        # Important:
+        files: list[File] = []
+        for draft_var in draft_vars:
+            value = draft_var.get_value()
+            if isinstance(value, FileSegment):
+                files.append(value.value)
+            elif isinstance(value, ArrayFileSegment):
+                files.extend(value.value)
+        with Session(bind=self._engine) as session:
+            storage_key_loader = StorageKeyLoader(session, tenant_id=self._tenant_id)
+            storage_key_loader.load_storage_keys(files)
 
         return list(variable_by_selector.values())
 

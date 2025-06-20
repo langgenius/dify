@@ -367,6 +367,7 @@ class WorkflowService:
         variable_loader = DraftVarLoader(
             engine=db.engine,
             app_id=app_model.id,
+            tenant_id=app_model.tenant_id,
         )
 
         eclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)

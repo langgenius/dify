@@ -170,12 +170,14 @@ class TestWorkflowDraftVariableService(unittest.TestCase):
 @pytest.mark.usefixtures("flask_req_ctx")
 class TestDraftVariableLoader(unittest.TestCase):
     _test_app_id: str
+    _test_tenant_id: str
 
     _node1_id = "test_loader_node_1"
     _node_exec_id = str(uuid.uuid4())
 
     def setUp(self):
         self._test_app_id = str(uuid.uuid4())
+        self._test_tenant_id = str(uuid.uuid4())
         sys_var = WorkflowDraftVariable.new_sys_variable(
             app_id=self._test_app_id,
             name="sys_var",
@@ -218,12 +220,12 @@ class TestDraftVariableLoader(unittest.TestCase):
             session.commit()
 
     def test_variable_loader_with_empty_selector(self):
-        var_loader = DraftVarLoader(engine=db.engine, app_id=self._test_app_id)
+        var_loader = DraftVarLoader(engine=db.engine, app_id=self._test_app_id, tenant_id=self._test_tenant_id)
         variables = var_loader.load_variables([])
         assert len(variables) == 0
 
     def test_variable_loader_with_non_empty_selector(self):
-        var_loader = DraftVarLoader(engine=db.engine, app_id=self._test_app_id)
+        var_loader = DraftVarLoader(engine=db.engine, app_id=self._test_app_id, tenant_id=self._test_tenant_id)
         variables = var_loader.load_variables(
             [
                 [SYSTEM_VARIABLE_NODE_ID, "sys_var"],

@@ -317,6 +317,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
+            tenant_id=application_generate_entity.app_config.tenant_id,
         )
 
         return self._generate(
@@ -400,6 +401,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         var_loader = DraftVarLoader(
             engine=db.engine,
             app_id=application_generate_entity.app_config.app_id,
+            tenant_id=application_generate_entity.app_config.tenant_id,
         )
         return self._generate(
             app_model=app_model,
