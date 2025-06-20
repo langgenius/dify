@@ -1,7 +1,5 @@
 import type { FormValue, ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
-// Returns a new object that contains only the keys accepted by `rules` and whose
-// values conform to the rule's basic validation (range/options).
 export const mergeValidCompletionParams = (
   oldParams: FormValue | undefined,
   rules: ModelParameterRule[],
@@ -70,10 +68,22 @@ export const mergeValidCompletionParams = (
         return
       }
       default: {
-        nextParams[key] = value
+        removedDetails[key] = `unsupported rule type: ${(rule as any)?.type ?? 'unknown'}`
+        return
       }
     }
   })
 
   return { params: nextParams, removedDetails }
+}
+
+export const fetchAndMergeValidCompletionParams = async (
+  provider: string,
+  modelId: string,
+  oldParams: FormValue | undefined,
+): Promise<{ params: FormValue; removedDetails: Record<string, string> }> => {
+  const { fetchModelParameterRules } = await import('@/service/common')
+  const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
+  const { data: parameterRules } = await fetchModelParameterRules(url)
+  return mergeValidCompletionParams(oldParams, parameterRules ?? [])
 }

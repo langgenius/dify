@@ -80,8 +80,7 @@ import {
 import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import { supportFunctionCall } from '@/utils/tool-call'
 import { MittProvider } from '@/context/mitt-context'
-import { mergeValidCompletionParams } from '@/utils/completion-params'
-import { fetchModelParameterRules } from '@/service/common'
+import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 import Toast from '@/app/components/base/toast'
 
 type PublishConfig = {
@@ -459,9 +458,11 @@ const Configuration: FC = () => {
 
     // merge and keep only valid completion params for the new model
     try {
-      const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
-      const { data: parameterRules } = await fetchModelParameterRules(url)
-      const { params: filtered, removedDetails } = mergeValidCompletionParams(completionParams, parameterRules ?? [])
+      const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
+        provider,
+        modelId,
+        completionParams,
+      )
       if (Object.keys(removedDetails).length)
         Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
       setCompletionParams(filtered)
