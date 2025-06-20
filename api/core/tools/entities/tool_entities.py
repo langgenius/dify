@@ -15,6 +15,7 @@ from core.plugin.entities.parameters import (
     cast_parameter_value,
     init_frontend_parameter,
 )
+from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.constants import TOOL_SELECTOR_MODEL_IDENTITY
 
@@ -176,6 +177,10 @@ class ToolInvokeMessage(BaseModel):
         data: Mapping[str, Any] = Field(..., description="Detailed log data")
         metadata: Optional[Mapping[str, Any]] = Field(default=None, description="The metadata of the log")
 
+    class RetrieverResourceMessage(BaseModel):
+        retriever_resources: list[RetrievalSourceMetadata] = Field(..., description="retriever resources")
+        context: str = Field(..., description="context")
+
     class MessageType(Enum):
         TEXT = "text"
         IMAGE = "image"
@@ -188,13 +193,22 @@ class ToolInvokeMessage(BaseModel):
         FILE = "file"
         LOG = "log"
         BLOB_CHUNK = "blob_chunk"
+        RETRIEVER_RESOURCES = "retriever_resources"
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
     message: (
-        JsonMessage | TextMessage | BlobChunkMessage | BlobMessage | LogMessage | FileMessage | None | VariableMessage
+        JsonMessage
+        | TextMessage
+        | BlobChunkMessage
+        | BlobMessage
+        | LogMessage
+        | FileMessage
+        | None
+        | VariableMessage
+        | RetrieverResourceMessage
     )
     meta: dict[str, Any] | None = None
 
@@ -240,6 +254,7 @@ class ToolParameter(PluginParameter):
         FILES = PluginParameterType.FILES.value
         APP_SELECTOR = PluginParameterType.APP_SELECTOR.value
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR.value
+        ANY = PluginParameterType.ANY.value
 
         # deprecated, should not use.
         SYSTEM_FILES = PluginParameterType.SYSTEM_FILES.value
