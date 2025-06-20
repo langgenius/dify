@@ -1,12 +1,12 @@
 import contextvars
 import logging
+import os
 import threading
 import uuid
-import requests
-import os
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Literal, Optional, Union, overload
 
+import requests
 from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy.orm import sessionmaker
@@ -121,7 +121,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         try:
             dify_started_url = os.environ["ZZ_DIFY_STARTED_URL"]
-            print("gogogo:" + dify_started_url);
+            print("gogogo:" + dify_started_url)
             payload = {
                 "app": app_model.name,
                 "app_id": app_model.id,
