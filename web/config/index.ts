@@ -323,3 +323,12 @@ enableWebsiteWaterCrawl = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSIT
 export const ENABLE_WEBSITE_JINAREADER = enableWebsiteJinaReader
 export const ENABLE_WEBSITE_FIRECRAWL = enableWebsiteFireCrawl
 export const ENABLE_WEBSITE_WATERCRAWL = enableWebsiteWaterCrawl
+
+let defaultMaxTreeDepth = 50
+
+if (process.env.NEXT_PUBLIC_MAX_TREE_DEPTH && process.env.NEXT_PUBLIC_MAX_TREE_DEPTH !== '')
+  defaultMaxTreeDepth = Number.parseInt(process.env.NEXT_PUBLIC_MAX_TREE_DEPTH)
+else if (globalThis.document?.body?.getAttribute('data-public-max-tree-depth') && globalThis.document.body.getAttribute('data-public-max-tree-depth') !== '')
+  defaultMaxTreeDepth = Number.parseInt(globalThis.document.body.getAttribute('data-public-max-tree-depth') as string)
+
+export const MAX_TREE_DEPTH = defaultMaxTreeDepth

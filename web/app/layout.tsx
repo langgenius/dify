@@ -54,6 +54,7 @@ const LocaleLayout = async ({
         data-public-enable-website-jinareader={process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER}
         data-public-enable-website-firecrawl={process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL}
         data-public-enable-website-watercrawl={process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL}
+        data-public-max-tree-depth={process.env.NEXT_PUBLIC_MAX_TREE_DEPTH}
       >
         <BrowserInitor>
           <SentryInitor>
