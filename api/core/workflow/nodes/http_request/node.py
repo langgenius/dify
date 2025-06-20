@@ -6,6 +6,7 @@ from typing import Any, Optional
 from configs import dify_config
 from core.file import File, FileTransferMethod
 from core.tools.tool_file_manager import ToolFileManager
+from core.variables.segments import ArrayFileSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -170,7 +171,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
 
         return mapping
 
-    def extract_files(self, url: str, response: Response) -> list[File]:
+    def extract_files(self, url: str, response: Response) -> ArrayFileSegment:
         """
         Extract files from response by checking both Content-Type header and URL
         """
@@ -182,7 +183,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         content_disposition_type = None
 
         if not is_file:
-            return files
+            return ArrayFileSegment(value=[])
 
         if parsed_content_disposition:
             content_disposition_filename = parsed_content_disposition.get_filename()
@@ -215,4 +216,4 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         )
         files.append(file)
 
-        return files
+        return ArrayFileSegment(value=files)

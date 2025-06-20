@@ -101,26 +101,29 @@ class TestStorageKeyLoader(unittest.TestCase):
 
         return tool_file
 
-    def _create_file(self, file_id: str, transfer_method: FileTransferMethod, tenant_id: Optional[str] = None) -> File:
+    def _create_file(
+        self, related_id: str, transfer_method: FileTransferMethod, tenant_id: Optional[str] = None
+    ) -> File:
         """Helper method to create a File object for testing."""
         if tenant_id is None:
             tenant_id = self.tenant_id
 
         # Set related_id for LOCAL_FILE and TOOL_FILE transfer methods
-        related_id = None
+        file_related_id = None
         remote_url = None
 
         if transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.TOOL_FILE):
-            related_id = file_id
+            file_related_id = related_id
         elif transfer_method == FileTransferMethod.REMOTE_URL:
             remote_url = "https://example.com/test_file.txt"
+            file_related_id = related_id
 
         return File(
-            id=file_id,
+            id=str(uuid4()),  # Generate new UUID for File.id
             tenant_id=tenant_id,
             type=FileType.DOCUMENT,
             transfer_method=transfer_method,
-            related_id=related_id,
+            related_id=file_related_id,
             remote_url=remote_url,
             filename="test_file.txt",
             extension=".txt",
@@ -133,7 +136,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         """Test loading storage keys for LOCAL_FILE transfer method."""
         # Create test data
         upload_file = self._create_upload_file()
-        file = self._create_file(upload_file.id, FileTransferMethod.LOCAL_FILE)
+        file = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
 
         # Load storage keys
         self.loader.load_storage_keys([file])
@@ -145,7 +148,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         """Test loading storage keys for REMOTE_URL transfer method."""
         # Create test data
         upload_file = self._create_upload_file()
-        file = self._create_file(upload_file.id, FileTransferMethod.REMOTE_URL)
+        file = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.REMOTE_URL)
 
         # Load storage keys
         self.loader.load_storage_keys([file])
@@ -157,7 +160,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         """Test loading storage keys for TOOL_FILE transfer method."""
         # Create test data
         tool_file = self._create_tool_file()
-        file = self._create_file(tool_file.id, FileTransferMethod.TOOL_FILE)
+        file = self._create_file(related_id=tool_file.id, transfer_method=FileTransferMethod.TOOL_FILE)
 
         # Load storage keys
         self.loader.load_storage_keys([file])
@@ -172,9 +175,9 @@ class TestStorageKeyLoader(unittest.TestCase):
         upload_file2 = self._create_upload_file()
         tool_file = self._create_tool_file()
 
-        file1 = self._create_file(upload_file1.id, FileTransferMethod.LOCAL_FILE)
-        file2 = self._create_file(upload_file2.id, FileTransferMethod.REMOTE_URL)
-        file3 = self._create_file(tool_file.id, FileTransferMethod.TOOL_FILE)
+        file1 = self._create_file(related_id=upload_file1.id, transfer_method=FileTransferMethod.LOCAL_FILE)
+        file2 = self._create_file(related_id=upload_file2.id, transfer_method=FileTransferMethod.REMOTE_URL)
+        file3 = self._create_file(related_id=tool_file.id, transfer_method=FileTransferMethod.TOOL_FILE)
 
         files = [file1, file2, file3]
 
@@ -195,7 +198,9 @@ class TestStorageKeyLoader(unittest.TestCase):
         """Test tenant_id validation."""
         # Create file with different tenant_id
         upload_file = self._create_upload_file()
-        file = self._create_file(upload_file.id, FileTransferMethod.LOCAL_FILE, tenant_id=str(uuid4()))
+        file = self._create_file(
+            related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE, tenant_id=str(uuid4())
+        )
 
         # Should raise ValueError for tenant mismatch
         with pytest.raises(ValueError) as context:
@@ -204,12 +209,12 @@ class TestStorageKeyLoader(unittest.TestCase):
         assert "invalid file, expected tenant_id" in str(context.value)
 
     def test_load_storage_keys_missing_file_id(self):
-        """Test with None file.id."""
-        # Create a file with valid parameters first, then manually set id to None
-        file = self._create_file(str(uuid4()), FileTransferMethod.LOCAL_FILE)
-        file.id = None
+        """Test with None file.related_id."""
+        # Create a file with valid parameters first, then manually set related_id to None
+        file = self._create_file(related_id=str(uuid4()), transfer_method=FileTransferMethod.LOCAL_FILE)
+        file.related_id = None
 
-        # Should raise ValueError for None file id
+        # Should raise ValueError for None file related_id
         with pytest.raises(ValueError) as context:
             self.loader.load_storage_keys([file])
 
@@ -219,7 +224,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         """Test with missing UploadFile database records."""
         # Create file with non-existent upload file id
         non_existent_id = str(uuid4())
-        file = self._create_file(non_existent_id, FileTransferMethod.LOCAL_FILE)
+        file = self._create_file(related_id=non_existent_id, transfer_method=FileTransferMethod.LOCAL_FILE)
 
         # Should raise ValueError for missing record
         with pytest.raises(ValueError):
@@ -229,7 +234,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         """Test with missing ToolFile database records."""
         # Create file with non-existent tool file id
         non_existent_id = str(uuid4())
-        file = self._create_file(non_existent_id, FileTransferMethod.TOOL_FILE)
+        file = self._create_file(related_id=non_existent_id, transfer_method=FileTransferMethod.TOOL_FILE)
 
         # Should raise ValueError for missing record
         with pytest.raises(ValueError):
@@ -237,9 +242,9 @@ class TestStorageKeyLoader(unittest.TestCase):
 
     def test_load_storage_keys_invalid_uuid(self):
         """Test with invalid UUID format."""
-        # Create a file with valid parameters first, then manually set invalid id
-        file = self._create_file(str(uuid4()), FileTransferMethod.LOCAL_FILE)
-        file.id = "invalid-uuid-format"
+        # Create a file with valid parameters first, then manually set invalid related_id
+        file = self._create_file(related_id=str(uuid4()), transfer_method=FileTransferMethod.LOCAL_FILE)
+        file.related_id = "invalid-uuid-format"
 
         # Should raise ValueError for invalid UUID
         with pytest.raises(ValueError):
@@ -252,8 +257,12 @@ class TestStorageKeyLoader(unittest.TestCase):
         tool_files = [self._create_tool_file() for _ in range(2)]
 
         files = []
-        files.extend([self._create_file(uf.id, FileTransferMethod.LOCAL_FILE) for uf in upload_files])
-        files.extend([self._create_file(tf.id, FileTransferMethod.TOOL_FILE) for tf in tool_files])
+        files.extend(
+            [self._create_file(related_id=uf.id, transfer_method=FileTransferMethod.LOCAL_FILE) for uf in upload_files]
+        )
+        files.extend(
+            [self._create_file(related_id=tf.id, transfer_method=FileTransferMethod.TOOL_FILE) for tf in tool_files]
+        )
 
         # Mock the session to count queries
         with patch.object(self.session, "scalars", wraps=self.session.scalars) as mock_scalars:
@@ -275,7 +284,9 @@ class TestStorageKeyLoader(unittest.TestCase):
 
         # Create upload file for current tenant
         upload_file_current = self._create_upload_file()
-        file_current = self._create_file(upload_file_current.id, FileTransferMethod.LOCAL_FILE)
+        file_current = self._create_file(
+            related_id=upload_file_current.id, transfer_method=FileTransferMethod.LOCAL_FILE
+        )
 
         # Create upload file for other tenant (but don't add to cleanup list)
         upload_file_other = UploadFile(
@@ -296,7 +307,9 @@ class TestStorageKeyLoader(unittest.TestCase):
         self.session.flush()
 
         # Create file for other tenant but try to load with current tenant's loader
-        file_other = self._create_file(upload_file_other.id, FileTransferMethod.LOCAL_FILE, other_tenant_id)
+        file_other = self._create_file(
+            related_id=upload_file_other.id, transfer_method=FileTransferMethod.LOCAL_FILE, tenant_id=other_tenant_id
+        )
 
         # Should raise ValueError due to tenant mismatch
         with pytest.raises(ValueError) as context:
@@ -312,11 +325,15 @@ class TestStorageKeyLoader(unittest.TestCase):
         """Test batch with mixed tenant files (should fail on first mismatch)."""
         # Create files for current tenant
         upload_file_current = self._create_upload_file()
-        file_current = self._create_file(upload_file_current.id, FileTransferMethod.LOCAL_FILE)
+        file_current = self._create_file(
+            related_id=upload_file_current.id, transfer_method=FileTransferMethod.LOCAL_FILE
+        )
 
         # Create file for different tenant
         other_tenant_id = str(uuid4())
-        file_other = self._create_file(str(uuid4()), FileTransferMethod.LOCAL_FILE, other_tenant_id)
+        file_other = self._create_file(
+            related_id=str(uuid4()), transfer_method=FileTransferMethod.LOCAL_FILE, tenant_id=other_tenant_id
+        )
 
         # Should raise ValueError on tenant mismatch
         with pytest.raises(ValueError) as context:
@@ -329,9 +346,9 @@ class TestStorageKeyLoader(unittest.TestCase):
         # Create upload file
         upload_file = self._create_upload_file()
 
-        # Create two File objects with same ID
-        file1 = self._create_file(upload_file.id, FileTransferMethod.LOCAL_FILE)
-        file2 = self._create_file(upload_file.id, FileTransferMethod.LOCAL_FILE)
+        # Create two File objects with same related_id
+        file1 = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
+        file2 = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
 
         # Should handle duplicates gracefully
         self.loader.load_storage_keys([file1, file2])
@@ -344,7 +361,7 @@ class TestStorageKeyLoader(unittest.TestCase):
         """Test that the loader uses the provided session correctly."""
         # Create test data
         upload_file = self._create_upload_file()
-        file = self._create_file(upload_file.id, FileTransferMethod.LOCAL_FILE)
+        file = self._create_file(related_id=upload_file.id, transfer_method=FileTransferMethod.LOCAL_FILE)
 
         # Create loader with different session (same underlying connection)
 

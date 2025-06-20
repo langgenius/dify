@@ -49,7 +49,10 @@ class AnswerNode(BaseNode[AnswerNodeData]):
                 part = cast(TextGenerateRouteChunk, part)
                 answer += part.text
 
-        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"answer": answer, "files": files})
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            outputs={"answer": answer, "files": ArrayFileSegment(value=files)},
+        )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

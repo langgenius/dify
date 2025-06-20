@@ -130,6 +130,9 @@ class CodeNode(BaseNode[CodeNodeData]):
         prefix: str = "",
         depth: int = 1,
     ):
+        # TODO(QuantumGhost): Replace native Python lists with `Array*Segment` classes.
+        # Note that `_transform_result` may produce lists containing `None` values,
+        # which don't conform to the type requirements of `Array*Segment` classes.
         if depth > dify_config.CODE_MAX_DEPTH:
             raise DepthLimitError(f"Depth limit {dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 

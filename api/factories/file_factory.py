@@ -422,32 +422,33 @@ class StorageKeyLoader:
         upload_file_ids: list[uuid.UUID] = []
         tool_file_ids: list[uuid.UUID] = []
         for file in files:
-            if file.id is None:
+            related_model_id = file.related_id
+            if file.related_id is None:
                 raise ValueError("file id should not be None.")
             if file.tenant_id != self._tenant_id:
                 err_msg = (
                     f"invalid file, expected tenant_id={self._tenant_id}, "
-                    f"got tenant_id={file.tenant_id}, file_id={file.id}"
+                    f"got tenant_id={file.tenant_id}, file_id={file.id}, related_model_id={related_model_id}"
                 )
                 raise ValueError(err_msg)
-            file_id = uuid.UUID(file.id)
+            model_id = uuid.UUID(related_model_id)
 
             if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
-                upload_file_ids.append(file_id)
+                upload_file_ids.append(model_id)
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
-                tool_file_ids.append(file_id)
+                tool_file_ids.append(model_id)
 
         tool_files = self._load_tool_files(tool_file_ids)
         upload_files = self._load_upload_files(upload_file_ids)
         for file in files:
-            file_id = uuid.UUID(file.id)
+            model_id = uuid.UUID(file.related_id)
             if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
-                upload_file_row = upload_files.get(file_id)
+                upload_file_row = upload_files.get(model_id)
                 if upload_file_row is None:
                     raise ValueError(...)
                 file._storage_key = upload_file_row.key
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
-                tool_file_row = tool_files.get(file_id)
+                tool_file_row = tool_files.get(model_id)
                 if tool_file_row is None:
                     raise ValueError(...)
                 file._storage_key = tool_file_row.file_key

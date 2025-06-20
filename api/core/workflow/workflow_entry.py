@@ -190,6 +190,13 @@ class WorkflowEntry:
             # run node
             generator = node_instance.run()
         except Exception as e:
+            logger.exception(
+                "error while running node_instance, workflow_id=%s, node_id=%s, type=%s, version=%s",
+                workflow.id,
+                node_instance.id,
+                node_instance.node_type,
+                node_instance.version(),
+            )
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
         return node_instance, generator
 
@@ -292,6 +299,12 @@ class WorkflowEntry:
 
             return node_instance, generator
         except Exception as e:
+            logger.exception(
+                "error while running node_instance, workflow_id=%s, node_id=%s, type=%s, version=%s",
+                node_instance.id,
+                node_instance.node_type,
+                node_instance.version(),
+            )
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
 
     @staticmethod

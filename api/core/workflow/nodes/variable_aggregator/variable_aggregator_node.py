@@ -22,7 +22,7 @@ class VariableAggregatorNode(BaseNode[VariableAssignerNodeData]):
             for selector in self.node_data.variables:
                 variable = self.graph_runtime_state.variable_pool.get(selector)
                 if variable is not None:
-                    outputs = {"output": variable.to_object()}
+                    outputs = {"output": variable}
 
                     inputs = {".".join(selector[1:]): variable.to_object()}
                     break
@@ -32,7 +32,7 @@ class VariableAggregatorNode(BaseNode[VariableAssignerNodeData]):
                     variable = self.graph_runtime_state.variable_pool.get(selector)
 
                     if variable is not None:
-                        outputs[group.group_name] = {"output": variable.to_object()}
+                        outputs[group.group_name] = {"output": variable}
                         inputs[".".join(selector[1:])] = variable.to_object()
                         break
 

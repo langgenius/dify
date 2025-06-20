@@ -460,7 +460,7 @@ class WorkflowService:
                     node_run_result = event.run_result
 
                     # sign output files
-                    node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
+                    # node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
                     break
 
             if not node_run_result:
@@ -522,7 +522,7 @@ class WorkflowService:
                 if node_run_result.process_data
                 else None
             )
-            outputs = WorkflowEntry.handle_special_values(node_run_result.outputs) if node_run_result.outputs else None
+            outputs = node_run_result.outputs
 
             node_execution.inputs = inputs
             node_execution.process_data = process_data

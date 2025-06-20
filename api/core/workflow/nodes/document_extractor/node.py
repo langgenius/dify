@@ -24,7 +24,7 @@ from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
-from core.variables.segments import FileSegment
+from core.variables.segments import ArrayStringSegment, FileSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
@@ -71,7 +71,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=inputs,
                     process_data=process_data,
-                    outputs={"text": extracted_text_list},
+                    outputs={"text": ArrayStringSegment(value=extracted_text_list)},
                 )
             elif isinstance(value, File):
                 extracted_text = _extract_text_from_file(value)

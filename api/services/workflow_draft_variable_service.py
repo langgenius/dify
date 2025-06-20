@@ -662,8 +662,10 @@ class DraftVariableSaver:
                     self._node_type,
                 )
                 continue
-
-            value_seg = _build_segment_for_serialized_values(value)
+            if isinstance(value, Segment):
+                value_seg = value
+            else:
+                value_seg = _build_segment_for_serialized_values(value)
             draft_vars.append(
                 WorkflowDraftVariable.new_node_variable(
                     app_id=self._app_id,

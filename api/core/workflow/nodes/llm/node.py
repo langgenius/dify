@@ -259,7 +259,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             if structured_output:
                 outputs["structured_output"] = structured_output
             if self._file_outputs is not None:
-                outputs["files"] = self._file_outputs
+                outputs["files"] = ArrayFileSegment(value=self._file_outputs)
 
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
