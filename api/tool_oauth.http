@@ -1,0 +1,27 @@
+
+@accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYjM4Y2Y5N2MtODNiYS00MWI3LWEyZjMtMzZlOTgzZjE4YmQ5IiwiZXhwIjoxNzUwNDE3NDI0LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.pPCkISnSmnu3hOCyEVTIJoNeWxtx7E9LNy0cDQUy__Q
+
+
+
+# set default credential
+POST /console/api/workspaces/current/tool-provider/builtin/langgenius/github/github/set-default
+Host: 127.0.0.1:5001
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "id": "55fb78d2-0ce6-4496-9488-3b8d9f40818f"
+}
+###
+
+# get oauth url
+GET /console/api/oauth/plugin/tool?plugin_id=c58a1845-f3a4-4d93-b749-a71e9998b702/github&provider=github
+Host: 127.0.0.1:5001
+Authorization: Bearer {{accessToken}}
+
+###
+
+# get oauth token
+GET /console/api/oauth/plugin/tool/callback?state=734072c2-d8ed-4b0b-8ed8-4efd69d15a4f&code=e2d68a6216a3b7d70d2f&state=NQCjFkMKtf32XCMHc8KBdw
+Host: 127.0.0.1:5001
+Authorization: Bearer {{accessToken}}

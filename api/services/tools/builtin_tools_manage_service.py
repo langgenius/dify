@@ -2,8 +2,6 @@ import json
 import logging
 from pathlib import Path
 
-from sqlalchemy.orm import Session
-
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -16,7 +14,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ProviderConfigEncrypter
 from extensions.ext_database import db
-from models.tools import BuiltinToolProvider
+from models.tools import BuiltinToolProvider, ToolOAuthSystemClient, ToolOAuthUserClient, ToolProviderCredentialType
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -109,63 +107,69 @@ class BuiltinToolManageService:
 
     @staticmethod
     def update_builtin_tool_provider(
-        session: Session, user_id: str, tenant_id: str, provider_name: str, credentials: dict
+         user_id: str, tenant_id: str, provider_name:str, credentials: dict, credential_id: str, name: str | None = None
     ):
         """
         update builtin tool provider
         """
         # get if the provider exists
-        provider = BuiltinToolManageService._fetch_builtin_provider(provider_name, tenant_id)
+        provider = BuiltinToolManageService._fetch_builtin_provider_by_id(tenant_id, credential_id)
+
+        if provider is None:
+            raise ValueError(f"you have not added provider {provider_name}")
+
+        if not ToolProviderCredentialType.get_credential_type(provider.credential_type).is_editable():
+            raise ValueError(f"you cannot update oauth2 provider {provider_name} credentials")
 
         try:
-            # get provider
-            provider_controller = ToolManager.get_builtin_provider(provider_name, tenant_id)
-            if not provider_controller.need_credentials:
-                raise ValueError(f"provider {provider_name} does not need credentials")
-            tool_configuration = ProviderConfigEncrypter(
-                tenant_id=tenant_id,
-                config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
-                provider_type=provider_controller.provider_type.value,
-                provider_identity=provider_controller.entity.identity.name,
-            )
+            # exclude oauth2 provider
+            if provider.credential_type != ToolProviderCredentialType.OAUTH2.value:
+                provider_controller = ToolManager.get_builtin_provider(provider_name, tenant_id)
+                if not provider_controller.need_credentials:
+                    raise ValueError(f"provider {provider_name} does not need credentials")
 
-            # get original credentials if exists
-            if provider is not None:
-                original_credentials = tool_configuration.decrypt(provider.credentials)
-                masked_credentials = tool_configuration.mask_tool_credentials(original_credentials)
-                # check if the credential has changed, save the original credential
-                for name, value in credentials.items():
-                    if name in masked_credentials and value == masked_credentials[name]:
-                        credentials[name] = original_credentials[name]
-            # validate credentials
-            provider_controller.validate_credentials(user_id, credentials)
-            # encrypt credentials
-            credentials = tool_configuration.encrypt(credentials)
+                tool_configuration = ProviderConfigEncrypter(
+                    tenant_id=tenant_id,
+                    config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
+                    provider_type=provider_controller.provider_type.value,
+                    provider_identity=provider_controller.entity.identity.name,
+                )
+
+                # Decrypt and restore original credentials for masked values
+                credentials = BuiltinToolManageService._dec
+                rypt_and_restore_credentials(
+                    provider_controller, tool_configuration, provider, credentials
+                )
+                
+                # Encrypt and save the credentials
+                BuiltinToolManageService._encrypt_and_save_credentials(
+                    provider_controller, tool_configuration, provider, credentials, user_id
+                )
+
+            # update name if provided
+            if name is not None and provider.name != name:
+                provider.name = name
+
+            db.session.commit()
         except (
-            PluginDaemonClientSideError,
-            ToolProviderNotFoundError,
-            ToolNotFoundError,
-            ToolProviderCredentialValidationError,
+                PluginDaemonClientSideError,
+                ToolProviderNotFoundError,
+                ToolNotFoundError,
+                ToolProviderCredentialValidationError,
         ) as e:
             raise ValueError(str(e))
 
-        if provider is None:
-            # create provider
-            provider = BuiltinToolProvider(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                provider=provider_name,
-                encrypted_credentials=json.dumps(credentials),
-            )
+        return {"result": "success"}
 
-            db.session.add(provider)
-        else:
-            provider.encrypted_credentials = json.dumps(credentials)
+    @staticmethod
+    def add_builtin_tool_provider(
+        user_id: str, tenant_id: str, provider_name: str, credentials: dict, name: str | None = None
+    ):
+        """
+        add builtin tool provider
+        """
+   
 
-            # delete cache
-            tool_configuration.delete_tool_credentials_cache()
-
-        db.session.commit()
         return {"result": "success"}
 
     @staticmethod
@@ -213,6 +217,78 @@ class BuiltinToolManageService:
         tool_configuration.delete_tool_credentials_cache()
 
         return {"result": "success"}
+
+    @staticmethod
+    def set_default_provider(tenant_id: str, user_id: str, provider: str, id: str):
+        """
+        set default provider
+        """
+        # get provider
+        target_provider = db.session.query(BuiltinToolProvider).filter_by(id=id).first()
+        if target_provider is None:
+            raise ValueError("provider not found")
+
+        # clear default provider
+        db.session.query(BuiltinToolProvider).filter_by(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider=provider,
+            default=True
+        ).update({"default": False})
+
+        # set new default provider
+        target_provider.default = True
+        db.session.commit()
+        return {"result": "success"}
+
+    @staticmethod
+    def fetch_default_provider(tenant_id: str, user_id: str, provider_name: str):
+        """
+        fetch default provider
+        if there is no explicitly set default provider, return the oldest provider as default
+        """
+        # 1. check if default provider exists
+        default_provider = db.session.query(BuiltinToolProvider).filter_by(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider=provider_name,
+            default=True
+        ).first()
+        if default_provider:
+            return default_provider
+
+        # 2. if no default provider, set the oldest provider as default
+        oldest_provider = (db.session.query(BuiltinToolProvider)
+                           .filter_by(tenant_id=tenant_id, user_id=user_id, provider=provider_name)
+                           .order_by(BuiltinToolProvider.created_at)
+                           .first()
+                           )
+        if oldest_provider:
+            return oldest_provider
+
+        raise ValueError(f"no default provider found for {provider_name}")
+
+    @staticmethod
+    def get_builtin_tool_provider(tenant_id: str, user_id: str, provider: str, plugin_id: str):
+        """
+        get builtin tool provider
+        """
+        user_client = db.session.query(ToolOAuthUserClient).filter_by(
+            tenant_id=tenant_id,
+            provider=provider,
+            plugin_id=plugin_id,
+            enabled=True,
+        ).first()
+
+        if user_client:
+            plugin_oauth_config = user_client
+        else:
+            plugin_oauth_config = db.session.query(ToolOAuthSystemClient).filter_by(provider=provider).first()
+
+        if plugin_oauth_config:
+            return plugin_oauth_config
+
+        raise ValueError("no oauth available config found for this plugin")
 
     @staticmethod
     def get_builtin_tool_provider_icon(provider: str):
@@ -287,6 +363,15 @@ class BuiltinToolManageService:
         return BuiltinToolProviderSort.sort(result)
 
     @staticmethod
+    def _fetch_builtin_provider_by_id(tenant_id: str, credential_id: str) -> BuiltinToolProvider | None:
+        provider = (db.session.query(BuiltinToolProvider)
+                    .filter(BuiltinToolProvider.tenant_id == tenant_id,
+                            BuiltinToolProvider.id == credential_id,
+                            )
+                    .first())
+        return provider
+
+    @staticmethod
     def _fetch_builtin_provider(provider_name: str, tenant_id: str) -> BuiltinToolProvider | None:
         try:
             full_provider_name = provider_name
@@ -327,3 +412,42 @@ class BuiltinToolManageService:
                 )
                 .first()
             )
+
+    @staticmethod
+    def _decrypt_and_restore_credentials(provider_controller, tool_configuration, provider, credentials):
+        """
+        Decrypt original credentials and restore masked values from the input credentials
+        
+        :param provider_controller: the provider controller
+        :param tool_configuration: the tool configuration encrypter
+        :param provider: the provider object from database
+        :param credentials: the input credentials from user
+        :return: the processed credentials with original values restored
+        """
+        original_credentials = tool_configuration.decrypt(provider.credentials)
+        masked_credentials = tool_configuration.mask_tool_credentials(original_credentials)
+        
+        # check if the credential has changed, save the original credential
+        for name, value in credentials.items():
+            if name in masked_credentials and value == masked_credentials[name]:  # type: ignore
+                credentials[name] = original_credentials[name]  # type: ignore
+        
+        return credentials
+
+    @staticmethod
+    def _encrypt_and_save_credentials(provider_controller, tool_configuration, provider, credentials, user_id):
+        """
+        Validate and encrypt credentials, then save to database
+        
+        :param provider_controller: the provider controller
+        :param tool_configuration: the tool configuration encrypter
+        :param provider: the provider object from database
+        :param credentials: the credentials to encrypt and save
+        :param user_id: the user id for validation
+        """
+        # validate credentials
+        provider_controller.validate_credentials(user_id, credentials)
+        # encrypt credentials
+        encrypted_credentials = tool_configuration.encrypt(credentials)
+        provider.encrypted_credentials = json.dumps(encrypted_credentials)
+        tool_configuration.delete_tool_credentials_cache()
