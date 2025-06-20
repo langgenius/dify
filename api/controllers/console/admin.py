@@ -56,7 +56,6 @@ class InsertExploreAppListApi(Resource):
         parser.add_argument("position", type=int, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-
         app = db.session.execute(select(App).filter(App.id == args["app_id"])).scalar_one_or_none()
         if not app:
             raise NotFound(f"App '{args['app_id']}' is not found")
