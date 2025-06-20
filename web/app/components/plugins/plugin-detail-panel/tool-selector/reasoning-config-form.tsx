@@ -54,7 +54,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
   const getVarKindType = (type: FormTypeEnum) => {
     if (type === FormTypeEnum.file || type === FormTypeEnum.files)
       return VarKindType.variable
-    if (type === FormTypeEnum.select || type === FormTypeEnum.boolean || type === FormTypeEnum.textNumber)
+    if (type === FormTypeEnum.select || type === FormTypeEnum.boolean || type === FormTypeEnum.textNumber || type === FormTypeEnum.array || type === FormTypeEnum.object)
       return VarKindType.constant
     if (type === FormTypeEnum.textInput || type === FormTypeEnum.secretInput)
       return VarKindType.mixed
