@@ -180,7 +180,12 @@ def get_search_keywords_texts_sql(search_keywords_texts:list[str]):
     for text in search_keywords_texts:
         # 将元素才拆成可查询用的分词
         texts_for_search:list[str] = list(jieba.cut_for_search(text))
-        query_sql_list.append(" | ".join(texts_for_search))
+
+        search_texts = [*texts_for_search]
+        if text not in search_texts:
+            search_texts.append(search_texts)
+        query_sql_list.append(f"({" | ".join(search_texts)})")
+
         min_texts:list[str] = get_min_search_keywords_texts(texts=texts_for_search)
         texts.extend(min_texts)
     query_sql = " & ".join(query_sql_list)
