@@ -174,6 +174,7 @@ export function isMermaidCodeComplete(code: string): boolean {
     return hasValidStart && isBalanced && hasNoSyntaxErrors
   }
   catch (error) {
+    console.error('Mermaid code validation error:', error)
     return false
   }
 }
