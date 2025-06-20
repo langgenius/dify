@@ -1,6 +1,5 @@
 from typing import Any
 
-from core.file import File
 from core.variables import SegmentType
 
 from .enums import Operation
@@ -86,8 +85,6 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
             return isinstance(value, int | float)
         case SegmentType.ARRAY_OBJECT if operation == Operation.APPEND:
             return isinstance(value, dict)
-        case SegmentType.ARRAY_FILE if operation == Operation.APPEND:
-            return isinstance(value, File)
 
         # Array & Extend / Overwrite
         case SegmentType.ARRAY_ANY if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
@@ -98,8 +95,6 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
             return isinstance(value, list) and all(isinstance(item, int | float) for item in value)
         case SegmentType.ARRAY_OBJECT if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
             return isinstance(value, list) and all(isinstance(item, dict) for item in value)
-        case SegmentType.ARRAY_FILE if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
-            return isinstance(value, list) and all(isinstance(item, File) for item in value)
 
         case _:
             return False
