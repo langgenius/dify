@@ -69,7 +69,6 @@ export const mergeValidCompletionParams = (
       }
       default: {
         removedDetails[key] = `unsupported rule type: ${(rule as any)?.type ?? 'unknown'}`
-        return
       }
     }
   })
