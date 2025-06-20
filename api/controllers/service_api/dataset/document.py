@@ -29,7 +29,7 @@ from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
 from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
-from services.dataset_service import DocumentService
+from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from services.file_service import FileService
 
@@ -59,6 +59,7 @@ class DocumentAddByTextApi(DatasetApiResource):
         parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
 
         args = parser.parse_args()
+
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
@@ -73,6 +74,19 @@ class DocumentAddByTextApi(DatasetApiResource):
         name = args.get("name")
         if text is None or name is None:
             raise ValueError("Both 'text' and 'name' must be non-null values.")
+
+        if args.get("embedding_model_provider"):
+            DatasetService.check_embedding_model_setting(
+                tenant_id, args.get("embedding_model_provider"), args.get("embedding_model")
+            )
+        if (args.get("retrieval_model") and 
+            args.get("retrieval_model").get("reranking_model") and 
+            args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")):
+            DatasetService.check_reranking_model_setting(
+                tenant_id, 
+                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"), 
+                args.get("retrieval_model").get("reranking_model").get("reranking_model_name")
+            )
 
         upload_file = FileService.upload_text(text=str(text), text_name=str(name))
         data_source = {
@@ -123,6 +137,15 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
+
+        if (args.get("retrieval_model") and 
+            args.get("retrieval_model").get("reranking_model") and 
+            args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")):
+            DatasetService.check_reranking_model_setting(
+                tenant_id, 
+                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"), 
+                args.get("retrieval_model").get("reranking_model").get("reranking_model_name")
+            )
 
         # indexing_technique is already set in dataset since this is an update
         args["indexing_technique"] = dataset.indexing_technique
@@ -187,6 +210,19 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not indexing_technique:
             raise ValueError("indexing_technique is required.")
         args["indexing_technique"] = indexing_technique
+
+        if "embedding_model_provider" in args:
+            DatasetService.check_embedding_model_setting(
+                tenant_id, args["embedding_model_provider"], args["embedding_model"]
+            )
+        if ("retrieval_model" in args and
+            args["retrieval_model"].get("reranking_model") and 
+            args["retrieval_model"].get("reranking_model").get("reranking_provider_name")):
+            DatasetService.check_reranking_model_setting(
+                tenant_id, 
+                args["retrieval_model"].get("reranking_model").get("reranking_provider_name"), 
+                args["retrieval_model"].get("reranking_model").get("reranking_model_name")
+            )
 
         # save file info
         file = request.files["file"]
