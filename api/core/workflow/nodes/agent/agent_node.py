@@ -156,6 +156,8 @@ class AgentNode(ToolNode):
                 try:
                     if not isinstance(agent_input.value, str):
                         parameter_value = json.dumps(agent_input.value, ensure_ascii=False)
+                    else:
+                        parameter_value = str(agent_input.value)
                 except TypeError:
                     parameter_value = str(agent_input.value)
                 segment_group = variable_pool.convert_template(parameter_value)
