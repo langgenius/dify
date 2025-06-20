@@ -5,6 +5,7 @@ from typing import Any, cast
 
 import httpx
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUploadConfig, helpers
@@ -379,3 +380,74 @@ def _get_file_type_by_mimetype(mime_type: str) -> FileType | None:
 
 def get_file_type_by_mime_type(mime_type: str) -> FileType:
     return _get_file_type_by_mimetype(mime_type) or FileType.CUSTOM
+
+
+class StorageKeyLoader:
+    """FileKeyLoader load the storage key from database for a list of files.
+    This loader is batched, the
+    """
+
+    def __init__(self, session: Session, tenant_id: str) -> None:
+        self._session = session
+        self._tenant_id = tenant_id
+
+    def _load_upload_files(self, upload_file_ids: Sequence[uuid.UUID]) -> Mapping[uuid.UUID, UploadFile]:
+        stmt = select(UploadFile).where(
+            UploadFile.id.in_(upload_file_ids),
+            UploadFile.tenant_id == self._tenant_id,
+        )
+
+        return {uuid.UUID(i.id): i for i in self._session.scalars(stmt)}
+
+    def _load_tool_files(self, tool_file_ids: Sequence[uuid.UUID]) -> Mapping[uuid.UUID, ToolFile]:
+        stmt = select(ToolFile).where(
+            ToolFile.id.in_(tool_file_ids),
+            ToolFile.tenant_id == self._tenant_id,
+        )
+        return {uuid.UUID(i.id): i for i in self._session.scalars(stmt)}
+
+    def load_storage_keys(self, files: Sequence[File]):
+        """Loads storage keys for a sequence of files by retrieving the corresponding
+        `UploadFile` or `ToolFile` records from the database based on their transfer method.
+
+        This method doesn't modify the input sequence structure but updates the `_storage_key`
+        property of each file object by extracting the relevant key from its database record.
+
+        Performance note: This is a batched operation where database query count remains constant
+        regardless of input size. However, for optimal performance, input sequences should contain
+        fewer than 1000 files. For larger collections, split into smaller batches and process each
+        batch separately.
+        """
+
+        upload_file_ids: list[uuid.UUID] = []
+        tool_file_ids: list[uuid.UUID] = []
+        for file in files:
+            if file.id is None:
+                raise ValueError("file id should not be None.")
+            if file.tenant_id != self._tenant_id:
+                err_msg = (
+                    f"invalid file, expected tenant_id={self._tenant_id}, "
+                    f"got tenant_id={file.tenant_id}, file_id={file.id}"
+                )
+                raise ValueError(err_msg)
+            file_id = uuid.UUID(file.id)
+
+            if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
+                upload_file_ids.append(file_id)
+            elif file.transfer_method == FileTransferMethod.TOOL_FILE:
+                tool_file_ids.append(file_id)
+
+        tool_files = self._load_tool_files(tool_file_ids)
+        upload_files = self._load_upload_files(upload_file_ids)
+        for file in files:
+            file_id = uuid.UUID(file.id)
+            if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
+                upload_file_row = upload_files.get(file_id)
+                if upload_file_row is None:
+                    raise ValueError(...)
+                file._storage_key = upload_file_row.key
+            elif file.transfer_method == FileTransferMethod.TOOL_FILE:
+                tool_file_row = tool_files.get(file_id)
+                if tool_file_row is None:
+                    raise ValueError(...)
+                file._storage_key = tool_file_row.file_key
