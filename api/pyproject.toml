@@ -4,8 +4,8 @@ dynamic = ["version"]
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "vanna[milvus,mysql,ollama,postgres]>=0.7.9,<0.8.0",
-    "scikit-learn~=1.7.0",
-    "sentence-transformers~=2.6.1",
+    "scikit-learn~=1.6.1",
+    "sentence-transformers~=2.2.2",
     "pymilvus[model]>=2.5.8,<2.6.0",
     "pillow>=11.2.1,<12.0.0",
     "pymupdf>=1.25.5,<1.26.0",
