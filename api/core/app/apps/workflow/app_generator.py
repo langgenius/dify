@@ -2,6 +2,8 @@ import contextvars
 import logging
 import threading
 import uuid
+import requests
+import os
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Literal, Optional, Union, overload
 
@@ -116,6 +118,26 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         inputs: Mapping[str, Any] = args["inputs"]
         workflow_run_id = str(uuid.uuid4())
+
+        try:
+            dify_started_url = os.environ["ZZ_DIFY_STARTED_URL"]
+            print("gogogo:" + dify_started_url);
+            payload = {
+                "app": app_model.name,
+                "app_id": app_model.id,
+                "user": "abc-123",
+                "workflow_run_id": workflow_run_id  # Adding the workflow_run_id to the payload
+            }
+            headers = {
+                "Content-Type": "application/json"
+            }
+            response = requests.post(dify_started_url, json=payload, headers=headers)
+            response.raise_for_status()  # Raise an exception for HTTP errors
+        except Exception as e:
+            # Handle or log the error appropriately
+            print(f"Failed to send difyStarted notification: {e}")
+
+
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
