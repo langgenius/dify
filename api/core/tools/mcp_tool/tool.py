@@ -40,6 +40,7 @@ class MCPTool(Tool):
     ) -> Generator[ToolInvokeMessage, None, None]:
         try:
             with MCPClient(self.server_url, self.provider_id, self.tenant_id, authed=True) as mcp_client:
+                tool_parameters = self._handle_none_parameter(tool_parameters)
                 result = mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
         except MCPAuthError as e:
             raise ValueError("Please auth the tool first")
@@ -62,3 +63,13 @@ class MCPTool(Tool):
             server_url=self.server_url,
             provider_id=self.provider_id,
         )
+
+    def _handle_none_parameter(self, parameter: dict[str, Any]) -> dict[str, Any]:
+        """
+        in mcp tool invoke, if the parameter is empty, it will be set to None
+        """
+        return {
+            key: value
+            for key, value in parameter.items()
+            if value is not None and not (isinstance(value, str) and value.strip() == "")
+        }
