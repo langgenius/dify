@@ -16,6 +16,9 @@ class CommonParameterType(StrEnum):
     TOOLS_SELECTOR = "array[tools]"
 
     # TOOL_SELECTOR = "tool-selector"
+    # MCP object and array type parameters
+    ARRAY = "array"
+    OBJECT = "object"
 
 
 class AppSelectorScope(StrEnum):

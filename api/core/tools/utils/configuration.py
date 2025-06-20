@@ -72,20 +72,21 @@ class ProviderConfigEncrypter(BaseModel):
 
         return data
 
-    def decrypt(self, data: dict[str, str]) -> dict[str, str]:
+    def decrypt(self, data: dict[str, str], use_cache: bool = True) -> dict[str, str]:
         """
         decrypt tool credentials with tenant id
 
         return a deep copy of credentials with decrypted values
         """
-        cache = ToolProviderCredentialsCache(
-            tenant_id=self.tenant_id,
-            identity_id=f"{self.provider_type}.{self.provider_identity}",
-            cache_type=ToolProviderCredentialsCacheType.PROVIDER,
-        )
-        cached_credentials = cache.get()
-        if cached_credentials:
-            return cached_credentials
+        if use_cache:
+            cache = ToolProviderCredentialsCache(
+                tenant_id=self.tenant_id,
+                identity_id=f"{self.provider_type}.{self.provider_identity}",
+                cache_type=ToolProviderCredentialsCacheType.PROVIDER,
+            )
+            cached_credentials = cache.get()
+            if cached_credentials:
+                return cached_credentials
         data = self._deep_copy(data)
         # get fields need to be decrypted
         fields = dict[str, BasicProviderConfig]()
@@ -104,7 +105,8 @@ class ProviderConfigEncrypter(BaseModel):
                     except Exception:
                         pass
 
-        cache.set(data)
+        if use_cache:
+            cache.set(data)
         return data
 
     def delete_tool_credentials_cache(self):
