@@ -69,14 +69,6 @@ export const mergeValidCompletionParams = (
         nextParams[key] = value
         return
       }
-      case 'tag': {
-        if (!Array.isArray(value)) {
-          removedDetails[key] = 'invalid type'
-          return
-        }
-        nextParams[key] = value
-        return
-      }
       default: {
         nextParams[key] = value
       }
