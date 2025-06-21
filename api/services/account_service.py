@@ -889,7 +889,7 @@ class RegisterService:
 
             TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True)
 
-            dify_setup = DifySetup(version=dify_config.CURRENT_VERSION)
+            dify_setup = DifySetup(version=dify_config.project.version)
             db.session.add(dify_setup)
             db.session.commit()
         except Exception as e:
