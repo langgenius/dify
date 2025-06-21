@@ -38,6 +38,7 @@ class TemplateTransformer(ABC):
         :param response: response
         :return:
         """
+
         try:
             result_str = cls.extract_result_str_from_response(response)
             result = json.loads(result_str)
@@ -48,16 +49,41 @@ class TemplateTransformer(ABC):
             raise e
         except Exception as e:
             raise ValueError(f"Unexpected error during response transformation: {str(e)}")
-        
+
         # Check if the result contains an error
         if isinstance(result, dict) and "error" in result:
             raise ValueError(f"JavaScript execution error: {result['error']}")
-        
+
         if not isinstance(result, dict):
             raise ValueError(f"Result must be a dict, got {type(result).__name__}")
         if not all(isinstance(k, str) for k in result):
             raise ValueError("Result keys must be strings")
+
+        # Post-process the result to convert scientific notation strings back to numbers
+        result = cls._post_process_result(result)
         return result
+
+    @classmethod
+    def _post_process_result(cls, result: dict[Any, Any]) -> dict[Any, Any]:
+        """
+        Post-process the result to convert scientific notation strings back to numbers
+        """
+
+        def convert_scientific_notation(value):
+            if isinstance(value, str):
+                # Check if the string looks like scientific notation
+                if re.match(r"^-?\d+\.?\d*e[+-]\d+$", value, re.IGNORECASE):
+                    try:
+                        return float(value)
+                    except ValueError:
+                        pass
+            elif isinstance(value, dict):
+                return {k: convert_scientific_notation(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                return [convert_scientific_notation(v) for v in value]
+            return value
+
+        return convert_scientific_notation(result)  # type: ignore[no-any-return]
 
     @classmethod
     @abstractmethod
