@@ -195,7 +195,6 @@ const translation = {
   searchTools: 'ابزارهای جستجو...',
   findMoreInMarketplace: 'اطلاعات بیشتر در Marketplace',
   searchInMarketplace: 'جستجو در Marketplace',
-  submitPlugin: 'ارسال افزونه',
   searchCategories: 'دسته بندی ها را جستجو کنید',
   fromMarketplace: 'از بازار',
   installPlugin: 'افزونه را نصب کنید',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'نسخه فعلی دیفی با این پلاگین سازگار نیست، لطفاً به نسخه حداقل مورد نیاز به‌روزرسانی کنید: {{minimalDifyVersion}}',
   requestAPlugin: 'درخواست یک افزونه',
+  publishPlugins: 'انتشار افزونه ها',
 }
 
 export default translation

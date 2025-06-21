@@ -247,11 +247,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [inputs, setInputs])
 
   const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
-    const newInputs = produce(inputRef.current, (draft) => {
+    const newInputs = produce(inputs, (draft) => {
       draft.prompt_template = newPrompt
     })
     setInputs(newInputs)
-  }, [setInputs])
+  }, [inputs, setInputs])
 
   const handleMemoryChange = useCallback((newMemory?: Memory) => {
     const newInputs = produce(inputs, (draft) => {

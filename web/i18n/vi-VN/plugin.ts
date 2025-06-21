@@ -198,7 +198,6 @@ const translation = {
   endpointsEnabled: '{{num}} bộ điểm cuối được kích hoạt',
   install: '{{num}} lượt cài đặt',
   findMoreInMarketplace: 'Tìm thêm trong Marketplace',
-  submitPlugin: 'Gửi plugin',
   search: 'Tìm kiếm',
   searchCategories: 'Danh mục tìm kiếm',
   installPlugin: 'Cài đặt plugin',
@@ -212,6 +211,7 @@ const translation = {
   },
   difyVersionNotCompatible: 'Phiên bản Dify hiện tại không tương thích với plugin này, vui lòng nâng cấp lên phiên bản tối thiểu cần thiết: {{minimalDifyVersion}}',
   requestAPlugin: 'Yêu cầu một plugin',
+  publishPlugins: 'Xuất bản plugin',
 }
 
 export default translation

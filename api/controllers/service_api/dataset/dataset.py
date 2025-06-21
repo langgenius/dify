@@ -4,8 +4,12 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service
 from controllers.service_api import api
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
-from controllers.service_api.wraps import DatasetApiResource, validate_dataset_token
+from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError
+from controllers.service_api.wraps import (
+    DatasetApiResource,
+    cloud_edition_billing_rate_limit_check,
+    validate_dataset_token,
+)
 from core.model_runtime.entities.model_entities import ModelType
 from core.plugin.entities.plugin import ModelProviderID
 from core.provider_manager import ProviderManager
@@ -70,6 +74,7 @@ class DatasetListApi(DatasetApiResource):
         response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
         return response, 200
 
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id):
         """Resource for creating datasets."""
         parser = reqparse.RequestParser()
@@ -193,6 +198,7 @@ class DatasetApi(DatasetApiResource):
 
         return data, 200
 
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, _, dataset_id):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -293,6 +299,7 @@ class DatasetApi(DatasetApiResource):
 
         return result_data, 200
 
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def delete(self, _, dataset_id):
         """
         Deletes a dataset given its ID.
