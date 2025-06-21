@@ -35,7 +35,7 @@ import type { PluginDeclaration, PluginManifestInMarket } from '../types'
 import { sleep } from '@/utils'
 import { getDocsUrl } from '@/app/components/plugins/utils'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
-import { marketplaceApiPrefix } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import I18n from '@/context/i18n'
 import { noop } from 'lodash-es'
@@ -106,7 +106,7 @@ const PluginPage = ({
         setManifest({
           ...plugin,
           version: version.version,
-          icon: `${marketplaceApiPrefix}/plugins/${plugin.org}/${plugin.name}/icon`,
+          icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
         })
         showInstallFromMarketplace()
         return
