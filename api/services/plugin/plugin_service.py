@@ -17,11 +17,18 @@ from core.plugin.entities.plugin import (
     PluginInstallation,
     PluginInstallationSource,
 )
-from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginListResponse, PluginUploadResponse
+from core.plugin.entities.plugin_daemon import (
+    PluginDecodeResponse,
+    PluginInstallTask,
+    PluginListResponse,
+    PluginVerification,
+)
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_redis import redis_client
+from services.errors.plugin import PluginInstallationForbiddenError
+from services.feature_service import FeatureService, PluginInstallationScope
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +92,42 @@ class PluginService:
         except Exception:
             logger.exception("failed to fetch latest plugin version")
             return result
+
+    @staticmethod
+    def _check_marketplace_only_permission():
+        """
+        Check if the marketplace only permission is enabled
+        """
+        features = FeatureService.get_system_features()
+        if features.plugin_installation_permission.restrict_to_marketplace_only:
+            raise PluginInstallationForbiddenError("Plugin installation is restricted to marketplace only")
+
+    @staticmethod
+    def _check_plugin_installation_scope(plugin_verification: Optional[PluginVerification]):
+        """
+        Check the plugin installation scope
+        """
+        features = FeatureService.get_system_features()
+
+        match features.plugin_installation_permission.plugin_installation_scope:
+            case PluginInstallationScope.OFFICIAL_ONLY:
+                if (
+                    plugin_verification is None
+                    or plugin_verification.authorized_category != PluginVerification.AuthorizedCategory.Langgenius
+                ):
+                    raise PluginInstallationForbiddenError("Plugin installation is restricted to official only")
+            case PluginInstallationScope.OFFICIAL_AND_SPECIFIC_PARTNERS:
+                if plugin_verification is None or plugin_verification.authorized_category not in [
+                    PluginVerification.AuthorizedCategory.Langgenius,
+                    PluginVerification.AuthorizedCategory.Partner,
+                ]:
+                    raise PluginInstallationForbiddenError(
+                        "Plugin installation is restricted to official and specific partners"
+                    )
+            case PluginInstallationScope.NONE:
+                raise PluginInstallationForbiddenError("Installing plugins is not allowed")
+            case PluginInstallationScope.ALL:
+                pass
 
     @staticmethod
     def get_debugging_key(tenant_id: str) -> str:
@@ -208,6 +251,8 @@ class PluginService:
         # check if plugin pkg is already downloaded
         manager = PluginInstaller()
 
+        features = FeatureService.get_system_features()
+
         try:
             manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
             # already downloaded, skip, and record install event
@@ -215,7 +260,14 @@ class PluginService:
         except Exception:
             # plugin not installed, download and upload pkg
             pkg = download_plugin_pkg(new_plugin_unique_identifier)
-            manager.upload_pkg(tenant_id, pkg, verify_signature=False)
+            response = manager.upload_pkg(
+                tenant_id,
+                pkg,
+                verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+            )
+
+            # check if the plugin is available to install
+            PluginService._check_plugin_installation_scope(response.verification)
 
         return manager.upgrade_plugin(
             tenant_id,
@@ -239,6 +291,7 @@ class PluginService:
         """
         Upgrade plugin with github
         """
+        PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
         return manager.upgrade_plugin(
             tenant_id,
@@ -253,33 +306,43 @@ class PluginService:
         )
 
     @staticmethod
-    def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginUploadResponse:
+    def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginDecodeResponse:
         """
         Upload plugin package files
 
         returns: plugin_unique_identifier
         """
+        PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
-        return manager.upload_pkg(tenant_id, pkg, verify_signature)
+        features = FeatureService.get_system_features()
+        response = manager.upload_pkg(
+            tenant_id,
+            pkg,
+            verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+        )
+        return response
 
     @staticmethod
     def upload_pkg_from_github(
         tenant_id: str, repo: str, version: str, package: str, verify_signature: bool = False
-    ) -> PluginUploadResponse:
+    ) -> PluginDecodeResponse:
         """
         Install plugin from github release package files,
         returns plugin_unique_identifier
         """
+        PluginService._check_marketplace_only_permission()
         pkg = download_with_size_limit(
             f"https://github.com/{repo}/releases/download/{version}/{package}", dify_config.PLUGIN_MAX_PACKAGE_SIZE
         )
+        features = FeatureService.get_system_features()
 
         manager = PluginInstaller()
-        return manager.upload_pkg(
+        response = manager.upload_pkg(
             tenant_id,
             pkg,
-            verify_signature,
+            verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
         )
+        return response
 
     @staticmethod
     def upload_bundle(
@@ -289,11 +352,15 @@ class PluginService:
         Upload a plugin bundle and return the dependencies.
         """
         manager = PluginInstaller()
+        PluginService._check_marketplace_only_permission()
         return manager.upload_bundle(tenant_id, bundle, verify_signature)
 
     @staticmethod
     def install_from_local_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):
+        PluginService._check_marketplace_only_permission()
+
         manager = PluginInstaller()
+
         return manager.install_from_identifiers(
             tenant_id,
             plugin_unique_identifiers,
@@ -307,6 +374,8 @@ class PluginService:
         Install plugin from github release package files,
         returns plugin_unique_identifier
         """
+        PluginService._check_marketplace_only_permission()
+
         manager = PluginInstaller()
         return manager.install_from_identifiers(
             tenant_id,
@@ -322,28 +391,33 @@ class PluginService:
         )
 
     @staticmethod
-    def fetch_marketplace_pkg(
-        tenant_id: str, plugin_unique_identifier: str, verify_signature: bool = False
-    ) -> PluginDeclaration:
+    def fetch_marketplace_pkg(tenant_id: str, plugin_unique_identifier: str) -> PluginDeclaration:
         """
         Fetch marketplace package
         """
         if not dify_config.MARKETPLACE_ENABLED:
             raise ValueError("marketplace is not enabled")
 
+        features = FeatureService.get_system_features()
+
         manager = PluginInstaller()
         try:
             declaration = manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
         except Exception:
             pkg = download_plugin_pkg(plugin_unique_identifier)
-            declaration = manager.upload_pkg(tenant_id, pkg, verify_signature).manifest
+            response = manager.upload_pkg(
+                tenant_id,
+                pkg,
+                verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+            )
+            # check if the plugin is available to install
+            PluginService._check_plugin_installation_scope(response.verification)
+            declaration = response.manifest
 
         return declaration
 
     @staticmethod
-    def install_from_marketplace_pkg(
-        tenant_id: str, plugin_unique_identifiers: Sequence[str], verify_signature: bool = False
-    ):
+    def install_from_marketplace_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):
         """
         Install plugin from marketplace package files,
         returns installation task id
@@ -353,15 +427,26 @@ class PluginService:
 
         manager = PluginInstaller()
 
+        features = FeatureService.get_system_features()
+
         # check if already downloaded
         for plugin_unique_identifier in plugin_unique_identifiers:
             try:
                 manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
+                plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+                # check if the plugin is available to install
+                PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
                 # already downloaded, skip
             except Exception:
                 # plugin not installed, download and upload pkg
                 pkg = download_plugin_pkg(plugin_unique_identifier)
-                manager.upload_pkg(tenant_id, pkg, verify_signature)
+                response = manager.upload_pkg(
+                    tenant_id,
+                    pkg,
+                    verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+                )
+                # check if the plugin is available to install
+                PluginService._check_plugin_installation_scope(response.verification)
 
         return manager.install_from_identifiers(
             tenant_id,

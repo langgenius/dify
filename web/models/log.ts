@@ -278,7 +278,6 @@ export type WorkflowLogsRequest = {
 
 export type WorkflowRunDetailResponse = {
   id: string
-  sequence_number: number
   version: string
   graph: {
     nodes: Node[]

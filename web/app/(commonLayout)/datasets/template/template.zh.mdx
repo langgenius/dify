@@ -55,7 +55,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         索引方式
           - <code>high_quality</code> 高质量：使用  
-        ding 模型进行嵌入，构建为向量数据库索引
+        Embedding 模型进行嵌入，构建为向量数据库索引
           - <code>economy</code> 经济：使用 keyword table index 的倒排索引进行构建
       </Property>
       <Property name='doc_form' type='string' key='doc_form'>
@@ -1123,6 +1123,63 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
       "limit": 20,
       "total": 9,
       "page": 1
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+<hr className='ml-0 mr-0' />
+
+<Heading
+  url='/datasets/{dataset_id}/documents/status/{action}'
+  method='PATCH'
+  title='更新文档状态'
+  name='#batch_document_status'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='action' type='string' key='action'>
+        - `enable` - 启用文档
+        - `disable` - 禁用文档
+        - `archive` - 归档文档
+        - `un_archive` - 取消归档文档
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='document_ids' type='array[string]' key='document_ids'>
+        文档ID列表
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="PATCH"
+      label="/datasets/{dataset_id}/documents/status/{action}"
+      targetCode={`curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/status/{action}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "document_ids": ["doc-id-1", "doc-id-2"]\n}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request PATCH '${props.apiBaseUrl}/datasets/{dataset_id}/documents/status/{action}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "document_ids": ["doc-id-1", "doc-id-2"]
+    }'
+    ```
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
     }
     ```
     </CodeGroup>

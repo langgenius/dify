@@ -421,7 +421,7 @@ class AppDslService:
 
         # Set icon type
         icon_type_value = icon_type or app_data.get("icon_type")
-        if icon_type_value in ["emoji", "link"]:
+        if icon_type_value in ["emoji", "link", "image"]:
             icon_type = icon_type_value
         else:
             icon_type = "emoji"

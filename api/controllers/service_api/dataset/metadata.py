@@ -3,7 +3,7 @@ from flask_restful import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.service_api import api
-from controllers.service_api.wraps import DatasetApiResource
+from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_rate_limit_check
 from fields.dataset_fields import dataset_metadata_fields
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -14,6 +14,7 @@ from services.metadata_service import MetadataService
 
 
 class DatasetMetadataCreateServiceApi(DatasetApiResource):
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         parser = reqparse.RequestParser()
         parser.add_argument("type", type=str, required=True, nullable=True, location="json")
@@ -39,6 +40,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
 
 
 class DatasetMetadataServiceApi(DatasetApiResource):
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def patch(self, tenant_id, dataset_id, metadata_id):
         parser = reqparse.RequestParser()
         parser.add_argument("name", type=str, required=True, nullable=True, location="json")
@@ -54,6 +56,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, args.get("name"))
         return marshal(metadata, dataset_metadata_fields), 200
 
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def delete(self, tenant_id, dataset_id, metadata_id):
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -73,6 +76,7 @@ class DatasetMetadataBuiltInFieldServiceApi(DatasetApiResource):
 
 
 class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id, action):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -88,6 +92,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
 
 
 class DocumentMetadataEditServiceApi(DatasetApiResource):
+    @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)

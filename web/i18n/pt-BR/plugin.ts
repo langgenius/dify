@@ -137,6 +137,7 @@ const translation = {
     installing: 'Instalar...',
     uploadingPackage: 'Carregando {{packageName}} ...',
     dropPluginToInstall: 'Solte o pacote de plug-in aqui para instalar',
+    installWarning: 'Este plugin não é permitido ser instalado.',
   },
   installFromGitHub: {
     selectVersionPlaceholder: 'Selecione uma versão',
@@ -172,7 +173,7 @@ const translation = {
       recentlyUpdated: 'Atualizado recentemente',
       newlyReleased: 'Recém-lançado',
     },
-    sortBy: 'Cidade negra',
+    sortBy: 'Ordenar por',
     viewMore: 'Ver mais',
     and: 'e',
     pluginsResult: '{{num}} resultados',
