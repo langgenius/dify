@@ -77,7 +77,7 @@ def _evaluate_condition(
     *,
     operator: SupportedComparisonOperator,
     value: Any,
-    expected: str | Sequence[str] | None,
+    expected: str | Sequence[str] | Sequence[int] | Sequence[float] | int | float | None,
 ) -> bool:
     match operator:
         case "contains":

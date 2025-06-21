@@ -22,9 +22,12 @@ const ConditionList = ({
   availableStringNodesWithParent,
   availableNumberVars,
   availableNumberNodesWithParent,
+  availableArrayVars,
+  availableArrayNodesWithParent,
   isCommonVariable,
   availableCommonNumberVars,
   availableCommonStringVars,
+  availableCommonArrayVars,
 }: ConditionListProps) => {
   const { conditions, logical_operator } = metadataFilteringConditions
 
@@ -61,9 +64,12 @@ const ConditionList = ({
               availableStringNodesWithParent={availableStringNodesWithParent}
               availableNumberVars={availableNumberVars}
               availableNumberNodesWithParent={availableNumberNodesWithParent}
+              availableArrayVars={availableArrayVars}
+              availableArrayNodesWithParent={availableArrayNodesWithParent}
               isCommonVariable={isCommonVariable}
               availableCommonStringVars={availableCommonStringVars}
               availableCommonNumberVars={availableCommonNumberVars}
+              availableCommonArrayVars={availableCommonArrayVars}
             />
           ))
         }

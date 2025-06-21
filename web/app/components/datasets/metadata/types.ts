@@ -2,6 +2,7 @@ export enum DataType {
   string = 'string',
   number = 'number',
   time = 'time',
+  array = 'array',
 }
 
 export type BuiltInMetadataItem = {
