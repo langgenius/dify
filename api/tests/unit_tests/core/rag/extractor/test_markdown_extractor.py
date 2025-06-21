@@ -14,7 +14,9 @@ this is more specific text.
     extractor = MarkdownExtractor(file_path="dummy_path")
     updated_output = extractor.markdown_to_tups(markdown)
     assert len(updated_output) == 3
-    key, _ = updated_output[0]
-    _, value = updated_output[1]
+    key, header_value = updated_output[0]
     assert key == None
-    assert value.strip() == 'this is balabala text'
+    assert header_value.strip() == "this is some text without header"
+    title_1, value = updated_output[1]
+    assert title_1.strip() == "title 1"
+    assert value.strip() == "this is balabala text"
