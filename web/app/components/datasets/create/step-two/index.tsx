@@ -207,7 +207,14 @@ const StepTwo = ({
     }
     if (value === ChunkingMode.parentChild && indexType === IndexingType.ECONOMICAL)
       setIndexType(IndexingType.QUALIFIED)
+
     setDocForm(value)
+
+    if (value === ChunkingMode.parentChild)
+      setSegmentationType(ProcessMode.parentChild)
+    else
+      setSegmentationType(ProcessMode.general)
+
     // eslint-disable-next-line ts/no-use-before-define
     currentEstimateMutation.reset()
   }
