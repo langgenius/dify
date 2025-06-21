@@ -210,12 +210,10 @@ const StepTwo = ({
 
     setDocForm(value)
 
-    if (value === ChunkingMode.parentChild) {
+    if (value === ChunkingMode.parentChild)
       setSegmentationType(ProcessMode.parentChild)
-    }
-    else {
+    else
       setSegmentationType(ProcessMode.general)
-    }
 
     // eslint-disable-next-line ts/no-use-before-define
     currentEstimateMutation.reset()
