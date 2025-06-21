@@ -4,7 +4,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services.dataset_service
 from controllers.service_api import api
-from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError
+from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from controllers.service_api.wraps import (
     DatasetApiResource,
     cloud_edition_billing_rate_limit_check,
