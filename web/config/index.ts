@@ -304,6 +304,7 @@ else if (globalThis.document?.body?.getAttribute('data-public-max-iterations-num
 
 export const MAX_ITERATIONS_NUM = maxIterationsNum
 
+let allowUnsafeDataScheme = false
 let enableWebsiteJinaReader = true
 let enableWebsiteFireCrawl = true
 let enableWebsiteWaterCrawl = false
@@ -317,9 +318,11 @@ const getBooleanConfig = (envVar: string | undefined, attr: string) => {
   return false
 }
 
+allowUnsafeDataScheme = getBooleanConfig(process.env.NEXT_PUBLIC_ALLOW_UNSAFE_DATA_SCHEME, 'data-public-allow-unsafe-data-scheme')
 enableWebsiteJinaReader = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER, 'data-public-enable-website-jinareader')
 enableWebsiteFireCrawl = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL, 'data-public-enable-website-firecrawl')
 enableWebsiteWaterCrawl = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL, 'data-public-enable-website-watercrawl')
+export const ALLOW_UNSAFE_DATA_SCHEME = allowUnsafeDataScheme
 export const ENABLE_WEBSITE_JINAREADER = enableWebsiteJinaReader
 export const ENABLE_WEBSITE_FIRECRAWL = enableWebsiteFireCrawl
 export const ENABLE_WEBSITE_WATERCRAWL = enableWebsiteWaterCrawl
