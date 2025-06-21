@@ -288,6 +288,9 @@ const translation = {
       atLeastOneOption: 'Se requiere al menos una opción',
       optionRepeat: 'Hay opciones repetidas',
     },
+    'defaultValue': 'Valor predeterminado',
+    'noDefaultValue': 'Sin valor predeterminado',
+    'selectDefaultValue': 'Seleccionar valor predeterminado',
   },
   vision: {
     name: 'Visión',

@@ -287,6 +287,9 @@ const translation = {
       atLeastOneOption: 'Потрібно щонайменше одну опцію',
       optionRepeat: 'Є повторні опції',
     },
+    'defaultValue': 'Значення за замовчуванням',
+    'noDefaultValue': 'Без значення за замовчуванням',
+    'selectDefaultValue': 'Обрати значення за замовчуванням',
   },
   vision: {
     name: 'Зображення', // Vision

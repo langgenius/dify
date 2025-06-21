@@ -394,6 +394,9 @@ const translation = {
       atLeastOneOption: '至少需要一个选项',
       optionRepeat: '选项不能重复',
     },
+    'defaultValue': '默认值',
+    'noDefaultValue': '无默认值',
+    'selectDefaultValue': '选择默认值',
   },
   vision: {
     name: '视觉',
