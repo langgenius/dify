@@ -33,6 +33,9 @@ class TokenBufferMemory:
         :param max_token_limit: max token limit
         :param message_limit: message limit
         """
+        if not message_limit:
+            return []
+
         app_record = self.conversation.app
 
         # fetch limited messages, and return reversed
@@ -52,10 +55,7 @@ class TokenBufferMemory:
             .order_by(Message.created_at.desc())
         )
 
-        if message_limit and message_limit > 0:
-            message_limit = min(message_limit, 500)
-        else:
-            message_limit = 500
+        message_limit = min(message_limit, 500)
 
         messages = query.limit(message_limit).all()
 
