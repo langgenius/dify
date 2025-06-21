@@ -30,6 +30,8 @@ const PanelContextmenu = () => {
   const { handleAddNote } = useOperator()
   const { exportCheck } = useDSL()
 
+  console.log(clipboardElements, 'clipboardElements')
+
   useEffect(() => {
     if (panelMenu)
       handleNodeContextmenuCancel()
