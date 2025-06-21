@@ -63,7 +63,7 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
 // Define ECharts event parameter types
-interface EChartsEventParams {
+type EChartsEventParams = {
   type: string;
   seriesIndex?: number;
   dataIndex?: number;
@@ -271,9 +271,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     const content = String(children).replace(/\n$/, '')
     switch (language) {
       case 'mermaid':
-        if (isSVG)
-          return <Flowchart PrimitiveCode={content} />
-        break
+        return <Flowchart PrimitiveCode={content} theme={theme as 'light' | 'dark'} />
       case 'echarts': {
         // Loading state: show loading indicator
         if (chartState === 'loading') {
@@ -428,7 +426,7 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
       <div className='flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3'>
         <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
         <div className='flex items-center gap-1'>
-          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
+          {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <ActionButton>
             <CopyIcon content={String(children).replace(/\n$/, '')} />
           </ActionButton>
