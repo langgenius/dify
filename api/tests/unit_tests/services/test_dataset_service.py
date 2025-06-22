@@ -9,7 +9,6 @@ import pytest
 from models.dataset import Dataset, Document
 from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
-
 from tests.unit_tests.conftest import redis_mock
 
 
