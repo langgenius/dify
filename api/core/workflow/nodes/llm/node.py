@@ -553,8 +553,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         model_schema = model.model_type_instance.get_model_schema(node_data_model.name, model.credentials)
         if not model_schema:
             raise ModelNotExistError(f"Model {node_data_model.name} not exist.")
-
-        if self.node_data.structured_output_enabled:
+        if "structured_output_enabled" in self.node_data and self.node_data.structured_output_enabled:
             if model_schema.support_structure_output:
                 node_data_model.completion_params = self._handle_native_json_schema(
                     node_data_model.completion_params, model_schema.parameter_rules
@@ -784,7 +783,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         )
         if not model_schema:
             raise ModelNotExistError(f"Model {self.node_data.model.name} not exist.")
-        if self.node_data.structured_output_enabled:
+        if "structured_output_enabled" in self.node_data and self.node_data.structured_output_enabled:
             if not model_schema.support_structure_output:
                 filtered_prompt_messages = self._handle_prompt_based_schema(
                     prompt_messages=filtered_prompt_messages,
