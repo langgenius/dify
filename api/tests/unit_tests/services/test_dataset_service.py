@@ -110,8 +110,10 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
         expected_task_calls = [call("doc-1"), call("doc-2")]
         mock_add_task.delay.assert_has_calls(expected_task_calls)
 
-        # Verify database commits (one per document)
-        assert mock_db.commit.call_count == 2
+        # Verify database add counts (one add for one document)
+        assert mock_db.add.call_count == 2
+        # Verify database commits (one commit for the batch operation)
+        assert mock_db.commit.call_count == 1
 
     @patch("extensions.ext_database.db.session")
     @patch("services.dataset_service.remove_document_from_index_task")
@@ -190,8 +192,10 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
         expected_task_calls = [call("doc-1"), call("doc-2")]
         mock_remove_task.delay.assert_has_calls(expected_task_calls)
 
-        # Verify database commits (one per document)
-        assert mock_db.commit.call_count == 2
+        # Verify database add counts (one add for one document)
+        assert mock_db.add.call_count == 2
+        # Verify database commits (totally 1 for any batch operation)
+        assert mock_db.commit.call_count == 1
 
     @patch("extensions.ext_database.db.session")
     @patch("services.dataset_service.remove_document_from_index_task")
@@ -254,6 +258,8 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
         # Verify async task was triggered to remove from index (because enabled)
         mock_remove_task.delay.assert_called_once_with("doc-1")
 
+        # Verify database add
+        mock_db.add.assert_called_once()
         # Verify database commit
         mock_db.commit.assert_called_once()
 
@@ -318,6 +324,8 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
         # Verify async task was triggered to add back to index (because enabled)
         mock_add_task.delay.assert_called_once_with("doc-3")
 
+        # Verify database add
+        mock_db.add.assert_called_once()
         # Verify database commit
         mock_db.commit.assert_called_once()
 
@@ -651,7 +659,9 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
         # Verify only the disabled document was processed
         # (enabled and archived documents should be skipped for enable action)
 
-        # Only one commit should occur (for the disabled document that was enabled)
+        # Only one add should occur (for the disabled document that was enabled)
+        mock_db.add.assert_called_once()
+        # Only one commit should occur
         mock_db.commit.assert_called_once()
 
         # Only one Redis setex should occur (for the document that was enabled)
@@ -719,6 +729,8 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
         # Verify no index removal task was triggered (document is disabled)
         mock_remove_task.delay.assert_not_called()
 
+        # Verify database add still occurred
+        mock_db.add.assert_called_once()
         # Verify database commit still occurred
         mock_db.commit.assert_called_once()
 
@@ -944,6 +956,8 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
         # Verify no index addition task was triggered (document is disabled)
         mock_add_task.delay.assert_not_called()
 
+        # Verify database add still occurred
+        mock_db.add.assert_called_once()
         # Verify database commit still occurred
         mock_db.commit.assert_called_once()
 
@@ -1003,6 +1017,7 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
         assert "Celery task error" in str(exc_info.value)
 
         # Verify database operations completed successfully
+        mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
 
         # Verify Redis cache was set successfully
@@ -1079,8 +1094,10 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
             assert mock_doc.disabled_by is None
             assert mock_doc.updated_at == current_time.replace(tzinfo=None)
 
-        # Verify database commits occurred for each document
-        assert mock_db.commit.call_count == 100
+        # Verify database commits, one add for one document
+        assert mock_db.add.call_count == 100
+        # Verify database commits, one commit for the batch operation
+        assert mock_db.commit.call_count == 1
 
         # Verify Redis cache operations occurred for each document
         assert redis_mock.setex.call_count == 100
@@ -1208,7 +1225,8 @@ class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
         assert doc5.enabled == True  # No change
 
         # Verify database commits occurred for processed documents
-        # Only doc1 should be committed (doc2, doc3, doc4, doc5 were skipped, doc6 doesn't exist)
+        # Only doc1 should be added (doc2, doc3, doc4, doc5 were skipped, doc6 doesn't exist)
+        assert mock_db.add.call_count == 1
         assert mock_db.commit.call_count == 1
 
         # Verify Redis cache operations occurred for processed documents
