@@ -44,7 +44,7 @@ def _provide_app_context(app: Flask):
 
 @pytest.fixture(autouse=True)
 def reset_redis_mock():
-    """在每个测试前重置 Redis mock"""
+    """reset the Redis mock before each test"""
     redis_mock.reset_mock()
     redis_mock.get.return_value = None
     redis_mock.setex.return_value = None
