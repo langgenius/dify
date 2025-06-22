@@ -2,16 +2,15 @@ import datetime
 import unittest
 
 # Mock redis_client before importing dataset_service
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
-
-# 从 conftest.py 导入全局的 redis_mock
-from tests.unit_tests.conftest import redis_mock
 
 from models.dataset import Dataset, Document
 from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
+
+from tests.unit_tests.conftest import redis_mock
 
 
 class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):

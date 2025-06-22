@@ -1,8 +1,8 @@
 import os
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from unittest.mock import MagicMock, patch
 
 # Getting the absolute path of the current file's directory
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -56,4 +56,3 @@ def reset_redis_mock():
     redis_mock.hgetall.return_value = {}
     redis_mock.hdel.return_value = None
     redis_mock.incr.return_value = 1
-    yield
