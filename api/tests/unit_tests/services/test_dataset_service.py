@@ -6,18 +6,12 @@ from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 
-redis_mock = MagicMock()
-redis_mock.get = Mock(return_value=None)
-redis_mock.setex = Mock()
-redis_mock.setnx = Mock()
-redis_mock.delete = Mock()
-redis_mock.lock = Mock()
+# 从 conftest.py 导入全局的 redis_mock
+from tests.unit_tests.conftest import redis_mock
 
-# Mock Redis client to avoid initialization issues during import
-with patch("extensions.ext_redis.redis_client", redis_mock):
-    from models.dataset import Dataset, Document
-    from services.dataset_service import DocumentService
-    from services.errors.document import DocumentIndexingError
+from models.dataset import Dataset, Document
+from services.dataset_service import DocumentService
+from services.errors.document import DocumentIndexingError
 
 
 class TestDatasetServiceBatchUpdateDocumentStatus(unittest.TestCase):
