@@ -182,6 +182,20 @@ class Workflow(Base):
         return json.loads(self.graph) if self.graph else {}
 
     @property
+    def get_allowed_file_extensions(self) -> list[str]:
+        workflow_graph = self.graph_dict
+
+        extensions = [
+            ext
+            for node in workflow_graph.get("nodes", [])
+            for var in node.get("data", {}).get("variables", [])
+            if var.get("type") == "file"
+            for ext in var.get("allowed_file_extensions", [])
+        ]
+
+        return list(set(extensions))
+
+    @property
     def features(self) -> str:
         """
         Convert old features structure to new features structure.
