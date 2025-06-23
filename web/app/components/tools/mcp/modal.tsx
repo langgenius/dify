@@ -75,7 +75,7 @@ const MCPModal = ({
     }
     await onConfirm({
       name,
-      server_url: originalServerUrl === url ? '[__HIDDEN__]' : url,
+      server_url: originalServerUrl === url ? '[__HIDDEN__]' : url.trim(),
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
