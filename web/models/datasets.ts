@@ -158,6 +158,17 @@ export type CrawlResultItem = {
   source_url: string
 }
 
+export type CrawlResult = {
+  data: CrawlResultItem[]
+  time_consuming: number | string
+}
+
+export enum CrawlStep {
+  init = 'init',
+  running = 'running',
+  finished = 'finished',
+}
+
 export type FileItem = {
   fileID: string
   file: CustomFile

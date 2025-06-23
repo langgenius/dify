@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import type { CrawlResultItem } from '@/models/datasets'
@@ -10,15 +10,17 @@ const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type CrawledResultProps = {
   className?: string
+  previewIndex?: number
   list: CrawlResultItem[]
   checkedList: CrawlResultItem[]
   onSelectedChange: (selected: CrawlResultItem[]) => void
-  onPreview?: (payload: CrawlResultItem) => void
+  onPreview?: (payload: CrawlResultItem, index: number) => void
   usedTime: number
 }
 
 const CrawledResult = ({
   className = '',
+  previewIndex,
   list,
   checkedList,
   onSelectedChange,
@@ -26,7 +28,6 @@ const CrawledResult = ({
   onPreview,
 }: CrawledResultProps) => {
   const { t } = useTranslation()
-  const [previewIndex, setPreviewIndex] = useState<number>(-1)
 
   const isCheckAll = checkedList.length === list.length
 
@@ -50,8 +51,7 @@ const CrawledResult = ({
 
   const handlePreview = useCallback((index: number) => {
     if (!onPreview) return
-    setPreviewIndex(index)
-    onPreview(list[index])
+    onPreview(list[index], index)
   }, [list, onPreview])
 
   return (

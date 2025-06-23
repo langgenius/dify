@@ -39,8 +39,12 @@ const TestRunPanel = () => {
     updateOnlineDocuments,
   } = useOnlineDocuments()
   const {
+    crawlResult,
+    setCrawlResult,
     websitePages,
     setWebsitePages,
+    step,
+    setStep,
   } = useWebsiteCrawl()
   const { handleRun } = useWorkflowRun()
 
@@ -144,6 +148,10 @@ const TestRunPanel = () => {
                       docTitle: datasource.docTitle || '',
                       docLink: datasource.docLink || '',
                     }}
+                    crawlResult={crawlResult}
+                    setCrawlResult={setCrawlResult}
+                    step={step}
+                    setStep={setStep}
                     onCheckedCrawlResultChange={setWebsitePages}
                     isInPipeline
                   />

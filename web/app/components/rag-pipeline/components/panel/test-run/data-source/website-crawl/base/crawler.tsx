@@ -1,7 +1,8 @@
 'use client'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CrawlResultItem } from '@/models/datasets'
+import type { CrawlResult, CrawlResultItem } from '@/models/datasets'
+import { CrawlStep } from '@/models/datasets'
 import Header from '@/app/components/datasets/create/website/base/header'
 import Options from './options'
 import Crawling from './crawling'
@@ -21,8 +22,12 @@ import type {
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
-type CrawlerProps = {
+export type CrawlerProps = {
   nodeId: string
+  crawlResult: CrawlResult | undefined
+  setCrawlResult: (payload: CrawlResult) => void
+  step: CrawlStep
+  setStep: (step: CrawlStep) => void
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   headerInfo: {
@@ -30,26 +35,25 @@ type CrawlerProps = {
     docTitle: string
     docLink: string
   }
-  onPreview?: (payload: CrawlResultItem) => void
+  previewIndex?: number
+  onPreview?: (payload: CrawlResultItem, index: number) => void
   isInPipeline?: boolean
-}
-
-enum Step {
-  init = 'init',
-  running = 'running',
-  finished = 'finished',
 }
 
 const Crawler = ({
   nodeId,
+  crawlResult,
+  setCrawlResult,
+  step,
+  setStep,
   checkedCrawlResult,
   headerInfo,
   onCheckedCrawlResultChange,
+  previewIndex,
   onPreview,
   isInPipeline = false,
 }: CrawlerProps) => {
   const { t } = useTranslation()
-  const [step, setStep] = useState<Step>(Step.init)
   const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
   const [totalNum, setTotalNum] = useState(0)
   const [crawledNum, setCrawledNum] = useState(0)
@@ -62,17 +66,13 @@ const Crawler = ({
   }, !!pipelineId && !!nodeId)
 
   useEffect(() => {
-    if (step !== Step.init)
+    if (step !== CrawlStep.init)
       setControlFoldOptions(Date.now())
   }, [step])
 
-  const isInit = step === Step.init
-  const isCrawlFinished = step === Step.finished
-  const isRunning = step === Step.running
-  const [crawlResult, setCrawlResult] = useState<{
-    data: CrawlResultItem[]
-    time_consuming: number | string
-  } | undefined>(undefined)
+  const isInit = step === CrawlStep.init
+  const isCrawlFinished = step === CrawlStep.finished
+  const isRunning = step === CrawlStep.running
   const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
   const showError = isCrawlFinished && crawlErrorMessage
 
@@ -81,7 +81,7 @@ const Crawler = ({
     : `/rag/pipelines/${pipelineId}/workflows/draft/datasource/nodes/${nodeId}/run`
 
   const handleRun = useCallback(async (value: Record<string, any>) => {
-    setStep(Step.running)
+    setStep(CrawlStep.running)
     ssePost(
       datasourceNodeRunURL,
       {
@@ -98,21 +98,28 @@ const Crawler = ({
         },
         onDataSourceNodeCompleted: (data: DataSourceNodeCompletedResponse) => {
           const { data: crawlData, time_consuming } = data
-          setCrawlResult({
-            data: crawlData as CrawlResultItem[],
+          const crawlResultData = {
+            data: crawlData.map((item: any) => {
+              const { content, ...rest } = item
+              return {
+                markdown: content || '',
+                ...rest,
+              } as CrawlResultItem
+            }),
             time_consuming: time_consuming ?? 0,
-          })
+          }
+          setCrawlResult(crawlResultData)
           onCheckedCrawlResultChange(crawlData || []) // default select the crawl result
           setCrawlErrorMessage('')
-          setStep(Step.finished)
+          setStep(CrawlStep.finished)
         },
         onError: (message: string) => {
           setCrawlErrorMessage(message || t(`${I18N_PREFIX}.unknownError`))
-          setStep(Step.finished)
+          setStep(CrawlStep.finished)
         },
       },
     )
-  }, [datasourceNodeRunURL, onCheckedCrawlResultChange, t])
+  }, [datasourceNodeRunURL, onCheckedCrawlResultChange, setCrawlResult, setStep, t])
 
   const handleSubmit = useCallback((value: Record<string, any>) => {
     handleRun(value)
@@ -155,6 +162,7 @@ const Crawler = ({
               checkedList={checkedCrawlResult}
               onSelectedChange={onCheckedCrawlResultChange}
               usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
+              previewIndex={previewIndex}
               onPreview={onPreview}
             />
           )}
