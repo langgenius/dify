@@ -23,7 +23,7 @@ class OAuthClientProvider:
     @property
     def redirect_url(self) -> str:
         """The URL to redirect the user agent to after authorization."""
-        return dify_config.CONSOLE_WEB_URL + "/tools"
+        return dify_config.CONSOLE_API_URL + "/console/api/mcp/oauth/callback"
 
     @property
     def client_metadata(self) -> OAuthClientMetadata:

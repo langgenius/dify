@@ -1,7 +1,7 @@
 import io
 
 import validators
-from flask import send_file
+from flask import redirect, send_file
 from flask_login import current_user
 from flask_restful import Resource, reqparse
 from sqlalchemy.orm import Session
@@ -10,7 +10,7 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.console import api
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
-from core.mcp.auth.auth_flow import auth
+from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.auth.auth_provider import OAuthClientProvider
 from core.mcp.error import MCPAuthError
 from core.mcp.mcp_client import MCPClient
@@ -759,28 +759,16 @@ class ToolMCPUpdateApi(Resource):
         return jsonable_encoder(tools)
 
 
-class ToolMCPTokenApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
+class ToolMCPCallbackApi(Resource):
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("provider_id", type=str, required=True, nullable=False, location="args")
-        parser.add_argument("authorization_code", type=str, required=False, nullable=True, location="args")
+        parser.add_argument("code", type=str, required=True, nullable=False, location="args")
+        parser.add_argument("state", type=str, required=True, nullable=False, location="args")
         args = parser.parse_args()
-        server_url = MCPToolManageService.get_mcp_provider_server_url(
-            current_user.current_tenant_id, args["provider_id"]
-        )
-        provider = MCPToolManageService.get_mcp_provider_by_provider_id(
-            args["provider_id"], current_user.current_tenant_id
-        )
-        if not provider:
-            raise ValueError("provider not found")
-        return auth(
-            OAuthClientProvider(args["provider_id"], current_user.current_tenant_id),
-            server_url,
-            authorization_code=args["authorization_code"],
-        )
+        state_key = args["state"]
+        authorization_code = args["code"]
+        full_state_data = handle_callback(state_key, authorization_code)
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}/tools?mcp_provider_id={full_state_data.provider_id}")
 
 
 # tool provider
@@ -822,7 +810,7 @@ api.add_resource(ToolMCPDetailApi, "/workspaces/current/tool-provider/mcp/tools/
 api.add_resource(ToolProviderMCPApi, "/workspaces/current/tool-provider/mcp")
 api.add_resource(ToolMCPUpdateApi, "/workspaces/current/tool-provider/mcp/update/<path:provider_id>")
 api.add_resource(ToolMCPAuthApi, "/workspaces/current/tool-provider/mcp/auth")
-api.add_resource(ToolMCPTokenApi, "/workspaces/current/tool-provider/mcp/token")
+api.add_resource(ToolMCPCallbackApi, "/mcp/oauth/callback")
 
 api.add_resource(ToolBuiltinListApi, "/workspaces/current/tools/builtin")
 api.add_resource(ToolApiListApi, "/workspaces/current/tools/api")
