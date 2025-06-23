@@ -89,8 +89,6 @@ const WorkflowPreview = () => {
         onMouseDown={startResizing}
       />
       <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
-        {!workflowRunningData?.result.sequence_number && 'Test Run'}
-        {workflowRunningData?.result.sequence_number && `Test Run #${workflowRunningData?.result.sequence_number}`}
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at)}`}
         <div className='cursor-pointer p-1' onClick={() => handleCancelDebugAndPreviewPanel()}>
           <RiCloseLine className='h-4 w-4 text-text-tertiary' />
