@@ -589,7 +589,7 @@ class PipelineGenerator(BaseAppGenerator):
         if datasource_type == "local_file":
             name = datasource_info["name"]
         elif datasource_type == "online_document":
-            name = datasource_info['page']["page_name"]
+            name = datasource_info["page"]["page_name"]
         elif datasource_type == "website_crawl":
             name = datasource_info["title"]
         else:

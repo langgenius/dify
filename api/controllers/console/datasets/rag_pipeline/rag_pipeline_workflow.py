@@ -428,7 +428,6 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         )
 
 
-
 class RagPipelineDraftDatasourceNodeRunApi(Resource):
     @setup_required
     @login_required

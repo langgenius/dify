@@ -273,5 +273,3 @@ class AgentLogEvent(BaseAgentEvent):
 
 
 InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent | BaseAgentEvent | BaseLoopEvent
-
-
