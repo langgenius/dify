@@ -137,6 +137,7 @@ const translation = {
     installing: 'Installazione...',
     install: 'Installare',
     readyToInstallPackages: 'Sto per installare i seguenti plugin {{num}}',
+    installWarning: 'Questo plugin non è consentito essere installato.',
   },
   installFromGitHub: {
     installedSuccessfully: 'Installazione riuscita',
@@ -178,7 +179,7 @@ const translation = {
     pluginsResult: '{{num}} risultati',
     noPluginFound: 'Nessun plug-in trovato',
     empower: 'Potenzia lo sviluppo dell\'intelligenza artificiale',
-    sortBy: 'Città nera',
+    sortBy: 'Ordina per',
     and: 'e',
     viewMore: 'Vedi di più',
     verifiedTip: 'Verificato da Dify',

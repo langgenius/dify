@@ -195,6 +195,11 @@ x-shared-env: &shared-api-worker-env
   TIDB_VECTOR_USER: ${TIDB_VECTOR_USER:-}
   TIDB_VECTOR_PASSWORD: ${TIDB_VECTOR_PASSWORD:-}
   TIDB_VECTOR_DATABASE: ${TIDB_VECTOR_DATABASE:-dify}
+  MATRIXONE_HOST: ${MATRIXONE_HOST:-matrixone}
+  MATRIXONE_PORT: ${MATRIXONE_PORT:-6001}
+  MATRIXONE_USER: ${MATRIXONE_USER:-dump}
+  MATRIXONE_PASSWORD: ${MATRIXONE_PASSWORD:-111}
+  MATRIXONE_DATABASE: ${MATRIXONE_DATABASE:-dify}
   TIDB_ON_QDRANT_URL: ${TIDB_ON_QDRANT_URL:-http://127.0.0.1}
   TIDB_ON_QDRANT_API_KEY: ${TIDB_ON_QDRANT_API_KEY:-dify}
   TIDB_ON_QDRANT_CLIENT_TIMEOUT: ${TIDB_ON_QDRANT_CLIENT_TIMEOUT:-20}
@@ -322,6 +327,7 @@ x-shared-env: &shared-api-worker-env
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
   SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
+  SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-4000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
   RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: ${RESET_PASSWORD_TOKEN_EXPIRY_MINUTES:-5}
@@ -1123,6 +1129,18 @@ services:
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
     ports:
       - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
+
+  # Matrixone vector store.
+  matrixone:
+    hostname: matrixone
+    image: matrixorigin/matrixone:2.1.1
+    profiles:
+      - matrixone
+    restart: always
+    volumes:
+      - ./volumes/matrixone/data:/mo-data
+    ports:
+      - ${MATRIXONE_PORT:-6001}:${MATRIXONE_PORT:-6001}
 
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites

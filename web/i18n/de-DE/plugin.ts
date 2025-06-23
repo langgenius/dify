@@ -137,6 +137,7 @@ const translation = {
     readyToInstall: 'Über die Installation des folgenden Plugins',
     dropPluginToInstall: 'Legen Sie das Plugin-Paket hier ab, um es zu installieren',
     next: 'Nächster',
+    installWarning: 'Dieses Plugin darf nicht installiert werden.',
   },
   installFromGitHub: {
     selectPackagePlaceholder: 'Bitte wählen Sie ein Paket aus',
@@ -173,7 +174,7 @@ const translation = {
       recentlyUpdated: 'Kürzlich aktualisiert',
     },
     viewMore: 'Mehr anzeigen',
-    sortBy: 'Schwarze Stadt',
+    sortBy: 'Sortieren nach',
     discover: 'Entdecken',
     noPluginFound: 'Kein Plugin gefunden',
     difyMarketplace: 'Dify Marktplatz',
