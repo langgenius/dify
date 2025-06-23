@@ -7,6 +7,7 @@ from deprecated import deprecated
 from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.file import helpers as file_helpers
 from core.mcp.types import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -248,8 +249,11 @@ class MCPToolProvider(Base):
         return [Tool(**tool) for tool in json.loads(self.tools)]
 
     @property
-    def provider_icon(self) -> dict[str, str]:
-        return cast(dict[str, str], json.loads(self.icon))
+    def provider_icon(self) -> dict[str, str] | str:
+        try:
+            return cast(dict[str, str], json.loads(self.icon))
+        except json.JSONDecodeError:
+            return file_helpers.get_signed_file_url(self.icon)
 
 
 class ToolModelInvoke(Base):

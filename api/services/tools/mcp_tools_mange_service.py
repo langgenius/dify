@@ -154,8 +154,14 @@ class MCPToolManageService:
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         if mcp_provider is None:
             raise ValueError("MCP tool not found")
-        encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
         mcp_provider.name = name
+        mcp_provider.icon = (
+            json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon
+        )
+        if "[__HIDDEN__]" in server_url:
+            db.session.commit()
+            return
+        encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
         mcp_provider.server_url = encrypted_server_url
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
         # if the server url is changed, we need to re-auth the tool
@@ -176,9 +182,7 @@ class MCPToolManageService:
                     mcp_provider.tools = "[]"
                 mcp_provider.encrypted_credentials = "{}"
                 mcp_provider.server_url_hash = server_url_hash
-            mcp_provider.icon = (
-                json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon
-            )
+
             db.session.commit()
         except IntegrityError as e:
             db.session.rollback()
