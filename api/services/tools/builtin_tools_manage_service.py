@@ -136,8 +136,7 @@ class BuiltinToolManageService:
                 )
 
                 # Decrypt and restore original credentials for masked values
-                credentials = BuiltinToolManageService._dec
-                rypt_and_restore_credentials(
+                credentials = BuiltinToolManageService._decrypt_and_restore_credentials(
                     provider_controller, tool_configuration, provider, credentials
                 )
                 
