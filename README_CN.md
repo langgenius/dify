@@ -227,7 +227,7 @@ docker compose up -d
 
 #### 使用 阿里云数据管理DMS 部署
 
-使用 [阿里云数据管理DMS](https://help.aliyun.com/zh/dms/dify-in-invitational-preview) 将 Dify 一键部署到 阿里云数据管理DMS
+使用 [阿里云数据管理DMS](https://help.aliyun.com/zh/dms/dify-in-invitational-preview) 将 Dify 一键部署到 阿里云
 
 
 ## Star History
