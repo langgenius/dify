@@ -7,12 +7,13 @@ from core.datasource.entities.datasource_entities import (
     OnlineDocumentPagesMessage,
     WebsiteCrawlMessage,
 )
-from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
+from core.plugin.entities.plugin import GenericProviderID, ToolProviderID, DatasourceProviderID
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDatasourceProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
+from services.tools.tools_transform_service import ToolTransformService
 
 
 class PluginDatasourceManager(BasePluginClient):
@@ -40,6 +41,8 @@ class PluginDatasourceManager(BasePluginClient):
         )
         local_file_datasource_provider = PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
 
+        # for provider in response:
+        #     ToolTransformService.repack_provider(tenant_id=tenant_id, provider=provider)
         all_response = [local_file_datasource_provider] + response
 
         for provider in all_response:
@@ -58,7 +61,7 @@ class PluginDatasourceManager(BasePluginClient):
         if provider_id == "langgenius/file/file":
             return PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
 
-        tool_provider_id = ToolProviderID(provider_id)
+        tool_provider_id = DatasourceProviderID(provider_id)
 
         def transformer(json_response: dict[str, Any]) -> dict:
             data = json_response.get("data")
