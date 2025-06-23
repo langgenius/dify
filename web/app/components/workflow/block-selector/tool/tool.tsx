@@ -15,6 +15,7 @@ import BlockIcon from '../../block-icon'
 import { useTranslation } from 'react-i18next'
 import { useHover } from 'ahooks'
 import McpToolNotSupportTooltip from '../../nodes/_base/components/mcp-tool-not-support-tooltip'
+import { Mcp } from '@/app/components/base/icons/src/vender/other'
 
 type Props = {
   className?: string
@@ -50,7 +51,8 @@ const Tool: FC<Props> = ({
   const [isFold, setFold] = React.useState<boolean>(true)
   const ref = useRef(null)
   const isHovering = useHover(ref)
-  const isShowCanNotChooseMCPTip = !canChooseMCPTool && payload.type === CollectionType.mcp
+  const isMCPTool = payload.type === CollectionType.mcp
+  const isShowCanNotChooseMCPTip = !canChooseMCPTool && isMCPTool
   const getIsDisabled = useCallback((tool: ToolType) => {
     if (!selectedTools || !selectedTools.length) return false
     return selectedTools.some(selectedTool => (selectedTool.provider_name === payload.name || selectedTool.provider_name === payload.id) && selectedTool.tool_name === tool.name)
@@ -143,12 +145,12 @@ const Tool: FC<Props> = ({
   return (
     <div
       key={payload.id}
-      className={cn('mb-1 last-of-type:mb-0', isShowLetterIndex && 'mr-6')}
+      className={cn('mb-1 last-of-type:mb-0', isShowLetterIndex && 'mr-2')}
       ref={ref}
     >
       <div className={cn(className)}>
         <div
-          className='flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover'
+          className='group/item flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover'
           onClick={() => {
             if (hasAction) {
               setFold(!isFold)
@@ -183,11 +185,12 @@ const Tool: FC<Props> = ({
               type={BlockEnum.Tool}
               toolIcon={payload.icon}
             />
-            <div className='ml-2 w-0 grow truncate text-sm text-text-primary'>
-              <span>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
-              {isFlatView && (
-                <span className='system-xs-regular ml-2 text-text-quaternary'>{groupName}</span>
+            <div className='ml-2 flex w-0 grow items-center text-sm text-text-primary'>
+              <span className='max-w-[250px] truncate'>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
+              {isFlatView && groupName && (
+                <span className='system-xs-regular ml-2 shrink-0 text-text-quaternary'>{groupName}</span>
               )}
+              {isMCPTool && <Mcp className='ml-2 size-3.5 shrink-0 text-text-quaternary' />}
             </div>
           </div>
 
@@ -195,7 +198,7 @@ const Tool: FC<Props> = ({
             {!isShowCanNotChooseMCPTip && !canNotSelectMultiple && (notShowProvider ? notShowProviderSelectInfo : selectedInfo)}
             {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
             {hasAction && (
-              <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-quaternary', isFold && 'text-text-tertiary')} />
+              <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
             )}
           </div>
         </div>
