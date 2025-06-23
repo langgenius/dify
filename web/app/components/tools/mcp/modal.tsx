@@ -11,6 +11,7 @@ import Input from '@/app/components/base/input'
 import type { AppIconType } from '@/types/app'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { noop } from 'lodash-es'
+import Toast from '@/app/components/base/toast'
 import cn from '@/utils/classnames'
 
 export type DuplicateAppModalProps = {
@@ -57,10 +58,32 @@ const MCPModal = ({
   const [url, setUrl] = React.useState(data?.server_url || '')
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
 
+  const isValidUrl = (string: string) => {
+    try {
+      const urlPattern = new RegExp(
+        '^(https?:\\/\\/)?' // protocol
+        + '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' // domain
+        + '((\\d{1,3}\\.){3}\\d{1,3}))' // IP address
+        + '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' // port and path
+        + '(\\?[;&a-z\\d%_.~+=-]*)?' // query string
+        + '(\\#[-a-z\\d_]*)?$', // anchor
+        'i',
+      )
+      return urlPattern.test(string)
+    }
+    catch (e) {
+      return false
+    }
+  }
+
   const submit = async () => {
+    if (!isValidUrl(url)) {
+      Toast.notify({ type: 'error', message: 'invalid server url' })
+      return
+    }
     await onConfirm({
       name,
-      server_url: url,
+      server_url: originalServerUrl === url ? '[__HIDDEN__]' : url,
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
@@ -80,6 +103,21 @@ const MCPModal = ({
         </div>
         <div className='title-2xl-semi-bold relative pb-3 text-xl text-text-primary'>{data ? t('tools.mcp.modal.editTitle') : t('tools.mcp.modal.title')}</div>
         <div className='space-y-5 py-3'>
+          <div>
+            <div className='mb-1 flex h-6 items-center'>
+              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.serverUrl')}</span>
+            </div>
+            <Input
+              value={url}
+              onChange={e => setUrl(e.target.value)}
+              placeholder={t('tools.mcp.modal.serverUrlPlaceholder')}
+            />
+            {originalServerUrl && originalServerUrl !== url && (
+              <div className='mt-1 flex h-5 items-center'>
+                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.warning')}</span>
+              </div>
+            )}
+          </div>
           <div className='flex space-x-3'>
             <div className='grow pb-1'>
               <div className='mb-1 flex h-6 items-center'>
@@ -101,21 +139,6 @@ const MCPModal = ({
                 onClick={() => { setShowAppIconPicker(true) }}
               />
             </div>
-          </div>
-          <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.serverUrl')}</span>
-            </div>
-            <Input
-              value={url}
-              onChange={e => setUrl(e.target.value)}
-              placeholder={t('tools.mcp.modal.serverUrlPlaceholder')}
-            />
-            {originalServerUrl && originalServerUrl !== url && (
-              <div className='mt-1 flex h-5 items-center'>
-                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.warning')}</span>
-              </div>
-            )}
           </div>
         </div>
         <div className='flex flex-row-reverse pt-5'>
