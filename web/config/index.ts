@@ -314,14 +314,22 @@ else if (globalThis.document?.body?.getAttribute('data-public-max-iterations-num
 
 export const MAX_ITERATIONS_NUM = maxIterationsNum
 
-export const ENABLE_WEBSITE_JINAREADER = process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER !== undefined
-  ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER === 'true'
-  : globalThis.document?.body?.getAttribute('data-public-enable-website-jinareader') === 'true' || true
+let enableWebsiteJinaReader = true
+let enableWebsiteFireCrawl = true
+let enableWebsiteWaterCrawl = false
 
-export const ENABLE_WEBSITE_FIRECRAWL = process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL !== undefined
-  ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL === 'true'
-  : globalThis.document?.body?.getAttribute('data-public-enable-website-firecrawl') === 'true' || true
+const getBooleanConfig = (envVar: string | undefined, attr: string) => {
+  if (envVar !== undefined && envVar !== '')
+    return envVar === 'true'
+  const attrValue = globalThis.document?.body?.getAttribute(attr)
+  if (attrValue !== undefined && attrValue !== '')
+    return attrValue === 'true'
+  return false
+}
 
-export const ENABLE_WEBSITE_WATERCRAWL = process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL !== undefined
-  ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL === 'true'
-  : globalThis.document?.body?.getAttribute('data-public-enable-website-watercrawl') === 'true' || true
+enableWebsiteJinaReader = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_JINAREADER, 'data-public-enable-website-jinareader')
+enableWebsiteFireCrawl = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL, 'data-public-enable-website-firecrawl')
+enableWebsiteWaterCrawl = getBooleanConfig(process.env.NEXT_PUBLIC_ENABLE_WEBSITE_WATERCRAWL, 'data-public-enable-website-watercrawl')
+export const ENABLE_WEBSITE_JINAREADER = enableWebsiteJinaReader
+export const ENABLE_WEBSITE_FIRECRAWL = enableWebsiteFireCrawl
+export const ENABLE_WEBSITE_WATERCRAWL = enableWebsiteWaterCrawl
