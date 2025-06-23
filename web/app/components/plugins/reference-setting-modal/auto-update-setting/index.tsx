@@ -132,10 +132,13 @@ const AutoUpdateSetting: FC<Props> = ({
                 ))}
               </div>
 
-              <PluginsPicker
-                value={plugins}
-                onChange={handlePluginsChange}
-              />
+              {upgrade_mode !== AUTO_UPDATE_MODE.update_all && (
+                <PluginsPicker
+                  value={plugins}
+                  onChange={handlePluginsChange}
+                  updateMode={upgrade_mode}
+                />
+              )}
             </div>
           </>
         )}
