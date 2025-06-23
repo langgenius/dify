@@ -63,6 +63,7 @@ export const usePreviewNotionPage = (params: NotionPagePreviewRequest) => {
     queryKey: [NAME_SPACE, 'preview-notion-page'],
     queryFn: () => get<NotionPagePreviewResponse>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`),
     enabled: !!workspaceID && !!pageID && !!pageType,
+    staleTime: 0,
   })
 }
 
