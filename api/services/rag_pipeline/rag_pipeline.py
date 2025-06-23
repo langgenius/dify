@@ -69,6 +69,7 @@ from services.rag_pipeline.pipeline_template.pipeline_template_factory import Pi
 
 logger = logging.getLogger(__name__)
 
+
 class RagPipelineService:
     @classmethod
     def get_pipeline_templates(cls, type: str = "built-in", language: str = "en-US") -> dict:
@@ -431,8 +432,13 @@ class RagPipelineService:
         return workflow_node_execution
 
     def run_datasource_workflow_node(
-        self, pipeline: Pipeline, node_id: str, user_inputs: dict, account: Account, datasource_type: str,
-        is_published: bool
+        self,
+        pipeline: Pipeline,
+        node_id: str,
+        user_inputs: dict,
+        account: Account,
+        datasource_type: str,
+        is_published: bool,
     ) -> Generator[BaseDatasourceEvent, None, None]:
         """
         Run published workflow datasource
@@ -497,23 +503,21 @@ class RagPipelineService:
                         for message in online_document_result:
                             end_time = time.time()
                             online_document_event = DatasourceCompletedEvent(
-                                data=message.result,
-                                time_consuming=round(end_time - start_time, 2)
+                                data=message.result, time_consuming=round(end_time - start_time, 2)
                             )
                             yield online_document_event.model_dump()
                     except Exception as e:
                         logger.exception("Error during online document.")
-                        yield DatasourceErrorEvent(
-                            error=str(e)
-                        ).model_dump()
+                        yield DatasourceErrorEvent(error=str(e)).model_dump()
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
                     website_crawl_result: Generator[WebsiteCrawlMessage, None, None] = (
                         datasource_runtime.get_website_crawl(
-                        user_id=account.id,
-                        datasource_parameters=user_inputs,
-                        provider_type=datasource_runtime.datasource_provider_type(),
-                    ))
+                            user_id=account.id,
+                            datasource_parameters=user_inputs,
+                            provider_type=datasource_runtime.datasource_provider_type(),
+                        )
+                    )
                     start_time = time.time()
                     try:
                         for message in website_crawl_result:
@@ -523,7 +527,7 @@ class RagPipelineService:
                                     data=message.result.web_info_list,
                                     total=message.result.total,
                                     completed=message.result.completed,
-                                    time_consuming=round(end_time - start_time, 2)
+                                    time_consuming=round(end_time - start_time, 2),
                                 )
                             else:
                                 crawl_event = DatasourceProcessingEvent(
@@ -533,16 +537,12 @@ class RagPipelineService:
                             yield crawl_event.model_dump()
                     except Exception as e:
                         logger.exception("Error during website crawl.")
-                        yield DatasourceErrorEvent(
-                            error=str(e)
-                        ).model_dump()
+                        yield DatasourceErrorEvent(error=str(e)).model_dump()
                 case _:
                     raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
         except Exception as e:
             logger.exception("Error in run_datasource_workflow_node.")
-            yield DatasourceErrorEvent(
-                error=str(e)
-            ).model_dump()
+            yield DatasourceErrorEvent(error=str(e)).model_dump()
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]

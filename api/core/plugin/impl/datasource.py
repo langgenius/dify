@@ -7,7 +7,7 @@ from core.datasource.entities.datasource_entities import (
     OnlineDocumentPagesMessage,
     WebsiteCrawlMessage,
 )
-from core.plugin.entities.plugin import GenericProviderID, ToolProviderID, DatasourceProviderID
+from core.plugin.entities.plugin import DatasourceProviderID, GenericProviderID
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDatasourceProviderEntity,
@@ -41,8 +41,8 @@ class PluginDatasourceManager(BasePluginClient):
         )
         local_file_datasource_provider = PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
 
-        # for provider in response:
-        #     ToolTransformService.repack_provider(tenant_id=tenant_id, provider=provider)
+        for provider in response:
+            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=provider)
         all_response = [local_file_datasource_provider] + response
 
         for provider in all_response:
