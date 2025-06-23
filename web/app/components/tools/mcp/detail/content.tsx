@@ -90,10 +90,10 @@ const MCPDetailContent: FC<Props> = ({
     setFalse: hideDeleting,
   }] = useBoolean(false)
 
-  const handleOAuthCallback = useCallback((state: string) => {
+  const handleOAuthCallback = useCallback(() => {
     if (!isCurrentWorkspaceManager)
       return
-    if (detail.id !== state)
+    if (!detail.id)
       return
     handleUpdateTools()
   }, [detail.id, handleUpdateTools, isCurrentWorkspaceManager])
