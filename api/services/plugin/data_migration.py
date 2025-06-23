@@ -22,7 +22,7 @@ class PluginDataMigration:
         cls.migrate_datasets()
         cls.migrate_db_records("embeddings", "provider_name", ModelProviderID)  # large table
         cls.migrate_db_records("dataset_collection_bindings", "provider_name", ModelProviderID)
-        cls.migrate_db_records("tool_builtin_providers", "provider_name", ToolProviderID)
+        cls.migrate_db_records("tool_builtin_providers", "provider", ToolProviderID)
 
     @classmethod
     def migrate_datasets(cls) -> None:
