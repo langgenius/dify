@@ -225,6 +225,11 @@ Despliegue Dify en AWS usando [CDK](https://aws.amazon.com/cdk/)
 
 [Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
 
+#### Alibaba Cloud Data Management
+
+Despliega Dify en Alibaba Cloud con un solo clic con [Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
+
+
 ## Contribuir
 
 Para aquellos que deseen contribuir con código, consulten nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 
