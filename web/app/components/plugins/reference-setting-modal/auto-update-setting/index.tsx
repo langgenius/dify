@@ -42,6 +42,13 @@ const AutoUpdateSetting: FC<Props> = ({
     exclude_plugins,
     include_plugins,
   } = payload
+
+  const minuteFilter = useCallback((minutes: string[]) => {
+    return minutes.filter((m) => {
+      const time = Number.parseInt(m, 10)
+      return time % 15 === 0
+    })
+  }, [])
   const strategyDescription = useMemo(() => {
     switch (strategy_setting) {
       case AUTO_UPDATE_STRATEGY.fixOnly:
@@ -108,6 +115,7 @@ const AutoUpdateSetting: FC<Props> = ({
                 onClear={() => handleChange('upgrade_time_of_day')(0)}
                 popupClassName='z-[99]'
                 title={t(`${i18nPrefix}.updateTime`)}
+                minuteFilter={minuteFilter}
               />
             </div>
             <div>
