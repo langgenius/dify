@@ -23,7 +23,7 @@ class OAuthProxyService(BasePluginClient):
         is used to verify the state, ensuring the request's integrity and authenticity,
         and mitigating replay attacks.
         """
-        seconds, microseconds = redis_client.time()
+        seconds, _ = redis_client.time()
         context_id = str(uuid.uuid4())
         data = {
             "user_id": user_id,
@@ -55,7 +55,7 @@ class OAuthProxyService(BasePluginClient):
         if not data:
             raise ValueError("context_id is invalid")
         # check if data is expired
-        seconds, microseconds = redis_client.time()
+        seconds, _ = redis_client.time()
         state = json.loads(data)
         if state.get("timestamp") < seconds - max_age:
             raise ValueError("context_id is expired")

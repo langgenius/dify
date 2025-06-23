@@ -9,12 +9,13 @@ from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.custom_tool.provider import ApiToolProviderController
-from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolParameter,
+    ToolProviderCredentialType,
     ToolProviderType,
 )
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -304,3 +305,16 @@ class ToolTransformService:
                 parameters=tool.parameters,
                 labels=labels or [],
             )
+
+    @staticmethod
+    def convert_builtin_provider_to_credential_api_entity(
+        provider: BuiltinToolProvider, credentials: dict
+    ) -> ToolProviderCredentialApiEntity:
+        return ToolProviderCredentialApiEntity(
+            id=provider.id,
+            name=provider.name,
+            provider=provider.provider,
+            credential_type=ToolProviderCredentialType.of(provider.credential_type),
+            is_default=provider.is_default,
+            credentials=credentials,
+        )

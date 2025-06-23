@@ -18,6 +18,7 @@ from controllers.console.wraps import (
 )
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.oauth import OAuthHandler
+from core.tools.entities.tool_entities import ToolProviderCredentialType
 from extensions.ext_database import db
 from libs.helper import alphanumeric, uuid_value
 from libs.login import login_required
@@ -89,17 +90,47 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @account_initialization_required
     def post(self, provider):
         user = current_user
-
         if not user.is_admin_or_owner:
             raise Forbidden()
+
+        tenant_id = user.current_tenant_id
+        req = reqparse.RequestParser()
+        req.add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+        args = req.parse_args()
+
+        return BuiltinToolManageService.delete_builtin_tool_provider(
+            tenant_id,
+            provider,
+            args["credential_id"],
+        )
+
+
+class ToolBuiltinProviderAddApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider):
+        user = current_user
 
         user_id = user.id
         tenant_id = user.current_tenant_id
 
-        return BuiltinToolManageService.delete_builtin_tool_provider(
-            user_id,
-            tenant_id,
-            provider,
+        parser = reqparse.RequestParser()
+        parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("name", type=str, required=False, nullable=False, location="json")
+        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        if args["type"] not in ToolProviderCredentialType.values():
+            raise ValueError(f"Invalid credential type: {args['type']}")
+
+        return BuiltinToolManageService.add_builtin_tool_provider(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            provider_name=provider,
+            credentials=args["credentials"],
+            name=args["name"],
+            api_type=ToolProviderCredentialType.of(args["type"]),
         )
 
 
@@ -143,9 +174,11 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     def get(self, provider):
         tenant_id = current_user.current_tenant_id
 
-        return BuiltinToolManageService.get_builtin_tool_provider_credentials(
-            tenant_id=tenant_id,
-            provider_name=provider,
+        return jsonable_encoder(
+            BuiltinToolManageService.get_builtin_tool_provider_credentials(
+                tenant_id=tenant_id,
+                provider_name=provider,
+            )
         )
 
 
@@ -567,9 +600,9 @@ class ToolBuiltinListApi(Resource):
             [
                 provider.to_dict()
                 for provider in BuiltinToolManageService.list_builtin_tools(
-                user_id,
-                tenant_id,
-            )
+                    user_id,
+                    tenant_id,
+                )
             ]
         )
 
@@ -588,9 +621,9 @@ class ToolApiListApi(Resource):
             [
                 provider.to_dict()
                 for provider in ApiToolManageService.list_api_tools(
-                user_id,
-                tenant_id,
-            )
+                    user_id,
+                    tenant_id,
+                )
             ]
         )
 
@@ -609,9 +642,9 @@ class ToolWorkflowListApi(Resource):
             [
                 provider.to_dict()
                 for provider in WorkflowToolManageService.list_tenant_workflow_tools(
-                user_id,
-                tenant_id,
-            )
+                    user_id,
+                    tenant_id,
+                )
             ]
         )
 
@@ -656,14 +689,13 @@ class ToolPluginOAuthApi(Resource):
         )
 
         oauth_handler = OAuthHandler()
-        context_id = OAuthProxyService.create_proxy_context(user_id=current_user.id,
-                                                       tenant_id=tenant_id,
-                                                       plugin_id=plugin_id,
-                                                       provider=provider)
+        context_id = OAuthProxyService.create_proxy_context(
+            user_id=current_user.id, tenant_id=tenant_id, plugin_id=plugin_id, provider=provider
+        )
         # todo decrypt oauth params
         oauth_params = plugin_oauth_config.oauth_params
-        oauth_params[
-            'redirect_uri'] = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/tool/callback?context_id={context_id}"
+        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/tool/callback?context_id={context_id}"
+        oauth_params["redirect_uri"] = redirect_uri
 
         response = oauth_handler.get_authorization_url(
             tenant_id,
@@ -676,14 +708,13 @@ class ToolPluginOAuthApi(Resource):
 
 
 class ToolOAuthCallback(Resource):
-
     @setup_required
     def get(self):
-        args = (reqparse
-                .RequestParser()
-                .add_argument("context_id", type=str, required=True, nullable=False, location="args")
-                .parse_args()
-                )
+        args = (
+            reqparse.RequestParser()
+            .add_argument("context_id", type=str, required=True, nullable=False, location="args")
+            .parse_args()
+        )
         context_id = args["context_id"]
         context = OAuthProxyService.use_proxy_context(context_id)
         if context is None:
@@ -703,7 +734,8 @@ class ToolOAuthCallback(Resource):
             plugin_id=plugin_id,
         )
         oauth_params = plugin_oauth_config.oauth_params
-        oauth_params['redirect_uri'] = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/tool/callback?context_id={context_id}"
+        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/tool/callback?context_id={context_id}"
+        oauth_params["redirect_uri"] = redirect_uri
 
         credentials = oauth_handler.get_credentials(
             tenant_id,
@@ -712,12 +744,20 @@ class ToolOAuthCallback(Resource):
             provider,
             system_credentials=oauth_params,
             request=request,
-        )
+        ).credentials
 
         if not credentials:
-            raise Exception("no credentials found for this plugin")
+            raise Exception("the plugin credentials failed")
 
-        #TODO add credentials to database
+        # add credentials to database
+        BuiltinToolManageService.add_builtin_tool_provider(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            provider_name=provider,
+            credentials=dict(credentials),
+            name=provider,
+            api_type=ToolProviderCredentialType.OAUTH2,
+        )
         return redirect(f"{dify_config.CONSOLE_WEB_URL}")
 
 
@@ -730,10 +770,8 @@ class ToolBuiltinProviderSetDefaultApi(Resource):
         parser.add_argument("id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         return BuiltinToolManageService.set_default_provider(
-            tenant_id=current_user.current_tenant_id,
-            user_id=current_user.id,
-            provider=provider,
-            id=args["id"])
+            tenant_id=current_user.current_tenant_id, user_id=current_user.id, provider=provider, id=args["id"]
+        )
 
 
 # tool oauth
@@ -746,10 +784,12 @@ api.add_resource(ToolProviderListApi, "/workspaces/current/tool-providers")
 # builtin tool provider
 api.add_resource(ToolBuiltinProviderListToolsApi, "/workspaces/current/tool-provider/builtin/<path:provider>/tools")
 api.add_resource(ToolBuiltinProviderInfoApi, "/workspaces/current/tool-provider/builtin/<path:provider>/info")
+api.add_resource(ToolBuiltinProviderAddApi, "/workspaces/current/tool-provider/builtin/<path:provider>/add")
 api.add_resource(ToolBuiltinProviderDeleteApi, "/workspaces/current/tool-provider/builtin/<path:provider>/delete")
 api.add_resource(ToolBuiltinProviderUpdateApi, "/workspaces/current/tool-provider/builtin/<path:provider>/update")
-api.add_resource(ToolBuiltinProviderSetDefaultApi,
-                 "/workspaces/current/tool-provider/builtin/<path:provider>/set-default")
+api.add_resource(
+    ToolBuiltinProviderSetDefaultApi, "/workspaces/current/tool-provider/builtin/<path:provider>/set-default"
+)
 api.add_resource(
     ToolBuiltinProviderGetCredentialsApi, "/workspaces/current/tool-provider/builtin/<path:provider>/credentials"
 )

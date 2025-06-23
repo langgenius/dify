@@ -200,6 +200,7 @@ class ToolManager:
                         (BuiltinToolProvider.provider == str(provider_id_entity))
                         | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
                     )
+                    .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
                     .first()
                 )
 
@@ -209,6 +210,7 @@ class ToolManager:
                 builtin_provider = (
                     db.session.query(BuiltinToolProvider)
                     .filter(BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id))
+                    .order_by(BuiltinToolProvider.is_default.desc(), BuiltinToolProvider.created_at.asc())
                     .first()
                 )
 
@@ -575,18 +577,27 @@ class ToolManager:
 
         with db.session.no_autoflush:
             if "builtin" in filters:
-                # get builtin providers
+
+                def get_builtin_providers(tenant_id):
+                    # according to multi credentials, select the one with is_default=True first, then created_at oldest 
+                    # for compatibility with old version
+                    sql = """
+                            SELECT DISTINCT ON (tenant_id, provider) id
+                            FROM tool_builtin_providers
+                            WHERE tenant_id = :tenant_id
+                            ORDER BY tenant_id, provider, is_default DESC, created_at DESC
+                            """
+                    ids = [row.id for row in db.session.execute(db.text(sql), {"tenant_id": tenant_id}).all()]
+                    return db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.id.in_(ids)).all()
+
                 builtin_providers = cls.list_builtin_providers(tenant_id)
 
-                # get db builtin providers
-                db_builtin_providers: list[BuiltinToolProvider] = (
-                    db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
-                )
+                # get builtin providers
+                db_builtin_providers = get_builtin_providers(tenant_id)
 
                 # rewrite db_builtin_providers
                 for db_provider in db_builtin_providers:
-                    tool_provider_id = str(ToolProviderID(db_provider.provider))
-                    db_provider.provider = tool_provider_id
+                    db_provider.provider = str(ToolProviderID(db_provider.provider))
 
                 def find_db_builtin_provider(provider):
                     return next((x for x in db_builtin_providers if x.provider == provider), None)

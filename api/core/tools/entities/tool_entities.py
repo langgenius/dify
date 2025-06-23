@@ -434,3 +434,36 @@ class ToolSelector(BaseModel):
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return self.model_dump()
+
+
+class ToolProviderCredentialType(enum.StrEnum):
+    API_KEY = "api_key"
+    OAUTH2 = "oauth2"
+
+    def get_name(self):
+        if self == ToolProviderCredentialType.API_KEY:
+            return "API KEY"
+        elif self == ToolProviderCredentialType.OAUTH2:
+            return "AUTH"
+        else:
+            return self.value.replace("_", " ").upper()
+
+    def is_editable(self):
+        return self == ToolProviderCredentialType.API_KEY
+
+    def is_validate_allowed(self):
+        return self == ToolProviderCredentialType.API_KEY
+
+    @classmethod
+    def values(cls):
+        return [item.value for item in cls]
+
+    @classmethod
+    def of(cls, credential_type: str) -> "ToolProviderCredentialType":
+        type_name = credential_type.lower()
+        if type_name == "api_key":
+            return cls.API_KEY
+        elif type_name == "oauth2":
+            return cls.OAUTH2
+        else:
+            raise ValueError(f"Invalid credential type: {credential_type}")

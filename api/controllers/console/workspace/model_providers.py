@@ -35,7 +35,6 @@ class ModelProviderListApi(Resource):
 
         model_provider_service = ModelProviderService()
         provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.get("model_type"))
-
         return jsonable_encoder({"data": provider_list})
 
 
