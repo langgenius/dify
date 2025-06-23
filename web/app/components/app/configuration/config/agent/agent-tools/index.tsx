@@ -176,7 +176,6 @@ const AgentTools: FC = () => {
                   <span className='text-text-tertiary'>{item.tool_label}</span>
                   {!item.isDeleted && (
                     <Tooltip
-                      needsDelay
                       popupContent={
                         <div className='w-[180px]'>
                           <div className='mb-1.5 text-text-secondary'>{item.tool_name}</div>
@@ -199,7 +198,6 @@ const AgentTools: FC = () => {
                   <div className='mr-2 flex items-center'>
                     <Tooltip
                       popupContent={t('tools.toolRemoved')}
-                      needsDelay
                     >
                       <div className='mr-1 cursor-pointer rounded-md p-1 hover:bg-black/5'>
                         <AlertTriangle className='h-4 w-4 text-[#F79009]' />
@@ -226,7 +224,6 @@ const AgentTools: FC = () => {
                     {!item.notAuthor && (
                       <Tooltip
                         popupContent={t('tools.setBuiltInTools.infoAndSetting')}
-                        needsDelay
                       >
                         <div className='cursor-pointer rounded-md p-1  hover:bg-black/5' onClick={() => {
                           setCurrentTool(item)

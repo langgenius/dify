@@ -105,7 +105,6 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 popupContent={
                   <span className='font-semibold'>{t('common.modelProvider.modelHasBeenDeprecated')}</span>} offset={{ mainAxis: 4 }
                 }
-                needsDelay
               >
                 <Switch defaultValue={false} disabled size='md' />
               </Tooltip>
