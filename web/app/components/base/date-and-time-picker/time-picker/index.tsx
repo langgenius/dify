@@ -21,6 +21,7 @@ const TimePicker = ({
   onClear,
   renderTrigger,
   title,
+  minuteFilter,
   popupClassName,
 }: TimePickerProps) => {
   const { t } = useTranslation()
@@ -152,6 +153,7 @@ const TimePicker = ({
           {/* Time Options */}
           <Options
             selectedTime={selectedTime}
+            minuteFilter={minuteFilter}
             handleSelectHour={handleSelectHour}
             handleSelectMinute={handleSelectMinute}
             handleSelectPeriod={handleSelectPeriod}
