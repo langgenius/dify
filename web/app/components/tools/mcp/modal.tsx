@@ -60,15 +60,7 @@ const MCPModal = ({
 
   const isValidUrl = (string: string) => {
     try {
-      const urlPattern = new RegExp(
-        '^(https?:\\/\\/)?' // protocol
-        + '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' // domain
-        + '((\\d{1,3}\\.){3}\\d{1,3}))' // IP address
-        + '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' // port and path
-        + '(\\?[;&a-z\\d%_.~+=-]*)?' // query string
-        + '(\\#[-a-z\\d_]*)?$', // anchor
-        'i',
-      )
+      const urlPattern = /^(https?:\/\/)((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|((\d{1,3}\.){3}\d{1,3}))(\:\d+)?(\/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?/i
       return urlPattern.test(string)
     }
     catch (e) {
