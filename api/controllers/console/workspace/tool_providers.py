@@ -659,7 +659,10 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         if not validators.url(args["server_url"]):
-            raise ValueError("Server URL is not valid.")
+            if "[__HIDDEN__]" in args["server_url"]:
+                pass
+            else:
+                raise ValueError("Server URL is not valid.")
         MCPToolManageService.update_mcp_provider(
             tenant_id=current_user.current_tenant_id,
             name=args["name"],
