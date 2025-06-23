@@ -6,7 +6,7 @@ import Item from './item'
 import type { Plugin } from '@/app/components/plugins/types.ts'
 import cn from '@/utils/classnames'
 import Link from 'next/link'
-import { marketplaceUrlPrefix } from '@/config'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import { RiArrowRightUpLine, RiSearchLine } from '@remixicon/react'
 import { noop } from 'lodash-es'
 
@@ -32,7 +32,7 @@ const List = forwardRef<ListRef, ListProps>(({
   const { t } = useTranslation()
   const hasFilter = !searchText
   const hasRes = list.length > 0
-  const urlWithSearchText = `${marketplaceUrlPrefix}/?q=${searchText}&tags=${tags.join(',')}`
+  const urlWithSearchText = `${MARKETPLACE_URL_PREFIX}/?q=${searchText}&tags=${tags.join(',')}`
   const nextToStickyELemRef = useRef<HTMLDivElement>(null)
 
   const { handleScroll, scrollPosition } = useStickyScroll({
@@ -71,7 +71,7 @@ const List = forwardRef<ListRef, ListProps>(({
     return (
       <Link
         className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
-        href={`${marketplaceUrlPrefix}/`}
+        href={`${MARKETPLACE_URL_PREFIX}/`}
         target='_blank'
       >
         <span>{t('plugin.findMoreInMarketplace')}</span>

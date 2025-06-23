@@ -366,7 +366,6 @@ export type WorkflowRunningData = {
   message_id?: string
   conversation_id?: string
   result: {
-    sequence_number?: number
     workflow_id?: string
     inputs?: string
     process_data?: string
@@ -389,9 +388,9 @@ export type WorkflowRunningData = {
 
 export type HistoryWorkflowData = {
   id: string
-  sequence_number: number
   status: string
   conversation_id?: string
+  finished_at?: number
 }
 
 export enum ChangeType {

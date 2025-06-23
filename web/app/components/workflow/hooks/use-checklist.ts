@@ -18,7 +18,6 @@ import {
 } from '../utils'
 import {
   CUSTOM_NODE,
-  MAX_TREE_DEPTH,
 } from '../constants'
 import type { ToolNodeType } from '../nodes/tool/types'
 import { useIsChatMode } from './use-workflow'
@@ -33,6 +32,7 @@ import { useDatasetsDetailStore } from '../datasets-detail-store/store'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
+import { MAX_TREE_DEPTH } from '@/config'
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const { t } = useTranslation()

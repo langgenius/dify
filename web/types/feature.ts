@@ -97,3 +97,26 @@ export const defaultSystemFeatures: SystemFeatures = {
     allow_email_password_login: false,
   },
 }
+
+export enum DatasetAttr {
+  DATA_API_PREFIX = 'data-api-prefix',
+  DATA_PUBLIC_API_PREFIX = 'data-public-api-prefix',
+  DATA_MARKETPLACE_API_PREFIX = 'data-marketplace-api-prefix',
+  DATA_MARKETPLACE_URL_PREFIX = 'data-marketplace-url-prefix',
+  DATA_PUBLIC_EDITION = 'data-public-edition',
+  DATA_PUBLIC_SUPPORT_MAIL_LOGIN = 'data-public-support-mail-login',
+  DATA_PUBLIC_SENTRY_DSN = 'data-public-sentry-dsn',
+  DATA_PUBLIC_MAINTENANCE_NOTICE = 'data-public-maintenance-notice',
+  DATA_PUBLIC_SITE_ABOUT = 'data-public-site-about',
+  DATA_PUBLIC_TEXT_GENERATION_TIMEOUT_MS = 'data-public-text-generation-timeout-ms',
+  DATA_PUBLIC_MAX_TOOLS_NUM = 'data-public-max-tools-num',
+  DATA_PUBLIC_MAX_PARALLEL_LIMIT = 'data-public-max-parallel-limit',
+  DATA_PUBLIC_TOP_K_MAX_VALUE = 'data-public-top-k-max-value',
+  DATA_PUBLIC_INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH = 'data-public-indexing-max-segmentation-tokens-length',
+  DATA_PUBLIC_LOOP_NODE_MAX_COUNT = 'data-public-loop-node-max-count',
+  DATA_PUBLIC_MAX_ITERATIONS_NUM = 'data-public-max-iterations-num',
+  DATA_PUBLIC_MAX_TREE_DEPTH = 'data-public-max-tree-depth',
+  DATA_PUBLIC_ENABLE_WEBSITE_JINAREADER = 'data-public-enable-website-jinareader',
+  DATA_PUBLIC_ENABLE_WEBSITE_FIRECRAWL = 'data-public-enable-website-firecrawl',
+  DATA_PUBLIC_ENABLE_WEBSITE_WATERCRAWL = 'data-public-enable-website-watercrawl',
+}
