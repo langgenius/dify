@@ -228,9 +228,9 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 [阿里云](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
 
-#### 使用 阿里雲數據管理 進行部署
+#### 使用 阿里雲數據管理DMS 進行部署
 
-透過 [阿里雲數據管理](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)，一鍵將 Dify 部署至阿里雲
+透過 [阿里雲數據管理DMS](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)，一鍵將 Dify 部署至阿里雲
 
 
 ## 貢獻
