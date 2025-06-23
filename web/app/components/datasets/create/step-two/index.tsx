@@ -512,6 +512,20 @@ const StepTwo = ({
       setOverlap(overlap!)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
+
+      if (documentDetail.dataset_process_rule.mode === 'hierarchical') {
+        setParentChildConfig({
+          chunkForContext: rules.parent_mode || 'paragraph',
+          parent: {
+            delimiter: escape(rules.segmentation.separator),
+            maxLength: rules.segmentation.max_tokens,
+          },
+          child: {
+            delimiter: escape(rules.subchunk_segmentation.separator),
+            maxLength: rules.subchunk_segmentation.max_tokens,
+          },
+        })
+      }
     }
   }
 
