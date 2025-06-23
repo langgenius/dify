@@ -674,7 +674,7 @@ def _setup_variable_pool(
     # Only inject system variables for START node type.
     if node_type == NodeType.START:
         # Create a variable pool.
-        system_inputs = {
+        system_inputs: dict[SystemVariableKey, Any] = {
             # From inputs:
             SystemVariableKey.FILES: files,
             SystemVariableKey.USER_ID: user_id,

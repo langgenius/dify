@@ -1,3 +1,6 @@
+from collections.abc import Mapping
+
+from core.variables.segments import Segment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
@@ -15,7 +18,7 @@ class VariableAggregatorNode(BaseNode[VariableAssignerNodeData]):
 
     def _run(self) -> NodeRunResult:
         # Get variables
-        outputs = {}
+        outputs: dict[str, Segment | Mapping[str, Segment]] = {}
         inputs = {}
 
         if not self.node_data.advanced_settings or not self.node_data.advanced_settings.group_enabled:

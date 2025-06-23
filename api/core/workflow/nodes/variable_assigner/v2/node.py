@@ -1,6 +1,6 @@
 import json
 from collections.abc import Callable, Mapping, MutableMapping, Sequence
-from typing import Any, ClassVar, TypeAlias, cast
+from typing import Any, TypeAlias, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
@@ -58,7 +58,8 @@ class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
     _node_data_cls = VariableAssignerNodeData
     _node_type = NodeType.VARIABLE_ASSIGNER
 
-    _conv_var_updater_factory: ClassVar[_CONV_VAR_UPDATER_FACTORY] = staticmethod(conversation_variable_updater_factory)
+    def _conv_var_updater_factory(self) -> ConversationVariableUpdater:
+        return conversation_variable_updater_factory()
 
     @classmethod
     def version(cls) -> str:

@@ -229,6 +229,7 @@ class Workflow(Base):
             node_config = next(filter(lambda node: node["id"] == node_id, nodes))
         except StopIteration:
             raise NodeNotFoundError(node_id)
+        assert isinstance(node_config, dict)
         return node_config
 
     @staticmethod
