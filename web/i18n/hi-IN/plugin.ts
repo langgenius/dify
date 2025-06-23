@@ -62,6 +62,7 @@ const translation = {
       paramsTip2: 'जब \'स्वचालित\' बंद होता है, तो डिफ़ॉल्ट मान का उपयोग किया जाता है।',
       descriptionPlaceholder: 'उपकरण के उद्देश्य का संक्षिप्त विवरण, जैसे, किसी विशेष स्थान के लिए तापमान प्राप्त करना।',
       paramsTip1: 'एलएलएम अनुमान पैरामीटर को नियंत्रित करता है।',
+      toolSetting: 'टूल सेटिंग्स',
     },
     switchVersion: 'स्विच संस्करण',
     endpointModalDesc: 'एक बार कॉन्फ़िगर होने के बाद, प्लगइन द्वारा API एंडपॉइंट्स के माध्यम से प्रदान की गई सुविधाओं का उपयोग किया जा सकता है।',
@@ -180,6 +181,8 @@ const translation = {
     difyMarketplace: 'डिफाई मार्केटप्लेस',
     sortBy: 'काला शहर',
     discover: 'खोजें',
+    partnerTip: 'Dify भागीदार द्वारा सत्यापित',
+    verifiedTip: 'डिफाई द्वारा सत्यापित',
   },
   task: {
     clearAll: 'सभी साफ करें',
@@ -193,7 +196,6 @@ const translation = {
   fromMarketplace: 'मार्केटप्लेस से',
   searchPlugins: 'खोज प्लगइन्स',
   install: '{{num}} इंस्टॉलेशन',
-  submitPlugin: 'प्लगइन सबमिट करें',
   allCategories: 'सभी श्रेणियाँ',
   search: 'खोज',
   searchTools: 'खोज उपकरण...',
@@ -204,6 +206,12 @@ const translation = {
   findMoreInMarketplace: 'मार्केटप्लेस में और खोजें',
   endpointsEnabled: '{{num}} एंडपॉइंट्स के सेट सक्षम किए गए',
   from: 'से',
+  metadata: {
+    title: 'प्लगइन्स',
+  },
+  difyVersionNotCompatible: 'वर्तमान डिफाई संस्करण इस प्लगइन के साथ संगत नहीं है, कृपया आवश्यक न्यूनतम संस्करण में अपग्रेड करें: {{minimalDifyVersion}}',
+  requestAPlugin: 'एक प्लगइन का अनुरोध करें',
+  publishPlugins: 'प्लगइन प्रकाशित करें',
 }
 
 export default translation

@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
+import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import {
@@ -32,8 +33,9 @@ import { useGetLanguage } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
-import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
+import { API_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
+import { getMarketplaceUrl } from '@/utils/var'
 
 const i18nPrefix = 'plugin.action'
 
@@ -49,6 +51,7 @@ const DetailHeader = ({
   onUpdate,
 }: Props) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
   const locale = useGetLanguage()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
@@ -85,9 +88,9 @@ const DetailHeader = ({
     if (isFromGitHub)
       return `https://github.com/${meta!.repo}`
     if (isFromMarketplace)
-      return `${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`
+      return getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })
     return ''
-  }, [author, isFromGitHub, isFromMarketplace, meta, name])
+  }, [author, isFromGitHub, isFromMarketplace, meta, name, theme])
 
   const [isShowUpdateModal, {
     setTrue: showUpdateModal,

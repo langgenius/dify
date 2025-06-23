@@ -54,6 +54,10 @@ const translation = {
     copied: 'Kopiowane',
     in: 'w',
     viewDetails: 'Wyświetl szczegóły',
+    format: 'Format',
+    downloadFailed: 'Pobieranie nie powiodło się. Proszę spróbować ponownie później.',
+    more: 'Więcej',
+    downloadSuccess: 'Pobieranie zakończone.',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -146,6 +150,8 @@ const translation = {
     newDataset: 'Utwórz Wiedzę',
     tools: 'Narzędzia',
     exploreMarketplace: 'Zapoznaj się z Marketplace',
+    appDetail: 'Szczegóły aplikacji',
+    account: 'klient',
   },
   userProfile: {
     settings: 'Ustawienia',
@@ -158,6 +164,9 @@ const translation = {
     community: 'Społeczność',
     about: 'O',
     logout: 'Wyloguj się',
+    support: 'Wsparcie',
+    github: 'GitHub',
+    compliance: 'Zgodność',
   },
   settings: {
     accountGroup: 'KONTO',
@@ -208,6 +217,9 @@ const translation = {
     feedbackTitle: 'Sprzężenie zwrotne',
     feedbackLabel: 'Powiedz nam, dlaczego usunąłeś swoje konto?',
     feedbackPlaceholder: 'Fakultatywny',
+    workspaceIcon: 'Ikona robocza',
+    workspaceName: 'Nazwa miejsca pracy',
+    editWorkspaceInfo: 'Edytuj informacje o przestrzeni roboczej',
   },
   members: {
     team: 'Zespół',
@@ -469,7 +481,6 @@ const translation = {
     title:
       'Rozszerzenia oparte na interfejsie API zapewniają scentralizowane zarządzanie interfejsami API, upraszczając konfigurację dla łatwego użytkowania w aplikacjach Dify.',
     link: 'Dowiedz się, jak opracować własne rozszerzenie interfejsu API.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Dodaj rozszerzenie interfejsu API',
     selector: {
       title: 'Rozszerzenie interfejsu API',
@@ -555,9 +566,10 @@ const translation = {
       vectorHash: 'Wektor hash:',
       hitScore: 'Wynik trafień:',
     },
-    inputPlaceholder: 'Porozmawiaj z botem',
+    inputPlaceholder: 'Porozmawiaj z {{botName}}',
     thought: 'Myśl',
     thinking: 'Myślenie...',
+    resend: 'Prześlij ponownie',
   },
   promptEditor: {
     placeholder:
@@ -651,10 +663,31 @@ const translation = {
   license: {
     expiring_plural: 'Wygasa za {{count}} dni',
     expiring: 'Wygasa w ciągu jednego dnia',
+    unlimited: 'Nieograniczony',
   },
   pagination: {
     perPage: 'Ilość elementów na stronie',
   },
+  theme: {
+    light: 'światło',
+    theme: 'Temat',
+    dark: 'ciemny',
+    auto: 'system',
+  },
+  compliance: {
+    soc2Type2: 'Raport SOC 2 Typ II',
+    sandboxUpgradeTooltip: 'Dostępne tylko w planie Professional lub Team.',
+    professionalUpgradeTooltip: 'Dostępne tylko w planie zespołowym lub wyższym.',
+    iso27001: 'Certyfikacja ISO 27001:2022',
+    soc2Type1: 'Raport SOC 2 Typ I',
+    gdpr: 'GDPR DPA',
+  },
+  imageInput: {
+    dropImageHere: 'Upuść swój obraz tutaj, lub',
+    browse: 'przeglądaj',
+    supportedFormats: 'Obsługuje PNG, JPG, JPEG, WEBP i GIF',
+  },
+  you: 'Ty',
 }
 
 export default translation

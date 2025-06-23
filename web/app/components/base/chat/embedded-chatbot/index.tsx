@@ -1,4 +1,6 @@
+'use client'
 import {
+  useCallback,
   useEffect,
   useState,
 } from 'react'
@@ -12,18 +14,22 @@ import { useEmbeddedChatbot } from './hooks'
 import { isDify } from './utils'
 import { useThemeContext } from './theme/theme-context'
 import { CssTransform } from './theme/utils'
-import { checkOrSetAccessToken } from '@/app/components/share/utils'
+import { checkOrSetAccessToken, removeAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 const Chatbot = () => {
   const {
+    userCanAccess,
     isMobile,
     allowResetChat,
     appInfoError,
@@ -33,8 +39,10 @@ const Chatbot = () => {
     chatShouldReloadKey,
     handleNewConversation,
     themeBuilder,
+    isInstalledApp,
   } = useEmbeddedChatbotContext()
   const { t } = useTranslation()
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
   const customConfig = appData?.custom_config
   const site = appData?.site
@@ -43,13 +51,25 @@ const Chatbot = () => {
 
   useEffect(() => {
     themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
-    if (site) {
-      if (customConfig)
-        document.title = `${site.title}`
-      else
-        document.title = `${site.title} - Powered by Dify`
-    }
   }, [site, customConfig, themeBuilder])
+
+  useDocumentTitle(site?.title || 'Chat')
+
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+  const getSigninUrl = useCallback(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('message')
+    params.set('redirect_url', pathname)
+    return `/webapp-signin?${params.toString()}`
+  }, [searchParams, pathname])
+
+  const backToHome = useCallback(() => {
+    removeAccessToken()
+    const url = getSigninUrl()
+    router.replace(url)
+  }, [getSigninUrl, router])
 
   if (appInfoLoading) {
     return (
@@ -64,6 +84,13 @@ const Chatbot = () => {
         )}
       </>
     )
+  }
+
+  if (!userCanAccess) {
+    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
+      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
+      {!isInstalledApp && <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>}
+    </div>
   }
 
   if (appInfoError) {
@@ -114,12 +141,13 @@ const Chatbot = () => {
               'flex shrink-0 items-center gap-1.5 px-2',
             )}>
               <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-              {appData?.custom_config?.replace_webapp_logo && (
-                <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
-              )}
-              {!appData?.custom_config?.replace_webapp_logo && (
-                <LogoSite className='!h-5' />
-              )}
+              {
+                systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                  ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                  : appData?.custom_config?.replace_webapp_logo
+                    ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
+                    : <DifyLogo size='small' />
+              }
             </div>
           )}
         </div>
@@ -137,6 +165,7 @@ const EmbeddedChatbotWrapper = () => {
     appInfoError,
     appInfoLoading,
     appData,
+    userCanAccess,
     appParams,
     appMeta,
     appChatListDataLoading,
@@ -165,9 +194,12 @@ const EmbeddedChatbotWrapper = () => {
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    allInputsHidden,
+    initUserVariables,
   } = useEmbeddedChatbot()
 
   return <EmbeddedChatbotContext.Provider value={{
+    userCanAccess,
     appInfoError,
     appInfoLoading,
     appData,
@@ -201,6 +233,8 @@ const EmbeddedChatbotWrapper = () => {
     setIsResponding,
     currentConversationInputs,
     setCurrentConversationInputs,
+    allInputsHidden,
+    initUserVariables,
   }}>
     <Chatbot />
   </EmbeddedChatbotContext.Provider>

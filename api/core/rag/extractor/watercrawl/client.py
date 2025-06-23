@@ -6,6 +6,12 @@ from urllib.parse import urljoin
 import requests
 from requests import Response
 
+from core.rag.extractor.watercrawl.exceptions import (
+    WaterCrawlAuthenticationError,
+    WaterCrawlBadRequestError,
+    WaterCrawlPermissionError,
+)
+
 
 class BaseAPIClient:
     def __init__(self, api_key, base_url):
@@ -53,6 +59,15 @@ class WaterCrawlAPIClient(BaseAPIClient):
                 yield data
 
     def process_response(self, response: Response) -> dict | bytes | list | None | Generator:
+        if response.status_code == 401:
+            raise WaterCrawlAuthenticationError(response)
+
+        if response.status_code == 403:
+            raise WaterCrawlPermissionError(response)
+
+        if 400 <= response.status_code < 500:
+            raise WaterCrawlBadRequestError(response)
+
         response.raise_for_status()
         if response.status_code == 204:
             return None

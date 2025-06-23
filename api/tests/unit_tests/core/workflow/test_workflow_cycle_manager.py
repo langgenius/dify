@@ -1,53 +1,79 @@
 import json
-import time
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy.orm import Session
 
+from core.app.app_config.entities import AppAdditionalFeatures, WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import (
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
 )
+from core.workflow.entities.workflow_execution import WorkflowExecution, WorkflowExecutionStatus, WorkflowType
+from core.workflow.entities.workflow_node_execution import (
+    WorkflowNodeExecution,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
-from core.workflow.repository.workflow_node_execution_repository import WorkflowNodeExecutionRepository
-from core.workflow.workflow_cycle_manager import WorkflowCycleManager
-from models.enums import CreatedByRole
-from models.workflow import (
-    Workflow,
-    WorkflowNodeExecution,
-    WorkflowNodeExecutionStatus,
-    WorkflowRun,
-    WorkflowRunStatus,
-)
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
+from models.enums import CreatorUserRole
+from models.model import AppMode
+from models.workflow import Workflow, WorkflowRun
 
 
 @pytest.fixture
-def mock_app_generate_entity():
-    entity = MagicMock(spec=AdvancedChatAppGenerateEntity)
-    entity.inputs = {"query": "test query"}
-    entity.invoke_from = InvokeFrom.WEB_APP
-    # Create app_config as a separate mock
-    app_config = MagicMock()
-    app_config.tenant_id = "test-tenant-id"
-    app_config.app_id = "test-app-id"
-    entity.app_config = app_config
+def real_app_generate_entity():
+    additional_features = AppAdditionalFeatures(
+        file_upload=None,
+        opening_statement=None,
+        suggested_questions=[],
+        suggested_questions_after_answer=False,
+        show_retrieve_source=False,
+        more_like_this=False,
+        speech_to_text=False,
+        text_to_speech=None,
+        trace_config=None,
+    )
+
+    app_config = WorkflowUIBasedAppConfig(
+        tenant_id="test-tenant-id",
+        app_id="test-app-id",
+        app_mode=AppMode.WORKFLOW,
+        additional_features=additional_features,
+        workflow_id="test-workflow-id",
+    )
+
+    entity = AdvancedChatAppGenerateEntity(
+        task_id="test-task-id",
+        app_config=app_config,
+        inputs={"query": "test query"},
+        files=[],
+        user_id="test-user-id",
+        stream=False,
+        invoke_from=InvokeFrom.WEB_APP,
+        query="test query",
+        conversation_id="test-conversation-id",
+    )
+
     return entity
 
 
 @pytest.fixture
-def mock_workflow_system_variables():
+def real_workflow_system_variables():
     return {
         SystemVariableKey.QUERY: "test query",
         SystemVariableKey.CONVERSATION_ID: "test-conversation-id",
         SystemVariableKey.USER_ID: "test-user-id",
         SystemVariableKey.APP_ID: "test-app-id",
         SystemVariableKey.WORKFLOW_ID: "test-workflow-id",
-        SystemVariableKey.WORKFLOW_RUN_ID: "test-workflow-run-id",
+        SystemVariableKey.WORKFLOW_EXECUTION_ID: "test-workflow-run-id",
     }
 
 
@@ -60,10 +86,45 @@ def mock_node_execution_repository():
 
 
 @pytest.fixture
-def workflow_cycle_manager(mock_app_generate_entity, mock_workflow_system_variables, mock_node_execution_repository):
+def mock_workflow_execution_repository():
+    repo = MagicMock(spec=WorkflowExecutionRepository)
+    repo.get.return_value = None
+    return repo
+
+
+@pytest.fixture
+def real_workflow_entity():
+    return CycleManagerWorkflowInfo(
+        workflow_id="test-workflow-id",  # Matches ID used in other fixtures
+        workflow_type=WorkflowType.CHAT,
+        version="1.0.0",
+        graph_data={
+            "nodes": [
+                {
+                    "id": "node1",
+                    "type": "chat",  # NodeType is a string enum
+                    "name": "Chat Node",
+                    "data": {"model": "gpt-3.5-turbo", "prompt": "test prompt"},
+                }
+            ],
+            "edges": [],
+        },
+    )
+
+
+@pytest.fixture
+def workflow_cycle_manager(
+    real_app_generate_entity,
+    real_workflow_system_variables,
+    mock_workflow_execution_repository,
+    mock_node_execution_repository,
+    real_workflow_entity,
+):
     return WorkflowCycleManager(
-        application_generate_entity=mock_app_generate_entity,
-        workflow_system_variables=mock_workflow_system_variables,
+        application_generate_entity=real_app_generate_entity,
+        workflow_system_variables=real_workflow_system_variables,
+        workflow_info=real_workflow_entity,
+        workflow_execution_repository=mock_workflow_execution_repository,
         workflow_node_execution_repository=mock_node_execution_repository,
     )
 
@@ -75,122 +136,162 @@ def mock_session():
 
 
 @pytest.fixture
-def mock_workflow():
-    workflow = MagicMock(spec=Workflow)
+def real_workflow():
+    workflow = Workflow()
     workflow.id = "test-workflow-id"
     workflow.tenant_id = "test-tenant-id"
     workflow.app_id = "test-app-id"
     workflow.type = "chat"
     workflow.version = "1.0"
-    workflow.graph = json.dumps({"nodes": [], "edges": []})
+
+    graph_data = {"nodes": [], "edges": []}
+    workflow.graph = json.dumps(graph_data)
+    workflow.features = json.dumps({"file_upload": {"enabled": False}})
+    workflow.created_by = "test-user-id"
+    workflow.created_at = datetime.now(UTC).replace(tzinfo=None)
+    workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
+    workflow._environment_variables = "{}"
+    workflow._conversation_variables = "{}"
+
     return workflow
 
 
 @pytest.fixture
-def mock_workflow_run():
-    workflow_run = MagicMock(spec=WorkflowRun)
+def real_workflow_run():
+    workflow_run = WorkflowRun()
     workflow_run.id = "test-workflow-run-id"
     workflow_run.tenant_id = "test-tenant-id"
     workflow_run.app_id = "test-app-id"
     workflow_run.workflow_id = "test-workflow-id"
-    workflow_run.status = WorkflowRunStatus.RUNNING
-    workflow_run.created_by_role = CreatedByRole.ACCOUNT
+    workflow_run.type = "chat"
+    workflow_run.triggered_from = "app-run"
+    workflow_run.version = "1.0"
+    workflow_run.graph = json.dumps({"nodes": [], "edges": []})
+    workflow_run.inputs = json.dumps({"query": "test query"})
+    workflow_run.status = WorkflowExecutionStatus.RUNNING
+    workflow_run.outputs = json.dumps({"answer": "test answer"})
+    workflow_run.created_by_role = CreatorUserRole.ACCOUNT
     workflow_run.created_by = "test-user-id"
     workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
-    workflow_run.inputs_dict = {"query": "test query"}
-    workflow_run.outputs_dict = {"answer": "test answer"}
+
     return workflow_run
 
 
 def test_init(
-    workflow_cycle_manager, mock_app_generate_entity, mock_workflow_system_variables, mock_node_execution_repository
+    workflow_cycle_manager,
+    real_app_generate_entity,
+    real_workflow_system_variables,
+    mock_workflow_execution_repository,
+    mock_node_execution_repository,
 ):
     """Test initialization of WorkflowCycleManager"""
-    assert workflow_cycle_manager._workflow_run is None
-    assert workflow_cycle_manager._workflow_node_executions == {}
-    assert workflow_cycle_manager._application_generate_entity == mock_app_generate_entity
-    assert workflow_cycle_manager._workflow_system_variables == mock_workflow_system_variables
+    assert workflow_cycle_manager._application_generate_entity == real_app_generate_entity
+    assert workflow_cycle_manager._workflow_system_variables == real_workflow_system_variables
+    assert workflow_cycle_manager._workflow_execution_repository == mock_workflow_execution_repository
     assert workflow_cycle_manager._workflow_node_execution_repository == mock_node_execution_repository
 
 
-def test_handle_workflow_run_start(workflow_cycle_manager, mock_session, mock_workflow):
-    """Test _handle_workflow_run_start method"""
-    # Mock session.scalar to return the workflow and max sequence
-    mock_session.scalar.side_effect = [mock_workflow, 5]
+def test_handle_workflow_run_start(workflow_cycle_manager):
+    """Test handle_workflow_run_start method"""
+    # Call the method
+    workflow_execution = workflow_cycle_manager.handle_workflow_run_start()
+
+    # Verify the result
+    assert workflow_execution.workflow_id == "test-workflow-id"
+
+    # Verify the workflow_execution_repository.save was called
+    workflow_cycle_manager._workflow_execution_repository.save.assert_called_once_with(workflow_execution)
+
+
+def test_handle_workflow_run_success(workflow_cycle_manager, mock_workflow_execution_repository):
+    """Test handle_workflow_run_success method"""
+    # Create a real WorkflowExecution
+
+    workflow_execution = WorkflowExecution(
+        id_="test-workflow-run-id",
+        workflow_id="test-workflow-id",
+        workflow_version="1.0",
+        workflow_type=WorkflowType.CHAT,
+        graph={"nodes": [], "edges": []},
+        inputs={"query": "test query"},
+        started_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+
+    # Mock _get_workflow_execution_or_raise_error to return the real workflow_execution
+    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
 
     # Call the method
-    workflow_run = workflow_cycle_manager._handle_workflow_run_start(
-        session=mock_session,
-        workflow_id="test-workflow-id",
-        user_id="test-user-id",
-        created_by_role=CreatedByRole.ACCOUNT,
+    result = workflow_cycle_manager.handle_workflow_run_success(
+        workflow_run_id="test-workflow-run-id",
+        total_tokens=100,
+        total_steps=5,
+        outputs={"answer": "test answer"},
     )
 
     # Verify the result
-    assert workflow_run.tenant_id == mock_workflow.tenant_id
-    assert workflow_run.app_id == mock_workflow.app_id
-    assert workflow_run.workflow_id == mock_workflow.id
-    assert workflow_run.sequence_number == 6  # max_sequence + 1
-    assert workflow_run.status == WorkflowRunStatus.RUNNING
-    assert workflow_run.created_by_role == CreatedByRole.ACCOUNT
-    assert workflow_run.created_by == "test-user-id"
-
-    # Verify session.add was called
-    mock_session.add.assert_called_once_with(workflow_run)
+    assert result == workflow_execution
+    assert result.status == WorkflowExecutionStatus.SUCCEEDED
+    assert result.outputs == {"answer": "test answer"}
+    assert result.total_tokens == 100
+    assert result.total_steps == 5
+    assert result.finished_at is not None
 
 
-def test_handle_workflow_run_success(workflow_cycle_manager, mock_session, mock_workflow_run):
-    """Test _handle_workflow_run_success method"""
-    # Mock _get_workflow_run to return the mock_workflow_run
-    with patch.object(workflow_cycle_manager, "_get_workflow_run", return_value=mock_workflow_run):
-        # Call the method
-        result = workflow_cycle_manager._handle_workflow_run_success(
-            session=mock_session,
-            workflow_run_id="test-workflow-run-id",
-            start_at=time.perf_counter() - 10,  # 10 seconds ago
-            total_tokens=100,
-            total_steps=5,
-            outputs={"answer": "test answer"},
-        )
+def test_handle_workflow_run_failed(workflow_cycle_manager, mock_workflow_execution_repository):
+    """Test handle_workflow_run_failed method"""
+    # Create a real WorkflowExecution
 
-        # Verify the result
-        assert result == mock_workflow_run
-        assert result.status == WorkflowRunStatus.SUCCEEDED
-        assert result.outputs == json.dumps({"answer": "test answer"})
-        assert result.total_tokens == 100
-        assert result.total_steps == 5
-        assert result.finished_at is not None
+    workflow_execution = WorkflowExecution(
+        id_="test-workflow-run-id",
+        workflow_id="test-workflow-id",
+        workflow_version="1.0",
+        workflow_type=WorkflowType.CHAT,
+        graph={"nodes": [], "edges": []},
+        inputs={"query": "test query"},
+        started_at=datetime.now(UTC).replace(tzinfo=None),
+    )
 
+    # Mock _get_workflow_execution_or_raise_error to return the real workflow_execution
+    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
 
-def test_handle_workflow_run_failed(workflow_cycle_manager, mock_session, mock_workflow_run):
-    """Test _handle_workflow_run_failed method"""
-    # Mock _get_workflow_run to return the mock_workflow_run
-    with patch.object(workflow_cycle_manager, "_get_workflow_run", return_value=mock_workflow_run):
-        # Mock get_running_executions to return an empty list
-        workflow_cycle_manager._workflow_node_execution_repository.get_running_executions.return_value = []
+    # Mock get_running_executions to return an empty list
+    workflow_cycle_manager._workflow_node_execution_repository.get_running_executions.return_value = []
 
-        # Call the method
-        result = workflow_cycle_manager._handle_workflow_run_failed(
-            session=mock_session,
-            workflow_run_id="test-workflow-run-id",
-            start_at=time.perf_counter() - 10,  # 10 seconds ago
-            total_tokens=50,
-            total_steps=3,
-            status=WorkflowRunStatus.FAILED,
-            error="Test error message",
-        )
+    # Call the method
+    result = workflow_cycle_manager.handle_workflow_run_failed(
+        workflow_run_id="test-workflow-run-id",
+        total_tokens=50,
+        total_steps=3,
+        status=WorkflowExecutionStatus.FAILED,
+        error_message="Test error message",
+    )
 
-        # Verify the result
-        assert result == mock_workflow_run
-        assert result.status == WorkflowRunStatus.FAILED.value
-        assert result.error == "Test error message"
-        assert result.total_tokens == 50
-        assert result.total_steps == 3
-        assert result.finished_at is not None
+    # Verify the result
+    assert result == workflow_execution
+    assert result.status == WorkflowExecutionStatus.FAILED
+    assert result.error_message == "Test error message"
+    assert result.total_tokens == 50
+    assert result.total_steps == 3
+    assert result.finished_at is not None
 
 
-def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_run):
-    """Test _handle_node_execution_start method"""
+def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_execution_repository):
+    """Test handle_node_execution_start method"""
+    # Create a real WorkflowExecution
+
+    workflow_execution = WorkflowExecution(
+        id_="test-workflow-execution-id",
+        workflow_id="test-workflow-id",
+        workflow_version="1.0",
+        workflow_type=WorkflowType.CHAT,
+        graph={"nodes": [], "edges": []},
+        inputs={"query": "test query"},
+        started_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+
+    # Mock _get_workflow_execution_or_raise_error to return the real workflow_execution
+    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
+
     # Create a mock event
     event = MagicMock(spec=QueueNodeStartedEvent)
     event.node_execution_id = "test-node-execution-id"
@@ -209,140 +310,170 @@ def test_handle_node_execution_start(workflow_cycle_manager, mock_workflow_run):
     event.in_loop_id = "test-loop-id"
 
     # Call the method
-    result = workflow_cycle_manager._handle_node_execution_start(
-        workflow_run=mock_workflow_run,
+    result = workflow_cycle_manager.handle_node_execution_start(
+        workflow_execution_id=workflow_execution.id_,
         event=event,
     )
 
     # Verify the result
-    assert result.tenant_id == mock_workflow_run.tenant_id
-    assert result.app_id == mock_workflow_run.app_id
-    assert result.workflow_id == mock_workflow_run.workflow_id
-    assert result.workflow_run_id == mock_workflow_run.id
+    assert result.workflow_id == workflow_execution.workflow_id
+    assert result.workflow_execution_id == workflow_execution.id_
     assert result.node_execution_id == event.node_execution_id
     assert result.node_id == event.node_id
-    assert result.node_type == event.node_type.value
+    assert result.node_type == event.node_type
     assert result.title == event.node_data.title
-    assert result.status == WorkflowNodeExecutionStatus.RUNNING.value
-    assert result.created_by_role == mock_workflow_run.created_by_role
-    assert result.created_by == mock_workflow_run.created_by
+    assert result.status == WorkflowNodeExecutionStatus.RUNNING
 
     # Verify save was called
     workflow_cycle_manager._workflow_node_execution_repository.save.assert_called_once_with(result)
 
-    # Verify the node execution was added to the cache
-    assert workflow_cycle_manager._workflow_node_executions[event.node_execution_id] == result
 
+def test_get_workflow_execution_or_raise_error(workflow_cycle_manager, mock_workflow_execution_repository):
+    """Test _get_workflow_execution_or_raise_error method"""
+    # Create a real WorkflowExecution
 
-def test_get_workflow_run(workflow_cycle_manager, mock_session, mock_workflow_run):
-    """Test _get_workflow_run method"""
-    # Mock session.scalar to return the workflow run
-    mock_session.scalar.return_value = mock_workflow_run
-
-    # Call the method
-    result = workflow_cycle_manager._get_workflow_run(
-        session=mock_session,
-        workflow_run_id="test-workflow-run-id",
+    workflow_execution = WorkflowExecution(
+        id_="test-workflow-run-id",
+        workflow_id="test-workflow-id",
+        workflow_version="1.0",
+        workflow_type=WorkflowType.CHAT,
+        graph={"nodes": [], "edges": []},
+        inputs={"query": "test query"},
+        started_at=datetime.now(UTC).replace(tzinfo=None),
     )
 
+    # Mock the repository get method to return the real execution
+    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
+
+    # Call the method
+    result = workflow_cycle_manager._get_workflow_execution_or_raise_error("test-workflow-run-id")
+
     # Verify the result
-    assert result == mock_workflow_run
-    assert workflow_cycle_manager._workflow_run == mock_workflow_run
+    assert result == workflow_execution
+
+    # Test error case
+    workflow_cycle_manager._workflow_execution_repository.get.return_value = None
+
+    # Expect an error when execution is not found
+    with pytest.raises(ValueError):
+        workflow_cycle_manager._get_workflow_execution_or_raise_error("non-existent-id")
 
 
 def test_handle_workflow_node_execution_success(workflow_cycle_manager):
-    """Test _handle_workflow_node_execution_success method"""
+    """Test handle_workflow_node_execution_success method"""
     # Create a mock event
     event = MagicMock(spec=QueueNodeSucceededEvent)
     event.node_execution_id = "test-node-execution-id"
     event.inputs = {"input": "test input"}
     event.process_data = {"process": "test process"}
     event.outputs = {"output": "test output"}
-    event.execution_metadata = {"metadata": "test metadata"}
+    event.execution_metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 100}
     event.start_at = datetime.now(UTC).replace(tzinfo=None)
 
-    # Create a mock workflow node execution
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
-    node_execution.node_execution_id = "test-node-execution-id"
+    # Create a real node execution
 
-    # Mock _get_workflow_node_execution to return the mock node execution
-    with patch.object(workflow_cycle_manager, "_get_workflow_node_execution", return_value=node_execution):
-        # Call the method
-        result = workflow_cycle_manager._handle_workflow_node_execution_success(
-            event=event,
-        )
+    node_execution = WorkflowNodeExecution(
+        id="test-node-execution-record-id",
+        node_execution_id="test-node-execution-id",
+        workflow_id="test-workflow-id",
+        workflow_execution_id="test-workflow-run-id",
+        index=1,
+        node_id="test-node-id",
+        node_type=NodeType.LLM,
+        title="Test Node",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+    )
 
-        # Verify the result
-        assert result == node_execution
-        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED.value
-        assert result.inputs == json.dumps(event.inputs)
-        assert result.process_data == json.dumps(event.process_data)
-        assert result.outputs == json.dumps(event.outputs)
-        assert result.finished_at is not None
-        assert result.elapsed_time is not None
+    # Mock the repository to return the node execution
+    workflow_cycle_manager._workflow_node_execution_repository.get_by_node_execution_id.return_value = node_execution
 
-        # Verify update was called
-        workflow_cycle_manager._workflow_node_execution_repository.update.assert_called_once_with(node_execution)
+    # Call the method
+    result = workflow_cycle_manager.handle_workflow_node_execution_success(
+        event=event,
+    )
+
+    # Verify the result
+    assert result == node_execution
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+
+    # Verify save was called
+    workflow_cycle_manager._workflow_node_execution_repository.save.assert_called_once_with(node_execution)
 
 
-def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_session, mock_workflow_run):
-    """Test _handle_workflow_run_partial_success method"""
-    # Mock _get_workflow_run to return the mock_workflow_run
-    with patch.object(workflow_cycle_manager, "_get_workflow_run", return_value=mock_workflow_run):
-        # Call the method
-        result = workflow_cycle_manager._handle_workflow_run_partial_success(
-            session=mock_session,
-            workflow_run_id="test-workflow-run-id",
-            start_at=time.perf_counter() - 10,  # 10 seconds ago
-            total_tokens=75,
-            total_steps=4,
-            outputs={"partial_answer": "test partial answer"},
-            exceptions_count=2,
-        )
+def test_handle_workflow_run_partial_success(workflow_cycle_manager, mock_workflow_execution_repository):
+    """Test handle_workflow_run_partial_success method"""
+    # Create a real WorkflowExecution
 
-        # Verify the result
-        assert result == mock_workflow_run
-        assert result.status == WorkflowRunStatus.PARTIAL_SUCCEEDED.value
-        assert result.outputs == json.dumps({"partial_answer": "test partial answer"})
-        assert result.total_tokens == 75
-        assert result.total_steps == 4
-        assert result.exceptions_count == 2
-        assert result.finished_at is not None
+    workflow_execution = WorkflowExecution(
+        id_="test-workflow-run-id",
+        workflow_id="test-workflow-id",
+        workflow_version="1.0",
+        workflow_type=WorkflowType.CHAT,
+        graph={"nodes": [], "edges": []},
+        inputs={"query": "test query"},
+        started_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+
+    # Mock _get_workflow_execution_or_raise_error to return the real workflow_execution
+    workflow_cycle_manager._workflow_execution_repository.get.return_value = workflow_execution
+
+    # Call the method
+    result = workflow_cycle_manager.handle_workflow_run_partial_success(
+        workflow_run_id="test-workflow-run-id",
+        total_tokens=75,
+        total_steps=4,
+        outputs={"partial_answer": "test partial answer"},
+        exceptions_count=2,
+    )
+
+    # Verify the result
+    assert result == workflow_execution
+    assert result.status == WorkflowExecutionStatus.PARTIAL_SUCCEEDED
+    assert result.outputs == {"partial_answer": "test partial answer"}
+    assert result.total_tokens == 75
+    assert result.total_steps == 4
+    assert result.exceptions_count == 2
+    assert result.finished_at is not None
 
 
 def test_handle_workflow_node_execution_failed(workflow_cycle_manager):
-    """Test _handle_workflow_node_execution_failed method"""
+    """Test handle_workflow_node_execution_failed method"""
     # Create a mock event
     event = MagicMock(spec=QueueNodeFailedEvent)
     event.node_execution_id = "test-node-execution-id"
     event.inputs = {"input": "test input"}
     event.process_data = {"process": "test process"}
     event.outputs = {"output": "test output"}
-    event.execution_metadata = {"metadata": "test metadata"}
+    event.execution_metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 100}
     event.start_at = datetime.now(UTC).replace(tzinfo=None)
     event.error = "Test error message"
 
-    # Create a mock workflow node execution
-    node_execution = MagicMock(spec=WorkflowNodeExecution)
-    node_execution.node_execution_id = "test-node-execution-id"
+    # Create a real node execution
 
-    # Mock _get_workflow_node_execution to return the mock node execution
-    with patch.object(workflow_cycle_manager, "_get_workflow_node_execution", return_value=node_execution):
-        # Call the method
-        result = workflow_cycle_manager._handle_workflow_node_execution_failed(
-            event=event,
-        )
+    node_execution = WorkflowNodeExecution(
+        id="test-node-execution-record-id",
+        node_execution_id="test-node-execution-id",
+        workflow_id="test-workflow-id",
+        workflow_execution_id="test-workflow-run-id",
+        index=1,
+        node_id="test-node-id",
+        node_type=NodeType.LLM,
+        title="Test Node",
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+    )
 
-        # Verify the result
-        assert result == node_execution
-        assert result.status == WorkflowNodeExecutionStatus.FAILED.value
-        assert result.error == "Test error message"
-        assert result.inputs == json.dumps(event.inputs)
-        assert result.process_data == json.dumps(event.process_data)
-        assert result.outputs == json.dumps(event.outputs)
-        assert result.finished_at is not None
-        assert result.elapsed_time is not None
-        assert result.execution_metadata == json.dumps(event.execution_metadata)
+    # Mock the repository to return the node execution
+    workflow_cycle_manager._workflow_node_execution_repository.get_by_node_execution_id.return_value = node_execution
 
-        # Verify update was called
-        workflow_cycle_manager._workflow_node_execution_repository.update.assert_called_once_with(node_execution)
+    # Call the method
+    result = workflow_cycle_manager.handle_workflow_node_execution_failed(
+        event=event,
+    )
+
+    # Verify the result
+    assert result == node_execution
+    assert result.status == WorkflowNodeExecutionStatus.FAILED
+    assert result.error == "Test error message"
+
+    # Verify save was called
+    workflow_cycle_manager._workflow_node_execution_repository.save.assert_called_once_with(node_execution)

@@ -28,6 +28,10 @@ const translation = {
     temporarySystemIssue: 'Вибачте, тимчасова системна проблема.',
     expand: 'Розгорнути',
     collapse: 'Згорнути',
+    chatFormTip: 'Налаштування чату не можуть бути змінені після початку чату.',
+    viewChatSettings: 'Переглянути налаштування чату',
+    chatSettingsTitle: 'Нове налаштування чату',
+    newChatTip: 'Вже в новому чаті',
   },
   generation: {
     tabs: {
@@ -66,6 +70,11 @@ const translation = {
       moreThanMaxLengthLine: 'Рядок {{rowIndex}}: значення {{varName}} не може містити більше {{maxLength}} символів',
       atLeastOne: 'Будь ласка, введіть принаймні один рядок у завантажений файл.',
     },
+    execution: 'ВИКОНАННЯ',
+    executions: '{{num}} ВИКОНАНЬ',
+  },
+  login: {
+    backToHome: 'Повернутися на головну',
   },
 }
 

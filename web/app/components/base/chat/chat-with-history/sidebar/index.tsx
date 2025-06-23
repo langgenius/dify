@@ -16,9 +16,10 @@ import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
 import Confirm from '@/app/components/base/confirm'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 import type { ConversationItem } from '@/models/share'
 import cn from '@/utils/classnames'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   isPanel?: boolean
@@ -27,6 +28,7 @@ type Props = {
 const Sidebar = ({ isPanel }: Props) => {
   const { t } = useTranslation()
   const {
+    isInstalledApp,
     appData,
     handleNewConversation,
     pinnedConversationList,
@@ -44,7 +46,7 @@ const Sidebar = ({ isPanel }: Props) => {
     isResponding,
   } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
-
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
   const [showRename, setShowRename] = useState<ConversationItem | null>(null)
 
@@ -136,42 +138,43 @@ const Sidebar = ({ isPanel }: Props) => {
         )}
       </div>
       <div className='flex shrink-0 items-center justify-between p-3'>
-        <MenuDropdown placement='top-start' data={appData?.site} />
+        <MenuDropdown hideLogout={isInstalledApp} placement='top-start' data={appData?.site} />
         {/* powered by */}
         <div className='shrink-0'>
           {!appData?.custom_config?.remove_webapp_brand && (
             <div className={cn(
-              'flex shrink-0 items-center gap-1.5 px-2',
+              'flex shrink-0 items-center gap-1.5 px-1',
             )}>
               <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-              {appData?.custom_config?.replace_webapp_logo && (
-                <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
-              )}
-              {!appData?.custom_config?.replace_webapp_logo && (
-                <LogoSite className='!h-5' />
-              )}
+              {
+                systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                  ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                  : appData?.custom_config?.replace_webapp_logo
+                    ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
+                    : <DifyLogo size='small' />
+              }
             </div>
           )}
         </div>
+        {!!showConfirm && (
+          <Confirm
+            title={t('share.chat.deleteConversation.title')}
+            content={t('share.chat.deleteConversation.content') || ''}
+            isShow
+            onCancel={handleCancelConfirm}
+            onConfirm={handleDelete}
+          />
+        )}
+        {showRename && (
+          <RenameModal
+            isShow
+            onClose={handleCancelRename}
+            saveLoading={conversationRenaming}
+            name={showRename?.name || ''}
+            onSave={handleRename}
+          />
+        )}
       </div>
-      {!!showConfirm && (
-        <Confirm
-          title={t('share.chat.deleteConversation.title')}
-          content={t('share.chat.deleteConversation.content') || ''}
-          isShow
-          onCancel={handleCancelConfirm}
-          onConfirm={handleDelete}
-        />
-      )}
-      {showRename && (
-        <RenameModal
-          isShow
-          onClose={handleCancelRename}
-          saveLoading={conversationRenaming}
-          name={showRename?.name || ''}
-          onSave={handleRename}
-        />
-      )}
     </div>
   )
 }

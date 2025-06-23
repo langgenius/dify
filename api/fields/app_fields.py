@@ -63,6 +63,7 @@ app_detail_fields = {
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,
+    "access_mode": fields.String,
 }
 
 prompt_config_fields = {
@@ -98,6 +99,9 @@ app_partial_fields = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
     "tags": fields.List(fields.Nested(tag_fields)),
+    "access_mode": fields.String,
+    "create_user_name": fields.String,
+    "author_name": fields.String,
 }
 
 
@@ -176,6 +180,7 @@ app_detail_fields_with_site = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
     "deleted_tools": fields.List(fields.Nested(deleted_tool_fields)),
+    "access_mode": fields.String,
 }
 
 

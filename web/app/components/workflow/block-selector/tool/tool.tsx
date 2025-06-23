@@ -10,7 +10,7 @@ import type { ToolWithProvider } from '../../types'
 import { BlockEnum } from '../../types'
 import type { ToolDefaultValue, ToolValue } from '../types'
 import { ViewType } from '../view-type-select'
-import ActonItem from './action-item'
+import ActionItem from './action-item'
 import BlockIcon from '../../block-icon'
 import { useTranslation } from 'react-i18next'
 import { useHover } from 'ahooks'
@@ -205,7 +205,7 @@ const Tool: FC<Props> = ({
 
         {!notShowProvider && hasAction && !isFold && (
           actions.map(action => (
-            <ActonItem
+            <ActionItem
               key={action.name}
               provider={payload}
               payload={action}

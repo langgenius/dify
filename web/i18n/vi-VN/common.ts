@@ -54,6 +54,10 @@ const translation = {
     viewDetails: 'Xem chi tiết',
     copied: 'Sao chép',
     in: 'trong',
+    more: 'Hơn',
+    downloadFailed: 'Tải xuống thất bại. Vui lòng thử lại sau.',
+    format: 'Định dạng',
+    downloadSuccess: 'Tải xuống đã hoàn thành.',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -141,6 +145,8 @@ const translation = {
     newDataset: 'Tạo Kiến thức',
     tools: 'Công cụ',
     exploreMarketplace: 'Khám phá Marketplace',
+    appDetail: 'Chi tiết ứng dụng',
+    account: 'báo cáo',
   },
   userProfile: {
     settings: 'Cài đặt',
@@ -153,6 +159,9 @@ const translation = {
     community: 'Cộng đồng',
     about: 'Về chúng tôi',
     logout: 'Đăng xuất',
+    compliance: 'Tuân thủ',
+    github: 'GitHub',
+    support: 'Hỗ trợ',
   },
   settings: {
     accountGroup: 'TÀI KHOẢN',
@@ -202,6 +211,9 @@ const translation = {
     feedbackTitle: 'Phản hồi',
     feedbackLabel: 'Hãy cho chúng tôi biết lý do tại sao bạn xóa tài khoản của mình?',
     feedbackPlaceholder: 'Tùy chọn',
+    workspaceIcon: 'Biểu tượng không gian làm việc',
+    workspaceName: 'Tên không gian làm việc',
+    editWorkspaceInfo: 'Chỉnh sửa thông tin không gian làm việc',
   },
   members: {
     team: 'Nhóm',
@@ -455,7 +467,6 @@ const translation = {
   apiBasedExtension: {
     title: 'Các tiện ích API cung cấp quản lý API tập trung, giúp cấu hình dễ dàng sử dụng trên các ứng dụng của Dify.',
     link: 'Tìm hiểu cách phát triển Phần mở rộng API của riêng bạn.',
-    linkUrl: 'https://docs.dify.ai/en/guides/extension/api-based-extension/README',
     add: 'Thêm Phần mở rộng API',
     selector: {
       title: 'Phần mở rộng API',
@@ -540,9 +551,10 @@ const translation = {
       vectorHash: 'Vector hash:',
       hitScore: 'Điểm truy xuất:',
     },
-    inputPlaceholder: 'Nói chuyện với Bot',
+    inputPlaceholder: 'Nói chuyện với {{botName}}',
     thought: 'Tư duy',
     thinking: 'Suy nghĩ...',
+    resend: 'Gửi lại',
   },
   promptEditor: {
     placeholder: 'Viết từ khóa của bạn ở đây, nhập \'{\' để chèn một biến, nhập \'/\' để chèn một khối nội dung nhắc nhở',
@@ -633,10 +645,31 @@ const translation = {
   license: {
     expiring_plural: 'Hết hạn sau {{count}} ngày',
     expiring: 'Hết hạn trong một ngày',
+    unlimited: 'Vô hạn',
   },
   pagination: {
     perPage: 'Mục trên mỗi trang',
   },
+  theme: {
+    auto: 'hệ thống',
+    theme: 'Chủ đề',
+    light: 'ánh sáng',
+    dark: 'tối',
+  },
+  compliance: {
+    iso27001: 'Chứng nhận ISO 27001:2022',
+    gdpr: 'GDPR DPA',
+    soc2Type1: 'Báo cáo loại SOC 2 Type I',
+    professionalUpgradeTooltip: 'Chỉ có sẵn với gói Team hoặc cao hơn.',
+    sandboxUpgradeTooltip: 'Chỉ có sẵn với gói Chuyên nghiệp hoặc Nhóm.',
+    soc2Type2: 'Báo cáo SOC 2 Type II',
+  },
+  imageInput: {
+    supportedFormats: 'Hỗ trợ PNG, JPG, JPEG, WEBP và GIF',
+    dropImageHere: 'Kéo hình ảnh của bạn vào đây, hoặc',
+    browse: 'duyệt',
+  },
+  you: 'Bạn',
 }
 
 export default translation

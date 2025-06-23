@@ -24,12 +24,13 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
 from extensions.ext_database import db
 from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
-from models.workflow import WorkflowRun, WorkflowRunStatus
+from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
@@ -134,11 +135,25 @@ class WorkflowAppLogApi(Resource):
         parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
         parser.add_argument("created_at__before", type=str, location="args")
         parser.add_argument("created_at__after", type=str, location="args")
+        parser.add_argument(
+            "created_by_end_user_session_id",
+            type=str,
+            location="args",
+            required=False,
+            default=None,
+        )
+        parser.add_argument(
+            "created_by_account",
+            type=str,
+            location="args",
+            required=False,
+            default=None,
+        )
         parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
         parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
-        args.status = WorkflowRunStatus(args.status) if args.status else None
+        args.status = WorkflowExecutionStatus(args.status) if args.status else None
         if args.created_at__before:
             args.created_at__before = isoparse(args.created_at__before)
 
@@ -157,6 +172,8 @@ class WorkflowAppLogApi(Resource):
                 created_at_after=args.created_at__after,
                 page=args.page,
                 limit=args.limit,
+                created_by_end_user_session_id=args.created_by_end_user_session_id,
+                created_by_account=args.created_by_account,
             )
 
             return workflow_app_log_pagination

@@ -60,8 +60,9 @@ const translation = {
       placeholder: 'Seleziona uno strumento...',
       unsupportedContent: 'La versione del plug-in installata non fornisce questa azione.',
       descriptionLabel: 'Descrizione dell\'utensile',
-      auto: 'Auto',
-      paramsTip2: 'Quando \'Auto\' è disattivato, viene utilizzato il valore predefinito.',
+      auto: 'Automatico',
+      paramsTip2: 'Quando \'Automatico\' è disattivato, viene utilizzato il valore predefinito.',
+      toolSetting: 'Impostazioni degli strumenti',
     },
     modelNum: '{{num}} MODELLI INCLUSI',
     endpointModalTitle: 'Endpoint di configurazione',
@@ -136,6 +137,7 @@ const translation = {
     installing: 'Installazione...',
     install: 'Installare',
     readyToInstallPackages: 'Sto per installare i seguenti plugin {{num}}',
+    installWarning: 'Questo plugin non è consentito essere installato.',
   },
   installFromGitHub: {
     installedSuccessfully: 'Installazione riuscita',
@@ -177,9 +179,11 @@ const translation = {
     pluginsResult: '{{num}} risultati',
     noPluginFound: 'Nessun plug-in trovato',
     empower: 'Potenzia lo sviluppo dell\'intelligenza artificiale',
-    sortBy: 'Città nera',
+    sortBy: 'Ordina per',
     and: 'e',
     viewMore: 'Vedi di più',
+    verifiedTip: 'Verificato da Dify',
+    partnerTip: 'Verificato da un partner Dify',
   },
   task: {
     clearAll: 'Cancella tutto',
@@ -200,10 +204,15 @@ const translation = {
   install: '{{num}} installazioni',
   findMoreInMarketplace: 'Scopri di più su Marketplace',
   installPlugin: 'Installa il plugin',
-  submitPlugin: 'Invia plugin',
   searchPlugins: 'Plugin di ricerca',
   search: 'Ricerca',
   installFrom: 'INSTALLA DA',
+  metadata: {
+    title: 'Plugin',
+  },
+  difyVersionNotCompatible: 'L\'attuale versione di Dify non è compatibile con questo plugin, si prega di aggiornare alla versione minima richiesta: {{minimalDifyVersion}}',
+  requestAPlugin: 'Richiedi un plugin',
+  publishPlugins: 'Pubblicare plugin',
 }
 
 export default translation

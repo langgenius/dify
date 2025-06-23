@@ -12,10 +12,10 @@ from flask import Flask, current_app
 from configs import dify_config
 from core.variables import ArrayVariable, IntegerVariable, NoneVariable
 from core.workflow.entities.node_entities import (
-    NodeRunMetadataKey,
     NodeRunResult,
 )
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
     BaseNodeEvent,
@@ -37,7 +37,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
-from models.workflow import WorkflowNodeExecutionStatus
+from libs.flask_utils import preserve_flask_contexts
 
 from .exc import (
     InvalidIteratorValueError,
@@ -249,8 +249,8 @@ class IterationNode(BaseNode[IterationNodeData]):
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     outputs={"output": outputs},
                     metadata={
-                        NodeRunMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
-                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
                     },
                 )
             )
@@ -353,27 +353,26 @@ class IterationNode(BaseNode[IterationNodeData]):
     ) -> NodeRunStartedEvent | BaseNodeEvent | InNodeEvent:
         """
         add iteration metadata to event.
+        ensures iteration context (ID, index/parallel_run_id) is added to metadata,
         """
         if not isinstance(event, BaseNodeEvent):
             return event
         if self.node_data.is_parallel and isinstance(event, NodeRunStartedEvent):
             event.parallel_mode_run_id = parallel_mode_run_id
-            return event
+
+        iter_metadata = {
+            WorkflowNodeExecutionMetadataKey.ITERATION_ID: self.node_id,
+            WorkflowNodeExecutionMetadataKey.ITERATION_INDEX: iter_run_index,
+        }
+        if parallel_mode_run_id:
+            # for parallel, the specific branch ID is more important than the sequential index
+            iter_metadata[WorkflowNodeExecutionMetadataKey.PARALLEL_MODE_RUN_ID] = parallel_mode_run_id
+
         if event.route_node_state.node_run_result:
-            metadata = event.route_node_state.node_run_result.metadata
-            if not metadata:
-                metadata = {}
-            if NodeRunMetadataKey.ITERATION_ID not in metadata:
-                metadata = {
-                    **metadata,
-                    NodeRunMetadataKey.ITERATION_ID: self.node_id,
-                    NodeRunMetadataKey.PARALLEL_MODE_RUN_ID
-                    if self.node_data.is_parallel
-                    else NodeRunMetadataKey.ITERATION_INDEX: parallel_mode_run_id
-                    if self.node_data.is_parallel
-                    else iter_run_index,
-                }
-                event.route_node_state.node_run_result.metadata = metadata
+            current_metadata = event.route_node_state.node_run_result.metadata or {}
+            if WorkflowNodeExecutionMetadataKey.ITERATION_ID not in current_metadata:
+                event.route_node_state.node_run_result.metadata = {**current_metadata, **iter_metadata}
+
         return event
 
     def _run_single_iter(
@@ -585,9 +584,8 @@ class IterationNode(BaseNode[IterationNodeData]):
         """
         run single iteration in parallel mode
         """
-        for var, val in context.items():
-            var.set(val)
-        with flask_app.app_context():
+
+        with preserve_flask_contexts(flask_app, context_vars=context):
             parallel_mode_run_id = uuid.uuid4().hex
             graph_engine_copy = graph_engine.create_copy()
             variable_pool_copy = graph_engine_copy.graph_runtime_state.variable_pool

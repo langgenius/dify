@@ -56,7 +56,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，用于定义终端用户的身份，方便检索、统计。
-        由开发者定义规则，需保证用户标识在应用内唯一。
+        由开发者定义规则，需保证用户标识在应用内唯一。服务 API 不会共享 WebApp 创建的对话。
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
       （选填）会话 ID，需要基于之前的聊天记录继续对话，必须传之前消息的 conversation_id。
@@ -306,7 +306,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         要上传的文件。
       </Property>
       <Property name='user' type='string' key='user'>
-          用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+          用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。服务 API 不会共享 WebApp 创建的对话。
       </Property>
     </Properties>
 
@@ -333,7 +333,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif]' \\\n--form 'user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/files/upload' \
@@ -373,7 +373,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
   ### Request Body
   - `user` (string) Required
-    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。API 无法访问 WebApp 创建的会话。
   ### Response
   - `result` (string) 固定返回 success
   </Col>
@@ -425,7 +425,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
          点赞 like, 点踩 dislike,  撤销点赞 null
       </Property>
       <Property name='user' type='string' key='user'>
-          用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+          用户标识，由开发者定义规则，需保证用户标识在应用内唯一。服务 API 不会共享 WebApp 创建的对话。
       </Property>
       <Property name='content' type='string' key='content'>
           消息反馈的具体信息。
@@ -462,6 +462,69 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
 </Row>
 
+---
+
+<Heading
+  url='/app/feedbacks'
+  method='GET'
+  title='获取APP的消息点赞和反馈'
+  name='#app-feedbacks'
+/>
+<Row>
+  <Col>
+    获取应用的终端用户反馈、点赞。
+
+    ### Query
+    <Properties>
+      <Property name='page' type='string' key='page'>
+       （选填）分页，默认值：1
+      </Property>
+    </Properties>
+
+    <Properties>
+      <Property name='limit' type='string' key='limit'>
+       （选填）每页数量，默认值：20
+      </Property>
+    </Properties>
+
+    ### Response
+    - `data` (List) 返回该APP的点赞、反馈列表。
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/app/feedbacks" targetCode={`curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/app/feedbacks?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+        {
+        "data": [
+            {
+                "id": "8c0fbed8-e2f9-49ff-9f0e-15a35bdd0e25",
+                "app_id": "f252d396-fe48-450e-94ec-e184218e7346",
+                "conversation_id": "2397604b-9deb-430e-b285-4726e51fd62d",
+                "message_id": "709c0b0f-0a96-4a4e-91a4-ec0889937b11",
+                "rating": "like",
+                "content": "message feedback information-3",
+                "from_source": "user",
+                "from_end_user_id": "74286412-9a1a-42c1-929c-01edb1d381d5",
+                "from_account_id": null,
+                "created_at": "2025-04-24T09:24:38",
+                "updated_at": "2025-04-24T09:24:38"
+            }
+        ]
+        }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 ---
 
 <Heading
@@ -549,34 +612,34 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
     ### Response
     - `data` (array[object])  消息列表
-    - `id`  (string) 消息 ID
-    - `conversation_id` (string)  会话 ID
-    - `inputs` (object) 用户输入参数。
-    - `query`  (string) 用户输入 / 提问内容。
-    - `message_files` (array[object]) 消息文件
-      - `id` (string) ID
-      - `type` (string) 文件类型，image 图片
-      - `url` (string) 预览图片地址
-      - `belongs_to` (string) 文件归属方，user 或 assistant
-      - `agent_thoughts` (array[object]) Agent思考内容（仅Agent模式下不为空）
-        - `id` (string) agent_thought ID，每一轮Agent迭代都会有一个唯一的id
-        - `message_id` (string) 消息唯一ID
-        - `position` (int) agent_thought在消息中的位置，如第一轮迭代position为1
-        - `thought` (string) agent的思考内容
-        - `observation` (string) 工具调用的返回结果
-        - `tool` (string) 使用的工具列表，以 ; 分割多个工具
-        - `tool_input` (string) 工具的输入，JSON格式的字符串(object)。如：`{"dalle3": {"prompt": "a cute cat"}}`
-        - `created_at` (int) 创建时间戳，如：1705395332
-        - `message_files` (array[string])  当前agent_thought 关联的文件ID
-          - `file_id` (string) 文件ID
-        - `conversation_id` (string) 会话ID
-    - `answer` (string)  回答消息内容
-    - `created_at`  (timestamp) 创建时间
-    - `feedback` (object) 反馈信息
-      - `rating` (string) 点赞 like / 点踩 dislike
-    - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
-  - `has_more` (bool) 是否存在下一页
-  - `limit` (int) 返回条数，若传入超过系统限制，返回系统限制数量
+      - `id`  (string) 消息 ID
+      - `conversation_id` (string)  会话 ID
+      - `inputs` (object) 用户输入参数。
+      - `query`  (string) 用户输入 / 提问内容。
+      - `message_files` (array[object]) 消息文件
+        - `id` (string) ID
+        - `type` (string) 文件类型，image 图片
+        - `url` (string) 预览图片地址
+        - `belongs_to` (string) 文件归属方，user 或 assistant
+        - `agent_thoughts` (array[object]) Agent思考内容（仅Agent模式下不为空）
+          - `id` (string) agent_thought ID，每一轮Agent迭代都会有一个唯一的id
+          - `message_id` (string) 消息唯一ID
+          - `position` (int) agent_thought在消息中的位置，如第一轮迭代position为1
+          - `thought` (string) agent的思考内容
+          - `observation` (string) 工具调用的返回结果
+          - `tool` (string) 使用的工具列表，以 ; 分割多个工具
+          - `tool_input` (string) 工具的输入，JSON格式的字符串(object)。如：`{"dalle3": {"prompt": "a cute cat"}}`
+          - `created_at` (int) 创建时间戳，如：1705395332
+          - `message_files` (array[string])  当前agent_thought 关联的文件ID
+            - `file_id` (string) 文件ID
+          - `conversation_id` (string) 会话ID
+      - `answer` (string)  回答消息内容
+      - `created_at`  (timestamp) 创建时间
+      - `feedback` (object) 反馈信息
+        - `rating` (string) 点赞 like / 点踩 dislike
+      - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
+    - `has_more` (bool) 是否存在下一页
+    - `limit` (int) 返回条数，若传入超过系统限制，返回系统限制数量
   </Col>
   <Col sticky>
     ### Request Example
@@ -811,10 +874,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
 
     <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success"
-    }
+    ```text {{ title: 'Response' }}
+    204 No Content
     ```
     </CodeGroup>
   </Col>
@@ -930,7 +991,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `limit` (int) 每页项目数
     - `has_more` (bool) 是否有更多项目
     - `data` (array[object]) 变量列表
-      - `id` (string) 变量ID
+      - `id` (string) 变量 ID
       - `name` (string) 变量名称
       - `value_type` (string) 变量类型（字符串、数字、布尔等）
       - `value` (string) 变量值
@@ -1101,6 +1162,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   - `name` (string) 应用名称
   - `description` (string) 应用描述
   - `tags` (array[string]) 应用标签
+  - `mode` (string) 应用模式
+  - 'author_name' (string) 作者名称
   </Col>
   <Col>
     <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -1117,7 +1180,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       "tags": [
         "tag1",
         "tag2"
-      ]
+      ],
+      "mode": "chat",
+      "author_name": "Dify"
     }
     ```
     </CodeGroup>
@@ -1143,6 +1208,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       - `enabled` (bool) 是否开启
     - `speech_to_text` (object) 语音转文本
       - `enabled` (bool) 是否开启
+    - `text_to_speech` (object) 文本转语音
+      - `enabled` (bool) 是否开启
+      - `voice` (string) 语音类型
+      - `language` (string) 语言
+      - `autoPlay` (string) 自动播放
+        - `enabled`  开启
+        - `disabled` 关闭
     - `retriever_resource` (object) 引用和归属
       - `enabled` (bool) 是否开启
     - `annotation_reply` (object) 标记回复
@@ -1237,15 +1309,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 />
 <Row>
   <Col>
-  用于获取工具icon
+  用于获取工具 icon
   ### Response
   - `tool_icons`(object[string]) 工具图标
     - `工具名称` (string)
       - `icon` (object|string)
         - (object) 图标
-          - `background` (string) hex格式的背景色
+          - `background` (string) hex 格式的背景色
           - `content`(string) emoji
-        - (string) 图标URL
+        - (string) 图标 URL
   </Col>
   <Col>
   <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta' \\\n-H 'Authorization: Bearer {api_key}'`}>
@@ -1271,3 +1343,63 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/site'
+  method='GET'
+  title='获取应用 WebApp 设置'
+  name='#site'
+/>
+<Row>
+  <Col>
+  用于获取应用的 WebApp 设置
+  ### Response
+  - `title` (string) WebApp 名称
+  - `chat_color_theme` (string) 聊天颜色主题，hex 格式
+  - `chat_color_theme_inverted` (bool) 聊天颜色主题是否反转
+  - `icon_type` (string) 图标类型，`emoji`-表情，`image`-图片
+  - `icon` (string) 图标，如果是 `emoji` 类型，则是 emoji 表情符号，如果是 `image` 类型，则是图片 URL
+  - `icon_background` (string) hex 格式的背景色
+  - `icon_url` (string) 图标 URL
+  - `description` (string) 描述
+  - `copyright` (string) 版权信息
+  - `privacy_policy` (string) 隐私政策链接
+  - `custom_disclaimer` (string) 自定义免责声明
+  - `default_language` (string) 默认语言
+  - `show_workflow_steps` (bool) 是否显示工作流详情
+  - `use_icon_as_answer_icon` (bool) 是否使用 WebApp 图标替换聊天中的 🤖
+  </Col>
+  <Col>
+  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/site' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "title": "My App",
+      "chat_color_theme": "#ff4a4a",
+      "chat_color_theme_inverted": false,
+      "icon_type": "emoji",
+      "icon": "😄",
+      "icon_background": "#FFEAD5",
+      "icon_url": null,
+      "description": "This is my app.",
+      "copyright": "all rights reserved",
+      "privacy_policy": "",
+      "custom_disclaimer": "All generated by AI",
+      "default_language": "en-US",
+      "show_workflow_steps": false,
+      "use_icon_as_answer_icon": false,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___

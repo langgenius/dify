@@ -25,12 +25,12 @@ import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { LanguagesSupported } from '@/i18n/language'
 import { useStore } from '@/app/components/app/store'
-import { getLocaleOnClient } from '@/i18n'
+import { useDocLink } from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -44,9 +44,9 @@ type IExtraInfoProps = {
 }
 
 const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
-  const locale = getLocaleOnClient()
   const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
   const relatedAppsTotal = relatedApps?.data?.length || 0
@@ -96,11 +96,7 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
             <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
             <a
               className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
-              href={
-                locale === LanguagesSupported[1]
-                  ? 'https://docs.dify.ai/zh-hans/guides/knowledge-base/integrate-knowledge-within-application'
-                  : 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application'
-              }
+              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
               target='_blank' rel='noopener noreferrer'
             >
               <RiBookOpenLine className='mr-1 text-text-accent' />
@@ -158,10 +154,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return baseNavigation
   }, [datasetRes?.provider, datasetId, t])
 
-  useEffect(() => {
-    if (datasetRes)
-      document.title = `${datasetRes.name || 'Dataset'} - Dify`
-  }, [datasetRes])
+  useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 
   const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
 

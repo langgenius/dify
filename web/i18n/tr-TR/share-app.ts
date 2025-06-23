@@ -28,6 +28,10 @@ const translation = {
     temporarySystemIssue: 'Üzgünüz, geçici sistem sorunu.',
     expand: 'Genişlet',
     collapse: 'Kısıtla',
+    chatSettingsTitle: 'Yeni sohbet kurulumu',
+    chatFormTip: 'Sohbet başladıktan sonra sohbet ayarları değiştirilemez.',
+    viewChatSettings: 'Sohbet ayarlarını görüntüle',
+    newChatTip: 'Zaten yeni bir sohbette',
   },
   generation: {
     tabs: {
@@ -66,6 +70,11 @@ const translation = {
       moreThanMaxLengthLine: 'Satır {{rowIndex}}: {{varName}} değeri {{maxLength}} karakterden fazla olamaz',
       atLeastOne: 'Lütfen yüklenen dosyada en az bir satır girin.',
     },
+    execution: 'İFRAZAT',
+    executions: '{{num}} İDAM',
+  },
+  login: {
+    backToHome: 'Ana Sayfaya Dön',
   },
 }
 

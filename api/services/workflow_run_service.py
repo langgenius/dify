@@ -1,17 +1,21 @@
 import threading
+from collections.abc import Sequence
 from typing import Optional
 
 import contexts
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.repository.workflow_node_execution_repository import OrderConfig
+from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.enums import WorkflowRunTriggeredFrom
-from models.model import App
-from models.workflow import (
-    WorkflowNodeExecution,
+from models import (
+    Account,
+    App,
+    EndUser,
+    WorkflowNodeExecutionModel,
     WorkflowRun,
+    WorkflowRunTriggeredFrom,
 )
+from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 
 class WorkflowRunService:
@@ -116,7 +120,12 @@ class WorkflowRunService:
 
         return workflow_run
 
-    def get_workflow_run_node_executions(self, app_model: App, run_id: str) -> list[WorkflowNodeExecution]:
+    def get_workflow_run_node_executions(
+        self,
+        app_model: App,
+        run_id: str,
+        user: Account | EndUser,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
         """
         Get workflow run node execution list
         """
@@ -128,13 +137,17 @@ class WorkflowRunService:
         if not workflow_run:
             return []
 
-        # Use the repository to get the node executions
         repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine, tenant_id=app_model.tenant_id, app_id=app_model.id
+            session_factory=db.engine,
+            user=user,
+            app_id=app_model.id,
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
         )
 
-        # Use the repository to get the node executions with ordering
+        # Use the repository to get the database models directly
         order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        node_executions = repository.get_by_workflow_run(workflow_run_id=run_id, order_config=order_config)
+        workflow_node_executions = repository.get_db_models_by_workflow_run(
+            workflow_run_id=run_id, order_config=order_config
+        )
 
-        return list(node_executions)
+        return workflow_node_executions

@@ -32,6 +32,10 @@ const translation = {
     temporarySystemIssue: 'Извините, временная проблема с системой.',
     expand: 'Развернуть',
     collapse: 'Свернуть',
+    viewChatSettings: 'Посмотреть настройки чата',
+    chatSettingsTitle: 'Новая настройка чата',
+    newChatTip: 'Уже в новом чате',
+    chatFormTip: 'Настройки чата не могут быть изменены после его начала.',
   },
   generation: {
     tabs: {
@@ -70,6 +74,11 @@ const translation = {
       moreThanMaxLengthLine: 'Строка {{rowIndex}}: значение {{varName}} не может превышать {{maxLength}} символов',
       atLeastOne: 'Пожалуйста, введите хотя бы одну строку в загруженный файл.',
     },
+    execution: 'ИСПОЛНЕНИЕ',
+    executions: '{{num}} ВЫПОЛНЕНИЯ',
+  },
+  login: {
+    backToHome: 'Назад на главную',
   },
 }
 

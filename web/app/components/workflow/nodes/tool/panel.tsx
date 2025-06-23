@@ -78,7 +78,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               className='w-full'
               onClick={showSetAuthModal}
             >
-              {t(`${i18nPrefix}.toAuthorize`)}
+              {t(`${i18nPrefix}.authorize`)}
             </Button>
           </div>
         </>

@@ -23,7 +23,7 @@ const translation = {
   importFromDSLFile: '文件',
   importFromDSLUrl: 'URL',
   importFromDSLUrlPlaceholder: '输入 DSL 文件的 URL',
-  deleteAppConfirmTitle: '确认删除应用?',
+  deleteAppConfirmTitle: '确认删除应用？',
   deleteAppConfirmContent:
     '删除应用将无法撤销。用户将不能访问你的应用，所有 Prompt 编排配置和日志均将一并被删除。',
   appDeleted: '应用已删除',
@@ -87,6 +87,7 @@ const translation = {
     appCreateDSLErrorPart3: '当前应用 DSL 版本：',
     appCreateDSLErrorPart4: '系统支持 DSL 版本：',
     appCreateFailed: '应用创建失败',
+    dropDSLToCreateApp: '拖放 DSL 文件到此处创建应用',
     Confirm: '确认',
   },
   newAppFromTemplate: {
@@ -113,9 +114,9 @@ const translation = {
     image: '图片',
   },
   answerIcon: {
-    title: '使用 WebApp 图标替换 🤖',
-    description: '是否使用 WebApp 图标替换分享的应用界面中的 🤖',
-    descriptionInExplore: '是否使用 WebApp 图标替换 Explore 界面中的 🤖',
+    title: '使用 web app 图标替换 🤖',
+    description: '是否使用 web app 图标替换分享的应用界面中的 🤖',
+    descriptionInExplore: '是否使用 web app 图标替换 Explore 界面中的 🤖',
   },
   switch: '迁移为工作流编排',
   switchTipStart: '将为您创建一个使用工作流编排的新应用。新应用将',
@@ -169,8 +170,12 @@ const translation = {
       publicKey: '公钥',
       secretKey: '密钥',
       viewDocsLink: '查看 {{key}} 的文档',
-      removeConfirmTitle: '删除 {{key}} 配置?',
+      removeConfirmTitle: '删除 {{key}} 配置？',
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
+    },
+    weave: {
+      title: '编织',
+      description: 'Weave 是一个开源平台，用于评估、测试和监控大型语言模型应用程序。',
     },
   },
   appSelector: {
@@ -192,6 +197,43 @@ const translation = {
     modelNotSupported: '模型不支持',
     modelNotSupportedTip: '当前模型不支持此功能，将自动降级为提示注入。',
   },
+  accessControl: 'Web 应用访问控制',
+  accessItemsDescription: {
+    anyone: '任何人都可以访问该 web 应用（无需登录）',
+    specific: '仅指定的平台内成员可访问该 Web 应用',
+    organization: '平台内所有成员均可访问该 Web 应用',
+    external: '仅经认证的外部用户可访问该 Web 应用',
+  },
+  accessControlDialog: {
+    title: 'Web 应用访问权限',
+    description: '设置 web 应用访问权限。',
+    accessLabel: '谁可以访问',
+    accessItems: {
+      anyone: '任何人',
+      specific: '平台内指定成员',
+      organization: '平台内所有成员',
+      external: '经认证的外部用户',
+    },
+    groups_one: '{{count}} 个组',
+    groups_other: '{{count}} 个组',
+    members_one: '{{count}} 个成员',
+    members_other: '{{count}} 个成员',
+    noGroupsOrMembers: '未选择分组或成员',
+    webAppSSONotEnabledTip: '请联系企业管理员配置 Web 应用外部认证方式。',
+    operateGroupAndMember: {
+      searchPlaceholder: '搜索组或成员',
+      allMembers: '所有成员',
+      expand: '展开',
+      noResult: '没有结果',
+    },
+    updateSuccess: '更新成功',
+  },
+  publishApp: {
+    title: '谁可以访问 web 应用',
+    notSet: '未设置',
+    notSetDesc: '当前任何人都无法访问 Web 应用。请设置访问权限。',
+  },
+  noAccessPermission: '没有权限访问 web 应用',
 }
 
 export default translation

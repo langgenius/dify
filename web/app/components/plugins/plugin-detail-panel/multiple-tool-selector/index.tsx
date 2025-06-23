@@ -165,6 +165,7 @@ const MultipleToolSelector = ({
             panelShowState={panelShowState}
             onPanelShowStateChange={setPanelShowState}
             canChooseMCPTool={canChooseMCPTool}
+            isEdit={false}
           />
           {value.length === 0 && (
             <div className='system-xs-regular flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary'>{t('plugin.detailPanel.toolSelector.empty')}</div>
@@ -183,6 +184,7 @@ const MultipleToolSelector = ({
                 onDelete={() => handleDelete(index)}
                 supportEnableSwitch
                 canChooseMCPTool={canChooseMCPTool}
+                isEdit
               />
             </div>
           ))}

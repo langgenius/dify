@@ -28,10 +28,12 @@ import type {
 } from '@/types/workflow'
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { hasRetryNode } from '@/app/components/workflow/utils'
+import { useDocLink } from '@/context/i18n'
 
 type Props = {
   className?: string
   nodeInfo: NodeTracing
+  allExecutions?: NodeTracing[]
   inMessage?: boolean
   hideInfo?: boolean
   hideProcessDetail?: boolean
@@ -46,6 +48,7 @@ type Props = {
 const NodePanel: FC<Props> = ({
   className,
   nodeInfo,
+  allExecutions,
   inMessage = false,
   hideInfo = false,
   hideProcessDetail,
@@ -63,6 +66,7 @@ const NodePanel: FC<Props> = ({
     doSetCollapseState(state)
   }, [hideProcessDetail])
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   const getTime = (time: number) => {
     if (time < 1)
@@ -157,6 +161,7 @@ const NodePanel: FC<Props> = ({
             {isIterationNode && !notShowIterationNav && onShowIterationDetail && (
               <IterationLogTrigger
                 nodeInfo={nodeInfo}
+                allExecutions={allExecutions}
                 onShowIterationResultList={onShowIterationDetail}
               />
             )}
@@ -164,6 +169,7 @@ const NodePanel: FC<Props> = ({
             {isLoopNode && !notShowLoopNav && onShowLoopDetail && (
               <LoopLogTrigger
                 nodeInfo={nodeInfo}
+                allExecutions={allExecutions}
                 onShowLoopResultList={onShowLoopDetail}
               />
             )}
@@ -191,7 +197,7 @@ const NodePanel: FC<Props> = ({
                 <StatusContainer status='stopped'>
                   {nodeInfo.error}
                   <a
-                    href='https://docs.dify.ai/guides/workflow/error-handling/error-type'
+                    href={docLink('/guides/workflow/error-handling/error-type')}
                     target='_blank'
                     className='text-text-accent'
                   >

@@ -19,11 +19,9 @@ import { useWorkflowStore } from '../../../store'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import type { NodeOutPutVar } from '../../../types'
 import type { Node } from 'reactflow'
-import { useContext } from 'use-context-selector'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
 import type { PluginMeta } from '@/app/components/plugins/types'
 import { noop } from 'lodash'
+import { useDocLink } from '@/context/i18n'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -56,7 +54,7 @@ type CustomField = ToolSelectorSchema | MultipleToolSelectorSchema
 export const AgentStrategy = memo((props: AgentStrategyProps) => {
   const { strategy, onStrategyChange, formSchema, formValue, onFormValueChange, nodeOutputVars, availableNodes, nodeId, canChooseMCPTool } = props
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const docLink = useDocLink()
   const defaultModel = useDefaultModel(ModelTypeEnum.textGeneration)
   const renderI18nObject = useRenderI18nObject()
   const workflowStore = useWorkflowStore()
@@ -71,6 +69,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
         case FormTypeEnum.textInput: {
           const def = schema as CredentialFormSchemaTextInput
           const value = props.value[schema.variable] || schema.default
+          const instanceId = schema.variable
           const onChange = (value: string) => {
             props.onChange({ ...props.value, [schema.variable]: value })
           }
@@ -82,6 +81,8 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             value={value}
             onChange={onChange}
             onGenerated={handleGenerated}
+            instanceId={instanceId}
+            key={instanceId}
             title={renderI18nObject(schema.label)}
             headerClassName='bg-transparent px-0 text-text-secondary system-sm-semibold-uppercase'
             containerBackgroundClassName='bg-transparent'
@@ -122,6 +123,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             title={<>
               {renderI18nObject(def.label)} {def.required && <span className='text-red-500'>*</span>}
             </>}
+            key={def.variable}
             tooltip={def.tooltip && renderI18nObject(def.tooltip)}
             inline
           >
@@ -229,11 +231,11 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           title={t('workflow.nodes.agent.strategy.configureTip')}
           description={<div className='text-xs text-text-tertiary'>
             {t('workflow.nodes.agent.strategy.configureTipDesc')} <br />
-            <Link href={
-              locale === LanguagesSupported[1]
-                ? 'https://docs.dify.ai/zh-hans/guides/workflow/node/agent#xuan-ze-agent-ce-le'
-                : 'https://docs.dify.ai/en/guides/workflow/node/agent#select-an-agent-strategy'
-            } className='text-text-accent-secondary' target='_blank'>
+            <Link href={docLink('/guides/workflow/node/agent#select-an-agent-strategy', {
+              'zh-Hans': '/guides/workflow/node/agent#选择-agent-策略',
+              'ja-JP': '/guides/workflow/node/agent#エージェント戦略の選択',
+            })}
+              className='text-text-accent-secondary' target='_blank'>
               {t('workflow.nodes.agent.learnMore')}
             </Link>
           </div>}

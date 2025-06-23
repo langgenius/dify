@@ -15,7 +15,6 @@ const translation = {
   },
   author: 'Avtor',
   auth: {
-    unauthorized: 'Za avtorizacijo',
     authorized: 'Avtorizirano',
     setup: 'Nastavite avtorizacijo za uporabo',
     setupModalTitle: 'Nastavi avtorizacijo',

@@ -32,6 +32,10 @@ const translation = {
     temporarySystemIssue: 'अभी सिस्टम में समस्या है, कृपया पुनः प्रयास करें।',
     expand: 'विस्तार करें',
     collapse: 'संकुचित करें',
+    viewChatSettings: 'चैट सेटिंग्स देखें',
+    chatSettingsTitle: 'नया चैट सेटअप',
+    chatFormTip: 'चैट शुरू होने के बाद चैट सेटिंग्स को संशोधित नहीं किया जा सकता।',
+    newChatTip: 'पहले से ही एक नए चैट में',
   },
   generation: {
     tabs: {
@@ -73,6 +77,11 @@ const translation = {
         'रॉ {{rowIndex}}: {{varName}} मान {{maxLength}} वर्णों से अधिक नहीं हो सकता',
       atLeastOne: 'कृपया अपलोड की गई फ़ाइल में कम से कम एक पंक्ति भरें।',
     },
+    execution: 'अनु执行',
+    executions: '{{num}} फाँसी',
+  },
+  login: {
+    backToHome: 'होम पर वापस',
   },
 }
 

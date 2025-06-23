@@ -112,9 +112,21 @@
       return compressedSystemVariables;
     }
 
+    async function getCompressedUserVariablesFromConfig() {
+      const userVariables = config?.userVariables || {};
+      const compressedUserVariables = {};
+      await Promise.all(
+        Object.entries(userVariables).map(async ([key, value]) => {
+          compressedUserVariables[`user.${key}`] = await compressAndEncodeBase64(value);
+        })
+      );
+      return compressedUserVariables;
+    }
+
     const params = new URLSearchParams({
       ...await getCompressedInputsFromConfig(),
-      ...await getCompressedSystemVariablesFromConfig()
+      ...await getCompressedSystemVariablesFromConfig(),
+      ...await getCompressedUserVariablesFromConfig()
     });
 
     const baseUrl =
@@ -274,7 +286,10 @@
       // Add click event listener to toggle chatbot
       containerDiv.addEventListener("click", handleClick);
       // Add touch event listener
-      containerDiv.addEventListener("touchend", handleClick);
+      containerDiv.addEventListener("touchend", (event) => {
+        event.preventDefault();
+        handleClick();
+      }, { passive: false });
 
       function handleClick() {
         if (isDragging) return;

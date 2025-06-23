@@ -11,8 +11,9 @@ import Tooltip from '@/app/components/base/tooltip'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
-import LogoSite from '@/app/components/base/logo/logo-site'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
 import cn from '@/utils/classnames'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export type IHeaderProps = {
   isMobile?: boolean
@@ -42,6 +43,7 @@ const Header: FC<IHeaderProps> = ({
   const [parentOrigin, setParentOrigin] = useState('')
   const [showToggleExpandButton, setShowToggleExpandButton] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
   const handleMessageReceived = useCallback((event: MessageEvent) => {
     let currentParentOrigin = parentOrigin
@@ -85,12 +87,13 @@ const Header: FC<IHeaderProps> = ({
                 'flex shrink-0 items-center gap-1.5 px-2',
               )}>
                 <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
-                {appData?.custom_config?.replace_webapp_logo && (
-                  <img src={appData?.custom_config?.replace_webapp_logo} alt='logo' className='block h-5 w-auto' />
-                )}
-                {!appData?.custom_config?.replace_webapp_logo && (
-                  <LogoSite className='!h-5' />
-                )}
+                {
+                  systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+                    ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                    : appData?.custom_config?.replace_webapp_logo
+                      ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
+                      : <DifyLogo size='small' />
+                }
               </div>
             )}
           </div>
@@ -132,7 +135,7 @@ const Header: FC<IHeaderProps> = ({
   return (
     <div
       className={cn('flex h-14 shrink-0 items-center justify-between rounded-t-2xl px-3')}
-      style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? '')) }
+      style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? ''))}
     >
       <div className="flex grow items-center space-x-3">
         {customerIcon}

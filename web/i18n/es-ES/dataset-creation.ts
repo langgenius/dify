@@ -63,7 +63,6 @@ const translation = {
       run: 'Ejecutar',
       firecrawlTitle: 'Extraer contenido web con 🔥Firecrawl',
       firecrawlDoc: 'Documentación de Firecrawl',
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       options: 'Opciones',
       crawlSubPage: 'Rastrear subpáginas',
       limit: 'Límite',
@@ -87,6 +86,13 @@ const translation = {
       useSitemapTooltip: 'Siga el mapa del sitio para rastrear el sitio. De lo contrario, Jina Reader rastreará de forma iterativa en función de la relevancia de la página, lo que producirá menos páginas pero de mayor calidad.',
       chooseProvider: 'Seleccione un proveedor',
       jinaReaderDoc: 'Más información sobre Jina Reader',
+      watercrawlTitle: 'Extraer contenido web con Watercrawl',
+      waterCrawlNotConfigured: 'Watercrawl no está configurado',
+      configureFirecrawl: 'Configurar Firecrawl',
+      watercrawlDoc: 'Documentos de Watercrawl',
+      configureJinaReader: 'Configurar Jina Reader',
+      configureWatercrawl: 'Configurar Watercrawl',
+      waterCrawlNotConfiguredDescription: 'Configura Watercrawl con la clave de API para usarlo.',
     },
     cancel: 'Cancelar',
   },
@@ -199,6 +205,11 @@ const translation = {
     learnMore: 'Aprende más',
     description: 'Actualmente, la base de conocimientos de Ifiy solo tiene fuentes de datos limitadas. Contribuir con una fuente de datos a la base de conocimientos de Dify es una manera fantástica de ayudar a mejorar la flexibilidad y el poder de la plataforma para todos los usuarios. Nuestra guía de contribuciones hace que sea fácil comenzar. Haga clic en el enlace a continuación para obtener más información.',
     title: '¿Conectarse a otras fuentes de datos?',
+  },
+  watercrawl: {
+    getApiKeyLinkText: 'Obtén tu clave API de watercrawl.dev',
+    apiKeyPlaceholder: 'Clave API de watercrawl.dev',
+    configWatercrawl: 'Configurar Watercrawl',
   },
 }
 

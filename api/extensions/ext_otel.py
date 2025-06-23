@@ -12,19 +12,30 @@ from flask_login import user_loaded_from_request, user_logged_in  # type: ignore
 
 from configs import dify_config
 from dify_app import DifyApp
+from models import Account, EndUser
 
 
 @user_logged_in.connect
 @user_loaded_from_request.connect
-def on_user_loaded(_sender, user):
+def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
     if dify_config.ENABLE_OTEL:
         from opentelemetry.trace import get_current_span
 
         if user:
-            current_span = get_current_span()
-            if current_span:
-                current_span.set_attribute("service.tenant.id", user.current_tenant_id)
-                current_span.set_attribute("service.user.id", user.id)
+            try:
+                current_span = get_current_span()
+                if isinstance(user, Account) and user.current_tenant_id:
+                    tenant_id = user.current_tenant_id
+                elif isinstance(user, EndUser):
+                    tenant_id = user.tenant_id
+                else:
+                    return
+                if current_span:
+                    current_span.set_attribute("service.tenant.id", tenant_id)
+                    current_span.set_attribute("service.user.id", user.id)
+            except Exception:
+                logging.exception("Error setting tenant and user attributes")
+                pass
 
 
 def init_app(app: DifyApp):
@@ -47,21 +58,25 @@ def init_app(app: DifyApp):
 
         def response_hook(span: Span, status: str, response_headers: list):
             if span and span.is_recording():
-                if status.startswith("2"):
-                    span.set_status(StatusCode.OK)
-                else:
-                    span.set_status(StatusCode.ERROR, status)
+                try:
+                    if status.startswith("2"):
+                        span.set_status(StatusCode.OK)
+                    else:
+                        span.set_status(StatusCode.ERROR, status)
 
-                status = status.split(" ")[0]
-                status_code = int(status)
-                status_class = f"{status_code // 100}xx"
-                attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
-                request = flask.request
-                if request and request.url_rule:
-                    attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
-                if request and request.method:
-                    attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
-                _http_response_counter.add(1, attributes)
+                    status = status.split(" ")[0]
+                    status_code = int(status)
+                    status_class = f"{status_code // 100}xx"
+                    attributes: dict[str, str | int] = {"status_code": status_code, "status_class": status_class}
+                    request = flask.request
+                    if request and request.url_rule:
+                        attributes[SpanAttributes.HTTP_TARGET] = str(request.url_rule.rule)
+                    if request and request.method:
+                        attributes[SpanAttributes.HTTP_METHOD] = str(request.method)
+                    _http_response_counter.add(1, attributes)
+                except Exception:
+                    logging.exception("Error setting status and attributes")
+                    pass
 
         instrumentor = FlaskInstrumentor()
         if dify_config.DEBUG:
@@ -92,7 +107,7 @@ def init_app(app: DifyApp):
     class ExceptionLoggingHandler(logging.Handler):
         """Custom logging handler that creates spans for logging.exception() calls"""
 
-        def emit(self, record):
+        def emit(self, record: logging.LogRecord):
             try:
                 if record.exc_info:
                     tracer = get_tracer_provider().get_tracer("dify.exception.logging")
@@ -107,15 +122,20 @@ def init_app(app: DifyApp):
                         },
                     ) as span:
                         span.set_status(StatusCode.ERROR)
-                        span.record_exception(record.exc_info[1])
-                        span.set_attribute("exception.type", record.exc_info[0].__name__)
-                        span.set_attribute("exception.message", str(record.exc_info[1]))
+                        if record.exc_info[1]:
+                            span.record_exception(record.exc_info[1])
+                            span.set_attribute("exception.message", str(record.exc_info[1]))
+                        if record.exc_info[0]:
+                            span.set_attribute("exception.type", record.exc_info[0].__name__)
+
             except Exception:
                 pass
 
     from opentelemetry import trace
-    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
-    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter as GRPCMetricExporter
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCSpanExporter
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter as HTTPMetricExporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPSpanExporter
     from opentelemetry.instrumentation.celery import CeleryInstrumentor
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
     from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -158,19 +178,32 @@ def init_app(app: DifyApp):
     sampler = ParentBasedTraceIdRatio(dify_config.OTEL_SAMPLING_RATE)
     provider = TracerProvider(resource=resource, sampler=sampler)
     set_tracer_provider(provider)
-    exporter: Union[OTLPSpanExporter, ConsoleSpanExporter]
-    metric_exporter: Union[OTLPMetricExporter, ConsoleMetricExporter]
+    exporter: Union[GRPCSpanExporter, HTTPSpanExporter, ConsoleSpanExporter]
+    metric_exporter: Union[GRPCMetricExporter, HTTPMetricExporter, ConsoleMetricExporter]
+    protocol = (dify_config.OTEL_EXPORTER_OTLP_PROTOCOL or "").lower()
     if dify_config.OTEL_EXPORTER_TYPE == "otlp":
-        exporter = OTLPSpanExporter(
-            endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/traces",
-            headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
-        )
-        metric_exporter = OTLPMetricExporter(
-            endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
-            headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
-        )
+        if protocol == "grpc":
+            exporter = GRPCSpanExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT,
+                # Header field names must consist of lowercase letters, check RFC7540
+                headers=(("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),),
+                insecure=True,
+            )
+            metric_exporter = GRPCMetricExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT,
+                headers=(("authorization", f"Bearer {dify_config.OTLP_API_KEY}"),),
+                insecure=True,
+            )
+        else:
+            exporter = HTTPSpanExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/traces",
+                headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
+            )
+            metric_exporter = HTTPMetricExporter(
+                endpoint=dify_config.OTLP_BASE_ENDPOINT + "/v1/metrics",
+                headers={"Authorization": f"Bearer {dify_config.OTLP_API_KEY}"},
+            )
     else:
-        # Fallback to console exporter
         exporter = ConsoleSpanExporter()
         metric_exporter = ConsoleMetricExporter()
 

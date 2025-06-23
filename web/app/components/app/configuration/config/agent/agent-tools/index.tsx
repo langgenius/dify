@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import copy from 'copy-to-clipboard'
@@ -34,6 +34,7 @@ import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/bloc
 import { canFindTool } from '@/utils'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useMittContextSelector } from '@/context/mitt-context'
 
 type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
@@ -55,7 +56,6 @@ const AgentTools: FC = () => {
   }, [buildInTools, customTools, workflowTools, mcpTools])
 
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
-
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
   const currentCollection = useMemo(() => {
     if (!currentTool) return null
@@ -77,6 +77,17 @@ const AgentTools: FC = () => {
       collection,
     }
   })
+  const useSubscribe = useMittContextSelector(s => s.useSubscribe)
+  const handleUpdateToolsWhenInstallToolSuccess = useCallback((installedPluginNames: string[]) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.agentConfig.tools.forEach((item: any) => {
+        if (item.isDeleted && installedPluginNames.includes(item.provider_id))
+          item.isDeleted = false
+      })
+    })
+    setModelConfig(newModelConfig)
+  }, [modelConfig, setModelConfig])
+  useSubscribe('plugin:install:success', handleUpdateToolsWhenInstallToolSuccess as any)
 
   const handleToolSettingChange = (value: Record<string, any>) => {
     const newModelConfig = produce(modelConfig, (draft) => {

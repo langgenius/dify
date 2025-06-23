@@ -64,9 +64,24 @@ class PluginUploadFileApi(Resource):
 
             extension = guess_extension(tool_file.mimetype) or ".bin"
             preview_url = ToolFileManager.sign_file(tool_file_id=tool_file.id, extension=extension)
-            tool_file.mime_type = mimetype
-            tool_file.extension = extension
-            tool_file.preview_url = preview_url
+
+            # Create a dictionary with all the necessary attributes
+            result = {
+                "id": tool_file.id,
+                "user_id": tool_file.user_id,
+                "tenant_id": tool_file.tenant_id,
+                "conversation_id": tool_file.conversation_id,
+                "file_key": tool_file.file_key,
+                "mimetype": tool_file.mimetype,
+                "original_url": tool_file.original_url,
+                "name": tool_file.name,
+                "size": tool_file.size,
+                "mime_type": mimetype,
+                "extension": extension,
+                "preview_url": preview_url,
+            }
+
+            return result, 201
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:

@@ -6,6 +6,7 @@ from typing import Optional
 
 import click
 from flask import current_app
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -26,7 +27,7 @@ from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, D
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
-from services.account_service import RegisterService, TenantService
+from services.account_service import AccountService, RegisterService, TenantService
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
@@ -67,6 +68,7 @@ def reset_password(email, new_password, password_confirm):
     account.password = base64_password_hashed
     account.password_salt = base64_salt
     db.session.commit()
+    AccountService.reset_login_error_rate_limit(email)
     click.echo(click.style("Password reset successfully.", fg="green"))
 
 
@@ -279,6 +281,7 @@ def migrate_knowledge_vector_database():
         VectorType.ELASTICSEARCH,
         VectorType.OPENGAUSS,
         VectorType.TABLESTORE,
+        VectorType.MATRIXONE,
     }
     lower_collection_vector_types = {
         VectorType.ANALYTICDB,
@@ -297,11 +300,11 @@ def migrate_knowledge_vector_database():
     page = 1
     while True:
         try:
-            datasets = (
-                Dataset.query.filter(Dataset.indexing_technique == "high_quality")
-                .order_by(Dataset.created_at.desc())
-                .paginate(page=page, per_page=50)
+            stmt = (
+                select(Dataset).filter(Dataset.indexing_technique == "high_quality").order_by(Dataset.created_at.desc())
             )
+
+            datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
         except NotFound:
             break
 
@@ -551,11 +554,12 @@ def old_metadata_migration():
     page = 1
     while True:
         try:
-            documents = (
-                DatasetDocument.query.filter(DatasetDocument.doc_metadata is not None)
+            stmt = (
+                select(DatasetDocument)
+                .filter(DatasetDocument.doc_metadata.is_not(None))
                 .order_by(DatasetDocument.created_at.desc())
-                .paginate(page=page, per_page=50)
             )
+            documents = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
         except NotFound:
             break
         if not documents:
@@ -592,11 +596,15 @@ def old_metadata_migration():
                             )
                             db.session.add(dataset_metadata_binding)
                         else:
-                            dataset_metadata_binding = DatasetMetadataBinding.query.filter(
-                                DatasetMetadataBinding.dataset_id == document.dataset_id,
-                                DatasetMetadataBinding.document_id == document.id,
-                                DatasetMetadataBinding.metadata_id == dataset_metadata.id,
-                            ).first()
+                            dataset_metadata_binding = (
+                                db.session.query(DatasetMetadataBinding)  # type: ignore
+                                .filter(
+                                    DatasetMetadataBinding.dataset_id == document.dataset_id,
+                                    DatasetMetadataBinding.document_id == document.id,
+                                    DatasetMetadataBinding.metadata_id == dataset_metadata.id,
+                                )
+                                .first()
+                            )
                             if not dataset_metadata_binding:
                                 dataset_metadata_binding = DatasetMetadataBinding(
                                     tenant_id=document.tenant_id,
@@ -840,6 +848,9 @@ def clear_orphaned_file_records(force: bool):
         {"type": "text", "table": "workflow_node_executions", "column": "outputs"},
         {"type": "text", "table": "conversations", "column": "introduction"},
         {"type": "text", "table": "conversations", "column": "system_instruction"},
+        {"type": "text", "table": "accounts", "column": "avatar"},
+        {"type": "text", "table": "apps", "column": "icon"},
+        {"type": "text", "table": "sites", "column": "icon"},
         {"type": "json", "table": "messages", "column": "inputs"},
         {"type": "json", "table": "messages", "column": "message"},
     ]

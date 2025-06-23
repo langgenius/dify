@@ -1,7 +1,8 @@
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.entities.node_entities import NodeRunResult, WorkflowNodeExecutionMetadataKey
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
     GraphRunPartialSucceededEvent,
@@ -14,7 +15,7 @@ from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.event.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.node import LLMNode
 from models.enums import UserFrom
-from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
+from models.workflow import WorkflowType
 
 
 class ContinueOnErrorTestHelper:
@@ -542,9 +543,9 @@ def test_stream_output_with_fail_branch_continue_on_error():
                 process_data={},
                 outputs={},
                 metadata={
-                    NodeRunMetadataKey.TOTAL_TOKENS: 1,
-                    NodeRunMetadataKey.TOTAL_PRICE: 1,
-                    NodeRunMetadataKey.CURRENCY: "USD",
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 1,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: 1,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: "USD",
                 },
             )
         )

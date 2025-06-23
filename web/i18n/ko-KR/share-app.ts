@@ -28,6 +28,10 @@ const translation = {
     temporarySystemIssue: '죄송합니다. 일시적인 시스템 문제가 발생했습니다.',
     expand: '확장',
     collapse: '축소',
+    viewChatSettings: '채팅 설정 보기',
+    newChatTip: '이미 새로운 채팅 중입니다.',
+    chatFormTip: '채팅이 시작된 후에는 채팅 설정을 수정할 수 없습니다.',
+    chatSettingsTitle: '새 채팅 설정',
   },
   generation: {
     tabs: {
@@ -47,7 +51,7 @@ const translation = {
     run: '실행',
     copy: '복사',
     resultTitle: 'AI 완성',
-    noData: 'AI가 필요한 내용을 제공할 것입니다.',
+    noData: 'AI 가 필요한 내용을 제공할 것입니다.',
     csvUploadTitle: 'CSV 파일을 여기로 끌어다 놓거나',
     browse: '찾아보기',
     csvStructureTitle: 'CSV 파일은 다음 구조를 따라야 합니다:',
@@ -61,11 +65,16 @@ const translation = {
     errorMsg: {
       empty: '업로드된 파일에 컨텐츠를 입력해주세요.',
       fileStructNotMatch: '업로드된 CSV 파일이 구조와 일치하지 않습니다.',
-      emptyLine: '줄 {{rowIndex}}이(가) 비어 있습니다.',
+      emptyLine: '줄 {{rowIndex}}이 (가) 비어 있습니다.',
       invalidLine: '줄 {{rowIndex}}: {{varName}}의 값은 비워둘 수 없습니다.',
       moreThanMaxLengthLine: '줄 {{rowIndex}}: {{varName}}의 값은 {{maxLength}}자를 초과할 수 없습니다.',
       atLeastOne: '업로드된 파일에는 적어도 한 줄의 입력이 필요합니다.',
     },
+    execution: '실행',
+    executions: '{{num}} 처형',
+  },
+  login: {
+    backToHome: '홈으로 돌아가기',
   },
 }
 

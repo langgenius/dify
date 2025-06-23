@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
+from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -290,7 +290,7 @@ class BuiltinToolManageService:
     def _fetch_builtin_provider(provider_name: str, tenant_id: str) -> BuiltinToolProvider | None:
         try:
             full_provider_name = provider_name
-            provider_id_entity = GenericProviderID(provider_name)
+            provider_id_entity = ToolProviderID(provider_name)
             provider_name = provider_id_entity.provider_name
             if provider_id_entity.organization != "langgenius":
                 provider_obj = (
@@ -315,7 +315,7 @@ class BuiltinToolManageService:
             if provider_obj is None:
                 return None
 
-            provider_obj.provider = GenericProviderID(provider_obj.provider).to_string()
+            provider_obj.provider = ToolProviderID(provider_obj.provider).to_string()
             return provider_obj
         except Exception:
             # it's an old provider without organization

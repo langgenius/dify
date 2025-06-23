@@ -60,7 +60,6 @@ const translation = {
       unknownError: 'Невідома помилка',
       maxDepth: 'Максимальна глибина',
       crawlSubPage: 'Сканування підсторінок',
-      firecrawlDocLink: 'https://docs.dify.ai/en/guides/knowledge-base/create-knowledge-and-upload-documents/import-content-data/sync-from-website',
       preview: 'Попередній перегляд',
       fireCrawlNotConfigured: 'Firecrawl не налаштовано',
       includeOnlyPaths: 'Включати лише контури',
@@ -82,6 +81,13 @@ const translation = {
       jinaReaderNotConfigured: 'Jina Reader не налаштована',
       jinaReaderTitle: 'Перетворіть весь сайт на Markdown',
       useSitemap: 'Використовуйте карту сайту',
+      configureJinaReader: 'Налаштувати Jina Reader',
+      waterCrawlNotConfigured: 'Watercrawl не налаштовано',
+      waterCrawlNotConfiguredDescription: 'Налаштуйте Watercrawl з ключем API, щоб його використовувати.',
+      configureFirecrawl: 'Налаштування Firecrawl',
+      configureWatercrawl: 'Налаштування Watercrawl',
+      watercrawlTitle: 'Витягуйте веб-контент за допомогою Watercrawl',
+      watercrawlDoc: 'Документація Watercrawl',
     },
     cancel: 'Скасувати',
   },
@@ -199,6 +205,11 @@ const translation = {
     learnMore: 'Дізнатися більше',
     title: 'Підключитися до інших джерел даних?',
     description: 'Наразі база знань Dify має лише обмежені джерела даних. Додавання джерела даних до бази знань Dify – це фантастичний спосіб підвищити гнучкість і потужність платформи для всіх користувачів. Наш посібник із внеску спрощує початок роботи. Будь ласка, натисніть на посилання нижче, щоб дізнатися більше.',
+  },
+  watercrawl: {
+    configWatercrawl: 'Налаштування Watercrawl',
+    apiKeyPlaceholder: 'API ключ з watercrawl.dev',
+    getApiKeyLinkText: 'Отримайте ваш API ключ з watercrawl.dev',
   },
 }
 
