@@ -25,7 +25,6 @@ import {
   useInvalidateMCPTools,
   useMCPTools,
   useUpdateMCP,
-  useUpdateMCPAuthorizationToken,
   useUpdateMCPTools,
 } from '@/service/use-tools'
 import { openOAuthPopup } from '@/hooks/use-oauth'
@@ -53,7 +52,6 @@ const MCPDetailContent: FC<Props> = ({
   const invalidateMCPTools = useInvalidateMCPTools()
   const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
-  const { mutateAsync: updateMCPAuthorizationToken } = useUpdateMCPAuthorizationToken()
   const toolList = data?.tools || []
 
   const handleUpdateTools = useCallback(async () => {
@@ -62,7 +60,7 @@ const MCPDetailContent: FC<Props> = ({
     await updateTools(detail.id)
     invalidateMCPTools(detail.id)
     onUpdate()
-  }, [detail, updateTools])
+  }, [detail, invalidateMCPTools, onUpdate, updateTools])
 
   const { mutate: updateMCP } = useUpdateMCP({
     onSuccess: onUpdate,
@@ -86,17 +84,13 @@ const MCPDetailContent: FC<Props> = ({
     setFalse: hideDeleting,
   }] = useBoolean(false)
 
-  const handleOAuthCallback = async (state: string, code: string) => {
+  const handleOAuthCallback = useCallback((state: string) => {
     if (!isCurrentWorkspaceManager)
       return
     if (detail.id !== state)
       return
-    await updateMCPAuthorizationToken({
-      provider_id: state,
-      authorization_code: code,
-    })
     handleUpdateTools()
-  }
+  }, [detail.id, handleUpdateTools, isCurrentWorkspaceManager])
 
   const handleAuthorize = useCallback(async () => {
     onFirstCreate()
@@ -112,7 +106,7 @@ const MCPDetailContent: FC<Props> = ({
 
     else if (res.authorization_url)
       openOAuthPopup(res.authorization_url, handleOAuthCallback)
-  }, [detail, updateMCP, hideUpdateModal, onUpdate])
+  }, [onFirstCreate, isCurrentWorkspaceManager, detail, authorizeMcp, handleUpdateTools, handleOAuthCallback])
 
   const handleUpdate = useCallback(async (data: any) => {
     if (!detail)
@@ -137,11 +131,12 @@ const MCPDetailContent: FC<Props> = ({
       hideDeleteConfirm()
       onUpdate(true)
     }
-  }, [detail, showDeleting, hideDeleting, hideDeleteConfirm, onUpdate])
+  }, [detail, showDeleting, deleteMCP, hideDeleting, hideDeleteConfirm, onUpdate])
 
   useEffect(() => {
     if (isCreation)
       handleAuthorize()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!detail)
@@ -175,6 +170,7 @@ const MCPDetailContent: FC<Props> = ({
             <Button
               variant='secondary'
               className='w-full'
+              onClick={handleAuthorize}
               disabled={!isCurrentWorkspaceManager}
             >
               <Indicator className='mr-2' color={'green'} />
