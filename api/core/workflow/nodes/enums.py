@@ -12,6 +12,7 @@ class NodeType(StrEnum):
     TEMPLATE_TRANSFORM = "template-transform"
     QUESTION_CLASSIFIER = "question-classifier"
     HTTP_REQUEST = "http-request"
+    MqNode = "MqNode"
     TOOL = "tool"
     VARIABLE_AGGREGATOR = "variable-aggregator"
     LEGACY_VARIABLE_AGGREGATOR = "variable-assigner"  # TODO: Merge this into VARIABLE_AGGREGATOR in the database.
@@ -37,5 +38,5 @@ class FailBranchSourceHandle(StrEnum):
     SUCCESS = "success-branch"
 
 
-CONTINUE_ON_ERROR_NODE_TYPE = [NodeType.LLM, NodeType.CODE, NodeType.TOOL, NodeType.HTTP_REQUEST]
+CONTINUE_ON_ERROR_NODE_TYPE = [NodeType.LLM, NodeType.CODE, NodeType.TOOL, NodeType.HTTP_REQUEST, NodeType.MqNode]
 RETRY_ON_ERROR_NODE_TYPE = CONTINUE_ON_ERROR_NODE_TYPE

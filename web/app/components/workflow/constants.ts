@@ -9,6 +9,7 @@ import IfElseDefault from './nodes/if-else/default'
 import CodeDefault from './nodes/code/default'
 import TemplateTransformDefault from './nodes/template-transform/default'
 import HttpRequestDefault from './nodes/http/default'
+import MqDefault from './nodes/mq/default'
 import ParameterExtractorDefault from './nodes/parameter-extractor/default'
 import ToolDefault from './nodes/tool/default'
 import VariableAssignerDefault from './nodes/variable-assigner/default'
@@ -175,7 +176,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     availableNextNodes: [],
     getAvailablePrevNodes: HttpRequestDefault.getAvailablePrevNodes,
     getAvailableNextNodes: HttpRequestDefault.getAvailableNextNodes,
-    checkValid: HttpRequestDefault.checkValid,
+    checkValid: MqDefault.checkValid,
   },
   [BlockEnum.VariableAssigner]: {
     author: 'Dify',
