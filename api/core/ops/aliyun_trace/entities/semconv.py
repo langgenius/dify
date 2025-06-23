@@ -27,7 +27,7 @@ RETRIEVAL_DOCUMENT = 'retrieval.document'
 #LLM
 GEN_AI_MODEL_NAME = 'gen_ai.model_name'
 
-Gen_AI_SYSTEM = 'gen_ai.system'
+GEN_AI_SYSTEM = 'gen_ai.system'
 
 GEN_AI_USAGE_INPUT_TOKENS = 'gen_ai.usage.input_tokens'
 
@@ -41,7 +41,7 @@ GEN_AI_PROMPT_TEMPLATE_VARIABLE = 'gen_ai.prompt_template.variable'
 
 GEN_AI_PROMPT = 'gen_ai.prompt'
 
-GEM_AI_COMPLETION = 'gem_ai.completion'
+GEN_AI_COMPLETION = 'gem_ai.completion'
 
 GEN_AI_RESPONSE_FINISH_REASON = 'gen_ai.response.finish_reason'
 

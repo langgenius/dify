@@ -16,7 +16,7 @@ from core.ops.aliyun_trace.data_exporter.traceclient import (
 )
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
 from core.ops.aliyun_trace.entities.semconv import (
-    GEM_AI_COMPLETION,
+    GEN_AI_COMPLETION,
     GEN_AI_FRAMEWORK,
     GEN_AI_MODEL_NAME,
     GEN_AI_PROMPT,
@@ -25,6 +25,7 @@ from core.ops.aliyun_trace.entities.semconv import (
     GEN_AI_RESPONSE_FINISH_REASON,
     GEN_AI_SESSION_ID,
     GEN_AI_SPAN_KIND,
+    GEN_AI_SYSTEM,
     GEN_AI_USAGE_INPUT_TOKENS,
     GEN_AI_USAGE_OUTPUT_TOKENS,
     GEN_AI_USAGE_TOTAL_TOKENS,
@@ -36,7 +37,6 @@ from core.ops.aliyun_trace.entities.semconv import (
     TOOL_DESCRIPTION,
     TOOL_NAME,
     TOOL_PARAMETERS,
-    Gen_AI_SYSTEM,
     GenAISpanKind,
 )
 from core.ops.base_trace_instance import BaseTraceInstance
@@ -67,8 +67,8 @@ logger = logging.getLogger(__name__)
 class AliyunDataTrace(BaseTraceInstance):
 
     def __init__(
-        self,
-        aliyun_config: AliyunConfig,
+            self,
+            aliyun_config: AliyunConfig,
     ):
         super().__init__(aliyun_config)
         base_url = aliyun_config.endpoint.rstrip('/')
@@ -163,14 +163,14 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
                 GEN_AI_FRAMEWORK: 'dify',
                 GEN_AI_MODEL_NAME: trace_info.metadata.get('ls_model_name', ''),
-                Gen_AI_SYSTEM: trace_info.metadata.get('ls_provider', ''),
+                GEN_AI_SYSTEM: trace_info.metadata.get('ls_provider', ''),
                 GEN_AI_USAGE_INPUT_TOKENS: str(trace_info.message_tokens),
                 GEN_AI_USAGE_OUTPUT_TOKENS: str(trace_info.answer_tokens),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(trace_info.total_tokens),
                 GEN_AI_PROMPT_TEMPLATE_VARIABLE: json.dumps(trace_info.message_data.inputs, ensure_ascii=False),
                 GEN_AI_PROMPT_TEMPLATE_TEMPLATE: trace_info.message_data.app_model_config.pre_prompt,
                 GEN_AI_PROMPT: json.dumps(trace_info.inputs, ensure_ascii=False),
-                GEM_AI_COMPLETION: str(trace_info.outputs),
+                GEN_AI_COMPLETION: str(trace_info.outputs),
                 INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
                 OUTPUT_VALUE: str(trace_info.outputs),
             },
@@ -270,8 +270,8 @@ class AliyunDataTrace(BaseTraceInstance):
         return workflow_node_executions
 
     def build_workflow_node_span(
-        self, node_execution: WorkflowNodeExecution, trace_id: int,
-        trace_info: WorkflowTraceInfo,workflow_span_id: int):
+            self, node_execution: WorkflowNodeExecution, trace_id: int,
+            trace_info: WorkflowTraceInfo, workflow_span_id: int):
         try:
             if node_execution.node_type == NodeType.LLM:
                 node_span = self.build_workflow_llm_span(
@@ -297,8 +297,8 @@ class AliyunDataTrace(BaseTraceInstance):
             span_status = Status(StatusCode.ERROR, str(node_execution.error))
         return span_status
 
-    def build_workflow_task_span(self, trace_id:int, workflow_span_id:int, trace_info: WorkflowTraceInfo,
-                                node_execution: WorkflowNodeExecution) -> SpanData:
+    def build_workflow_task_span(self, trace_id: int, workflow_span_id: int, trace_info: WorkflowTraceInfo,
+                                 node_execution: WorkflowNodeExecution) -> SpanData:
         return SpanData(
             trace_id=trace_id,
             parent_span_id=workflow_span_id,
@@ -316,8 +316,8 @@ class AliyunDataTrace(BaseTraceInstance):
             status=self.get_workflow_node_status(node_execution),
         )
 
-    def build_workflow_tool_span(self, trace_id:int, workflow_span_id:int, trace_info: WorkflowTraceInfo,
-                                node_execution: WorkflowNodeExecution) -> SpanData:
+    def build_workflow_tool_span(self, trace_id: int, workflow_span_id: int, trace_info: WorkflowTraceInfo,
+                                 node_execution: WorkflowNodeExecution) -> SpanData:
         return SpanData(
             trace_id=trace_id,
             parent_span_id=workflow_span_id,
@@ -330,16 +330,16 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_FRAMEWORK: 'dify',
                 TOOL_NAME: node_execution.title,
                 TOOL_DESCRIPTION: json.dumps(
-                    node_execution.metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO, {}),ensure_ascii=False),
-                TOOL_PARAMETERS: json.dumps(node_execution.inputs if node_execution.inputs else {},ensure_ascii=False),
-                INPUT_VALUE: json.dumps(node_execution.inputs if node_execution.inputs else {},ensure_ascii=False),
+                    node_execution.metadata.get(WorkflowNodeExecutionMetadataKey.TOOL_INFO, {}), ensure_ascii=False),
+                TOOL_PARAMETERS: json.dumps(node_execution.inputs if node_execution.inputs else {}, ensure_ascii=False),
+                INPUT_VALUE: json.dumps(node_execution.inputs if node_execution.inputs else {}, ensure_ascii=False),
                 OUTPUT_VALUE: json.dumps(node_execution.outputs, ensure_ascii=False),
             },
             status=self.get_workflow_node_status(node_execution),
         )
 
-    def build_workflow_retrieval_span(self, trace_id:int, workflow_span_id:int, trace_info: WorkflowTraceInfo,
-                                node_execution: WorkflowNodeExecution) -> SpanData:
+    def build_workflow_retrieval_span(self, trace_id: int, workflow_span_id: int, trace_info: WorkflowTraceInfo,
+                                      node_execution: WorkflowNodeExecution) -> SpanData:
         return SpanData(
             trace_id=trace_id,
             parent_span_id=workflow_span_id,
@@ -358,7 +358,7 @@ class AliyunDataTrace(BaseTraceInstance):
             status=self.get_workflow_node_status(node_execution),
         )
 
-    def build_workflow_llm_span(self, trace_id:int, workflow_span_id:int, trace_info: WorkflowTraceInfo,
+    def build_workflow_llm_span(self, trace_id: int, workflow_span_id: int, trace_info: WorkflowTraceInfo,
                                 node_execution: WorkflowNodeExecution) -> SpanData:
         return SpanData(
             trace_id=trace_id,
@@ -372,12 +372,12 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
                 GEN_AI_FRAMEWORK: 'dify',
                 GEN_AI_MODEL_NAME: node_execution.process_data.get('model_name', ''),
-                Gen_AI_SYSTEM: node_execution.process_data.get('model_provider', ''),
+                GEN_AI_SYSTEM: node_execution.process_data.get('model_provider', ''),
                 GEN_AI_USAGE_INPUT_TOKENS: str(node_execution.outputs.get('usage', {}).get('prompt_tokens', 0)),
                 GEN_AI_USAGE_OUTPUT_TOKENS: str(node_execution.outputs.get('usage', {}).get('completion_tokens', 0)),
                 GEN_AI_USAGE_TOTAL_TOKENS: str(node_execution.outputs.get('usage', {}).get('total_tokens', 0)),
                 GEN_AI_PROMPT: json.dumps(node_execution.process_data.get('prompts', []), ensure_ascii=False),
-                GEM_AI_COMPLETION: str(node_execution.outputs.get('text', '')),
+                GEN_AI_COMPLETION: str(node_execution.outputs.get('text', '')),
                 GEN_AI_RESPONSE_FINISH_REASON: node_execution.outputs.get('finish_reason', ''),
                 INPUT_VALUE: json.dumps(node_execution.process_data.get('prompts', []), ensure_ascii=False),
                 OUTPUT_VALUE: str(node_execution.outputs.get('text', ''))
@@ -385,7 +385,7 @@ class AliyunDataTrace(BaseTraceInstance):
             status=self.get_workflow_node_status(node_execution),
         )
 
-    def add_workflow_span(self, trace_id:int, workflow_span_id:int, trace_info: WorkflowTraceInfo):
+    def add_workflow_span(self, trace_id: int, workflow_span_id: int, trace_info: WorkflowTraceInfo):
         message_span_id = None
         if trace_info.message_id:
             message_span_id = convert_to_span_id(trace_info.message_id, 'message')
@@ -406,7 +406,7 @@ class AliyunDataTrace(BaseTraceInstance):
                     GEN_AI_USER_ID: str(user_id),
                     GEN_AI_SPAN_KIND: GenAISpanKind.CHAIN.value,
                     GEN_AI_FRAMEWORK: 'dify',
-                    INPUT_VALUE: trace_info.workflow_run_inputs.get('sys.query',''),
+                    INPUT_VALUE: trace_info.workflow_run_inputs.get('sys.query', ''),
                     OUTPUT_VALUE: json.dumps(trace_info.workflow_run_outputs, ensure_ascii=False),
                 },
                 status=status,
@@ -447,9 +447,9 @@ class AliyunDataTrace(BaseTraceInstance):
                 GEN_AI_SPAN_KIND: GenAISpanKind.LLM.value,
                 GEN_AI_FRAMEWORK: 'dify',
                 GEN_AI_MODEL_NAME: trace_info.metadata.get('ls_model_name', ''),
-                Gen_AI_SYSTEM: trace_info.metadata.get('ls_provider', ''),
+                GEN_AI_SYSTEM: trace_info.metadata.get('ls_provider', ''),
                 GEN_AI_PROMPT: json.dumps(trace_info.inputs, ensure_ascii=False),
-                GEM_AI_COMPLETION: json.dumps(trace_info.suggested_question, ensure_ascii=False),
+                GEN_AI_COMPLETION: json.dumps(trace_info.suggested_question, ensure_ascii=False),
                 INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
                 OUTPUT_VALUE: json.dumps(trace_info.suggested_question, ensure_ascii=False),
             },

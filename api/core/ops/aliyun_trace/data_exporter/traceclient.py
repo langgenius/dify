@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 class TraceClient:
-    def __init__(self, service_name:str, endpoint:str,max_queue_size:int=1000,
-                 schedule_delay_sec:int=5, max_export_batch_size:int=50):
+    def __init__(self, service_name: str, endpoint: str, max_queue_size: int = 1000,
+                 schedule_delay_sec: int = 5, max_export_batch_size: int = 50):
         self.endpoint = endpoint
         self.resource = Resource(
             attributes={
@@ -53,7 +53,6 @@ class TraceClient:
         self.worker_thread.start()
 
         self._spans_dropped = False
-
 
     def export(self, spans: Sequence[ReadableSpan]):
         self.exporter.export(spans)
@@ -114,6 +113,7 @@ class TraceClient:
         self._export_batch()
         self.exporter.shutdown()
 
+
 class SpanBuilder:
     def __init__(self, resource):
         self.resource = resource
@@ -159,11 +159,13 @@ class SpanBuilder:
         )
         return span
 
+
 def generate_span_id() -> int:
     span_id = random.getrandbits(64)
     while span_id == INVALID_SPAN_ID:
         span_id = random.getrandbits(64)
     return span_id
+
 
 def convert_to_trace_id(uuid_v4: str) -> int:
     try:
@@ -172,15 +174,17 @@ def convert_to_trace_id(uuid_v4: str) -> int:
     except Exception as e:
         raise ValueError(f"Invalid UUID input: {e}")
 
+
 def convert_to_span_id(uuid_v4: str, span_type: str) -> int:
     try:
         uuid_obj = uuid.UUID(uuid_v4)
     except Exception as e:
         raise ValueError(f"Invalid UUID input: {e}")
-
-    type_hash = consistent_hash(span_type) & 0xFFFFFFFFFFFFFFFF
-    span_id = (uuid_obj.int & 0xFFFFFFFFFFFFFFFF) ^ type_hash
+    combined_key = f"{uuid_obj.hex}-{span_type}"
+    hash_bytes = hashlib.sha256(combined_key.encode('utf-8')).digest()
+    span_id = int.from_bytes(hash_bytes[:8], byteorder="big", signed=False)
     return span_id
+
 
 def convert_datetime_to_nanoseconds(start_time_a: Optional[datetime]) -> Optional[int]:
     if start_time_a is None:
@@ -188,7 +192,3 @@ def convert_datetime_to_nanoseconds(start_time_a: Optional[datetime]) -> Optiona
     timestamp_in_seconds = start_time_a.timestamp()
     timestamp_in_nanoseconds = int(timestamp_in_seconds * 1e9)
     return timestamp_in_nanoseconds
-
-def consistent_hash(s: str) -> int:
-    sha256_hash = hashlib.sha256(s.encode()).hexdigest()
-    return int(sha256_hash[:16], 16)
