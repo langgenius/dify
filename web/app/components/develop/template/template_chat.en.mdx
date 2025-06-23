@@ -82,9 +82,9 @@ Chat applications support session persistence, allowing previous chat history to
 
     ### ChatCompletionResponse
     Returns the complete App result, `Content-Type` is `application/json`.
-    - `event` (string) 事件类型，固定为 `message`
-    - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
-    - `id` (string) 唯一ID
+    - `event` (string) Event type, always `message` in blocking mode.
+    - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+    - `id` (string) Unique ID, same as `message_id`
     - `message_id` (string) Unique message ID
     - `conversation_id` (string) Conversation ID
     - `mode` (string) App mode, fixed as `chat`

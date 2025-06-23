@@ -64,6 +64,7 @@ from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureModel, FeatureService
 from services.tag_service import TagService
 from services.vector_service import VectorService
+from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.batch_clean_document_task import batch_clean_document_task
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_index_update_task import deal_dataset_index_update_task
@@ -76,6 +77,7 @@ from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
+from tasks.remove_document_from_index_task import remove_document_from_index_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
@@ -490,7 +492,7 @@ class DatasetService:
                         raise ValueError(ex.description)
 
             filtered_data["updated_by"] = user.id
-            filtered_data["updated_at"] = datetime.datetime.now()
+            filtered_data["updated_at"] = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
 
             # update Retrieval model
             filtered_data["retrieval_model"] = data["retrieval_model"]
@@ -1157,12 +1159,17 @@ class DocumentService:
                 process_rule = knowledge_config.process_rule
                 if process_rule:
                     if process_rule.mode in ("custom", "hierarchical"):
-                        dataset_process_rule = DatasetProcessRule(
-                            dataset_id=dataset.id,
-                            mode=process_rule.mode,
-                            rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
-                            created_by=account.id,
-                        )
+                        if process_rule.rules:
+                            dataset_process_rule = DatasetProcessRule(
+                                dataset_id=dataset.id,
+                                mode=process_rule.mode,
+                                rules=process_rule.rules.model_dump_json() if process_rule.rules else None,
+                                created_by=account.id,
+                            )
+                        else:
+                            dataset_process_rule = dataset.latest_process_rule
+                            if not dataset_process_rule:
+                                raise ValueError("No process rule found.")
                     elif process_rule.mode == "automatic":
                         dataset_process_rule = DatasetProcessRule(
                             dataset_id=dataset.id,
@@ -2060,6 +2067,191 @@ class DocumentService:
 
             if not isinstance(args["process_rule"]["rules"]["segmentation"]["max_tokens"], int):
                 raise ValueError("Process rule segmentation max_tokens is invalid")
+
+    @staticmethod
+    def batch_update_document_status(dataset: Dataset, document_ids: list[str], action: str, user):
+        """
+        Batch update document status.
+
+        Args:
+            dataset (Dataset): The dataset object
+            document_ids (list[str]): List of document IDs to update
+            action (str): Action to perform (enable, disable, archive, un_archive)
+            user: Current user performing the action
+
+        Raises:
+            DocumentIndexingError: If document is being indexed or not in correct state
+            ValueError: If action is invalid
+        """
+        if not document_ids:
+            return
+
+        # Early validation of action parameter
+        valid_actions = ["enable", "disable", "archive", "un_archive"]
+        if action not in valid_actions:
+            raise ValueError(f"Invalid action: {action}. Must be one of {valid_actions}")
+
+        documents_to_update = []
+
+        # First pass: validate all documents and prepare updates
+        for document_id in document_ids:
+            document = DocumentService.get_document(dataset.id, document_id)
+            if not document:
+                continue
+
+            # Check if document is being indexed
+            indexing_cache_key = f"document_{document.id}_indexing"
+            cache_result = redis_client.get(indexing_cache_key)
+            if cache_result is not None:
+                raise DocumentIndexingError(f"Document:{document.name} is being indexed, please try again later")
+
+            # Prepare update based on action
+            update_info = DocumentService._prepare_document_status_update(document, action, user)
+            if update_info:
+                documents_to_update.append(update_info)
+
+        # Second pass: apply all updates in a single transaction
+        if documents_to_update:
+            try:
+                for update_info in documents_to_update:
+                    document = update_info["document"]
+                    updates = update_info["updates"]
+
+                    # Apply updates to the document
+                    for field, value in updates.items():
+                        setattr(document, field, value)
+
+                    db.session.add(document)
+
+                # Batch commit all changes
+                db.session.commit()
+            except Exception as e:
+                # Rollback on any error
+                db.session.rollback()
+                raise e
+            # Execute async tasks and set Redis cache after successful commit
+            # propagation_error is used to capture any errors for submitting async task execution
+            propagation_error = None
+            for update_info in documents_to_update:
+                try:
+                    # Execute async tasks after successful commit
+                    if update_info["async_task"]:
+                        task_info = update_info["async_task"]
+                        task_func = task_info["function"]
+                        task_args = task_info["args"]
+                        task_func.delay(*task_args)
+                except Exception as e:
+                    # Log the error but do not rollback the transaction
+                    logging.exception(f"Error executing async task for document {update_info['document'].id}")
+                    # don't raise the error immediately, but capture it for later
+                    propagation_error = e
+                try:
+                    # Set Redis cache if needed after successful commit
+                    if update_info["set_cache"]:
+                        document = update_info["document"]
+                        indexing_cache_key = f"document_{document.id}_indexing"
+                        redis_client.setex(indexing_cache_key, 600, 1)
+                except Exception as e:
+                    # Log the error but do not rollback the transaction
+                    logging.exception(f"Error setting cache for document {update_info['document'].id}")
+            # Raise any propagation error after all updates
+            if propagation_error:
+                raise propagation_error
+
+    @staticmethod
+    def _prepare_document_status_update(document, action: str, user):
+        """
+        Prepare document status update information.
+
+        Args:
+            document: Document object to update
+            action: Action to perform
+            user: Current user
+
+        Returns:
+            dict: Update information or None if no update needed
+        """
+        now = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
+
+        if action == "enable":
+            return DocumentService._prepare_enable_update(document, now)
+        elif action == "disable":
+            return DocumentService._prepare_disable_update(document, user, now)
+        elif action == "archive":
+            return DocumentService._prepare_archive_update(document, user, now)
+        elif action == "un_archive":
+            return DocumentService._prepare_unarchive_update(document, now)
+
+        return None
+
+    @staticmethod
+    def _prepare_enable_update(document, now):
+        """Prepare updates for enabling a document."""
+        if document.enabled:
+            return None
+
+        return {
+            "document": document,
+            "updates": {"enabled": True, "disabled_at": None, "disabled_by": None, "updated_at": now},
+            "async_task": {"function": add_document_to_index_task, "args": [document.id]},
+            "set_cache": True,
+        }
+
+    @staticmethod
+    def _prepare_disable_update(document, user, now):
+        """Prepare updates for disabling a document."""
+        if not document.completed_at or document.indexing_status != "completed":
+            raise DocumentIndexingError(f"Document: {document.name} is not completed.")
+
+        if not document.enabled:
+            return None
+
+        return {
+            "document": document,
+            "updates": {"enabled": False, "disabled_at": now, "disabled_by": user.id, "updated_at": now},
+            "async_task": {"function": remove_document_from_index_task, "args": [document.id]},
+            "set_cache": True,
+        }
+
+    @staticmethod
+    def _prepare_archive_update(document, user, now):
+        """Prepare updates for archiving a document."""
+        if document.archived:
+            return None
+
+        update_info = {
+            "document": document,
+            "updates": {"archived": True, "archived_at": now, "archived_by": user.id, "updated_at": now},
+            "async_task": None,
+            "set_cache": False,
+        }
+
+        # Only set async task and cache if document is currently enabled
+        if document.enabled:
+            update_info["async_task"] = {"function": remove_document_from_index_task, "args": [document.id]}
+            update_info["set_cache"] = True
+
+        return update_info
+
+    @staticmethod
+    def _prepare_unarchive_update(document, now):
+        """Prepare updates for unarchiving a document."""
+        if not document.archived:
+            return None
+
+        update_info = {
+            "document": document,
+            "updates": {"archived": False, "archived_at": None, "archived_by": None, "updated_at": now},
+            "async_task": None,
+            "set_cache": False,
+        }
+
+        # Only re-index if the document is currently enabled
+        if document.enabled:
+            update_info["async_task"] = {"function": add_document_to_index_task, "args": [document.id]}
+            update_info["set_cache"] = True
+
+        return update_info
 
 
 class SegmentService:
