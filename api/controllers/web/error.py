@@ -142,7 +142,7 @@ class InvokeRateLimitError(BaseHTTPException):
 
 
 class NotFoundError(BaseHTTPException):
-    error_code = "unknown"
+    error_code = "not_found"
     code = 404
 
 
