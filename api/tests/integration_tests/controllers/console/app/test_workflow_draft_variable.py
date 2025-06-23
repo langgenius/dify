@@ -30,6 +30,7 @@ class TestWorkflowDraftNodeVariableListApi:
             node_id="test_node_1",
             name="str_var",
             value=build_segment("str_value"),
+            node_execution_id=str(uuid.uuid4()),
         )
         srv_instance = mock.create_autospec(WorkflowDraftVariableService, instance=True)
         srv_class.return_value = srv_instance
