@@ -1,4 +1,4 @@
-import os
+import pathlib
 import random
 import secrets
 from collections.abc import Generator
@@ -12,20 +12,22 @@ from app_factory import create_app
 from models import Account, DifySetup, Tenant, TenantAccountJoin, db
 from services.account_service import AccountService, RegisterService
 
-# Getting the absolute path of the current file's directory
-ABS_PATH = os.path.dirname(os.path.abspath(__file__))
-
-# Getting the absolute path of the project's root directory
-PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
-
 
 # Loading the .env file if it exists
 def _load_env() -> None:
-    dotenv_path = os.path.join(PROJECT_DIR, "tests", "integration_tests", ".env")
-    if os.path.exists(dotenv_path):
+    current_file_path = pathlib.Path(__file__).absolute()
+    # Items later in the list have higher precedence.
+    files_to_load = [".env", "vdb.env"]
+
+    env_file_paths = [current_file_path.parent / i for i in files_to_load]
+    for path in env_file_paths:
+        if not path.exists():
+            continue
+
         from dotenv import load_dotenv
 
-        load_dotenv(dotenv_path)
+        # Set `override=True` to ensure values from `vdb.env` take priority over values from `.env`
+        load_dotenv(str(path), override=True)
 
 
 _load_env()
