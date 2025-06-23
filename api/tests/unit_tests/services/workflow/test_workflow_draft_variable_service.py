@@ -7,6 +7,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.variables.types import SegmentType
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes import NodeType
 from models.enums import DraftVariableType
@@ -175,6 +176,7 @@ class TestWorkflowDraftVariableService:
         mock_variable.id = "var-id"
         mock_variable.name = "test_var"
         mock_variable.node_id = "node-id"
+        mock_variable.value_type = SegmentType.STRING
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
