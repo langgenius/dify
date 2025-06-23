@@ -20,6 +20,7 @@ import type { currentVarType } from './panel'
 import { VarInInspectType } from '@/types/workflow'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import cn from '@/utils/classnames'
+import { useToolIcon } from '../hooks'
 
 type Props = {
   nodeData?: NodeWithVar
@@ -42,6 +43,8 @@ const Group = ({
 }: Props) => {
   const { t } = useTranslation()
   const [isCollapsed, setIsCollapsed] = useState(false)
+
+  const toolIcon = useToolIcon(nodeData?.nodePayload as any)
 
   const isEnv = varType === VarInInspectType.environment
   const isChatVar = varType === VarInInspectType.conversation
@@ -114,6 +117,7 @@ const Group = ({
               <BlockIcon
                 className='shrink-0'
                 type={nodeData.nodeType}
+                toolIcon={toolIcon || ''}
                 size='xs'
               />
               <div className='system-xs-medium-uppercase truncate text-text-tertiary'>{nodeData.title}</div>

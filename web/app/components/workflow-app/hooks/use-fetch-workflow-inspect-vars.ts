@@ -41,6 +41,7 @@ const useSetWorkflowVarsWithValue = () => {
       })
       const nodeWithVar = {
         nodeId,
+        nodePayload: node.data,
         nodeType: node.data.type,
         title: node.data.title,
         vars: varsUnderTheNode,
