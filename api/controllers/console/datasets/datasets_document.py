@@ -1115,11 +1115,16 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
             .first()
         )
         if not log:
-            return {"datasource_info": None, "datasource_type": None, "input_data": None}, 200
+            return {"datasource_info": None,
+                    "datasource_type": None,
+                    "input_data": None,
+                    "datasource_node_id": None,
+                    }, 200
         return {
             "datasource_info": json.loads(log.datasource_info),
             "datasource_type": log.datasource_type,
             "input_data": log.input_data,
+            "datasource_node_id": log.datasource_node_id,
         }, 200
 
 
@@ -1145,5 +1150,5 @@ api.add_resource(DocumentRetryApi, "/datasets/<uuid:dataset_id>/retry")
 api.add_resource(DocumentRenameApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename")
 
 api.add_resource(WebsiteDocumentSyncApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync")
-api.add_resource(DocumentPipelineExecutionLogApi, 
+api.add_resource(DocumentPipelineExecutionLogApi,
                  "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/pipeline-execution-log")
