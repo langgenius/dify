@@ -151,6 +151,10 @@ const translation = {
       exclude: 'Exclude selected',
       partial: 'Only selected',
     },
+    upgradeModePlaceholder: {
+      exclude: 'Selected plugins will not auto-update',
+      partial: 'Only selected plugins will auto-update. No plugins are currently selected, so no plugins will auto-update.',
+    },
   },
   pluginInfoModal: {
     title: 'Plugin info',

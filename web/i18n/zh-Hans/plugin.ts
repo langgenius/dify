@@ -151,6 +151,10 @@ const translation = {
       exclude: '排除选定',
       partial: '仅选定',
     },
+    upgradeModePlaceholder: {
+      exclude: '选定的插件将不会自动更新',
+      partial: '仅选定的插件将自动更新。目前未选择任何插件，因此不会自动更新任何插件。',
+    },
   },
   pluginInfoModal: {
     title: '插件信息',
