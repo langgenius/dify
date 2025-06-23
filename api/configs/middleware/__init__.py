@@ -42,6 +42,7 @@ from .vdb.upstash_config import UpstashConfig
 from .vdb.vastbase_vector_config import VastbaseVectorConfig
 from .vdb.vikingdb_config import VikingDBConfig
 from .vdb.weaviate_config import WeaviateConfig
+from .vdb.vanna_config import VannaConfig
 
 
 class StorageConfig(BaseSettings):
@@ -323,5 +324,6 @@ class MiddlewareConfig(
     OpenGaussConfig,
     TableStoreConfig,
     DatasetQueueMonitorConfig,
+    VannaConfig,
 ):
     pass
