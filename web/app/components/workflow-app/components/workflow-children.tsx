@@ -6,7 +6,6 @@ import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { useStore } from '@/app/components/workflow/store'
 import Features from '@/app/components/workflow/features'
-import PluginDependency from '@/app/components/workflow/plugin-dependency'
 import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
 import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import {
@@ -38,7 +37,6 @@ const WorkflowChildren = () => {
 
   return (
     <>
-      <PluginDependency />
       {
         showFeaturesPanel && <Features />
       }
