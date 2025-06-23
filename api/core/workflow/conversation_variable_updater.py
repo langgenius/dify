@@ -12,7 +12,7 @@ class ConversationVariableUpdater(Protocol):
     conversation variables.
 
     Implementations may choose to batch updates. If batching is used, the `flush` method
-    should be implemented to persist buffered changes, and `update_conversation_variable`
+    should be implemented to persist buffered changes, and `update`
     should handle buffering accordingly.
 
     Note: Since implementations may buffer updates, instances of ConversationVariableUpdater
