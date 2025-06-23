@@ -97,7 +97,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={
                     "status_code": response.status_code,
-                    "body": response.text if not files else "",
+                    "body": response.text if not files.value else "",
                     "headers": response.headers,
                     "files": files,
                 },
