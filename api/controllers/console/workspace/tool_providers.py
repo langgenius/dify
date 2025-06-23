@@ -127,9 +127,10 @@ class ToolBuiltinProviderUpdateApi(Resource):
             result = BuiltinToolManageService.update_builtin_tool_provider(
                 user_id=user_id,
                 tenant_id=tenant_id,
+                provider_name=provider,
                 credentials=args["credentials"],
                 credential_id=args["credential_id"],
-                name=args["name"]
+                name=args["name"],
             )
             session.commit()
         return result

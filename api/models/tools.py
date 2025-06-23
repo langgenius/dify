@@ -19,8 +19,11 @@ from .types import StringUUID
 
 
 class ToolProviderCredentialType(enum.StrEnum):
-    API_KEY = "api_key",
-    OAUTH2 = "oauth2",
+    API_KEY = "api_key"
+    OAUTH2 = "oauth2"
+
+    def get_name(self):
+        return self.value.replace("_", " ").upper()
 
     def is_editable(self):
         return self == ToolProviderCredentialType.API_KEY

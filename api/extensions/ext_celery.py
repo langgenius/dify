@@ -1,4 +1,3 @@
-import os
 from datetime import timedelta
 
 import pytz
@@ -25,17 +24,12 @@ def init_app(app: DifyApp) -> Celery:
             },
         }
 
-
-    flask_debugging = os.environ.get("FLASK_DEBUG", "0").lower() in {"true", "1", "yes"}
-
     celery_app = Celery(
         app.name,
         task_cls=FlaskTask,
         broker=dify_config.CELERY_BROKER_URL,
         backend=dify_config.CELERY_BACKEND,
         task_ignore_result=True,
-        task_always_eager=flask_debugging,
-        task_eager_propagates=flask_debugging,
     )
 
     # Add SSL options to the Celery configuration
