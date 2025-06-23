@@ -1356,6 +1356,8 @@ export const useNodesInteractions = () => {
         }
       })
 
+      console.log(nodesToPaste, edgesToPaste)
+
       setNodes([...nodes, ...nodesToPaste])
       setEdges([...edges, ...edgesToPaste])
       saveStateToHistory(WorkflowHistoryEvent.NodePaste)

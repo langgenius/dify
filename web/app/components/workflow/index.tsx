@@ -41,6 +41,7 @@ import {
   useNodesSyncDraft,
   usePanelInteractions,
   useSelectionInteractions,
+  useSelectionPaste,
   useShortcuts,
   useWorkflow,
   useWorkflowReadOnly,
@@ -80,6 +81,9 @@ import Confirm from '@/app/components/base/confirm'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import { HooksStoreContextProvider } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
+import { useSelectionGraph } from './hooks/use-selection-graph'
+import { useSelectionGraphMenu } from './hooks/use-selection-graph-menu'
+import SelectPanelContextmenu from './select-panel-contextmenu'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -114,6 +118,14 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
+
+  // add selection hook
+  useSelectionGraph()
+  // add paste hook
+  useSelectionPaste({
+    workflowContainerRef,
+  })
+  const { handleSelectPanelContextMenu } = useSelectionGraphMenu()
 
   const {
     setShowConfirm,
@@ -270,6 +282,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       <PanelContextmenu />
       <NodeContextmenu />
+      <SelectPanelContextmenu />
       <HelpLine />
       {
         !!showConfirm && (
@@ -307,6 +320,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onSelectionDrag={handleSelectionDrag}
         onPaneContextMenu={handlePaneContextMenu}
         connectionLineComponent={CustomConnectionLine}
+        onSelectionContextMenu={handleSelectPanelContextMenu}
         // TODO: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
@@ -345,6 +359,16 @@ export const WorkflowWithInnerContext = memo(({
   hooksStore,
   ...restProps
 }: WorkflowWithInnerContextProps) => {
+  const handlePaste = (e: ClipboardEvent) => {
+    console.log(e, 123)
+  }
+  useEffect(() => {
+    document.body.addEventListener('paste', handlePaste, true)
+    return () => {
+      document.body.removeEventListener('paste', handlePaste, true)
+    }
+  }, [])
+
   return (
     <HooksStoreContextProvider {...hooksStore}>
       <Workflow {...restProps} />
