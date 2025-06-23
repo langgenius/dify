@@ -63,7 +63,7 @@ const CreateFormPipeline = () => {
     onlineDocuments,
     previewOnlineDocument,
     updateOnlineDocuments,
-    currentDocuments,
+    currentDocument,
     updateCurrentPage,
     hideOnlineDocumentPreview,
   } = useOnlineDocuments()
@@ -324,7 +324,7 @@ const CreateFormPipeline = () => {
           <div className='h-full min-w-0 flex-1'>
             <div className='flex h-full flex-col pl-2 pt-2'>
               {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
-              {currentDocuments && <OnlineDocumentPreview currentPage={currentDocuments} hidePreview={hideOnlineDocumentPreview} />}
+              {currentDocument && <OnlineDocumentPreview currentPage={currentDocument} hidePreview={hideOnlineDocumentPreview} />}
               {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
             </div>
           </div>

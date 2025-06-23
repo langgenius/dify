@@ -122,7 +122,7 @@ export const useLocalFile = () => {
 
 export const useOnlineDocuments = () => {
   const [onlineDocuments, setOnlineDocuments] = useState<NotionPage[]>([])
-  const [currentDocuments, setCurrentDocuments] = useState<NotionPage | undefined>()
+  const [currentDocument, setCurrentDocument] = useState<NotionPage | undefined>()
 
   const previewOnlineDocument = useRef<NotionPage>(onlineDocuments[0])
 
@@ -131,18 +131,18 @@ export const useOnlineDocuments = () => {
   }
 
   const updateCurrentPage = useCallback((page: NotionPage) => {
-    setCurrentDocuments(page)
+    setCurrentDocument(page)
   }, [])
 
   const hideOnlineDocumentPreview = useCallback(() => {
-    setCurrentDocuments(undefined)
+    setCurrentDocument(undefined)
   }, [])
 
   return {
     onlineDocuments,
     previewOnlineDocument,
     updateOnlineDocuments,
-    currentDocuments,
+    currentDocument,
     updateCurrentPage,
     hideOnlineDocumentPreview,
   }

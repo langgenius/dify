@@ -166,6 +166,8 @@ const DocumentList: FC<IDocumentListProps> = ({
       const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentIds: selectedIds }) as Promise<CommonResponse>)
 
       if (!e) {
+        if (actionName === DocumentActionType.delete)
+          onSelectedIdChange([])
         Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         onUpdate()
       }
