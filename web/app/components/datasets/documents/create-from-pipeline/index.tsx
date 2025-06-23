@@ -69,10 +69,15 @@ const CreateFormPipeline = () => {
   } = useOnlineDocuments()
   const {
     websitePages,
+    crawlResult,
+    setCrawlResult,
+    step,
+    setStep,
     previewWebsitePage,
     updataCheckedCrawlResultChange,
     currentWebsite,
     updateCurrentWebsite,
+    previewIndex,
     hideWebsitePreview,
   } = useWebsiteCrawl()
 
@@ -225,113 +230,124 @@ const CreateFormPipeline = () => {
     <div
       className='relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
     >
-      <div className='flex h-full flex-1 flex-col px-14'>
-        <LeftHeader
-          steps={steps}
-          title={t('datasetPipeline.addDocuments.title')}
-          currentStep={currentStep}
-        />
-        <div className='grow overflow-y-auto'>
-          {
-            currentStep === 1 && (
-              <div className='flex flex-col gap-y-5 pt-4'>
-                <DataSourceOptions
-                  datasourceNodeId={datasource?.nodeId || ''}
-                  onSelect={setDatasource}
-                  pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
+      <div className='h-full min-w-0 flex-1'>
+        <div className='flex h-full flex-col px-14'>
+          <LeftHeader
+            steps={steps}
+            title={t('datasetPipeline.addDocuments.title')}
+            currentStep={currentStep}
+          />
+          <div className='grow overflow-y-auto'>
+            {
+              currentStep === 1 && (
+                <div className='flex flex-col gap-y-5 pt-4'>
+                  <DataSourceOptions
+                    datasourceNodeId={datasource?.nodeId || ''}
+                    onSelect={setDatasource}
+                    pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
+                  />
+                  {datasource?.type === DatasourceType.localFile && (
+                    <LocalFile
+                      files={fileList}
+                      allowedExtensions={datasource?.fileExtensions || []}
+                      updateFile={updateFile}
+                      updateFileList={updateFileList}
+                      onPreview={updateCurrentFile}
+                      notSupportBatchUpload={notSupportBatchUpload}
+                    />
+                  )}
+                  {datasource?.type === DatasourceType.onlineDocument && (
+                    <OnlineDocuments
+                      nodeId={datasource?.nodeId || ''}
+                      headerInfo={{
+                        title: datasource.description,
+                        docTitle: datasource.docTitle || '',
+                        docLink: datasource.docLink || '',
+                      }}
+                      onlineDocuments={onlineDocuments}
+                      updateOnlineDocuments={updateOnlineDocuments}
+                      canPreview
+                      onPreview={updateCurrentPage}
+                    />
+                  )}
+                  {datasource?.type === DatasourceType.websiteCrawl && (
+                    <WebsiteCrawl
+                      nodeId={datasource?.nodeId || ''}
+                      headerInfo={{
+                        title: datasource.description,
+                        docTitle: datasource.docTitle || '',
+                        docLink: datasource.docLink || '',
+                      }}
+                      crawlResult={crawlResult}
+                      setCrawlResult={setCrawlResult}
+                      step={step}
+                      setStep={setStep}
+                      checkedCrawlResult={websitePages}
+                      onCheckedCrawlResultChange={updataCheckedCrawlResultChange}
+                      onPreview={updateCurrentWebsite}
+                      previewIndex={previewIndex}
+                    />
+                  )}
+                  {isShowVectorSpaceFull && (
+                    <VectorSpaceFull />
+                  )}
+                  <Actions disabled={nextBtnDisabled} handleNextStep={handleNextStep} />
+                </div>
+              )
+            }
+            {
+              currentStep === 2 && (
+                <ProcessDocuments
+                  ref={formRef}
+                  dataSourceNodeId={datasource?.nodeId || ''}
+                  onProcess={onClickProcess}
+                  onPreview={onClickPreview}
+                  onSubmit={handleSubmit}
+                  onBack={handleBackStep}
                 />
-                {datasource?.type === DatasourceType.localFile && (
-                  <LocalFile
-                    files={fileList}
-                    allowedExtensions={datasource?.fileExtensions || []}
-                    updateFile={updateFile}
-                    updateFileList={updateFileList}
-                    onPreview={updateCurrentFile}
-                    notSupportBatchUpload={notSupportBatchUpload}
-                  />
-                )}
-                {datasource?.type === DatasourceType.onlineDocument && (
-                  <OnlineDocuments
-                    nodeId={datasource?.nodeId || ''}
-                    headerInfo={{
-                      title: datasource.description,
-                      docTitle: datasource.docTitle || '',
-                      docLink: datasource.docLink || '',
-                    }}
-                    onlineDocuments={onlineDocuments}
-                    updateOnlineDocuments={updateOnlineDocuments}
-                    canPreview
-                    onPreview={updateCurrentPage}
-                  />
-                )}
-                {datasource?.type === DatasourceType.websiteCrawl && (
-                  <WebsiteCrawl
-                    nodeId={datasource?.nodeId || ''}
-                    headerInfo={{
-                      title: datasource.description,
-                      docTitle: datasource.docTitle || '',
-                      docLink: datasource.docLink || '',
-                    }}
-                    checkedCrawlResult={websitePages}
-                    onCheckedCrawlResultChange={updataCheckedCrawlResultChange}
-                    onPreview={updateCurrentWebsite}
-                  />
-                )}
-                {isShowVectorSpaceFull && (
-                  <VectorSpaceFull />
-                )}
-                <Actions disabled={nextBtnDisabled} handleNextStep={handleNextStep} />
-              </div>
-            )
-          }
-          {
-            currentStep === 2 && (
-              <ProcessDocuments
-                ref={formRef}
-                dataSourceNodeId={datasource?.nodeId || ''}
-                onProcess={onClickProcess}
-                onPreview={onClickPreview}
-                onSubmit={handleSubmit}
-                onBack={handleBackStep}
-              />
-            )
-          }
-          {
-            currentStep === 3 && (
-              <Processing
-                batchId={batchId}
-                documents={documents}
-              />
-            )
-          }
+              )
+            }
+            {
+              currentStep === 3 && (
+                <Processing
+                  batchId={batchId}
+                  documents={documents}
+                />
+              )
+            }
+          </div>
         </div>
       </div>
       {/* Preview */}
       {
         currentStep === 1 && (
-          <div className='flex h-full flex-1 pl-2 pt-2'>
-            {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
-            {currentDocuments && <OnlineDocumentPreview currentPage={currentDocuments} hidePreview={hideOnlineDocumentPreview} />}
-            {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+          <div className='h-full min-w-0 flex-1'>
+            <div className='flex h-full flex-col pl-2 pt-2'>
+              {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
+              {currentDocuments && <OnlineDocumentPreview currentPage={currentDocuments} hidePreview={hideOnlineDocumentPreview} />}
+              {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+            </div>
           </div>
         )
       }
       {
         currentStep === 2 && (
-          <div className='flex h-full flex-1 pl-2 pt-2'>
-            <ChunkPreview
-              dataSourceType={datasource!.type}
-              files={fileList.map(file => file.file)}
-              onlineDocuments={onlineDocuments}
-              websitePages={websitePages}
-              isIdle={isIdle}
-              isPending={isPending && isPreview.current}
-              estimateData={estimateData}
-              onPreview={onClickPreview}
-              handlePreviewFileChange={handlePreviewFileChange}
-              handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
-              handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
-            />
+          <div className='h-full min-w-0 flex-1'>
+            <div className='flex h-full flex-col pl-2 pt-2'>
+              <ChunkPreview
+                dataSourceType={datasource!.type}
+                files={fileList.map(file => file.file)}
+                onlineDocuments={onlineDocuments}
+                websitePages={websitePages}
+                isIdle={isIdle}
+                isPending={isPending && isPreview.current}
+                estimateData={estimateData}
+                onPreview={onClickPreview}
+                handlePreviewFileChange={handlePreviewFileChange}
+                handlePreviewOnlineDocumentChange={handlePreviewOnlineDocumentChange}
+                handlePreviewWebsitePageChange={handlePreviewWebsiteChange}
+              />
+            </div>
           </div>
         )
       }

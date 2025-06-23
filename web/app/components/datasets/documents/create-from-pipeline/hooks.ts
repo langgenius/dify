@@ -5,7 +5,8 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DatasourceType } from '@/models/pipeline'
-import type { CrawlResultItem, DocumentItem, FileItem } from '@/models/datasets'
+import type { CrawlResult, CrawlResultItem, DocumentItem, FileItem } from '@/models/datasets'
+import { CrawlStep } from '@/models/datasets'
 import produce from 'immer'
 import type { NotionPage } from '@/models/common'
 
@@ -150,15 +151,20 @@ export const useOnlineDocuments = () => {
 export const useWebsiteCrawl = () => {
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
   const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
+  const [crawlResult, setCrawlResult] = useState<CrawlResult | undefined>()
+  const [step, setStep] = useState<CrawlStep>(CrawlStep.init)
+  const [previewIndex, setPreviewIndex] = useState<number>(-1)
 
   const previewWebsitePage = useRef<CrawlResultItem>(websitePages[0])
 
-  const updateCurrentWebsite = useCallback((website: CrawlResultItem) => {
+  const updateCurrentWebsite = useCallback((website: CrawlResultItem, index: number) => {
     setCurrentWebsite(website)
+    setPreviewIndex(index)
   }, [])
 
   const hideWebsitePreview = useCallback(() => {
     setCurrentWebsite(undefined)
+    setPreviewIndex(-1)
   }, [])
 
   const updataCheckedCrawlResultChange = useCallback((checkedCrawlResult: CrawlResultItem[]) => {
@@ -168,10 +174,15 @@ export const useWebsiteCrawl = () => {
 
   return {
     websitePages,
+    crawlResult,
+    setCrawlResult,
+    step,
+    setStep,
     previewWebsitePage,
     updataCheckedCrawlResultChange,
     currentWebsite,
     updateCurrentWebsite,
+    previewIndex,
     hideWebsitePreview,
   }
 }

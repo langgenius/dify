@@ -1,35 +1,34 @@
 'use client'
 import React from 'react'
-import type { CrawlResultItem } from '@/models/datasets'
+import type { CrawlerProps } from './base/crawler'
 import Crawler from './base/crawler'
 
-type WebsiteCrawlProps = {
-  nodeId: string
-  checkedCrawlResult: CrawlResultItem[]
-  onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
-  headerInfo: {
-    title: string
-    docTitle: string
-    docLink: string
-  }
-  onPreview?: (payload: CrawlResultItem) => void
-  isInPipeline?: boolean
-}
+type WebsiteCrawlProps = CrawlerProps
 
 const WebsiteCrawl = ({
   nodeId,
+  crawlResult,
+  setCrawlResult,
+  step,
+  setStep,
   checkedCrawlResult,
   headerInfo,
   onCheckedCrawlResultChange,
+  previewIndex,
   onPreview,
   isInPipeline,
 }: WebsiteCrawlProps) => {
   return (
     <Crawler
       nodeId={nodeId}
+      crawlResult={crawlResult}
+      setCrawlResult={setCrawlResult}
+      step={step}
+      setStep={setStep}
       checkedCrawlResult={checkedCrawlResult}
       headerInfo={headerInfo}
       onCheckedCrawlResultChange={onCheckedCrawlResultChange}
+      previewIndex={previewIndex}
       onPreview={onPreview}
       isInPipeline={isInPipeline}
     />

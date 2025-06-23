@@ -6,7 +6,8 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useCallback, useMemo, useState } from 'react'
 import type { DatasourceType } from '@/models/pipeline'
-import type { CrawlResultItem, FileItem } from '@/models/datasets'
+import type { CrawlResult } from '@/models/datasets'
+import { type CrawlResultItem, CrawlStep, type FileItem } from '@/models/datasets'
 import produce from 'immer'
 import type { NotionPage } from '@/models/common'
 
@@ -116,9 +117,15 @@ export const useOnlineDocuments = () => {
 
 export const useWebsiteCrawl = () => {
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
+  const [crawlResult, setCrawlResult] = useState<CrawlResult | undefined>()
+  const [step, setStep] = useState<CrawlStep>(CrawlStep.init)
 
   return {
+    crawlResult,
+    setCrawlResult,
     websitePages,
     setWebsitePages,
+    step,
+    setStep,
   }
 }

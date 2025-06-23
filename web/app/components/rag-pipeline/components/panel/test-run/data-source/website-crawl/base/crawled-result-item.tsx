@@ -29,7 +29,10 @@ const CrawledResultItem = ({
     onCheckChange(!isChecked)
   }, [isChecked, onCheckChange])
   return (
-    <div className={cn('flex cursor-pointer gap-x-2 rounded-lg p-2', isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover')}>
+    <div className={cn(
+      'relative flex cursor-pointer gap-x-2 rounded-lg p-2',
+      isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover',
+    )}>
       <Checkbox
         className='shrink-0'
         checked={isChecked}
@@ -49,13 +52,15 @@ const CrawledResultItem = ({
           {payload.source_url}
         </div>
       </div>
-      {showPreview && <Button
-        size='small'
-        onClick={onPreview}
-        className='system-xs-medium-uppercase right-0 top-0 hidden px-1.5 group-hover:absolute group-hover:block'
-      >
-        {t('datasetCreation.stepOne.website.preview')}
-      </Button>}
+      {showPreview && (
+        <Button
+          size='small'
+          onClick={onPreview}
+          className='system-xs-medium-uppercase right-2 top-2 hidden px-1.5 group-hover:absolute group-hover:block'
+        >
+          {t('datasetCreation.stepOne.website.preview')}
+        </Button>
+      )}
     </div>
   )
 }
