@@ -767,8 +767,8 @@ class ToolMCPCallbackApi(Resource):
         args = parser.parse_args()
         state_key = args["state"]
         authorization_code = args["code"]
-        full_state_data = handle_callback(state_key, authorization_code)
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}/tools?mcp_provider_id={full_state_data.provider_id}")
+        handle_callback(state_key, authorization_code)
+        return redirect(f"{dify_config.CONSOLE_WEB_URL}/oauth-callback")
 
 
 # tool provider

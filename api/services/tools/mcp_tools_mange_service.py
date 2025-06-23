@@ -87,7 +87,12 @@ class MCPToolManageService:
 
     @staticmethod
     def retrieve_mcp_tools(tenant_id: str) -> list[ToolProviderApiEntity]:
-        mcp_providers = db.session.query(MCPToolProvider).filter(MCPToolProvider.tenant_id == tenant_id).all()
+        mcp_providers = (
+            db.session.query(MCPToolProvider)
+            .filter(MCPToolProvider.tenant_id == tenant_id)
+            .order_by(MCPToolProvider.name)
+            .all()
+        )
         return [ToolTransformService.mcp_provider_to_user_provider(mcp_provider) for mcp_provider in mcp_providers]
 
     @classmethod
