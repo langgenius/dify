@@ -161,7 +161,9 @@ const StepTwo = ({
 
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
-  const [segmentationType, setSegmentationType] = useState<ProcessMode>(ProcessMode.general)
+  const [segmentationType, setSegmentationType] = useState<ProcessMode>(
+    currentDataset?.doc_form === ChunkingMode.parentChild ? ProcessMode.parentChild : ProcessMode.general,
+  )
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
   const setSegmentIdentifier = useCallback((value: string, canEmpty?: boolean) => {
     doSetSegmentIdentifier(value ? escape(value) : (canEmpty ? '' : DEFAULT_SEGMENT_IDENTIFIER))
@@ -972,8 +974,8 @@ const StepTwo = ({
                 <div className='system-md-semibold mb-0.5 text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                 <div className='body-xs-regular text-text-tertiary'>
                   <a target='_blank' rel='noopener noreferrer'
-                     href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents')}
-                     className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                    href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents')}
+                    className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                   {t('datasetSettings.form.retrievalSetting.longDescription')}
                 </div>
               </div>
@@ -1137,7 +1139,7 @@ const StepTwo = ({
                       const indexForLabel = index + 1
                       return (
                         <PreviewSlice
-                          key={child}
+                          key={`C-${indexForLabel}-${child}`}
                           label={`C-${indexForLabel}`}
                           text={child}
                           tooltip={`Child-chunk-${indexForLabel} · ${child.length} Characters`}
