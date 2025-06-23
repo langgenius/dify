@@ -94,10 +94,10 @@ const MCPCard = ({
             <div className='flex items-center gap-1'>
               <RiHammerFill className='h-3 w-3 shrink-0 text-text-quaternary' />
               {data.tools.length > 0 && (
-                <div className='system-xs-regular grow text-text-tertiary'>{t('tools.mcp.toolsCount', { count: data.tools.length })}</div>
+                <div className='system-xs-regular shrink-0 text-text-tertiary'>{t('tools.mcp.toolsCount', { count: data.tools.length })}</div>
               )}
               {!data.tools.length && (
-                <div className='system-xs-regular grow text-text-tertiary'>{t('tools.mcp.noTools')}</div>
+                <div className='system-xs-regular shrink-0 text-text-tertiary'>{t('tools.mcp.noTools')}</div>
               )}
             </div>
             <div className='system-xs-regular text-divider-deep'>/</div>
