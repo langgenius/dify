@@ -54,13 +54,19 @@ const MCPDetailContent: FC<Props> = ({
   const { mutateAsync: authorizeMcp, isPending: isAuthorizing } = useAuthorizeMCP()
   const toolList = data?.tools || []
 
+  const [isShowUpdateConfirm, {
+    setTrue: showUpdateConfirm,
+    setFalse: hideUpdateConfirm,
+  }] = useBoolean(false)
+
   const handleUpdateTools = useCallback(async () => {
+    hideUpdateConfirm()
     if (!detail)
       return
     await updateTools(detail.id)
     invalidateMCPTools(detail.id)
     onUpdate()
-  }, [detail, invalidateMCPTools, onUpdate, updateTools])
+  }, [detail, hideUpdateConfirm, invalidateMCPTools, onUpdate, updateTools])
 
   const { mutate: updateMCP } = useUpdateMCP({
     onSuccess: onUpdate,
@@ -231,7 +237,7 @@ const MCPDetailContent: FC<Props> = ({
                 {toolList.length === 1 && <div className='system-sm-semibold-uppercase text-text-secondary'>{t('tools.mcp.onlyTool')}</div>}
               </div>
               <div>
-                <Button size='small' onClick={handleUpdateTools}>
+                <Button size='small' onClick={showUpdateConfirm}>
                   <RiLoopLeftLine className='mr-1 h-3.5 w-3.5' />
                   {t('tools.mcp.update')}
                 </Button>
@@ -277,6 +283,14 @@ const MCPDetailContent: FC<Props> = ({
           onConfirm={handleDelete}
           isLoading={deleting}
           isDisabled={deleting}
+        />
+      )}
+      {isShowUpdateConfirm && (
+        <Confirm
+          isShow
+          title={t('tools.mcp.update')}
+          onCancel={hideUpdateConfirm}
+          onConfirm={handleUpdateTools}
         />
       )}
     </>
