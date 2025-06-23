@@ -9,7 +9,7 @@ dependencies:
 - current_identifier: null
   type: package
   value:
-    plugin_unique_identifier: langgenius/deepseek:0.0.5@fd6efd37c2a931911de8ab9ca3ba2da303bef146d45ee87ad896b04b36d09403
+    plugin_unique_identifier: langgenius/openai_api_compatible:0.0.7@f20c7275bbcf055ec5d170dd5128e341986e2dcba5266d08fd080d4bdf2288f6
 kind: app
 version: 0.1.5
 workflow:
@@ -1192,11 +1192,11 @@ workflow:
       height: 90
       id: '1741157560922'
       position:
-        x: 3982
-        y: 2147
+        x: 3994.1962174991804
+        y: 2169.6501182127636
       positionAbsolute:
-        x: 3982
-        y: 2147
+        x: 3994.1962174991804
+        y: 2169.6501182127636
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1299,8 +1299,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: qwen2.5-32b-instruct
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         query_variable_selector:
         - '1741157526222'
         - alert
@@ -1313,11 +1313,11 @@ workflow:
       height: 876
       id: '1741158559444'
       position:
-        x: 1550
-        y: 638
+        x: 1509.7903437904542
+        y: 576.5028787383415
       positionAbsolute:
-        x: 1550
-        y: 638
+        x: 1509.7903437904542
+        y: 576.5028787383415
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -1360,7 +1360,7 @@ workflow:
           - text
         - - '1748272742118'
           - text
-      height: 417
+      height: 416
       id: '1741162531836'
       position:
         x: 2462
@@ -1380,21 +1380,17 @@ workflow:
         title: 变量聚合器 2
         type: variable-aggregator
         variables:
-        - - '1741311294320'
-          - result
         - - '1742366303110'
           - class_name
-        - - '1744339618961'
-          - abnormal
-      height: 153
+      height: 108
       id: '1741311394752'
       position:
-        x: 3678
-        y: 2147
+        x: 3702.3924349983627
+        y: 2157.4539007135836
       positionAbsolute:
-        x: 3678
-        y: 2147
-      selected: false
+        x: 3702.3924349983627
+        y: 2157.4539007135836
+      selected: true
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -2816,8 +2812,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: qwen2.5-32b-instruct
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: c981a70d-9ebb-4f03-949a-8d78826f9bda
           role: system
@@ -2828,11 +2824,29 @@ workflow:
 
             请分析系统/应用在过去15分钟内的指标变化趋势，并结合当前的告警事件进行分析。
 
+            ##Data
+
+            MetricsData
+
+            {{#1741162531836.output#}}
+
+            metricsdata的历史数据
+
+            {{#1742434016239.output#}}
+
+            警报事件描述
+
+            {{#1741157526222.alert#}}
+
             ##步骤
 
-            1. 列出过去15分钟内MetricsData的变化趋势，描述这些Metrics的变化是否正常，是否有异常的波动或趋势。
+            1. 列出过去15分钟内MetricsData的变化趋势，描述这些Metrics的变化是否正常，是否为偶尔异常的波动还是持续升高的趋势。
 
-            2. 告警有效性确认：结合告警事件，判断当前告警是否有效。
+            2. 同时注意指标升高是否越接近后面的点位，越后面权重越高，认为有效的概率越大。
+
+            3.如果是网络指标rtt告警，需要缺认指标值时持续升高，还是偶尔升高的抖动
+
+            4. 告警有效性确认：结合告警事件，判断当前告警是否有效。
 
             如果MetricsData持续上升或处于高位，则认为告警有效。
 
@@ -2848,21 +2862,7 @@ workflow:
 
             描述MetricsData趋势，并得出告警是否有效的结论。
 
-            注意：告警有效性分析的结论只能是有效或无效
-
-            ##Data
-
-            MetricsData
-
-            {{#1741162531836.output#}}
-
-            metricsdata的历史数据
-
-            {{#1742434016239.output#}}
-
-            警报事件描述
-
-            {{#1741157526222.alert#}}'
+            注意：告警有效性分析的结论只能是有效或无效'
         selected: false
         title: 大模型分析指标数据
         type: llm
@@ -2905,8 +2905,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: qwen2.5-32b-instruct
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         query_variable_selector:
         - '1742366141890'
         - text
@@ -2959,13 +2959,13 @@ workflow:
           - '1741157526222'
           - endTime
           variable: arg2
-      height: 79
+      height: 80
       id: '1742433446760'
       position:
-        x: 638
+        x: 601.5244669127737
         y: 638
       positionAbsolute:
-        x: 638
+        x: 601.5244669127737
         y: 638
       selected: false
       sourcePosition: right
@@ -3154,7 +3154,7 @@ workflow:
           - text
         - - '17482728139340'
           - text
-      height: 417
+      height: 416
       id: '1742434016239'
       position:
         x: 2766
@@ -4480,10 +4480,10 @@ workflow:
       height: 54
       id: '1742806924635'
       position:
-        x: 334
+        x: 277.98400275890265
         y: 638
       positionAbsolute:
-        x: 334
+        x: 277.98400275890265
         y: 638
       selected: false
       sourcePosition: right
@@ -6005,8 +6005,8 @@ workflow:
           completion_params:
             temperature: 0.7
           mode: chat
-          name: deepseek-chat
-          provider: langgenius/deepseek/deepseek
+          name: qwen2.5-32b-instruct
+          provider: langgenius/openai_api_compatible/openai_api_compatible
         prompt_template:
         - id: a1de005a-fbe2-44a6-9b2c-bb021ae6b3a4
           role: system
@@ -6042,7 +6042,7 @@ workflow:
       positionAbsolute:
         x: 2158
         y: 2899
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -6420,9 +6420,10 @@ workflow:
           \    \n    return {\n        \"abnormal\": str(vaild),\n        \"conclusion\"\
           : \"\\n\".join(report)+\"\\n\",\n    }\n\ndef main(service: str, endpoint:\
           \ str, start: int, end: int) -> dict:\n    current = get_service_latency(start,\
-          \ end, service, endpoint)\n\n    hour = 3600 * 1000000\n    history = get_service_latency(\n\
-          \        start - hour,\n        start,\n        service,\n        endpoint,\n\
-          \    )\n    res = analyze_latency(history, current)\n    return res\n"
+          \ end, service, endpoint)\n\n    hour = 3600 * 1000000\n    day = 24 * hour\n\
+          \    history = get_service_latency(\n        start - day,\n        start,\n\
+          \        service,\n        endpoint,\n    )\n    res = analyze_latency(history,\
+          \ current)\n    return res\n"
         code_language: python3
         desc: ''
         outputs:
@@ -6533,7 +6534,7 @@ workflow:
           - conclusion
         - - '1744339618961'
           - conclusion
-      height: 131
+      height: 130
       id: '1744627472534'
       position:
         x: 3374
@@ -6955,11 +6956,12 @@ workflow:
           , \"cpu高负载\"),\n        (r\"disk.*io.*util|disk.*util|磁盘.*io.*用\", \"异常磁盘io利用率\"\
           ),\n        (r\"cpu.*wait|cpu.*io.*wait\", \"cpu高io wait\"),\n        (r\"\
           file.*desc|fd.*use|文件.*描述符\", \"文件描述符使用量\"),\n        (r\"cont.*kill|容器.*终止\"\
-          , \"容器被kill\"),\n        (r\"log.*err|日志.*错误\", \"日志错误数相关\"),\n        (r\"\
-          down.*dep.*time|down.*2.*min|下游.*依赖.*耗时|响应.*耗时\", \"下游依赖耗时超过平均值\")\n   \
-          \ ]\n\n    result = \"其他\"\n    for pattern, category in rules:\n      \
-          \  if re.search(pattern, alert_name):\n            result = category\n \
-          \           break\n\n    return {\n        \"result\": result\n    }\n\n"
+          , \"容器被kill\"),\n        (r\"过去.*分钟.*错误日志数.*超过|\\d+.*条.*错误日志|log.*err|日志.*错误|.*错误.*日志\"\
+          , \"日志错误数相关\"),\n        (r\"down.*dep.*time|down.*2.*min|下游.*依赖.*耗时|响应.*耗时\"\
+          , \"下游依赖耗时超过平均值\")\n    ]\n\n    result = \"其他\"\n    for pattern, category\
+          \ in rules:\n        if re.search(pattern, alert_name):\n            result\
+          \ = category\n            break\n\n    return {\n        \"result\": result\n\
+          \    }\n\n"
         code_language: python3
         desc: ''
         outputs:
@@ -6977,10 +6979,10 @@ workflow:
       height: 54
       id: '1750057744917'
       position:
-        x: 942
+        x: 909.4325597435477
         y: 638
       positionAbsolute:
-        x: 942
+        x: 909.4325597435477
         y: 638
       selected: false
       sourcePosition: right
@@ -7007,11 +7009,11 @@ workflow:
       height: 126
       id: '1750057811167'
       position:
-        x: 1246
-        y: 638
+        x: 1138.6683410534715
+        y: 712.5240973642392
       positionAbsolute:
-        x: 1246
-        y: 638
+        x: 1138.6683410534715
+        y: 712.5240973642392
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -7213,17 +7215,17 @@ workflow:
       height: 894
       id: '1750058827536'
       position:
-        x: 1550
-        y: 1554
+        x: 1443.5626747394372
+        y: 1561.0958216840374
       positionAbsolute:
-        x: 1550
-        y: 1554
+        x: 1443.5626747394372
+        y: 1561.0958216840374
       selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
       width: 244
     viewport:
-      x: 88.9588371254672
-      y: -93.15652831830675
-      zoom: 0.42278401763515033
+      x: 193.17670455675216
+      y: -72.13910128745454
+      zoom: 0.5739484393805205
