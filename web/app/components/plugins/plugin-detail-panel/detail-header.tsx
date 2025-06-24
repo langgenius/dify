@@ -162,6 +162,13 @@ const DetailHeader = ({
   const handleUpdatedFromMarketplace = () => {
     onUpdate()
     hideUpdateModal()
+    hideDowngradeWarningModal()
+  }
+
+  const handleExcludeAndDownload = async () => {
+    // TODO: exclude logic
+    onUpdate()
+    hideDowngradeWarningModal()
   }
 
   const [isShowPluginInfo, {
@@ -365,7 +372,8 @@ const DetailHeader = ({
       { isShowDowngradeWarningModal && (
         <DowngradeWarningModal
           onCancel={hideDowngradeWarningModal}
-          onSave={handleUpdatedFromMarketplace}
+          onJustDowngrade={handleUpdatedFromMarketplace}
+          onExcludeAndDowngrade={handleExcludeAndDownload}
         />
       )}
     </div>
