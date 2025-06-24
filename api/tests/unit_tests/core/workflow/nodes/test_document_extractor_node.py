@@ -7,6 +7,7 @@ from docx.oxml.text.paragraph import CT_P
 
 from core.file import File, FileTransferMethod
 from core.variables import ArrayFileSegment
+from core.variables.segments import ArrayStringSegment
 from core.variables.variables import StringVariable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
@@ -69,7 +70,13 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
 @pytest.mark.parametrize(
     ("mime_type", "file_content", "expected_text", "transfer_method", "extension"),
     [
-        ("text/plain", b"Hello, world!", ["Hello, world!"], FileTransferMethod.LOCAL_FILE, ".txt"),
+        (
+            "text/plain",
+            b"Hello, world!",
+            ["Hello, world!"],
+            FileTransferMethod.LOCAL_FILE,
+            ".txt",
+        ),
         (
             "application/pdf",
             b"%PDF-1.5\n%Test PDF content",
@@ -84,7 +91,13 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
             FileTransferMethod.REMOTE_URL,
             "",
         ),
-        ("text/plain", b"Remote content", ["Remote content"], FileTransferMethod.REMOTE_URL, None),
+        (
+            "text/plain",
+            b"Remote content",
+            ["Remote content"],
+            FileTransferMethod.REMOTE_URL,
+            None,
+        ),
     ],
 )
 def test_run_extract_text(
@@ -131,7 +144,7 @@ def test_run_extract_text(
     assert isinstance(result, NodeRunResult)
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
     assert result.outputs is not None
-    assert result.outputs["text"] == expected_text
+    assert result.outputs["text"] == ArrayStringSegment(value=expected_text)
 
     if transfer_method == FileTransferMethod.REMOTE_URL:
         mock_ssrf_proxy_get.assert_called_once_with("https://example.com/file.txt")

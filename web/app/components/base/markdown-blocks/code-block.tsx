@@ -63,7 +63,7 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 
 // Define ECharts event parameter types
-interface EChartsEventParams {
+type EChartsEventParams = {
   type: string;
   seriesIndex?: number;
   dataIndex?: number;
