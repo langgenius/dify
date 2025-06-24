@@ -6,24 +6,11 @@ import Label from '../label'
 import StrategyPicker from './strategy-picker'
 import { useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
-import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import PluginsPicker from './plugins-picker'
+import { dayjsToTimeOfDay, timeOfDayToDayjs } from './utils'
 
 const i18nPrefix = 'plugin.autoUpdate'
-
-const timeOfDayToDayjs = (timeOfDay: number): Dayjs => {
-  const hours = Math.floor(timeOfDay / 3600)
-  const minutes = (timeOfDay - hours * 3600) / 60
-  const res = dayjs().startOf('day').hour(hours).minute(minutes)
-  return res
-}
-
-const dayjsToTimeOfDay = (date?: Dayjs): number => {
-  if(!date) return 0
-  return date.hour() * 3600 + date.minute() * 60
-}
 
 type Props = {
   payload: AutoUpdateConfig

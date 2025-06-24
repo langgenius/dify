@@ -155,6 +155,7 @@ const translation = {
       exclude: 'Selected plugins will not auto-update',
       partial: 'Only selected plugins will auto-update. No plugins are currently selected, so no plugins will auto-update.',
     },
+    nextUpdateTime: 'Next auto-update: {{time}}',
   },
   pluginInfoModal: {
     title: 'Plugin info',
