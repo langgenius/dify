@@ -106,7 +106,7 @@ class DifyConfig(
             TomlConfigSettingsSource(
                 settings_cls=settings_cls,
                 toml_file=search_file_upwards(
-                    base_dir_path=os.path.dirname(Path(__file__)),
+                    base_dir_path=Path(__file__).parent,
                     target_file_name="pyproject.toml",
                     max_search_parent_depth=2,
                 ),
