@@ -1,8 +1,14 @@
-from collections.abc import Sequence
-from typing import Literal
+from collections.abc import Mapping, Sequence
+from typing import Any, Literal
+
+from sqlalchemy.orm import Session
 
 from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.impl.dynamic_select import DynamicSelectClient
+from core.tools.tool_manager import ToolManager
+from core.tools.utils.configuration import ProviderConfigEncrypter
+from extensions.ext_database import db
+from models.tools import BuiltinToolProvider
 
 
 class PluginParameterService:
@@ -26,8 +32,37 @@ class PluginParameterService:
             action: The action name.
             parameter: The parameter name.
         """
-        # TODO: get credentials from db
-        credentials = {}
+        credentials: Mapping[str, Any] = {}
+
+        match provider_type:
+            case "tool":
+                # fetch credentials from db
+                with Session(db.engine) as session:
+                    db_record = (
+                        session.query(BuiltinToolProvider)
+                        .filter(
+                            BuiltinToolProvider.tenant_id == tenant_id,
+                            BuiltinToolProvider.provider == provider,
+                        )
+                        .first()
+                    )
+
+                if db_record is None:
+                    raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
+
+                credentials = db_record.credentials
+                provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+                # init tool configuration
+                tool_configuration = ProviderConfigEncrypter(
+                    tenant_id=tenant_id,
+                    config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
+                    provider_type=provider_controller.provider_type.value,
+                    provider_identity=provider_controller.entity.identity.name,
+                )
+
+                credentials = tool_configuration.decrypt(credentials)
+            case _:
+                raise ValueError(f"Invalid provider type: {provider_type}")
 
         return DynamicSelectClient().fetch_dynamic_select_options(
             tenant_id, user_id, plugin_id, provider, action, credentials, parameter
