@@ -10,11 +10,10 @@ from controllers.console import api
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from core.tools.entities.common_entities import I18nObject
 from libs.login import login_required
 from models.account import TenantPluginPermission
+from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
@@ -506,19 +505,22 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     def get(self):
         tenant_id = current_user.current_tenant_id
 
-        return jsonable_encoder(
-            {
-                "options": [
-                    PluginParameterOption(
-                        label=I18nObject(
-                            en_US="test",
-                            zh_Hans="测试",
-                        ),
-                        value="test",
-                    )
-                ]
-            }
+        # check if the user is admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_id", type=str, required=True, location="args")
+        parser.add_argument("provider", type=str, required=True, location="args")
+        parser.add_argument("action", type=str, required=True, location="args")
+        parser.add_argument("parameter", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        options = PluginParameterService.get_dynamic_select_options(
+            tenant_id, args["plugin_id"], args["provider"], args["action"], args["parameter"]
         )
+
+        return jsonable_encoder({"options": options})
 
 
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
