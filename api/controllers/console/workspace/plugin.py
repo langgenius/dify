@@ -503,21 +503,29 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        tenant_id = current_user.current_tenant_id
-
         # check if the user is admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
+
+        tenant_id = current_user.current_tenant_id
+        user_id = current_user.id
 
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_id", type=str, required=True, location="args")
         parser.add_argument("provider", type=str, required=True, location="args")
         parser.add_argument("action", type=str, required=True, location="args")
         parser.add_argument("parameter", type=str, required=True, location="args")
+        parser.add_argument("provider_type", type=str, required=True, location="args")
         args = parser.parse_args()
 
         options = PluginParameterService.get_dynamic_select_options(
-            tenant_id, args["plugin_id"], args["provider"], args["action"], args["parameter"]
+            tenant_id,
+            user_id,
+            args["plugin_id"],
+            args["provider"],
+            args["action"],
+            args["parameter"],
+            args["provider_type"],
         )
 
         return jsonable_encoder({"options": options})

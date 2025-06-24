@@ -573,7 +573,7 @@ export const usePluginInfo = (providerName?: string) => {
   })
 }
 
-export const useFetchDynamicOptions = (plugin_id: string, provider: string, action: string, parameter: string) => {
+export const useFetchDynamicOptions = (plugin_id: string, provider: string, action: string, parameter: string, provider_type: 'tool') => {
   return useMutation({
     mutationFn: () => get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
       params: {
@@ -581,6 +581,7 @@ export const useFetchDynamicOptions = (plugin_id: string, provider: string, acti
         provider,
         action,
         parameter,
+        provider_type,
       },
     }),
   })
