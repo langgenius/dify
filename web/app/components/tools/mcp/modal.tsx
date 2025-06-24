@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getDomain } from 'tldts'
 import { RiCloseLine } from '@remixicon/react'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
@@ -12,6 +13,7 @@ import type { AppIconType } from '@/types/app'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { noop } from 'lodash-es'
 import Toast from '@/app/components/base/toast'
+import { uploadRemoteFileInfo } from '@/service/common'
 import cn from '@/utils/classnames'
 
 export type DuplicateAppModalProps = {
@@ -59,6 +61,7 @@ const MCPModal = ({
   const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
+  const [isFetchingIcon, setIsFetchingIcon] = useState(false)
 
   const isValidUrl = (string: string) => {
     try {
@@ -70,12 +73,36 @@ const MCPModal = ({
     }
   }
 
+  const handleBlur = async (url: string) => {
+    if (data)
+      return
+    if (!isValidUrl(url))
+      return
+    const domain = getDomain(url)
+    const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
+    setIsFetchingIcon(true)
+    try {
+      const res = await uploadRemoteFileInfo(remoteIcon)
+      setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
+    }
+    catch (e) {
+      console.error('Failed to fetch remote icon:', e)
+      Toast.notify({ type: 'error', message: 'Failed to fetch remote icon' })
+    }
+    finally {
+      setIsFetchingIcon(false)
+    }
+  }
+
   const submit = async () => {
     if (!isValidUrl(url)) {
       Toast.notify({ type: 'error', message: 'invalid server url' })
       return
     }
-    // TODO server identifier validation
+    if (!serverIdentifier.trim()) {
+      Toast.notify({ type: 'error', message: 'invalid server identifier' })
+      return
+    }
     await onConfirm({
       server_url: originalServerUrl === url ? '[__HIDDEN__]' : url.trim(),
       name,
@@ -106,6 +133,7 @@ const MCPModal = ({
             <Input
               value={url}
               onChange={e => setUrl(e.target.value)}
+              onBlur={e => handleBlur(e.target.value.trim())}
               placeholder={t('tools.mcp.modal.serverUrlPlaceholder')}
             />
             {originalServerUrl && originalServerUrl !== url && (
@@ -149,7 +177,7 @@ const MCPModal = ({
           </div>
         </div>
         <div className='flex flex-row-reverse pt-5'>
-          <Button disabled={!name || !url || !serverIdentifier} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
+          <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
           <Button onClick={onHide}>{t('tools.mcp.modal.cancel')}</Button>
         </div>
       </Modal>
