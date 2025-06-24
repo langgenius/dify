@@ -1,6 +1,4 @@
-import os
 from pathlib import Path
-from typing import Optional
 
 
 def search_file_upwards(
