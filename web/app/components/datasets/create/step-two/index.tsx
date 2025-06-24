@@ -575,6 +575,7 @@ const StepTwo = ({
         onSuccess(data) {
           updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
           updateResultCache && updateResultCache(data)
+          updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
         },
       })
     }
