@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import {
@@ -22,7 +22,7 @@ import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { generateRule } from '@/service/debug'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
-import type { Model } from '@/types/app'
+import type { CompletionParams, Model } from '@/types/app'
 import { AppType } from '@/types/app'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import GroupName from '@/app/components/app/configuration/base/group-name'
@@ -33,14 +33,15 @@ import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 // type
 import type { AutomaticRes } from '@/service/debug'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
-import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import type { ModelModeType } from '@/types/app'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export type IGetAutomaticResProps = {
   mode: AppType
-  model: Model
   isShow: boolean
   onClose: () => void
   onFinished: (res: AutomaticRes) => void
@@ -65,16 +66,23 @@ const TryLabel: FC<{
 
 const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   mode,
-  model,
   isShow,
   onClose,
   isInLLMNode,
   onFinished,
 }) => {
   const { t } = useTranslation()
+  const localModel = localStorage.getItem('auto-gen-model')
+    ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
+    : null
+  const [model, setModel] = React.useState<Model>(localModel || {
+    name: '',
+    provider: '',
+    mode: mode as unknown as ModelModeType.chat,
+    completion_params: {} as CompletionParams,
+  })
   const {
-    currentProvider,
-    currentModel,
+    defaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
   const tryList = [
     {
@@ -115,7 +123,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     },
   ]
 
-  const [instruction, setInstruction] = React.useState<string>('')
+  const [instruction, setInstruction] = useState<string>('')
   const handleChooseTemplate = useCallback((key: string) => {
     return () => {
       const template = t(`appDebug.generate.template.${key}.instruction`)
@@ -135,7 +143,25 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     return true
   }
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
-  const [res, setRes] = React.useState<AutomaticRes | null>(null)
+  const [res, setRes] = useState<AutomaticRes | null>(null)
+
+  useEffect(() => {
+    if (defaultModel) {
+      const localModel = localStorage.getItem('auto-gen-model')
+        ? JSON.parse(localStorage.getItem('auto-gen-model') || '')
+        : null
+      if (localModel) {
+        setModel(localModel)
+      }
+      else {
+        setModel(prev => ({
+          ...prev,
+          name: defaultModel.model,
+          provider: defaultModel.provider.provider,
+        }))
+      }
+    }
+  }, [defaultModel])
 
   const renderLoading = (
     <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3'>
@@ -153,6 +179,26 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       </div>
     </div>
   )
+
+  const handleModelChange = useCallback((newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
+    const newModel = {
+      ...model,
+      provider: newValue.provider,
+      name: newValue.modelId,
+      mode: newValue.mode as ModelModeType,
+    }
+    setModel(newModel)
+    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+  }, [model, setModel])
+
+  const handleCompletionParamsChange = useCallback((newParams: FormValue) => {
+    const newModel = {
+      ...model,
+      completion_params: newParams as CompletionParams,
+    }
+    setModel(newModel)
+    localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
+  }, [model, setModel])
 
   const onGenerate = async () => {
     if (!isValid())
@@ -198,17 +244,18 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.generate.description')}</div>
           </div>
-          <div className='mb-8 flex items-center'>
-            <ModelIcon
-              className='mr-1.5 shrink-0 '
-              provider={currentProvider}
-              modelName={currentModel?.model}
-            />
-            <ModelName
-              className='grow'
-              modelItem={currentModel!}
-              showMode
-              showFeatures
+          <div className='mb-8'>
+            <ModelParameterModal
+              popupClassName='!w-[520px]'
+              portalToFollowElemContentClassName='z-[1000]'
+              isAdvancedMode={true}
+              provider={model.provider}
+              mode={model.mode}
+              completionParams={model.completion_params}
+              modelId={model.name}
+              setModel={handleModelChange}
+              onCompletionParamsChange={handleCompletionParamsChange}
+              hideDebugWithMultipleModel
             />
           </div>
           <div >

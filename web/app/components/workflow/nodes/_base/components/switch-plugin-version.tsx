@@ -15,7 +15,7 @@ import { pluginManifestToCardPluginProps } from '@/app/components/plugins/instal
 import { Badge as Badge2, BadgeState } from '@/app/components/base/badge/index'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
-import { marketplaceUrlPrefix } from '@/config'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 
 export type SwitchPluginVersionProps = {
   uniqueIdentifier: string
@@ -82,7 +82,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         modalBottomLeft={
           <Link
             className='flex items-center justify-center gap-1'
-            href={`${marketplaceUrlPrefix}/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`}
+            href={`${MARKETPLACE_URL_PREFIX}/plugins/${pluginDetail.declaration.author}/${pluginDetail.declaration.name}`}
             target='_blank'
           >
             <span className='system-xs-regular text-xs text-text-accent'>

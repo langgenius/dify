@@ -35,7 +35,10 @@ class SendGridClient:
             logging.exception("SendGridClient Timeout occurred while sending email")
             raise
         except (UnauthorizedError, ForbiddenError) as e:
-            logging.exception("SendGridClient Authentication failed. Verify that your credentials and the 'from")
+            logging.exception(
+                "SendGridClient Authentication failed. "
+                "Verify that your credentials and the 'from' email address are correct"
+            )
             raise
         except Exception as e:
             logging.exception(f"SendGridClient Unexpected error occurred while sending email to {_to}")

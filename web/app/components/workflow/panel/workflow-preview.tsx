@@ -20,6 +20,7 @@ import { useStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
+import { formatWorkflowRunIdentifier } from '../utils'
 import Toast from '../../base/toast'
 import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
@@ -88,7 +89,7 @@ const WorkflowPreview = () => {
         onMouseDown={startResizing}
       />
       <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
-        {`Test Run${!workflowRunningData?.result.sequence_number ? '' : `#${workflowRunningData?.result.sequence_number}`}`}
+        {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at)}`}
         <div className='cursor-pointer p-1' onClick={() => handleCancelDebugAndPreviewPanel()}>
           <RiCloseLine className='h-4 w-4 text-text-tertiary' />
         </div>

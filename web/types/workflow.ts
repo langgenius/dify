@@ -152,7 +152,6 @@ export type WorkflowStartedResponse = {
   data: {
     id: string
     workflow_id: string
-    sequence_number: number
     created_at: number
   }
 }
@@ -289,7 +288,6 @@ export type AgentLogResponse = {
 
 export type WorkflowRunHistory = {
   id: string
-  sequence_number: number
   version: string
   conversation_id?: string
   message_id?: string
