@@ -67,6 +67,13 @@ def check_upgradable_plugin_task():
                     for plugin in all_plugins
                     if plugin.source == PluginInstallationSource.Marketplace and plugin.plugin_id not in exclude_plugins
                 ]
+            elif upgrade_mode == TenantPluginAutoUpgradeStrategy.UpgradeMode.ALL:
+                all_plugins = manager.list_plugins(tenant_id)
+                plugin_ids = [
+                    (plugin.plugin_id, plugin.version, plugin.plugin_unique_identifier)
+                    for plugin in all_plugins
+                    if plugin.source == PluginInstallationSource.Marketplace
+                ]
 
             if not plugin_ids:
                 continue
