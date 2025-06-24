@@ -348,7 +348,7 @@ def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
 def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
     """Test extracting text from Excel file with numeric column names."""
 
-    # Test number type column
+    # Test numeric type column
     data = {1: ["Test"], 1.1: ["Test"]}
 
     df = pd.DataFrame(data)
