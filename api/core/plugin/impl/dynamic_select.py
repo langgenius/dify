@@ -20,7 +20,7 @@ class DynamicSelectClient(BasePluginClient):
         Fetch dynamic select options for a plugin parameter.
         """
         return self._request_with_plugin_daemon_response(
-            "GET",
+            "POST",
             f"plugin/{tenant_id}/dispatch/dynamic_select/fetch_parameter_options",
             list[PluginParameterOption],
             data={
