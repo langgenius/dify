@@ -303,6 +303,8 @@ const translation = {
     change: '更改',
     optional: '(選擇性)',
     moveToThisNode: '定位至此節點',
+    minimize: '退出全螢幕',
+    maximize: '最大化畫布',
   },
   nodes: {
     common: {
@@ -916,6 +918,35 @@ const translation = {
     deletionTip: '刪除是不可逆的，請確認。',
     releaseNotesPlaceholder: '描述發生了什麼變化',
     defaultName: '未命名版本',
+  },
+  debug: {
+    noData: {
+      runThisNode: '運行此節點',
+      description: '上次運行的結果將顯示在這裡',
+    },
+    variableInspect: {
+      trigger: {
+        cached: '查看緩存的變量',
+        stop: '停止跑步',
+        clear: '清晰',
+        running: '快取運行狀態',
+        normal: '變數檢查',
+      },
+      emptyLink: '了解更多',
+      view: '查看日誌',
+      clearAll: '重置所有',
+      envNode: '環境',
+      title: '變數檢查',
+      clearNode: '清除快取變數',
+      systemNode: '系統',
+      reset: '重置為上次運行值',
+      chatNode: '對話',
+      edited: '編輯的',
+      emptyTip: '在畫布上逐步執行節點或逐步運行節點後，您可以在變數檢視中查看節點變數的當前值。',
+      resetConversationVar: '將對話變數重置為默認值',
+    },
+    settingsTab: '設定',
+    lastRunTab: '最後一次運行',
   },
 }
 

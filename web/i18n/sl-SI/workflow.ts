@@ -305,6 +305,8 @@ const translation = {
     checklistResolved: 'Vse težave so rešene',
     createdBy: 'Ustvarjeno z',
     organizeBlocks: 'Organizirajte vozlišča',
+    minimize: 'Izhod iz celotnega zaslona',
+    maximize: 'Maksimiziraj platno',
   },
   nodes: {
     common: {
@@ -909,6 +911,35 @@ const translation = {
     nameThisVersion: 'Poimenujte to različico',
     releaseNotesPlaceholder: 'Opisujte, kaj se je spremenilo',
     restorationTip: 'Po obnovitvi različice bo trenutni osnutek prepisan.',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Zagon te vozlišča',
+      description: 'Rezultati zadnjega zagona bodo prikazani tukaj',
+    },
+    variableInspect: {
+      trigger: {
+        stop: 'Ustavi se',
+        normal: 'Inspiciranje spremenljivk',
+        clear: 'Jasno',
+        cached: 'Poglej shranjene spremenljivke',
+        running: 'Shranjevanje statusa delovanja',
+      },
+      emptyLink: 'Nauči se več',
+      chatNode: 'Pogovor',
+      envNode: 'Okolje',
+      systemNode: 'Sistem',
+      view: 'Oglej si dnevnik',
+      title: 'Inspiciranje spremenljivk',
+      clearNode: 'Počisti predpomnjeno spremenljivko',
+      clearAll: 'Ponastavi vse',
+      reset: 'Ponastavi na zadnjo vrednost izvajanja',
+      edited: 'Uredjeno',
+      resetConversationVar: 'Ponastavi spremenljivko pogovora na privzeto vrednost',
+      emptyTip: 'Po prehodu skozi vozlišče na platnu ali po zagonu vozlišča korak za korakom lahko v pregledu spremenljivk vidite trenutno vrednost spremenljivke vozlišča.',
+    },
+    settingsTab: 'Nastavitve',
+    lastRunTab: 'Zadnji zagon',
   },
 }
 

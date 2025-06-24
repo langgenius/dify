@@ -58,6 +58,8 @@ const translation = {
     more: 'Več',
     downloadSuccess: 'Prenos končan.',
     format: 'Format',
+    selectAll: 'Izberi vse',
+    deSelectAll: 'Odberi vse',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
