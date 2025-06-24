@@ -451,7 +451,7 @@ def _extract_text_from_excel(file_content: bytes) -> str:
                 df = df.applymap(lambda x: " ".join(str(x).splitlines()) if isinstance(x, str) else x)  # type: ignore
 
                 # Combine multi-line text in column names into a single line
-                df.columns = pd.Index([" ".join(col.splitlines()) for col in df.columns])
+                df.columns = pd.Index([" ".join(str(col).splitlines()) for col in df.columns])
 
                 # Manually construct the Markdown table
                 markdown_table += _construct_markdown_table(df) + "\n\n"
