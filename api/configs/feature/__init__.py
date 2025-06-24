@@ -283,6 +283,27 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
+    UPLOAD_IMAGE_ALLOWED_EXTENSIONS: str = Field(
+        description="allowed image file extensions for upload",
+        default="",
+    )
+    UPLOAD_VIDEO_ALLOWED_EXTENSIONS: str = Field(
+        description="allowed video file extensions for upload",
+        default="",
+    )
+    UPLOAD_AUDIO_ALLOWED_EXTENSIONS: str = Field(
+        description="allowed audio file extensions for upload",
+        default="",
+    )
+    UPLOAD_FILE_ALLOWED_EXTENSIONS: str = Field(
+        description="allowed other files extensions for upload",
+        default="",
+    )
+    UPLOAD_WORKFLOW_ALLOWED_EXTENSIONS: str = Field(
+        description="allowed workflow custom files extensions for upload",
+        default="",
+    )
+
 
 class HttpConfig(BaseSettings):
     """

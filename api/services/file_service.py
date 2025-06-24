@@ -51,6 +51,9 @@ class FileService:
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
+        if FileService.is_file_extension_allowed(extension=extension) is False:
+            raise UnsupportedFileTypeError()
+
         # get file size
         file_size = len(content)
 
@@ -111,6 +114,16 @@ class FileService:
             file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
 
         return file_size <= file_size_limit
+
+    @staticmethod
+    def is_file_extension_allowed(*, extension: str) -> bool:
+        _ext_image = dify_config.UPLOAD_IMAGE_ALLOWED_EXTENSIONS
+        _ext_video = dify_config.UPLOAD_VIDEO_ALLOWED_EXTENSIONS
+        _ext_audio = dify_config.UPLOAD_AUDIO_ALLOWED_EXTENSIONS
+        _ext_file = dify_config.UPLOAD_FILE_ALLOWED_EXTENSIONS
+        _ext_workflow = dify_config.UPLOAD_WORKFLOW_ALLOWED_EXTENSIONS
+
+        return any(extension in _allowed for _allowed in [_ext_image, _ext_video, _ext_audio, _ext_file, _ext_workflow])
 
     @staticmethod
     def upload_text(text: str, text_name: str) -> UploadFile:
