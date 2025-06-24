@@ -143,6 +143,12 @@ const translation = {
       exclude: 'Selected plugins will not auto-update',
       partial: 'Only selected plugins will auto-update. No plugins are currently selected, so no plugins will auto-update.',
     },
+    excludeUpdate: 'The following {{num}} plugins will not auto-update',
+    partialUPdate: 'Only the following {{num}} plugins will auto-update',
+    operation: {
+      clearAll: 'Clear all',
+      select: 'Select plugins',
+    },
     nextUpdateTime: 'Next auto-update: {{time}}',
     pluginDowngradeWarning: {
       title: 'Plugin Downgrade',
