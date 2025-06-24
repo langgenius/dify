@@ -1,4 +1,6 @@
 import logging
+import os
+from pathlib import Path
 from typing import Any
 
 from pydantic.fields import FieldInfo
@@ -104,6 +106,7 @@ class DifyConfig(
             TomlConfigSettingsSource(
                 settings_cls=settings_cls,
                 toml_file=search_file_upwards(
+                    base_dir_path=os.path.dirname(Path(__file__)),
                     target_file_name="pyproject.toml",
                     max_search_parent_depth=2,
                 ),

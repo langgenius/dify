@@ -1,11 +1,10 @@
 import os
-from pathlib import Path
 from typing import Optional
 
 
 def search_file_upwards(
-    base_dir_path: str = os.path.dirname(Path(__file__)),
-    target_file_name: str = "pyproject.toml",
+    base_dir_path: str,
+    target_file_name: str,
     max_search_parent_depth: int = 1,
 ) -> Optional[str]:
     """
@@ -24,4 +23,8 @@ def search_file_upwards(
         if parent_dir == current_dir:
             break
         current_dir = parent_dir
-    return None
+
+    raise ValueError(
+        f"File '{target_file_name}' not found in the directory '{base_dir_path}' or its parent directories"
+        f" in depth of {max_search_parent_depth}."
+    )
