@@ -308,6 +308,7 @@ class TenantPluginAutoUpgradeStrategy(Base):
         LATEST = "latest"
 
     class UpgradeMode(enum.StrEnum):
+        ALL = "all"
         PARTIAL = "partial"
         EXCLUDE = "exclude"
 
