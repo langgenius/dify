@@ -18,7 +18,7 @@ import Details from './details'
 import Content from './content'
 import Actions from './actions'
 import type { CreateDatasetReq } from '@/models/datasets'
-import { useCreatePipelineDataset } from '@/service/knowledge/use-create-dataset'
+import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import CreateModal from './create-modal'
 import { useInvalid } from '@/service/use-base'
 import { useResetDatasetList } from '@/service/knowledge/use-dataset'
@@ -45,7 +45,7 @@ const TemplateCard = ({
     template_id: pipeline.id,
     type,
   }, false)
-  const { mutateAsync: createEmptyDataset } = useCreatePipelineDataset()
+  const { mutateAsync: createDataset } = useCreatePipelineDatasetFromCustomized()
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const resetDatasetList = useResetDatasetList()
 
@@ -66,7 +66,7 @@ const TemplateCard = ({
       ...payload,
       yaml_content: pipelineTemplateInfo.export_data,
     }
-    await createEmptyDataset(request, {
+    await createDataset(request, {
       onSuccess: async (newDataset) => {
         Toast.notify({
           type: 'success',
@@ -76,7 +76,7 @@ const TemplateCard = ({
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
         setShowCreateModal(false)
-        push(`/datasets/${newDataset.id}/pipeline`)
+        push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
         Toast.notify({
@@ -85,7 +85,7 @@ const TemplateCard = ({
         })
       },
     })
-  }, [getPipelineTemplateInfo, createEmptyDataset, t, handleCheckPluginDependencies, push, resetDatasetList])
+  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, resetDatasetList])
 
   const handleShowTemplateDetails = useCallback(() => {
     setShowDetailModal(true)

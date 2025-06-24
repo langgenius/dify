@@ -774,6 +774,7 @@ export type CreateDatasetResponse = {
   updated_by: string
   updated_at: number
   pipeline_id: string
+  dataset_id: string
 }
 
 export type NotionPagePreviewRequest = {

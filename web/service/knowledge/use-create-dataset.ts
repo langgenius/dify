@@ -251,3 +251,15 @@ export const useCreatePipelineDataset = (
     ...mutationOptions,
   })
 }
+
+export const useCreatePipelineDatasetFromCustomized = (
+  mutationOptions: MutationOptions<CreateDatasetResponse, Error, CreateDatasetReq> = {},
+) => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'create-pipeline-dataset'],
+    mutationFn: (req: CreateDatasetReq) => {
+      return post<CreateDatasetResponse>('/rag/pipeline/dataset', { body: req })
+    },
+    ...mutationOptions,
+  })
+}
