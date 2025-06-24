@@ -73,6 +73,10 @@ const MCPModal = ({
     }
   }
 
+  const isValidServerID = (str: string) => {
+    return /^[a-z0-9_-]{1,24}$/.test(str)
+  }
+
   const handleBlur = async (url: string) => {
     if (data)
       return
@@ -99,7 +103,7 @@ const MCPModal = ({
       Toast.notify({ type: 'error', message: 'invalid server url' })
       return
     }
-    if (!serverIdentifier.trim()) {
+    if (!isValidServerID(serverIdentifier.trim())) {
       Toast.notify({ type: 'error', message: 'invalid server identifier' })
       return
     }
