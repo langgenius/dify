@@ -144,6 +144,12 @@ const translation = {
       partial: 'Only selected plugins will auto-update. No plugins are currently selected, so no plugins will auto-update.',
     },
     nextUpdateTime: 'Next auto-update: {{time}}',
+    pluginDowngradeWarning: {
+      title: 'Plugin Downgrade',
+      description: 'Auto-update is currently enabled for this plugin. Downgrading the version may cause your changes to be overwritten during the next automatic update.',
+      downgrade: 'Downgrade anyway',
+      exclude: 'Exclude from auto-update',
+    },
   },
   pluginInfoModal: {
     title: 'Plugin info',
