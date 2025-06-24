@@ -10,7 +10,9 @@ from controllers.console import api
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.tools.entities.common_entities import I18nObject
 from libs.login import login_required
 from models.account import TenantPluginPermission
 from services.plugin.plugin_permission_service import PluginPermissionService
@@ -497,6 +499,28 @@ class PluginFetchPermissionApi(Resource):
         )
 
 
+class PluginFetchDynamicSelectOptionsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        tenant_id = current_user.current_tenant_id
+
+        return jsonable_encoder(
+            {
+                "options": [
+                    PluginParameterOption(
+                        label=I18nObject(
+                            en="test",
+                            zh="测试",
+                        ),
+                        value="test",
+                    )
+                ]
+            }
+        )
+
+
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
 api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
@@ -521,3 +545,5 @@ api.add_resource(PluginFetchMarketplacePkgApi, "/workspaces/current/plugin/marke
 
 api.add_resource(PluginChangePermissionApi, "/workspaces/current/plugin/permission/change")
 api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permission/fetch")
+
+api.add_resource(PluginFetchDynamicSelectOptionsApi, "/workspaces/current/plugin/parameters/dynamic-options")
