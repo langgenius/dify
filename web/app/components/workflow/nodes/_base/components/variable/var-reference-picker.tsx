@@ -9,14 +9,18 @@ import {
   RiMoreLine,
 } from '@remixicon/react'
 import produce from 'immer'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import {
+  useNodes,
+  useReactFlow,
+  useStoreApi,
+} from 'reactflow'
 import RemoveButton from '../remove-button'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar, varTypeToStructType } from './utils'
+import { getNodeInfoById, inputVarTypeToVarType, isConversationVar, isENV, isRagVariableVar, isSystemVar, varTypeToStructType } from './utils'
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
-import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { CommonNodeType, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
@@ -41,7 +45,7 @@ import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from './var-full-path-panel'
 import { noop } from 'lodash-es'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
-
+import { useStore as useWorkflowStore } from '@/app/components/workflow/store'
 const TRIGGER_DEFAULT_WIDTH = 227
 
 type Props = {
@@ -101,11 +105,8 @@ const VarReferencePicker: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
-  const {
-    getNodes,
-  } = store.getState()
+  const nodes = useNodes<CommonNodeType>()
   const isChatMode = useIsChatMode()
-
   const { getCurrentVariableType } = useWorkflowVariables()
   const { availableVars, availableNodesWithParent: availableNodes } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar,
@@ -119,12 +120,13 @@ const VarReferencePicker: FC<Props> = ({
     return node.data.type === BlockEnum.Start
   })
 
-  const node = getNodes().find(n => n.id === nodeId)
-  const isInIteration = !!node?.data.isInIteration
-  const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
+  const node = nodes.find(n => n.id === nodeId)
+  const ragPipelineVariables = useWorkflowStore(s => s.ragPipelineVariables)
+  const isInIteration = !!(node?.data as any).isInIteration
+  const iterationNode = isInIteration ? nodes.find(n => n.id === node?.parentId) : null
 
-  const isInLoop = !!node?.data.isInLoop
-  const loopNode = isInLoop ? getNodes().find(n => n.id === node.parentId) : null
+  const isInLoop = !!(node?.data as any).isInLoop
+  const loopNode = isInLoop ? nodes.find(n => n.id === node?.parentId) : null
 
   const triggerRef = useRef<HTMLDivElement>(null)
   const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
@@ -137,7 +139,27 @@ const VarReferencePicker: FC<Props> = ({
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
   const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
 
-  const outputVars = useMemo(() => (passedInAvailableVars || availableVars), [passedInAvailableVars, availableVars])
+  const outputVars = useMemo(() => {
+    const results = passedInAvailableVars || availableVars
+
+    if (node?.data.type === BlockEnum.DataSource) {
+      const ragVariablesInDataSource = ragPipelineVariables?.find(ragVariable => ragVariable.belong_to_node_id === node.id)
+
+      if (ragVariablesInDataSource) {
+        results.unshift({
+          nodeId: node.id,
+          title: node.data?.title,
+          vars: [{
+            variable: `rag.${node.id}.${ragVariablesInDataSource.variable}`,
+            type: inputVarTypeToVarType(ragVariablesInDataSource.type as any),
+            description: ragVariablesInDataSource.label,
+            isRagVariable: true,
+          } as Var],
+        })
+      }
+    }
+    return results
+  }, [passedInAvailableVars, availableVars, node, ragPipelineVariables])
 
   const [open, setOpen] = useState(false)
   useEffect(() => {
@@ -268,7 +290,7 @@ const VarReferencePicker: FC<Props> = ({
   }, [availableNodes, reactflow, store])
 
   const type = getCurrentVariableType({
-    parentNode: isInIteration ? iterationNode : loopNode,
+    parentNode: (isInIteration ? iterationNode : loopNode) as any,
     valueSelector: value as ValueSelector,
     availableNodes,
     isChatMode,

@@ -62,7 +62,7 @@ export const isSpecialVar = (prefix: string): boolean => {
   return ['sys', 'env', 'conversation', 'rag'].includes(prefix)
 }
 
-const inputVarTypeToVarType = (type: InputVarType): VarType => {
+export const inputVarTypeToVarType = (type: InputVarType): VarType => {
   return ({
     [InputVarType.number]: VarType.number,
     [InputVarType.singleFile]: VarType.file,
