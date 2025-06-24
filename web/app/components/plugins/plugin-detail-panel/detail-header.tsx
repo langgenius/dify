@@ -93,6 +93,7 @@ const DetailHeader = ({
   const [targetVersion, setTargetVersion] = useState({
     version: latest_version,
     unique_identifier: latest_unique_identifier,
+    isDowngrade: false,
   })
   const hasNewVersion = useMemo(() => {
     if (isFromMarketplace)
@@ -114,8 +115,18 @@ const DetailHeader = ({
     setFalse: hideUpdateModal,
   }] = useBoolean(false)
 
+  const isAutoUpgradeEnabled = true // toeo
+  const [isShowDowngradeWarningModal, {
+    setTrue: showDowngradeWarningModal,
+    setFalse: hideDowngradeWarningModal,
+  }] = useBoolean(false)
+
   const handleUpdate = async () => {
     if (isFromMarketplace) {
+      if(isAutoUpgradeEnabled && targetVersion.isDowngrade) {
+        showDowngradeWarningModal()
+        return
+      }
       showUpdateModal()
       return
     }
@@ -238,6 +249,7 @@ const DetailHeader = ({
                   setTargetVersion({
                     version: latest_version,
                     unique_identifier: latest_unique_identifier,
+                    isDowngrade: false,
                   })
                 }
                 handleUpdate()
@@ -351,6 +363,7 @@ const DetailHeader = ({
           />
         )
       }
+      { isShowDowngradeWarningModal && (<div>aaa</div>)}
     </div>
   )
 }
