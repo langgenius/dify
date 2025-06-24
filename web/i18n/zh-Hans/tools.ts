@@ -169,6 +169,9 @@ const translation = {
       serverUrl: '服务端点 URL',
       serverUrlPlaceholder: '服务端点的 URL',
       warning: '修改服务端点 URL 可能会影响使用当前 MCP 的应用。',
+      serverIdentifier: '服务器标识符',
+      serverIdentifierTip: '此文本将在客户端显示，为如何使用应用程序提供基本指导',
+      serverIdentifierPlaceholder: '此服务器的唯一标识符',
       cancel: '取消',
       save: '保存',
       confirm: '添加并授权',
@@ -191,6 +194,7 @@ const translation = {
     getTools: '获取工具',
     toolsNum: '包含 {{count}} 个工具',
     onlyTool: '包含 1 个工具',
+    identifier: '服务器标识符 (点击复制)',
     server: {
       title: 'MCP 服务',
       url: '服务端点 URL',

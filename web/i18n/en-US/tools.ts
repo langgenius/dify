@@ -169,6 +169,9 @@ const translation = {
       serverUrl: 'Server URL',
       serverUrlPlaceholder: 'URL to server endpiont',
       warning: 'Updating the server address may affect applications currently using this MCP',
+      serverIdentifier: 'Server Identifier',
+      serverIdentifierTip: 'This text will be displayed on the client side, providing basic guidance on how to use the application',
+      serverIdentifierPlaceholder: 'Unique identifier for this server',
       cancel: 'Cancel',
       save: 'Save',
       confirm: 'Add & Authorize',
@@ -191,6 +194,7 @@ const translation = {
     getTools: 'Get tools',
     toolsNum: '{{count}} tools included',
     onlyTool: '1 tool included',
+    identifier: 'Server Identifier (Click to Copy)',
     server: {
       title: 'MCP Server',
       url: 'Server URL',

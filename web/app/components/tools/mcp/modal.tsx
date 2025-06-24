@@ -23,6 +23,7 @@ export type DuplicateAppModalProps = {
     icon_type: AppIconType
     icon: string
     icon_background?: string | null
+    server_identifier: string
   }) => void
   onHide: () => void
 }
@@ -53,10 +54,11 @@ const MCPModal = ({
   const { t } = useTranslation()
 
   const originalServerUrl = data?.server_url
+  const [url, setUrl] = React.useState(data?.server_url || '')
   const [name, setName] = React.useState(data?.name || '')
   const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
-  const [url, setUrl] = React.useState(data?.server_url || '')
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
 
   const isValidUrl = (string: string) => {
     try {
@@ -73,12 +75,14 @@ const MCPModal = ({
       Toast.notify({ type: 'error', message: 'invalid server url' })
       return
     }
+    // TODO server identifier validation
     await onConfirm({
-      name,
       server_url: originalServerUrl === url ? '[__HIDDEN__]' : url.trim(),
+      name,
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
+      server_identifier: serverIdentifier.trim(),
     })
     onHide()
   }
@@ -132,9 +136,20 @@ const MCPModal = ({
               />
             </div>
           </div>
+          <div>
+            <div className='flex h-6 items-center'>
+              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.serverIdentifier')}</span>
+            </div>
+            <div className='body-xs-regular mb-1 text-text-tertiary'>{t('tools.mcp.modal.serverIdentifierTip')}</div>
+            <Input
+              value={serverIdentifier}
+              onChange={e => setServerIdentifier(e.target.value)}
+              placeholder={t('tools.mcp.modal.serverIdentifierPlaceholder')}
+            />
+          </div>
         </div>
         <div className='flex flex-row-reverse pt-5'>
-          <Button disabled={!name || !url} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
+          <Button disabled={!name || !url || !serverIdentifier} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
           <Button onClick={onHide}>{t('tools.mcp.modal.cancel')}</Button>
         </div>
       </Modal>

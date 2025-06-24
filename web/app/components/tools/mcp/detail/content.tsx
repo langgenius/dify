@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect } from 'react'
 import type { FC } from 'react'
 import { useBoolean } from 'ahooks'
+import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import {
@@ -15,6 +16,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
 import Indicator from '@/app/components/header/indicator'
+import Tooltip from '@/app/components/base/tooltip'
 import MCPModal from '../modal'
 import OperationDropdown from './operation-dropdown'
 import ListLoading from './list-loading'
@@ -159,7 +161,15 @@ const MCPDetailContent: FC<Props> = ({
             <div className='flex h-5 items-center'>
               <div className='system-md-semibold truncate text-text-primary' title={detail.name}>{detail.name}</div>
             </div>
-            <div className='system-xs-regular mt-0.5 truncate text-text-tertiary' title={detail.server_url}>{detail.server_url}</div>
+            <div className='mt-0.5 flex items-center gap-1'>
+              <Tooltip popupContent={t('tools.mcp.identifier')}>
+                <div className='system-xs-regular shrink-0 cursor-pointer text-text-secondary' onClick={() => copy(detail.server_identifier || '')}>{detail.server_identifier}</div>
+              </Tooltip>
+              <div className='system-xs-regular shrink-0 text-text-quaternary'>·</div>
+              <Tooltip popupContent={t('tools.mcp.modal.serverUrl')}>
+                <div className='system-xs-regular truncate text-text-secondary'>{detail.server_url}</div>
+              </Tooltip>
+            </div>
           </div>
           <div className='flex gap-1'>
             <OperationDropdown
