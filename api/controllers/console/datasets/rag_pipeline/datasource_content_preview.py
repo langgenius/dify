@@ -38,7 +38,7 @@ class DataSourceContentPreviewApi(Resource):
             raise ValueError("missing datasource_type")
 
         rag_pipeline_service = RagPipelineService()
-        return rag_pipeline_service.run_datasource_node_preview(
+        preview_content = rag_pipeline_service.run_datasource_node_preview(
             pipeline=pipeline,
             node_id=node_id,
             user_inputs=inputs,
@@ -46,6 +46,7 @@ class DataSourceContentPreviewApi(Resource):
             datasource_type=datasource_type,
             is_published=True,
         )
+        return preview_content, 200
 
 api.add_resource(
     DataSourceContentPreviewApi,
