@@ -2,9 +2,9 @@ import threading
 from collections.abc import Sequence
 from typing import Optional
 
+from sqlalchemy import desc, select
+
 import contexts
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import OrderConfig
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import (
@@ -15,7 +15,6 @@ from models import (
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
-from models.workflow import WorkflowNodeExecutionTriggeredFrom
 
 
 class WorkflowRunService:
@@ -137,17 +136,19 @@ class WorkflowRunService:
         if not workflow_run:
             return []
 
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=db.engine,
-            user=user,
-            app_id=app_model.id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        # Get tenant_id from user
+        tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
+
+        # Use SQLAlchemy 2.0 style query directly
+        stmt = (
+            select(WorkflowNodeExecutionModel)
+            .where(
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_model.id,
+                WorkflowNodeExecutionModel.workflow_run_id == run_id,
+            )
+            .order_by(desc(WorkflowNodeExecutionModel.index))
         )
 
-        # Use the repository to get the database models directly
-        order_config = OrderConfig(order_by=["index"], order_direction="desc")
-        workflow_node_executions = repository.get_db_models_by_workflow_run(
-            workflow_run_id=run_id, order_config=order_config
-        )
-
+        workflow_node_executions = db.session.execute(stmt).scalars().all()
         return workflow_node_executions

@@ -13,7 +13,7 @@ from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
-from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.repositories import RepositoryFactory
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
@@ -396,7 +396,7 @@ class WorkflowService:
         node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-        repository = SQLAlchemyWorkflowNodeExecutionRepository(
+        repository = RepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             user=account,
             app_id=app_model.id,
@@ -404,8 +404,8 @@ class WorkflowService:
         )
         repository.save(node_execution)
 
-        # Convert node_execution to WorkflowNodeExecution after save
-        workflow_node_execution = repository.to_db_model(node_execution)
+        stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == node_execution.id)
+        workflow_node_execution = db.session.execute(stmt).scalar_one()
 
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
