@@ -22,11 +22,9 @@ class SMTPClient:
             if self.use_tls:
                 if self.opportunistic_tls:
                     smtp = smtplib.SMTP(self.server, self.port, timeout=10)
-                    # 发送EHLO命令并指定HELO域名为服务器地址
                     # Send EHLO command with the HELO domain name as the server address
                     smtp.ehlo(self.server)
                     smtp.starttls()
-                    # 重新发送EHLO命令以标识TLS会话
                     # Resend EHLO command to identify the TLS session
                     smtp.ehlo(self.server)
                 else:
