@@ -314,7 +314,10 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'advanced-chat': {
       title: t('app.types.advanced'),
       description: t('app.newApp.advancedUserDescription'),
-      link: docLink('/guides/workflow/readme'),
+      link: docLink('/guides/workflow/README', {
+        'zh-Hans': '/guides/workflow/readme',
+        'ja-JP': '/guides/workflow/concepts',
+      }),
     },
     'agent-chat': {
       title: t('app.types.agent'),
@@ -324,13 +327,18 @@ function AppPreview({ mode }: { mode: AppMode }) {
     'completion': {
       title: t('app.newApp.completeApp'),
       description: t('app.newApp.completionUserDescription'),
-      link: docLink('/guides/application-orchestrate/text-generator',
-        { 'zh-Hans': '/guides/application-orchestrate/readme' }),
+      link: docLink('/guides/application-orchestrate/text-generator', {
+        'zh-Hans': '/guides/application-orchestrate/readme',
+        'ja-JP': '/guides/application-orchestrate/README',
+      }),
     },
     'workflow': {
       title: t('app.types.workflow'),
       description: t('app.newApp.workflowUserDescription'),
-      link: docLink('/guides/workflow/readme'),
+      link: docLink('/guides/workflow/README', {
+        'zh-Hans': '/guides/workflow/readme',
+        'ja-JP': '/guides/workflow/concepts',
+      }),
     },
   }
   const previewInfo = modeToPreviewInfoMap[mode]

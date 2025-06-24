@@ -1,10 +1,15 @@
+import dataclasses
 import json
 from unittest import mock
 from uuid import uuid4
 
 from constants import HIDDEN_VALUE
+from core.file.enums import FileTransferMethod, FileType
+from core.file.models import File
 from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
-from models.workflow import Workflow, WorkflowNodeExecutionModel
+from core.variables.segments import IntegerSegment, Segment
+from factories.variable_factory import build_segment
+from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
 
 
 def test_environment_variables():
@@ -163,3 +168,147 @@ class TestWorkflowNodeExecution:
         original = {"a": 1, "b": ["2"]}
         node_exec.execution_metadata = json.dumps(original)
         assert node_exec.execution_metadata_dict == original
+
+
+class TestIsSystemVariableEditable:
+    def test_is_system_variable(self):
+        cases = [
+            ("query", True),
+            ("files", True),
+            ("dialogue_count", False),
+            ("conversation_id", False),
+            ("user_id", False),
+            ("app_id", False),
+            ("workflow_id", False),
+            ("workflow_run_id", False),
+        ]
+        for name, editable in cases:
+            assert editable == is_system_variable_editable(name)
+
+        assert is_system_variable_editable("invalid_or_new_system_variable") == False
+
+
+class TestWorkflowDraftVariableGetValue:
+    def test_get_value_by_case(self):
+        @dataclasses.dataclass
+        class TestCase:
+            name: str
+            value: Segment
+
+        tenant_id = "test_tenant_id"
+
+        test_file = File(
+            tenant_id=tenant_id,
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/example.jpg",
+            filename="example.jpg",
+            extension=".jpg",
+            mime_type="image/jpeg",
+            size=100,
+        )
+        cases: list[TestCase] = [
+            TestCase(
+                name="number/int",
+                value=build_segment(1),
+            ),
+            TestCase(
+                name="number/float",
+                value=build_segment(1.0),
+            ),
+            TestCase(
+                name="string",
+                value=build_segment("a"),
+            ),
+            TestCase(
+                name="object",
+                value=build_segment({}),
+            ),
+            TestCase(
+                name="file",
+                value=build_segment(test_file),
+            ),
+            TestCase(
+                name="array[any]",
+                value=build_segment([1, "a"]),
+            ),
+            TestCase(
+                name="array[string]",
+                value=build_segment(["a", "b"]),
+            ),
+            TestCase(
+                name="array[number]/int",
+                value=build_segment([1, 2]),
+            ),
+            TestCase(
+                name="array[number]/float",
+                value=build_segment([1.0, 2.0]),
+            ),
+            TestCase(
+                name="array[number]/mixed",
+                value=build_segment([1, 2.0]),
+            ),
+            TestCase(
+                name="array[object]",
+                value=build_segment([{}, {"a": 1}]),
+            ),
+            TestCase(
+                name="none",
+                value=build_segment(None),
+            ),
+        ]
+
+        for idx, c in enumerate(cases, 1):
+            fail_msg = f"test case {c.name} failed, index={idx}"
+            draft_var = WorkflowDraftVariable()
+            draft_var.set_value(c.value)
+            assert c.value == draft_var.get_value(), fail_msg
+
+    def test_file_variable_preserves_all_fields(self):
+        """Test that File type variables preserve all fields during encoding/decoding."""
+        tenant_id = "test_tenant_id"
+
+        # Create a File with specific field values
+        test_file = File(
+            id="test_file_id",
+            tenant_id=tenant_id,
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.REMOTE_URL,
+            remote_url="https://example.com/test.jpg",
+            filename="test.jpg",
+            extension=".jpg",
+            mime_type="image/jpeg",
+            size=12345,  # Specific size to test preservation
+            storage_key="test_storage_key",
+        )
+
+        # Create a FileSegment and WorkflowDraftVariable
+        file_segment = build_segment(test_file)
+        draft_var = WorkflowDraftVariable()
+        draft_var.set_value(file_segment)
+
+        # Retrieve the value and verify all fields are preserved
+        retrieved_segment = draft_var.get_value()
+        retrieved_file = retrieved_segment.value
+
+        # Verify all important fields are preserved
+        assert retrieved_file.id == test_file.id
+        assert retrieved_file.tenant_id == test_file.tenant_id
+        assert retrieved_file.type == test_file.type
+        assert retrieved_file.transfer_method == test_file.transfer_method
+        assert retrieved_file.remote_url == test_file.remote_url
+        assert retrieved_file.filename == test_file.filename
+        assert retrieved_file.extension == test_file.extension
+        assert retrieved_file.mime_type == test_file.mime_type
+        assert retrieved_file.size == test_file.size  # This was the main issue being fixed
+        # Note: storage_key is not serialized in model_dump() so it won't be preserved
+
+        # Verify the segments have the same type and the important fields match
+        assert file_segment.value_type == retrieved_segment.value_type
+
+    def test_get_and_set_value(self):
+        draft_var = WorkflowDraftVariable()
+        int_var = IntegerSegment(value=1)
+        draft_var.set_value(int_var)
+        value = draft_var.get_value()
+        assert value == int_var

@@ -224,6 +224,15 @@ Dify 的所有功能都提供相應的 API，因此您可以輕鬆地將 Dify �
 
 - [由 @KevinZhao 提供的 AWS CDK](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
 
+#### 使用 阿里云计算巢進行部署
+
+[阿里云](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
+
+#### 使用 阿里雲數據管理DMS 進行部署
+
+透過 [阿里雲數據管理DMS](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)，一鍵將 Dify 部署至阿里雲
+
+
 ## 貢獻
 
 對於想要貢獻程式碼的開發者，請參閱我們的[貢獻指南](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)。

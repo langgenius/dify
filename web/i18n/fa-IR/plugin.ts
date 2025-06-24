@@ -137,6 +137,7 @@ const translation = {
     installPlugin: 'افزونه را نصب کنید',
     installComplete: 'نصب کامل شد',
     uploadFailed: 'آپلود انجام نشد',
+    installWarning: 'این افزونه اجازه نصب ندارد.',
   },
   installFromGitHub: {
     installPlugin: 'افزونه را از GitHub نصب کنید',

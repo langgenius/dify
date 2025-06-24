@@ -137,6 +137,7 @@ const translation = {
     pluginLoadErrorDesc: 'Acest plugin nu va fi instalat',
     installedSuccessfullyDesc: 'Pluginul a fost instalat cu succes.',
     readyToInstall: 'Despre instalarea următorului plugin',
+    installWarning: 'Acest plugin nu este permis să fie instalat.',
   },
   installFromGitHub: {
     installFailed: 'Instalarea a eșuat',
@@ -173,7 +174,7 @@ const translation = {
       firstReleased: 'Prima lansare',
     },
     noPluginFound: 'Nu s-a găsit niciun plugin',
-    sortBy: 'Orașul negru',
+    sortBy: 'Sortează după',
     discover: 'Descoperi',
     empower: 'Îmbunătățește-ți dezvoltarea AI',
     pluginsResult: '{{num}} rezultate',

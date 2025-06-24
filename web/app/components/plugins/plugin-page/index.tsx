@@ -35,7 +35,7 @@ import type { PluginDeclaration, PluginManifestInMarket } from '../types'
 import { sleep } from '@/utils'
 import { getDocsUrl } from '@/app/components/plugins/utils'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
-import { marketplaceApiPrefix } from '@/config'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import I18n from '@/context/i18n'
 import { noop } from 'lodash-es'
@@ -106,7 +106,7 @@ const PluginPage = ({
         setManifest({
           ...plugin,
           version: version.version,
-          icon: `${marketplaceApiPrefix}/plugins/${plugin.org}/${plugin.name}/icon`,
+          icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
         })
         showInstallFromMarketplace()
         return
@@ -136,7 +136,7 @@ const PluginPage = ({
   const options = usePluginPageContext(v => v.options)
   const activeTab = usePluginPageContext(v => v.activeTab)
   const setActiveTab = usePluginPageContext(v => v.setActiveTab)
-  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const { enable_marketplace, branding } = useGlobalPublicStore(s => s.systemFeatures)
 
   const isPluginsTab = useMemo(() => activeTab === PLUGIN_PAGE_TABS_MAP.plugins, [activeTab])
   const isExploringMarketplace = useMemo(() => {
@@ -225,7 +225,7 @@ const PluginPage = ({
               )
             }
             {
-              canSetPermissions && (
+              canSetPermissions && !branding.enabled && (
                 <Tooltip
                   popupContent={t('plugin.privilege.title')}
                 >

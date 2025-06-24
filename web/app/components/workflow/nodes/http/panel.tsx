@@ -16,8 +16,6 @@ import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/compo
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.http'
 
@@ -45,16 +43,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     hideAuthorization,
     setAuthorization,
     setTimeout,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    varInputs,
-    inputVarValues,
-    setInputVarValues,
-    runResult,
     isShowCurlPanel,
     showCurlPanel,
     hideCurlPanel,
@@ -180,24 +168,6 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           </>
         </OutputVars>
       </div>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          nodeType={inputs.type}
-          onHide={hideSingleRun}
-          forms={[
-            {
-              inputs: varInputs,
-              values: inputVarValues,
-              onChange: setInputVarValues,
-            },
-          ]}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
       {(isShowCurlPanel && !readOnly) && (
         <CurlPanel
           nodeId={id}

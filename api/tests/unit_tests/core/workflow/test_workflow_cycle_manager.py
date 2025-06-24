@@ -163,7 +163,6 @@ def real_workflow_run():
     workflow_run.tenant_id = "test-tenant-id"
     workflow_run.app_id = "test-app-id"
     workflow_run.workflow_id = "test-workflow-id"
-    workflow_run.sequence_number = 1
     workflow_run.type = "chat"
     workflow_run.triggered_from = "app-run"
     workflow_run.version = "1.0"

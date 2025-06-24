@@ -10,7 +10,6 @@ from core.plugin.entities.plugin import GenericProviderID
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.signature import sign_tool_file
 from core.workflow.entities.workflow_execution import WorkflowExecutionStatus
-from services.plugin.plugin_service import PluginService
 
 if TYPE_CHECKING:
     from models.workflow import Workflow
@@ -169,6 +168,7 @@ class App(Base):
     @property
     def deleted_tools(self) -> list:
         from core.tools.tool_manager import ToolManager
+        from services.plugin.plugin_service import PluginService
 
         # get agent mode tools
         app_model_config = self.app_model_config
@@ -611,6 +611,14 @@ class InstalledApp(Base):
         return tenant
 
 
+class ConversationSource(StrEnum):
+    """This enumeration is designed for use with `Conversation.from_source`."""
+
+    # NOTE(QuantumGhost): The enumeration members may not cover all possible cases.
+    API = "api"
+    CONSOLE = "console"
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
@@ -632,7 +640,14 @@ class Conversation(Base):
     system_instruction = db.Column(db.Text)
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     status = db.Column(db.String(255), nullable=False)
+
+    # The `invoke_from` records how the conversation is created.
+    #
+    # Its value corresponds to the members of `InvokeFrom`.
+    # (api/core/app/entities/app_invoke_entities.py)
     invoke_from = db.Column(db.String(255), nullable=True)
+
+    # ref: ConversationSource.
     from_source = db.Column(db.String(255), nullable=False)
     from_end_user_id = db.Column(StringUUID)
     from_account_id = db.Column(StringUUID)

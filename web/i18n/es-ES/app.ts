@@ -93,6 +93,7 @@ const translation = {
     foundResult: '{{conteo}} Resultado',
     chatbotUserDescription: 'Cree rápidamente un chatbot basado en LLM con una configuración sencilla. Puedes cambiar a Chatflow más tarde.',
     completionUserDescription: 'Cree rápidamente un asistente de IA para tareas de generación de texto con una configuración sencilla.',
+    dropDSLToCreateApp: 'Suelta el archivo DSL aquí para crear la aplicación',
   },
   editApp: 'Editar información',
   editAppTitle: 'Editar información de la app',
@@ -207,6 +208,7 @@ const translation = {
     modelNotSupportedTip: 'El modelo actual no admite esta función y se degrada automáticamente a inyección de comandos.',
     structuredTip: 'Las Salidas Estructuradas son una función que garantiza que el modelo siempre generará respuestas que se ajusten a su esquema JSON proporcionado.',
     modelNotSupported: 'Modelo no soportado',
+    structured: 'sistemático',
   },
   accessItemsDescription: {
     anyone: 'Cualquiera puede acceder a la aplicación web.',
