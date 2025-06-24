@@ -478,7 +478,7 @@ export const usePluginTaskList = (category?: PluginType) => {
           refreshPluginList(category ? { category } as any : undefined, !category)
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRefetching])
 
   const handleRefetch = useCallback(() => {
@@ -575,7 +575,7 @@ export const usePluginInfo = (providerName?: string) => {
 
 export const useFetchDynamicOptions = (plugin_id: string, provider: string, action: string, parameter: string) => {
   return useMutation({
-    mutationFn: () => get<{ data: { options: FormOption[] } }>('/workspaces/current/plugin/parameters/dynamic-options', {
+    mutationFn: () => get<{ options: FormOption[] }>('/workspaces/current/plugin/parameters/dynamic-options', {
       params: {
         plugin_id,
         provider,
