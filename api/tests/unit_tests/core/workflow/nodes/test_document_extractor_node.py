@@ -342,3 +342,26 @@ def test_extract_text_from_excel_all_sheets_fail(mock_excel_file):
     assert result == ""
 
     assert mock_excel_instance.parse.call_count == 2
+
+
+@patch("pandas.ExcelFile")
+def test_extract_text_from_excel_numeric_type_column(mock_excel_file):
+    """Test extracting text from Excel file with numeric column names."""
+
+    # Test number type column
+    data = {1: ["Test"], 1.1: ["Test"]}
+
+    df = pd.DataFrame(data)
+
+    # Mock ExcelFile
+    mock_excel_instance = Mock()
+    mock_excel_instance.sheet_names = ["Sheet1"]
+    mock_excel_instance.parse.return_value = df
+    mock_excel_file.return_value = mock_excel_instance
+
+    file_content = b"fake_excel_content"
+    result = _extract_text_from_excel(file_content)
+
+    expected_manual = "| 1.0 | 1.1 |\n| --- | --- |\n| Test | Test |\n\n"
+
+    assert expected_manual == result
