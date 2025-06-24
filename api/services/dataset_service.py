@@ -1075,7 +1075,7 @@ class DocumentService:
                         raise ValueError("No notion info list found.")
                     exist_page_ids = []
                     exist_document = {}
-                    documents = (
+                    documents_from_db = (
                         db.session.query(Document)
                         .filter_by(
                             dataset_id=dataset.id,
@@ -1085,8 +1085,8 @@ class DocumentService:
                         )
                         .all()
                     )
-                    if documents:
-                        for document in documents:
+                    if documents_from_db:
+                        for document in documents_from_db:
                             data_source_info = json.loads(document.data_source_info)
                             exist_page_ids.append(data_source_info["notion_page_id"])
                             exist_document[data_source_info["notion_page_id"]] = document.id
