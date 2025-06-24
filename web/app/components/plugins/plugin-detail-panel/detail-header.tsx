@@ -35,6 +35,8 @@ import { useProviderContext } from '@/context/provider-context'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
+import { AutoUpdateLine } from '../../base/icons/src/vender/system'
+import { timeOfDayToDayjs } from '../reference-setting-modal/auto-update-setting/utils'
 
 const i18nPrefix = 'plugin.action'
 
@@ -205,6 +207,15 @@ const DetailHeader = ({
                 />
               }
             />
+            {/* Auto update info */}
+            <Tooltip popupContent={t('plugin.autoUpdate.nextUpdateTime', { time: timeOfDayToDayjs(3600).format('hh:mm A') })}>
+              {/* add a a div to fix tooltip hover not show problem */}
+              <div>
+                <Badge className='mr-1 cursor-pointer px-1'>
+                  <AutoUpdateLine className='size-3' />
+                </Badge>
+              </div>
+            </Tooltip>
             {(hasNewVersion || isFromGitHub) && (
               <Button variant='secondary-accent' size='small' className='!h-5' onClick={() => {
                 if (isFromMarketplace) {

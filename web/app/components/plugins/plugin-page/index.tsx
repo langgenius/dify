@@ -130,7 +130,7 @@ const PluginPage = ({
   const [showPluginSettingModal, {
     setTrue: setShowPluginSettingModal,
     setFalse: setHidePluginSettingModal,
-  }] = useBoolean(true)
+  }] = useBoolean(false)
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = usePluginPageContext(v => v.containerRef)
   const options = usePluginPageContext(v => v.options)
