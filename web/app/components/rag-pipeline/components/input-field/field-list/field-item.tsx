@@ -51,17 +51,17 @@ const FieldItem = ({
     <div
       ref={ref}
       className={cn(
-        'flex h-8 cursor-pointer items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pl-2 shadow-xs hover:shadow-sm',
-        (isHovering && !readonly) ? 'pr-1' : 'pr-2.5',
+        'handle flex h-8 cursor-pointer items-center justify-between gap-x-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg py-1 pl-2 shadow-xs hover:shadow-sm',
+        (isHovering && !readonly) ? 'cursor-all-scroll pr-1' : 'pr-2.5',
         readonly && 'cursor-default',
       )}
-      onClick={handleOnClickEdit}
+    // onClick={handleOnClickEdit}
     >
-      <div className='flex grow basis-0 items-center gap-x-1'>
+      <div className='flex grow basis-0 items-center gap-x-1 overflow-hidden'>
         {
           (isHovering && !readonly)
-            ? <RiDraggable className='handle h-4 w-4 cursor-all-scroll text-text-quaternary' />
-            : <InputField className='size-4 text-text-accent' />
+            ? <RiDraggable className='size-4 shrink-0 text-text-quaternary' />
+            : <InputField className='size-4 shrink-0 text-text-accent' />
         }
         <div
           title={payload.variable}
@@ -73,10 +73,10 @@ const FieldItem = ({
           <>
             <div className='system-xs-regular shrink-0 text-text-quaternary'>·</div>
             <div
-              title={payload.label as string}
-              className='system-xs-medium max-w-[130px] truncate text-text-tertiary'
+              title={payload.label}
+              className='system-xs-medium grow truncate text-text-tertiary'
             >
-              {payload.label as string}
+              {payload.label}
             </div>
           </>
         )}

@@ -50,7 +50,6 @@ const FieldListContainer = ({
       setList={handleListSortChange}
       handle='.handle'
       ghostClass='opacity-50'
-      group='rag-pipeline-input-field'
       animation={150}
       disabled={readonly}
     >
