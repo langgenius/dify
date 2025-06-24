@@ -23,6 +23,7 @@ import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-syn
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import cn from '@/utils/classnames'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {
   const { t } = useTranslation()
@@ -32,6 +33,16 @@ const ChatVariablePanel = () => {
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
   const updateChatVarList = useStore(s => s.setConversationVariables)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const {
+    invalidateConversationVarValues,
+  } = useInspectVarsCrud()
+  const handleVarChanged = useCallback(() => {
+    doSyncWorkflowDraft(false, {
+      onSuccess() {
+        invalidateConversationVarValues()
+      },
+    })
+  }, [doSyncWorkflowDraft, invalidateConversationVarValues])
 
   const [showTip, setShowTip] = useState(true)
   const [showVariableModal, setShowVariableModal] = useState(false)
@@ -71,8 +82,8 @@ const ChatVariablePanel = () => {
     updateChatVarList(varList.filter(v => v.id !== chatVar.id))
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
-    doSyncWorkflowDraft()
-  }, [doSyncWorkflowDraft, removeUsedVarInNodes, updateChatVarList, varList])
+    handleVarChanged()
+  }, [handleVarChanged, removeUsedVarInNodes, updateChatVarList, varList])
 
   const deleteCheck = useCallback((chatVar: ConversationVariable) => {
     const effectedNodes = getEffectedNodes(chatVar)
@@ -90,7 +101,7 @@ const ChatVariablePanel = () => {
     if (!currentVar) {
       const newList = [chatVar, ...varList]
       updateChatVarList(newList)
-      doSyncWorkflowDraft()
+      handleVarChanged()
       return
     }
     // edit chatVar
@@ -108,8 +119,8 @@ const ChatVariablePanel = () => {
       })
       setNodes(newNodes)
     }
-    doSyncWorkflowDraft()
-  }, [currentVar, doSyncWorkflowDraft, getEffectedNodes, store, updateChatVarList, varList])
+    handleVarChanged()
+  }, [currentVar, getEffectedNodes, handleVarChanged, store, updateChatVarList, varList])
 
   return (
     <div

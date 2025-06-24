@@ -30,6 +30,9 @@ import {
 } from '@/app/components/base/file-uploader/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { getThreadMessages } from '@/app/components/base/chat/utils'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { useParams } from 'next/navigation'
+import useSetWorkflowVarsWithValue from '@/app/components/workflow-app/hooks/use-fetch-workflow-inspect-vars'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -53,6 +56,9 @@ export const useChat = (
   const taskIdRef = useRef('')
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
+  const { appId } = useParams()
+  const invalidAllLastRun = useInvalidAllLastRun(appId as string)
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const {
@@ -288,6 +294,8 @@ export const useChat = (
         },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
           handleResponding(false)
+          fetchInspectVars()
+          invalidAllLastRun()
 
           if (hasError) {
             if (errorMessage) {
