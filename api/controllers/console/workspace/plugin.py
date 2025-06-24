@@ -590,6 +590,21 @@ class PluginFetchPreferencesApi(Resource):
         return jsonable_encoder({"permission": permission, "auto_upgrade": auto_upgrade})
 
 
+class PluginAutoUpgradeExcludePluginApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        # exclude one single plugin
+        tenant_id = current_user.current_tenant_id
+
+        req = reqparse.RequestParser()
+        req.add_argument("plugin_id", type=str, required=True, location="json")
+        args = req.parse_args()
+
+        return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args["plugin_id"])})
+
+
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
 api.add_resource(PluginListLatestVersionsApi, "/workspaces/current/plugin/list/latest-versions")
@@ -617,3 +632,4 @@ api.add_resource(PluginFetchPermissionApi, "/workspaces/current/plugin/permissio
 
 api.add_resource(PluginFetchPreferencesApi, "/workspaces/current/plugin/preferences/fetch")
 api.add_resource(PluginChangePreferencesApi, "/workspaces/current/plugin/preferences/change")
+api.add_resource(PluginAutoUpgradeExcludePluginApi, "/workspaces/current/plugin/preferences/autoupgrade/exclude")
