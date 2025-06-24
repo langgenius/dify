@@ -17,7 +17,8 @@ import VarReferencePopup from './var-reference-popup'
 import { getNodeInfoById, isConversationVar, isENV, isSystemVar, varTypeToStructType } from './utils'
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
-import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { type CredentialFormSchema, type FormOption, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
@@ -41,6 +42,8 @@ import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from './var-full-path-panel'
 import { noop } from 'lodash-es'
+import { useFetchDynamicOptions } from '@/service/use-plugins'
+import type { Tool } from '@/app/components/tools/types'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -69,7 +72,8 @@ type Props = {
   minWidth?: number
   popupFor?: 'assigned' | 'toAssigned'
   zIndex?: number
-  isLoading?: boolean
+  currentTool?: Tool
+  currentProvider?: ToolWithProvider
 }
 
 const DEFAULT_VALUE_SELECTOR: Props['value'] = []
@@ -99,6 +103,8 @@ const VarReferencePicker: FC<Props> = ({
   minWidth,
   popupFor,
   zIndex,
+  currentTool,
+  currentProvider,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -321,33 +327,24 @@ const VarReferencePicker: FC<Props> = ({
 
   const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const handleOpenDynamicSelect = useCallback((open: boolean) => {
-    if (schema?.type !== FormTypeEnum.dynamicSelect || !open || isLoading)
+  const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
+    currentProvider?.plugin_id || '', currentProvider?.name || '', currentTool?.name || '', (schema as CredentialFormSchemaSelect).variable,
+  )
+  const handleFetchDynamicOptions = async () => {
+    if (schema?.type !== FormTypeEnum.dynamicSelect || !currentTool || !currentProvider)
       return
-    if (dynamicOptions)
-      return
-
     setIsLoading(true)
-    // load options
-    setTimeout(() => {
+    try {
+      const data = await fetchDynamicOptions()
+      setDynamicOptions(data?.data?.options || [])
+    }
+ finally {
       setIsLoading(false)
-      setDynamicOptions([{
-        label: {
-          en_US: 'Option 1',
-          zh_Hans: '选项1',
-        },
-        value: 'option1',
-        show_on: [],
-      }, {
-        label: {
-          en_US: 'Option 2',
-          zh_Hans: '选项2',
-        },
-        value: 'option2',
-        show_on: [],
-      }])
-    }, 1000)
-  }, [isLoading])
+    }
+  }
+  useEffect(() => {
+    handleFetchDynamicOptions()
+  }, [currentTool, currentProvider, schema])
 
   const schemaWithDynamicSelect = useMemo(() => {
     if (schema?.type !== FormTypeEnum.dynamicSelect)
@@ -414,7 +411,6 @@ const VarReferencePicker: FC<Props> = ({
                       onChange={onChange as ((value: string | number, varKindType: VarKindType, varInfo?: Var) => void)}
                       schema={schemaWithDynamicSelect as CredentialFormSchema}
                       readonly={readonly}
-                      onOpenChange={handleOpenDynamicSelect}
                       isLoading={isLoading}
                     />
                   )

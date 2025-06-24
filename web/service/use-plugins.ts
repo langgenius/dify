@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import type {
+  FormOption,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchModelProviderModelList } from '@/service/common'
@@ -569,5 +570,18 @@ export const usePluginInfo = (providerName?: string) => {
       }
     },
     enabled: !!providerName,
+  })
+}
+
+export const useFetchDynamicOptions = (plugin_id: string, provider: string, action: string, parameter: string) => {
+  return useMutation({
+    mutationFn: () => get<{ data: { options: FormOption[] } }>('/workspaces/current/plugin/parameters/dynamic-options', {
+      params: {
+        plugin_id,
+        provider,
+        action,
+        parameter,
+      },
+    }),
   })
 }
