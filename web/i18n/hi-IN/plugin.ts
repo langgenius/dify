@@ -137,6 +137,7 @@ const translation = {
     installFailedDesc: 'प्लगइन स्थापित करने में विफल रहा।',
     installedSuccessfullyDesc: 'प्लगइन सफलतापूर्वक स्थापित किया गया है।',
     fromTrustSource: 'कृपया सुनिश्चित करें कि आप केवल एक <trustSource>विश्वसनीय स्रोत</trustSource> से प्लगइन्स स्थापित करें।',
+    installWarning: 'इस प्लगइन को स्थापित करने की अनुमति नहीं है।',
   },
   installFromGitHub: {
     gitHubRepo: 'गिटहब रिपॉजिटरी',

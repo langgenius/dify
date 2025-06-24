@@ -58,6 +58,8 @@ const translation = {
     more: 'Больше',
     downloadFailed: 'Скачивание не удалось. Пожалуйста, попробуйте еще раз позже.',
     downloadSuccess: 'Загрузка завершена.',
+    selectAll: 'Выбрать все',
+    deSelectAll: 'Снять выделение со всех',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',

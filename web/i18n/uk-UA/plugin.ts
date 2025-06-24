@@ -137,6 +137,7 @@ const translation = {
     installFailed: 'Не вдалося встановити',
     installedSuccessfully: 'Монтаж успішний',
     next: 'Наступний',
+    installWarning: 'Цей плагін не можна установити.',
   },
   installFromGitHub: {
     selectVersionPlaceholder: 'Будь ласка, оберіть версію',

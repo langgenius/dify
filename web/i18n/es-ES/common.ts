@@ -58,6 +58,8 @@ const translation = {
     downloadSuccess: 'Descarga completada.',
     downloadFailed: 'La descarga ha fallado. Por favor, inténtalo de nuevo más tarde.',
     format: 'Formato',
+    deSelectAll: 'Deseleccionar todo',
+    selectAll: 'Seleccionar todo',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',

@@ -303,6 +303,8 @@ const translation = {
     addNextStep: 'Adăugați următorul pas în acest flux de lucru',
     changeBlock: 'Schimbă nodul',
     selectNextStep: 'Selectați Pasul Următor',
+    maximize: 'Maximize Canvas',
+    minimize: 'Iesi din modul pe tot ecranul',
   },
   nodes: {
     common: {
@@ -916,6 +918,35 @@ const translation = {
     releaseNotesPlaceholder: 'Descrie ce s-a schimbat',
     deletionTip: 'Ștergerea este irreversibilă, vă rugăm să confirmați.',
     currentDraft: 'Draftul curent',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Rulează acest nod',
+      description: 'Rezultatele ultimei rulări vor fi afișate aici',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'Clar',
+        running: 'Starea de funcționare a cache-ului',
+        cached: 'Vizualizează variabilele cached',
+        normal: 'Inspectare variabilă',
+        stop: 'Oprește-te din alergat',
+      },
+      chatNode: 'Conversație',
+      title: 'Inspectare variabilă',
+      systemNode: 'Sistem',
+      clearAll: 'Resetare toate',
+      emptyLink: 'Învățați mai multe',
+      view: 'Vizualizați jurnalul',
+      envNode: 'Mediu',
+      reset: 'Resetează la ultima valoare rulată',
+      resetConversationVar: 'Resetați variabila de conversație la valoarea implicită',
+      edited: 'Editat',
+      clearNode: 'Șterge variabila cached',
+      emptyTip: 'După ce ai trecut printr-un nod pe canvas sau ai rulat un nod pas cu pas, poți vizualiza valoarea curentă a variabilei nodului în Inspectarea Variabilelor.',
+    },
+    settingsTab: 'Setări',
+    lastRunTab: 'Ultima execuție',
   },
 }
 

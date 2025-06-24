@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'ดาวน์โหลดล้มเหลว กรุณาลองอีกครั้งในภายหลัง.',
     more: 'มากขึ้น',
     downloadSuccess: 'ดาวน์โหลดเสร็จสิ้นแล้ว.',
+    selectAll: 'เลือกทั้งหมด',
+    deSelectAll: 'ยกเลิกการเลือกทั้งหมด',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',

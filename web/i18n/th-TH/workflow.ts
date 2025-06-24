@@ -303,6 +303,8 @@ const translation = {
     addNextStep: 'เพิ่มขั้นตอนถัดไปในกระบวนการทำงานนี้',
     changeBlock: 'เปลี่ยนโหนด',
     selectNextStep: 'เลือกขั้นตอนถัดไป',
+    minimize: 'ออกจากโหมดเต็มหน้าจอ',
+    maximize: 'เพิ่มประสิทธิภาพผ้าใบ',
   },
   nodes: {
     common: {
@@ -915,6 +917,35 @@ const translation = {
     nameThisVersion: 'ชื่อเวอร์ชันนี้',
     title: 'เวอร์ชัน',
     latest: 'ล่าสุด',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'ทำงานโหนดนี้',
+      description: 'ผลลัพธ์จากการวิ่งครั้งล่าสุดจะแสดงที่นี่',
+    },
+    variableInspect: {
+      trigger: {
+        stop: 'หยุดวิ่ง',
+        normal: 'ตรวจสอบตัวแปร',
+        cached: 'ดูตัวแปรที่ถูกเก็บไว้ในแคช',
+        clear: 'ชัดเจน',
+        running: 'สถานะการทำงานของการเก็บข้อมูลชั่วคราว',
+      },
+      systemNode: 'ระบบ',
+      view: 'ดูบันทึก',
+      chatNode: 'การสนทนา',
+      clearAll: 'รีเซ็ตทั้งหมด',
+      envNode: 'สิ่งแวดล้อม',
+      emptyLink: 'เรียนรู้เพิ่มเติม',
+      edited: 'แก้ไขแล้ว',
+      reset: 'รีเซ็ตกลับไปยังค่าครั้งล่าสุด',
+      title: 'ตรวจสอบตัวแปร',
+      resetConversationVar: 'รีเซ็ตตัวแปรการสนทนาไปยังค่าตั้งต้น',
+      emptyTip: 'หลังจากก้าวผ่านโหนดบนผืนผ้าใบหรือเรียกใช้โหนดทีละขั้นตอน คุณสามารถดูค่าปัจจุบันของตัวแปรโหนดใน Variable Inspect ได้',
+      clearNode: 'ล้างตัวแปรที่เก็บไว้ในแคช',
+    },
+    settingsTab: 'การตั้งค่า',
+    lastRunTab: 'รอบสุดท้าย',
   },
 }
 

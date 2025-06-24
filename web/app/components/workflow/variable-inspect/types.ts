@@ -1,0 +1,1 @@
+export const EVENT_WORKFLOW_STOP = 'WORKFLOW_STOP'

@@ -16,9 +16,8 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -28,6 +27,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const inputRef = useRef(inputs)
+
+  const { deleteNodeInspectorVars } = useInspectVarsCrud()
 
   const setInputs = useCallback((newInputs: LLMNodeType) => {
     if (newInputs.memory && !newInputs.memory.role_prefix) {
@@ -293,14 +294,16 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
     if (enabled)
       setStructuredOutputCollapsed(false)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [inputs, setInputs, deleteNodeInspectorVars, id])
 
   const handleStructureOutputChange = useCallback((newOutput: StructuredOutput) => {
     const newInputs = produce(inputs, (draft) => {
       draft.structured_output = newOutput
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [inputs, setInputs, deleteNodeInspectorVars, id])
 
   const filterInputVar = useCallback((varPayload: Var) => {
     return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.file, VarType.arrayFile].includes(varPayload.type)
@@ -321,81 +324,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     onlyLeafNodeVar: false,
     filterVar: filterMemoryPromptVar,
   })
-
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    getInputVars,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    runInputDataRef,
-    setRunInputData,
-    runResult,
-    toVarInputs,
-  } = useOneStepRun<LLMNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {
-      '#context#': [RETRIEVAL_OUTPUT_STRUCT],
-      '#files#': [],
-    },
-  })
-
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .filter(key => !['#context#', '#files#'].includes(key))
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    const newVars = {
-      ...newPayload,
-      '#context#': runInputDataRef.current['#context#'],
-      '#files#': runInputDataRef.current['#files#'],
-    }
-    setRunInputData(newVars)
-  }, [runInputDataRef, setRunInputData])
-
-  const contexts = runInputData['#context#']
-  const setContexts = useCallback((newContexts: string[]) => {
-    setRunInputData({
-      ...runInputDataRef.current,
-      '#context#': newContexts,
-    })
-  }, [runInputDataRef, setRunInputData])
-
-  const visionFiles = runInputData['#files#']
-  const setVisionFiles = useCallback((newFiles: any[]) => {
-    setRunInputData({
-      ...runInputDataRef.current,
-      '#files#': newFiles,
-    })
-  }, [runInputDataRef, setRunInputData])
-
-  const allVarStrArr = (() => {
-    const arr = isChatModel ? (inputs.prompt_template as PromptItem[]).filter(item => item.edition_type !== EditionType.jinja2).map(item => item.text) : [(inputs.prompt_template as PromptItem).text]
-    if (isChatMode && isChatModel && !!inputs.memory) {
-      arr.push('{{#sys.query#}}')
-      arr.push(inputs.memory.query_prompt_template)
-    }
-
-    return arr
-  })()
-
-  const varInputs = (() => {
-    const vars = getInputVars(allVarStrArr)
-    if (isShowVars)
-      return [...vars, ...toVarInputs(inputs.prompt_config?.jinja2_variables || [])]
-
-    return vars
-  })()
 
   return {
     readOnly,
@@ -423,24 +351,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleSyeQueryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    isShowSingleRun,
-    hideSingleRun,
-    inputVarValues,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
-    contexts,
-    setContexts,
-    varInputs,
-    runningStatus,
     isModelSupportStructuredOutput,
     handleStructureOutputChange,
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
-    handleRun,
-    handleStop,
-    runResult,
     filterJinjia2InputVar,
   }
 }

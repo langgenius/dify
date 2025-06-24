@@ -14,8 +14,6 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
 const i18nPrefix = 'workflow.nodes.code'
 
 const codeLanguages = [
@@ -50,16 +48,6 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     isShowRemoveVarConfirm,
     hideRemoveVarConfirm,
     onRemoveVarConfirm,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
-    varInputs,
-    inputVarValues,
-    setInputVarValues,
   } = useConfig(id, data)
 
   const handleGeneratedCode = (value: string) => {
@@ -128,25 +116,6 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           />
         </Field>
       </div>
-      {
-        isShowSingleRun && (
-          <BeforeRunForm
-            nodeName={inputs.title}
-            onHide={hideSingleRun}
-            forms={[
-              {
-                inputs: varInputs,
-                values: inputVarValues,
-                onChange: setInputVarValues,
-              },
-            ]}
-            runningStatus={runningStatus}
-            onRun={handleRun}
-            onStop={handleStop}
-            result={<ResultPanel {...runResult} showSteps={false} />}
-          />
-        )
-      }
       <RemoveEffectVarConfirm
         isShow={isShowRemoveVarConfirm}
         onCancel={hideRemoveVarConfirm}

@@ -99,6 +99,7 @@ const translation = {
     agentUserDescription: 'Inteligentny agent zdolny do iteracyjnego wnioskowania i autonomicznego wykorzystania narzędzi do osiągania celów zadań.',
     workflowShortDescription: 'Agentowy przepływ dla inteligentnych automatyzacji',
     advancedUserDescription: 'Przepływ z dodatkowymi funkcjami pamięci i interfejsem chatbota.',
+    dropDSLToCreateApp: 'Upuść plik DSL tutaj, aby utworzyć aplikację',
   },
   editApp: 'Edytuj informacje',
   editAppTitle: 'Edytuj informacje o aplikacji',

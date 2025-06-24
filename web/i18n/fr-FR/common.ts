@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Échec du téléchargement. Veuillez réessayer plus tard.',
     more: 'Plus',
     downloadSuccess: 'Téléchargement terminé.',
+    deSelectAll: 'Désélectionner tout',
+    selectAll: 'Sélectionner tout',
   },
   placeholder: {
     input: 'Veuillez entrer',

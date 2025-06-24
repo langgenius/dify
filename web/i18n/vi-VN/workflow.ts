@@ -303,6 +303,8 @@ const translation = {
     selectNextStep: 'Chọn bước tiếp theo',
     organizeBlocks: 'Tổ chức các nút',
     addNextStep: 'Thêm bước tiếp theo trong quy trình này',
+    maximize: 'Tối đa hóa Canvas',
+    minimize: 'Thoát chế độ toàn màn hình',
   },
   nodes: {
     common: {
@@ -916,6 +918,35 @@ const translation = {
     nameThisVersion: 'Đặt tên cho phiên bản này',
     restorationTip: 'Sau khi phục hồi phiên bản, bản nháp hiện tại sẽ bị ghi đè.',
     title: 'Các phiên bản',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Chạy nút này',
+      description: 'Kết quả của lần chạy cuối cùng sẽ được hiển thị ở đây',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'Rõ ràng',
+        stop: 'Dừng lại',
+        normal: 'Kiểm tra Biến',
+        cached: 'Xem các biến được lưu trong bộ nhớ cache',
+        running: 'Trạng thái đang chạy của bộ nhớ đệm',
+      },
+      envNode: 'Môi trường',
+      edited: 'Biên soạn',
+      chatNode: 'Cuộc trò chuyện',
+      view: 'Xem nhật ký',
+      clearAll: 'Đặt lại tất cả',
+      reset: 'Đặt lại thành giá trị của lần chạy cuối cùng',
+      resetConversationVar: 'Đặt lại biến cuộc trò chuyện về giá trị mặc định',
+      title: 'Kiểm tra Biến',
+      systemNode: 'Hệ thống',
+      clearNode: 'Xóa biến đã được lưu trong bộ nhớ cache',
+      emptyLink: 'Tìm hiểu thêm',
+      emptyTip: 'Sau khi bước qua một nút trên canvas hoặc chạy một nút từng bước, bạn có thể xem giá trị hiện tại của biến nút trong Variable Inspect.',
+    },
+    settingsTab: 'Cài đặt',
+    lastRunTab: 'Chạy Lần Cuối',
   },
 }
 

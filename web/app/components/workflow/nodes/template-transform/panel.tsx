@@ -14,8 +14,6 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
 
 const i18nPrefix = 'workflow.nodes.templateTransform'
 
@@ -35,16 +33,6 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
     handleAddEmptyVariable,
     handleCodeChange,
     filterVar,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    varInputs,
-    inputVarValues,
-    setInputVarValues,
-    runResult,
   } = useConfig(id, data)
 
   return (
@@ -106,23 +94,6 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           </>
         </OutputVars>
       </div>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          onHide={hideSingleRun}
-          forms={[
-            {
-              inputs: varInputs,
-              values: inputVarValues,
-              onChange: setInputVarValues,
-            },
-          ]}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
     </div>
   )
 }

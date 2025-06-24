@@ -93,6 +93,7 @@ const translation = {
     noTemplateFound: 'Nu s-au găsit șabloane',
     forAdvanced: 'PENTRU UTILIZATORII AVANSAȚI',
     chooseAppType: 'Alegeți un tip de aplicație',
+    dropDSLToCreateApp: 'Trageți fișierul DSL aici pentru a crea aplicația',
   },
   editApp: 'Editează Info',
   editAppTitle: 'Editează Info Aplicație',

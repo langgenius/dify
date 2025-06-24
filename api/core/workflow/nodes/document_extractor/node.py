@@ -24,7 +24,7 @@ from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
-from core.variables.segments import FileSegment
+from core.variables.segments import ArrayStringSegment, FileSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
@@ -44,6 +44,10 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
 
     _node_data_cls = DocumentExtractorNodeData
     _node_type = NodeType.DOCUMENT_EXTRACTOR
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self):
         variable_selector = self.node_data.variable_selector
@@ -67,7 +71,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=inputs,
                     process_data=process_data,
-                    outputs={"text": extracted_text_list},
+                    outputs={"text": ArrayStringSegment(value=extracted_text_list)},
                 )
             elif isinstance(value, File):
                 extracted_text = _extract_text_from_file(value)
@@ -447,7 +451,7 @@ def _extract_text_from_excel(file_content: bytes) -> str:
                 df = df.applymap(lambda x: " ".join(str(x).splitlines()) if isinstance(x, str) else x)  # type: ignore
 
                 # Combine multi-line text in column names into a single line
-                df.columns = pd.Index([" ".join(col.splitlines()) for col in df.columns])
+                df.columns = pd.Index([" ".join(str(col).splitlines()) for col in df.columns])
 
                 # Manually construct the Markdown table
                 markdown_table += _construct_markdown_table(df) + "\n\n"

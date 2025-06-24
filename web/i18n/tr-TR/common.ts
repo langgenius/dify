@@ -58,6 +58,8 @@ const translation = {
     format: 'Format',
     more: 'Daha fazla',
     downloadFailed: 'İndirme başarısız oldu. Lütfen daha sonra tekrar deneyin.',
+    selectAll: 'Hepsini Seç',
+    deSelectAll: 'Hepsini Seçme',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',

@@ -137,6 +137,7 @@ const translation = {
     readyToInstallPackage: 'Informacje o instalacji następującej wtyczki',
     uploadingPackage: 'Przesyłanie {{packageName}}...',
     installedSuccessfully: 'Instalacja powiodła się',
+    installWarning: 'Ten plugin nie może być zainstalowany.',
   },
   installFromGitHub: {
     installPlugin: 'Zainstaluj wtyczkę z GitHub',

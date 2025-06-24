@@ -5,6 +5,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
 } from 'react'
 import { setAutoFreeze } from 'immer'
@@ -56,6 +57,7 @@ import { CUSTOM_LOOP_START_NODE } from './nodes/loop-start/constants'
 import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import Operator from './operator'
+import Control from './operator/control'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
 import HelpLine from './help-line'
@@ -80,6 +82,7 @@ import Confirm from '@/app/components/base/confirm'
 import DatasetsDetailProvider from './datasets-detail-store/provider'
 import { HooksStoreContextProvider } from './hooks-store'
 import type { Shape as HooksStoreShape } from './hooks-store'
+import useSetWorkflowVarsWithValue from '../workflow-app/hooks/use-fetch-workflow-inspect-vars'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -114,6 +117,32 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
+  const workflowCanvasHeight = useStore(s => s.workflowCanvasHeight)
+  const bottomPanelHeight = useStore(s => s.bottomPanelHeight)
+  const setWorkflowCanvasWidth = useStore(s => s.setWorkflowCanvasWidth)
+  const setWorkflowCanvasHeight = useStore(s => s.setWorkflowCanvasHeight)
+  const controlHeight = useMemo(() => {
+    if (!workflowCanvasHeight)
+      return '100%'
+    return workflowCanvasHeight - bottomPanelHeight
+  }, [workflowCanvasHeight, bottomPanelHeight])
+
+  // update workflow Canvas width and height
+  useEffect(() => {
+    if (workflowContainerRef.current) {
+      const resizeContainerObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize, blockSize } = entry.borderBoxSize[0]
+          setWorkflowCanvasWidth(inlineSize)
+          setWorkflowCanvasHeight(blockSize)
+        }
+      })
+      resizeContainerObserver.observe(workflowContainerRef.current)
+      return () => {
+        resizeContainerObserver.disconnect()
+      }
+    }
+  }, [setWorkflowCanvasHeight, setWorkflowCanvasWidth])
 
   const {
     setShowConfirm,
@@ -245,6 +274,11 @@ export const Workflow: FC<WorkflowProps> = memo(({
   })
 
   useShortcuts()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
+  useEffect(() => {
+    fetchInspectVars()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const store = useStoreApi()
   if (process.env.NODE_ENV === 'development') {
@@ -267,6 +301,12 @@ export const Workflow: FC<WorkflowProps> = memo(({
     >
       <SyncingDataModal />
       <CandidateNode />
+      <div
+        className='absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
+        style={{ height: controlHeight }}
+      >
+        <Control />
+      </div>
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       <PanelContextmenu />
       <NodeContextmenu />

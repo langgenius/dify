@@ -97,6 +97,7 @@ const translation = {
     completionUserDescription: 'به سرعت یک دستیار هوش مصنوعی برای وظایف تولید متن با پیکربندی ساده بسازید.',
     advancedShortDescription: 'گردش‌کار پیشرفته برای گفتگوهای چند مرحله‌ای',
     agentUserDescription: 'یک عامل هوشمند که قادر به استدلال تکراری و استفاده از ابزار مستقل برای دستیابی به اهداف وظیفه است.',
+    dropDSLToCreateApp: 'فایل DSL را اینجا رها کنید تا برنامه ساخته شود',
   },
   editApp: 'ویرایش اطلاعات',
   editAppTitle: 'ویرایش اطلاعات برنامه',

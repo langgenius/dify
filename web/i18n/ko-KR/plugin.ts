@@ -137,6 +137,7 @@ const translation = {
     uploadingPackage: '{{packageName}} 업로드 중...',
     dropPluginToInstall: '플러그인 패키지를 여기에 놓아 설치하십시오.',
     cancel: '취소',
+    installWarning: '이 플러그인은 설치할 수 없습니다.',
   },
   installFromGitHub: {
     uploadFailed: '업로드 실패',

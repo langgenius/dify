@@ -100,6 +100,7 @@ const translation = {
     chatbotUserDescription: '簡単な設定で LLM ベースのチャットボットを迅速に構築します。Chatflow は後で切り替えることができます。',
     workflowUserDescription: 'ドラッグ＆ドロップの簡易性で自律型 AI ワークフローを視覚的に構築',
     completionUserDescription: '簡単な構成でテキスト生成タスク用の AI アシスタントをすばやく構築します。',
+    dropDSLToCreateApp: 'アプリを作成するにはここにDSLファイルをドロップしてください',
   },
   editApp: '情報を編集する',
   editAppTitle: 'アプリ情報を編集する',

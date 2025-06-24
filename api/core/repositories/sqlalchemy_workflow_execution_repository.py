@@ -16,6 +16,7 @@ from core.workflow.entities.workflow_execution import (
     WorkflowType,
 )
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
+from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
     Account,
     CreatorUserRole,
@@ -152,7 +153,11 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         db_model.version = domain_model.workflow_version
         db_model.graph = json.dumps(domain_model.graph) if domain_model.graph else None
         db_model.inputs = json.dumps(domain_model.inputs) if domain_model.inputs else None
-        db_model.outputs = json.dumps(domain_model.outputs) if domain_model.outputs else None
+        db_model.outputs = (
+            json.dumps(WorkflowRuntimeTypeConverter().to_json_encodable(domain_model.outputs))
+            if domain_model.outputs
+            else None
+        )
         db_model.status = domain_model.status
         db_model.error = domain_model.error_message if domain_model.error_message else None
         db_model.total_tokens = domain_model.total_tokens

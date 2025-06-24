@@ -137,6 +137,7 @@ const translation = {
     readyToInstallPackages: 'Aşağıdaki {{num}} eklentilerini yüklemek üzereyim',
     dropPluginToInstall: 'Yüklemek için eklenti paketini buraya bırakın',
     installPlugin: 'Eklentiyi Yükle',
+    installWarning: 'Bu eklentinin yüklenmesine izin verilmemektedir.',
   },
   installFromGitHub: {
     installedSuccessfully: 'Yükleme başarılı',

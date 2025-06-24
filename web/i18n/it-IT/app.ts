@@ -99,6 +99,7 @@ const translation = {
     agentUserDescription: 'Un agente intelligente in grado di ragionare in modo iterativo e di utilizzare autonomamente gli strumenti per raggiungere gli obiettivi del compito.',
     advancedShortDescription: 'Flusso di lavoro migliorato per conversazioni multiple',
     chooseAppType: 'Scegli un tipo di app',
+    dropDSLToCreateApp: 'Trascina il file DSL qui per creare l\'app',
   },
   editApp: 'Modifica Info',
   editAppTitle: 'Modifica Info App',

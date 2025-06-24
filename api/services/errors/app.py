@@ -4,3 +4,7 @@ class MoreLikeThisDisabledError(Exception):
 
 class WorkflowHashNotEqualError(Exception):
     pass
+
+
+class IsDraftWorkflowError(Exception):
+    pass

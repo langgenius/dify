@@ -137,6 +137,7 @@ const translation = {
     uploadingPackage: 'Загрузка {{packageName}}...',
     pluginLoadError: 'Ошибка загрузки плагина',
     readyToInstallPackage: 'О программе установки следующего плагина',
+    installWarning: 'Этот плагин не разрешено устанавливать.',
   },
   installFromGitHub: {
     gitHubRepo: 'Репозиторий GitHub',

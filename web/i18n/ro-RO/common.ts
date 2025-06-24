@@ -59,6 +59,7 @@ const translation = {
     downloadSuccess: 'Descărcarea a fost finalizată.',
     more: 'Mai mult',
     deSelectAll: 'Deselectați tot',
+    selectAll: 'Selectați tot',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',

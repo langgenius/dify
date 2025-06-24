@@ -93,6 +93,7 @@ const translation = {
     advancedShortDescription: 'Çok turlu sohbetler için geliştirilmiş iş akışı',
     noIdeaTip: 'Fikriniz yok mu? Şablonlarımıza göz atın',
     forAdvanced: 'İLERI DÜZEY KULLANICILAR IÇIN',
+    dropDSLToCreateApp: 'Uygulama oluşturmak için DSL dosyasını buraya bırakın',
   },
   editApp: 'Bilgileri Düzenle',
   editAppTitle: 'Uygulama Bilgilerini Düzenle',

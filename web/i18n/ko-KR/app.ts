@@ -89,6 +89,7 @@ const translation = {
     workflowShortDescription: '지능형 자동화를 위한 에이전트 플로우',
     agentUserDescription: '작업 목표를 달성하기 위해 반복적인 추론과 자율적인 도구를 사용할 수 있는 지능형 에이전트입니다.',
     advancedUserDescription: '메모리 기능과 챗봇 인터페이스를 갖춘 워크플로우',
+    dropDSLToCreateApp: '여기에 DSL 파일을 드롭하여 앱을 만드세요.',
   },
   editApp: '정보 편집하기',
   editAppTitle: '앱 정보 편집하기',

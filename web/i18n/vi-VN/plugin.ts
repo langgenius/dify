@@ -137,6 +137,7 @@ const translation = {
     installComplete: 'Cài đặt hoàn tất',
     back: 'Lưng',
     pluginLoadError: 'Lỗi tải plugin',
+    installWarning: 'Plugin này không được phép cài đặt.',
   },
   installFromGitHub: {
     installFailed: 'Cài đặt không thành công',

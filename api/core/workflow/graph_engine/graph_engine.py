@@ -314,6 +314,7 @@ class GraphEngine:
                     parallel_start_node_id=parallel_start_node_id,
                     parent_parallel_id=parent_parallel_id,
                     parent_parallel_start_node_id=parent_parallel_start_node_id,
+                    node_version=node_instance.version(),
                 )
                 raise e
 
@@ -627,6 +628,7 @@ class GraphEngine:
             parent_parallel_id=parent_parallel_id,
             parent_parallel_start_node_id=parent_parallel_start_node_id,
             agent_strategy=agent_strategy,
+            node_version=node_instance.version(),
         )
 
         max_retries = node_instance.node_data.retry_config.max_retries
@@ -677,6 +679,7 @@ class GraphEngine:
                                         error=run_result.error or "Unknown error",
                                         retry_index=retries,
                                         start_at=retry_start_at,
+                                        node_version=node_instance.version(),
                                     )
                                     time.sleep(retry_interval)
                                     break
@@ -712,6 +715,7 @@ class GraphEngine:
                                         parallel_start_node_id=parallel_start_node_id,
                                         parent_parallel_id=parent_parallel_id,
                                         parent_parallel_start_node_id=parent_parallel_start_node_id,
+                                        node_version=node_instance.version(),
                                     )
                                     should_continue_retry = False
                                 else:
@@ -726,6 +730,7 @@ class GraphEngine:
                                         parallel_start_node_id=parallel_start_node_id,
                                         parent_parallel_id=parent_parallel_id,
                                         parent_parallel_start_node_id=parent_parallel_start_node_id,
+                                        node_version=node_instance.version(),
                                     )
                                 should_continue_retry = False
                             elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
@@ -786,6 +791,7 @@ class GraphEngine:
                                     parallel_start_node_id=parallel_start_node_id,
                                     parent_parallel_id=parent_parallel_id,
                                     parent_parallel_start_node_id=parent_parallel_start_node_id,
+                                    node_version=node_instance.version(),
                                 )
                                 should_continue_retry = False
 
@@ -803,6 +809,7 @@ class GraphEngine:
                                 parallel_start_node_id=parallel_start_node_id,
                                 parent_parallel_id=parent_parallel_id,
                                 parent_parallel_start_node_id=parent_parallel_start_node_id,
+                                node_version=node_instance.version(),
                             )
                         elif isinstance(event, RunRetrieverResourceEvent):
                             yield NodeRunRetrieverResourceEvent(
@@ -817,6 +824,7 @@ class GraphEngine:
                                 parallel_start_node_id=parallel_start_node_id,
                                 parent_parallel_id=parent_parallel_id,
                                 parent_parallel_start_node_id=parent_parallel_start_node_id,
+                                node_version=node_instance.version(),
                             )
             except GenerateTaskStoppedError:
                 # trigger node run failed event
@@ -833,6 +841,7 @@ class GraphEngine:
                     parallel_start_node_id=parallel_start_node_id,
                     parent_parallel_id=parent_parallel_id,
                     parent_parallel_start_node_id=parent_parallel_start_node_id,
+                    node_version=node_instance.version(),
                 )
                 return
             except Exception as e:

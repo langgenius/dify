@@ -83,8 +83,14 @@ jobs:
           compose-file: |
             docker/docker-compose.middleware.yaml
           services: |
+            db
+            redis
             sandbox
             ssrf_proxy
+
+      - name: setup test config
+        run: |
+          cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
 
       - name: Run Workflow
         run: uv run --project api bash dev/pytest/pytest_workflow.sh

@@ -58,6 +58,8 @@ const translation = {
     format: '형식',
     more: '더 많은',
     downloadSuccess: '다운로드 완료.',
+    selectAll: '모두 선택',
+    deSelectAll: '모두 선택 해제',
   },
   placeholder: {
     input: '입력해주세요',

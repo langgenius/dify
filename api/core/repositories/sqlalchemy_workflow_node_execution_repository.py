@@ -19,6 +19,7 @@ from core.workflow.entities.workflow_node_execution import (
 )
 from core.workflow.nodes.enums import NodeType
 from core.workflow.repositories.workflow_node_execution_repository import OrderConfig, WorkflowNodeExecutionRepository
+from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
     Account,
     CreatorUserRole,
@@ -146,6 +147,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         if not self._creator_user_role:
             raise ValueError("created_by_role is required in repository constructor")
 
+        json_converter = WorkflowRuntimeTypeConverter()
         db_model = WorkflowNodeExecutionModel()
         db_model.id = domain_model.id
         db_model.tenant_id = self._tenant_id
@@ -160,9 +162,17 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         db_model.node_id = domain_model.node_id
         db_model.node_type = domain_model.node_type
         db_model.title = domain_model.title
-        db_model.inputs = json.dumps(domain_model.inputs) if domain_model.inputs else None
-        db_model.process_data = json.dumps(domain_model.process_data) if domain_model.process_data else None
-        db_model.outputs = json.dumps(domain_model.outputs) if domain_model.outputs else None
+        db_model.inputs = (
+            json.dumps(json_converter.to_json_encodable(domain_model.inputs)) if domain_model.inputs else None
+        )
+        db_model.process_data = (
+            json.dumps(json_converter.to_json_encodable(domain_model.process_data))
+            if domain_model.process_data
+            else None
+        )
+        db_model.outputs = (
+            json.dumps(json_converter.to_json_encodable(domain_model.outputs)) if domain_model.outputs else None
+        )
         db_model.status = domain_model.status
         db_model.error = domain_model.error
         db_model.elapsed_time = domain_model.elapsed_time

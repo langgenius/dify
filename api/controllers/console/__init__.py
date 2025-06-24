@@ -63,6 +63,7 @@ from .app import (
     statistic,
     workflow,
     workflow_app_log,
+    workflow_draft_variable,
     workflow_run,
     workflow_statistic,
 )

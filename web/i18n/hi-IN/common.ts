@@ -58,6 +58,8 @@ const translation = {
     downloadSuccess: 'डाउनलोड पूरा हुआ।',
     downloadFailed: 'डाउनलोड विफल। कृपया बाद में पुनः प्रयास करें।',
     format: 'फॉर्मेट',
+    selectAll: 'सभी चुनें',
+    deSelectAll: 'सभी चयन हटाएँ',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',

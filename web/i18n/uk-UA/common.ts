@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Не вдалося завантажити. Будь ласка, спробуйте ще раз пізніше.',
     more: 'Більше',
     downloadSuccess: 'Завантаження завершено.',
+    deSelectAll: 'Вимкнути все',
+    selectAll: 'Вибрати все',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',

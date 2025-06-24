@@ -93,6 +93,7 @@ const translation = {
     workflowShortDescription: 'Fluxo agêntico para automações inteligentes',
     noAppsFound: 'Nenhum aplicativo encontrado',
     advancedShortDescription: 'Fluxo aprimorado para conversas de múltiplos turnos',
+    dropDSLToCreateApp: 'Cole o arquivo DSL aqui para criar o aplicativo',
   },
   editApp: 'Editar Informações',
   editAppTitle: 'Editar Informações do Aplicativo',

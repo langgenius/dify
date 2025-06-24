@@ -3,17 +3,15 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import { useStore } from '../../store'
-import { type ToolNodeType, type ToolVarInputs, VarType } from './types'
+import type { ToolNodeType, ToolVarInputs } from './types'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
 import { updateBuiltInToolCredential } from '@/service/tools'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import Toast from '@/app/components/base/toast'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { VarType as VarVarType } from '@/app/components/workflow/types'
-import type { InputVar, ValueSelector, Var } from '@/app/components/workflow/types'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
+import type { InputVar, Var } from '@/app/components/workflow/types'
 import {
   useFetchToolsData,
   useNodesReadOnly,
@@ -160,39 +158,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   const isLoading = currTool && (isBuiltIn ? !currCollection : false)
 
-  // single run
-  const [inputVarValues, doSetInputVarValues] = useState<Record<string, any>>({})
-  const setInputVarValues = (value: Record<string, any>) => {
-    doSetInputVarValues(value)
-    // eslint-disable-next-line ts/no-use-before-define
-    setRunInputData(value)
-  }
-  // fill single run form variable with constant value first time
-  const inputVarValuesWithConstantValue = () => {
-    const res = produce(inputVarValues, (draft) => {
-      Object.keys(inputs.tool_parameters).forEach((key: string) => {
-        const { type, value } = inputs.tool_parameters[key]
-        if (type === VarType.constant && (value === undefined || value === null))
-          draft.tool_parameters[key].value = value
-      })
-    })
-    return res
-  }
-
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    getInputVars,
-    runningStatus,
-    setRunInputData,
-    handleRun: doHandleRun,
-    handleStop,
-    runResult,
-  } = useOneStepRun<ToolNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {},
-    moreDataForCheckValid: {
+  const getMoreDataForCheckValid = () => {
+    return {
       toolInputsSchema: (() => {
         const formInputs: InputVar[] = []
         toolInputVarSchema.forEach((item: any) => {
@@ -208,52 +175,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
       notAuthed: isShowAuthBtn,
       toolSettingSchema,
       language,
-    },
-  })
-
-  const hadVarParams = Object.keys(inputs.tool_parameters)
-    .filter(key => inputs.tool_parameters[key].type !== VarType.constant)
-    .map(k => inputs.tool_parameters[k])
-
-  const varInputs = getInputVars(hadVarParams.map((p) => {
-    if (p.type === VarType.variable) {
-      // handle the old wrong value not crash the page
-      if (!(p.value as any).join)
-        return `{{#${p.value}#}}`
-
-      return `{{#${(p.value as ValueSelector).join('.')}#}}`
     }
-
-    return p.value as string
-  }))
-
-  const singleRunForms = (() => {
-    const forms: FormProps[] = [{
-      inputs: varInputs,
-      values: inputVarValuesWithConstantValue(),
-      onChange: setInputVarValues,
-    }]
-    return forms
-  })()
-
-  const handleRun = (submitData: Record<string, any>) => {
-    const varTypeInputKeys = Object.keys(inputs.tool_parameters)
-      .filter(key => inputs.tool_parameters[key].type === VarType.variable)
-    const shouldAdd = varTypeInputKeys.length > 0
-    if (!shouldAdd) {
-      doHandleRun(submitData)
-      return
-    }
-    const addMissedVarData = { ...submitData }
-    Object.keys(submitData).forEach((key) => {
-      const value = submitData[key]
-      varTypeInputKeys.forEach((inputKey) => {
-        const inputValue = inputs.tool_parameters[inputKey].value as ValueSelector
-        if (`#${inputValue.join('.')}#` === key)
-          addMissedVarData[inputKey] = value
-      })
-    })
-    doHandleRun(addMissedVarData)
   }
 
   const outputSchema = useMemo(() => {
@@ -307,18 +229,9 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     hideSetAuthModal,
     handleSaveAuth,
     isLoading,
-    isShowSingleRun,
-    hideSingleRun,
-    inputVarValues,
-    varInputs,
-    setInputVarValues,
-    singleRunForms,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
     outputSchema,
     hasObjectOutput,
+    getMoreDataForCheckValid,
   }
 }
 

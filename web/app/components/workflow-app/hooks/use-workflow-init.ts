@@ -17,7 +17,6 @@ import {
 } from '@/service/workflow'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
-
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()
   const {

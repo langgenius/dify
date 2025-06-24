@@ -119,9 +119,6 @@ class FileSaverImpl(LLMFileSaver):
             size=len(data),
             related_id=tool_file.id,
             url=url,
-            # TODO(QuantumGhost): how should I set the following key?
-            # What's the difference between `remote_url` and `url`?
-            # What's the purpose of `storage_key` and `dify_model_identity`?
             storage_key=tool_file.file_key,
         )
 

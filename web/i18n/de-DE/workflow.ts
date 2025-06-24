@@ -303,6 +303,8 @@ const translation = {
     addNextStep: 'Fügen Sie den nächsten Schritt in diesem Arbeitsablauf hinzu.',
     organizeBlocks: 'Knoten organisieren',
     changeBlock: 'Knoten ändern',
+    maximize: 'Maximiere die Leinwand',
+    minimize: 'Vollbildmodus beenden',
   },
   nodes: {
     common: {
@@ -916,6 +918,35 @@ const translation = {
     editVersionInfo: 'Versionsinformationen bearbeiten',
     deletionTip: 'Die Löschung ist unumkehrbar, bitte bestätigen Sie.',
     restorationTip: 'Nach der Wiederherstellung der Version wird der aktuelle Entwurf überschrieben.',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Führe diesen Knoten aus',
+      description: 'Die Ergebnisse des letzten Laufs werden hier angezeigt.',
+    },
+    variableInspect: {
+      trigger: {
+        normal: 'Variable untersuchen',
+        stop: 'Halt an',
+        running: 'Caching-Betriebsstatus',
+        clear: 'Klar',
+        cached: 'Cached-Variablen anzeigen',
+      },
+      title: 'Variable untersuchen',
+      clearAll: 'Alles zurücksetzen',
+      emptyLink: 'Erfahren Sie mehr',
+      view: 'Protokoll anzeigen',
+      systemNode: 'System',
+      edited: 'Bearbeitet',
+      clearNode: 'Cache-Variable löschen',
+      envNode: 'Umwelt',
+      chatNode: 'Gespräch',
+      resetConversationVar: 'Setze die Gesprächsvariable auf den Standardwert zurück',
+      reset: 'Auf den letzten Ausführungswert zurücksetzen',
+      emptyTip: 'Nachdem Sie einen Knoten auf der Leinwand durchlaufen oder einen Knoten Schritt für Schritt ausgeführt haben, können Sie den aktuellen Wert der Knotenvariable in der Variableninspektion anzeigen.',
+    },
+    settingsTab: 'Einstellungen',
+    lastRunTab: 'Letzte Ausführung',
   },
 }
 

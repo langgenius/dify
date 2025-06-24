@@ -222,6 +222,10 @@ Implante o Dify na AWS usando [CDK](https://aws.amazon.com/cdk/)
 
 [Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
 
+#### Alibaba Cloud Data Management
+
+Implante o Dify na Alibaba Cloud com um clique usando o [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
+
 
 ## Contribuindo
 

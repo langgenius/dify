@@ -97,6 +97,7 @@ const translation = {
     chatbotShortDescription: 'Chatbot, ki temelji na LLM, s preprosto nastavitvijo',
     chooseAppType: 'Izberite vrsto aplikacije',
     learnMore: 'Izvedi več',
+    dropDSLToCreateApp: 'Spustite DSL datoteko sem, da ustvarite aplikacijo',
   },
   editApp: 'Uredi informacije',
   editAppTitle: 'Uredi informacije o aplikaciji',

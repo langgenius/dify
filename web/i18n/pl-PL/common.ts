@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Pobieranie nie powiodło się. Proszę spróbować ponownie później.',
     more: 'Więcej',
     downloadSuccess: 'Pobieranie zakończone.',
+    deSelectAll: 'Odznacz wszystkie',
+    selectAll: 'Zaznacz wszystkie',
   },
   placeholder: {
     input: 'Proszę wprowadzić',

@@ -48,6 +48,7 @@ from core.workflow.entities.workflow_execution import WorkflowExecution
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
     Account,
     CreatorUserRole,
@@ -125,7 +126,7 @@ class WorkflowResponseConverter:
                 id=workflow_execution.id_,
                 workflow_id=workflow_execution.workflow_id,
                 status=workflow_execution.status,
-                outputs=workflow_execution.outputs,
+                outputs=WorkflowRuntimeTypeConverter().to_json_encodable(workflow_execution.outputs),
                 error=workflow_execution.error_message,
                 elapsed_time=workflow_execution.elapsed_time,
                 total_tokens=workflow_execution.total_tokens,
@@ -202,6 +203,8 @@ class WorkflowResponseConverter:
         if not workflow_node_execution.finished_at:
             return None
 
+        json_converter = WorkflowRuntimeTypeConverter()
+
         return NodeFinishStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_node_execution.workflow_execution_id,
@@ -214,7 +217,7 @@ class WorkflowResponseConverter:
                 predecessor_node_id=workflow_node_execution.predecessor_node_id,
                 inputs=workflow_node_execution.inputs,
                 process_data=workflow_node_execution.process_data,
-                outputs=workflow_node_execution.outputs,
+                outputs=json_converter.to_json_encodable(workflow_node_execution.outputs),
                 status=workflow_node_execution.status,
                 error=workflow_node_execution.error,
                 elapsed_time=workflow_node_execution.elapsed_time,
@@ -245,6 +248,8 @@ class WorkflowResponseConverter:
         if not workflow_node_execution.finished_at:
             return None
 
+        json_converter = WorkflowRuntimeTypeConverter()
+
         return NodeRetryStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_node_execution.workflow_execution_id,
@@ -257,7 +262,7 @@ class WorkflowResponseConverter:
                 predecessor_node_id=workflow_node_execution.predecessor_node_id,
                 inputs=workflow_node_execution.inputs,
                 process_data=workflow_node_execution.process_data,
-                outputs=workflow_node_execution.outputs,
+                outputs=json_converter.to_json_encodable(workflow_node_execution.outputs),
                 status=workflow_node_execution.status,
                 error=workflow_node_execution.error,
                 elapsed_time=workflow_node_execution.elapsed_time,
@@ -376,6 +381,7 @@ class WorkflowResponseConverter:
         workflow_execution_id: str,
         event: QueueIterationCompletedEvent,
     ) -> IterationNodeCompletedStreamResponse:
+        json_converter = WorkflowRuntimeTypeConverter()
         return IterationNodeCompletedStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_execution_id,
@@ -384,7 +390,7 @@ class WorkflowResponseConverter:
                 node_id=event.node_id,
                 node_type=event.node_type.value,
                 title=event.node_data.title,
-                outputs=event.outputs,
+                outputs=json_converter.to_json_encodable(event.outputs),
                 created_at=int(time.time()),
                 extras={},
                 inputs=event.inputs or {},
@@ -463,7 +469,7 @@ class WorkflowResponseConverter:
                 node_id=event.node_id,
                 node_type=event.node_type.value,
                 title=event.node_data.title,
-                outputs=event.outputs,
+                outputs=WorkflowRuntimeTypeConverter().to_json_encodable(event.outputs),
                 created_at=int(time.time()),
                 extras={},
                 inputs=event.inputs or {},

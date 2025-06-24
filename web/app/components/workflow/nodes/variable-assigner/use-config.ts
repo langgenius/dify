@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import produce from 'immer'
-import { useBoolean } from 'ahooks'
+import { useBoolean, useDebounceFn } from 'ahooks'
 import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector, Var } from '../../types'
 import { VarType } from '../../types'
@@ -12,8 +12,13 @@ import {
   useNodesReadOnly,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
+import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const useConfig = (id: string, payload: VariableAssignerNodeType) => {
+  const {
+    deleteNodeInspectorVars,
+    renameInspectVarName,
+  } = useInspectVarsCrud()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
 
@@ -113,7 +118,8 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       draft.advanced_settings.group_enabled = enabled
     })
     setInputs(newInputs)
-  }, [handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
+    deleteNodeInspectorVars(id)
+  }, [deleteNodeInspectorVars, handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
 
   const handleAddGroup = useCallback(() => {
     let maxInGroupName = 1
@@ -134,7 +140,22 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       })
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+    deleteNodeInspectorVars(id)
+  }, [deleteNodeInspectorVars, id, inputs, setInputs])
+
+  // record the first old name value
+  const oldNameRecord = useRef<Record<string, string>>({})
+
+  const {
+    run: renameInspectNameWithDebounce,
+  } = useDebounceFn(
+    (id: string, newName: string) => {
+      const oldName = oldNameRecord.current[id]
+      renameInspectVarName(id, oldName, newName)
+      delete oldNameRecord.current[id]
+    },
+    { wait: 500 },
+  )
 
   const handleVarGroupNameChange = useCallback((groupId: string) => {
     return (name: string) => {
@@ -144,8 +165,11 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       })
       handleOutVarRenameChange(id, [id, inputs.advanced_settings.groups[index].group_name, 'output'], [id, name, 'output'])
       setInputs(newInputs)
+      if(!(id in oldNameRecord.current))
+        oldNameRecord.current[id] = inputs.advanced_settings.groups[index].group_name
+      renameInspectNameWithDebounce(id, name)
     }
-  }, [handleOutVarRenameChange, id, inputs, setInputs])
+  }, [handleOutVarRenameChange, id, inputs, renameInspectNameWithDebounce, setInputs])
 
   const onRemoveVarConfirm = useCallback(() => {
     removedVars.forEach((v) => {
