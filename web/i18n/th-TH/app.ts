@@ -93,6 +93,7 @@ const translation = {
     advancedUserDescription: 'โฟลว์พร้อมคุณสมบัติหน่วยความจำเพิ่มเติมและอินเตอร์เฟซแชทบอท',
     chooseAppType: 'เลือกประเภทแอป',
     advancedShortDescription: 'โฟลว์ที่เสริมประสิทธิภาพสำหรับการสนทนาหลายรอบ',
+    dropDSLToCreateApp: 'ลากไฟล์ DSL มาที่นี่เพื่สร้างแอป',
   },
   editApp: 'แก้ไขข้อมูล',
   editAppTitle: 'แก้ไขข้อมูลโปรเจกต์',
