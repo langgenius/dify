@@ -51,8 +51,10 @@ const DebugAndPreview = () => {
 
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
-  const [panelWidth, setPanelWidth] = useState(400)
+  const panelWidth = useStore(s => s.previewPanelWidth)
+  const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
   const handleResize = useCallback((width: number) => {
+    localStorage.setItem('debug-and-preview-panel-width', `${width}`)
     setPanelWidth(width)
   }, [setPanelWidth])
   const maxPanelWidth = useMemo(() => {
