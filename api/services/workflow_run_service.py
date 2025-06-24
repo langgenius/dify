@@ -2,7 +2,7 @@ import threading
 from collections.abc import Sequence
 from typing import Optional
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import desc, select
 
 import contexts
 from extensions.ext_database import db
@@ -15,7 +15,6 @@ from models import (
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
-from repositories.factory import DifyAPIRepositoryFactory
 
 
 class WorkflowRunService:
@@ -112,11 +111,17 @@ class WorkflowRunService:
 
         # Get tenant_id from user
         tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
-        if tenant_id is None:
-            raise ValueError("User tenant_id cannot be None")
 
-        return self._node_execution_service_repo.get_executions_by_workflow_run(
-            tenant_id=tenant_id,
-            app_id=app_model.id,
-            workflow_run_id=run_id,
+        # Use SQLAlchemy 2.0 style query directly
+        stmt = (
+            select(WorkflowNodeExecutionModel)
+            .where(
+                WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                WorkflowNodeExecutionModel.app_id == app_model.id,
+                WorkflowNodeExecutionModel.workflow_run_id == run_id,
+            )
+            .order_by(desc(WorkflowNodeExecutionModel.index))
         )
+
+        workflow_node_executions = db.session.execute(stmt).scalars().all()
+        return workflow_node_executions

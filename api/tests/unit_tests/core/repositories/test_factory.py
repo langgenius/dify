@@ -12,7 +12,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-from core.repositories.factory import DifyCoreRepositoryFactory, RepositoryImportError
+from core.repositories.factory import RepositoryFactory, RepositoryImportError
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from models import Account, EndUser
@@ -27,25 +27,25 @@ class TestRepositoryFactory:
         """Test successful class import."""
         # Test importing a real class
         class_path = "unittest.mock.MagicMock"
-        result = DifyCoreRepositoryFactory._import_class(class_path)
+        result = RepositoryFactory._import_class(class_path)
         assert result is MagicMock
 
     def test_import_class_invalid_path(self):
         """Test import with invalid module path."""
         with pytest.raises(RepositoryImportError) as exc_info:
-            DifyCoreRepositoryFactory._import_class("invalid.module.path")
+            RepositoryFactory._import_class("invalid.module.path")
         assert "Cannot import repository class" in str(exc_info.value)
 
     def test_import_class_invalid_class_name(self):
         """Test import with invalid class name."""
         with pytest.raises(RepositoryImportError) as exc_info:
-            DifyCoreRepositoryFactory._import_class("unittest.mock.NonExistentClass")
+            RepositoryFactory._import_class("unittest.mock.NonExistentClass")
         assert "Cannot import repository class" in str(exc_info.value)
 
     def test_import_class_malformed_path(self):
         """Test import with malformed path (no dots)."""
         with pytest.raises(RepositoryImportError) as exc_info:
-            DifyCoreRepositoryFactory._import_class("invalidpath")
+            RepositoryFactory._import_class("invalidpath")
         assert "Cannot import repository class" in str(exc_info.value)
 
     def test_validate_repository_interface_success(self):
@@ -68,7 +68,7 @@ class TestRepositoryFactory:
                 pass
 
         # Should not raise an exception
-        DifyCoreRepositoryFactory._validate_repository_interface(MockRepository, MockInterface)
+        RepositoryFactory._validate_repository_interface(MockRepository, MockInterface)
 
     def test_validate_repository_interface_missing_methods(self):
         """Test interface validation with missing methods."""
@@ -89,7 +89,7 @@ class TestRepositoryFactory:
                 pass
 
         with pytest.raises(RepositoryImportError) as exc_info:
-            DifyCoreRepositoryFactory._validate_repository_interface(IncompleteRepository, MockInterface)
+            RepositoryFactory._validate_repository_interface(IncompleteRepository, MockInterface)
         assert "does not implement required methods" in str(exc_info.value)
         assert "get_by_id" in str(exc_info.value)
 
@@ -101,7 +101,7 @@ class TestRepositoryFactory:
                 pass
 
         # Should not raise an exception
-        DifyCoreRepositoryFactory._validate_constructor_signature(
+        RepositoryFactory._validate_constructor_signature(
             MockRepository, ["session_factory", "user", "app_id", "triggered_from"]
         )
 
@@ -114,7 +114,7 @@ class TestRepositoryFactory:
                 pass
 
         with pytest.raises(RepositoryImportError) as exc_info:
-            DifyCoreRepositoryFactory._validate_constructor_signature(
+            RepositoryFactory._validate_constructor_signature(
                 IncompleteRepository, ["session_factory", "user", "app_id", "triggered_from"]
             )
         assert "does not accept required parameters" in str(exc_info.value)
@@ -131,7 +131,7 @@ class TestRepositoryFactory:
                 pass
 
         with pytest.raises(RepositoryImportError) as exc_info:
-            DifyCoreRepositoryFactory._validate_constructor_signature(MockRepository, ["session_factory"])
+            RepositoryFactory._validate_constructor_signature(MockRepository, ["session_factory"])
         assert "Failed to validate constructor signature" in str(exc_info.value)
 
     @patch("core.repositories.factory.dify_config")
@@ -153,11 +153,11 @@ class TestRepositoryFactory:
 
         # Mock the validation methods
         with (
-            patch.object(DifyCoreRepositoryFactory, "_import_class", return_value=mock_repository_class),
-            patch.object(DifyCoreRepositoryFactory, "_validate_repository_interface"),
-            patch.object(DifyCoreRepositoryFactory, "_validate_constructor_signature"),
+            patch.object(RepositoryFactory, "_import_class", return_value=mock_repository_class),
+            patch.object(RepositoryFactory, "_validate_repository_interface"),
+            patch.object(RepositoryFactory, "_validate_constructor_signature"),
         ):
-            result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+            result = RepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_session_factory,
                 user=mock_user,
                 app_id=app_id,
@@ -183,7 +183,7 @@ class TestRepositoryFactory:
         mock_user = MagicMock(spec=Account)
 
         with pytest.raises(RepositoryImportError) as exc_info:
-            DifyCoreRepositoryFactory.create_workflow_execution_repository(
+            RepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_session_factory,
                 user=mock_user,
                 app_id="test-app-id",
@@ -203,15 +203,15 @@ class TestRepositoryFactory:
         # Mock import to succeed but validation to fail
         mock_repository_class = MagicMock()
         with (
-            patch.object(DifyCoreRepositoryFactory, "_import_class", return_value=mock_repository_class),
+            patch.object(RepositoryFactory, "_import_class", return_value=mock_repository_class),
             patch.object(
-                DifyCoreRepositoryFactory,
+                RepositoryFactory,
                 "_validate_repository_interface",
                 side_effect=RepositoryImportError("Interface validation failed"),
             ),
         ):
             with pytest.raises(RepositoryImportError) as exc_info:
-                DifyCoreRepositoryFactory.create_workflow_execution_repository(
+                RepositoryFactory.create_workflow_execution_repository(
                     session_factory=mock_session_factory,
                     user=mock_user,
                     app_id="test-app-id",
@@ -231,12 +231,12 @@ class TestRepositoryFactory:
         # Mock import and validation to succeed but instantiation to fail
         mock_repository_class = MagicMock(side_effect=Exception("Instantiation failed"))
         with (
-            patch.object(DifyCoreRepositoryFactory, "_import_class", return_value=mock_repository_class),
-            patch.object(DifyCoreRepositoryFactory, "_validate_repository_interface"),
-            patch.object(DifyCoreRepositoryFactory, "_validate_constructor_signature"),
+            patch.object(RepositoryFactory, "_import_class", return_value=mock_repository_class),
+            patch.object(RepositoryFactory, "_validate_repository_interface"),
+            patch.object(RepositoryFactory, "_validate_constructor_signature"),
         ):
             with pytest.raises(RepositoryImportError) as exc_info:
-                DifyCoreRepositoryFactory.create_workflow_execution_repository(
+                RepositoryFactory.create_workflow_execution_repository(
                     session_factory=mock_session_factory,
                     user=mock_user,
                     app_id="test-app-id",
@@ -263,11 +263,11 @@ class TestRepositoryFactory:
 
         # Mock the validation methods
         with (
-            patch.object(DifyCoreRepositoryFactory, "_import_class", return_value=mock_repository_class),
-            patch.object(DifyCoreRepositoryFactory, "_validate_repository_interface"),
-            patch.object(DifyCoreRepositoryFactory, "_validate_constructor_signature"),
+            patch.object(RepositoryFactory, "_import_class", return_value=mock_repository_class),
+            patch.object(RepositoryFactory, "_validate_repository_interface"),
+            patch.object(RepositoryFactory, "_validate_constructor_signature"),
         ):
-            result = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            result = RepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=mock_session_factory,
                 user=mock_user,
                 app_id=app_id,
@@ -293,7 +293,7 @@ class TestRepositoryFactory:
         mock_user = MagicMock(spec=EndUser)
 
         with pytest.raises(RepositoryImportError) as exc_info:
-            DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+            RepositoryFactory.create_workflow_node_execution_repository(
                 session_factory=mock_session_factory,
                 user=mock_user,
                 app_id="test-app-id",
@@ -325,11 +325,11 @@ class TestRepositoryFactory:
 
         # Mock the validation methods
         with (
-            patch.object(DifyCoreRepositoryFactory, "_import_class", return_value=mock_repository_class),
-            patch.object(DifyCoreRepositoryFactory, "_validate_repository_interface"),
-            patch.object(DifyCoreRepositoryFactory, "_validate_constructor_signature"),
+            patch.object(RepositoryFactory, "_import_class", return_value=mock_repository_class),
+            patch.object(RepositoryFactory, "_validate_repository_interface"),
+            patch.object(RepositoryFactory, "_validate_constructor_signature"),
         ):
-            result = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+            result = RepositoryFactory.create_workflow_execution_repository(
                 session_factory=mock_engine,  # Using Engine instead of sessionmaker
                 user=mock_user,
                 app_id="test-app-id",
@@ -357,15 +357,15 @@ class TestRepositoryFactory:
         # Mock import to succeed but validation to fail
         mock_repository_class = MagicMock()
         with (
-            patch.object(DifyCoreRepositoryFactory, "_import_class", return_value=mock_repository_class),
+            patch.object(RepositoryFactory, "_import_class", return_value=mock_repository_class),
             patch.object(
-                DifyCoreRepositoryFactory,
+                RepositoryFactory,
                 "_validate_repository_interface",
                 side_effect=RepositoryImportError("Interface validation failed"),
             ),
         ):
             with pytest.raises(RepositoryImportError) as exc_info:
-                DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                RepositoryFactory.create_workflow_node_execution_repository(
                     session_factory=mock_session_factory,
                     user=mock_user,
                     app_id="test-app-id",
@@ -385,12 +385,12 @@ class TestRepositoryFactory:
         # Mock import and validation to succeed but instantiation to fail
         mock_repository_class = MagicMock(side_effect=Exception("Instantiation failed"))
         with (
-            patch.object(DifyCoreRepositoryFactory, "_import_class", return_value=mock_repository_class),
-            patch.object(DifyCoreRepositoryFactory, "_validate_repository_interface"),
-            patch.object(DifyCoreRepositoryFactory, "_validate_constructor_signature"),
+            patch.object(RepositoryFactory, "_import_class", return_value=mock_repository_class),
+            patch.object(RepositoryFactory, "_validate_repository_interface"),
+            patch.object(RepositoryFactory, "_validate_constructor_signature"),
         ):
             with pytest.raises(RepositoryImportError) as exc_info:
-                DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+                RepositoryFactory.create_workflow_node_execution_repository(
                     session_factory=mock_session_factory,
                     user=mock_user,
                     app_id="test-app-id",
@@ -424,7 +424,7 @@ class TestRepositoryFactory:
                 pass
 
         # Should not raise an exception (private methods are ignored)
-        DifyCoreRepositoryFactory._validate_repository_interface(MockRepository, MockInterface)
+        RepositoryFactory._validate_repository_interface(MockRepository, MockInterface)
 
     def test_validate_constructor_signature_with_extra_params(self):
         """Test constructor validation with extra parameters (should pass)."""
@@ -434,7 +434,7 @@ class TestRepositoryFactory:
                 pass
 
         # Should not raise an exception (extra parameters are allowed)
-        DifyCoreRepositoryFactory._validate_constructor_signature(
+        RepositoryFactory._validate_constructor_signature(
             MockRepository, ["session_factory", "user", "app_id", "triggered_from"]
         )
 
@@ -447,7 +447,7 @@ class TestRepositoryFactory:
 
         # Current implementation doesn't handle **kwargs, so this should raise an exception
         with pytest.raises(RepositoryImportError) as exc_info:
-            DifyCoreRepositoryFactory._validate_constructor_signature(
+            RepositoryFactory._validate_constructor_signature(
                 MockRepository, ["session_factory", "user", "app_id", "triggered_from"]
             )
         assert "does not accept required parameters" in str(exc_info.value)

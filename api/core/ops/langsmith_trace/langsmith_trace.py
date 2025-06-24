@@ -27,7 +27,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunUpdateModel,
 )
 from core.ops.utils import filter_none_values, generate_dotted_order
-from core.repositories import DifyCoreRepositoryFactory
+from core.repositories import RepositoryFactory
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
@@ -145,7 +145,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         service_account = self.get_service_account_with_tenant(app_id)
 
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        workflow_node_execution_repository = RepositoryFactory.create_workflow_node_execution_repository(
             session_factory=session_factory,
             user=service_account,
             app_id=app_id,
