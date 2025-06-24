@@ -511,8 +511,8 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 "options": [
                     PluginParameterOption(
                         label=I18nObject(
-                            en="test",
-                            zh="测试",
+                            en_US="test",
+                            zh_Hans="测试",
                         ),
                         value="test",
                     )
