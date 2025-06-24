@@ -37,12 +37,14 @@ class OAuthDataSource(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
         if dify_config.NOTION_INTEGRATION_TYPE == "internal":
+            print("[DEBUG] NOTION_INTEGRATION_TYPE=internal, using internal integration branch")
             internal_secret = dify_config.NOTION_INTERNAL_SECRET
             if not internal_secret:
                 return ({"error": "Internal secret is not set"},)
             oauth_provider.save_internal_access_token(internal_secret)
-            return {"data": ""}
+            return {"data": "internal"}
         else:
+            print("[DEBUG] NOTION_INTEGRATION_TYPE!=internal, using public oauth branch")
             auth_url = oauth_provider.get_authorization_url()
             return {"data": auth_url}, 200
 
