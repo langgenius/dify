@@ -85,11 +85,11 @@ from .datasets import (
 )
 from .datasets.rag_pipeline import (
     datasource_auth,
+    datasource_content_preview,
     rag_pipeline,
     rag_pipeline_datasets,
     rag_pipeline_import,
     rag_pipeline_workflow,
-    datasource_content_preview
 )
 
 # Import explore controllers

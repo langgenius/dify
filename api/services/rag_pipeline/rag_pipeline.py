@@ -3,9 +3,9 @@ import logging
 import re
 import threading
 import time
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional, cast, Mapping
+from typing import Any, Optional, cast
 from uuid import uuid4
 
 from flask_login import current_user
@@ -16,9 +16,11 @@ import contexts
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.datasource.entities.datasource_entities import (
+    DatasourceMessage,
     DatasourceProviderType,
+    GetOnlineDocumentPageContentRequest,
     OnlineDocumentPagesMessage,
-    WebsiteCrawlMessage, DatasourceMessage, GetOnlineDocumentPageContentRequest,
+    WebsiteCrawlMessage,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin

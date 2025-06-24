@@ -3,12 +3,13 @@ from flask_restful import (  # type: ignore
     reqparse,
 )
 from werkzeug.exceptions import Forbidden
+
+from controllers.console import api
 from controllers.console.datasets.wraps import get_rag_pipeline
-from controllers.console.wraps import setup_required, account_initialization_required
-from libs.login import login_required, current_user
+from controllers.console.wraps import account_initialization_required, setup_required
+from libs.login import current_user, login_required
 from models import Account
 from models.dataset import Pipeline
-from controllers.console import api
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 
 
