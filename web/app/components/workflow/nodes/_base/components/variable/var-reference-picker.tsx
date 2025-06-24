@@ -6,6 +6,7 @@ import {
   RiArrowDownSLine,
   RiCloseLine,
   RiErrorWarningFill,
+  RiLoader4Line,
   RiMoreLine,
 } from '@remixicon/react'
 import produce from 'immer'
@@ -17,7 +18,7 @@ import { getNodeInfoById, isConversationVar, isENV, isSystemVar, varTypeToStruct
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { type CredentialFormSchema, type FormOption, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -68,6 +69,7 @@ type Props = {
   minWidth?: number
   popupFor?: 'assigned' | 'toAssigned'
   zIndex?: number
+  isLoading?: boolean
 }
 
 const DEFAULT_VALUE_SELECTOR: Props['value'] = []
@@ -316,6 +318,50 @@ const VarReferencePicker: FC<Props> = ({
 
     return null
   }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
+
+  const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const handleOpenDynamicSelect = useCallback((open: boolean) => {
+    if (schema?.type !== FormTypeEnum.dynamicSelect || !open || isLoading)
+      return
+    if (dynamicOptions)
+      return
+
+    setIsLoading(true)
+    // load options
+    setTimeout(() => {
+      setIsLoading(false)
+      setDynamicOptions([{
+        label: {
+          en_US: 'Option 1',
+          zh_Hans: '选项1',
+        },
+        value: 'option1',
+        show_on: [],
+      }, {
+        label: {
+          en_US: 'Option 2',
+          zh_Hans: '选项2',
+        },
+        value: 'option2',
+        show_on: [],
+      }])
+    }, 1000)
+  }, [isLoading])
+
+  const schemaWithDynamicSelect = useMemo(() => {
+    if (schema?.type !== FormTypeEnum.dynamicSelect)
+      return schema
+    // rewrite schema.options with dynamicOptions
+    if (dynamicOptions) {
+      return {
+        ...schema,
+        options: dynamicOptions,
+      }
+    }
+    return schema
+  }, [dynamicOptions])
+
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
       <PortalToFollowElem
@@ -366,8 +412,10 @@ const VarReferencePicker: FC<Props> = ({
                     <ConstantField
                       value={value as string}
                       onChange={onChange as ((value: string | number, varKindType: VarKindType, varInfo?: Var) => void)}
-                      schema={schema as CredentialFormSchema}
+                      schema={schemaWithDynamicSelect as CredentialFormSchema}
                       readonly={readonly}
+                      onOpenChange={handleOpenDynamicSelect}
+                      isLoading={isLoading}
                     />
                   )
                   : (
@@ -412,6 +460,7 @@ const VarReferencePicker: FC<Props> = ({
                                   )}
                                   <div className='flex items-center text-text-accent'>
                                     {!hasValue && <Variable02 className='h-3.5 w-3.5' />}
+                                    {isLoading && <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />}
                                     {isEnv && <Env className='h-3.5 w-3.5 text-util-colors-violet-violet-600' />}
                                     {isChatVar && <BubbleX className='h-3.5 w-3.5 text-util-colors-teal-teal-700' />}
                                     <div className={cn('ml-0.5 truncate text-xs font-medium', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700', isException && 'text-text-warning')} title={varName} style={{
@@ -424,7 +473,16 @@ const VarReferencePicker: FC<Props> = ({
                                   {!isValidVar && <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-text-destructive' />}
                                 </>
                               )
-                              : <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} system-sm-regular text-ellipsis`}>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</div>}
+                              : <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} system-sm-regular text-ellipsis`}>
+                                {isLoading ? (
+                                  <div className='flex items-center'>
+                                    <RiLoader4Line className='mr-1 h-3.5 w-3.5 animate-spin text-text-secondary' />
+                                    <span>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</span>
+                                  </div>
+                                ) : (
+                                  placeholder ?? t('workflow.common.setVarValuePlaceholder')
+                                )}
+                              </div>}
                           </div>
                         </Tooltip>
                       </div>

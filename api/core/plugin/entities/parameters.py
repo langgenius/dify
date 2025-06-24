@@ -35,6 +35,7 @@ class PluginParameterType(enum.StrEnum):
     APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
     MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
     TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR.value
+    DYNAMIC_SELECT = CommonParameterType.DYNAMIC_SELECT.value
 
     # deprecated, should not use.
     SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value

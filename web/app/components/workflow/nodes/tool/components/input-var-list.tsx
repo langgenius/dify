@@ -58,6 +58,8 @@ const InputVarList: FC<Props> = ({
       return 'ModelSelector'
     else if (type === FormTypeEnum.toolSelector)
       return 'ToolSelector'
+    else if (type === FormTypeEnum.dynamicSelect)
+      return 'DynamicSelect'
     else
       return 'String'
   }
@@ -149,6 +151,7 @@ const InputVarList: FC<Props> = ({
   const handleOpen = useCallback((index: number) => {
     return () => onOpen(index)
   }, [onOpen])
+
   return (
     <div className='space-y-3'>
       {
@@ -163,7 +166,8 @@ const InputVarList: FC<Props> = ({
           } = schema
           const varInput = value[variable]
           const isNumber = type === FormTypeEnum.textNumber
-          const isSelect = type === FormTypeEnum.select
+          const isDynamicSelect = type === FormTypeEnum.dynamicSelect
+          const isSelect = type === FormTypeEnum.select || type === FormTypeEnum.dynamicSelect
           const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
           const isAppSelector = type === FormTypeEnum.appSelector
           const isModelSelector = type === FormTypeEnum.modelSelector
@@ -198,7 +202,7 @@ const InputVarList: FC<Props> = ({
                   value={varInput?.type === VarKindType.constant ? (varInput?.value ?? '') : (varInput?.value ?? [])}
                   onChange={handleNotMixedTypeChange(variable)}
                   onOpen={handleOpen(index)}
-                  defaultVarKindType={varInput?.type || (isNumber ? VarKindType.constant : VarKindType.variable)}
+                  defaultVarKindType={varInput?.type || ((isNumber || isDynamicSelect) ? VarKindType.constant : VarKindType.variable)}
                   isSupportConstantValue={isSupportConstantValue}
                   filterVar={isNumber ? filterVar : undefined}
                   availableVars={isSelect ? availableVars : undefined}
