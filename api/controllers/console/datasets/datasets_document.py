@@ -297,7 +297,7 @@ class DatasetDocumentListApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
 
-        return {"documents": documents, "batch": batch}
+        return {"dataset": dataset, "documents": documents, "batch": batch}
 
     @setup_required
     @login_required
