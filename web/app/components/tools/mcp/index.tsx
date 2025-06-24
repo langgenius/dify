@@ -4,7 +4,7 @@ import NewMCPCard from './create-card'
 import MCPCard from './provider-card'
 import MCPDetailPanel from './detail/provider-detail'
 import {
-  useAllMCPTools,
+  useAllToolProviders,
 } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
@@ -34,15 +34,15 @@ function renderDefaultCard() {
 const MCPList = ({
   searchText,
 }: Props) => {
-  const { data: list = [], refetch } = useAllMCPTools()
+  const { data: list = [] as ToolWithProvider[], refetch } = useAllToolProviders()
   const [isCreation, setIsCreation] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
       if (searchText)
         return Object.values(collection.name).some(value => (value as string).toLowerCase().includes(searchText.toLowerCase()))
-      return true
-    })
+      return collection.type === 'mcp'
+    }) as ToolWithProvider[]
   }, [list, searchText])
 
   const [currentProviderID, setCurrentProviderID] = useState<string>()
@@ -70,7 +70,7 @@ const MCPList = ({
           <MCPCard
             key={provider.id}
             data={provider}
-            currentProvider={currentProvider}
+            currentProvider={currentProvider as ToolWithProvider}
             handleSelect={setCurrentProviderID}
             onUpdate={refetch}
           />
@@ -79,7 +79,7 @@ const MCPList = ({
       </div>
       {currentProvider && (
         <MCPDetailPanel
-          detail={currentProvider}
+          detail={currentProvider as ToolWithProvider}
           onHide={() => setCurrentProviderID(undefined)}
           onUpdate={refetch}
           isCreation={isCreation}
