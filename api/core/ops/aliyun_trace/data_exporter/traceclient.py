@@ -1,4 +1,3 @@
-import datetime
 import hashlib
 import logging
 import random
@@ -7,6 +6,7 @@ import threading
 import uuid
 from collections import deque
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Optional
 
 import requests
@@ -27,8 +27,14 @@ logger = logging.getLogger(__name__)
 
 
 class TraceClient:
-    def __init__(self, service_name: str, endpoint: str, max_queue_size: int = 1000,
-                 schedule_delay_sec: int = 5, max_export_batch_size: int = 50):
+    def __init__(
+        self,
+        service_name: str,
+        endpoint: str,
+        max_queue_size: int = 1000,
+        schedule_delay_sec: int = 5,
+        max_export_batch_size: int = 50,
+    ):
         self.endpoint = endpoint
         self.resource = Resource(
             attributes={
@@ -45,7 +51,7 @@ class TraceClient:
         self.schedule_delay_sec = schedule_delay_sec
         self.max_export_batch_size = max_export_batch_size
 
-        self.queue = deque(maxlen=max_queue_size)
+        self.queue: deque = deque(maxlen=max_queue_size)
         self.condition = threading.Condition(threading.Lock())
         self.done = False
 
@@ -94,7 +100,7 @@ class TraceClient:
             self._export_batch()
 
     def _export_batch(self):
-        spans_to_export = []
+        spans_to_export: list[ReadableSpan] = []
         with self.condition:
             while len(spans_to_export) < self.max_export_batch_size and self.queue:
                 spans_to_export.append(self.queue.pop())
@@ -167,7 +173,7 @@ def generate_span_id() -> int:
     return span_id
 
 
-def convert_to_trace_id(uuid_v4: str) -> int:
+def convert_to_trace_id(uuid_v4: Optional[str]) -> int:
     try:
         uuid_obj = uuid.UUID(uuid_v4)
         return uuid_obj.int
@@ -175,7 +181,7 @@ def convert_to_trace_id(uuid_v4: str) -> int:
         raise ValueError(f"Invalid UUID input: {e}")
 
 
-def convert_to_span_id(uuid_v4: str, span_type: str) -> int:
+def convert_to_span_id(uuid_v4: Optional[str], span_type: str) -> int:
     try:
         uuid_obj = uuid.UUID(uuid_v4)
     except Exception as e:

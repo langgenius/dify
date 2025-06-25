@@ -18,13 +18,13 @@ INPUT_VALUE = "input.value"
 OUTPUT_VALUE = "output.value"
 
 
-#Retriever
+# Retriever
 RETRIEVAL_QUERY = "retrieval.query"
 
 RETRIEVAL_DOCUMENT = "retrieval.document"
 
 
-#LLM
+# LLM
 GEN_AI_MODEL_NAME = "gen_ai.model_name"
 
 GEN_AI_SYSTEM = "gen_ai.system"
@@ -45,7 +45,7 @@ GEN_AI_COMPLETION = "gem_ai.completion"
 
 GEN_AI_RESPONSE_FINISH_REASON = "gen_ai.response.finish_reason"
 
-#Tool
+# Tool
 TOOL_NAME = "tool.name"
 
 TOOL_DESCRIPTION = "tool.description"
@@ -62,4 +62,3 @@ class GenAISpanKind(Enum):
     TOOL = "TOOL"
     AGENT = "AGENT"
     TASK = "TASK"
-
