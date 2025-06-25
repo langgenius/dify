@@ -1,10 +1,10 @@
 import json
 import logging
 import math
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient  # type: ignore
+from pyobvector import VECTOR, ObVecClient, FtsIndexParam, FtsParser  # type: ignore
 from sqlalchemy import JSON, Column, String, func
 from sqlalchemy.dialects.mysql import LONGTEXT
 
@@ -112,21 +112,21 @@ class OceanBaseVector(BaseVector):
                 params=DEFAULT_OCEANBASE_HNSW_BUILD_PARAM,
             )
 
+            fts_idxs: Optional[list[FtsIndexParam]]
+            if self._hybrid_search_enabled:
+                fts_idxs = [FtsIndexParam(index_name="fulltext_index_for_col_text",
+                                          field_names=["text"],
+                                          parser_type=FtsParser("ik"))]
+            else:
+                fts_idxs = None
+
             self._client.create_table_with_index_params(
                 table_name=self._collection_name,
                 columns=cols,
                 vidxs=vidx_params,
+                fts_idxs=fts_idxs,
             )
-            try:
-                if self._hybrid_search_enabled:
-                    self._client.perform_raw_text_sql(f"""ALTER TABLE {self._collection_name}
-                    ADD FULLTEXT INDEX fulltext_index_for_col_text (text) WITH PARSER ik""")
-            except Exception as e:
-                raise Exception(
-                    "Failed to add fulltext index to the target table, your OceanBase version must be 4.3.5.1 or above "
-                    + "to support fulltext index and vector index in the same table",
-                    e,
-                )
+
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def _check_hybrid_search_support(self) -> bool:
