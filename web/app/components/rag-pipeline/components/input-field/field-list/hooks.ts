@@ -8,9 +8,11 @@ import type { InputVar } from '@/models/pipeline'
 import type { SortableItem } from './types'
 import type { MoreInfo, ValueSelector } from '@/app/components/workflow/types'
 import { ChangeType } from '@/app/components/workflow/types'
-import { useWorkflow } from '@/app/components/workflow/hooks'
 import { useBoolean } from 'ahooks'
 import Toast from '@/app/components/base/toast'
+import { usePipeline } from '../../../hooks/use-pipeline'
+
+const VARIABLE_PREFIX = 'rag'
 
 export const useFieldList = (
   initialInputFields: InputVar[],
@@ -22,7 +24,7 @@ export const useFieldList = (
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
   const [removedIndex, setRemoveIndex] = useState(0)
 
-  const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
+  const { handleInputVarRename, isVarUsedInNodes, removeUsedVarInNodes } = usePipeline()
 
   const [isShowRemoveVarConfirm, {
     setTrue: showRemoveVarConfirm,
@@ -61,9 +63,9 @@ export const useFieldList = (
   const handleRemoveField = useCallback((index: number) => {
     const itemToRemove = inputFieldsRef.current[index]
     // Check if the variable is used in other nodes
-    if (isVarUsedInNodes([nodeId, itemToRemove.variable || ''])) {
+    if (isVarUsedInNodes([VARIABLE_PREFIX, nodeId, itemToRemove.variable || ''])) {
       showRemoveVarConfirm()
-      setRemovedVar([nodeId, itemToRemove.variable || ''])
+      setRemovedVar([VARIABLE_PREFIX, nodeId, itemToRemove.variable || ''])
       setRemoveIndex(index as number)
       return
     }
@@ -99,9 +101,9 @@ export const useFieldList = (
     handleInputFieldsChange(newInputFields)
     // Update variable name in nodes if it has changed
     if (moreInfo?.type === ChangeType.changeVarName)
-      handleOutVarRenameChange(nodeId, [nodeId, moreInfo.payload?.beforeKey || ''], [nodeId, moreInfo.payload?.afterKey || ''])
+      handleInputVarRename(nodeId, [VARIABLE_PREFIX, nodeId, moreInfo.payload?.beforeKey || ''], [VARIABLE_PREFIX, nodeId, moreInfo.payload?.afterKey || ''])
     handleCloseInputFieldEditor()
-  }, [editingField?.variable, handleCloseInputFieldEditor, handleInputFieldsChange, handleOutVarRenameChange, nodeId])
+  }, [editingField?.variable, handleCloseInputFieldEditor, handleInputFieldsChange, handleInputVarRename, nodeId])
 
   return {
     inputFields,

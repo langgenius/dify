@@ -838,9 +838,9 @@ export const getVarType = ({
   })
 
   const targetVarNodeId = (() => {
-    if(isSystem)
+    if (isSystem)
       return startNode?.id
-    if(isInNodeRagVariable)
+    if (isInNodeRagVariable)
       return valueSelector[1]
     return valueSelector[0]
   })()
@@ -857,14 +857,14 @@ export const getVarType = ({
   }
   else {
     const targetVar = curr.find((v: any) => {
-      if(isInNodeRagVariable)
+      if (isInNodeRagVariable)
         return v.variable === valueSelector.join('.')
       return v.variable === valueSelector[1]
-  })
+    })
     if (!targetVar)
       return VarType.string
 
-    if(isInNodeRagVariable)
+    if (isInNodeRagVariable)
       return targetVar.type
 
     const isStructuredOutputVar = !!targetVar.children?.schema?.properties
@@ -1081,6 +1081,13 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       const payload = data as ToolNodeType
       const mixVars = matchNotSystemVars(Object.keys(payload.tool_parameters)?.filter(key => payload.tool_parameters[key].type === ToolVarType.mixed).map(key => payload.tool_parameters[key].value) as string[])
       const vars = Object.keys(payload.tool_parameters).filter(key => payload.tool_parameters[key].type === ToolVarType.variable).map(key => payload.tool_parameters[key].value as string) || []
+      res = [...(mixVars as ValueSelector[]), ...(vars as any)]
+      break
+    }
+    case BlockEnum.DataSource: {
+      const payload = data as DataSourceNodeType
+      const mixVars = matchNotSystemVars(Object.keys(payload.datasource_parameters)?.filter(key => payload.datasource_parameters[key].type === ToolVarType.mixed).map(key => payload.datasource_parameters[key].value) as string[])
+      const vars = Object.keys(payload.datasource_parameters).filter(key => payload.datasource_parameters[key].type === ToolVarType.variable).map(key => payload.datasource_parameters[key].value as string) || []
       res = [...(mixVars as ValueSelector[]), ...(vars as any)]
       break
     }
@@ -1351,6 +1358,30 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
               payload.tool_parameters[key] = {
                 ...value,
                 value: replaceOldVarInText(payload.tool_parameters[key].value as string, oldVarSelector, newVarSelector),
+              }
+            }
+          })
+        }
+        break
+      }
+      case BlockEnum.DataSource: {
+        const payload = data as DataSourceNodeType
+        const hasShouldRenameVar = Object.keys(payload.datasource_parameters)?.filter(key => payload.datasource_parameters[key].type !== ToolVarType.constant)
+        if (hasShouldRenameVar) {
+          Object.keys(payload.datasource_parameters).forEach((key) => {
+            const value = payload.datasource_parameters[key]
+            const { type } = value
+            if (type === ToolVarType.variable) {
+              payload.datasource_parameters[key] = {
+                ...value,
+                value: newVarSelector,
+              }
+            }
+
+            if (type === ToolVarType.mixed) {
+              payload.datasource_parameters[key] = {
+                ...value,
+                value: replaceOldVarInText(payload.datasource_parameters[key].value as string, oldVarSelector, newVarSelector),
               }
             }
           })
