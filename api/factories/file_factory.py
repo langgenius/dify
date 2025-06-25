@@ -384,7 +384,7 @@ def get_file_type_by_mime_type(mime_type: str) -> FileType:
 
 class StorageKeyLoader:
     """FileKeyLoader load the storage key from database for a list of files.
-    This loader is batched, the
+    This loader is batched, the database query count is constant regardless of the input size.
     """
 
     def __init__(self, session: Session, tenant_id: str) -> None:
