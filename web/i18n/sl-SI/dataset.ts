@@ -179,6 +179,7 @@ const translation = {
     checkName: {
       empty: 'Ime metapodatkov ne more biti prazno',
       invalid: 'Ime metapodatkov lahko vsebuje samo male črke, številke in podčrtaje ter se mora začeti z malo črko.',
+      tooLong: 'Ime metapodatkov ne sme presegati {{max}} znakov',
     },
     batchEditMetadata: {
       editMetadata: 'Uredi metapodatke',
