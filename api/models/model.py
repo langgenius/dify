@@ -832,7 +832,12 @@ class Conversation(Base):
 
     @property
     def first_message(self):
-        return db.session.query(Message).filter(Message.conversation_id == self.id).first()
+        return (
+            db.session.query(Message)
+            .filter(Message.conversation_id == self.id)
+            .order_by(Message.created_at.asc())
+            .first()
+        )
 
     @property
     def app(self):
