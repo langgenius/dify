@@ -63,6 +63,15 @@ export const useWorkflow = () => {
     workflowStore.setState({ panelWidth: width })
   }, [workflowStore])
 
+  const getNodeById = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)
+    return currentNode
+  }, [store])
+
   const getTreeLeafNodes = useCallback((nodeId: string) => {
     const {
       getNodes,
@@ -445,6 +454,7 @@ export const useWorkflow = () => {
 
   return {
     setPanelWidth,
+    getNodeById,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
     getBeforeNodesInSameBranchIncludeParent,

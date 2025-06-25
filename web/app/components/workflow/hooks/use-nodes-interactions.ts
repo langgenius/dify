@@ -550,7 +550,7 @@ export const useNodesInteractions = () => {
     if (!currentNode)
       return
 
-    if (nodesMetaDataMap?.[currentNode.data.type as BlockEnum].metaData.isUndeletable)
+    if (nodesMetaDataMap?.[currentNode.data.type as BlockEnum]?.metaData.isUndeletable)
       return
 
     if (currentNode.data.type === BlockEnum.Iteration) {
