@@ -1,5 +1,6 @@
 import logging
 
+from flask import jsonify
 from flask_login import current_user
 from flask_restful import marshal_with, reqparse
 from flask_restful.inputs import int_range
@@ -34,7 +35,9 @@ from services.message_service import MessageService
 
 
 class MessageListApi(InstalledAppResource):
-    @marshal_with(message_infinite_scroll_pagination_fields)
+
+    # 解决数据较大，系列化过慢的问题
+    # @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):
         app_model = installed_app.app
 
@@ -47,11 +50,20 @@ class MessageListApi(InstalledAppResource):
         parser.add_argument("first_id", type=uuid_value, location="args")
         parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
-
         try:
-            return MessageService.pagination_by_first_id(
+            data = MessageService.pagination_by_first_id(
                 app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
             )
+            # 解决数据较大，系列化过慢的问题
+            items = []
+            if data.data:
+                items = [m.to_dict() for m in data.data]
+            return jsonify({
+                'data': items,  # 假设分页对象里包含 items 列表
+                "limit": data.limit,
+                'has_more': data.has_more,
+            })
+            # return data
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.message.FirstMessageNotExistsError:
