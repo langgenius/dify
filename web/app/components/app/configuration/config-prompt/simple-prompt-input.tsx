@@ -97,13 +97,6 @@ const Prompt: FC<ISimplePromptInput> = ({
       },
     })
   }
-  const promptVariablesObj = (() => {
-    const obj: Record<string, boolean> = {}
-    promptVariables.forEach((item) => {
-      obj[item.key] = true
-    })
-    return obj
-  })()
 
   const [newPromptVariables, setNewPromptVariables] = React.useState<PromptVariable[]>(promptVariables)
   const [newTemplates, setNewTemplates] = React.useState('')
@@ -111,28 +104,24 @@ const Prompt: FC<ISimplePromptInput> = ({
 
   const handleChange = (newTemplates: string, keys: string[]) => {
     // Filter out keys that are not properly defined (either not exist or exist but without valid name)
-    const newPromptVariables = keys.filter(key => {
+    const newPromptVariables = keys.filter((key) => {
       // Check if key exists in external data tools
-      if (externalDataToolsConfig.find((item: ExternalDataTool) => item.variable === key)) {
+      if (externalDataToolsConfig.find((item: ExternalDataTool) => item.variable === key))
         return false
-      }
-      
+
       // Check if key exists in prompt variables
       const existingVar = promptVariables.find((item: PromptVariable) => item.key === key)
       if (!existingVar) {
         // Variable doesn't exist at all
         return true
       }
-      
+
       // Variable exists but check if it has valid name and key
-      if (!existingVar.name || !existingVar.name.trim() || !existingVar.key || !existingVar.key.trim()) {
-        // Variable exists but doesn't have valid name or key
-        return true
-      }
-      
+      return !existingVar.name || !existingVar.name.trim() || !existingVar.key || !existingVar.key.trim()
+
       return false
     }).map(key => getNewVar(key, ''))
-    
+
     if (newPromptVariables.length > 0) {
       setNewPromptVariables(newPromptVariables)
       setNewTemplates(newTemplates)
