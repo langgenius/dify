@@ -1,23 +1,25 @@
-import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
-import { type RAGPipelineVariables, VAR_TYPE_MAP } from '@/models/pipeline'
 import { useMemo } from 'react'
+import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
+import { type RAGPipelineVariables, VAR_TYPE_MAP } from '@/models/pipeline'
+import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 
-export const useInitialData = (variables: RAGPipelineVariables) => {
+export const useInitialData = (variables: RAGPipelineVariables, lastRunInputData?: Record<string, any>) => {
   const initialData = useMemo(() => {
     return variables.reduce((acc, item) => {
       const type = VAR_TYPE_MAP[item.type]
+      const variableName = item.variable
+      const defaultValue = lastRunInputData?.[variableName] || item.default_value
       if ([BaseFieldType.textInput, BaseFieldType.paragraph, BaseFieldType.select].includes(type))
-        acc[item.variable] = item.default_value ?? ''
+        acc[variableName] = defaultValue ?? ''
       if (type === BaseFieldType.numberInput)
-        acc[item.variable] = item.default_value ?? 0
+        acc[variableName] = defaultValue ?? 0
       if (type === BaseFieldType.checkbox)
-        acc[item.variable] = true
+        acc[variableName] = defaultValue ?? false
       if ([BaseFieldType.file, BaseFieldType.fileList].includes(type))
-        acc[item.variable] = []
+        acc[variableName] = defaultValue ?? []
       return acc
     }, {} as Record<string, any>)
-  }, [variables])
+  }, [lastRunInputData, variables])
 
   return initialData
 }

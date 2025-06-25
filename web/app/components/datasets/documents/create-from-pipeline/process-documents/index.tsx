@@ -1,8 +1,9 @@
 import React from 'react'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
-import { useConfigurations } from './hooks'
+import { useInputVariables } from './hooks'
 import Form from './form'
 import Actions from './actions'
+import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
 
 type ProcessDocumentsProps = {
   dataSourceNodeId: string
@@ -21,7 +22,9 @@ const ProcessDocuments = ({
   onBack,
   ref,
 }: ProcessDocumentsProps) => {
-  const { isFetchingParams, initialData, configurations } = useConfigurations(dataSourceNodeId)
+  const { isFetchingParams, paramsConfig } = useInputVariables(dataSourceNodeId)
+  const initialData = useInitialData(paramsConfig?.variables || [])
+  const configurations = useConfigurations(paramsConfig?.variables || [])
   const schema = generateZodSchema(configurations)
 
   return (

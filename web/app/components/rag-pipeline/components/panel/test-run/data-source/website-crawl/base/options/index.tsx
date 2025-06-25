@@ -9,7 +9,7 @@ import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import { useConfigurations, useInitialData } from './hooks'
+import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'

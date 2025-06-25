@@ -13,7 +13,7 @@ import { DatasourceType } from '@/models/pipeline'
 import { noop } from 'lodash-es'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useRouter } from 'next/navigation'
-import { useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 
 type PipelineSettingsProps = {
   datasetId: string
@@ -99,6 +99,7 @@ const PipelineSettings = ({
   }, [lastRunData, pipelineId, runPublishedPipeline])
 
   const invalidDocumentList = useInvalidDocumentList(datasetId)
+  const invalidDocumentDetail = useInvalidDocumentDetail()
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!lastRunData)
       return
@@ -115,10 +116,11 @@ const PipelineSettings = ({
     }, {
       onSuccess: () => {
         invalidDocumentList()
+        invalidDocumentDetail()
         push(`/datasets/${datasetId}/documents/${documentId}`)
       },
     })
-  }, [datasetId, documentId, invalidDocumentList, lastRunData, pipelineId, push, runPublishedPipeline])
+  }, [datasetId, documentId, invalidDocumentDetail, invalidDocumentList, lastRunData, pipelineId, push, runPublishedPipeline])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false

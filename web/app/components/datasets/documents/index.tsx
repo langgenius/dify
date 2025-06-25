@@ -23,7 +23,7 @@ import { DataSourceType, ProcessMode } from '@/models/datasets'
 import IndexFailed from '@/app/components/datasets/common/document-status-with-action/index-failed'
 import { useProviderContext } from '@/context/provider-context'
 import cn from '@/utils/classnames'
-import { useDocumentList, useInvalidDocumentDetailKey, useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { useDocumentList, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 import { useInvalid } from '@/service/use-base'
 import { useChildSegmentListKey, useSegmentListKey } from '@/service/knowledge/use-segment'
 import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata'
@@ -123,7 +123,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentsRes])
 
-  const invalidDocumentDetail = useInvalidDocumentDetailKey()
+  const invalidDocumentDetail = useInvalidDocumentDetail()
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
 

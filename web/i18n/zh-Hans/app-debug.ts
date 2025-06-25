@@ -408,6 +408,7 @@ const translation = {
       atLeastOneOption: '至少需要一个选项',
       optionRepeat: '选项不能重复',
     },
+    'startChecked': '默认勾选',
   },
   vision: {
     name: '视觉',

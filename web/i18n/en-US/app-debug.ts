@@ -414,6 +414,7 @@ const translation = {
       atLeastOneOption: 'At least one option is required',
       optionRepeat: 'Has repeat options',
     },
+    'startChecked': 'Start checked',
   },
   vision: {
     name: 'Vision',

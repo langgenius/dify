@@ -52,6 +52,12 @@ export const useHiddenFieldNames = (type: PipelineInputVarType) => {
           t('appDebug.variableConfig.tooltips'),
         ]
         break
+      case PipelineInputVarType.checkbox:
+        fieldNames = [
+          t('appDebug.variableConfig.startedChecked'),
+          t('appDebug.variableConfig.tooltips'),
+        ]
+        break
       default:
         fieldNames = [
           t('appDebug.variableConfig.tooltips'),
@@ -258,6 +264,15 @@ export const useHiddenConfigurations = (props: {
       popupProps: {
         wrapperClassName: 'z-40',
       },
+    }, {
+      type: InputFieldType.checkbox,
+      label: t('appDebug.variableConfig.startChecked'),
+      variable: 'default',
+      required: false,
+      showConditions: [{
+        variable: 'type',
+        value: PipelineInputVarType.checkbox,
+      }],
     }, {
       type: InputFieldType.textInput,
       label: t('appDebug.variableConfig.placeholder'),

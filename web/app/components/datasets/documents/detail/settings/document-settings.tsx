@@ -12,7 +12,7 @@ import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { NotionPage } from '@/models/common'
-import { useDocumentDetail, useInvalidDocumentDetailKey } from '@/service/knowledge/use-document'
+import { useDocumentDetail, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 
 type DocumentSettingsProps = {
   datasetId: string
@@ -26,8 +26,10 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
   const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
-  const invalidDocumentDetail = useInvalidDocumentDetailKey()
+  const invalidDocumentList = useInvalidDocumentList(datasetId)
+  const invalidDocumentDetail = useInvalidDocumentDetail()
   const saveHandler = () => {
+    invalidDocumentList()
     invalidDocumentDetail()
     router.push(`/datasets/${datasetId}/documents/${documentId}`)
   }

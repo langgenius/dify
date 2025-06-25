@@ -127,6 +127,6 @@ export const useDocumentMetadata = (payload: {
   })
 }
 
-export const useInvalidDocumentDetailKey = () => {
+export const useInvalidDocumentDetail = () => {
   return useInvalid(useDocumentDetailKey)
 }
