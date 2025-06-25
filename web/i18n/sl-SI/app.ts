@@ -146,6 +146,14 @@ const translation = {
       notConfigured: 'Konfigurirajte ponudnika za omogočanje sledenja',
       moreProvider: 'Več ponudnikov',
     },
+    arize: {
+      title: 'Arize',
+      description: 'Podjetniško opazovanje LLM, spletno in nespletno vrednotenje, nadzorovanje in eksperimentiranje — s podporo OpenTelemetry. Namenjeno aplikacijam, ki temeljijo na LLM in agentih.',
+    },
+    phoenix: {
+      title: 'Phoenix',
+      description: 'Odprtokodna in na OpenTelemetry osnovana platforma za opazovanje, vrednotenje, inženiring pozivov ter eksperimentiranje za vaše LLM poteke dela in agente.',
+    },
     langsmith: {
       title: 'LangSmith',
       description: 'Vse-v-enem razvijalska platforma za vsak korak življenjskega cikla aplikacije, ki jo poganja LLM.',
