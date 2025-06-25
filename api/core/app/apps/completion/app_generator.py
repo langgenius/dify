@@ -201,8 +201,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             try:
                 # get message
                 message = self._get_message(message_id)
-                if message is None:
-                    raise MessageNotExistsError()
 
                 # chatbot app
                 runner = CompletionAppRunner()
