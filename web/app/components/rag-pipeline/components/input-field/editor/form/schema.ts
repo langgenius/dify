@@ -25,14 +25,14 @@ export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction,
   const { maxFileUploadLimit } = options
   const commonSchema = z.object({
     type: InputTypeEnum,
-    variable: z.string({
-      invalid_type_error: t('appDebug.varKeyError.notValid', { key: t('appDebug.variableConfig.varName') }),
-    }).nonempty({
+    variable: z.string().nonempty({
       message: t('appDebug.varKeyError.canNoBeEmpty', { key: t('appDebug.variableConfig.varName') }),
     }).max(MAX_VAR_KEY_LENGTH, {
       message: t('appDebug.varKeyError.tooLong', { key: t('appDebug.variableConfig.varName') }),
     }).regex(/^(?!\d)\w+/, {
       message: t('appDebug.varKeyError.notStartWithNumber', { key: t('appDebug.variableConfig.varName') }),
+    }).regex(/^[a-zA-Z_]\w{0,29}$/, {
+      message: t('appDebug.varKeyError.notValid', { key: t('appDebug.variableConfig.varName') }),
     }),
     label: z.string().nonempty({
       message: t('appDebug.variableConfig.errorMsg.labelNameRequired'),
