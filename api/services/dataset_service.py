@@ -344,6 +344,9 @@ class DatasetService:
             raise ValueError("External knowledge id is required.")
         if not external_knowledge_api_id:
             raise ValueError("External knowledge api id is required.")
+        # Update metadata fields
+        dataset.updated_by = user.id if user else None
+        dataset.updated_at = datetime.datetime.utcnow()
         db.session.add(dataset)
 
         # Update external knowledge binding
