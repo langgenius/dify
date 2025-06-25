@@ -60,6 +60,7 @@ import {
 } from './use-workflow'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useNodesMetaData } from './use-nodes-meta-data'
+import type { RAGPipelineVariables } from '@/models/pipeline'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -625,6 +626,19 @@ export const useNodesInteractions = () => {
             return
           }
         }
+      }
+    }
+
+    if (currentNode.data.type === BlockEnum.DataSource) {
+      const { id } = currentNode
+      const { ragPipelineVariables, setRagPipelineVariables } = workflowStore.getState()
+      if (ragPipelineVariables && setRagPipelineVariables) {
+        const newRagPipelineVariables: RAGPipelineVariables = []
+        ragPipelineVariables.forEach((variable) => {
+          if (variable.belong_to_node_id === id) return
+          newRagPipelineVariables.push(variable)
+        })
+        setRagPipelineVariables(newRagPipelineVariables)
       }
     }
 
