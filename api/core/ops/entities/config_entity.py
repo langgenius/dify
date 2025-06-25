@@ -119,6 +119,7 @@ class WeaveConfig(BaseTracingConfig):
                 raise ValueError("host must start with https:// or http://")
         return v
 
+
 class AliyunConfig(BaseTracingConfig):
     """
     Model class for Aliyun tracing config.

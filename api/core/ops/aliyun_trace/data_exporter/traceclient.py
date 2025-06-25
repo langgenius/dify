@@ -70,7 +70,7 @@ class TraceClient:
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 
     def get_project_url(self):
-        return 'https://arms.console.aliyun.com/#/llm'
+        return "https://arms.console.aliyun.com/#/llm"
 
     def add_span(self, span_data: SpanData):
         if span_data is None:
@@ -181,7 +181,7 @@ def convert_to_span_id(uuid_v4: str, span_type: str) -> int:
     except Exception as e:
         raise ValueError(f"Invalid UUID input: {e}")
     combined_key = f"{uuid_obj.hex}-{span_type}"
-    hash_bytes = hashlib.sha256(combined_key.encode('utf-8')).digest()
+    hash_bytes = hashlib.sha256(combined_key.encode("utf-8")).digest()
     span_id = int.from_bytes(hash_bytes[:8], byteorder="big", signed=False)
     return span_id
 

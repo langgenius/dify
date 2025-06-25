@@ -92,7 +92,7 @@ class OpsTraceProviderConfigMap(dict[str, dict[str, Any]]):
                 return {
                     "config_class": AliyunConfig,
                     "secret_keys": ["license_key"],
-                    "other_keys": ["endpoint","app_name"],
+                    "other_keys": ["endpoint", "app_name"],
                     "trace_instance": AliyunDataTrace,
                 }
 
