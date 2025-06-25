@@ -179,6 +179,7 @@ const translation = {
     checkName: {
       empty: 'Der Metadatenname darf nicht leer sein.',
       invalid: 'Der Metadatenname darf nur Kleinbuchstaben, Zahlen und Unterstriche enthalten und muss mit einem Kleinbuchstaben beginnen.',
+      tooLong: 'Der Metadatenname darf {{max}} Zeichen nicht überschreiten.',
     },
     batchEditMetadata: {
       editMetadata: 'Metadaten bearbeiten',

@@ -186,6 +186,7 @@ const translation = {
     checkName: {
       invalid: 'Il nome dei metadati può contenere solo lettere minuscole, numeri e underscore e deve iniziare con una lettera minuscola.',
       empty: 'Il nome dei metadati non può essere vuoto',
+      tooLong: 'Il nome dei metadati non può superare {{max}} caratteri.',
     },
     batchEditMetadata: {
       multipleValue: 'Valore Multiplo',

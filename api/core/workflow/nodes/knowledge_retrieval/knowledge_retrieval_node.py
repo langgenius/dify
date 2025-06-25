@@ -71,6 +71,10 @@ class KnowledgeRetrievalNode(LLMNode):
     _node_data_cls = KnowledgeRetrievalNodeData  # type: ignore
     _node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
+    @classmethod
+    def version(cls):
+        return "1"
+
     def _run(self) -> NodeRunResult:  # type: ignore
         node_data = cast(KnowledgeRetrievalNodeData, self.node_data)
         # extract variables
