@@ -4,13 +4,14 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ChatAppGenerateEntity
 from core.entities.provider_entities import QuotaUnit
 from core.plugin.entities.plugin import ModelProviderID
-from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.provider import Provider, ProviderType
 
 
-@message_was_created.connect
-def handle(sender, **kwargs):
+# DEPRECATED: This handler has been replaced by update_provider_when_message_created.py
+# to prevent deadlocks. This file is kept for reference but the handler is disabled.
+# @message_was_created.connect  # DISABLED
+def handle_deprecated(sender, **kwargs):
     message = sender
     application_generate_entity = kwargs.get("application_generate_entity")
 
