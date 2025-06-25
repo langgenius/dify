@@ -98,7 +98,7 @@ def handle_callback(state_key: str, authorization_code: str) -> OAuthCallbackSta
         full_state_data.code_verifier,
         full_state_data.redirect_uri,
     )
-    provider = OAuthClientProvider(full_state_data.provider_id, full_state_data.tenant_id)
+    provider = OAuthClientProvider(full_state_data.provider_id, full_state_data.tenant_id, for_list=True)
     provider.save_tokens(tokens)
     return full_state_data
 
@@ -275,6 +275,7 @@ def auth(
     server_url: str,
     authorization_code: Optional[str] = None,
     state_param: Optional[str] = None,
+    for_list: bool = False,
 ) -> dict[str, str]:
     """Orchestrates the full auth flow with a server using secure Redis state storage."""
     metadata = discover_oauth_metadata(server_url)
@@ -337,8 +338,8 @@ def auth(
         metadata,
         client_information,
         provider.redirect_url,
-        provider.provider_id,
-        provider.tenant_id,
+        provider.mcp_provider.id,
+        provider.mcp_provider.tenant_id,
     )
 
     provider.save_code_verifier(code_verifier)

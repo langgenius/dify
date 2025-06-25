@@ -23,6 +23,7 @@ from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.mcp_tools_mange_service import MCPToolManageService
 from services.tools.tool_labels_service import ToolLabelsService
 from services.tools.tools_manage_service import ToolCommonService
+from services.tools.tools_transform_service import ToolTransformService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 
@@ -693,27 +694,26 @@ class ToolMCPAuthApi(Resource):
         provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         if not provider:
             raise ValueError("provider not found")
-        server_url = MCPToolManageService.get_mcp_provider_server_url(tenant_id, provider_id)
         try:
             with MCPClient(
-                server_url,
+                provider.decrypted_server_url,
                 provider_id,
                 tenant_id,
                 authed=False,
                 authorization_code=args["authorization_code"],
+                for_list=True,
             ):
                 MCPToolManageService.update_mcp_provider_credentials(
-                    tenant_id=tenant_id,
-                    provider_id=provider_id,
-                    credentials=MCPToolManageService.get_mcp_provider_decrypted_credentials(tenant_id, provider_id),
+                    mcp_provider=provider,
+                    credentials=provider.decrypted_credentials,
                     authed=True,
                 )
                 return {"result": "success"}
 
         except MCPAuthError:
-            auth_provider = OAuthClientProvider(provider_id, tenant_id)
+            auth_provider = OAuthClientProvider(provider_id, tenant_id, for_list=True)
 
-            return auth(auth_provider, server_url, args["authorization_code"])
+            return auth(auth_provider, provider.decrypted_server_url, args["authorization_code"])
 
 
 class ToolMCPDetailApi(Resource):
@@ -722,12 +722,8 @@ class ToolMCPDetailApi(Resource):
     @account_initialization_required
     def get(self, provider_id):
         user = current_user
-        return jsonable_encoder(
-            MCPToolManageService.retrieve_mcp_provider(
-                tenant_id=user.current_tenant_id,
-                provider_id=provider_id,
-            )
-        )
+        provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, user.current_tenant_id)
+        return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider))
 
 
 class ToolMCPListAllApi(Resource):

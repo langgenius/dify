@@ -22,6 +22,7 @@ class MCPClient:
         tenant_id: str,
         authed: bool = True,
         authorization_code: Optional[str] = None,
+        for_list: bool = False,
     ):
         # Initialize info
         self.provider_id = provider_id
@@ -35,7 +36,7 @@ class MCPClient:
         if authed:
             from core.mcp.auth.auth_provider import OAuthClientProvider
 
-            self.provider = OAuthClientProvider(self.provider_id, self.tenant_id)
+            self.provider = OAuthClientProvider(self.provider_id, self.tenant_id, for_list=for_list)
             self.token = self.provider.tokens()
 
         # Initialize session and client objects

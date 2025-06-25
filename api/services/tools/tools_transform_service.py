@@ -191,8 +191,6 @@ class ToolTransformService:
 
     @staticmethod
     def mcp_provider_to_user_provider(db_provider: MCPToolProvider, for_list: bool = False) -> ToolProviderApiEntity:
-        from services.tools.mcp_tools_mange_service import MCPToolManageService
-
         return ToolProviderApiEntity(
             id=db_provider.server_identifier if not for_list else db_provider.id,
             author=db_provider.user.name if db_provider.user else "Anonymous",
@@ -200,7 +198,7 @@ class ToolTransformService:
             icon=db_provider.provider_icon,
             type=ToolProviderType.MCP,
             is_team_authorization=db_provider.authed,
-            server_url=MCPToolManageService.get_masked_mcp_provider_server_url(db_provider.tenant_id, db_provider.id),
+            server_url=db_provider.masked_server_url,
             tools=ToolTransformService.mcp_tool_to_user_tool(
                 db_provider, [MCPTool(**tool) for tool in json.loads(db_provider.tools)]
             ),

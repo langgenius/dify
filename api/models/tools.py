@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import Any, cast
+from urllib.parse import urlparse
 
 import sqlalchemy as sa
 from deprecated import deprecated
@@ -8,6 +9,7 @@ from sqlalchemy import ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.file import helpers as file_helpers
+from core.helper import encrypter
 from core.mcp.types import Tool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -257,6 +259,41 @@ class MCPToolProvider(Base):
             return cast(dict[str, str], json.loads(self.icon))
         except json.JSONDecodeError:
             return file_helpers.get_signed_file_url(self.icon)
+
+    @property
+    def decrypted_server_url(self) -> str:
+        return cast(str, encrypter.decrypt_token(self.tenant_id, self.server_url))
+
+    @property
+    def masked_server_url(self) -> str:
+        def mask_url(url: str, mask_char: str = "*") -> str:
+            """
+            mask the url to a simple string
+            """
+            parsed = urlparse(url)
+            base_url = f"{parsed.scheme}://{parsed.netloc}"
+
+            if parsed.path and parsed.path != "/":
+                return f"{base_url}/{mask_char * 6}"
+            else:
+                return base_url
+
+        return mask_url(self.decrypted_server_url)
+
+    @property
+    def decrypted_credentials(self) -> dict:
+        from core.tools.mcp_tool.provider import MCPToolProviderController
+        from core.tools.utils.configuration import ProviderConfigEncrypter
+
+        provider_controller = MCPToolProviderController._from_db(self)
+
+        tool_configuration = ProviderConfigEncrypter(
+            tenant_id=self.tenant_id,
+            config=list(provider_controller.get_credentials_schema()),
+            provider_type=provider_controller.provider_type.value,
+            provider_identity=provider_controller.provider_id,
+        )
+        return tool_configuration.decrypt(self.credentials, use_cache=False)
 
 
 class ToolModelInvoke(Base):

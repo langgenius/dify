@@ -40,8 +40,6 @@ class MCPToolProviderController(ToolProviderController):
 
     @classmethod
     def _from_db(cls, db_provider: MCPToolProvider) -> "MCPToolProviderController":
-        from services.tools.mcp_tools_mange_service import MCPToolManageService
-
         """
         from db provider
         """
@@ -55,7 +53,7 @@ class MCPToolProviderController(ToolProviderController):
                     author=db_provider.user.name if db_provider.user else "Anonymous",
                     name=remote_mcp_tool.name,
                     label=I18nObject(en_US=remote_mcp_tool.name, zh_Hans=remote_mcp_tool.name),
-                    provider=db_provider.id,
+                    provider=db_provider.server_identifier,
                     icon=db_provider.icon,
                 ),
                 parameters=ToolTransformService.convert_mcp_schema_to_parameter(remote_mcp_tool.inputSchema),
@@ -84,9 +82,9 @@ class MCPToolProviderController(ToolProviderController):
                 credentials_schema=[],
                 tools=tools,
             ),
-            provider_id=db_provider.id or "",
+            provider_id=db_provider.server_identifier or "",
             tenant_id=db_provider.tenant_id or "",
-            server_url=MCPToolManageService.get_mcp_provider_server_url(db_provider.tenant_id, db_provider.id),
+            server_url=db_provider.decrypted_server_url,
         )
 
     def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
