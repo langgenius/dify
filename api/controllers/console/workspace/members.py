@@ -85,6 +85,7 @@ class MemberInviteEmailApi(Resource):
         return {
             "result": "success",
             "invitation_results": invitation_results,
+            "tenant_id": str(current_user.current_tenant.id),
         }, 201
 
 
