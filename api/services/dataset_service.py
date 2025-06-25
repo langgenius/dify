@@ -329,7 +329,7 @@ class DatasetService:
 
         # Update basic dataset properties
         dataset.name = data.get("name", dataset.name)
-        dataset.description = data.get("description", "")
+        dataset.description = data.get("description", dataset.description)
 
         # Update permission if provided
         permission = data.get("permission")
