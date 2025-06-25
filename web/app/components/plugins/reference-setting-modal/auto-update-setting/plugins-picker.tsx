@@ -7,6 +7,8 @@ import PluginsSelected from './plugins-selected'
 import Button from '@/app/components/base/button'
 import { RiAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
+import ToolPicker from './tool-picker'
 
 const i18nPrefix = 'plugin.autoUpdate'
 
@@ -27,6 +29,10 @@ const PluginsPicker: FC<Props> = ({
   const handleClear = () => {
     onChange([])
   }
+
+  const [isShowToolPicker, {
+    set: setToolPicker,
+  }] = useBoolean(false)
   return (
     <div className='mt-2 rounded-[10px] bg-background-section-burn p-2.5'>
       {hasSelected ? (
@@ -45,10 +51,18 @@ const PluginsPicker: FC<Props> = ({
         />
       )}
 
-      <Button className='mt-2 w-full' size='small' variant='secondary-accent'>
-        <RiAddLine className='size-3.5' />
-        {t(`${i18nPrefix}.operation.select`)}
-      </Button>
+      <ToolPicker
+        trigger={
+          <Button className='mt-2 w-[350px]' size='small' variant='secondary-accent'>
+            <RiAddLine className='size-3.5' />
+            {t(`${i18nPrefix}.operation.select`)}
+          </Button>
+        }
+        value={value}
+        onChange={onChange}
+        isShow={isShowToolPicker}
+        onShowChange={setToolPicker}
+      />
     </div>
   )
 }
