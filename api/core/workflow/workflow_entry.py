@@ -300,7 +300,7 @@ class WorkflowEntry:
             return node_instance, generator
         except Exception as e:
             logger.exception(
-                "error while running node_instance, workflow_id=%s, node_id=%s, type=%s, version=%s",
+                "error while running node_instance, node_id=%s, type=%s, version=%s",
                 node_instance.id,
                 node_instance.node_type,
                 node_instance.version(),
