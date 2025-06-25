@@ -254,3 +254,15 @@ export type PipelineExecutionLogResponse = {
   input_data: Record<string, any>
   datasource_node_id: string
 }
+
+export type OnlineDocumentPreviewRequest = {
+  workspaceID: string
+  pageID: string
+  pageType: string
+  pipelineId: string
+  datasourceNodeId: string
+}
+
+export type OnlineDocumentPreviewResponse = {
+  content: string
+}

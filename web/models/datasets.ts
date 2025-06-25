@@ -777,16 +777,6 @@ export type CreateDatasetResponse = {
   dataset_id: string
 }
 
-export type NotionPagePreviewRequest = {
-  workspaceID: string
-  pageID: string
-  pageType: string
-}
-
-export type NotionPagePreviewResponse = {
-  content: string
-}
-
 export type IndexingStatusBatchRequest = {
   datasetId: string
   batchId: string

@@ -1,48 +1,64 @@
 'use client'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { NotionPage } from '@/models/common'
-import { usePreviewNotionPage } from '@/service/knowledge/use-dataset'
 import { RiCloseLine } from '@remixicon/react'
 import { formatNumberAbbreviated } from '@/utils/format'
 import Loading from './loading'
 import { Notion } from '@/app/components/base/icons/src/public/common'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { usePreviewOnlineDocument } from '@/service/use-pipeline'
+import Toast from '@/app/components/base/toast'
+import { Markdown } from '@/app/components/base/markdown'
 
 type OnlineDocumentPreviewProps = {
   currentPage: NotionPage
+  datasourceNodeId: string
   hidePreview: () => void
 }
 
 const OnlineDocumentPreview = ({
   currentPage,
+  datasourceNodeId,
   hidePreview,
 }: OnlineDocumentPreviewProps) => {
   const { t } = useTranslation()
+  const [content, setContent] = useState('')
+  const pipelineId = useDatasetDetailContextWithSelector(state => state.dataset?.pipeline_id)
+  const { mutateAsync: getOnlineDocumentContent, isPending } = usePreviewOnlineDocument()
 
-  // todo: replace with a generic hook for previewing online documents
-  const { data: notionPageData, isFetching } = usePreviewNotionPage({
-    workspaceID: currentPage.workspace_id,
-    pageID: currentPage.page_id,
-    pageType: currentPage.type,
-  })
+  useEffect(() => {
+    getOnlineDocumentContent({
+      workspaceID: currentPage.workspace_id,
+      pageID: currentPage.page_id,
+      pageType: currentPage.type,
+      pipelineId: pipelineId || '',
+      datasourceNodeId,
+    }, {
+      onSuccess(data) {
+        setContent(data.content)
+      },
+      onError(error) {
+        Toast.notify({
+          type: 'error',
+          message: error.message,
+        })
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className='flex h-full w-full flex-col rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5'>
       <div className='flex gap-x-2 border-b border-divider-subtle pb-3 pl-6 pr-4 pt-4'>
         <div className='flex grow flex-col gap-y-1'>
-          <div className='system-2xs-semibold-uppercase'>{t('datasetPipeline.addDocuments.stepOne.preview')}</div>
+          <div className='system-2xs-semibold-uppercase text-text-accent'>{t('datasetPipeline.addDocuments.stepOne.preview')}</div>
           <div className='title-md-semi-bold text-tex-primary'>{currentPage?.page_name}</div>
-          <div className='system-xs-medium flex gap-x-1  text-text-tertiary'>
+          <div className='system-xs-medium flex items-center gap-x-1 text-text-tertiary'>
             <Notion className='size-3.5' />
+            <span>{currentPage.type}</span>
             <span>·</span>
-            <span>Notion Page</span>
-            <span>·</span>
-            {notionPageData && (
-              <>
-                <span>·</span>
-                <span>{`${formatNumberAbbreviated(notionPageData.content.length)} ${t('datasetPipeline.addDocuments.characters')}`}</span>
-              </>
-            )}
+            <span>{`${formatNumberAbbreviated(content.length)} ${t('datasetPipeline.addDocuments.characters')}`}</span>
           </div>
         </div>
         <button
@@ -53,14 +69,14 @@ const OnlineDocumentPreview = ({
           <RiCloseLine className='size-[18px]' />
         </button>
       </div>
-      {isFetching && (
+      {isPending && (
         <div className='grow'>
           <Loading />
         </div>
       )}
-      {!isFetching && notionPageData && (
+      {!isPending && content && (
         <div className='body-md-regular grow overflow-hidden px-6 py-5 text-text-secondary'>
-          {notionPageData.content}
+          <Markdown content={content} />
         </div>
       )}
     </div>

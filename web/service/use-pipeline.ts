@@ -1,12 +1,15 @@
 import type { MutationOptions } from '@tanstack/react-query'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, patch, post } from './base'
+import { DatasourceType } from '@/models/pipeline'
 import type {
   DeleteTemplateResponse,
   ExportTemplateDSLResponse,
   ImportPipelineDSLConfirmResponse,
   ImportPipelineDSLRequest,
   ImportPipelineDSLResponse,
+  OnlineDocumentPreviewRequest,
+  OnlineDocumentPreviewResponse,
   PipelineCheckDependenciesResponse,
   PipelineExecutionLogRequest,
   PipelineExecutionLogResponse,
@@ -322,5 +325,27 @@ export const usePipelineExecutionLog = (params: PipelineExecutionLogRequest) => 
       return get<PipelineExecutionLogResponse>(`/datasets/${dataset_id}/documents/${document_id}/pipeline-execution-log`)
     },
     staleTime: 0,
+  })
+}
+
+export const usePreviewOnlineDocument = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'preview-online-document'],
+    mutationFn: (params: OnlineDocumentPreviewRequest) => {
+      const { pipelineId, datasourceNodeId, workspaceID, pageID, pageType } = params
+      return post<OnlineDocumentPreviewResponse>(
+        `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${datasourceNodeId}/preview`,
+        {
+          body: {
+            datasource_type: DatasourceType.onlineDocument,
+            inputs: {
+              workspace_id: workspaceID,
+              page_id: pageID,
+              type: pageType,
+            },
+          },
+        },
+      )
+    },
   })
 }

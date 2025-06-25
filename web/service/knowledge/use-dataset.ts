@@ -6,8 +6,6 @@ import type {
   DatasetListRequest,
   IndexingStatusBatchRequest,
   IndexingStatusBatchResponse,
-  NotionPagePreviewRequest,
-  NotionPagePreviewResponse,
   ProcessRuleResponse,
   RelatedAppResponse,
 } from '@/models/datasets'
@@ -54,16 +52,6 @@ export const useDatasetRelatedApps = (datasetId: string) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'related-apps', datasetId],
     queryFn: () => get<RelatedAppResponse>(`/datasets/${datasetId}/related-apps`),
-  })
-}
-
-export const usePreviewNotionPage = (params: NotionPagePreviewRequest) => {
-  const { workspaceID, pageID, pageType } = params
-  return useQuery({
-    queryKey: [NAME_SPACE, 'preview-notion-page'],
-    queryFn: () => get<NotionPagePreviewResponse>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`),
-    enabled: !!workspaceID && !!pageID && !!pageType,
-    staleTime: 0,
   })
 }
 
