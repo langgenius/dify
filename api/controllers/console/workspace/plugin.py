@@ -518,15 +518,18 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         parser.add_argument("provider_type", type=str, required=True, location="args")
         args = parser.parse_args()
 
-        options = PluginParameterService.get_dynamic_select_options(
-            tenant_id,
-            user_id,
-            args["plugin_id"],
-            args["provider"],
-            args["action"],
-            args["parameter"],
-            args["provider_type"],
-        )
+        try:
+            options = PluginParameterService.get_dynamic_select_options(
+                tenant_id,
+                user_id,
+                args["plugin_id"],
+                args["provider"],
+                args["action"],
+                args["parameter"],
+                args["provider_type"],
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
 
         return jsonable_encoder({"options": options})
 

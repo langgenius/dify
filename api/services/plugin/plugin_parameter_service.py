@@ -36,21 +36,6 @@ class PluginParameterService:
 
         match provider_type:
             case "tool":
-                # fetch credentials from db
-                with Session(db.engine) as session:
-                    db_record = (
-                        session.query(BuiltinToolProvider)
-                        .filter(
-                            BuiltinToolProvider.tenant_id == tenant_id,
-                            BuiltinToolProvider.provider == provider,
-                        )
-                        .first()
-                    )
-
-                if db_record is None:
-                    raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
-
-                credentials = db_record.credentials
                 provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
                 # init tool configuration
                 tool_configuration = ProviderConfigEncrypter(
@@ -60,10 +45,30 @@ class PluginParameterService:
                     provider_identity=provider_controller.entity.identity.name,
                 )
 
-                credentials = tool_configuration.decrypt(credentials)
+                # check if credentials are required
+                if not provider_controller.need_credentials:
+                    credentials = {}
+                else:
+                    # fetch credentials from db
+                    with Session(db.engine) as session:
+                        db_record = (
+                            session.query(BuiltinToolProvider)
+                            .filter(
+                                BuiltinToolProvider.tenant_id == tenant_id,
+                                BuiltinToolProvider.provider == provider,
+                            )
+                            .first()
+                        )
+
+                    if db_record is None:
+                        raise ValueError(f"Builtin provider {provider} not found when fetching credentials")
+
+                    credentials = tool_configuration.decrypt(db_record.credentials)
             case _:
                 raise ValueError(f"Invalid provider type: {provider_type}")
 
-        return DynamicSelectClient().fetch_dynamic_select_options(
-            tenant_id, user_id, plugin_id, provider, action, credentials, parameter
+        return (
+            DynamicSelectClient()
+            .fetch_dynamic_select_options(tenant_id, user_id, plugin_id, provider, action, credentials, parameter)
+            .options
         )

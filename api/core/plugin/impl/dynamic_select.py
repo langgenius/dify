@@ -1,7 +1,8 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import Any
 
-from core.plugin.entities.parameters import PluginParameterOption
+from core.plugin.entities.plugin import GenericProviderID
+from core.plugin.entities.plugin_daemon import PluginDynamicSelectOptionsResponse
 from core.plugin.impl.base import BasePluginClient
 
 
@@ -15,18 +16,18 @@ class DynamicSelectClient(BasePluginClient):
         action: str,
         credentials: Mapping[str, Any],
         parameter: str,
-    ) -> Sequence[PluginParameterOption]:
+    ) -> PluginDynamicSelectOptionsResponse:
         """
         Fetch dynamic select options for a plugin parameter.
         """
-        return self._request_with_plugin_daemon_response(
+        response = self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/dynamic_select/fetch_parameter_options",
-            list[PluginParameterOption],
+            PluginDynamicSelectOptionsResponse,
             data={
                 "user_id": user_id,
                 "data": {
-                    "provider": provider,
+                    "provider": GenericProviderID(provider).provider_name,
                     "credentials": credentials,
                     "provider_action": action,
                     "parameter": parameter,
@@ -37,3 +38,8 @@ class DynamicSelectClient(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
+
+        for options in response:
+            return options
+
+        raise ValueError("Plugin service returned no options")
