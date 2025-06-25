@@ -46,7 +46,10 @@ const WebSSOForm: FC = () => {
   }
 
   const getAppCodeFromRedirectUrl = useCallback(() => {
-    const appCode = redirectUrl?.split('/').pop()
+    if (!redirectUrl)
+      return null
+    const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+    const appCode = url.pathname.split('/').pop()
     if (!appCode)
       return null
 
@@ -63,20 +66,20 @@ const WebSSOForm: FC = () => {
         localStorage.setItem('webapp_access_token', tokenFromUrl)
         const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: tokenFromUrl })
         await setAccessToken(appCode, tokenResp.access_token)
-        router.replace(redirectUrl)
+        router.replace(decodeURIComponent(redirectUrl))
         return
       }
       if (appCode && redirectUrl && localStorage.getItem('webapp_access_token')) {
         const tokenResp = await fetchAccessToken({ appCode, webAppAccessToken: localStorage.getItem('webapp_access_token') })
         await setAccessToken(appCode, tokenResp.access_token)
-        router.replace(redirectUrl)
+        router.replace(decodeURIComponent(redirectUrl))
       }
     })()
   }, [getAppCodeFromRedirectUrl, redirectUrl, router, tokenFromUrl, message])
 
   useEffect(() => {
     if (webAppAccessMode && webAppAccessMode === AccessMode.PUBLIC && redirectUrl)
-      router.replace(redirectUrl)
+      router.replace(decodeURIComponent(redirectUrl))
   }, [webAppAccessMode, router, redirectUrl])
 
   if (tokenFromUrl) {
