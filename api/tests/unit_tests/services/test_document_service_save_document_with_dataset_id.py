@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from models import DatasetProcessRule
 from models.account import Account
 from models.dataset import Dataset, Document
 from services.dataset_service import DocumentService
