@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from models import DatasetProcessRule
 from models.account import Account
 from models.dataset import Dataset, Document
 from services.dataset_service import DocumentService
@@ -19,6 +20,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId(unittest.TestCase):
     - Duplicate document handling
     - Process rule validation and error cases
     - Exception handling and edge cases
+    - Database session operations (add and flush)
     """
 
     def setUp(self):
@@ -190,6 +192,10 @@ class TestDocumentServiceSaveDocumentWithDatasetId(unittest.TestCase):
         assert len(docs) == 2
         mock_doc_task.assert_called_once()
         mock_dup_task.assert_not_called()
+
+        # Verify the documents were added to session
+        mock_db.add.assert_any_call(mock_doc1)
+        mock_db.add.assert_any_call(mock_doc2)
 
     @patch("services.dataset_service.FeatureService.get_features")
     @patch("services.dataset_service.current_user")
@@ -440,7 +446,8 @@ class TestDocumentServiceSaveDocumentWithDatasetId(unittest.TestCase):
         upload_file.id = "file1"
         upload_file.name = "file1.pdf"
         existing_doc = Mock(id="docid", name="file1.pdf")
-        mock_db.query.return_value.filter.return_value.first.side_effect = [upload_file, existing_doc]
+        mock_db.query.return_value.filter.return_value.first.return_value = upload_file
+        mock_db.query.return_value.filter_by.return_value.first.return_value = existing_doc
 
         # Mock time
         mock_time.strftime.return_value = "20231201120000"
@@ -451,6 +458,17 @@ class TestDocumentServiceSaveDocumentWithDatasetId(unittest.TestCase):
         # Assert
         assert len(docs) == 1
         mock_dup_task.assert_called_once()
+
+        # Verify the existing document was added to session with updated properties
+        mock_db.add.assert_any_call(existing_doc)
+
+        # Verify the document properties were updated before being added
+        # These assertions verify that the duplicate document was properly updated
+        assert existing_doc.batch == "20231201120000223456"
+        assert existing_doc.indexing_status == "waiting"
+        assert existing_doc.created_from == "web"
+        assert existing_doc.doc_form == "pdf"
+        assert existing_doc.doc_language == "en"
 
     @patch("services.dataset_service.db.session")
     @patch("services.dataset_service.redis_client")
@@ -561,6 +579,9 @@ class TestDocumentServiceSaveDocumentWithDatasetId(unittest.TestCase):
         assert len(docs) == 1
         mock_doc_task.assert_called_once()
 
+        # Verify the document was added to the database session
+        mock_db.add.assert_called_with(mock_doc)
+
     @patch("services.dataset_service.db.session")
     @patch("services.dataset_service.redis_client")
     @patch("services.dataset_service.FeatureService.get_features")
@@ -608,7 +629,10 @@ class TestDocumentServiceSaveDocumentWithDatasetId(unittest.TestCase):
 
         # Assert
         assert len(docs) == 0
-        mock_clean_task.assert_not_called()
+        # No document should be created since it already exists
+        for call in mock_db.add.call_args_list:
+            args, kwargs = call
+            assert not any(isinstance(arg, Document) for arg in args), "Method was called with a Document!"
 
     @patch("services.dataset_service.db.session")
     @patch("services.dataset_service.redis_client")
@@ -643,6 +667,10 @@ class TestDocumentServiceSaveDocumentWithDatasetId(unittest.TestCase):
         assert len(docs) == 2
         assert mock_build_doc.call_count == 2
         mock_doc_task.assert_called_once()
+
+        # Verify database session operations
+        mock_db.add.assert_any_call(mock_doc1)
+        mock_db.add.assert_any_call(mock_doc2)
 
     @patch("services.dataset_service.db.session")
     @patch("services.dataset_service.redis_client")
