@@ -155,6 +155,12 @@ const translation = {
       exclude: '选定的插件将不会自动更新',
       partial: '仅选定的插件将自动更新。目前未选择任何插件，因此不会自动更新任何插件。',
     },
+    excludeUpdate: '以下 {{num}} 个插件将不会自动更新',
+    partialUPdate: '仅以下 {{num}} 个插件将自动更新',
+    operation: {
+      clearAll: '清除所有',
+      select: '选择插件',
+    },
     nextUpdateTime: '下次自动更新时间: {{time}}',
     pluginDowngradeWarning: {
       title: '插件降级',
