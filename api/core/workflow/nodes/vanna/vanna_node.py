@@ -16,16 +16,19 @@ from .entities import VannaNodeData
 class Config:
     def __init__(self, supplier):
         self.embedding_supplier = "SiliconFlow"
-        self.milvus_uri = dify_config.MILVUS_URI
-        self.milvus_database = 'vanna_demo'
+        self.milvus_uri = dify_config.VANNA_MILVUS_URI
+        self.milvus_database = dify_config.VANNA_MILVUS_DATABASE
+        self.embedding_host = dify_config.VANNA_EMBEDDING_HOST
+        self.embedding_model = dify_config.VANNA_EMBEDDING_MODEL
+        self.embedding_type = dify_config.VANNA_EMBEDDING_TYPE
         self.supplier = supplier
         self.sql_type = 'postgres'
         self.sql_config = {
-            "host": dify_config.DB_HOST,
-            "dbname": 'vanna_demo',
-            "user": dify_config.DB_USERNAME,
-            "password": dify_config.DB_PASSWORD,
-            "port": dify_config.DB_PORT
+            "host": dify_config.VANNA_DB_HOST,
+            "dbname": dify_config.VANNA_DB_DATABASE,
+            "user": dify_config.VANNA_DB_USERNAME,
+            "password": dify_config.VANNA_DB_PASSWORD,
+            "port": dify_config.VANNA_DB_PORT
         }
 
 vn_instances = {}
