@@ -445,10 +445,10 @@ class StorageKeyLoader:
             if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
                 upload_file_row = upload_files.get(model_id)
                 if upload_file_row is None:
-                    raise ValueError(...)
+                    raise ValueError(f"Upload file not found for id: {model_id}")
                 file._storage_key = upload_file_row.key
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
                 tool_file_row = tool_files.get(model_id)
                 if tool_file_row is None:
-                    raise ValueError(...)
+                    raise ValueError(f"Tool file not found for id: {model_id}")
                 file._storage_key = tool_file_row.file_key
