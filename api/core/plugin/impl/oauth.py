@@ -37,7 +37,6 @@ class OAuthHandler(BasePluginClient):
             return resp
         raise ValueError("No response received from plugin daemon for authorization URL request.")
 
-
     def get_credentials(
         self,
         tenant_id: str,
@@ -75,7 +74,6 @@ class OAuthHandler(BasePluginClient):
         for resp in response:
             return resp
         raise ValueError("No response received from plugin daemon for authorization URL request.")
-
 
     def _convert_request_to_raw_data(self, request: Request) -> bytes:
         """

@@ -1,6 +1,3 @@
-import json
-import uuid
-
 from core.plugin.impl.base import BasePluginClient
 from extensions.ext_redis import redis_client
 
@@ -40,7 +37,6 @@ class OAuthProxyService(BasePluginClient):
             json.dumps(data),
         )
         return context_id
-
 
     @staticmethod
     def use_proxy_context(context_id, max_age=__MAX_AGE__):
