@@ -1,7 +1,8 @@
+import json
+
 from werkzeug import Request
 from werkzeug.datastructures import Headers
 from werkzeug.test import EnvironBuilder
-import json
 
 from core.plugin.impl.oauth import OAuthHandler
 
