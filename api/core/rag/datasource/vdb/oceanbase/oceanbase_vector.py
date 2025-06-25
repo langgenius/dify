@@ -112,13 +112,13 @@ class OceanBaseVector(BaseVector):
                 params=DEFAULT_OCEANBASE_HNSW_BUILD_PARAM,
             )
 
-            fts_idxs: Optional[list[FtsIndexParam]]
+            fts_idxs: Optional[list[FtsIndexParam]] = None
             if self._hybrid_search_enabled:
-                fts_idxs = [FtsIndexParam(index_name="fulltext_index_for_col_text",
-                                          field_names=["text"],
-                                          parser_type=FtsParser.IK)]
-            else:
-                fts_idxs = None
+                fts_idxs = [
+                    FtsIndexParam(
+                        index_name="fulltext_index_for_col_text", field_names=["text"], parser_type=FtsParser.IK
+                    )
+                ]
 
             self._client.create_table_with_index_params(
                 table_name=self._collection_name,
@@ -155,15 +155,13 @@ class OceanBaseVector(BaseVector):
 
         batch_size = 100
         for i in range(0, len(ids), batch_size):
-            batch_ids = ids[i:i + batch_size]
-            batch_docs = documents[i:i + batch_size]
-            batch_embs = embeddings[i:i + batch_size]
-            batch_data = [{
-                "id": id,
-                "vector": emb,
-                "text": doc.page_content,
-                "metadata": doc.metadata
-            } for id, doc, emb in zip(batch_ids, batch_docs, batch_embs)]
+            batch_ids = ids[i : i + batch_size]
+            batch_docs = documents[i : i + batch_size]
+            batch_embs = embeddings[i : i + batch_size]
+            batch_data = [
+                {"id": id, "vector": emb, "text": doc.page_content, "metadata": doc.metadata}
+                for id, doc, emb in zip(batch_ids, batch_docs, batch_embs)
+            ]
 
             self._client.insert(
                 table_name=self._collection_name,
