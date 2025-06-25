@@ -53,6 +53,7 @@ from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.utils import variable_utils
 from libs.flask_utils import preserve_flask_contexts
 from models.enums import UserFrom
 from models.workflow import WorkflowType
@@ -856,16 +857,12 @@ class GraphEngine:
         :param variable_value: variable value
         :return:
         """
-        self.graph_runtime_state.variable_pool.add([node_id] + variable_key_list, variable_value)
-
-        # if variable_value is a dict, then recursively append variables
-        if isinstance(variable_value, dict):
-            for key, value in variable_value.items():
-                # construct new key list
-                new_key_list = variable_key_list + [key]
-                self._append_variables_recursively(
-                    node_id=node_id, variable_key_list=new_key_list, variable_value=value
-                )
+        variable_utils.append_variables_recursively(
+            self.graph_runtime_state.variable_pool,
+            node_id,
+            variable_key_list,
+            variable_value,
+        )
 
     def _is_timed_out(self, start_at: float, max_execution_time: int) -> bool:
         """

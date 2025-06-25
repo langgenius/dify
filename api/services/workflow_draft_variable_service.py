@@ -129,7 +129,8 @@ class WorkflowDraftVariableService:
     ) -> list[WorkflowDraftVariable]:
         ors = []
         for selector in selectors:
-            node_id, name = selector
+            assert len(selector) >= MIN_SELECTORS_LENGTH, f"Invalid selector to get: {selector}"
+            node_id, name = selector[:2]
             ors.append(and_(WorkflowDraftVariable.node_id == node_id, WorkflowDraftVariable.name == name))
 
         # NOTE(QuantumGhost): Although the number of `or` expressions may be large, as long as
