@@ -427,6 +427,39 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[], 
   })
 }
 
+export const useFetchPluginListOrBundleList = (pluginsSearchParams: PluginsSearchParams) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'fetchPluginListOrBundleList', pluginsSearchParams],
+    queryFn: () => {
+      const {
+        query,
+        sortBy,
+        sortOrder,
+        category,
+        tags,
+        exclude,
+        type,
+        page = 1,
+        pageSize = 40,
+      } = pluginsSearchParams
+      const pluginOrBundle = type === 'bundle' ? 'bundles' : 'plugins'
+      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>(`/${pluginOrBundle}/search/advanced`, {
+        body: {
+          page,
+          page_size: pageSize,
+          query,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+          category: category !== 'all' ? category : '',
+          tags,
+          exclude,
+          type,
+        },
+      })
+    },
+  })
+}
+
 export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[]) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
