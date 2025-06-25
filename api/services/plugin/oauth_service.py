@@ -41,7 +41,6 @@ class OAuthProxyService(BasePluginClient):
         )
         return context_id
 
-
     @staticmethod
     def use_proxy_context(context_id, max_age=__MAX_AGE__):
         """
