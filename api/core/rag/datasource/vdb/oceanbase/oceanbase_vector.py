@@ -4,7 +4,7 @@ import math
 from typing import Any, Optional
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient, FtsIndexParam, FtsParser  # type: ignore
+from pyobvector import VECTOR, FtsIndexParam, FtsParser, ObVecClient  # type: ignore
 from sqlalchemy import JSON, Column, String, func
 from sqlalchemy.dialects.mysql import LONGTEXT
 
@@ -116,7 +116,7 @@ class OceanBaseVector(BaseVector):
             if self._hybrid_search_enabled:
                 fts_idxs = [FtsIndexParam(index_name="fulltext_index_for_col_text",
                                           field_names=["text"],
-                                          parser_type=FtsParser("ik"))]
+                                          parser_type=FtsParser.IK)]
             else:
                 fts_idxs = None
 
