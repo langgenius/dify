@@ -183,6 +183,7 @@ const translation = {
     checkName: {
       empty: '元数据名称不能为空',
       invalid: '元数据名称只能包含小写字母、数字和下划线，并且必须以小写字母开头',
+      tooLong: '元数据名称不得超过{{max}}个字符',
     },
     batchEditMetadata: {
       editMetadata: '编辑元数据',

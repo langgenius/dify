@@ -40,6 +40,10 @@ class QuestionClassifierNode(LLMNode):
     _node_data_cls = QuestionClassifierNodeData  # type: ignore
     _node_type = NodeType.QUESTION_CLASSIFIER
 
+    @classmethod
+    def version(cls):
+        return "1"
+
     def _run(self):
         node_data = cast(QuestionClassifierNodeData, self.node_data)
         variable_pool = self.graph_runtime_state.variable_pool

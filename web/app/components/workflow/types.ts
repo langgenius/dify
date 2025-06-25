@@ -301,7 +301,7 @@ export type Block = {
 
 export type NodeDefault<T> = {
   defaultValue: Partial<T>
-  defaultRunInputData: Record<string, any>
+  defaultRunInputData?: Record<string, any>
   getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
   getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
   checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }

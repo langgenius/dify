@@ -185,6 +185,7 @@ const translation = {
     checkName: {
       empty: 'Nazwa metadanych nie może być pusta',
       invalid: 'Nazwa metadanych może zawierać tylko małe litery, cyfry i podkreślenia oraz musi zaczynać się od małej litery',
+      tooLong: 'Nazwa metadanych nie może przekraczać {{max}} znaków',
     },
     batchEditMetadata: {
       multipleValue: 'Wielokrotna wartość',

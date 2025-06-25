@@ -5,7 +5,7 @@ from typing import cast
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, fields, marshal, marshal_with, reqparse
+from flask_restful import Resource, marshal, marshal_with, reqparse
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -239,12 +239,10 @@ class DatasetDocumentListApi(Resource):
 
         return response
 
-    documents_and_batch_fields = {"documents": fields.List(fields.Nested(document_fields)), "batch": fields.String}
-
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(documents_and_batch_fields)
+    @marshal_with(dataset_and_document_fields)
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id):
@@ -290,6 +288,8 @@ class DatasetDocumentListApi(Resource):
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, current_user)
+            dataset = DatasetService.get_dataset(dataset_id)
+
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
