@@ -159,3 +159,7 @@ class KnowledgeIndexNode(BaseNode[KnowledgeIndexNodeData]):
     def _get_preview_output(self, chunk_structure: str, chunks: Mapping[str, Any]) -> Mapping[str, Any]:
         index_processor = IndexProcessorFactory(chunk_structure).init_index_processor()
         return index_processor.format_preview(chunks)
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"

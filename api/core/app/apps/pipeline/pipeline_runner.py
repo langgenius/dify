@@ -10,7 +10,7 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     RagPipelineGenerateEntity,
 )
-from core.variables.variables import RAGPipelineVariable
+from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
@@ -45,6 +45,8 @@ class PipelineRunner(WorkflowBasedAppRunner):
         self.queue_manager = queue_manager
         self.workflow_thread_pool_id = workflow_thread_pool_id
 
+    def _get_app_id(self) -> str:
+        return self.application_generate_entity.app_config.app_id
     def run(self) -> None:
         """
         Run application
@@ -107,15 +109,20 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 SystemVariableKey.DATASOURCE_INFO: self.application_generate_entity.datasource_info,
                 SystemVariableKey.INVOKE_FROM: self.application_generate_entity.invoke_from.value,
             }
-            rag_pipeline_variables = {}
+            rag_pipeline_variables = []
             if workflow.rag_pipeline_variables:
                 for v in workflow.rag_pipeline_variables:
                     rag_pipeline_variable = RAGPipelineVariable(**v)
                     if (
-                        rag_pipeline_variable.belong_to_node_id == self.application_generate_entity.start_node_id
+                        (rag_pipeline_variable.belong_to_node_id == self.application_generate_entity.start_node_id or rag_pipeline_variable.belong_to_node_id == "shared")
                         and rag_pipeline_variable.variable in inputs
                     ):
-                        rag_pipeline_variables[rag_pipeline_variable.variable] = inputs[rag_pipeline_variable.variable]
+                        rag_pipeline_variables.append(
+                            RAGPipelineVariableInput(
+                                variable=rag_pipeline_variable,
+                                value=inputs[rag_pipeline_variable.variable],
+                            )
+                        )
 
             variable_pool = VariablePool(
                 system_variables=system_inputs,

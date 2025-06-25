@@ -160,7 +160,7 @@ class PipelineGenerator(BaseAppGenerator):
                 document_id=document_id,
                 inputs=self._prepare_user_inputs(
                     user_inputs=inputs,
-                    variables=pipeline_config.variables,
+                    variables=pipeline_config.rag_pipeline_variables,
                     tenant_id=pipeline.tenant_id,
                     strict_type_validation=True if invoke_from == InvokeFrom.SERVICE_API else False,
                 ),

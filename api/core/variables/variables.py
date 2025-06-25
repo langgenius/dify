@@ -117,3 +117,8 @@ class RAGPipelineVariable(BaseModel):
     )
     required: bool = Field(description="optional, default false", default=False)
     options: list[str] | None = Field(default_factory=list)
+
+
+class RAGPipelineVariableInput(BaseModel):
+    variable: RAGPipelineVariable
+    value: Any

@@ -322,6 +322,14 @@ class Workflow(Base):
 
         return variables
 
+    def rag_pipeline_user_input_form(self) -> list:
+
+        # get user_input_form from start node
+        variables: list[Any] = self.rag_pipeline_variables
+
+        return variables
+
+
     @property
     def unique_hash(self) -> str:
         """

@@ -1,6 +1,6 @@
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
-from core.app.app_config.entities import WorkflowUIBasedAppConfig
+from core.app.app_config.entities import RagPipelineVariableEntity, WorkflowUIBasedAppConfig
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
 from core.app.app_config.workflow_ui_based_app.variables.manager import WorkflowVariablesConfigManager
@@ -13,7 +13,7 @@ class PipelineConfig(WorkflowUIBasedAppConfig):
     """
     Pipeline Config Entity.
     """
-
+    rag_pipeline_variables: list[RagPipelineVariableEntity] = []
     pass
 
 
@@ -25,7 +25,7 @@ class PipelineConfigManager(BaseAppConfigManager):
             app_id=pipeline.id,
             app_mode=AppMode.RAG_PIPELINE,
             workflow_id=workflow.id,
-            variables=WorkflowVariablesConfigManager.convert(workflow=workflow),
+            rag_pipeline_variables=WorkflowVariablesConfigManager.convert_rag_pipeline_variable(workflow=workflow),
         )
 
         return pipeline_config

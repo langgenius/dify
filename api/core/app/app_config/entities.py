@@ -1,3 +1,4 @@
+from ast import Str
 from collections.abc import Sequence
 from enum import Enum, StrEnum
 from typing import Any, Literal, Optional
@@ -113,9 +114,9 @@ class VariableEntity(BaseModel):
     hide: bool = False
     max_length: Optional[int] = None
     options: Sequence[str] = Field(default_factory=list)
-    allowed_file_types: Sequence[FileType] = Field(default_factory=list)
-    allowed_file_extensions: Sequence[str] = Field(default_factory=list)
-    allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
+    allowed_file_types: Optional[Sequence[FileType]] = Field(default_factory=list)
+    allowed_file_extensions: Optional[Sequence[str]] = Field(default_factory=list)
+    allowed_file_upload_methods: Optional[Sequence[FileTransferMethod]] = Field(default_factory=list)
 
     @field_validator("description", mode="before")
     @classmethod
@@ -127,6 +128,13 @@ class VariableEntity(BaseModel):
     def convert_none_options(cls, v: Any) -> Sequence[str]:
         return v or []
 
+class RagPipelineVariableEntity(VariableEntity):
+    """
+    Rag Pipeline Variable Entity.
+    """
+    tooltips: Optional[str] = None
+    placeholder: Optional[str] = None
+    belong_to_node_id: str
 
 class ExternalDataVariableEntity(BaseModel):
     """
