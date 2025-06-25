@@ -152,19 +152,23 @@ class OceanBaseVector(BaseVector):
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         ids = self._get_uuids(documents)
-        data_list = []
-        for id, doc, emb in zip(ids, documents, embeddings):
-            data_list.append({
+
+        batch_size = 100
+        for i in range(0, len(ids), batch_size):
+            batch_ids = ids[i:i + batch_size]
+            batch_docs = documents[i:i + batch_size]
+            batch_embs = embeddings[i:i + batch_size]
+            batch_data = [{
                 "id": id,
                 "vector": emb,
                 "text": doc.page_content,
-                "metadata": doc.metadata,
-            })
+                "metadata": doc.metadata
+            } for id, doc, emb in zip(batch_ids, batch_docs, batch_embs)]
 
-        self._client.insert(
-            table_name=self._collection_name,
-            data=data_list,
-        )
+            self._client.insert(
+                table_name=self._collection_name,
+                data=batch_data,
+            )
 
     def text_exists(self, id: str) -> bool:
         cur = self._client.get(table_name=self._collection_name, ids=id)
