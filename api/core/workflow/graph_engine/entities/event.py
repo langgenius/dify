@@ -66,6 +66,8 @@ class BaseNodeEvent(GraphEngineEvent):
     """iteration id if node is in iteration"""
     in_loop_id: Optional[str] = None
     """loop id if node is in loop"""
+    # The version of the node, or "1" if not specified.
+    node_version: str = "1"
 
 
 class NodeRunStartedEvent(BaseNodeEvent):

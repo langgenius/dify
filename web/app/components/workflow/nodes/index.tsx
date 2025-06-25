@@ -10,7 +10,7 @@ import {
   PanelComponentMap,
 } from './constants'
 import BaseNode from './_base/node'
-import BasePanel from './_base/panel'
+import BasePanel from './_base/components/workflow-panel'
 
 const CustomNode = (props: NodeProps) => {
   const nodeData = props.data
@@ -18,7 +18,7 @@ const CustomNode = (props: NodeProps) => {
 
   return (
     <>
-      <BaseNode { ...props }>
+      <BaseNode {...props}>
         <NodeComponent />
       </BaseNode>
     </>

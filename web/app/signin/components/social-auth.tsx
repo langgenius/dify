@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'next/navigation'
 import style from '../page.module.css'
 import Button from '@/app/components/base/button'
-import { apiPrefix } from '@/config'
+import { API_PREFIX } from '@/config'
 import classNames from '@/utils/classnames'
 import { getPurifyHref } from '@/utils'
 
@@ -15,7 +15,7 @@ export default function SocialAuth(props: SocialAuthProps) {
   const searchParams = useSearchParams()
 
   const getOAuthLink = (href: string) => {
-    const url = getPurifyHref(`${apiPrefix}${href}`)
+    const url = getPurifyHref(`${API_PREFIX}${href}`)
     if (searchParams.has('invite_token'))
       return `${url}?${searchParams.toString()}`
 

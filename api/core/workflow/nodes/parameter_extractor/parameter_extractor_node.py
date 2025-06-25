@@ -25,6 +25,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.variables.types import SegmentType
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -32,6 +33,7 @@ from core.workflow.nodes.base.node import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.llm import ModelConfig, llm_utils
 from core.workflow.utils import variable_template_parser
+from factories.variable_factory import build_segment_with_type
 
 from .entities import ParameterExtractorNodeData
 from .exc import (
@@ -108,6 +110,10 @@ class ParameterExtractorNode(BaseNode):
                 }
             }
         }
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self):
         """
@@ -584,28 +590,30 @@ class ParameterExtractorNode(BaseNode):
                 elif parameter.type in {"string", "select"}:
                     if isinstance(result[parameter.name], str):
                         transformed_result[parameter.name] = result[parameter.name]
-                elif parameter.type.startswith("array"):
+                elif parameter.is_array_type():
                     if isinstance(result[parameter.name], list):
-                        nested_type = parameter.type[6:-1]
-                        transformed_result[parameter.name] = []
+                        nested_type = parameter.element_type()
+                        assert nested_type is not None
+                        segment_value = build_segment_with_type(segment_type=SegmentType(parameter.type), value=[])
+                        transformed_result[parameter.name] = segment_value
                         for item in result[parameter.name]:
                             if nested_type == "number":
                                 if isinstance(item, int | float):
-                                    transformed_result[parameter.name].append(item)
+                                    segment_value.value.append(item)
                                 elif isinstance(item, str):
                                     try:
                                         if "." in item:
-                                            transformed_result[parameter.name].append(float(item))
+                                            segment_value.value.append(float(item))
                                         else:
-                                            transformed_result[parameter.name].append(int(item))
+                                            segment_value.value.append(int(item))
                                     except ValueError:
                                         pass
                             elif nested_type == "string":
                                 if isinstance(item, str):
-                                    transformed_result[parameter.name].append(item)
+                                    segment_value.value.append(item)
                             elif nested_type == "object":
                                 if isinstance(item, dict):
-                                    transformed_result[parameter.name].append(item)
+                                    segment_value.value.append(item)
 
             if parameter.name not in transformed_result:
                 if parameter.type == "number":
@@ -615,7 +623,9 @@ class ParameterExtractorNode(BaseNode):
                 elif parameter.type in {"string", "select"}:
                     transformed_result[parameter.name] = ""
                 elif parameter.type.startswith("array"):
-                    transformed_result[parameter.name] = []
+                    transformed_result[parameter.name] = build_segment_with_type(
+                        segment_type=SegmentType(parameter.type), value=[]
+                    )
 
         return transformed_result
 

@@ -10,6 +10,7 @@ import {
   useWorkflowStore,
 } from '../../store'
 import { useWorkflowRun } from '../../hooks'
+import { formatWorkflowRunIdentifier } from '../../utils'
 import UserInput from './user-input'
 import Chat from '@/app/components/base/chat/chat'
 import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
@@ -99,7 +100,7 @@ const ChatRecord = () => {
       {fetched && (
         <>
           <div className='flex shrink-0 items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
-            {`TEST CHAT#${historyWorkflowData?.sequence_number}`}
+            {`TEST CHAT${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
             <div
               className='flex h-6 w-6 cursor-pointer items-center justify-center'
               onClick={() => {

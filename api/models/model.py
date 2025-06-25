@@ -612,6 +612,14 @@ class InstalledApp(Base):
         return tenant
 
 
+class ConversationSource(StrEnum):
+    """This enumeration is designed for use with `Conversation.from_source`."""
+
+    # NOTE(QuantumGhost): The enumeration members may not cover all possible cases.
+    API = "api"
+    CONSOLE = "console"
+
+
 class Conversation(Base):
     __tablename__ = "conversations"
     __table_args__ = (
@@ -633,7 +641,14 @@ class Conversation(Base):
     system_instruction = db.Column(db.Text)
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     status = db.Column(db.String(255), nullable=False)
+
+    # The `invoke_from` records how the conversation is created.
+    #
+    # Its value corresponds to the members of `InvokeFrom`.
+    # (api/core/app/entities/app_invoke_entities.py)
     invoke_from = db.Column(db.String(255), nullable=True)
+
+    # ref: ConversationSource.
     from_source = db.Column(db.String(255), nullable=False)
     from_end_user_id = db.Column(StringUUID)
     from_account_id = db.Column(StringUUID)
@@ -818,7 +833,12 @@ class Conversation(Base):
 
     @property
     def first_message(self):
-        return db.session.query(Message).filter(Message.conversation_id == self.id).first()
+        return (
+            db.session.query(Message)
+            .filter(Message.conversation_id == self.id)
+            .order_by(Message.created_at.asc())
+            .first()
+        )
 
     @property
     def app(self):
