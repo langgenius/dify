@@ -1,6 +1,6 @@
 import json
 from typing import Optional, Union
-
+import time
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
@@ -40,11 +40,12 @@ class MessageService:
 
         if not conversation_id:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
-
+        start_time = time.time()
         conversation = ConversationService.get_conversation(
             app_model=app_model, user=user, conversation_id=conversation_id
         )
-
+        end_time = time.time()
+        print(f"-----------time1：{end_time - start_time} ")
         fetch_limit = limit + 1
 
         if first_id:
@@ -53,7 +54,8 @@ class MessageService:
                 .filter(Message.conversation_id == conversation.id, Message.id == first_id)
                 .first()
             )
-
+            end_time_2 = time.time()
+            print(f"-----------time-first_message：{end_time_2 - end_time} ")
             if not first_message:
                 raise FirstMessageNotExistsError()
 
@@ -68,6 +70,8 @@ class MessageService:
                 .limit(fetch_limit)
                 .all()
             )
+            end_time_3 = time.time()
+            print(f"-----------time-history_messages：{end_time_3 - end_time_2} ")
         else:
             history_messages = (
                 db.session.query(Message)
@@ -76,6 +80,8 @@ class MessageService:
                 .limit(fetch_limit)
                 .all()
             )
+            end_time_3 = time.time()
+            print(f"-----------time-history_messages：{end_time_3 - end_time} ")
 
         has_more = False
         if len(history_messages) > limit:
