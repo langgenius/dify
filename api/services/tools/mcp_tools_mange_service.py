@@ -50,7 +50,14 @@ class MCPToolManageService:
 
     @staticmethod
     def create_mcp_provider(
-        tenant_id: str, name: str, server_url: str, user_id: str, icon: str, icon_type: str, icon_background: str
+        tenant_id: str,
+        name: str,
+        server_url: str,
+        user_id: str,
+        icon: str,
+        icon_type: str,
+        icon_background: str,
+        server_identifier: str,
     ) -> ToolProviderApiEntity:
         server_url_hash = hashlib.sha256(server_url.encode()).hexdigest()
         existing_provider = (
@@ -80,20 +87,24 @@ class MCPToolManageService:
             authed=False,
             tools="[]",
             icon=json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon,
+            server_identifier=server_identifier,
         )
         db.session.add(mcp_tool)
         db.session.commit()
         return ToolTransformService.mcp_provider_to_user_provider(mcp_tool)
 
     @staticmethod
-    def retrieve_mcp_tools(tenant_id: str) -> list[ToolProviderApiEntity]:
+    def retrieve_mcp_tools(tenant_id: str, for_list: bool = False) -> list[ToolProviderApiEntity]:
         mcp_providers = (
             db.session.query(MCPToolProvider)
             .filter(MCPToolProvider.tenant_id == tenant_id)
             .order_by(MCPToolProvider.name)
             .all()
         )
-        return [ToolTransformService.mcp_provider_to_user_provider(mcp_provider) for mcp_provider in mcp_providers]
+        return [
+            ToolTransformService.mcp_provider_to_user_provider(mcp_provider, for_list=for_list)
+            for mcp_provider in mcp_providers
+        ]
 
     @classmethod
     def list_mcp_tool_from_remote_server(cls, tenant_id: str, provider_id: str):
@@ -123,6 +134,7 @@ class MCPToolManageService:
             updated_at=int(mcp_provider.updated_at.timestamp()),
             description=I18nObject(en_US="", zh_Hans=""),
             label=I18nObject(en_US=mcp_provider.name, zh_Hans=mcp_provider.name),
+            plugin_unique_identifier=mcp_provider.server_identifier,
         )
 
     @classmethod
@@ -150,6 +162,7 @@ class MCPToolManageService:
         icon: str,
         icon_type: str,
         icon_background: str,
+        server_identifier: str,
     ):
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
         if mcp_provider is None:
@@ -158,6 +171,8 @@ class MCPToolManageService:
         mcp_provider.icon = (
             json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon
         )
+        mcp_provider.server_identifier = server_identifier
+
         if "[__HIDDEN__]" in server_url:
             db.session.commit()
             return
@@ -182,7 +197,6 @@ class MCPToolManageService:
                     mcp_provider.tools = "[]"
                 mcp_provider.encrypted_credentials = "{}"
                 mcp_provider.server_url_hash = server_url_hash
-
             db.session.commit()
         except IntegrityError as e:
             db.session.rollback()

@@ -415,25 +415,6 @@ class ToolManager:
         return tool_entity
 
     @classmethod
-    def get_tool_runtime_from_mcp(
-        cls,
-        tenant_id: str,
-        provider_id: str,
-        tool_name: str,
-    ) -> Tool:
-        """
-        get tool runtime from mcp
-        """
-        return cls.get_tool_runtime(
-            provider_type=ToolProviderType.MCP,
-            provider_id=provider_id,
-            tool_name=tool_name,
-            tenant_id=tenant_id,
-            invoke_from=InvokeFrom.SERVICE_API,
-            tool_invoke_from=ToolInvokeFrom.PLUGIN,
-        )
-
-    @classmethod
     def get_hardcoded_provider_icon(cls, provider: str) -> tuple[str, str]:
         """
         get the absolute path of the icon of the hardcoded provider
@@ -673,7 +654,7 @@ class ToolManager:
                     )
                     result_providers[f"workflow_provider.{user_provider.name}"] = user_provider
             if "mcp" in filters:
-                mcp_providers = MCPToolManageService.retrieve_mcp_tools(tenant_id)
+                mcp_providers = MCPToolManageService.retrieve_mcp_tools(tenant_id, for_list=True)
                 for mcp_provider in mcp_providers:
                     result_providers[f"mcp_provider.{mcp_provider.name}"] = mcp_provider
 
@@ -724,7 +705,7 @@ class ToolManager:
         provider: MCPToolProvider | None = (
             db.session.query(MCPToolProvider)
             .filter(
-                MCPToolProvider.id == provider_id,
+                MCPToolProvider.server_identifier == provider_id,
                 MCPToolProvider.tenant_id == tenant_id,
             )
             .first()

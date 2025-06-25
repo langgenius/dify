@@ -201,11 +201,14 @@ class MCPToolProvider(Base):
         db.PrimaryKeyConstraint("id", name="tool_mcp_provider_pkey"),
         db.UniqueConstraint("tenant_id", "server_url_hash", name="unique_mcp_provider_server_url"),
         db.UniqueConstraint("tenant_id", "name", name="unique_mcp_provider_name"),
+        db.UniqueConstraint("tenant_id", "server_identifier", name="unique_mcp_provider_server_identifier"),
     )
 
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     # name of the mcp provider
     name: Mapped[str] = mapped_column(db.String(40), nullable=False)
+    # server identifier of the mcp provider
+    server_identifier: Mapped[str] = mapped_column(db.String(24), nullable=False)
     # encrypted url of the mcp provider
     server_url: Mapped[str] = mapped_column(db.Text, nullable=False)
     # hash of server_url for uniqueness check

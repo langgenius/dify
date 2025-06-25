@@ -46,14 +46,15 @@ class ToolTransformService:
 
         if provider_type == ToolProviderType.BUILT_IN.value:
             return str(url_prefix / "builtin" / provider_name / "icon")
-        elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value, ToolProviderType.MCP.value}:
+        elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
             try:
                 if isinstance(icon, str):
                     return cast(dict, json.loads(icon))
                 return icon
             except Exception:
                 return {"background": "#252525", "content": "\ud83d\ude01"}
-
+        elif provider_type == ToolProviderType.MCP.value:
+            return icon
         return ""
 
     @staticmethod
@@ -189,11 +190,11 @@ class ToolTransformService:
         )
 
     @staticmethod
-    def mcp_provider_to_user_provider(db_provider: MCPToolProvider) -> ToolProviderApiEntity:
+    def mcp_provider_to_user_provider(db_provider: MCPToolProvider, for_list: bool = False) -> ToolProviderApiEntity:
         from services.tools.mcp_tools_mange_service import MCPToolManageService
 
         return ToolProviderApiEntity(
-            id=db_provider.id,
+            id=db_provider.server_identifier if not for_list else db_provider.id,
             author=db_provider.user.name if db_provider.user else "Anonymous",
             name=db_provider.name,
             icon=db_provider.provider_icon,

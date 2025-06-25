@@ -1443,7 +1443,11 @@ class EndUser(Base, UserMixin):
 
 class AppMCPServer(Base):
     __tablename__ = "app_mcp_servers"
-    __table_args__ = (db.PrimaryKeyConstraint("id", name="app_mcp_server_pkey"),)
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="app_mcp_server_pkey"),
+        db.UniqueConstraint("tenant_id", "app_id", name="unique_app_mcp_server_tenant_app_id"),
+        db.UniqueConstraint("tenant_id", "server_code", name="unique_app_mcp_server_tenant_server_code"),
+    )
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=False)

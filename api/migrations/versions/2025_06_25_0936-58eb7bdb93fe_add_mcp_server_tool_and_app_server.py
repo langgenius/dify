@@ -1,8 +1,8 @@
 """add mcp server tool and app server
 
-Revision ID: 9e4b39294dc8
-Revises: 4474872b0ee6
-Create Date: 2025-06-12 10:58:14.199433
+Revision ID: 58eb7bdb93fe
+Revises: 0ab65e1cc7fa
+Create Date: 2025-06-25 09:36:07.510570
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '9e4b39294dc8'
+revision = '58eb7bdb93fe'
 down_revision = '0ab65e1cc7fa'
 branch_labels = None
 depends_on = None
@@ -30,11 +30,14 @@ def upgrade():
     sa.Column('parameters', sa.Text(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-    sa.PrimaryKeyConstraint('id', name='app_mcp_server_pkey')
+    sa.PrimaryKeyConstraint('id', name='app_mcp_server_pkey'),
+    sa.UniqueConstraint('tenant_id', 'app_id', name='unique_app_mcp_server_tenant_app_id'),
+    sa.UniqueConstraint('tenant_id', 'server_code', name='unique_app_mcp_server_tenant_server_code')
     )
     op.create_table('tool_mcp_providers',
     sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
     sa.Column('name', sa.String(length=40), nullable=False),
+    sa.Column('server_identifier', sa.String(length=24), nullable=False),
     sa.Column('server_url', sa.Text(), nullable=False),
     sa.Column('server_url_hash', sa.String(length=64), nullable=False),
     sa.Column('icon', sa.String(length=255), nullable=True),
@@ -47,6 +50,7 @@ def upgrade():
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
     sa.PrimaryKeyConstraint('id', name='tool_mcp_provider_pkey'),
     sa.UniqueConstraint('tenant_id', 'name', name='unique_mcp_provider_name'),
+    sa.UniqueConstraint('tenant_id', 'server_identifier', name='unique_mcp_provider_server_identifier'),
     sa.UniqueConstraint('tenant_id', 'server_url_hash', name='unique_mcp_provider_server_url')
     )
 

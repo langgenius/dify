@@ -630,6 +630,7 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json", default="")
+        parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         user = current_user
         if not validators.url(args["server_url"]):
@@ -643,6 +644,7 @@ class ToolProviderMCPApi(Resource):
                 icon_type=args["icon_type"],
                 icon_background=args["icon_background"],
                 user_id=user.id,
+                server_identifier=args["server_identifier"],
             )
         )
 
@@ -657,21 +659,13 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("icon_type", type=str, required=True, nullable=False, location="json")
         parser.add_argument("icon_background", type=str, required=False, nullable=True, location="json")
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         if not validators.url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
                 pass
             else:
                 raise ValueError("Server URL is not valid.")
-        MCPToolManageService.update_mcp_provider(
-            tenant_id=current_user.current_tenant_id,
-            name=args["name"],
-            server_url=args["server_url"],
-            icon=args["icon"],
-            icon_type=args["icon_type"],
-            icon_background=args["icon_background"],
-            provider_id=args["provider_id"],
-        )
         return {"result": "success"}
 
     @setup_required
