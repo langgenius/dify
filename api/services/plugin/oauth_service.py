@@ -19,7 +19,7 @@ class OAuthProxyService(BasePluginClient):
         in a distributed cache (Redis) along with the user's session context.
 
         The returned nonce should be included as the 'proxy_context' parameter in the
-        authorization URL. Upon callback, the `retrieve_proxy_context` method
+        authorization URL. Upon callback, the `use_proxy_context` method
         is used to verify the state, ensuring the request's integrity and authenticity,
         and mitigating replay attacks.
         """
