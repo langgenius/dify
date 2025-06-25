@@ -63,8 +63,8 @@ const InputVarList: FC<Props> = ({
       return 'ModelSelector'
     else if (type === FormTypeEnum.toolSelector)
       return 'ToolSelector'
-    else if (type === FormTypeEnum.dynamicSelect)
-      return 'DynamicSelect'
+    else if (type === FormTypeEnum.dynamicSelect || type === FormTypeEnum.select)
+      return 'Select'
     else
       return 'String'
   }
