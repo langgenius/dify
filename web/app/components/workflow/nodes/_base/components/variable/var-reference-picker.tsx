@@ -17,7 +17,7 @@ import {
 import RemoveButton from '../remove-button'
 import useAvailableVarList from '../../hooks/use-available-var-list'
 import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, inputVarTypeToVarType, isConversationVar, isENV, isRagVariableVar, isSystemVar, varTypeToStructType } from './utils'
+import { getNodeInfoById, isConversationVar, isENV, isRagVariableVar, isSystemVar, varTypeToStructType } from './utils'
 import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
 import type { CommonNodeType, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -141,25 +141,8 @@ const VarReferencePicker: FC<Props> = ({
 
   const outputVars = useMemo(() => {
     const results = passedInAvailableVars || availableVars
-
-    if (node?.data.type === BlockEnum.DataSource) {
-      const ragVariablesInDataSource = ragPipelineVariables?.find(ragVariable => ragVariable.belong_to_node_id === node.id)
-
-      if (ragVariablesInDataSource) {
-        results.unshift({
-          nodeId: node.id,
-          title: node.data?.title,
-          vars: [{
-            variable: `rag.${node.id}.${ragVariablesInDataSource.variable}`,
-            type: inputVarTypeToVarType(ragVariablesInDataSource.type as any),
-            description: ragVariablesInDataSource.label,
-            isRagVariable: true,
-          } as Var],
-        })
-      }
-    }
     return results
-  }, [passedInAvailableVars, availableVars, node, ragPipelineVariables])
+  }, [passedInAvailableVars, availableVars])
 
   const [open, setOpen] = useState(false)
   useEffect(() => {
