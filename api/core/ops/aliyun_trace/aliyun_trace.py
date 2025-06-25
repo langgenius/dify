@@ -346,7 +346,7 @@ class AliyunDataTrace(BaseTraceInstance):
         input_value = ""
         if node_execution.inputs:
             input_value = str(node_execution.inputs.get("query", ""))
-        output_value = []
+        output_value = ""
         if node_execution.outputs:
             output_value = json.dumps(node_execution.outputs.get("result", []), ensure_ascii=False)
         return SpanData(
