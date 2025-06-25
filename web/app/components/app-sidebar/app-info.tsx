@@ -256,7 +256,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
           </div>
           {/* description */}
           {appDetail.description && (
-            <div className='system-xs-regular overflow-wrap-anywhere w-full max-w-full whitespace-normal break-words text-text-tertiary'>{appDetail.description}</div>
+            <div className='system-xs-regular overflow-wrap-anywhere max-h-[105px] w-full max-w-full overflow-y-auto whitespace-normal break-words text-text-tertiary'>{appDetail.description}</div>
           )}
           {/* operations */}
           <div className='flex flex-wrap items-center gap-1 self-stretch'>
