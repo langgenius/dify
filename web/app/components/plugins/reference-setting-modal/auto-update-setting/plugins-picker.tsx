@@ -24,25 +24,30 @@ const PluginsPicker: FC<Props> = ({
   const { t } = useTranslation()
   const hasSelected = value.length > 0
   const isExcludeMode = updateMode === AUTO_UPDATE_MODE.exclude
+  const handleClear = () => {
+    onChange([])
+  }
   return (
     <div className='mt-2 rounded-[10px] bg-background-section-burn p-2.5'>
       {hasSelected ? (
         <div className='flex justify-between text-text-tertiary'>
           <div className='system-xs-medium'>{t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, { num: value.length })}</div>
-          <div className='system-xs-medium cursor-pointer'>Clear all</div>
+          <div className='system-xs-medium cursor-pointer' onClick={handleClear}>{t(`${i18nPrefix}.operation.clearAll`)}</div>
         </div>
       ) : (
         <NoPluginSelected updateMode={updateMode} />
       )}
 
-      <PluginsSelected
-        className='mt-2'
-        plugins={value}
-      />
+      {hasSelected && (
+        <PluginsSelected
+          className='mt-2'
+          plugins={value}
+        />
+      )}
 
       <Button className='mt-2 w-full' size='small' variant='secondary-accent'>
         <RiAddLine className='size-3.5' />
-        Select
+        {t(`${i18nPrefix}.operation.select`)}
       </Button>
     </div>
   )
