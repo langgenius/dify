@@ -183,6 +183,7 @@ const translation = {
     checkName: {
       empty: 'メタデータ名を入力してください',
       invalid: 'メタデータ名は小文字、数字、アンダースコアのみを使用し、小文字で始める必要があります',
+      tooLong: 'メタデータ名は {{max}} 文字を超えることはできません',
     },
     batchEditMetadata: {
       editMetadata: 'メタデータを編集',
