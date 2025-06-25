@@ -456,7 +456,6 @@ const Configuration: FC = () => {
       enabled: supportVision,
     }, true)
 
-    // merge and keep only valid completion params for the new model
     try {
       const { params: filtered, removedDetails } = await fetchAndMergeValidCompletionParams(
         provider,
@@ -468,7 +467,6 @@ const Configuration: FC = () => {
       setCompletionParams(filtered)
     }
     catch (e) {
-      // if fetch fails just clear invalid params
       Toast.notify({ type: 'error', message: t('common.error') })
       setCompletionParams({})
     }
