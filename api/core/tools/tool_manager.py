@@ -579,7 +579,7 @@ class ToolManager:
             if "builtin" in filters:
 
                 def get_builtin_providers(tenant_id):
-                    # according to multi credentials, select the one with is_default=True first, then created_at oldest 
+                    # according to multi credentials, select the one with is_default=True first, then created_at oldest
                     # for compatibility with old version
                     sql = """
                             SELECT DISTINCT ON (tenant_id, provider) id

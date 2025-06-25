@@ -299,7 +299,7 @@ class BuiltinToolManageService:
 
         db.session.delete(provider_obj)
         db.session.commit()
-        
+
         # delete cache
         provider_controller = ToolManager.get_builtin_provider(provider_name, tenant_id)
         tool_configuration = ProviderConfigEncrypter(
@@ -334,7 +334,7 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_builtin_tool_provider(tenant_id: str, user_id: str, provider: str, plugin_id: str):
+    def get_builtin_tool_oauth_client(tenant_id: str, provider: str, plugin_id: str):
         """
         get builtin tool provider
         """
@@ -450,6 +450,7 @@ class BuiltinToolManageService:
         1.if the default provider exists, return the default provider
         2.if the default provider does not exist, return the oldest provider
         """
+
         def _query(provider_filters: list[ColumnExpressionArgument[bool]]):
             return (
                 db.session.query(BuiltinToolProvider)

@@ -676,14 +676,9 @@ class ToolPluginOAuthApi(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        # check if user client is configured and enabled then using user client
-        # if user client is not configured then using system client
         tenant_id = user.current_tenant_id
-        user_id = user.id
-
-        plugin_oauth_config = BuiltinToolManageService.get_builtin_tool_provider(
+        plugin_oauth_config = BuiltinToolManageService.get_builtin_tool_oauth_client(
             tenant_id=tenant_id,
-            user_id=user_id,
             provider=provider,
             plugin_id=plugin_id,
         )
@@ -727,9 +722,8 @@ class ToolOAuthCallback(Resource):
             context.get("provider"),
         )
         oauth_handler = OAuthHandler()
-        plugin_oauth_config = BuiltinToolManageService.get_builtin_tool_provider(
+        plugin_oauth_config = BuiltinToolManageService.get_builtin_tool_oauth_client(
             tenant_id=tenant_id,
-            user_id=user_id,
             provider=provider,
             plugin_id=plugin_id,
         )

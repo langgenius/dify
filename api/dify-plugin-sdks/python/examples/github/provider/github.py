@@ -64,4 +64,4 @@ class GithubProvider(ToolProvider):
             if response.status_code != 200:
                 raise ToolProviderCredentialValidationError(response.json().get("message"))
         except Exception as e:
-            raise ToolProviderCredentialValidationError(str(e)) 
+            raise ToolProviderCredentialValidationError(str(e))
