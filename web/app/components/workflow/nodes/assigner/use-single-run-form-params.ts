@@ -24,7 +24,7 @@ const useSingleRunFormParams = ({
 }: Params) => {
   const { inputs } = useNodeCrud<AssignerNodeType>(id, payload)
 
-  const vars = inputs.items.filter((item) => {
+  const vars = (inputs.items ?? []).filter((item) => {
     return item.operation !== WriteMode.clear && item.operation !== WriteMode.set
                     && item.operation !== WriteMode.removeFirst && item.operation !== WriteMode.removeLast
                     && !writeModeTypesNum.includes(item.operation)
