@@ -66,6 +66,7 @@ class MCPToolManageService:
                 or_(
                     MCPToolProvider.name == name,
                     MCPToolProvider.server_url_hash == server_url_hash,
+                    MCPToolProvider.server_identifier == server_identifier,
                 ),
                 MCPToolProvider.tenant_id == tenant_id,
             )
@@ -74,8 +75,10 @@ class MCPToolManageService:
         if existing_provider:
             if existing_provider.name == name:
                 raise ValueError(f"MCP tool {name} already exists")
-            else:
+            elif existing_provider.server_url_hash == server_url_hash:
                 raise ValueError(f"MCP tool {server_url} already exists")
+            elif existing_provider.server_identifier == server_identifier:
+                raise ValueError(f"MCP tool {server_identifier} already exists")
         encrypted_server_url = encrypter.encrypt_token(tenant_id, server_url)
         mcp_tool = MCPToolProvider(
             tenant_id=tenant_id,
@@ -156,7 +159,7 @@ class MCPToolManageService:
         server_identifier: str,
     ):
         mcp_provider = cls.get_mcp_provider_by_provider_id(provider_id, tenant_id)
-
+        mcp_provider.updated_at = datetime.now()
         mcp_provider.name = name
         mcp_provider.icon = (
             json.dumps({"content": icon, "background": icon_background}) if icon_type == "emoji" else icon
@@ -180,6 +183,8 @@ class MCPToolManageService:
                 raise ValueError(f"MCP tool {name} already exists")
             elif "unique_mcp_provider_server_url" in error_msg:
                 raise ValueError(f"MCP tool {server_url} already exists")
+            elif "unique_mcp_provider_server_identifier" in error_msg:
+                raise ValueError(f"MCP tool {server_identifier} already exists")
             else:
                 raise
 
@@ -193,6 +198,7 @@ class MCPToolManageService:
             provider_identity=provider_controller.provider_id,
         )
         credentials = tool_configuration.encrypt(credentials)
+        mcp_provider.updated_at = datetime.now()
         mcp_provider.encrypted_credentials = json.dumps({**mcp_provider.credentials, **credentials})
         mcp_provider.authed = authed
         db.session.commit()
