@@ -25,6 +25,7 @@ from .vdb.elasticsearch_config import ElasticsearchConfig
 from .vdb.huawei_cloud_config import HuaweiCloudConfig
 from .vdb.lindorm_config import LindormConfig
 from .vdb.milvus_config import MilvusConfig
+from .vdb.mq_config import MqInfo
 from .vdb.myscale_config import MyScaleConfig
 from .vdb.oceanbase_config import OceanBaseVectorConfig
 from .vdb.opengauss_config import OpenGaussConfig
@@ -301,6 +302,7 @@ class MiddlewareConfig(
     HuaweiCloudConfig,
     MilvusConfig,
     MyScaleConfig,
+    MqInfo,
     OpenSearchConfig,
     OracleConfig,
     PGVectorConfig,
