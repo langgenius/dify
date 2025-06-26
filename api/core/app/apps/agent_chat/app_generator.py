@@ -26,7 +26,6 @@ from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from services.conversation_service import ConversationService
-from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -238,8 +237,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
-                if message is None:
-                    raise MessageNotExistsError("Message not exists")
 
                 # chatbot app
                 runner = AgentChatAppRunner()

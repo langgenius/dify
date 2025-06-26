@@ -29,6 +29,7 @@ from models.enums import CreatorUserRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
+from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -251,7 +252,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         return introduction or ""
 
-    def _get_conversation(self, conversation_id: str):
+    def _get_conversation(self, conversation_id: str) -> Conversation:
         """
         Get conversation by conversation id
         :param conversation_id: conversation id
@@ -260,16 +261,19 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         conversation = db.session.query(Conversation).filter(Conversation.id == conversation_id).first()
 
         if not conversation:
-            raise ConversationNotExistsError()
+            raise ConversationNotExistsError("Conversation not exists")
 
         return conversation
 
-    def _get_message(self, message_id: str) -> Optional[Message]:
+    def _get_message(self, message_id: str) -> Message:
         """
         Get message by message id
         :param message_id: message id
         :return: message
         """
         message = db.session.query(Message).filter(Message.id == message_id).first()
+
+        if message is None:
+            raise MessageNotExistsError("Message not exists")
 
         return message
