@@ -137,7 +137,7 @@ const VariableModal = ({
           </div>
         </div>
         {/* value */}
-        <div className=''>
+        <div className='mb-4'>
           <div className='system-sm-semibold mb-1 flex h-6 items-center text-text-secondary'>{t('workflow.env.modal.value')}</div>
           <div className='flex'>
             {
