@@ -142,13 +142,17 @@ def invoke_llm_with_structured_output(
             prompt_messages=llm_result.prompt_messages,
         )
     else:
-        result_text = ""
-        for event in llm_result:
-            if isinstance(event, LLMResultChunk):
-                if isinstance(event.delta.message.content, str):
-                    result_text += event.delta.message.content
 
-        yield LLMStructuredOutput(structured_output=_parse_structured_output(result_text))
+        def generator():
+            result_text = ""
+            for event in llm_result:
+                if isinstance(event, LLMResultChunk):
+                    if isinstance(event.delta.message.content, str):
+                        result_text += event.delta.message.content
+
+            yield LLMStructuredOutput(structured_output=_parse_structured_output(result_text))
+
+        return generator()
 
 
 def _handle_native_json_schema(
