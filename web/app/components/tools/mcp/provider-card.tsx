@@ -94,7 +94,7 @@ const MCPCard = ({
         </div>
       </div>
       <div className='flex items-center gap-1 rounded-b-xl pb-2.5 pl-4 pr-2.5 pt-1.5'>
-        <div className='flex grow items-center gap-2'>
+        <div className='flex w-0 grow items-center gap-2'>
           <div className='flex items-center gap-1'>
             <RiHammerFill className='h-3 w-3 shrink-0 text-text-quaternary' />
             {data.tools.length > 0 && (
