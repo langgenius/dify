@@ -16,14 +16,18 @@ const DataSourceOptions = ({
   datasourceNodeId,
   onSelect,
 }: DataSourceOptionsProps) => {
-  const { datasources, options } = useDatasourceOptions(pipelineNodes)
+  const options = useDatasourceOptions(pipelineNodes)
 
   const handelSelect = useCallback((value: string) => {
-    const selectedOption = datasources.find(option => option.nodeId === value)
+    const selectedOption = options.find(option => option.value === value)
     if (!selectedOption)
       return
-    onSelect(selectedOption)
-  }, [datasources, onSelect])
+    const datasource = {
+      nodeId: selectedOption.value,
+      nodeData: selectedOption.data,
+    }
+    onSelect(datasource)
+  }, [onSelect, options])
 
   useEffect(() => {
     if (options.length > 0 && !datasourceNodeId)

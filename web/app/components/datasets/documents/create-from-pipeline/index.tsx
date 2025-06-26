@@ -84,17 +84,18 @@ const CreateFormPipeline = () => {
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && enableBilling
   const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
+  const datasourceType = datasource?.nodeData.provider_type
 
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
-    if (datasource.type === DatasourceType.localFile)
+    if (datasourceType === DatasourceType.localFile)
       return isShowVectorSpaceFull || !fileList.length || fileList.some(file => !file.file.id)
-    if (datasource.type === DatasourceType.onlineDocument)
+    if (datasourceType === DatasourceType.onlineDocument)
       return isShowVectorSpaceFull || !onlineDocuments.length
-    if (datasource.type === DatasourceType.websiteCrawl)
+    if (datasourceType === DatasourceType.websiteCrawl)
       return isShowVectorSpaceFull || !websitePages.length
     return false
-  }, [datasource, isShowVectorSpaceFull, fileList, onlineDocuments.length, websitePages.length])
+  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList, onlineDocuments.length, websitePages.length])
 
   const { mutateAsync: runPublishedPipeline, isIdle, isPending } = useRunPublishedPipeline()
 
@@ -102,7 +103,7 @@ const CreateFormPipeline = () => {
     if (!datasource)
       return
     const datasourceInfoList: Record<string, any>[] = []
-    if (datasource.type === DatasourceType.localFile) {
+    if (datasourceType === DatasourceType.localFile) {
       const { id, name, type, size, extension, mime_type } = previewFile.current as File
       const documentInfo = {
         related_id: id,
@@ -116,7 +117,7 @@ const CreateFormPipeline = () => {
       }
       datasourceInfoList.push(documentInfo)
     }
-    if (datasource.type === DatasourceType.onlineDocument) {
+    if (datasourceType === DatasourceType.onlineDocument) {
       const { workspace_id, ...rest } = previewOnlineDocument.current
       const documentInfo = {
         workspace_id,
@@ -124,13 +125,13 @@ const CreateFormPipeline = () => {
       }
       datasourceInfoList.push(documentInfo)
     }
-    if (datasource.type === DatasourceType.websiteCrawl)
+    if (datasourceType === DatasourceType.websiteCrawl)
       datasourceInfoList.push(previewWebsitePage.current)
     await runPublishedPipeline({
       pipeline_id: pipelineId!,
       inputs: data,
       start_node_id: datasource.nodeId,
-      datasource_type: datasource.type,
+      datasource_type: datasourceType as DatasourceType,
       datasource_info_list: datasourceInfoList,
       is_preview: true,
     }, {
@@ -138,13 +139,13 @@ const CreateFormPipeline = () => {
         setEstimateData((res as PublishedPipelineRunPreviewResponse).data.outputs)
       },
     })
-  }, [datasource, pipelineId, previewFile, previewOnlineDocument, previewWebsitePage, runPublishedPipeline])
+  }, [datasource, datasourceType, pipelineId, previewFile, previewOnlineDocument, previewWebsitePage, runPublishedPipeline])
 
   const handleProcess = useCallback(async (data: Record<string, any>) => {
     if (!datasource)
       return
     const datasourceInfoList: Record<string, any>[] = []
-    if (datasource.type === DatasourceType.localFile) {
+    if (datasourceType === DatasourceType.localFile) {
       fileList.forEach((file) => {
         const { id, name, type, size, extension, mime_type } = file.file
         const documentInfo = {
@@ -160,7 +161,7 @@ const CreateFormPipeline = () => {
         datasourceInfoList.push(documentInfo)
       })
     }
-    if (datasource.type === DatasourceType.onlineDocument) {
+    if (datasourceType === DatasourceType.onlineDocument) {
       onlineDocuments.forEach((page) => {
         const { workspace_id, ...rest } = page
         const documentInfo = {
@@ -170,7 +171,7 @@ const CreateFormPipeline = () => {
         datasourceInfoList.push(documentInfo)
       })
     }
-    if (datasource.type === DatasourceType.websiteCrawl) {
+    if (datasourceType === DatasourceType.websiteCrawl) {
       websitePages.forEach((websitePage) => {
         datasourceInfoList.push(websitePage)
       })
@@ -179,7 +180,7 @@ const CreateFormPipeline = () => {
       pipeline_id: pipelineId!,
       inputs: data,
       start_node_id: datasource.nodeId,
-      datasource_type: datasource.type,
+      datasource_type: datasourceType as DatasourceType,
       datasource_info_list: datasourceInfoList,
       is_preview: false,
     }, {
@@ -189,7 +190,7 @@ const CreateFormPipeline = () => {
         handleNextStep()
       },
     })
-  }, [datasource, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, websitePages])
+  }, [datasource, datasourceType, fileList, handleNextStep, onlineDocuments, pipelineId, runPublishedPipeline, websitePages])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false
@@ -246,38 +247,30 @@ const CreateFormPipeline = () => {
                     onSelect={setDatasource}
                     pipelineNodes={(pipelineInfo?.graph.nodes || []) as Node<DataSourceNodeType>[]}
                   />
-                  {datasource?.type === DatasourceType.localFile && (
+                  {datasourceType === DatasourceType.localFile && (
                     <LocalFile
                       files={fileList}
-                      allowedExtensions={datasource?.fileExtensions || []}
+                      allowedExtensions={datasource!.nodeData.fileExtensions || []}
                       updateFile={updateFile}
                       updateFileList={updateFileList}
                       onPreview={updateCurrentFile}
                       notSupportBatchUpload={notSupportBatchUpload}
                     />
                   )}
-                  {datasource?.type === DatasourceType.onlineDocument && (
+                  {datasourceType === DatasourceType.onlineDocument && (
                     <OnlineDocuments
-                      nodeId={datasource?.nodeId || ''}
-                      headerInfo={{
-                        title: datasource.description,
-                        docTitle: datasource.docTitle || '',
-                        docLink: datasource.docLink || '',
-                      }}
+                      nodeId={datasource!.nodeId}
+                      nodeData={datasource!.nodeData}
                       onlineDocuments={onlineDocuments}
                       updateOnlineDocuments={updateOnlineDocuments}
                       canPreview
                       onPreview={updateCurrentPage}
                     />
                   )}
-                  {datasource?.type === DatasourceType.websiteCrawl && (
+                  {datasourceType === DatasourceType.websiteCrawl && (
                     <WebsiteCrawl
-                      nodeId={datasource?.nodeId || ''}
-                      headerInfo={{
-                        title: datasource.description,
-                        docTitle: datasource.docTitle || '',
-                        docLink: datasource.docLink || '',
-                      }}
+                      nodeId={datasource!.nodeId}
+                      nodeData={datasource!.nodeData}
                       crawlResult={crawlResult}
                       setCrawlResult={setCrawlResult}
                       step={step}
@@ -299,7 +292,7 @@ const CreateFormPipeline = () => {
               currentStep === 2 && (
                 <ProcessDocuments
                   ref={formRef}
-                  dataSourceNodeId={datasource?.nodeId || ''}
+                  dataSourceNodeId={datasource!.nodeId}
                   onProcess={onClickProcess}
                   onPreview={onClickPreview}
                   onSubmit={handleSubmit}
@@ -341,7 +334,7 @@ const CreateFormPipeline = () => {
           <div className='h-full min-w-0 flex-1'>
             <div className='flex h-full flex-col pl-2 pt-2'>
               <ChunkPreview
-                dataSourceType={datasource!.type}
+                dataSourceType={datasourceType as DatasourceType}
                 files={fileList.map(file => file.file)}
                 onlineDocuments={onlineDocuments}
                 websitePages={websitePages}

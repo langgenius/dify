@@ -7,12 +7,12 @@ type WebsiteCrawlProps = CrawlerProps
 
 const WebsiteCrawl = ({
   nodeId,
+  nodeData,
   crawlResult,
   setCrawlResult,
   step,
   setStep,
   checkedCrawlResult,
-  headerInfo,
   onCheckedCrawlResultChange,
   previewIndex,
   onPreview,
@@ -21,12 +21,12 @@ const WebsiteCrawl = ({
   return (
     <Crawler
       nodeId={nodeId}
+      nodeData={nodeData}
       crawlResult={crawlResult}
       setCrawlResult={setCrawlResult}
       step={step}
       setStep={setStep}
       checkedCrawlResult={checkedCrawlResult}
-      headerInfo={headerInfo}
       onCheckedCrawlResultChange={onCheckedCrawlResultChange}
       previewIndex={previewIndex}
       onPreview={onPreview}

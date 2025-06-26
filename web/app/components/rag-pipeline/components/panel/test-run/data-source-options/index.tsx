@@ -12,14 +12,18 @@ const DataSourceOptions = ({
   dataSourceNodeId,
   onSelect,
 }: DataSourceOptionsProps) => {
-  const { datasources, options } = useDatasourceOptions()
+  const options = useDatasourceOptions()
 
   const handelSelect = useCallback((value: string) => {
-    const selectedOption = datasources.find(option => option.nodeId === value)
+    const selectedOption = options.find(option => option.value === value)
     if (!selectedOption)
       return
-    onSelect(selectedOption)
-  }, [datasources, onSelect])
+    const datasource = {
+      nodeId: selectedOption.value,
+      nodeData: selectedOption.data,
+    }
+    onSelect(datasource)
+  }, [onSelect, options])
 
   useEffect(() => {
     if (options.length > 0 && !dataSourceNodeId)
@@ -33,9 +37,10 @@ const DataSourceOptions = ({
         <OptionCard
           key={option.value}
           label={option.label}
+          value={option.value}
           nodeData={option.data}
           selected={dataSourceNodeId === option.value}
-          onClick={handelSelect.bind(null, option.value)}
+          onClick={handelSelect}
         />
       ))}
     </div>

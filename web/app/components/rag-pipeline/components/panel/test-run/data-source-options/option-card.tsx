@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -7,18 +7,24 @@ import { useToolIcon } from '@/app/components/workflow/hooks'
 
 type OptionCardProps = {
   label: string
+  value: string
   selected: boolean
   nodeData: DataSourceNodeType
-  onClick?: () => void
+  onClick?: (value: string) => void
 }
 
 const OptionCard = ({
   label,
+  value,
   selected,
   nodeData,
   onClick,
 }: OptionCardProps) => {
   const toolIcon = useToolIcon(nodeData)
+
+  const handleClickCard = useCallback(() => {
+    onClick?.(value)
+  }, [value, onClick])
 
   return (
     <div
@@ -28,7 +34,7 @@ const OptionCard = ({
           ? 'border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs ring-[0.5px] ring-inset ring-components-option-card-option-selected-border'
           : 'hover:bg-components-option-card-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs',
       )}
-      onClick={onClick}
+      onClick={handleClickCard}
     >
       <div className='flex size-7 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1'>
         <BlockIcon

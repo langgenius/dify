@@ -1,10 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { AddDocumentsStep } from './types'
-import type { DataSourceOption, Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
+import type { DataSourceOption } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { DatasourceType } from '@/models/pipeline'
 import type { CrawlResult, CrawlResultItem, DocumentItem, FileItem } from '@/models/datasets'
 import { CrawlStep } from '@/models/datasets'
 import produce from 'immer'
@@ -47,18 +46,6 @@ export const useAddDocumentsSteps = () => {
 
 export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) => {
   const datasourceNodes = pipelineNodes.filter(node => node.data.type === BlockEnum.DataSource)
-  const datasources: Datasource[] = useMemo(() => {
-    return datasourceNodes.map((node) => {
-      return {
-        nodeId: node.id,
-        type: node.data.provider_type as DatasourceType,
-        description: node.data.datasource_label,
-        docTitle: 'How to use?',
-        docLink: '',
-        fileExtensions: node.data.fileExtensions || [],
-      }
-    })
-  }, [datasourceNodes])
 
   const options = useMemo(() => {
     const options: DataSourceOption[] = []
@@ -70,10 +57,29 @@ export const useDatasourceOptions = (pipelineNodes: Node<DataSourceNodeType>[]) 
         data: node.data,
       })
     })
+    // todo: delete mock data
+    options.push({
+      label: 'Google Drive',
+      value: '123456',
+      // @ts-expect-error mock data
+      data: {
+        datasource_parameters: {},
+        datasource_configurations: {},
+        type: BlockEnum.DataSource,
+        title: 'Google Drive',
+        plugin_id: 'langgenius/google-drive',
+        provider_type: 'online_drive',
+        provider_name: 'google_drive',
+        datasource_name: 'google-drive',
+        datasource_label: 'Google Drive',
+        selected: false,
+      },
+    })
+
     return options
   }, [datasourceNodes])
 
-  return { datasources, options }
+  return options
 }
 
 export const useLocalFile = () => {

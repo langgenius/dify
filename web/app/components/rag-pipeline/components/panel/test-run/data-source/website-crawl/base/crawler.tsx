@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CrawlResult, CrawlResultItem } from '@/models/datasets'
 import { CrawlStep } from '@/models/datasets'
@@ -19,22 +19,19 @@ import type {
   DataSourceNodeCompletedResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 export type CrawlerProps = {
   nodeId: string
+  nodeData: DataSourceNodeType
   crawlResult: CrawlResult | undefined
   setCrawlResult: (payload: CrawlResult) => void
   step: CrawlStep
   setStep: (step: CrawlStep) => void
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
-  headerInfo: {
-    title: string
-    docTitle: string
-    docLink: string
-  }
   previewIndex?: number
   onPreview?: (payload: CrawlResultItem, index: number) => void
   isInPipeline?: boolean
@@ -42,12 +39,12 @@ export type CrawlerProps = {
 
 const Crawler = ({
   nodeId,
+  nodeData,
   crawlResult,
   setCrawlResult,
   step,
   setStep,
   checkedCrawlResult,
-  headerInfo,
   onCheckedCrawlResultChange,
   previewIndex,
   onPreview,
@@ -124,6 +121,14 @@ const Crawler = ({
   const handleSubmit = useCallback((value: Record<string, any>) => {
     handleRun(value)
   }, [handleRun])
+
+  const headerInfo = useMemo(() => {
+    return {
+      title: nodeData.title,
+      docTitle: 'How to use?',
+      docLink: 'https://docs.dify.ai',
+    }
+  }, [nodeData])
 
   return (
     <div className='flex flex-col'>

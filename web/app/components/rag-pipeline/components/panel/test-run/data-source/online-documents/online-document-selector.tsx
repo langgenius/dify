@@ -9,6 +9,7 @@ import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
 import Toast from '@/app/components/base/toast'
 import type { DataSourceNodeCompletedResponse } from '@/types/pipeline'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 
 type OnlineDocumentSelectorProps = {
   value?: string[]
@@ -18,11 +19,7 @@ type OnlineDocumentSelectorProps = {
   onPreview?: (selectedPage: NotionPage) => void
   isInPipeline?: boolean
   nodeId: string
-  headerInfo: {
-    title: string
-    docTitle: string
-    docLink: string
-  }
+  nodeData: DataSourceNodeType
 }
 
 const OnlineDocumentSelector = ({
@@ -33,7 +30,7 @@ const OnlineDocumentSelector = ({
   onPreview,
   isInPipeline = false,
   nodeId,
-  headerInfo,
+  nodeData,
 }: OnlineDocumentSelectorProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
   const [documentsData, setDocumentsData] = useState<DataSourceNotionWorkspace[]>([])
@@ -117,6 +114,14 @@ const OnlineDocumentSelector = ({
   useEffect(() => {
     setCurrentWorkspaceId(firstWorkspaceId)
   }, [firstWorkspaceId])
+
+  const headerInfo = useMemo(() => {
+    return {
+      title: nodeData.title,
+      docTitle: 'How to use?',
+      docLink: 'https://docs.dify.ai',
+    }
+  }, [nodeData])
 
   if (!documentsData?.length)
     return null

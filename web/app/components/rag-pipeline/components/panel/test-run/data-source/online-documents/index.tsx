@@ -1,13 +1,10 @@
 import type { NotionPage } from '@/models/common'
 import OnlineDocumentSelector from './online-document-selector'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 
 type OnlineDocumentsProps = {
   nodeId: string
-  headerInfo: {
-    title: string
-    docTitle: string
-    docLink: string
-  }
+  nodeData: DataSourceNodeType
   onlineDocuments: NotionPage[]
   updateOnlineDocuments: (value: NotionPage[]) => void
   canPreview?: boolean
@@ -17,7 +14,7 @@ type OnlineDocumentsProps = {
 
 const OnlineDocuments = ({
   nodeId,
-  headerInfo,
+  nodeData,
   onlineDocuments,
   updateOnlineDocuments,
   canPreview = false,
@@ -27,7 +24,7 @@ const OnlineDocuments = ({
   return (
     <OnlineDocumentSelector
       nodeId={nodeId}
-      headerInfo={headerInfo}
+      nodeData={nodeData}
       value={onlineDocuments.map(page => page.page_id)}
       onSelect={updateOnlineDocuments}
       canPreview={canPreview}
