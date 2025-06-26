@@ -37,35 +37,35 @@ const MqNode: FC<NodeProps<any>> = ({ data }) => {
           readOnly
         />
       </div>
-      <div>
-        <label style={{
-          display: 'block',
-          marginBottom: '4px',
-          fontSize: '14px',
-          color: '#495057',
-          fontWeight: '500',
-        }}>
-          Message
-        </label>
-        <textarea
-          style={{
-            width: '100%',
-            padding: '8px 12px',
-            border: '1px solid #ced4da',
-            borderRadius: '4px',
-            fontSize: '14px',
-            transition: 'border-color 0.15s ease-in-out',
-            boxSizing: 'border-box',
-            minHeight: '100px',
-            resize: 'vertical',
-            fontFamily: 'inherit',
-            lineHeight: '1.5',
-          }}
-          value={data.mqValue || ''}
-          placeholder="请输入要发送的消息"
-          readOnly
-        />
-      </div>
+      {/* <div> */}
+      {/*  <label style={{ */}
+      {/*    display: 'block', */}
+      {/*    marginBottom: '4px', */}
+      {/*    fontSize: '14px', */}
+      {/*    color: '#495057', */}
+      {/*    fontWeight: '500', */}
+      {/*  }}> */}
+      {/*    Message */}
+      {/*  </label> */}
+      {/*  <textarea */}
+      {/*    style={{ */}
+      {/*      width: '100%', */}
+      {/*      padding: '8px 12px', */}
+      {/*      border: '1px solid #ced4da', */}
+      {/*      borderRadius: '4px', */}
+      {/*      fontSize: '14px', */}
+      {/*      transition: 'border-color 0.15s ease-in-out', */}
+      {/*      boxSizing: 'border-box', */}
+      {/*      minHeight: '100px', */}
+      {/*      resize: 'vertical', */}
+      {/*      fontFamily: 'inherit', */}
+      {/*      lineHeight: '1.5', */}
+      {/*    }} */}
+      {/*    value={data.mqValue || ''} */}
+      {/*    placeholder="请输入要发送的消息" */}
+      {/*    readOnly */}
+      {/*  /> */}
+      {/* </div> */}
     </div>
   )
 }

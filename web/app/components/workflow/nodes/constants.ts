@@ -39,6 +39,7 @@ import ListFilterPanel from './list-operator/panel'
 import AgentNode from './agent/node'
 import AgentPanel from './agent/panel'
 import MqNode from './mq/node'
+import MqPanel from './mq/panel'
 import { TransferMethod } from '@/types/app'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
@@ -86,7 +87,7 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.DocExtractor]: DocExtractorPanel,
   [BlockEnum.ListFilter]: ListFilterPanel,
   [BlockEnum.Agent]: AgentPanel,
-  [BlockEnum.MqNode]: MqNode,
+  [BlockEnum.MqNode]: MqPanel,
 }
 
 export const CUSTOM_NODE_TYPE = 'custom'

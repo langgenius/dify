@@ -361,7 +361,7 @@ export const NODES_INITIAL_DATA = {
     title: '',
     desc: '',
     variables: [],
-    ...HttpRequestDefault.defaultValue,
+    ...MqDefault.defaultValue,
   },
   [BlockEnum.ParameterExtractor]: {
     type: BlockEnum.ParameterExtractor,
