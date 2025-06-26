@@ -113,7 +113,7 @@ const ToolPicker: FC<Props> = ({
     <PortalToFollowElem
         placement='top'
         offset={0}
-        open={isShow}
+        open={true}
         onOpenChange={onShowChange}
       >
         <PortalToFollowElemTrigger
