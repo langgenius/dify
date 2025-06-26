@@ -11,6 +11,7 @@ import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/plugin-type-switch'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
+import ToolItem from './tool-item'
 
 type Props = {
   trigger: React.ReactNode
@@ -70,13 +71,19 @@ const ToolPicker: FC<Props> = ({
   })
   const isBundle = pluginType === PLUGIN_TYPE_SEARCH_MAP.bundle
   const list = (isBundle ? data?.data?.bundles : data?.data?.plugins) || []
-
-  console.log(list)
+  const handleCheckChange = useCallback((pluginId: string) => {
+    return () => {
+      const newValue = value.includes(pluginId)
+        ? value.filter(id => id !== pluginId)
+        : [...value, pluginId]
+      onChange(newValue)
+    }
+  }, [onChange, value])
   return (
     <PortalToFollowElem
-        placement='top-start'
+        placement='top'
         offset={0}
-        open={true}
+        open={isShow}
         onOpenChange={onShowChange}
       >
         <PortalToFollowElemTrigger
@@ -85,7 +92,7 @@ const ToolPicker: FC<Props> = ({
           {trigger}
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
-          <div className={cn('relative min-h-20 w-[356px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
+          <div className={cn('relative min-h-20 w-[436px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
             <div className='p-2 pb-1'>
               <SearchBox
                 search={query}
@@ -116,6 +123,18 @@ const ToolPicker: FC<Props> = ({
                 }
               </div>
             </div>
+            {list.length > 0 && (
+              <div className='max-h-[396px] overflow-y-auto'>
+                {list.map(item => (
+                  <ToolItem
+                    key={item.plugin_id}
+                    payload={item}
+                    isChecked={value.includes(item.plugin_id)}
+                    onCheckChange={handleCheckChange(item.plugin_id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
