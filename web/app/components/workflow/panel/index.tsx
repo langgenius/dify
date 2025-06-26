@@ -13,6 +13,39 @@ export type PanelProps = {
     right?: React.ReactNode
   }
 }
+
+const useResizeObserver = (
+  callback: (width: number) => void,
+  dependencies: React.DependencyList,
+) => {
+  const elementRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const element = elementRef.current
+    if (!element) return
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { inlineSize } = entry.borderBoxSize[0]
+
+        const width = inlineSize > 0 ? inlineSize : element.getBoundingClientRect().width
+        callback(width)
+      }
+    })
+
+    resizeObserver.observe(element)
+
+    const initialWidth = element.getBoundingClientRect().width
+    callback(initialWidth)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, dependencies)
+
+  return elementRef
+}
+
 const Panel: FC<PanelProps> = ({
   components,
 }) => {
@@ -20,44 +53,21 @@ const Panel: FC<PanelProps> = ({
   const selectedNode = nodes.find(node => node.data.selected)
   const showEnvPanel = useStore(s => s.showEnvPanel)
   const isRestoring = useStore(s => s.isRestoring)
+  const showWorkflowVersionHistoryPanel = useStore(s => s.showWorkflowVersionHistoryPanel)
 
-  const rightPanelRef = useRef<HTMLDivElement>(null)
   const setRightPanelWidth = useStore(s => s.setRightPanelWidth)
-
-  // get right panel width
-  useEffect(() => {
-    if (rightPanelRef.current) {
-      const resizeRightPanelObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const { inlineSize } = entry.borderBoxSize[0]
-          setRightPanelWidth(inlineSize)
-        }
-      })
-      resizeRightPanelObserver.observe(rightPanelRef.current)
-      return () => {
-        resizeRightPanelObserver.disconnect()
-      }
-    }
-  }, [setRightPanelWidth])
-
-  const otherPanelRef = useRef<HTMLDivElement>(null)
   const setOtherPanelWidth = useStore(s => s.setOtherPanelWidth)
 
-  // get other panel width
-  useEffect(() => {
-    if (otherPanelRef.current) {
-      const resizeOtherPanelObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const { inlineSize } = entry.borderBoxSize[0]
-          setOtherPanelWidth(inlineSize)
-        }
-      })
-      resizeOtherPanelObserver.observe(otherPanelRef.current)
-      return () => {
-        resizeOtherPanelObserver.disconnect()
-      }
-    }
-  }, [setOtherPanelWidth])
+  const rightPanelRef = useResizeObserver(
+    setRightPanelWidth,
+    [setRightPanelWidth, selectedNode, showEnvPanel, showWorkflowVersionHistoryPanel],
+  )
+
+  const otherPanelRef = useResizeObserver(
+    setOtherPanelWidth,
+    [setOtherPanelWidth, showEnvPanel, showWorkflowVersionHistoryPanel],
+  )
+
   return (
     <div
       ref={rightPanelRef}
@@ -65,26 +75,14 @@ const Panel: FC<PanelProps> = ({
       className={cn('absolute bottom-1 right-0 top-14 z-10 flex outline-none')}
       key={`${isRestoring}`}
     >
-      {
-        components?.left
-      }
-      {
-        !!selectedNode && (
-          <NodePanel {...selectedNode!} />
-        )
-      }
+      {components?.left}
+      {!!selectedNode && <NodePanel {...selectedNode} />}
       <div
-        className='relative'
+        className="relative"
         ref={otherPanelRef}
       >
-        {
-          components?.right
-        }
-        {
-          showEnvPanel && (
-            <EnvPanel />
-          )
-        }
+        {components?.right}
+        {showEnvPanel && <EnvPanel />}
       </div>
     </div>
   )
