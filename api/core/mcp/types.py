@@ -31,7 +31,7 @@ for reference.
   not separate types in the schema.
 """
 
-LATEST_PROTOCOL_VERSION = "2024-11-05"
+LATEST_PROTOCOL_VERSION = "2025-03-26"
 
 ProgressToken = str | int
 Cursor = str
