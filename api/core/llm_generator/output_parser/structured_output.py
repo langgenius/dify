@@ -143,7 +143,7 @@ def invoke_llm_with_structured_output(
         )
     else:
 
-        def generator():
+        def generator() -> Generator[LLMStructuredOutput, None, None]:
             result_text = ""
             for event in llm_result:
                 if isinstance(event, LLMResultChunk):
