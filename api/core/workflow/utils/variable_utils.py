@@ -7,6 +7,7 @@ def append_variables_recursively(
 ):
     """
     Append variables recursively
+    :param pool: variable pool to append variables to
     :param node_id: node id
     :param variable_key_list: variable key list
     :param variable_value: variable value
