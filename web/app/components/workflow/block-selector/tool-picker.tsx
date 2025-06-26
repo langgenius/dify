@@ -151,7 +151,7 @@ const ToolPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className={cn('relative min-h-20 w-[356px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}>
+        <div className={cn('relative min-h-20 w-[400px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}>
           <div className='p-2 pb-1'>
             <SearchBox
               search={searchText}
@@ -163,12 +163,13 @@ const ToolPicker: FC<Props> = ({
               supportAddCustomTool={supportAddCustomTool}
               onAddedCustomTool={handleAddedCustomTool}
               onShowAddCustomCollectionModal={showEditCustomCollectionModal}
+              inputClassName='grow'
 
             />
           </div>
           <AllTools
             className='mt-1'
-            toolContentClassName='max-w-[360px]'
+            toolContentClassName='max-w-[100%]'
             tags={tags}
             searchText={searchText}
             onSelect={handleSelect}

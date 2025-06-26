@@ -95,7 +95,7 @@ const Blocks = ({
   const toolRefs = useRef({})
 
   return (
-    <div className={classNames('p-1 max-w-[320px]', className)}>
+    <div className={classNames('p-1 max-w-[100%]', className)}>
       {
         !tools.length && !showWorkflowEmpty && (
           <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
