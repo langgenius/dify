@@ -15,10 +15,8 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'lodash-es'
-import { AccessMode } from '@/models/access-control'
 
 export type EmbeddedChatbotContextValue = {
-  accessMode?: AccessMode
   userCanAccess?: boolean
   appInfoError?: any
   appInfoLoading?: boolean
@@ -54,11 +52,14 @@ export type EmbeddedChatbotContextValue = {
   currentConversationInputs: Record<string, any> | null,
   setCurrentConversationInputs: (v: Record<string, any>) => void,
   allInputsHidden: boolean
+  initUserVariables?: {
+    name?: string
+    avatar_url?: string
+  }
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
   userCanAccess: false,
-  accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
   currentConversationId: '',
   appPrevChatList: [],
   pinnedConversationList: [],
@@ -84,5 +85,6 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   currentConversationInputs: {},
   setCurrentConversationInputs: noop,
   allInputsHidden: false,
+  initUserVariables: {},
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

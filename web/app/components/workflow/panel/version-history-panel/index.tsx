@@ -9,7 +9,7 @@ import VersionHistoryItem from './version-history-item'
 import Filter from './filter'
 import type { VersionHistory } from '@/types/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useDeleteWorkflow, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
+import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory, useUpdateWorkflow, useWorkflowVersionHistory } from '@/service/use-workflow'
 import Divider from '@/app/components/base/divider'
 import Loading from './loading'
 import Empty from './empty'
@@ -37,6 +37,10 @@ const VersionHistoryPanel = () => {
   const currentVersion = useStore(s => s.currentVersion)
   const setCurrentVersion = useStore(s => s.setCurrentVersion)
   const userProfile = useAppContextSelector(s => s.userProfile)
+  const invalidAllLastRun = useInvalidAllLastRun(appDetail!.id)
+  const {
+    deleteAllInspectVars,
+  } = workflowStore.getState()
   const { t } = useTranslation()
 
   const {
@@ -125,6 +129,8 @@ const VersionHistoryPanel = () => {
           type: 'success',
           message: t('workflow.versionHistory.action.restoreSuccess'),
         })
+        deleteAllInspectVars()
+        invalidAllLastRun()
       },
       onError: () => {
         Toast.notify({
@@ -136,7 +142,7 @@ const VersionHistoryPanel = () => {
         resetWorkflowVersionHistory()
       },
     })
-  }, [setShowWorkflowVersionHistoryPanel, handleSyncWorkflowDraft, workflowStore, handleRestoreFromPublishedWorkflow, resetWorkflowVersionHistory, t])
+  }, [setShowWorkflowVersionHistoryPanel, handleRestoreFromPublishedWorkflow, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, resetWorkflowVersionHistory])
 
   const { mutateAsync: deleteWorkflow } = useDeleteWorkflow(appDetail!.id)
 
@@ -149,6 +155,8 @@ const VersionHistoryPanel = () => {
           message: t('workflow.versionHistory.action.deleteSuccess'),
         })
         resetWorkflowVersionHistory()
+        deleteAllInspectVars()
+        invalidAllLastRun()
       },
       onError: () => {
         Toast.notify({
@@ -160,7 +168,7 @@ const VersionHistoryPanel = () => {
         setDeleteConfirmOpen(false)
       },
     })
-  }, [t, deleteWorkflow, resetWorkflowVersionHistory])
+  }, [deleteWorkflow, t, resetWorkflowVersionHistory, deleteAllInspectVars, invalidAllLastRun])
 
   const { mutateAsync: updateWorkflow } = useUpdateWorkflow(appDetail!.id)
 

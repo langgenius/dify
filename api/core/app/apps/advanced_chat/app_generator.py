@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Literal, Optional, Union, overload
 
-from flask import Flask, copy_current_request_context, current_app, has_request_context
+from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy.orm import sessionmaker
 
@@ -29,12 +29,14 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
 from factories import file_factory
+from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, Conversation, EndUser, Message, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
 from services.conversation_service import ConversationService
-from services.errors.message import MessageNotExistsError
+from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +117,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             )
 
         # parse files
+        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
+        # for better separation of concerns.
+        #
+        # For implementation reference, see the `_parse_file` function and
+        # `DraftWorkflowNodeRunApi` class which handle this properly.
         files = args["files"] if args.get("files") else []
         file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
         if file_extra_config:
@@ -260,6 +267,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
+        var_loader = DraftVarLoader(
+            engine=db.engine,
+            app_id=application_generate_entity.app_config.app_id,
+            tenant_id=application_generate_entity.app_config.tenant_id,
+        )
+        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv.prefill_conversation_variable_default_values(workflow)
 
         return self._generate(
             workflow=workflow,
@@ -270,6 +284,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             conversation=None,
             stream=streaming,
+            variable_loader=var_loader,
         )
 
     def single_loop_generate(
@@ -335,6 +350,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
+        var_loader = DraftVarLoader(
+            engine=db.engine,
+            app_id=application_generate_entity.app_config.app_id,
+            tenant_id=application_generate_entity.app_config.tenant_id,
+        )
+        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv.prefill_conversation_variable_default_values(workflow)
 
         return self._generate(
             workflow=workflow,
@@ -345,6 +367,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             conversation=None,
             stream=streaming,
+            variable_loader=var_loader,
         )
 
     def _generate(
@@ -358,6 +381,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         conversation: Optional[Conversation] = None,
         stream: bool = True,
+        variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any], Any, None]:
         """
         Generate App response.
@@ -366,6 +390,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param user: account or end user
         :param invoke_from: invoke from source
         :param application_generate_entity: application generate entity
+        :param workflow_execution_repository: repository for workflow execution
         :param workflow_node_execution_repository: repository for workflow node execution
         :param conversation: conversation
         :param stream: is stream
@@ -399,20 +424,18 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # new thread with request context and contextvars
         context = contextvars.copy_context()
 
-        @copy_current_request_context
-        def worker_with_context():
-            # Run the worker within the copied context
-            return context.run(
-                self._generate_worker,
-                flask_app=current_app._get_current_object(),  # type: ignore
-                application_generate_entity=application_generate_entity,
-                queue_manager=queue_manager,
-                conversation_id=conversation.id,
-                message_id=message.id,
-                context=context,
-            )
-
-        worker_thread = threading.Thread(target=worker_with_context)
+        worker_thread = threading.Thread(
+            target=self._generate_worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),  # type: ignore
+                "application_generate_entity": application_generate_entity,
+                "queue_manager": queue_manager,
+                "conversation_id": conversation.id,
+                "message_id": message.id,
+                "context": context,
+                "variable_loader": variable_loader,
+            },
+        )
 
         worker_thread.start()
 
@@ -439,6 +462,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         conversation_id: str,
         message_id: str,
         context: contextvars.Context,
+        variable_loader: VariableLoader,
     ) -> None:
         """
         Generate worker in a new thread.
@@ -449,29 +473,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param message_id: message ID
         :return:
         """
-        for var, val in context.items():
-            var.set(val)
 
-        # FIXME(-LAN-): Save current user before entering new app context
-        from flask import g
-
-        saved_user = None
-        if has_request_context() and hasattr(g, "_login_user"):
-            saved_user = g._login_user
-
-        with flask_app.app_context():
+        with preserve_flask_contexts(flask_app, context_vars=context):
             try:
-                # Restore user in new app context
-                if saved_user is not None:
-                    from flask import g
-
-                    g._login_user = saved_user
-
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
-                if message is None:
-                    raise MessageNotExistsError("Message not exists")
 
                 # chatbot app
                 runner = AdvancedChatAppRunner(
@@ -480,6 +487,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     conversation=conversation,
                     message=message,
                     dialogue_count=self._dialogue_count,
+                    variable_loader=variable_loader,
                 )
 
                 runner.run()

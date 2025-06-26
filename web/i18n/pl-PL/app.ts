@@ -99,6 +99,7 @@ const translation = {
     agentUserDescription: 'Inteligentny agent zdolny do iteracyjnego wnioskowania i autonomicznego wykorzystania narzędzi do osiągania celów zadań.',
     workflowShortDescription: 'Agentowy przepływ dla inteligentnych automatyzacji',
     advancedUserDescription: 'Przepływ z dodatkowymi funkcjami pamięci i interfejsem chatbota.',
+    dropDSLToCreateApp: 'Upuść plik DSL tutaj, aby utworzyć aplikację',
   },
   editApp: 'Edytuj informacje',
   editAppTitle: 'Edytuj informacje o aplikacji',
@@ -220,12 +221,14 @@ const translation = {
     anyone: 'Każdy może uzyskać dostęp do aplikacji webowej',
     specific: 'Tylko określone grupy lub członkowie mogą uzyskać dostęp do aplikacji internetowej',
     organization: 'Każdy w organizacji ma dostęp do aplikacji internetowej.',
+    external: 'Tylko uwierzytelnieni zewnętrzni użytkownicy mogą uzyskać dostęp do aplikacji internetowej.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Każdy z linkiem',
       specific: 'Specyficzne grupy lub członkowie',
       organization: 'Tylko członkowie w obrębie przedsiębiorstwa',
+      external: 'Uwierzytelnieni użytkownicy zewnętrzni',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Szukaj grup i członków',

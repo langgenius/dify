@@ -92,6 +92,7 @@ const translation = {
     advancedUserDescription: '具有記憶體功能的多輪複雜對話任務的工作流程編排。',
     chooseAppType: '選擇 App Type',
     completionShortDescription: '用於文本生成任務的 AI 助手',
+    dropDSLToCreateApp: '將 DSL 檔案拖放到此處以創建應用程式',
   },
   editApp: '編輯資訊',
   editAppTitle: '編輯應用資訊',
@@ -212,12 +213,14 @@ const translation = {
     anyone: '任何人都可以訪問這個網絡應用程式',
     specific: '只有特定的群體或成員可以訪問這個網絡應用程序',
     organization: '組織中的任何人都可以訪問該網絡應用程序',
+    external: '只有經過身份驗證的外部用戶才能訪問該網絡應用程序',
   },
   accessControlDialog: {
     accessItems: {
       anyone: '擁有鏈接的人',
       specific: '特定群體或成員',
       organization: '只有企業內部成員',
+      external: '經過驗證的外部用戶',
     },
     operateGroupAndMember: {
       searchPlaceholder: '搜尋群組和成員',

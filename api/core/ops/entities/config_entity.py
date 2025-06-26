@@ -98,6 +98,7 @@ class WeaveConfig(BaseTracingConfig):
     entity: str | None = None
     project: str
     endpoint: str = "https://trace.wandb.ai"
+    host: str | None = None
 
     @field_validator("endpoint")
     @classmethod
@@ -107,6 +108,14 @@ class WeaveConfig(BaseTracingConfig):
         if not v.startswith("https://"):
             raise ValueError("endpoint must start with https://")
 
+        return v
+
+    @field_validator("host")
+    @classmethod
+    def validate_host(cls, v, info: ValidationInfo):
+        if v is not None and v != "":
+            if not v.startswith(("https://", "http://")):
+                raise ValueError("host must start with https:// or http://")
         return v
 
 

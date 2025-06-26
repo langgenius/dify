@@ -15,7 +15,7 @@ import type {
   Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
-import { buildChatItemTree, getProcessedInputsFromUrlParams, getProcessedSystemVariablesFromUrlParams } from '../utils'
+import { buildChatItemTree, getProcessedInputsFromUrlParams, getProcessedSystemVariablesFromUrlParams, getProcessedUserVariablesFromUrlParams } from '../utils'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import {
   fetchAppInfo,
@@ -36,9 +36,8 @@ import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { noop } from 'lodash-es'
-import { useGetAppAccessMode, useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetUserCanAccessApp } from '@/service/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { AccessMode } from '@/models/access-control'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -70,11 +69,6 @@ export const useEmbeddedChatbot = () => {
   const isInstalledApp = false
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR('appInfo', fetchAppInfo)
-  const { isPending: isGettingAccessMode, data: appAccessMode } = useGetAppAccessMode({
-    appId: appInfo?.app_id,
-    isInstalledApp,
-    enabled: systemFeatures.webapp_auth.enabled,
-  })
   const { isPending: isCheckingPermission, data: userCanAccessResult } = useGetUserCanAccessApp({
     appId: appInfo?.app_id,
     isInstalledApp,
@@ -175,6 +169,7 @@ export const useEmbeddedChatbot = () => {
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
   const [initInputs, setInitInputs] = useState<Record<string, any>>({})
+  const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
     setNewConversationInputs(newInputs)
@@ -243,7 +238,9 @@ export const useEmbeddedChatbot = () => {
     // init inputs from url params
     (async () => {
       const inputs = await getProcessedInputsFromUrlParams()
+      const userVariables = await getProcessedUserVariablesFromUrlParams()
       setInitInputs(inputs)
+      setInitUserVariables(userVariables)
     })()
   }, [])
   useEffect(() => {
@@ -385,8 +382,7 @@ export const useEmbeddedChatbot = () => {
 
   return {
     appInfoError,
-    appInfoLoading: appInfoLoading || (systemFeatures.webapp_auth.enabled && (isGettingAccessMode || isCheckingPermission)),
-    accessMode: systemFeatures.webapp_auth.enabled ? appAccessMode?.accessMode : AccessMode.PUBLIC,
+    appInfoLoading: appInfoLoading || (systemFeatures.webapp_auth.enabled && isCheckingPermission),
     userCanAccess: systemFeatures.webapp_auth.enabled ? userCanAccessResult?.result : true,
     isInstalledApp,
     allowResetChat,
@@ -425,5 +421,6 @@ export const useEmbeddedChatbot = () => {
     currentConversationInputs,
     setCurrentConversationInputs,
     allInputsHidden,
+    initUserVariables,
   }
 }

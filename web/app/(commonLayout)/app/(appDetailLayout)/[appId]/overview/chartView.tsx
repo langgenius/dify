@@ -18,9 +18,10 @@ const queryDateFormat = 'YYYY-MM-DD HH:mm'
 
 export type IChartViewProps = {
   appId: string
+  headerRight: React.ReactNode
 }
 
-export default function ChartView({ appId }: IChartViewProps) {
+export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const { t } = useTranslation()
   const appDetail = useAppStore(state => state.appDetail)
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
@@ -46,19 +47,24 @@ export default function ChartView({ appId }: IChartViewProps) {
 
   return (
     <div>
-      <div className='system-xl-semibold mb-4 mt-8 flex flex-row items-center text-text-primary'>
-        <span className='mr-3'>{t('appOverview.analysis.title')}</span>
-        <SimpleSelect
-          items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
-          className='mt-0 !w-40'
-          onSelect={(item) => {
-            const id = item.value
-            const value = TIME_PERIOD_MAPPING[id]?.value ?? '-1'
-            const name = item.name || t('appLog.filter.period.allTime')
-            onSelect({ value, name })
-          }}
-          defaultValue={'2'}
-        />
+      <div className='mb-4'>
+        <div className='system-xl-semibold mb-2 text-text-primary'>{t('common.appMenus.overview')}</div>
+        <div className='flex items-center justify-between'>
+          <div className='flex flex-row items-center'>
+            <SimpleSelect
+              items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
+              className='mt-0 !w-40'
+              onSelect={(item) => {
+                const id = item.value
+                const value = TIME_PERIOD_MAPPING[id]?.value ?? '-1'
+                const name = item.name || t('appLog.filter.period.allTime')
+                onSelect({ value, name })
+              }}
+              defaultValue={'2'}
+            />
+          </div>
+          {headerRight}
+        </div>
       </div>
       {!isWorkflow && (
         <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>

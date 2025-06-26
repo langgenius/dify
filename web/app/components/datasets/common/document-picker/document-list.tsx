@@ -21,7 +21,7 @@ const DocumentList: FC<Props> = ({
   }, [onChange])
 
   return (
-    <div className={cn(className)}>
+    <div className={cn('max-h-[calc(100vh-120px)] overflow-auto', className)}>
       {list.map((item) => {
         const { id, name, extension } = item
         return (

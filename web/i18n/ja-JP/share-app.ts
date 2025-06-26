@@ -73,6 +73,9 @@ const translation = {
       atLeastOne: '1 行以上のデータが必要です',
     },
   },
+  login: {
+    backToHome: 'ホームに戻る',
+  },
 }
 
 export default translation

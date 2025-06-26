@@ -39,6 +39,10 @@ class AgentNode(ToolNode):
     _node_data_cls = AgentNodeData  # type: ignore
     _node_type = NodeType.AGENT
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> Generator:
         """
         Run the agent node
@@ -214,7 +218,7 @@ class AgentNode(ToolNode):
                         )
                         if tool_runtime.entity.description:
                             tool_runtime.entity.description.llm = (
-                                extra.get("descrption", "") or tool_runtime.entity.description.llm
+                                extra.get("description", "") or tool_runtime.entity.description.llm
                             )
                         for tool_runtime_params in tool_runtime.entity.parameters:
                             tool_runtime_params.form = (

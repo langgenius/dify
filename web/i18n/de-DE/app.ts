@@ -95,6 +95,7 @@ const translation = {
     foundResult: '{{Anzahl}} Ergebnis',
     agentUserDescription: 'Ein intelligenter Agent, der in der Lage ist, iteratives Denken zu führen und autonome Werkzeuge zu verwenden, um Aufgabenziele zu erreichen.',
     agentShortDescription: 'Intelligenter Agent mit logischem Denken und autonomer Werkzeugnutzung',
+    dropDSLToCreateApp: 'Ziehen Sie die DSL-Datei hierher, um die App zu erstellen',
   },
   editApp: 'App bearbeiten',
   editAppTitle: 'App-Informationen bearbeiten',
@@ -220,12 +221,14 @@ const translation = {
     anyone: 'Jeder kann auf die Webanwendung zugreifen.',
     specific: 'Nur bestimmte Gruppen oder Mitglieder können auf die Webanwendung zugreifen.',
     organization: 'Jeder in der Organisation kann auf die Webanwendung zugreifen.',
+    external: 'Nur authentifizierte externe Benutzer können auf die Webanwendung zugreifen.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Jeder mit dem Link',
       specific: 'Spezifische Gruppen oder Mitglieder',
       organization: 'Nur Mitglieder innerhalb des Unternehmens',
+      external: 'Authentifizierte externe Benutzer',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Gruppen und Mitglieder suchen',

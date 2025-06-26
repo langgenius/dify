@@ -21,7 +21,7 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
-from core.workflow.nodes.llm.node import LLMNode
+from core.workflow.nodes.llm import llm_utils
 from models.account import Tenant
 
 
@@ -55,7 +55,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             def handle() -> Generator[LLMResultChunk, None, None]:
                 for chunk in response:
                     if chunk.delta.usage:
-                        LLMNode.deduct_llm_quota(
+                        llm_utils.deduct_llm_quota(
                             tenant_id=tenant.id, model_instance=model_instance, usage=chunk.delta.usage
                         )
                     chunk.prompt_messages = []
@@ -64,7 +64,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             return handle()
         else:
             if response.usage:
-                LLMNode.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
+                llm_utils.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
 
             def handle_non_streaming(response: LLMResult) -> Generator[LLMResultChunk, None, None]:
                 yield LLMResultChunk(

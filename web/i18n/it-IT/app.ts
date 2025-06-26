@@ -99,6 +99,7 @@ const translation = {
     agentUserDescription: 'Un agente intelligente in grado di ragionare in modo iterativo e di utilizzare autonomamente gli strumenti per raggiungere gli obiettivi del compito.',
     advancedShortDescription: 'Flusso di lavoro migliorato per conversazioni multiple',
     chooseAppType: 'Scegli un tipo di app',
+    dropDSLToCreateApp: 'Trascina il file DSL qui per creare l\'app',
   },
   editApp: 'Modifica Info',
   editAppTitle: 'Modifica Info App',
@@ -224,12 +225,14 @@ const translation = {
     anyone: 'Chiunque può accedere all\'app web',
     specific: 'Solo gruppi o membri specifici possono accedere all\'app web.',
     organization: 'Qualsiasi persona nell\'organizzazione può accedere all\'app web',
+    external: 'Solo gli utenti esterni autenticati possono accedere all\'applicazione Web',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Chiunque con il link',
       specific: 'Gruppi o membri specifici',
       organization: 'Solo i membri all\'interno dell\'impresa',
+      external: 'Utenti esterni autenticati',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Cerca gruppi e membri',

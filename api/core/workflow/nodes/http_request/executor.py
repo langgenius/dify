@@ -1,8 +1,9 @@
 import base64
 import json
+import secrets
+import string
 from collections.abc import Mapping
 from copy import deepcopy
-from random import randint
 from typing import Any, Literal
 from urllib.parse import urlencode, urlparse
 
@@ -434,4 +435,4 @@ def _generate_random_string(n: int) -> str:
         >>> _generate_random_string(5)
         'abcde'
     """
-    return "".join([chr(randint(97, 122)) for _ in range(n)])
+    return "".join(secrets.choice(string.ascii_lowercase) for _ in range(n))

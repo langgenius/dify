@@ -97,6 +97,7 @@ const translation = {
     chatbotShortDescription: 'Chatbot, ki temelji na LLM, s preprosto nastavitvijo',
     chooseAppType: 'Izberite vrsto aplikacije',
     learnMore: 'Izvedi več',
+    dropDSLToCreateApp: 'Spustite DSL datoteko sem, da ustvarite aplikacijo',
   },
   editApp: 'Uredi informacije',
   editAppTitle: 'Uredi informacije o aplikaciji',
@@ -213,12 +214,14 @@ const translation = {
     anyone: 'Vsakdo lahko dostopa do spletne aplikacije',
     specific: 'Samo določenim skupinam ali članom je omogočen dostop do spletne aplikacije',
     organization: 'Vsakdo v organizaciji lahko dostopa do spletne aplikacije',
+    external: 'Samo avtentificirani zunanji uporabniki lahko dostopajo do spletne aplikacije.',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Kdorkoli s povezavo',
       specific: 'Specifične skupine ali člani',
       organization: 'Samo člani znotraj podjetja',
+      external: 'Avtorizirani zunanji uporabniki',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Išči skupine in člane',

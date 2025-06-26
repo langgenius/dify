@@ -23,7 +23,6 @@ import GithubStar from '../github-star'
 import Support from './support'
 import Compliance from './compliance'
 import PremiumBadge from '@/app/components/base/premium-badge'
-import { useGetDocLanguage } from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import { logout } from '@/service/common'
@@ -33,6 +32,7 @@ import { useModalContext } from '@/context/modal-context'
 import { IS_CLOUD_EDITION } from '@/config'
 import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useDocLink } from '@/context/i18n'
 
 export default function AppSelector() {
   const itemClassName = `
@@ -44,10 +44,10 @@ export default function AppSelector() {
   const { systemFeatures } = useGlobalPublicStore()
 
   const { t } = useTranslation()
+  const docLink = useDocLink()
   const { userProfile, langeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
   const { isEducationAccount } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
-  const docLanguage = useGetDocLanguage()
 
   const handleLogout = async () => {
     await logout({
@@ -133,7 +133,7 @@ export default function AppSelector() {
                           className={cn(itemClassName, 'group justify-between',
                             'data-[active]:bg-state-base-hover',
                           )}
-                          href={`https://docs.dify.ai/${docLanguage}/introduction`}
+                          href={docLink('/introduction')}
                           target='_blank' rel='noopener noreferrer'>
                           <RiBookOpenLine className='size-4 shrink-0 text-text-tertiary' />
                           <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.helpCenter')}</div>

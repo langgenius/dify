@@ -3,9 +3,11 @@ import {
   RiExternalLinkLine,
   RiPuzzle2Line,
 } from '@remixicon/react'
+import { useDocLink } from '@/context/i18n'
 
 const Empty = () => {
   const { t } = useTranslation()
+  const docLink = useDocLink()
 
   return (
     <div className='mb-2 rounded-xl bg-background-section p-6'>
@@ -15,7 +17,7 @@ const Empty = () => {
       <div className='system-sm-medium mb-1 text-text-secondary'>{t('common.apiBasedExtension.title')}</div>
       <a
         className='system-xs-regular flex items-center text-text-accent'
-        href={t('common.apiBasedExtension.linkUrl') || '/'}
+        href={docLink('/guides/extension/api-based-extension/README')}
         target='_blank' rel='noopener noreferrer'
       >
         {t('common.apiBasedExtension.link')}

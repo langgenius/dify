@@ -18,6 +18,7 @@ import {
   useWorkflowRun,
 } from '../hooks'
 import { ControlMode, WorkflowRunningStatus } from '../types'
+import { formatWorkflowRunIdentifier } from '../utils'
 import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
@@ -199,7 +200,7 @@ const ViewHistory = ({
                               item.id === historyWorkflowData?.id && 'text-text-accent',
                             )}
                           >
-                            {`Test ${isChatMode ? 'Chat' : 'Run'} #${item.sequence_number}`}
+                            {`Test ${isChatMode ? 'Chat' : 'Run'}${formatWorkflowRunIdentifier(item.finished_at)}`}
                           </div>
                           <div className='flex items-center text-xs leading-[18px] text-text-tertiary'>
                             {item.created_by_account?.name} · {formatTimeFromNow((item.finished_at || item.created_at) * 1000)}

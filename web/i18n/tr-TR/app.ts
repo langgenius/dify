@@ -93,6 +93,7 @@ const translation = {
     advancedShortDescription: 'Çok turlu sohbetler için geliştirilmiş iş akışı',
     noIdeaTip: 'Fikriniz yok mu? Şablonlarımıza göz atın',
     forAdvanced: 'İLERI DÜZEY KULLANICILAR IÇIN',
+    dropDSLToCreateApp: 'Uygulama oluşturmak için DSL dosyasını buraya bırakın',
   },
   editApp: 'Bilgileri Düzenle',
   editAppTitle: 'Uygulama Bilgilerini Düzenle',
@@ -209,12 +210,14 @@ const translation = {
     anyone: 'Herkes web uygulamasına erişebilir',
     organization: 'Kuruluşta herkes web uygulamasına erişebilir.',
     specific: 'Sadece belirli gruplar veya üyeler web uygulamasına erişebilir.',
+    external: 'Sadece kimliği doğrulanmış dış kullanıcılar Web uygulamasına erişebilir',
   },
   accessControlDialog: {
     accessItems: {
       anyone: 'Bağlantıya sahip olan herkes',
       organization: 'Sadece işletme içindeki üyeler',
       specific: 'Belirli gruplar veya üyeler',
+      external: 'Kimliği onaylanmış harici kullanıcılar',
     },
     operateGroupAndMember: {
       searchPlaceholder: 'Grupları ve üyeleri ara',
