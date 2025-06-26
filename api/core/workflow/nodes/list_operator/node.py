@@ -3,6 +3,7 @@ from typing import Any, Literal, Union
 
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
+from core.variables.segments import ArrayAnySegment, ArraySegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.nodes.base import BaseNode
@@ -15,6 +16,10 @@ from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError
 class ListOperatorNode(BaseNode[ListOperatorNodeData]):
     _node_data_cls = ListOperatorNodeData
     _node_type = NodeType.LIST_OPERATOR
+
+    @classmethod
+    def version(cls) -> str:
+        return "1"
 
     def _run(self):
         inputs: dict[str, list] = {}
@@ -30,7 +35,11 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
         if not variable.value:
             inputs = {"variable": []}
             process_data = {"variable": []}
-            outputs = {"result": [], "first_record": None, "last_record": None}
+            if isinstance(variable, ArraySegment):
+                result = variable.model_copy(update={"value": []})
+            else:
+                result = ArrayAnySegment(value=[])
+            outputs = {"result": result, "first_record": None, "last_record": None}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=inputs,
@@ -71,7 +80,7 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
                 variable = self._apply_slice(variable)
 
             outputs = {
-                "result": variable.value,
+                "result": variable,
                 "first_record": variable.value[0] if variable.value else None,
                 "last_record": variable.value[-1] if variable.value else None,
             }

@@ -92,6 +92,7 @@ const translation = {
     advancedUserDescription: '具有記憶體功能的多輪複雜對話任務的工作流程編排。',
     chooseAppType: '選擇 App Type',
     completionShortDescription: '用於文本生成任務的 AI 助手',
+    dropDSLToCreateApp: '將 DSL 檔案拖放到此處以創建應用程式',
   },
   editApp: '編輯資訊',
   editAppTitle: '編輯應用資訊',

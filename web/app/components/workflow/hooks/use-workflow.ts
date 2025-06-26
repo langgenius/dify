@@ -58,10 +58,6 @@ export const useWorkflow = () => {
   const workflowStore = useWorkflowStore()
   const { getAvailableBlocks } = useAvailableBlocks()
   const { nodesMap } = useNodesMetaData()
-  const setPanelWidth = useCallback((width: number) => {
-    localStorage.setItem('workflow-node-panel-width', `${width}`)
-    workflowStore.setState({ panelWidth: width })
-  }, [workflowStore])
 
   const getNodeById = useCallback((nodeId: string) => {
     const {
@@ -453,7 +449,6 @@ export const useWorkflow = () => {
   }, [store, checkParallelLimit, getAvailableBlocks])
 
   return {
-    setPanelWidth,
     getNodeById,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,

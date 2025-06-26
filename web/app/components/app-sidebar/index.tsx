@@ -1,12 +1,15 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { useShallow } from 'zustand/react/shallow'
 import { RiLayoutLeft2Line, RiLayoutRight2Line } from '@remixicon/react'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
 import AppInfo from './app-info'
 import DatasetInfo from './dataset-info'
+import AppSidebarDropdown from './app-sidebar-dropdown'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
 
 export type IAppDetailNavProps = {
@@ -38,12 +41,32 @@ const AppDetailNav = ({
     setAppSidebarExpand(state === 'expand' ? 'collapse' : 'expand')
   }
 
+  // // Check if the current path is a workflow canvas & fullscreen
+  const pathname = usePathname()
+  const inWorkflowCanvas = pathname.endsWith('/workflow')
+  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
+  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v?.type === 'workflow-canvas-maximize')
+      setHideHeader(v.payload)
+  })
+
   useEffect(() => {
     if (appSidebarExpand) {
       localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
       setAppSidebarExpand(appSidebarExpand)
     }
   }, [appSidebarExpand, setAppSidebarExpand])
+
+  if (inWorkflowCanvas && hideHeader) {
+ return (
+      <div className='flex w-0 shrink-0'>
+        <AppSidebarDropdown navigation={navigation} />
+      </div>
+    )
+}
 
   return (
     <div

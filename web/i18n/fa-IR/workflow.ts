@@ -303,6 +303,8 @@ const translation = {
     changeBlock: 'تغییر گره',
     organizeBlocks: 'گره‌ها را سازماندهی کنید',
     addNextStep: 'مرحله بعدی را به این فرآیند اضافه کنید',
+    minimize: 'خروج از حالت تمام صفحه',
+    maximize: 'بیشینه‌سازی بوم',
   },
   nodes: {
     common: {
@@ -916,6 +918,35 @@ const translation = {
     releaseNotesPlaceholder: 'شرح دهید چه چیزی تغییر کرده است',
     restorationTip: 'پس از بازیابی نسخه، پیش‌نویس فعلی بازنویسی خواهد شد.',
     deletionTip: 'حذف غیرقابل برگشت است، لطفا تأیید کنید.',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'این نود را اجرا کن',
+      description: 'نتایج آخرین اجرا در اینجا نمایش داده خواهد شد',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'شفاف',
+        stop: 'متوقف کن، برو',
+        running: 'وضعیت اجرای کشینگ',
+        normal: 'بازبینی متغیر',
+        cached: 'مشاهده متغیرهای کش شده',
+      },
+      chatNode: 'گفتگو',
+      edited: 'ویرایش شده',
+      systemNode: 'سیستم',
+      title: 'بازبینی متغیر',
+      clearAll: 'همه را بازنشانی کن',
+      emptyLink: 'بیشتر یاد بگیرید',
+      reset: 'تنظیم به آخرین مقدار اجرا شده',
+      view: 'مشاهده لاگ',
+      envNode: 'محیط زیست',
+      clearNode: 'کش متغیر کش شده را پاک کنید',
+      emptyTip: 'پس از عبور از یک گره روی بوم یا اجرای گره به صورت مرحله‌ای، می‌توانید مقدار فعلی متغیر گره را در بازرسی متغیر مشاهده کنید.',
+      resetConversationVar: 'متغیر گفتگو را به مقدار پیش‌فرض بازنشانی کنید',
+    },
+    settingsTab: 'تنظیمات',
+    lastRunTab: 'آخرین اجرا',
   },
 }
 

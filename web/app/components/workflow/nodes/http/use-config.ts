@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
@@ -9,7 +9,6 @@ import { type Authorization, type Body, BodyType, type HttpNodeType, type Method
 import useKeyValueList from './hooks/use-key-value-list'
 import { transformToBodyPayload } from './utils'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
@@ -125,55 +124,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
   }, [])
 
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    getInputVars,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<HttpNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {},
-  })
-
-  const fileVarInputs = useMemo(() => {
-    if (!Array.isArray(inputs.body.data))
-      return ''
-
-    const res = inputs.body.data
-      .filter(item => item.file?.length)
-      .map(item => item.file ? `{{#${item.file.join('.')}#}}` : '')
-      .join(' ')
-    return res
-  }, [inputs.body.data])
-
-  const varInputs = getInputVars([
-    inputs.url,
-    inputs.headers,
-    inputs.params,
-    typeof inputs.body.data === 'string' ? inputs.body.data : inputs.body.data?.map(item => item.value).join(''),
-    fileVarInputs,
-  ])
-
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
-
   // curl import panel
   const [isShowCurlPanel, {
     setTrue: showCurlPanel,
@@ -220,16 +170,6 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     hideAuthorization,
     setAuthorization,
     setTimeout,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    varInputs,
-    inputVarValues,
-    setInputVarValues,
-    runResult,
     // curl import
     isShowCurlPanel,
     showCurlPanel,
