@@ -3,6 +3,7 @@ import logging
 import math
 from typing import Any, Optional
 
+from packaging import version
 from pydantic import BaseModel, model_validator
 from pyobvector import VECTOR, FtsIndexParam, FtsParser, ObVecClient  # type: ignore
 from sqlalchemy import JSON, Column, String, func
@@ -138,8 +139,6 @@ class OceanBaseVector(BaseVector):
             return False
 
         try:
-            from packaging import version
-
             # return OceanBase_CE 4.3.5.1 (r101000042025031818-bxxxx) (Built Mar 18 2025 18:13:36)
             result = self._client.perform_raw_text_sql("SELECT @@version_comment AS version")
             ob_full_version = result.fetchone()[0]
