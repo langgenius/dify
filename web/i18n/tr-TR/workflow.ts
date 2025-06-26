@@ -129,6 +129,8 @@ const translation = {
       value: 'Değer',
       valuePlaceholder: 'env değeri',
       secretTip: 'Hassas bilgileri veya verileri tanımlamak için kullanılır, bilgi sızıntısını önlemek için DSL ayarları yapılandırılmıştır.',
+      description: 'Açıklama',
+      descriptionPlaceholder: 'Değişkeni açıklayın',
     },
     export: {
       title: 'Gizli çevre değişkenleri dışa aktarılsın mı?',

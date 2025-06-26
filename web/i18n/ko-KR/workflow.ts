@@ -129,6 +129,8 @@ const translation = {
       value: '값',
       valuePlaceholder: '환경 값',
       secretTip: '민감한 정보나 데이터를 정의하는 데 사용되며, DSL 설정은 유출 방지를 위해 구성됩니다.',
+      description: '설명',
+      descriptionPlaceholder: '변수에 대해 설명하세요',
     },
     export: {
       title: '비밀 환경 변수를 내보내시겠습니까?',

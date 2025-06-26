@@ -129,6 +129,8 @@ const translation = {
       value: 'Wert',
       valuePlaceholder: 'Umgebungswert',
       secretTip: 'Wird verwendet, um sensible Informationen oder Daten zu definieren, wobei DSL-Einstellungen zur Verhinderung von Lecks konfiguriert sind.',
+      description: 'Beschreibung',
+      descriptionPlaceholder: 'Beschreiben Sie die Variable',
     },
     export: {
       title: 'Geheime Umgebungsvariablen exportieren?',
