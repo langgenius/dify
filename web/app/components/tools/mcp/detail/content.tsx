@@ -182,7 +182,7 @@ const MCPDetailContent: FC<Props> = ({
           </div>
         </div>
         <div className='mt-5'>
-          {detail.is_team_authorization && (
+          {!isAuthorizing && detail.is_team_authorization && (
             <Button
               variant='secondary'
               className='w-full'
