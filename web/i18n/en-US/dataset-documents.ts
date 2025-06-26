@@ -355,7 +355,7 @@ const translation = {
     newChildChunk: 'New Child Chunk',
     keywords: 'KEYWORDS',
     addKeyWord: 'Add keyword',
-    keywordEmpty: 'Keyword can not be empty',
+    keywordEmpty: 'The keyword can not be empty',
     keywordError: 'The maximum length of keyword is 20',
     keywordDuplicate: 'The keyword already exists',
     characters_one: 'character',
