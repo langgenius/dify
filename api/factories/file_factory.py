@@ -384,7 +384,7 @@ def get_file_type_by_mime_type(mime_type: str) -> FileType:
 
 class StorageKeyLoader:
     """FileKeyLoader load the storage key from database for a list of files.
-    This loader is batched, the
+    This loader is batched, the database query count is constant regardless of the input size.
     """
 
     def __init__(self, session: Session, tenant_id: str) -> None:
@@ -445,10 +445,10 @@ class StorageKeyLoader:
             if file.transfer_method in (FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL):
                 upload_file_row = upload_files.get(model_id)
                 if upload_file_row is None:
-                    raise ValueError(...)
+                    raise ValueError(f"Upload file not found for id: {model_id}")
                 file._storage_key = upload_file_row.key
             elif file.transfer_method == FileTransferMethod.TOOL_FILE:
                 tool_file_row = tool_files.get(model_id)
                 if tool_file_row is None:
-                    raise ValueError(...)
+                    raise ValueError(f"Tool file not found for id: {model_id}")
                 file._storage_key = tool_file_row.file_key

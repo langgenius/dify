@@ -15,6 +15,7 @@ class OAuthHandler(BasePluginClient):
         user_id: str,
         plugin_id: str,
         provider: str,
+        redirect_uri: str,
         system_credentials: Mapping[str, Any],
     ) -> PluginOAuthAuthorizationUrlResponse:
         response = self._request_with_plugin_daemon_response_stream(
@@ -25,6 +26,7 @@ class OAuthHandler(BasePluginClient):
                 "user_id": user_id,
                 "data": {
                     "provider": provider,
+                    "redirect_uri": redirect_uri,
                     "system_credentials": system_credentials,
                 },
             },
@@ -43,6 +45,7 @@ class OAuthHandler(BasePluginClient):
         user_id: str,
         plugin_id: str,
         provider: str,
+        redirect_uri: str,
         system_credentials: Mapping[str, Any],
         request: Request,
     ) -> PluginOAuthCredentialsResponse:
@@ -61,6 +64,7 @@ class OAuthHandler(BasePluginClient):
                 "user_id": user_id,
                 "data": {
                     "provider": provider,
+                    "redirect_uri": redirect_uri,
                     "system_credentials": system_credentials,
                     # for json serialization
                     "raw_http_request": binascii.hexlify(raw_request_bytes).decode(),

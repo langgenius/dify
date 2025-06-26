@@ -718,7 +718,6 @@ class Conversation(Base):
                 if "model" in override_model_configs:
                     app_model_config = AppModelConfig()
                     app_model_config = app_model_config.from_model_config_dict(override_model_configs)
-                    assert app_model_config is not None, "app model config not found"
                     model_config = app_model_config.to_dict()
                 else:
                     model_config["configs"] = override_model_configs
@@ -914,11 +913,11 @@ class Message(Base):
     _inputs: Mapped[dict] = mapped_column("inputs", db.JSON)
     query: Mapped[str] = db.Column(db.Text, nullable=False)
     message = db.Column(db.JSON, nullable=False)
-    message_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
+    message_tokens: Mapped[int] = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     message_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     answer: Mapped[str] = db.Column(db.Text, nullable=False)
-    answer_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
+    answer_tokens: Mapped[int] = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     answer_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     parent_message_id = db.Column(StringUUID, nullable=True)

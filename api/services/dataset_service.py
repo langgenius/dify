@@ -586,6 +586,10 @@ class DatasetService:
             )
         except ProviderTokenNotInitError:
             # If we can't get the embedding model, preserve existing settings
+            logging.warning(
+                f"Failed to initialize embedding model {data['embedding_model_provider']}/{data['embedding_model']}, "
+                f"preserving existing settings"
+            )
             if dataset.embedding_model_provider and dataset.embedding_model:
                 filtered_data["embedding_model_provider"] = dataset.embedding_model_provider
                 filtered_data["embedding_model"] = dataset.embedding_model
