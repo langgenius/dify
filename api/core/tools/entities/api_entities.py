@@ -41,6 +41,7 @@ class ToolProviderApiEntity(BaseModel):
     # MCP
     server_url: Optional[str] = Field(default="", description="The server url of the tool")
     updated_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
+    server_identifier: Optional[str] = Field(default="", description="The server identifier of the MCP tool")
 
     @field_validator("tools", mode="before")
     @classmethod
@@ -62,6 +63,7 @@ class ToolProviderApiEntity(BaseModel):
         optional_fields = self.optional_field("server_url", self.server_url)
         if self.type == ToolProviderType.MCP.value:
             optional_fields.update(self.optional_field("updated_at", self.updated_at))
+            optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
         return {
             "id": self.id,
             "author": self.author,

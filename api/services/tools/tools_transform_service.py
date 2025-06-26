@@ -205,6 +205,7 @@ class ToolTransformService:
             updated_at=int(db_provider.updated_at.timestamp()),
             label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
             description=I18nObject(en_US="", zh_Hans=""),
+            server_identifier=db_provider.server_identifier,
         )
 
     @staticmethod
