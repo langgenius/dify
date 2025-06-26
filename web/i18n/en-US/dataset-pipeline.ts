@@ -106,6 +106,10 @@ const translation = {
   documentSettings: {
     title: 'Document Settings',
   },
+  onlineDrive: {
+    notConnected: '{{name}} is not connected',
+    notConnectedTip: 'To sync with {{name}}, connection to {{name}} must be established first.',
+  },
 }
 
 export default translation

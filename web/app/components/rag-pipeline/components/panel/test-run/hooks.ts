@@ -55,24 +55,26 @@ export const useDatasourceOptions = () => {
         data: node.data,
       })
     })
-    // todo: delete mock data
-    options.push({
-      label: 'Google Drive',
-      value: '123456',
-      // @ts-expect-error mock data
-      data: {
-        datasource_parameters: {},
-        datasource_configurations: {},
-        type: BlockEnum.DataSource,
-        title: 'Google Drive',
-        plugin_id: 'langgenius/google-drive',
-        provider_type: 'online_drive',
-        provider_name: 'google_drive',
-        datasource_name: 'google-drive',
-        datasource_label: 'Google Drive',
-        selected: false,
-      },
-    })
+    if (process.env.NODE_ENV === 'development') {
+      // todo: delete mock data
+      options.push({
+        label: 'Google Drive',
+        value: '123456',
+        // @ts-expect-error mock data
+        data: {
+          datasource_parameters: {},
+          datasource_configurations: {},
+          type: BlockEnum.DataSource,
+          title: 'Google Drive',
+          plugin_id: 'langgenius/google-drive',
+          provider_type: 'online_drive',
+          provider_name: 'google_drive',
+          datasource_name: 'google-drive',
+          datasource_label: 'Google Drive',
+          selected: false,
+        },
+      })
+    }
     return options
   }, [datasourceNodes])
 

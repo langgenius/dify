@@ -106,6 +106,10 @@ const translation = {
   documentSettings: {
     title: '文档设置',
   },
+  onlineDrive: {
+    notConnected: '{{name}} 未绑定',
+    notConnectedTip: '同步 {{name}} 内容前, 须先绑定 {{name}}。',
+  },
 }
 
 export default translation

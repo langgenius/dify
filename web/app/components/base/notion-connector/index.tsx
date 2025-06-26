@@ -23,7 +23,7 @@ const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
         </span>
         <div className='system-sm-regular text-text-tertiary'>{t('datasetCreation.stepOne.notionSyncTip')}</div>
       </div>
-      <Button className='h-8' variant='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
+      <Button variant='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
     </div>
   )
 }
