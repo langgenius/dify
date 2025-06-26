@@ -1,7 +1,7 @@
 import json
 from collections.abc import Generator, Mapping, Sequence
 from copy import deepcopy
-from typing import Any, Literal, Optional, overload
+from typing import Any, Literal, Optional, cast, overload
 
 import json_repair
 from pydantic import TypeAdapter, ValidationError
@@ -233,7 +233,8 @@ def _handle_prompt_based_schema(
 
 
 def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
-    structured_output: dict[str, Any] = {}
+    structured_output: Mapping[str, Any] = {}
+    parsed: Mapping[str, Any] = {}
     try:
         parsed = TypeAdapter(Mapping).validate_json(result_text)
         if not isinstance(parsed, dict):
@@ -241,14 +242,14 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
         structured_output = parsed
     except ValidationError as e:
         # if the result_text is not a valid json, try to repair it
-        parsed = json_repair.loads(result_text)
-        if not isinstance(parsed, dict):
+        temp_parsed = json_repair.loads(result_text)
+        if not isinstance(temp_parsed, dict):
             # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
-            if isinstance(parsed, list):
-                parsed = next((item for item in parsed if isinstance(item, dict)), {})
+            if isinstance(temp_parsed, list):
+                parsed = next((item for item in temp_parsed if isinstance(item, dict)), {})
             else:
                 raise OutputParserError(f"Failed to parse structured output: {result_text}")
-        structured_output = parsed
+        structured_output = cast(dict, parsed)
     return structured_output
 
 
