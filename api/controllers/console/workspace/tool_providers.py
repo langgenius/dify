@@ -371,12 +371,12 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider):
+    def get(self, provider, credential_type):
         user = current_user
 
         tenant_id = user.current_tenant_id
 
-        return BuiltinToolManageService.list_builtin_provider_credentials_schema(provider, tenant_id)
+        return BuiltinToolManageService.list_builtin_provider_credentials_schema(provider, credential_type, tenant_id)
 
 
 class ToolApiProviderSchemaApi(Resource):
@@ -789,7 +789,7 @@ api.add_resource(
 )
 api.add_resource(
     ToolBuiltinProviderCredentialsSchemaApi,
-    "/workspaces/current/tool-provider/builtin/<path:provider>/credentials_schema",
+    "/workspaces/current/tool-provider/builtin/<path:provider>/<path:credential_type>/credentials_schema",
 )
 api.add_resource(ToolBuiltinProviderIconApi, "/workspaces/current/tool-provider/builtin/<path:provider>/icon")
 

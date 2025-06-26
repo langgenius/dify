@@ -307,7 +307,7 @@ class ToolTransformService:
             )
 
     @staticmethod
-    def convert_builtin_provider_to_credential_api_entity(
+    def convert_builtin_provider_to_credential_entity(
         provider: BuiltinToolProvider, credentials: dict
     ) -> ToolProviderCredentialApiEntity:
         return ToolProviderCredentialApiEntity(
