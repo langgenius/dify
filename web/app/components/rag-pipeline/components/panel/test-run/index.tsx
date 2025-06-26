@@ -15,6 +15,7 @@ import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
 import CloseButton from './close-button'
 import Header from './header'
+import FooterTips from './footer-tips'
 
 const TestRunPanel = () => {
   const setShowDebugAndPreviewPanel = useWorkflowStoreWithSelector(state => state.setShowDebugAndPreviewPanel)
@@ -108,7 +109,7 @@ const TestRunPanel = () => {
     >
       <CloseButton handleClose={handleClose} />
       <Header steps={steps} currentStep={currentStep} />
-      <div className='grow overflow-y-auto'>
+      <div className='flex grow flex-col overflow-y-auto'>
         {
           currentStep === 1 && (
             <>
@@ -161,6 +162,7 @@ const TestRunPanel = () => {
                 )}
               </div>
               <Actions disabled={nextBtnDisabled} handleNextStep={handleNextStep} />
+              <FooterTips />
             </>
           )
         }

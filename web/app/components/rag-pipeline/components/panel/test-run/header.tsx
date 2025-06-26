@@ -1,4 +1,3 @@
-import Tooltip from '@/app/components/base/tooltip'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import StepIndicator from './step-indicator'
@@ -16,12 +15,8 @@ const Header = ({
 
   return (
     <div className='flex flex-col gap-y-0.5 px-3 pb-2 pt-3.5'>
-      <div className='flex items-center gap-x-1 pl-1 pr-8'>
-        <span className='system-md-semibold-uppercase text-text-primary'>{t('datasetPipeline.testRun.title')}</span>
-        <Tooltip
-          popupContent={t('datasetPipeline.testRun.tooltip')}
-          popupClassName='max-w-[240px]'
-        />
+      <div className='system-md-semibold-uppercase flex items-center gap-x-1 pl-1 pr-8 text-text-primary'>
+        {t('datasetPipeline.testRun.title')}
       </div>
       <StepIndicator steps={steps} currentStep={currentStep} />
     </div>

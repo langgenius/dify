@@ -18,7 +18,7 @@ import { useFileUploadConfig } from '@/service/use-common'
 
 const FILES_NUMBER_LIMIT = 20
 
-type IFileUploaderProps = {
+export type FileUploaderProps = {
   fileList: FileItem[]
   allowedExtensions: string[]
   prepareFileList: (files: FileItem[]) => void
@@ -36,7 +36,7 @@ const FileUploader = ({
   onFileListUpdate,
   onPreview,
   notSupportBatchUpload,
-}: IFileUploaderProps) => {
+}: FileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { locale } = useContext(I18n)

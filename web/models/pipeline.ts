@@ -11,6 +11,7 @@ export enum DatasourceType {
   localFile = 'local_file',
   onlineDocument = 'online_document',
   websiteCrawl = 'website_crawl',
+  onlineDrive = 'online_drive',
 }
 
 export type PipelineTemplateListParams = {
