@@ -41,6 +41,7 @@ import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
+import PromptLogModal from '../../base/prompt-log-modal'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -190,11 +191,13 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
+    showPromptLogModal: state.showPromptLogModal,
+    setShowPromptLogModal: state.setShowPromptLogModal,
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
@@ -514,6 +517,16 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             setShowMessageLogModal(false)
           }}
           defaultTab={currentLogModalActiveTab}
+        />
+      )}
+      {!isChatMode && showPromptLogModal && (
+        <PromptLogModal
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowPromptLogModal(false)
+          }}
         />
       )}
     </div>

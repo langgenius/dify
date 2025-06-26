@@ -303,6 +303,8 @@ const translation = {
     selectNextStep: '다음 단계 선택',
     changeBlock: '노드 변경',
     addNextStep: '이 워크플로우에 다음 단계를 추가하세요.',
+    minimize: '전체 화면 종료',
+    maximize: '캔버스를 최대화하다',
   },
   nodes: {
     common: {
@@ -916,6 +918,35 @@ const translation = {
     title: '버전들',
     deletionTip: '삭제는 되돌릴 수 없으니, 확인해 주시기 바랍니다.',
     restorationTip: '버전 복원 후 현재 초안이 덮어쓰여질 것입니다.',
+  },
+  debug: {
+    noData: {
+      runThisNode: '이 노드를 실행하세요',
+      description: '마지막 실행 결과가 여기 표시됩니다.',
+    },
+    variableInspect: {
+      trigger: {
+        stop: '멈춰 뛰어',
+        clear: '맑은',
+        running: '캐싱 실행 상태',
+        cached: '캐시된 변수를 보기',
+        normal: '변수 검사',
+      },
+      title: '변수 검사',
+      view: '로그 보기',
+      edited: '편집됨',
+      emptyLink: '더 알아보기',
+      chatNode: '대화',
+      clearAll: '모두 초기화',
+      systemNode: '시스템',
+      envNode: '환경',
+      clearNode: '캐시된 변수를 지우기',
+      resetConversationVar: '대화 변수를 기본 값으로 재설정합니다.',
+      reset: '마지막 실행 값으로 재설정',
+      emptyTip: '캔버스에서 노드를 한 단계씩 실행한 후, 변수 검사에서 노드 변수의 현재 값을 볼 수 있습니다.',
+    },
+    settingsTab: '설정',
+    lastRunTab: '마지막 실행',
   },
 }
 

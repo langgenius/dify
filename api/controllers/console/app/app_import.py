@@ -17,6 +17,8 @@ from libs.login import login_required
 from models import Account
 from models.model import App
 from services.app_dsl_service import AppDslService, ImportStatus
+from services.enterprise.enterprise_service import EnterpriseService
+from services.feature_service import FeatureService
 
 
 class AppImportApi(Resource):
@@ -60,7 +62,9 @@ class AppImportApi(Resource):
                 app_id=args.get("app_id"),
             )
             session.commit()
-
+        if result.app_id and FeatureService.get_system_features().webapp_auth.enabled:
+            # update web app setting as private
+            EnterpriseService.WebAppAuth.update_app_access_mode(result.app_id, "private")
         # Return appropriate status code based on result
         status = result.status
         if status == ImportStatus.FAILED.value:

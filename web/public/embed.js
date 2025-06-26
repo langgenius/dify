@@ -112,9 +112,21 @@
       return compressedSystemVariables;
     }
 
+    async function getCompressedUserVariablesFromConfig() {
+      const userVariables = config?.userVariables || {};
+      const compressedUserVariables = {};
+      await Promise.all(
+        Object.entries(userVariables).map(async ([key, value]) => {
+          compressedUserVariables[`user.${key}`] = await compressAndEncodeBase64(value);
+        })
+      );
+      return compressedUserVariables;
+    }
+
     const params = new URLSearchParams({
       ...await getCompressedInputsFromConfig(),
-      ...await getCompressedSystemVariablesFromConfig()
+      ...await getCompressedSystemVariablesFromConfig(),
+      ...await getCompressedUserVariablesFromConfig()
     });
 
     const baseUrl =

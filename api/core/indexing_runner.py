@@ -534,7 +534,7 @@ class IndexingRunner:
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         tokens = 0
-        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX:
+        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
@@ -572,7 +572,7 @@ class IndexingRunner:
 
                 for future in futures:
                     tokens += future.result()
-        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX:
+        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
             create_keyword_thread.join()
         indexing_end_at = time.perf_counter()
 

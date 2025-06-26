@@ -155,7 +155,7 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 [こちら](https://dify.ai)のDify Cloudサービスを利用して、セットアップ不要で試すことができます。サンドボックスプランには、200回のGPT-4呼び出しが無料で含まれています。
 
 - **Dify Community Editionのセルフホスティング</br>**
-この[スタートガイド](#quick-start)を使用して、ローカル環境でDifyを簡単に実行できます。
+この[スタートガイド](#クイックスタート)を使用して、ローカル環境でDifyを簡単に実行できます。
 詳しくは[ドキュメント](https://docs.dify.ai)をご覧ください。
 
 - **企業/組織向けのDify</br>**
@@ -219,6 +219,13 @@ docker compose up -d
 
 ##### AWS
 - [@KevinZhaoによるAWS CDK](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+
+#### Alibaba Cloud
+[Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
+
+#### Alibaba Cloud Data Management
+[Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/) を利用して、DifyをAlibaba Cloudへワンクリックでデプロイできます
+
 
 ## 貢献
 

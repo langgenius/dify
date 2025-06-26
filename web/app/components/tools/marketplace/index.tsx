@@ -12,7 +12,7 @@ import { useMarketplace } from './hooks'
 import List from '@/app/components/plugins/marketplace/list'
 import Loading from '@/app/components/base/loading'
 import { getLocaleOnClient } from '@/i18n'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
+import { getMarketplaceUrl } from '@/utils/var'
 
 type MarketplaceProps = {
   searchPluginText: string
@@ -84,7 +84,7 @@ const Marketplace = ({
           </span>
           {t('common.operation.in')}
           <a
-            href={`${MARKETPLACE_URL_PREFIX}?language=${locale}&q=${searchPluginText}&tags=${filterPluginTags.join(',')}${theme ? `&theme=${theme}` : ''}`}
+            href={getMarketplaceUrl('', { language: locale, q: searchPluginText, tags: filterPluginTags.join(','), theme })}
             className='system-sm-medium ml-1 flex items-center text-text-accent'
             target='_blank'
           >

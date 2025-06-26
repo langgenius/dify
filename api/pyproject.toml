@@ -81,6 +81,7 @@ dependencies = [
     "weave~=0.51.0",
     "yarl~=1.18.3",
     "webvtt-py~=0.5.1",
+    "sendgrid~=6.12.3",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -148,11 +149,13 @@ dev = [
     "types-ujson>=5.10.0",
     "boto3-stubs>=1.38.20",
     "types-jmespath>=1.0.2.20240106",
+    "hypothesis>=6.131.15",
     "types_pyOpenSSL>=24.1.0",
     "types_cffi>=1.17.0",
     "types_setuptools>=80.9.0",
     "pandas-stubs~=2.2.3",
     "scipy-stubs>=1.15.3.0",
+    "types-python-http-client>=3.3.7.20240910",
 ]
 
 ############################################################
@@ -202,4 +205,5 @@ vdb = [
     "volcengine-compat~=1.0.0",
     "weaviate-client~=3.24.0",
     "xinference-client~=1.2.2",
+    "mo-vector~=0.1.13",
 ]

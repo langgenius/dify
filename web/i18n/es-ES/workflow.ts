@@ -303,6 +303,8 @@ const translation = {
     addNextStep: 'Agrega el siguiente paso en este flujo de trabajo',
     changeBlock: 'Cambiar Nodo',
     selectNextStep: 'Seleccionar siguiente paso',
+    maximize: 'Maximizar Canvas',
+    minimize: 'Salir de pantalla completa',
   },
   nodes: {
     common: {
@@ -914,6 +916,33 @@ const translation = {
     deletionTip: 'La eliminación es irreversible, por favor confirma.',
     currentDraft: 'Borrador Actual',
     editVersionInfo: 'Editar información de la versión',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Ejecuta este nodo',
+      description: 'Los resultados de la última ejecución se mostrarán aquí',
+    },
+    variableInspect: {
+      trigger: {
+        running: 'Estado de ejecución de la caché',
+        stop: 'Detén la carrera',
+        normal: 'Inspeccionar Variable',
+        cached: 'Ver variables en caché',
+      },
+      envNode: 'Medio ambiente',
+      chatNode: 'Conversación',
+      systemNode: 'Sistema',
+      view: 'Ver registro',
+      clearAll: 'Restablecer todo',
+      emptyLink: 'Aprender más',
+      title: 'Inspeccionar Variable',
+      reset: 'Restablecer al último valor ejecutado',
+      resetConversationVar: 'Restablecer la variable de conversación al valor predeterminado',
+      clearNode: 'Limpiar variable en caché',
+      emptyTip: 'Después de recorrer un nodo en el lienzo o ejecutar un nodo paso a paso, puedes ver el valor actual de la variable del nodo en Inspección de Variables.',
+    },
+    lastRunTab: 'Última ejecución',
+    settingsTab: 'Ajustes',
   },
 }
 

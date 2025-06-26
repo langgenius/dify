@@ -22,7 +22,7 @@ export const useWorkflowTemplate = () => {
         ...nodesInitialData.llm,
         memory: {
           window: { enabled: false, size: 10 },
-          query_prompt_template: '{{#sys.query#}}',
+          query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
         },
         selected: true,
       },

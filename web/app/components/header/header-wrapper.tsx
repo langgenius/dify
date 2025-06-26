@@ -1,6 +1,8 @@
 'use client'
+import React, { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import s from './index.module.css'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import classNames from '@/utils/classnames'
 
 type HeaderWrapperProps = {
@@ -12,6 +14,19 @@ const HeaderWrapper = ({
 }: HeaderWrapperProps) => {
   const pathname = usePathname()
   const isBordered = ['/apps', '/datasets', '/datasets/create', '/tools'].includes(pathname)
+  // // Check if the current path is a workflow canvas & fullscreen
+  const inWorkflowCanvas = pathname.endsWith('/workflow')
+  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
+  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v?.type === 'workflow-canvas-maximize')
+      setHideHeader(v.payload)
+  })
+
+  if (hideHeader && inWorkflowCanvas)
+    return null
 
   return (
     <div className={classNames(

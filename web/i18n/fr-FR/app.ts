@@ -93,6 +93,7 @@ const translation = {
     noIdeaTip: 'Pas d’idées ? Consultez nos modèles',
     optional: 'Optionnel',
     advancedShortDescription: 'Workflow amélioré pour conversations multi-tours',
+    dropDSLToCreateApp: 'Déposez le fichier DSL ici pour créer une application',
   },
   editApp: 'Modifier les informations',
   editAppTitle: 'Modifier les informations de l\'application',

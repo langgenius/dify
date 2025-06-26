@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Tải xuống thất bại. Vui lòng thử lại sau.',
     format: 'Định dạng',
     downloadSuccess: 'Tải xuống đã hoàn thành.',
+    deSelectAll: 'Bỏ chọn tất cả',
+    selectAll: 'Chọn Tất Cả',
   },
   placeholder: {
     input: 'Vui lòng nhập',

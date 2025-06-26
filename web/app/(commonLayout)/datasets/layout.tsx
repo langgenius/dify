@@ -8,15 +8,17 @@ import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 export default function DatasetsLayout({ children }: { children: React.ReactNode }) {
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, currentWorkspace, isLoadingCurrentWorkspace } = useAppContext()
   const router = useRouter()
 
   useEffect(() => {
-    if (!isCurrentWorkspaceEditor && !isCurrentWorkspaceDatasetOperator)
+    if (isLoadingCurrentWorkspace || !currentWorkspace.id)
+      return
+    if (!(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator))
       router.replace('/apps')
-  }, [isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, router])
+  }, [isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace, currentWorkspace, router])
 
-  if (!isCurrentWorkspaceEditor && !isCurrentWorkspaceDatasetOperator)
+  if (isLoadingCurrentWorkspace || !(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator))
     return <Loading type='app' />
   return (
     <ExternalKnowledgeApiProvider>

@@ -5,7 +5,6 @@ import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import ConfigVision from '../_base/components/config-vision'
 import useConfig from './use-config'
-import { findVariableWhenOnLLMVision } from '../utils'
 import type { LLMNodeType } from './types'
 import ConfigPrompt from './components/config-prompt'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -14,10 +13,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import StructureOutput from './components/structure-output'
@@ -31,7 +27,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-
   const {
     readOnly,
     inputs,
@@ -58,79 +53,15 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleMemoryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
-    isShowSingleRun,
-    hideSingleRun,
-    inputVarValues,
-    setInputVarValues,
-    visionFiles,
-    setVisionFiles,
-    contexts,
-    setContexts,
-    runningStatus,
     isModelSupportStructuredOutput,
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     handleStructureOutputChange,
-    handleRun,
-    handleStop,
-    varInputs,
-    runResult,
     filterJinjia2InputVar,
   } = useConfig(id, data)
 
   const model = inputs.model
-
-  const singleRunForms = (() => {
-    const forms: FormProps[] = []
-
-    if (varInputs.length > 0) {
-      forms.push(
-        {
-          label: t(`${i18nPrefix}.singleRun.variable`)!,
-          inputs: varInputs,
-          values: inputVarValues,
-          onChange: setInputVarValues,
-        },
-      )
-    }
-
-    if (inputs.context?.variable_selector && inputs.context?.variable_selector.length > 0) {
-      forms.push(
-        {
-          label: t(`${i18nPrefix}.context`)!,
-          inputs: [{
-            label: '',
-            variable: '#context#',
-            type: InputVarType.contexts,
-            required: false,
-          }],
-          values: { '#context#': contexts },
-          onChange: keyValue => setContexts(keyValue['#context#']),
-        },
-      )
-    }
-
-    if (isVisionModel && data.vision?.enabled && data.vision?.configs?.variable_selector) {
-      const currentVariable = findVariableWhenOnLLMVision(data.vision.configs.variable_selector, availableVars)
-
-      forms.push(
-        {
-          label: t(`${i18nPrefix}.vision`)!,
-          inputs: [{
-            label: currentVariable?.variable as any,
-            variable: '#files#',
-            type: currentVariable?.formType as any,
-            required: false,
-          }],
-          values: { '#files#': visionFiles },
-          onChange: keyValue => setVisionFiles((keyValue as any)['#files#']),
-        },
-      )
-    }
-
-    return forms
-  })()
 
   const handleModelChange = useCallback((model: {
     provider: string
@@ -344,18 +275,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           )}
         </>
       </OutputVars>
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          nodeType={inputs.type}
-          onHide={hideSingleRun}
-          forms={singleRunForms}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
-        />
-      )}
     </div>
   )
 }
