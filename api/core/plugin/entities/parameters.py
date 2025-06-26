@@ -10,6 +10,9 @@ from core.tools.entities.common_entities import I18nObject
 class PluginParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
+    icon: Optional[str] = Field(
+        default=None, description="The icon of the option, can be a url or a base64 encoded image"
+    )
 
     @field_validator("value", mode="before")
     @classmethod
