@@ -462,6 +462,7 @@ const formatItem = (
         return {
           variable: `env.${env.name}`,
           type: env.value_type,
+          des: env.description,
         }
       }) as Var[]
       break

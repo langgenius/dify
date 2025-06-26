@@ -3,6 +3,7 @@ import { capitalize } from 'lodash-es'
 import { RiDeleteBinLine, RiEditLine, RiLock2Line } from '@remixicon/react'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { useStore } from '@/app/components/workflow/store'
+import { useTranslation } from 'react-i18next'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
@@ -17,6 +18,7 @@ const EnvItem = ({
   onEdit,
   onDelete,
 }: EnvItemProps) => {
+  const { t } = useTranslation()
   const envSecrets = useStore(s => s.envSecrets)
   const [destructive, setDestructive] = useState(false)
 
@@ -45,6 +47,7 @@ const EnvItem = ({
           </div>
         </div>
       </div>
+      <div className='system-xs-regular truncate text-text-tertiary'>{env.description ? (`${t('workflow.env.modal.description')}: ${env.description}`) : ''}</div>
       <div className='system-xs-regular truncate text-text-tertiary'>{env.value_type === 'secret' ? envSecrets[env.id] : env.value}</div>
     </div>
   )
