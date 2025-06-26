@@ -92,4 +92,6 @@
    ```bash
    uv run -P api bash dev/pytest/pytest_all_tests.sh
    ```
+   
 
+uv add --default-index https://pypi.tuna.tsinghua.edu.cn/simple requests
