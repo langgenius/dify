@@ -2,6 +2,7 @@ from flask_restful import Resource, reqparse
 from pydantic import ValidationError
 from werkzeug.exceptions import NotFound
 
+from controllers.console.app.mcp_server import AppMCPServerStatus
 from controllers.mcp import api
 from controllers.web.error import (
     AppUnavailableError,
@@ -33,6 +34,8 @@ class MCPAppApi(Resource):
         server = db.session.query(AppMCPServer).filter(AppMCPServer.server_code == server_code).first()
         if not server:
             raise NotFound("Server Not Found")
+        if server.status != AppMCPServerStatus.ACTIVE:
+            raise NotFound("Server is not active")
         app = db.session.query(App).filter(App.id == server.app_id).first()
         if not app:
             raise NotFound("App Not Found")

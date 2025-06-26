@@ -322,7 +322,7 @@ class StreamableHTTPTransport:
         jsonrpc_error = JSONRPCError(
             jsonrpc="2.0",
             id=request_id,
-            error=ErrorData(code=32600, message="Session terminated"),
+            error=ErrorData(code=32600, message="Session terminated by server"),
         )
         session_message = SessionMessage(JSONRPCMessage(jsonrpc_error))
         server_to_client_queue.put(session_message)
