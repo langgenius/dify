@@ -42,7 +42,12 @@ const TagInput: FC<TagInputProps> = ({
 
   const handleNewTag = useCallback((value: string) => {
     const valueTrimmed = value.trim()
-    if (!valueTrimmed || (items.find(item => item === valueTrimmed))) {
+    if (!valueTrimmed) {
+      notify({ type: 'error', message: t('datasetDocuments.segment.keywordEmpty') })
+      return
+    }
+
+    if ((items.find(item => item === valueTrimmed))) {
       notify({ type: 'error', message: t('datasetDocuments.segment.keywordDuplicate') })
       return
     }
