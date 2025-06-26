@@ -12,6 +12,7 @@ from core.app.entities.app_invoke_entities import (
 from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
+from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.enums import UserFrom
@@ -30,6 +31,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self,
         application_generate_entity: WorkflowAppGenerateEntity,
         queue_manager: AppQueueManager,
+        variable_loader: VariableLoader,
         workflow_thread_pool_id: Optional[str] = None,
     ) -> None:
         """
@@ -37,9 +39,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         :param queue_manager: application queue manager
         :param workflow_thread_pool_id: workflow thread pool id
         """
+        super().__init__(queue_manager, variable_loader)
         self.application_generate_entity = application_generate_entity
-        self.queue_manager = queue_manager
         self.workflow_thread_pool_id = workflow_thread_pool_id
+
+    def _get_app_id(self) -> str:
+        return self.application_generate_entity.app_config.app_id
 
     def run(self) -> None:
         """

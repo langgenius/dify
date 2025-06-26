@@ -1,7 +1,28 @@
+// import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
 import { BlockEnum, EditionType } from '../../types'
 import { type NodeDefault, type PromptItem, PromptRole } from '../../types'
 import type { LLMNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
+
+const RETRIEVAL_OUTPUT_STRUCT = `{
+  "content": "",
+  "title": "",
+  "url": "",
+  "icon": "",
+  "metadata": {
+    "dataset_id": "",
+    "dataset_name": "",
+    "document_id": [],
+    "document_name": "",
+    "document_data_source_type": "",
+    "segment_id": "",
+    "segment_position": "",
+    "segment_word_count": "",
+    "segment_hit_count": "",
+    "segment_index_node_hash": "",
+    "score": ""
+  }
+}`
 
 const i18nPrefix = 'workflow.errorMsg'
 
@@ -31,6 +52,10 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
     vision: {
       enabled: false,
     },
+  },
+  defaultRunInputData: {
+    '#context#': [RETRIEVAL_OUTPUT_STRUCT],
+    '#files#': [],
   },
   checkValid(payload: LLMNodeType, t: any) {
     let errorMessages = ''

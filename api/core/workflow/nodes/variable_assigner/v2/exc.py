@@ -29,3 +29,8 @@ class InvalidInputValueError(VariableOperatorNodeError):
 class ConversationIDNotFoundError(VariableOperatorNodeError):
     def __init__(self):
         super().__init__("conversation_id not found")
+
+
+class InvalidDataError(VariableOperatorNodeError):
+    def __init__(self, message: str) -> None:
+        super().__init__(message)

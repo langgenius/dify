@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -51,33 +51,31 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   })))
   const refreshTimer = useRef<any>(null)
 
-  const CustomButton = <>
-    <Divider type='vertical' className='mx-1 h-3 bg-divider-regular' />
-    <button
-      type='button'
-      className='system-xs-semibold text-text-accent'
-      onClick={() => {
-        clearTimeout(refreshTimer.current)
-        viewNewlyAddedChunk()
-      }}>
-      {t('common.operation.view')}
-    </button>
-  </>
+  const CustomButton = useMemo(() => (
+    <>
+      <Divider type='vertical' className='mx-1 h-3 bg-divider-regular' />
+      <button
+        type='button'
+        className='system-xs-semibold text-text-accent'
+        onClick={() => {
+          clearTimeout(refreshTimer.current)
+          viewNewlyAddedChunk()
+        }}>
+        {t('common.operation.view')}
+      </button>
+    </>
+  ), [viewNewlyAddedChunk, t])
 
-  const isQAModel = useMemo(() => {
-    return docForm === ChunkingMode.qa
-  }, [docForm])
-
-  const handleCancel = (actionType: 'esc' | 'add' = 'esc') => {
+  const handleCancel = useCallback((actionType: 'esc' | 'add' = 'esc') => {
     if (actionType === 'esc' || !addAnother)
       onCancel()
-  }
+  }, [onCancel, addAnother])
 
   const { mutateAsync: addSegment } = useAddSegment()
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     const params: SegmentUpdater = { content: '' }
-    if (isQAModel) {
+    if (docForm === ChunkingMode.qa) {
       if (!question.trim()) {
         return notify({
           type: 'error',
@@ -130,23 +128,27 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         setLoading(false)
       },
     })
-  }
+  }, [docForm, keywords, addSegment, datasetId, documentId, question, answer, notify, t, appSidebarExpand, CustomButton, handleCancel, onSave])
 
   const wordCountText = useMemo(() => {
-    const count = isQAModel ? (question.length + answer.length) : question.length
+    const count = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
     return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question.length, answer.length, isQAModel])
+  }, [question.length, answer.length, docForm, t])
 
   const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
 
   return (
     <div className={'flex h-full flex-col'}>
-      <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
+      <div
+        className={classNames(
+          'flex items-center justify-between',
+          fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3',
+        )}
+      >
         <div className='flex flex-col'>
-          <div className='system-xl-semibold text-text-primary'>{
-            t('datasetDocuments.segment.addChunk')
-          }</div>
+          <div className='system-xl-semibold text-text-primary'>
+            {t('datasetDocuments.segment.addChunk')}
+          </div>
           <div className='flex items-center gap-x-2'>
             <SegmentIndexTag label={t('datasetDocuments.segment.newChunk')!} />
             <Dot />
@@ -174,8 +176,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow', fullScreen ? 'w-full flex-row justify-center px-6 pt-6 gap-x-8' : 'flex-col gap-y-1 py-3 px-4')}>
-        <div className={classNames('break-all overflow-hidden whitespace-pre-line', fullScreen ? 'w-1/2' : 'grow')}>
+      <div className={classNames('flex grow', fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3')}>
+        <div className={classNames('overflow-hidden whitespace-pre-line break-all', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}

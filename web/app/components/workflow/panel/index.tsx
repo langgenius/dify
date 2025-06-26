@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { useNodes } from 'reactflow'
 import type { VersionHistoryPanelProps } from '@/app/components/workflow/panel/version-history-panel'
 import VersionHistoryPanel from '@/app/components/workflow/panel/version-history-panel'
@@ -26,10 +26,48 @@ const Panel: FC<PanelProps> = ({
   const isRestoring = useStore(s => s.isRestoring)
   const showWorkflowVersionHistoryPanel = useStore(s => s.showWorkflowVersionHistoryPanel)
 
+  const rightPanelRef = useRef<HTMLDivElement>(null)
+  const setRightPanelWidth = useStore(s => s.setRightPanelWidth)
+
+  // get right panel width
+  useEffect(() => {
+    if (rightPanelRef.current) {
+      const resizeRightPanelObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize } = entry.borderBoxSize[0]
+          setRightPanelWidth(inlineSize)
+        }
+      })
+      resizeRightPanelObserver.observe(rightPanelRef.current)
+      return () => {
+        resizeRightPanelObserver.disconnect()
+      }
+    }
+  }, [setRightPanelWidth])
+
+  const otherPanelRef = useRef<HTMLDivElement>(null)
+  const setOtherPanelWidth = useStore(s => s.setOtherPanelWidth)
+
+  // get other panel width
+  useEffect(() => {
+    if (otherPanelRef.current) {
+      const resizeOtherPanelObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { inlineSize } = entry.borderBoxSize[0]
+          setOtherPanelWidth(inlineSize)
+        }
+      })
+      resizeOtherPanelObserver.observe(otherPanelRef.current)
+      return () => {
+        resizeOtherPanelObserver.disconnect()
+      }
+    }
+  }, [setOtherPanelWidth])
   return (
     <div
+      ref={rightPanelRef}
       tabIndex={-1}
-      className={cn('absolute bottom-2 right-0 top-14 z-10 flex outline-none')}
+      className={cn('absolute bottom-1 right-0 top-14 z-10 flex outline-none')}
       key={`${isRestoring}`}
     >
       {
@@ -40,19 +78,24 @@ const Panel: FC<PanelProps> = ({
           <NodePanel {...selectedNode!} />
         )
       }
-      {
-        components?.right
-      }
-      {
-        showWorkflowVersionHistoryPanel && (
-          <VersionHistoryPanel {...versionHistoryPanelProps} />
-        )
-      }
-      {
-        showEnvPanel && (
-          <EnvPanel />
-        )
-      }
+      <div
+        className='relative'
+        ref={otherPanelRef}
+      >
+        {
+          components?.right
+        }
+        {
+          showWorkflowVersionHistoryPanel && (
+            <VersionHistoryPanel {...versionHistoryPanelProps} />
+          )
+        }
+        {
+          showEnvPanel && (
+            <EnvPanel />
+          )
+        }
+      </div>
     </div>
   )
 }

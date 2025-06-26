@@ -27,11 +27,13 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
 from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.enums import WorkflowRunTriggeredFrom
+from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
         # parse files
+        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
+        # for better separation of concerns.
+        #
+        # For implementation reference, see the `_parse_file` function and
+        # `DraftWorkflowNodeRunApi` class which handle this properly.
         file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
         system_files = file_factory.build_from_mappings(
             mappings=files,
@@ -186,6 +193,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
         workflow_thread_pool_id: Optional[str] = None,
+        variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
@@ -219,6 +227,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "queue_manager": queue_manager,
                 "context": context,
                 "workflow_thread_pool_id": workflow_thread_pool_id,
+                "variable_loader": variable_loader,
             },
         )
 
@@ -303,6 +312,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
+        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        var_loader = DraftVarLoader(
+            engine=db.engine,
+            app_id=application_generate_entity.app_config.app_id,
+            tenant_id=application_generate_entity.app_config.tenant_id,
+        )
 
         return self._generate(
             app_model=app_model,
@@ -313,6 +329,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
+            variable_loader=var_loader,
         )
 
     def single_loop_generate(
@@ -379,7 +396,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
             app_id=application_generate_entity.app_config.app_id,
             triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP,
         )
-
+        draft_var_srv = WorkflowDraftVariableService(db.session())
+        draft_var_srv.prefill_conversation_variable_default_values(workflow)
+        var_loader = DraftVarLoader(
+            engine=db.engine,
+            app_id=application_generate_entity.app_config.app_id,
+            tenant_id=application_generate_entity.app_config.tenant_id,
+        )
         return self._generate(
             app_model=app_model,
             workflow=workflow,
@@ -389,6 +412,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
+            variable_loader=var_loader,
         )
 
     def _generate_worker(
@@ -397,6 +421,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity: WorkflowAppGenerateEntity,
         queue_manager: AppQueueManager,
         context: contextvars.Context,
+        variable_loader: VariableLoader,
         workflow_thread_pool_id: Optional[str] = None,
     ) -> None:
         """
@@ -415,6 +440,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     workflow_thread_pool_id=workflow_thread_pool_id,
+                    variable_loader=variable_loader,
                 )
 
                 runner.run()

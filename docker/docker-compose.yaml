@@ -355,6 +355,7 @@ x-shared-env: &shared-api-worker-env
   HTTP_REQUEST_NODE_MAX_BINARY_SIZE: ${HTTP_REQUEST_NODE_MAX_BINARY_SIZE:-10485760}
   HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
   HTTP_REQUEST_NODE_SSL_VERIFY: ${HTTP_REQUEST_NODE_SSL_VERIFY:-True}
+  RESPECT_XFORWARD_HEADERS_ENABLED: ${RESPECT_XFORWARD_HEADERS_ENABLED:-false}
   SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
   LOOP_NODE_MAX_COUNT: ${LOOP_NODE_MAX_COUNT:-100}
@@ -515,7 +516,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.4.3
+    image: langgenius/dify-api:1.5.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -544,7 +545,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:1.4.3
+    image: langgenius/dify-api:1.5.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -570,7 +571,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.4.3
+    image: langgenius/dify-web:1.5.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}

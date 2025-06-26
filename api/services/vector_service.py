@@ -97,16 +97,16 @@ class VectorService:
             vector = Vector(dataset=dataset)
             vector.delete_by_ids([segment.index_node_id])
             vector.add_texts([document], duplicate_check=True)
-
-        # update keyword index
-        keyword = Keyword(dataset)
-        keyword.delete_by_ids([segment.index_node_id])
-
-        # save keyword index
-        if keywords and len(keywords) > 0:
-            keyword.add_texts([document], keywords_list=[keywords])
         else:
-            keyword.add_texts([document])
+            # update keyword index
+            keyword = Keyword(dataset)
+            keyword.delete_by_ids([segment.index_node_id])
+
+            # save keyword index
+            if keywords and len(keywords) > 0:
+                keyword.add_texts([document], keywords_list=[keywords])
+            else:
+                keyword.add_texts([document])
 
     @classmethod
     def generate_child_chunks(

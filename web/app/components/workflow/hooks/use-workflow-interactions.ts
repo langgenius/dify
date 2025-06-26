@@ -330,3 +330,29 @@ export const useWorkflowUpdate = () => {
     handleUpdateWorkflowCanvas,
   }
 }
+
+export const useWorkflowCanvasMaximize = () => {
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  const maximizeCanvas = useStore(s => s.maximizeCanvas)
+  const setMaximizeCanvas = useStore(s => s.setMaximizeCanvas)
+  const {
+    getNodesReadOnly,
+  } = useNodesReadOnly()
+
+  const handleToggleMaximizeCanvas = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    setMaximizeCanvas(!maximizeCanvas)
+    localStorage.setItem('workflow-canvas-maximize', String(!maximizeCanvas))
+    eventEmitter?.emit({
+      type: 'workflow-canvas-maximize',
+      payload: !maximizeCanvas,
+    } as any)
+  }, [eventEmitter, getNodesReadOnly, maximizeCanvas, setMaximizeCanvas])
+
+  return {
+    handleToggleMaximizeCanvas,
+  }
+}

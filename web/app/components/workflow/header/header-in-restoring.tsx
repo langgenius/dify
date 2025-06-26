@@ -17,6 +17,8 @@ import {
 import Toast from '../../base/toast'
 import RestoringTitle from './restoring-title'
 import Button from '@/app/components/base/button'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
 
 export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
@@ -26,6 +28,12 @@ const HeaderInRestoring = ({
 }: HeaderInRestoringProps) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
+  const appDetail = useAppStore.getState().appDetail
+
+  const invalidAllLastRun = useInvalidAllLastRun(appDetail!.id)
+  const {
+    deleteAllInspectVars,
+  } = workflowStore.getState()
   const currentVersion = useStore(s => s.currentVersion)
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
 
@@ -61,7 +69,9 @@ const HeaderInRestoring = ({
         onRestoreSettled?.()
       },
     })
-  }, [handleSyncWorkflowDraft, workflowStore, setShowWorkflowVersionHistoryPanel, onRestoreSettled, t])
+    deleteAllInspectVars()
+    invalidAllLastRun()
+  }, [setShowWorkflowVersionHistoryPanel, workflowStore, handleSyncWorkflowDraft, deleteAllInspectVars, invalidAllLastRun, t, onRestoreSettled])
 
   return (
     <>

@@ -18,6 +18,8 @@ import cn from '@/utils/classnames'
 import {
   StopCircle,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 
 type RunModeProps = {
   text?: string
@@ -35,6 +37,16 @@ const RunMode = memo(({
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
   const mergedRunning = isRunning || running
+
+  const handleStop = () => {
+    handleStopRun(workflowRunningData?.task_id || '')
+  }
+
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === EVENT_WORKFLOW_STOP)
+      handleStop()
+  })
 
   return (
     <>

@@ -43,16 +43,17 @@ const PanelOperatorPopup = ({
   const { nodesReadOnly } = useNodesReadOnly()
   const edge = edges.find(edge => edge.target === id)
   const nodeMetaData = useNodeMetaData({ id, data } as Node)
-
   const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop
+  const isChildNode = !!(data.isInIteration || data.isInLoop)
+
   return (
     <div className='w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
       {
-        (showChangeBlock || canRunBySingle(data.type)) && (
+        (showChangeBlock || canRunBySingle(data.type, isChildNode)) && (
           <>
             <div className='p-1'>
               {
-                canRunBySingle(data.type) && (
+                canRunBySingle(data.type, isChildNode) && (
                   <div
                     className={`
                       flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary
