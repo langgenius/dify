@@ -5,7 +5,6 @@ from vanna.qianwen import QianWenAI_Chat
 from vanna.deepseek import DeepSeekChat
 from extensions.utils.rewrite_ask import ask
 from dotenv import load_dotenv
-import plotly.io as pio
 from vanna.milvus import Milvus_VectorStore
 from pymilvus import MilvusClient,model
 from collections import defaultdict
@@ -13,7 +12,6 @@ from collections import defaultdict
 
 load_dotenv()
 # 设置显示后端为浏览器
-pio.renderers.default = 'browser'
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 from typing import List
