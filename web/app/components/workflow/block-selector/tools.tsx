@@ -26,6 +26,7 @@ type ToolsProps = {
   indexBarClassName?: string
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
+  hasScrollBar: boolean
 }
 const Blocks = ({
   showWorkflowEmpty,
@@ -39,6 +40,7 @@ const Blocks = ({
   indexBarClassName,
   selectedTools,
   canChooseMCPTool,
+  hasScrollBar,
 }: ToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -131,7 +133,7 @@ const Blocks = ({
         )
       )}
 
-      {isShowLetterIndex && <IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
+      {isShowLetterIndex && <IndexBar hasScrollBar={hasScrollBar} letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
     </div>
   )
 }

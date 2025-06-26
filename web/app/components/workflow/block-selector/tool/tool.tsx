@@ -145,7 +145,7 @@ const Tool: FC<Props> = ({
   return (
     <div
       key={payload.id}
-      className={cn('mb-1 last-of-type:mb-0', isShowLetterIndex && 'mr-2')}
+      className={cn('mb-1 last-of-type:mb-0', isShowLetterIndex && 'mr-6')}
       ref={ref}
     >
       <div className={cn(className)}>
