@@ -219,6 +219,10 @@ Triển khai Dify trên AWS bằng [CDK](https://aws.amazon.com/cdk/)
 
 [Alibaba Cloud Computing Nest](https://computenest.console.aliyun.com/service/instance/create/default?type=user&ServiceName=Dify%E7%A4%BE%E5%8C%BA%E7%89%88)
 
+#### Alibaba Cloud Data Management
+
+Triển khai Dify lên Alibaba Cloud chỉ với một cú nhấp chuột bằng [Alibaba Cloud Data Management](https://www.alibabacloud.com/help/en/dms/dify-in-invitational-preview/)
+
 
 ## Đóng góp
 

@@ -58,6 +58,8 @@ const translation = {
     downloadSuccess: '下載完成。',
     downloadFailed: '下載失敗。請稍後再試。',
     format: '格式',
+    deSelectAll: '全不選',
+    selectAll: '全選',
   },
   placeholder: {
     input: '請輸入',

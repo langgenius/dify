@@ -19,6 +19,8 @@ import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player
 import type { VersionHistory } from '@/types/workflow'
 import { noop } from 'lodash-es'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
+import useSetWorkflowVarsWithValue from './use-fetch-workflow-inspect-vars'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
@@ -28,6 +30,9 @@ export const useWorkflowRun = () => {
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
+  const appId = useAppStore.getState().appDetail?.id
+  const invalidAllLastRun = useInvalidAllLastRun(appId as string)
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const {
     handleWorkflowStarted,
@@ -140,11 +145,13 @@ export const useWorkflowRun = () => {
       clientHeight,
     } = workflowContainer!
 
+    const isInWorkflowDebug = appDetail?.mode === 'workflow'
+
     let url = ''
     if (appDetail?.mode === 'advanced-chat')
       url = `/apps/${appDetail.id}/advanced-chat/workflows/draft/run`
 
-    if (appDetail?.mode === 'workflow')
+    if (isInWorkflowDebug)
       url = `/apps/${appDetail.id}/workflows/draft/run`
 
     const {
@@ -189,6 +196,10 @@ export const useWorkflowRun = () => {
 
           if (onWorkflowFinished)
             onWorkflowFinished(params)
+          if (isInWorkflowDebug) {
+            fetchInspectVars()
+            invalidAllLastRun()
+          }
         },
         onError: (params) => {
           handleWorkflowFailed()
@@ -292,26 +303,7 @@ export const useWorkflowRun = () => {
         ...restCallback,
       },
     )
-  }, [
-    store,
-    workflowStore,
-    doSyncWorkflowDraft,
-    handleWorkflowStarted,
-    handleWorkflowFinished,
-    handleWorkflowFailed,
-    handleWorkflowNodeStarted,
-    handleWorkflowNodeFinished,
-    handleWorkflowNodeIterationStarted,
-    handleWorkflowNodeIterationNext,
-    handleWorkflowNodeIterationFinished,
-    handleWorkflowNodeLoopStarted,
-    handleWorkflowNodeLoopNext,
-    handleWorkflowNodeLoopFinished,
-    handleWorkflowNodeRetry,
-    handleWorkflowTextChunk,
-    handleWorkflowTextReplace,
-    handleWorkflowAgentLog,
-    pathname],
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace],
   )
 
   const handleStopRun = useCallback((taskId: string) => {

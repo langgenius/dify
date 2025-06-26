@@ -58,6 +58,8 @@ const translation = {
     more: 'بیشتر',
     format: 'قالب',
     downloadSuccess: 'دانلود کامل شد.',
+    selectAll: 'انتخاب همه',
+    deSelectAll: 'همه را انتخاب نکنید',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',

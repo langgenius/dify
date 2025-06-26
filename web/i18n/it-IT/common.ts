@@ -58,6 +58,8 @@ const translation = {
     downloadFailed: 'Download non riuscito. Per favore riprova più tardi.',
     more: 'Di più',
     format: 'Formato',
+    selectAll: 'Seleziona tutto',
+    deSelectAll: 'Deseleziona tutto',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',

@@ -21,6 +21,8 @@ import {
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean
@@ -104,6 +106,12 @@ const ChatWrapper = (
       isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
     )
   }, [chatList, doSend])
+
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === EVENT_WORKFLOW_STOP)
+      handleStop()
+  })
 
   useImperativeHandle(ref, () => {
     return {

@@ -149,11 +149,13 @@ dev = [
     "types-ujson>=5.10.0",
     "boto3-stubs>=1.38.20",
     "types-jmespath>=1.0.2.20240106",
+    "hypothesis>=6.131.15",
     "types_pyOpenSSL>=24.1.0",
     "types_cffi>=1.17.0",
     "types_setuptools>=80.9.0",
     "pandas-stubs~=2.2.3",
     "scipy-stubs>=1.15.3.0",
+    "types-python-http-client>=3.3.7.20240910",
 ]
 
 ############################################################
