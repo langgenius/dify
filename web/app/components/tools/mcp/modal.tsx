@@ -1,8 +1,8 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getDomain } from 'tldts'
-import { RiCloseLine } from '@remixicon/react'
+import { RiCloseLine, RiEditLine } from '@remixicon/react'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIcon from '@/app/components/base/app-icon'
@@ -15,6 +15,7 @@ import { noop } from 'lodash-es'
 import Toast from '@/app/components/base/toast'
 import { uploadRemoteFileInfo } from '@/service/common'
 import cn from '@/utils/classnames'
+import { useHover } from 'ahooks'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -62,6 +63,8 @@ const MCPModal = ({
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
   const [isFetchingIcon, setIsFetchingIcon] = useState(false)
+  const appIconRef = useRef<HTMLDivElement>(null)
+  const isHovering = useHover(appIconRef)
 
   const isValidUrl = (string: string) => {
     try {
@@ -157,13 +160,20 @@ const MCPModal = ({
                 placeholder={t('tools.mcp.modal.namePlaceholder')}
               />
             </div>
-            <div className='pt-2'>
+            <div className='pt-2' ref={appIconRef}>
               <AppIcon
                 iconType={appIcon.type}
                 icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
                 background={appIcon.type === 'emoji' ? appIcon.background : undefined}
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                size='xxl' className='cursor-pointer rounded-2xl'
+                size='xxl'
+                className='relative cursor-pointer rounded-2xl'
+                coverElement={
+                  isHovering
+                  ? (<div className='absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt'>
+                  <RiEditLine className='size-6 text-text-primary-on-surface' />
+                </div>) : null
+                }
                 onClick={() => { setShowAppIconPicker(true) }}
               />
             </div>
