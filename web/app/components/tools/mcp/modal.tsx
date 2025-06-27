@@ -89,7 +89,7 @@ const MCPModal = ({
     const remoteIcon = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
     setIsFetchingIcon(true)
     try {
-      const res = await uploadRemoteFileInfo(remoteIcon)
+      const res = await uploadRemoteFileInfo(remoteIcon, undefined, true)
       setAppIcon({ type: 'image', url: res.url, fileId: extractFileId(res.url) || '' })
     }
     catch (e) {
