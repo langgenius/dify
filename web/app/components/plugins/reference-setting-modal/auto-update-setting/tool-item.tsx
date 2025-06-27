@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { Plugin } from '@/app/components/plugins/types'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { renderI18nObject } from '@/i18n'
 import { useGetLanguage } from '@/context/i18n'
@@ -9,7 +9,7 @@ import { MARKETPLACE_API_PREFIX } from '@/config'
 import Checkbox from '@/app/components/base/checkbox'
 
 type Props = {
-  payload: Plugin
+  payload: PluginDetail
   isChecked?: boolean
   onCheckChange: () => void
 }
@@ -21,7 +21,8 @@ const ToolItem: FC<Props> = ({
 }) => {
   const language = useGetLanguage()
 
-  const { plugin_id, label, org } = payload
+  const { plugin_id, declaration } = payload
+  const { label, author: org } = declaration
   return (
     <div className='p-1'>
       <div
