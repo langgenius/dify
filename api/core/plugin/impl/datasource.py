@@ -5,6 +5,9 @@ from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
     GetOnlineDocumentPageContentRequest,
     OnlineDocumentPagesMessage,
+    OnlineDriverBrowseFilesRequest,
+    OnlineDriverBrowseFilesResponse,
+    OnlineDriverDownloadFileRequest,
     WebsiteCrawlMessage,
 )
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
@@ -182,6 +185,78 @@ class PluginDatasourceManager(BasePluginClient):
                     "datasource": datasource_name,
                     "credentials": credentials,
                     "page": datasource_parameters.model_dump(),
+                },
+            },
+            headers={
+                "X-Plugin-ID": datasource_provider_id.plugin_id,
+                "Content-Type": "application/json",
+            },
+        )
+        yield from response
+
+    def online_driver_browse_files(
+        self,
+        tenant_id: str,
+        user_id: str,
+        datasource_provider: str,
+        datasource_name: str,
+        credentials: dict[str, Any],
+        request: OnlineDriverBrowseFilesRequest,
+        provider_type: str,
+    ) -> Generator[OnlineDriverBrowseFilesResponse, None, None]:
+        """
+        Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
+        """
+
+        datasource_provider_id = GenericProviderID(datasource_provider)
+
+        response = self._request_with_plugin_daemon_response_stream(
+            "POST",
+            f"plugin/{tenant_id}/dispatch/datasource/online_driver_browse_files",
+            OnlineDriverBrowseFilesResponse,
+            data={
+                "user_id": user_id,
+                "data": {
+                    "provider": datasource_provider_id.provider_name,
+                    "datasource": datasource_name,
+                    "credentials": credentials,
+                    "request": request.model_dump(),
+                },
+            },
+            headers={
+                "X-Plugin-ID": datasource_provider_id.plugin_id,
+                "Content-Type": "application/json",
+            },
+        )
+        yield from response
+
+    def online_driver_download_file(
+        self,
+        tenant_id: str,
+        user_id: str,
+        datasource_provider: str,
+        datasource_name: str,
+        credentials: dict[str, Any],
+        request: OnlineDriverDownloadFileRequest,
+        provider_type: str,
+    ) -> Generator[DatasourceMessage, None, None]:
+        """
+        Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
+        """
+
+        datasource_provider_id = GenericProviderID(datasource_provider)
+
+        response = self._request_with_plugin_daemon_response_stream(
+            "POST",
+            f"plugin/{tenant_id}/dispatch/datasource/online_driver_download_file",
+            DatasourceMessage,
+            data={
+                "user_id": user_id,
+                "data": {
+                    "provider": datasource_provider_id.provider_name,
+                    "datasource": datasource_name,
+                    "credentials": credentials,
+                    "request": request.model_dump(),
                 },
             },
             headers={

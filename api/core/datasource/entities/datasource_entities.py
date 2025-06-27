@@ -26,6 +26,7 @@ class DatasourceProviderType(enum.StrEnum):
     ONLINE_DOCUMENT = "online_document"
     LOCAL_FILE = "local_file"
     WEBSITE_CRAWL = "website_crawl"
+    ONLINE_DRIVER = "online_driver"
 
     @classmethod
     def value_of(cls, value: str) -> "DatasourceProviderType":
@@ -303,3 +304,57 @@ class WebsiteCrawlMessage(BaseModel):
 
 class DatasourceMessage(ToolInvokeMessage):
     pass
+
+
+#########################
+# Online driver file
+#########################
+
+
+class OnlineDriverFile(BaseModel):
+    """
+    Online driver file
+    """
+
+    key: str = Field(..., description="The key of the file")
+    size: int = Field(..., description="The size of the file")
+
+
+class OnlineDriverFileBucket(BaseModel):
+    """
+    Online driver file bucket
+    """
+
+    bucket: Optional[str] = Field(None, description="The bucket of the file")
+    files: list[OnlineDriverFile] = Field(..., description="The files of the bucket")
+    is_truncated: bool = Field(False, description="Whether the bucket has more files")
+
+
+class OnlineDriverBrowseFilesRequest(BaseModel):
+    """
+    Get online driver file list request
+    """
+
+    prefix: Optional[str] = Field(None, description="File path prefix for filtering eg: 'docs/dify/'")
+    bucket: Optional[str] = Field(None, description="Storage bucket name")
+    max_keys: int = Field(20, description="Maximum number of files to return")
+    start_after: Optional[str] = Field(
+        None, description="Pagination token for continuing from a specific file eg: 'docs/dify/1.txt'"
+    )
+
+
+class OnlineDriverBrowseFilesResponse(BaseModel):
+    """
+    Get online driver file list response
+    """
+
+    result: list[OnlineDriverFileBucket] = Field(..., description="The bucket of the files")
+
+
+class OnlineDriverDownloadFileRequest(BaseModel):
+    """
+    Get online driver file
+    """
+
+    key: str = Field(..., description="The name of the file")
+    bucket: Optional[str] = Field(None, description="The name of the bucket")
