@@ -2,7 +2,7 @@ import threading
 from collections.abc import Sequence
 from typing import Optional
 
-from sqlalchemy import desc, select
+from sqlalchemy.orm import sessionmaker
 
 import contexts
 from extensions.ext_database import db
@@ -15,9 +15,17 @@ from models import (
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
+from repositories.factory import DifyAPIRepositoryFactory
 
 
 class WorkflowRunService:
+    def __init__(self):
+        """Initialize WorkflowRunService with repository dependencies."""
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            session_maker
+        )
+
     def get_paginate_advanced_chat_workflow_runs(self, app_model: App, args: dict) -> InfiniteScrollPagination:
         """
         Get advanced chat app workflow run list
@@ -138,17 +146,11 @@ class WorkflowRunService:
 
         # Get tenant_id from user
         tenant_id = user.tenant_id if isinstance(user, EndUser) else user.current_tenant_id
+        if tenant_id is None:
+            raise ValueError("User tenant_id cannot be None")
 
-        # Use SQLAlchemy 2.0 style query directly
-        stmt = (
-            select(WorkflowNodeExecutionModel)
-            .where(
-                WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                WorkflowNodeExecutionModel.app_id == app_model.id,
-                WorkflowNodeExecutionModel.workflow_run_id == run_id,
-            )
-            .order_by(desc(WorkflowNodeExecutionModel.index))
+        return self._node_execution_service_repo.get_executions_by_workflow_run(
+            tenant_id=tenant_id,
+            app_id=app_model.id,
+            workflow_run_id=run_id,
         )
-
-        workflow_node_executions = db.session.execute(stmt).scalars().all()
-        return workflow_node_executions

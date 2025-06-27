@@ -5,9 +5,9 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, ClassVar
 
-from sqlalchemy import Engine, orm, select
+from sqlalchemy import Engine, orm
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.expression import and_, or_
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -21,11 +21,13 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
 from core.workflow.variable_loader import VariableLoader
+from extensions.ext_database import db
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
 from models import App, Conversation
 from models.enums import DraftVariableType
-from models.workflow import Workflow, WorkflowDraftVariable, WorkflowNodeExecutionModel, is_system_variable_editable
+from models.workflow import Workflow, WorkflowDraftVariable, is_system_variable_editable
+from repositories.factory import DifyAPIRepositoryFactory
 
 _logger = logging.getLogger(__name__)
 
@@ -118,6 +120,10 @@ class WorkflowDraftVariableService:
 
     def __init__(self, session: Session) -> None:
         self._session = session
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            session_maker
+        )
 
     def get_variable(self, variable_id: str) -> WorkflowDraftVariable | None:
         return self._session.query(WorkflowDraftVariable).filter(WorkflowDraftVariable.id == variable_id).first()
@@ -248,8 +254,7 @@ class WorkflowDraftVariableService:
             _logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
 
-        query = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == variable.node_execution_id)
-        node_exec = self._session.scalars(query).first()
+        node_exec = self._node_execution_service_repo.get_execution_by_id(variable.node_execution_id)
         if node_exec is None:
             _logger.warning(
                 "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",

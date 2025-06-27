@@ -7,13 +7,13 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
-from core.repositories import RepositoryFactory
+from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
@@ -41,6 +41,7 @@ from models.workflow import (
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowType,
 )
+from repositories.factory import DifyAPIRepositoryFactory
 from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
@@ -57,21 +58,31 @@ class WorkflowService:
     Workflow Service
     """
 
+    def __init__(self):
+        """Initialize WorkflowService with repository dependencies."""
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+            session_maker
+        )
+
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
-        # TODO(QuantumGhost): This query is not fully covered by index.
-        criteria = (
-            WorkflowNodeExecutionModel.tenant_id == app_model.tenant_id,
-            WorkflowNodeExecutionModel.app_id == app_model.id,
-            WorkflowNodeExecutionModel.workflow_id == workflow.id,
-            WorkflowNodeExecutionModel.node_id == node_id,
+        """
+        Get the most recent execution for a specific node.
+
+        Args:
+            app_model: The application model
+            workflow: The workflow model
+            node_id: The node identifier
+
+        Returns:
+            The most recent WorkflowNodeExecutionModel for the node, or None if not found
+        """
+        return self._node_execution_service_repo.get_node_last_execution(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            workflow_id=workflow.id,
+            node_id=node_id,
         )
-        node_exec = (
-            db.session.query(WorkflowNodeExecutionModel)
-            .filter(*criteria)
-            .order_by(WorkflowNodeExecutionModel.created_at.desc())
-            .first()
-        )
-        return node_exec
 
     def is_workflow_exist(self, app_model: App) -> bool:
         return (
@@ -396,7 +407,7 @@ class WorkflowService:
         node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-        repository = RepositoryFactory.create_workflow_node_execution_repository(
+        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             user=account,
             app_id=app_model.id,
@@ -404,8 +415,9 @@ class WorkflowService:
         )
         repository.save(node_execution)
 
-        stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == node_execution.id)
-        workflow_node_execution = db.session.execute(stmt).scalar_one()
+        workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
+        if workflow_node_execution is None:
+            raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
 
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(
@@ -418,6 +430,7 @@ class WorkflowService:
             )
             draft_var_saver.save(process_data=node_execution.process_data, outputs=node_execution.outputs)
             session.commit()
+
         return workflow_node_execution
 
     def run_free_workflow_node(
@@ -429,7 +442,7 @@ class WorkflowService:
         # run draft workflow node
         start_at = time.perf_counter()
 
-        workflow_node_execution = self._handle_node_run_result(
+        node_execution = self._handle_node_run_result(
             invoke_node_fn=lambda: WorkflowEntry.run_free_node(
                 node_id=node_id,
                 node_data=node_data,
@@ -441,7 +454,7 @@ class WorkflowService:
             node_id=node_id,
         )
 
-        return workflow_node_execution
+        return node_execution
 
     def _handle_node_run_result(
         self,

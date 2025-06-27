@@ -28,7 +28,7 @@ class RepositoryImportError(Exception):
     pass
 
 
-class RepositoryFactory:
+class DifyCoreRepositoryFactory:
     """
     Factory for creating repository instances based on configuration.
 
@@ -143,7 +143,7 @@ class RepositoryFactory:
         Raises:
             RepositoryImportError: If the configured repository cannot be created
         """
-        class_path = dify_config.WORKFLOW_EXECUTION_REPOSITORY
+        class_path = dify_config.CORE_WORKFLOW_EXECUTION_REPOSITORY
         logger.debug(f"Creating WorkflowExecutionRepository from: {class_path}")
 
         try:
@@ -189,7 +189,7 @@ class RepositoryFactory:
         Raises:
             RepositoryImportError: If the configured repository cannot be created
         """
-        class_path = dify_config.WORKFLOW_NODE_EXECUTION_REPOSITORY
+        class_path = dify_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY
         logger.debug(f"Creating WorkflowNodeExecutionRepository from: {class_path}")
 
         try:
