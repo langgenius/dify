@@ -12,6 +12,7 @@ import type { CommonNodeType } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import cn from '@/utils/classnames'
+import { useNodesReadOnly } from '../hooks/use-workflow'
 
 const VariableInspectTrigger: FC = () => {
   const { t } = useTranslation()
@@ -32,7 +33,10 @@ const VariableInspectTrigger: FC = () => {
     const allVars = [...environmentVariables, ...conversationVars, ...systemVars, ...nodesWithInspectVars]
     return allVars
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
-
+  const {
+    nodesReadOnly,
+    getNodesReadOnly,
+  } = useNodesReadOnly()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const nodes = useNodes<CommonNodeType>()
   const isStepRunning = useMemo(() => nodes.some(node => node.data._singleRunningStatus === NodeRunningStatus.Running), [nodes])
@@ -61,8 +65,14 @@ const VariableInspectTrigger: FC = () => {
     <div className={cn('flex items-center gap-1')}>
       {!isRunning && !currentVars.length && (
         <div
-          className='system-2xs-semibold-uppercase flex h-5 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-background-default-hover'
-          onClick={() => setShowVariableInspectPanel(true)}
+          className={cn('system-2xs-semibold-uppercase flex h-5 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-background-default-hover',
+            nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+          )}
+          onClick={() => {
+            if (getNodesReadOnly())
+              return
+            setShowVariableInspectPanel(true)
+          }}
         >
           {t('workflow.debug.variableInspect.trigger.normal')}
         </div>
@@ -70,13 +80,21 @@ const VariableInspectTrigger: FC = () => {
       {!isRunning && currentVars.length > 0 && (
         <>
           <div
-            className='system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent'
-            onClick={() => setShowVariableInspectPanel(true)}
+            className={cn('system-xs-medium flex h-6 cursor-pointer items-center gap-1 rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-2 text-text-accent shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent',
+              nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+            )}
+            onClick={() => {
+              if (getNodesReadOnly())
+                return
+              setShowVariableInspectPanel(true)
+            }}
           >
             {t('workflow.debug.variableInspect.trigger.cached')}
           </div>
           <div
-            className='system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent hover:text-text-accent'
+            className={cn('system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent hover:text-text-accent',
+              nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
+            )}
             onClick={handleClearAll}
           >
             {t('workflow.debug.variableInspect.trigger.clear')}
