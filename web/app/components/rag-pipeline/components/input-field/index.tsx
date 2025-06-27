@@ -67,16 +67,27 @@ const InputFieldDialog = ({
 
   const updateInputFields = useCallback(async (key: string, value: InputVar[]) => {
     inputFieldsMap.current[key] = value
-    const newRagPipelineVariables: RAGPipelineVariables = []
+    const datasourceNodeInputFields: RAGPipelineVariables = []
+    const globalInputFields: RAGPipelineVariables = []
     Object.keys(inputFieldsMap.current).forEach((key) => {
       const inputFields = inputFieldsMap.current[key]
       inputFields.forEach((inputField) => {
-        newRagPipelineVariables.push({
-          ...inputField,
-          belong_to_node_id: key,
-        })
+        if (key === 'shared') {
+          globalInputFields.push({
+            ...inputField,
+            belong_to_node_id: key,
+          })
+        }
+        else {
+          datasourceNodeInputFields.push({
+            ...inputField,
+            belong_to_node_id: key,
+          })
+        }
       })
     })
+    // Datasource node input fields come first, then global input fields
+    const newRagPipelineVariables = [...datasourceNodeInputFields, ...globalInputFields]
     setRagPipelineVariables?.(newRagPipelineVariables)
     handleSyncWorkflowDraft()
   }, [setRagPipelineVariables, handleSyncWorkflowDraft])
