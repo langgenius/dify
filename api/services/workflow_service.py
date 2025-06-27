@@ -58,9 +58,10 @@ class WorkflowService:
     Workflow Service
     """
 
-    def __init__(self):
+    def __init__(self, session_maker: sessionmaker | None = None):
         """Initialize WorkflowService with repository dependencies."""
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        if session_maker is None:
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
