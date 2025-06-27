@@ -2,7 +2,6 @@ from collections.abc import Mapping
 from typing import Any, Optional, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
@@ -70,7 +69,7 @@ from models.model import App
 from models.workflow import Workflow
 
 
-class WorkflowBasedAppRunner(AppRunner):
+class WorkflowBasedAppRunner:
     def __init__(self, queue_manager: AppQueueManager, variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER) -> None:
         self.queue_manager = queue_manager
         self._variable_loader = variable_loader
