@@ -79,13 +79,15 @@ class DocumentAddByTextApi(DatasetApiResource):
             DatasetService.check_embedding_model_setting(
                 tenant_id, args.get("embedding_model_provider"), args.get("embedding_model")
             )
-        if (args.get("retrieval_model") and 
-            args.get("retrieval_model").get("reranking_model") and 
-            args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")):
+        if (
+            args.get("retrieval_model")
+            and args.get("retrieval_model").get("reranking_model")
+            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+        ):
             DatasetService.check_reranking_model_setting(
-                tenant_id, 
-                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"), 
-                args.get("retrieval_model").get("reranking_model").get("reranking_model_name")
+                tenant_id,
+                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
+                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
 
         upload_file = FileService.upload_text(text=str(text), text_name=str(name))
@@ -138,13 +140,15 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
-        if (args.get("retrieval_model") and 
-            args.get("retrieval_model").get("reranking_model") and 
-            args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")):
+        if (
+            args.get("retrieval_model")
+            and args.get("retrieval_model").get("reranking_model")
+            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+        ):
             DatasetService.check_reranking_model_setting(
-                tenant_id, 
-                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"), 
-                args.get("retrieval_model").get("reranking_model").get("reranking_model_name")
+                tenant_id,
+                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
+                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
 
         # indexing_technique is already set in dataset since this is an update
@@ -215,13 +219,15 @@ class DocumentAddByFileApi(DatasetApiResource):
             DatasetService.check_embedding_model_setting(
                 tenant_id, args["embedding_model_provider"], args["embedding_model"]
             )
-        if ("retrieval_model" in args and
-            args["retrieval_model"].get("reranking_model") and 
-            args["retrieval_model"].get("reranking_model").get("reranking_provider_name")):
+        if (
+            "retrieval_model" in args
+            and args["retrieval_model"].get("reranking_model")
+            and args["retrieval_model"].get("reranking_model").get("reranking_provider_name")
+        ):
             DatasetService.check_reranking_model_setting(
-                tenant_id, 
-                args["retrieval_model"].get("reranking_model").get("reranking_provider_name"), 
-                args["retrieval_model"].get("reranking_model").get("reranking_model_name")
+                tenant_id,
+                args["retrieval_model"].get("reranking_model").get("reranking_provider_name"),
+                args["retrieval_model"].get("reranking_model").get("reranking_model_name"),
             )
 
         # save file info

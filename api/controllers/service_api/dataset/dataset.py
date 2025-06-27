@@ -138,15 +138,17 @@ class DatasetListApi(DatasetApiResource):
             DatasetService.check_embedding_model_setting(
                 tenant_id, args.get("embedding_model_provider"), args.get("embedding_model")
             )
-        if (args.get("retrieval_model") and 
-            args.get("retrieval_model").get("reranking_model") and 
-            args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")):
+        if (
+            args.get("retrieval_model")
+            and args.get("retrieval_model").get("reranking_model")
+            and args.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+        ):
             DatasetService.check_reranking_model_setting(
-                tenant_id, 
-                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"), 
-                args.get("retrieval_model").get("reranking_model").get("reranking_model_name")
+                tenant_id,
+                args.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
+                args.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
-            
+
         try:
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=tenant_id,
@@ -287,13 +289,15 @@ class DatasetApi(DatasetApiResource):
             DatasetService.check_embedding_model_setting(
                 dataset.tenant_id, data.get("embedding_model_provider"), data.get("embedding_model")
             )
-        if (data.get("retrieval_model") and 
-            data.get("retrieval_model").get("reranking_model") and 
-            data.get("retrieval_model").get("reranking_model").get("reranking_provider_name")):
+        if (
+            data.get("retrieval_model")
+            and data.get("retrieval_model").get("reranking_model")
+            and data.get("retrieval_model").get("reranking_model").get("reranking_provider_name")
+        ):
             DatasetService.check_reranking_model_setting(
-                dataset.tenant_id, 
-                data.get("retrieval_model").get("reranking_model").get("reranking_provider_name"), 
-                data.get("retrieval_model").get("reranking_model").get("reranking_model_name")
+                dataset.tenant_id,
+                data.get("retrieval_model").get("reranking_model").get("reranking_provider_name"),
+                data.get("retrieval_model").get("reranking_model").get("reranking_model_name"),
             )
 
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
