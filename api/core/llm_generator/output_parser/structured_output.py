@@ -1,12 +1,14 @@
 import json
 from collections.abc import Generator, Mapping, Sequence
 from copy import deepcopy
+from enum import StrEnum
 from typing import Any, Literal, Optional, cast, overload
 
 import json_repair
 from pydantic import TypeAdapter, ValidationError
 
 from core.llm_generator.output_parser.errors import OutputParserError
+from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
 from core.model_manager import ModelInstance
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import (
@@ -23,8 +25,21 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
-from core.workflow.utils.structured_output.entities import ResponseFormat, SpecialModelType
-from core.workflow.utils.structured_output.prompt import STRUCTURED_OUTPUT_PROMPT
+
+
+class ResponseFormat(StrEnum):
+    """Constants for model response formats"""
+
+    JSON_SCHEMA = "json_schema"  # model's structured output mode. some model like gemini, gpt-4o,  support this mode.
+    JSON = "JSON"  # model's json mode. some model like claude support this mode.
+    JSON_OBJECT = "json_object"  # json mode's another alias. some model like deepseek-chat, qwen use this alias.
+
+
+class SpecialModelType(StrEnum):
+    """Constants for identifying model types"""
+
+    GEMINI = "gemini"
+    OLLAMA = "ollama"
 
 
 @overload
