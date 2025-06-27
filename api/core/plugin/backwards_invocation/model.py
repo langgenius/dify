@@ -3,7 +3,11 @@ from binascii import hexlify, unhexlify
 from collections.abc import Generator
 
 from core.model_manager import ModelManager
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+)
 from core.model_runtime.entities.message_entities import (
     PromptMessage,
     SystemPromptMessage,
