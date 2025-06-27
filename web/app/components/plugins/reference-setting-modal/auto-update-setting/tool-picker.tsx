@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import ToolItem from './tool-item'
 import Loading from '@/app/components/base/loading'
+import NoDataPlaceholder from './no-data-placeholder'
 
 type Props = {
   trigger: React.ReactNode
@@ -100,6 +101,10 @@ const ToolPicker: FC<Props> = ({
     </div>
   )
 
+  const noData = (
+    <NoDataPlaceholder className='h-[396px]' noPlugins={!query} />
+  )
+
   return (
     <PortalToFollowElem
         placement='top'
@@ -145,6 +150,7 @@ const ToolPicker: FC<Props> = ({
               </div>
             </div>
             {!isLoading && list.length > 0 && listContent}
+            {!isLoading && list.length === 0 && noData}
             {isLoading && loadingContent}
           </div>
         </PortalToFollowElemContent>

@@ -168,6 +168,10 @@ const translation = {
       downgrade: 'Downgrade anyway',
       exclude: 'Exclude from auto-update',
     },
+    noPluginPlaceholder: {
+      noFound: 'No plugins were found',
+      noInstalled: 'No plugins installed',
+    },
   },
   pluginInfoModal: {
     title: 'Plugin info',
