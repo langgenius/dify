@@ -25,6 +25,7 @@ class WorkflowRunService:
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
+        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     def get_paginate_advanced_chat_workflow_runs(self, app_model: App, args: dict) -> InfiniteScrollPagination:
         """

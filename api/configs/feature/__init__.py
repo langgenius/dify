@@ -567,6 +567,11 @@ class RepositoryConfig(BaseSettings):
         default="repositories.sqlalchemy_api_workflow_node_execution_repository.DifyAPISQLAlchemyWorkflowNodeExecutionRepository",
     )
 
+    API_WORKFLOW_RUN_REPOSITORY: str = Field(
+        description="Service-layer repository implementation for WorkflowRun operations. Specify as a module path",
+        default="repositories.sqlalchemy_api_workflow_run_repository.DifyAPISQLAlchemyWorkflowRunRepository",
+    )
+
 
 class AuthConfig(BaseSettings):
     """

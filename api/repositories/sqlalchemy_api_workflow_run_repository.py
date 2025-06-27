@@ -25,16 +25,15 @@ from datetime import datetime
 from typing import Optional, cast
 
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.workflow import WorkflowRun
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 
 logger = logging.getLogger(__name__)
 
 
-class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
+class DifyAPISQLAlchemyWorkflowRunRepository:
     """
     SQLAlchemy implementation of APIWorkflowRunRepository.
 
@@ -46,7 +45,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         session_maker: SQLAlchemy sessionmaker instance for database connections
     """
 
-    def __init__(self, session_maker: sessionmaker[Session]) -> None:
+    def __init__(self, session_maker: sessionmaker) -> None:
         """
         Initialize the repository with a sessionmaker.
 
@@ -87,18 +86,34 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     raise ValueError("Last workflow run not exists")
 
                 # Get records created before the last run's timestamp
-                base_stmt = base_stmt.where(
-                    WorkflowRun.created_at < last_workflow_run.created_at,
-                    WorkflowRun.id != last_workflow_run.id,
-                )
-
-            # First page - get most recent records
-            workflow_runs = session.scalars(base_stmt.order_by(WorkflowRun.created_at.desc()).limit(limit + 1)).all()
+                workflow_runs = session.scalars(
+                    base_stmt.where(
+                        WorkflowRun.created_at < last_workflow_run.created_at,
+                        WorkflowRun.id != last_workflow_run.id,
+                    )
+                    .order_by(WorkflowRun.created_at.desc())
+                    .limit(limit)
+                ).all()
+            else:
+                # First page - get most recent records
+                workflow_runs = session.scalars(base_stmt.order_by(WorkflowRun.created_at.desc()).limit(limit)).all()
 
             # Check if there are more records for pagination
-            has_more = len(workflow_runs) > limit
-            if has_more:
-                workflow_runs = workflow_runs[:-1]
+            has_more = False
+            if len(workflow_runs) == limit:
+                current_page_last_run = workflow_runs[-1]
+                remaining_count = session.scalar(
+                    select(WorkflowRun.id)
+                    .where(
+                        WorkflowRun.tenant_id == tenant_id,
+                        WorkflowRun.app_id == app_id,
+                        WorkflowRun.triggered_from == triggered_from,
+                        WorkflowRun.created_at < current_page_last_run.created_at,
+                        WorkflowRun.id != current_page_last_run.id,
+                    )
+                    .limit(1)
+                )
+                has_more = remaining_count is not None
 
             return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 

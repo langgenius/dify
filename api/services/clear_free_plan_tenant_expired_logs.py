@@ -14,7 +14,6 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.model import App, Conversation, Message
-from models.workflow import WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 
@@ -111,47 +110,6 @@ class ClearFreePlanTenantExpiredLogs:
             node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
             before_date = datetime.datetime.now() - datetime.timedelta(days=days)
             total_deleted = 0
-
-            while True:
-                # Get a batch of expired executions for backup
-                workflow_node_executions = node_execution_repo.get_expired_executions_batch(
-                    tenant_id=tenant_id,
-                    before_date=before_date,
-                    batch_size=batch,
-                )
-
-                if len(workflow_node_executions) == 0:
-                    break
-
-                # Save workflow node executions to storage
-                storage.save(
-                    f"free_plan_tenant_expired_logs/"
-                    f"{tenant_id}/workflow_node_executions/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                    f"-{time.time()}.json",
-                    json.dumps(
-                        jsonable_encoder(workflow_node_executions),
-                    ).encode("utf-8"),
-                )
-
-                # Extract IDs for deletion
-                workflow_node_execution_ids = [
-                    workflow_node_execution.id for workflow_node_execution in workflow_node_executions
-                ]
-
-                # Delete the backed up executions
-                deleted_count = node_execution_repo.delete_executions_by_ids(workflow_node_execution_ids)
-                total_deleted += deleted_count
-
-                click.echo(
-                    click.style(
-                        f"[{datetime.datetime.now()}] Processed {len(workflow_node_execution_ids)}"
-                        f" workflow node executions for tenant {tenant_id}"
-                    )
-                )
-
-                # If we got fewer than the batch size, we're done
-                if len(workflow_node_executions) < batch:
-                    break
 
             while True:
                 # Get a batch of expired executions for backup
