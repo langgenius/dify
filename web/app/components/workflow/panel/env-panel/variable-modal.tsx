@@ -29,7 +29,7 @@ const VariableModal = ({
   const [type, setType] = React.useState<'string' | 'number' | 'secret'>('string')
   const [name, setName] = React.useState('')
   const [value, setValue] = React.useState<any>()
-  const [des, setDes] = React.useState<string>('')
+  const [description, setDescription] = React.useState<string>('')
 
   const checkVariableName = (value: string) => {
     const { isValid, errorMessageKey } = checkKeys([value], false)
@@ -61,7 +61,7 @@ const VariableModal = ({
       value_type: type,
       name,
       value: type === 'number' ? Number(value) : value,
-      description: des,
+      description,
     })
     onClose()
   }
@@ -71,7 +71,7 @@ const VariableModal = ({
       setType(env.value_type)
       setName(env.name)
       setValue(env.value_type === 'secret' ? envSecrets[env.id] : env.value)
-      setDes(env.description)
+      setDescription(env.description)
     }
   }, [env, envSecrets])
 
@@ -162,9 +162,9 @@ const VariableModal = ({
           <div className='flex'>
             <textarea
               className='system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'
-              value={des}
+              value={description}
               placeholder={t('workflow.env.modal.descriptionPlaceholder') || ''}
-              onChange={e => setDes(e.target.value)}
+              onChange={e => setDescription(e.target.value)}
             />
           </div>
         </div>
