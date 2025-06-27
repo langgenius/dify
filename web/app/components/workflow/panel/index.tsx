@@ -14,6 +14,19 @@ export type PanelProps = {
   }
 }
 
+/**
+ * Reference MDN standard implementation：https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
+ */
+const getEntryWidth = (entry: ResizeObserverEntry, element: HTMLElement): number => {
+  if (entry.borderBoxSize?.length > 0)
+    return entry.borderBoxSize[0].inlineSize
+
+  if (entry.contentRect.width > 0)
+    return entry.contentRect.width
+
+  return element.getBoundingClientRect().width
+}
+
 const useResizeObserver = (
   callback: (width: number) => void,
   dependencies: React.DependencyList,
@@ -26,9 +39,7 @@ const useResizeObserver = (
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { inlineSize } = entry.borderBoxSize[0]
-
-        const width = inlineSize > 0 ? inlineSize : element.getBoundingClientRect().width
+        const width = getEntryWidth(entry, element)
         callback(width)
       }
     })
