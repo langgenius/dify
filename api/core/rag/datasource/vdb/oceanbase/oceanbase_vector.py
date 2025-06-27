@@ -89,6 +89,7 @@ class OceanBaseVector(BaseVector):
             if len(vals) == 0:
                 raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
             if any(val == 0 for val in vals):
+                logger.info("ob_vector_memory_limit_percentage is 0, setting it to 30% for enabling vector indexing.")
                 try:
                     self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
                 except Exception as e:
