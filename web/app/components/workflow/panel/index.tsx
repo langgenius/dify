@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { memo, useEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useRef } from 'react'
 import { useNodes } from 'reactflow'
 import type { CommonNodeType } from '../types'
 import { Panel as NodePanel } from '../nodes'
@@ -29,9 +29,11 @@ const getEntryWidth = (entry: ResizeObserverEntry, element: HTMLElement): number
 
 const useResizeObserver = (
   callback: (width: number) => void,
-  dependencies: React.DependencyList,
+  dependencies: React.DependencyList = [],
 ) => {
   const elementRef = useRef<HTMLDivElement>(null)
+
+  const stableCallback = useCallback(callback, [callback])
 
   useEffect(() => {
     const element = elementRef.current
@@ -40,20 +42,19 @@ const useResizeObserver = (
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const width = getEntryWidth(entry, element)
-        callback(width)
+        stableCallback(width)
       }
     })
 
     resizeObserver.observe(element)
 
     const initialWidth = element.getBoundingClientRect().width
-    callback(initialWidth)
+    stableCallback(initialWidth)
 
     return () => {
       resizeObserver.disconnect()
     }
-  }, dependencies)
-
+  }, [stableCallback, ...dependencies])
   return elementRef
 }
 
