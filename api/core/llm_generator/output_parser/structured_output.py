@@ -150,9 +150,9 @@ def invoke_llm_with_structured_output(
     else:
 
         def generator() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
-            result_text = ""
-            prompt_messages = []
-            system_fingerprint = None
+            result_text: str = ""
+            prompt_messages: Sequence[PromptMessage] = []
+            system_fingerprint: Optional[str] = None
             for event in llm_result:
                 if isinstance(event, LLMResultChunk):
                     if isinstance(event.delta.message.content, str):
