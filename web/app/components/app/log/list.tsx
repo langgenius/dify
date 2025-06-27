@@ -191,6 +191,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
+  const { notify } = useContext(ToastContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -312,18 +313,34 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       return item
     }))
   }, [allChatItems])
-  const handleAnnotationRemoved = useCallback((index: number) => {
-    setAllChatItems(allChatItems.map((item, i) => {
-      if (i === index) {
-        return {
-          ...item,
-          content: item.content,
-          annotation: undefined,
-        }
+  const handleAnnotationRemoved = useCallback(async (index: number): Promise<boolean> => {
+    const annotation = allChatItems[index]?.annotation
+
+    try {
+      if (annotation?.id) {
+        const { delAnnotation } = await import('@/service/annotation')
+        await delAnnotation(appDetail?.id || '', annotation.id)
       }
-      return item
-    }))
-  }, [allChatItems])
+
+      setAllChatItems(allChatItems.map((item, i) => {
+        if (i === index) {
+          return {
+            ...item,
+            content: item.content,
+            annotation: undefined,
+          }
+        }
+        return item
+      }))
+
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      return true
+    }
+    catch {
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      return false
+    }
+  }, [allChatItems, appDetail?.id, t])
 
   const fetchInitiated = useRef(false)
 
