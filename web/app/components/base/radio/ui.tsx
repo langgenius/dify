@@ -5,14 +5,29 @@ import cn from '@/utils/classnames'
 
 type Props = {
   isChecked: boolean
+  disabled?: boolean
+  onCheck?: () => void
 }
 
 const RadioUI: FC<Props> = ({
   isChecked,
+  disabled = false,
+  onCheck,
 }) => {
   return (
-    <div className={cn(isChecked ? 'border-[5px] border-components-radio-border-checked' : 'border-[2px] border-components-radio-border', 'h-4 w-4  rounded-full')}>
-    </div>
+    <div
+      className={cn(
+        'size-4 rounded-full',
+        isChecked && !disabled && 'border-[5px] border-components-radio-border-checked hover:border-components-radio-border-checked-hover',
+        !isChecked && !disabled && 'border border-components-radio-border hover:border-components-radio-border-hover',
+        isChecked && disabled && 'border-[5px] border-components-radio-border-checked-disabled',
+        !isChecked && disabled && 'border border-components-radio-border-disabled bg-components-radio-bg-disabled',
+        !disabled && 'bg-components-radio-bg shadow-xs shadow-shadow-shadow-3 hover:bg-components-radio-bg-hover',
+      )}
+      onClick={() => {
+        onCheck?.()
+      }}
+    />
   )
 }
 export default React.memo(RadioUI)

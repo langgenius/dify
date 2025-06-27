@@ -16,6 +16,7 @@ type CrawledResultProps = {
   onSelectedChange: (selected: CrawlResultItem[]) => void
   onPreview?: (payload: CrawlResultItem, index: number) => void
   usedTime: number
+  supportMultipleChoice?: boolean
 }
 
 const CrawledResult = ({
@@ -26,6 +27,7 @@ const CrawledResult = ({
   onSelectedChange,
   usedTime,
   onPreview,
+  supportMultipleChoice = true,
 }: CrawledResultProps) => {
   const { t } = useTranslation()
 
@@ -42,12 +44,11 @@ const CrawledResult = ({
   const handleItemCheckChange = useCallback((item: CrawlResultItem) => {
     return (checked: boolean) => {
       if (checked)
-        onSelectedChange([...checkedList, item])
-
+        supportMultipleChoice ? onSelectedChange([...checkedList, item]) : onSelectedChange([item])
       else
         onSelectedChange(checkedList.filter(checkedItem => checkedItem.source_url !== item.source_url))
     }
-  }, [checkedList, onSelectedChange])
+  }, [checkedList, onSelectedChange, supportMultipleChoice])
 
   const handlePreview = useCallback((index: number) => {
     if (!onPreview) return
@@ -63,12 +64,14 @@ const CrawledResult = ({
         })}
       </div>
       <div className='overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg'>
-        <div className='flex items-center px-4 py-2'>
-          <CheckboxWithLabel
-            isChecked={isCheckAll}
-            onChange={handleCheckedAll} label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
-          />
-        </div>
+        {supportMultipleChoice && (
+          <div className='flex items-center px-4 py-2'>
+            <CheckboxWithLabel
+              isChecked={isCheckAll}
+              onChange={handleCheckedAll} label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
+            />
+          </div>
+        )}
         <div className='flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2'>
           {list.map((item, index) => (
             <CrawledResultItem
@@ -79,6 +82,7 @@ const CrawledResult = ({
               isPreview={index === previewIndex}
               onPreview={handlePreview.bind(null, index)}
               showPreview={!!onPreview}
+              supportMultipleChoice={supportMultipleChoice}
             />
           ))}
         </div>

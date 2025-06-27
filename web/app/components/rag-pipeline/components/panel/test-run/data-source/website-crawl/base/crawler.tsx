@@ -169,6 +169,7 @@ const Crawler = ({
               usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
               previewIndex={previewIndex}
               onPreview={onPreview}
+              supportMultipleChoice={false} // only support single choice in test run
             />
           )}
         </div>
