@@ -147,7 +147,7 @@ const translation = {
     },
     updateTimeTitle: 'Update time',
     upgradeMode: {
-      update_all: 'Update all',
+      all: 'Update all',
       exclude: 'Exclude selected',
       partial: 'Only selected',
     },

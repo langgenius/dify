@@ -7,7 +7,7 @@ export enum AUTO_UPDATE_STRATEGY {
 export enum AUTO_UPDATE_MODE {
   partial = 'partial',
   exclude = 'exclude',
-  update_all = 'update_all',
+  update_all = 'all',
 }
 
 export type AutoUpdateConfig = {
