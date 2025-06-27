@@ -102,7 +102,20 @@ const DetailHeader = ({
     setFalse: hideUpdateModal,
   }] = useBoolean(false)
 
-  const isAutoUpgradeEnabled = true // toeo
+  const { referenceSetting } = useReferenceSetting()
+  const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
+  const isAutoUpgradeEnabled = useMemo(() => {
+    if(!autoUpgradeInfo)
+      return false
+    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.update_all)
+      return true
+    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.partial && autoUpgradeInfo.include_plugins.includes(plugin_id))
+      return true
+    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.exclude && !autoUpgradeInfo.exclude_plugins.includes(plugin_id))
+      return true
+    return false
+  }, [autoUpgradeInfo, plugin_id])
+
   const [isShowDowngradeWarningModal, {
     setTrue: showDowngradeWarningModal,
     setFalse: hideDowngradeWarningModal,
@@ -187,20 +200,6 @@ const DetailHeader = ({
     }
   }, [showDeleting, installation_id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
 
-  const { referenceSetting } = useReferenceSetting()
-  const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
-  const isShowAutoUpdate = useMemo(() => {
-    if(!autoUpgradeInfo)
-      return false
-    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.update_all)
-      return true
-    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.partial && autoUpgradeInfo.include_plugins.includes(plugin_id))
-      return true
-    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.exclude && !autoUpgradeInfo.exclude_plugins.includes(plugin_id))
-      return true
-    return false
-  }, [autoUpgradeInfo, plugin_id])
-
   return (
     <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3')}>
       <div className="flex">
@@ -240,7 +239,7 @@ const DetailHeader = ({
               }
             />
             {/* Auto update info */}
-            {isShowAutoUpdate && (
+            {isAutoUpgradeEnabled && (
               <Tooltip popupContent={t('plugin.autoUpdate.nextUpdateTime', { time: timeOfDayToDayjs(autoUpgradeInfo?.upgrade_time_of_day || 0).format('hh:mm A') })}>
                 {/* add a a div to fix tooltip hover not show problem */}
                 <div>
