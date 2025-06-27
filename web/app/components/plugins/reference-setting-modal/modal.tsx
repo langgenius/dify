@@ -5,19 +5,18 @@ import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import Button from '@/app/components/base/button'
-import type { Permissions } from '@/app/components/plugins/types'
+import type { Permissions, ReferenceSetting } from '@/app/components/plugins/types'
 import { PermissionType } from '@/app/components/plugins/types'
 import type { AutoUpdateConfig } from './auto-update-setting/types'
 import AutoUpdateSetting from './auto-update-setting'
 import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/config'
 import Label from './label'
 
-type Payload = Permissions & { autoUpdate: AutoUpdateConfig }
 const i18nPrefix = 'plugin.privilege'
 type Props = {
-  payload: Payload
+  payload: ReferenceSetting
   onHide: () => void
-  onSave: (payload: Payload) => void
+  onSave: (payload: ReferenceSetting) => void
 }
 
 const PluginSettingModal: FC<Props> = ({
@@ -26,7 +25,7 @@ const PluginSettingModal: FC<Props> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const { autoUpdate: autoUpdateConfig, ...privilege } = payload || {}
+  const { auto_upgrade: autoUpdateConfig, permission: privilege } = payload || {}
   const [tempPrivilege, setTempPrivilege] = useState<Permissions>(privilege)
   const [tempAutoUpdateConfig, setTempAutoUpdateConfig] = useState<AutoUpdateConfig>(autoUpdateConfig || autoUpdateDefaultValue)
   const handlePrivilegeChange = useCallback((key: string) => {
@@ -40,8 +39,8 @@ const PluginSettingModal: FC<Props> = ({
 
   const handleSave = useCallback(async () => {
     await onSave({
-      ...tempPrivilege,
-      autoUpdate: tempAutoUpdateConfig,
+      permission: tempPrivilege,
+      auto_upgrade: tempAutoUpdateConfig,
     })
     onHide()
   }, [onHide, onSave, tempAutoUpdateConfig, tempPrivilege])

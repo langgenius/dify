@@ -17,7 +17,7 @@ import {
 } from './context'
 import InstallPluginDropdown from './install-plugin-dropdown'
 import { useUploader } from './use-uploader'
-import usePermission from './use-permission'
+import useReferenceSetting from './use-reference-setting'
 import DebugInfo from './debug-info'
 import PluginTasks from './plugin-tasks'
 import Button from '@/app/components/base/button'
@@ -121,12 +121,12 @@ const PluginPage = ({
   }, [packageId, bundleInfo])
 
   const {
+    referenceSetting,
     canManagement,
     canDebugger,
     canSetPermissions,
-    permissions,
-    setPermissions,
-  } = usePermission()
+    setReferenceSettings,
+  } = useReferenceSetting()
   const [showPluginSettingModal, {
     setTrue: setShowPluginSettingModal,
     setFalse: setHidePluginSettingModal,
@@ -277,9 +277,9 @@ const PluginPage = ({
 
       {showPluginSettingModal && (
         <ReferenceSettingModal
-          payload={permissions!}
+          payload={referenceSetting!}
           onHide={setHidePluginSettingModal}
-          onSave={setPermissions}
+          onSave={setReferenceSettings}
         />
       )}
 
