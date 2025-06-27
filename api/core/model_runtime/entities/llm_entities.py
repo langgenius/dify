@@ -106,7 +106,7 @@ class LLMStructuredOutput(BaseModel):
     Model class for llm structured output.
     """
 
-    structured_output: Mapping[str, Any]
+    structured_output: Optional[Mapping[str, Any]] = None
 
 
 class LLMResultWithStructuredOutput(LLMResult, LLMStructuredOutput):
@@ -135,6 +135,12 @@ class LLMResultChunk(BaseModel):
     prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
     system_fingerprint: Optional[str] = None
     delta: LLMResultChunkDelta
+
+
+class LLMResultChunkWithStructuredOutput(LLMResultChunk, LLMStructuredOutput):
+    """
+    Model class for llm result chunk with structured output.
+    """
 
 
 class NumTokensResult(PriceInfo):

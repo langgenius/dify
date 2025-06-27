@@ -18,7 +18,13 @@ from core.model_runtime.entities import (
     PromptMessageContentType,
     TextPromptMessageContent,
 )
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMStructuredOutput, LLMUsage
+from core.model_runtime.entities.llm_entities import (
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkWithStructuredOutput,
+    LLMStructuredOutput,
+    LLMUsage,
+)
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessageContentUnionTypes,
@@ -344,6 +350,8 @@ class LLMNode(BaseNode[LLMNodeData]):
         # Consume the invoke result and handle generator exception
         try:
             for result in invoke_result:
+                if isinstance(result, LLMResultChunkWithStructuredOutput):
+                    yield result
                 if isinstance(result, LLMResultChunk):
                     contents = result.delta.message.content
                     for text_part in self._save_multimodal_output_and_convert_result_to_markdown(contents):
@@ -363,8 +371,6 @@ class LLMNode(BaseNode[LLMNodeData]):
                         usage = result.delta.usage
                     if finish_reason is None and result.delta.finish_reason:
                         finish_reason = result.delta.finish_reason
-                elif isinstance(result, LLMStructuredOutput):
-                    yield result
         except OutputParserError as e:
             raise LLMNodeError(f"Failed to parse structured output: {e}")
 

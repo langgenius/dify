@@ -12,10 +12,16 @@ from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMResultChunkWithStructuredOutput,
     LLMResultWithStructuredOutput,
-    LLMStructuredOutput,
 )
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, SystemPromptMessage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+)
 from core.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
 from core.workflow.utils.structured_output.entities import ResponseFormat, SpecialModelType
 from core.workflow.utils.structured_output.prompt import STRUCTURED_OUTPUT_PROMPT
@@ -34,7 +40,7 @@ def invoke_llm_with_structured_output(
     stream: Literal[True] = True,
     user: Optional[str] = None,
     callbacks: Optional[list[Callback]] = None,
-) -> Generator[LLMResultChunk | LLMStructuredOutput, None, None]: ...
+) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 
 
 @overload
@@ -66,7 +72,7 @@ def invoke_llm_with_structured_output(
     stream: bool = True,
     user: Optional[str] = None,
     callbacks: Optional[list[Callback]] = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunk | LLMStructuredOutput, None, None]: ...
+) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
 
 
 def invoke_llm_with_structured_output(
@@ -81,7 +87,7 @@ def invoke_llm_with_structured_output(
     stream: bool = True,
     user: Optional[str] = None,
     callbacks: Optional[list[Callback]] = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunk | LLMStructuredOutput, None, None]:
+) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
     """
     Invoke large language model with structured output
     1. This method invokes model_instance.invoke_llm with json_schema
@@ -143,14 +149,36 @@ def invoke_llm_with_structured_output(
         )
     else:
 
-        def generator() -> Generator[LLMStructuredOutput, None, None]:
+        def generator() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
             result_text = ""
+            prompt_messages = []
+            system_fingerprint = None
             for event in llm_result:
                 if isinstance(event, LLMResultChunk):
                     if isinstance(event.delta.message.content, str):
                         result_text += event.delta.message.content
+                        prompt_messages = event.prompt_messages
+                        system_fingerprint = event.system_fingerprint
 
-            yield LLMStructuredOutput(structured_output=_parse_structured_output(result_text))
+                yield LLMResultChunkWithStructuredOutput(
+                    model=model_schema.model,
+                    prompt_messages=prompt_messages,
+                    system_fingerprint=system_fingerprint,
+                    delta=event.delta,
+                )
+
+            yield LLMResultChunkWithStructuredOutput(
+                structured_output=_parse_structured_output(result_text),
+                model=model_schema.model,
+                prompt_messages=prompt_messages,
+                system_fingerprint=system_fingerprint,
+                delta=LLMResultChunkDelta(
+                    index=0,
+                    message=AssistantPromptMessage(content=""),
+                    usage=None,
+                    finish_reason=None,
+                ),
+            )
 
         return generator()
 
