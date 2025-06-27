@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useFetchPluginListOrBundleList } from '@/service/use-plugins'
+import { useInstalledPluginList } from '@/service/use-plugins'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/plugin-type-switch'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
@@ -66,13 +66,17 @@ const ToolPicker: FC<Props> = ({
   const [pluginType, setPluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
   const [query, setQuery] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const { data, isLoading } = useFetchPluginListOrBundleList({
-    query,
-    tags,
-    category: pluginType,
-  })
-  const isBundle = pluginType === PLUGIN_TYPE_SEARCH_MAP.bundle
-  const list = (isBundle ? data?.data?.bundles : data?.data?.plugins) || []
+  const { data, isLoading } = useInstalledPluginList()
+  const filteredList = useMemo(() => {
+    const list = data ? data.plugins : []
+    return list.filter((plugin) => {
+      return (
+        (pluginType === PLUGIN_TYPE_SEARCH_MAP.all || plugin.declaration.category === pluginType)
+        && (tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
+        && (query === '' || plugin.plugin_id.toLowerCase().includes(query.toLowerCase()))
+      )
+    })
+  }, [data, pluginType, query, tags])
   const handleCheckChange = useCallback((pluginId: string) => {
     return () => {
       const newValue = value.includes(pluginId)
@@ -84,7 +88,7 @@ const ToolPicker: FC<Props> = ({
 
   const listContent = (
     <div className='max-h-[396px] overflow-y-auto'>
-      {list.map(item => (
+      {filteredList.map(item => (
         <ToolItem
           key={item.plugin_id}
           payload={item}
@@ -149,8 +153,8 @@ const ToolPicker: FC<Props> = ({
                 }
               </div>
             </div>
-            {!isLoading && list.length > 0 && listContent}
-            {!isLoading && list.length === 0 && noData}
+            {!isLoading && filteredList.length > 0 && listContent}
+            {!isLoading && filteredList.length === 0 && noData}
             {isLoading && loadingContent}
           </div>
         </PortalToFollowElemContent>
