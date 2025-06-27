@@ -6,7 +6,7 @@ const Card = () => {
   return (
     <div className='rounded-xl bg-background-section-burn'>
       <div className='flex items-center p-3 pb-2'>
-        <div className='shrinkj-0 mr-3 flex h-10 w-10 items-center justify-center'></div>
+        <div className='mr-3 flex h-10 w-10 shrink-0 items-center justify-center'></div>
         <div className='grow'>
           <div className='system-md-semibold text-text-primary'>
             Notion Data Source
