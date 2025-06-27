@@ -1,5 +1,7 @@
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
+
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import (
@@ -65,17 +67,20 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
-from models.model import App
 from models.workflow import Workflow
 
 
 class WorkflowBasedAppRunner:
-    def __init__(self, queue_manager: AppQueueManager, variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER) -> None:
-        self.queue_manager = queue_manager
+    def __init__(
+        self,
+        *,
+        queue_manager: AppQueueManager,
+        variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
+        app_id: str,
+    ) -> None:
+        self._queue_manager = queue_manager
         self._variable_loader = variable_loader
-
-    def _get_app_id(self) -> str:
-        raise NotImplementedError("not implemented")
+        self._app_id = app_id
 
     def _init_graph(self, graph_config: Mapping[str, Any]) -> Graph:
         """
@@ -692,21 +697,24 @@ class WorkflowBasedAppRunner:
                 )
             )
 
-    def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
-        """
-        Get workflow
-        """
-        # fetch workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
-            .filter(
-                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.id == workflow_id
-            )
-            .first()
-        )
-
-        # return workflow
-        return workflow
-
     def _publish_event(self, event: AppQueueEvent) -> None:
-        self.queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
+        self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)
+
+    def _save_draft_var_for_event(self, event: BaseNodeEvent):
+        run_result = event.route_node_state.node_run_result
+        if run_result is None:
+            return
+        process_data = run_result.process_data
+        outputs = run_result.outputs
+        with Session(bind=db.engine) as session, session.begin():
+            draft_var_saver = DraftVariableSaver(
+                session=session,
+                app_id=self._app_id,
+                node_id=event.node_id,
+                node_type=event.node_type,
+                # FIXME(QuantumGhost): rely on private state of queue_manager is not ideal.
+                invoke_from=self._queue_manager._invoke_from,
+                node_execution_id=event.id,
+                enclosing_node_id=event.in_loop_id or event.in_iteration_id or None,
+            )
+            draft_var_saver.save(process_data=process_data, outputs=outputs)
