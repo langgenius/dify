@@ -8,6 +8,7 @@ import NotionIcon from '@/app/components/base/notion-icon'
 import cn from '@/utils/classnames'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 
+// todo: refactor this component to use the new OnlineDocumentSelector component
 type PageSelectorProps = {
   value: Set<string>
   disabledValue: Set<string>

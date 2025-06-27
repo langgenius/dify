@@ -122,10 +122,11 @@ const TestRunPanel = () => {
                 />
                 {datasourceType === DatasourceType.localFile && (
                   <LocalFile
-                    files={fileList}
+                    fileList={fileList}
                     allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                    updateFile={updateFile}
-                    updateFileList={updateFileList}
+                    prepareFileList={updateFileList}
+                    onFileListUpdate={updateFileList}
+                    onFileUpdate={updateFile}
                     notSupportBatchUpload={false} // only support single file upload in test run
                   />
                 )}
@@ -133,8 +134,8 @@ const TestRunPanel = () => {
                   <OnlineDocuments
                     nodeId={datasource!.nodeId}
                     nodeData={datasource!.nodeData}
-                    onlineDocuments={onlineDocuments}
-                    updateOnlineDocuments={updateOnlineDocuments}
+                    pageIdList={onlineDocuments.map(doc => doc.page_id)}
+                    onSelect={updateOnlineDocuments}
                     isInPipeline
                   />
                 )}

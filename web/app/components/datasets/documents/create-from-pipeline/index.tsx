@@ -249,10 +249,11 @@ const CreateFormPipeline = () => {
                   />
                   {datasourceType === DatasourceType.localFile && (
                     <LocalFile
-                      files={fileList}
+                      fileList={fileList}
                       allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                      updateFile={updateFile}
-                      updateFileList={updateFileList}
+                      prepareFileList={updateFileList}
+                      onFileListUpdate={updateFileList}
+                      onFileUpdate={updateFile}
                       onPreview={updateCurrentFile}
                       notSupportBatchUpload={notSupportBatchUpload}
                     />
@@ -261,8 +262,8 @@ const CreateFormPipeline = () => {
                     <OnlineDocuments
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
-                      onlineDocuments={onlineDocuments}
-                      updateOnlineDocuments={updateOnlineDocuments}
+                      pageIdList={onlineDocuments.map(doc => doc.page_id)}
+                      onSelect={updateOnlineDocuments}
                       canPreview
                       onPreview={updateCurrentPage}
                     />
