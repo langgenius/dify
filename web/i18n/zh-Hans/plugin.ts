@@ -156,6 +156,10 @@ const translation = {
       downgrade: '仍然降级',
       exclude: '从自动更新中排除',
     },
+    noPluginPlaceholder: {
+      noFound: '未找到插件',
+      noInstalled: '未安装插件',
+    },
   },
   pluginInfoModal: {
     title: '插件信息',
