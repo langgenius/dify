@@ -344,10 +344,18 @@ class ToolEntity(BaseModel):
         return v or []
 
 
+class OAuthSchema(BaseModel):
+    client_schema: list[ProviderConfig] = Field(default_factory=list, description="The schema of the OAuth client")
+    credentials_schema: list[ProviderConfig] = Field(
+        default_factory=list, description="The schema of the OAuth credentials"
+    )
+
+
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
     plugin_id: Optional[str] = None
     credentials_schema: list[ProviderConfig] = Field(default_factory=list)
+    oauth_schema: Optional[OAuthSchema] = None
 
 
 class ToolProviderEntityWithPlugin(ToolProviderEntity):
@@ -437,7 +445,7 @@ class ToolSelector(BaseModel):
 
 
 class ToolProviderCredentialType(enum.StrEnum):
-    API_KEY = "api_key"
+    API_KEY = "api-key"
     OAUTH2 = "oauth2"
 
     def get_name(self):
@@ -446,7 +454,7 @@ class ToolProviderCredentialType(enum.StrEnum):
         elif self == ToolProviderCredentialType.OAUTH2:
             return "AUTH"
         else:
-            return self.value.replace("_", " ").upper()
+            return self.value.replace("-", " ").upper()
 
     def is_editable(self):
         return self == ToolProviderCredentialType.API_KEY
@@ -461,7 +469,7 @@ class ToolProviderCredentialType(enum.StrEnum):
     @classmethod
     def of(cls, credential_type: str) -> "ToolProviderCredentialType":
         type_name = credential_type.lower()
-        if type_name == "api_key":
+        if type_name == "api-key":
             return cls.API_KEY
         elif type_name == "oauth2":
             return cls.OAUTH2

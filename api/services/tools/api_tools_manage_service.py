@@ -446,7 +446,7 @@ class ApiToolManageService:
         return {"result": result or "empty response"}
 
     @staticmethod
-    def list_api_tools(user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
+    def list_api_tools(tenant_id: str) -> list[ToolProviderApiEntity]:
         """
         list api tools
         """
@@ -474,7 +474,7 @@ class ApiToolManageService:
             for tool in tools or []:
                 user_provider.tools.append(
                     ToolTransformService.convert_tool_entity_to_api_entity(
-                        tenant_id=tenant_id, tool=tool, credentials=user_provider.original_credentials, labels=labels
+                        tenant_id=tenant_id, tool=tool, labels=labels
                     )
                 )
 

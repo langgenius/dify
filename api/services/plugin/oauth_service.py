@@ -1,3 +1,6 @@
+import json
+import uuid
+
 from core.plugin.impl.base import BasePluginClient
 from extensions.ext_redis import redis_client
 

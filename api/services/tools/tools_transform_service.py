@@ -255,7 +255,6 @@ class ToolTransformService:
     def convert_tool_entity_to_api_entity(
         tool: Union[ApiToolBundle, WorkflowTool, Tool],
         tenant_id: str,
-        credentials: dict | None = None,
         labels: list[str] | None = None,
     ) -> ToolApiEntity:
         """
@@ -265,7 +264,7 @@ class ToolTransformService:
             # fork tool runtime
             tool = tool.fork_tool_runtime(
                 runtime=ToolRuntime(
-                    credentials=credentials or {},
+                    credentials= {},
                     tenant_id=tenant_id,
                 )
             )

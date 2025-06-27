@@ -64,7 +64,10 @@ class BuiltinToolProvider(Base):
     """
 
     __tablename__ = "tool_builtin_providers"
-    __table_args__ = (db.PrimaryKeyConstraint("id", name="tool_builtin_provider_pkey"),)
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tool_builtin_provider_pkey"),
+        db.UniqueConstraint("tenant_id", "provider", "name", name="unique_builtin_tool_provider"),
+    )
 
     # id of the tool provider
     id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
@@ -86,9 +89,9 @@ class BuiltinToolProvider(Base):
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
     is_default: Mapped[bool] = mapped_column(db.Boolean, nullable=False, server_default=db.text("false"))
-    # credential type, e.g., "api_key", "oauth2"
+    # credential type, e.g., "api-key", "oauth2"
     credential_type: Mapped[str] = mapped_column(
-        db.String(32), nullable=False, server_default=db.text("'api_key'::character varying")
+        db.String(32), nullable=False, server_default=db.text("'api-key'::character varying")
     )
 
     @property

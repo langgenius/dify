@@ -34,7 +34,13 @@ from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProviderTypeApiLiteral
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeFrom, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import (
+    ApiProviderAuthType,
+    ToolInvokeFrom,
+    ToolParameter,
+    ToolProviderCredentialType,
+    ToolProviderType,
+)
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ProviderConfigEncrypter, ToolParameterConfigurationManager
@@ -202,7 +208,12 @@ class ToolManager:
             credentials = builtin_provider.credentials
             tool_configuration = ProviderConfigEncrypter(
                 tenant_id=tenant_id,
-                config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
+                config=[
+                    x.to_basic_provider_config()
+                    for x in provider_controller.get_credentials_schema(
+                        ToolProviderCredentialType.of(builtin_provider.credential_type)
+                    )
+                ],
                 provider_type=provider_controller.provider_type.value,
                 provider_identity=provider_controller.entity.identity.name,
             )
