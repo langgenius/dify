@@ -380,6 +380,14 @@ export const useMutationReferenceSettings = ({
   })
 }
 
+export const useRemoveAutoUpgrade = () => {
+  return useMutation({
+    mutationFn: (payload: { plugin_id: string }) => {
+      return post('/workspaces/current/plugin/preferences/autoupgrade/exclude', { body: payload })
+    },
+  })
+}
+
 export const useMutationPluginsFromMarketplace = () => {
   return useMutation({
     mutationFn: (pluginsSearchParams: PluginsSearchParams) => {

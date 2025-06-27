@@ -41,6 +41,7 @@ import DowngradeWarningModal from '../update-plugin/downgrade-warning-modal'
 import { getMarketplaceUrl } from '@/utils/var'
 import useReferenceSetting from '../plugin-page/use-reference-setting'
 import { AUTO_UPDATE_MODE } from '../reference-setting-modal/auto-update-setting/types'
+import { useInvalidateReferenceSettings, useRemoveAutoUpgrade } from '@/service/use-plugins'
 
 const i18nPrefix = 'plugin.action'
 
@@ -165,8 +166,14 @@ const DetailHeader = ({
     hideDowngradeWarningModal()
   }
 
+  const { mutateAsync } = useRemoveAutoUpgrade()
+    const invalidateReferenceSettings = useInvalidateReferenceSettings()
+
   const handleExcludeAndDownload = async () => {
-    // TODO: exclude logic
+    await mutateAsync({
+      plugin_id,
+    })
+    invalidateReferenceSettings()
     onUpdate()
     hideDowngradeWarningModal()
   }
