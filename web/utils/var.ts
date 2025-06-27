@@ -107,4 +107,4 @@ export const getVars = (value: string) => {
 
 // Set the value of basePath
 // example: /dify
-export const basePath = process.env.NEXT_PUBLIC_DEPLOY_ENV === 'PRODUCTION' ? '/os/dify/ai-dify' : ''
+export const basePath = ''
