@@ -39,6 +39,8 @@ import { AutoUpdateLine } from '../../base/icons/src/vender/system'
 import { timeOfDayToDayjs } from '../reference-setting-modal/auto-update-setting/utils'
 import DowngradeWarningModal from '../update-plugin/downgrade-warning-modal'
 import { getMarketplaceUrl } from '@/utils/var'
+import useReferenceSetting from '../plugin-page/use-reference-setting'
+import { AUTO_UPDATE_MODE } from '../reference-setting-modal/auto-update-setting/types'
 
 const i18nPrefix = 'plugin.action'
 
@@ -185,8 +187,19 @@ const DetailHeader = ({
     }
   }, [showDeleting, installation_id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
 
-  // #plugin TODO# used in apps
-  // const usedInApps = 3
+  const { referenceSetting } = useReferenceSetting()
+  const { auto_upgrade: autoUpgradeInfo } = referenceSetting || {}
+  const isShowAutoUpdate = useMemo(() => {
+    if(!autoUpgradeInfo)
+      return false
+    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.update_all)
+      return true
+    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.partial && autoUpgradeInfo.include_plugins.includes(plugin_id))
+      return true
+    if(autoUpgradeInfo.upgrade_mode === AUTO_UPDATE_MODE.exclude && !autoUpgradeInfo.exclude_plugins.includes(plugin_id))
+      return true
+    return false
+  }, [autoUpgradeInfo, plugin_id])
 
   return (
     <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3')}>
@@ -227,14 +240,17 @@ const DetailHeader = ({
               }
             />
             {/* Auto update info */}
-            <Tooltip popupContent={t('plugin.autoUpdate.nextUpdateTime', { time: timeOfDayToDayjs(3600).format('hh:mm A') })}>
-              {/* add a a div to fix tooltip hover not show problem */}
-              <div>
-                <Badge className='mr-1 cursor-pointer px-1'>
-                  <AutoUpdateLine className='size-3' />
-                </Badge>
-              </div>
-            </Tooltip>
+            {isShowAutoUpdate && (
+              <Tooltip popupContent={t('plugin.autoUpdate.nextUpdateTime', { time: timeOfDayToDayjs(autoUpgradeInfo?.upgrade_time_of_day || 0).format('hh:mm A') })}>
+                {/* add a a div to fix tooltip hover not show problem */}
+                <div>
+                  <Badge className='mr-1 cursor-pointer px-1'>
+                    <AutoUpdateLine className='size-3' />
+                  </Badge>
+                </div>
+              </Tooltip>
+            )}
+
             {(hasNewVersion || isFromGitHub) && (
               <Button variant='secondary-accent' size='small' className='!h-5' onClick={() => {
                 if (isFromMarketplace) {
