@@ -30,7 +30,7 @@ FROM base AS builder
 WORKDIR /app/web
 COPY --from=packages /app/web/ .
 COPY . .
-
+ENV DEPLOY_ENV=PRODUCTION
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm build
 
