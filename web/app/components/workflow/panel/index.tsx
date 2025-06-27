@@ -15,7 +15,7 @@ export type PanelProps = {
 }
 
 /**
- * Reference MDN standard implementation：https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
+ * Reference MDN standard implementation：https://developer.mozilla.org/zh-CN/docs/Web/API/ResizeObserverEntry/borderBoxSize
  */
 const getEntryWidth = (entry: ResizeObserverEntry, element: HTMLElement): number => {
   if (entry.borderBoxSize?.length > 0)
