@@ -32,7 +32,7 @@ from models import (
 )
 from models.tools import WorkflowToolProvider
 from models.web import PinnedConversation, SavedMessage
-from models.workflow import ConversationVariable, Workflow, WorkflowAppLog
+from models.workflow import ConversationVariable, Workflow, WorkflowAppLog, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 
 
@@ -206,7 +206,7 @@ def _delete_app_workflow_runs(tenant_id: str, app_id: str):
 
 def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
     """Delete all workflow node executions for an app using the service repository."""
-    session_maker = sessionmaker(bind=db.engine)
+    session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
 
     deleted_count = node_execution_repo.delete_executions_by_app(

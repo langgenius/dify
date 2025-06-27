@@ -9,15 +9,15 @@ The service repository handles operations that require access to database-specif
 tenant_id, app_id, triggered_from, etc., which are not part of the core domain model.
 """
 
+from abc import abstractmethod
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Optional, Protocol
 
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from models.workflow import WorkflowNodeExecutionModel
 
 
-class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Protocol):
+class DifyAPIWorkflowNodeExecutionRepository(Protocol):
     """
     Protocol for service-layer operations on WorkflowNodeExecutionModel.
 
@@ -38,6 +38,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
     - Supports cleanup and maintenance operations
     """
 
+    @abstractmethod
     def get_node_last_execution(
         self,
         tenant_id: str,
@@ -62,6 +63,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         """
         ...
 
+    @abstractmethod
     def get_executions_by_workflow_run(
         self,
         tenant_id: str,
@@ -84,6 +86,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         """
         ...
 
+    @abstractmethod
     def get_execution_by_id(
         self,
         execution_id: str,
@@ -95,10 +98,6 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         This method retrieves a specific execution by its unique identifier.
         Tenant filtering is optional for cases where the execution ID is globally unique.
 
-        When `tenant_id` is None, it's the caller's responsibility to ensure proper data isolation between tenants.
-        If the `execution_id` comes from untrusted sources (e.g., retrieved from an API request), the caller should
-        set `tenant_id` to prevent horizontal privilege escalation.
-
         Args:
             execution_id: The execution identifier
             tenant_id: Optional tenant identifier for additional filtering
@@ -108,6 +107,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         """
         ...
 
+    @abstractmethod
     def delete_expired_executions(
         self,
         tenant_id: str,
@@ -130,6 +130,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         """
         ...
 
+    @abstractmethod
     def delete_executions_by_app(
         self,
         tenant_id: str,
@@ -152,6 +153,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         """
         ...
 
+    @abstractmethod
     def get_expired_executions_batch(
         self,
         tenant_id: str,
@@ -174,6 +176,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
         """
         ...
 
+    @abstractmethod
     def delete_executions_by_ids(
         self,
         execution_ids: Sequence[str],
@@ -183,10 +186,6 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
 
         This method deletes specific executions by their IDs,
         typically used after backing up the data.
-
-        This method does not perform tenant isolation checks. The caller is responsible for ensuring proper
-        data isolation between tenants. When execution IDs come from untrusted sources (e.g., API requests),
-        additional tenant validation should be implemented to prevent unauthorized access.
 
         Args:
             execution_ids: List of execution IDs to delete

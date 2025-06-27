@@ -551,14 +551,20 @@ class RepositoryConfig(BaseSettings):
     Configuration for repository implementations
     """
 
-    WORKFLOW_EXECUTION_REPOSITORY: str = Field(
+    CORE_WORKFLOW_EXECUTION_REPOSITORY: str = Field(
         description="Repository implementation for WorkflowExecution. Specify as a module path",
         default="core.repositories.sqlalchemy_workflow_execution_repository.SQLAlchemyWorkflowExecutionRepository",
     )
 
-    WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
+    CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
         description="Repository implementation for WorkflowNodeExecution. Specify as a module path",
         default="core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository",
+    )
+
+    API_WORKFLOW_NODE_EXECUTION_REPOSITORY: str = Field(
+        description="Service-layer repository implementation for WorkflowNodeExecutionModel operations. "
+        "Specify as a module path",
+        default="repositories.sqlalchemy_api_workflow_node_execution_repository.DifyAPISQLAlchemyWorkflowNodeExecutionRepository",
     )
 
 

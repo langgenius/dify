@@ -13,7 +13,7 @@ from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
-from core.repositories import RepositoryFactory
+from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
 from core.workflow.entities.node_entities import NodeRunResult
@@ -59,10 +59,9 @@ class WorkflowService:
     Workflow Service
     """
 
-    def __init__(self, session_maker: sessionmaker | None = None):
+    def __init__(self):
         """Initialize WorkflowService with repository dependencies."""
-        if session_maker is None:
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
@@ -409,7 +408,7 @@ class WorkflowService:
         node_execution.workflow_id = draft_workflow.id
 
         # Create repository and save the node execution
-        repository = RepositoryFactory.create_workflow_node_execution_repository(
+        repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
             session_factory=db.engine,
             user=account,
             app_id=app_model.id,
@@ -417,8 +416,9 @@ class WorkflowService:
         )
         repository.save(node_execution)
 
-        stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id == node_execution.id)
-        workflow_node_execution = db.session.execute(stmt).scalar_one()
+        workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
+        if workflow_node_execution is None:
+            raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
 
         with Session(bind=db.engine) as session, session.begin():
             draft_var_saver = DraftVariableSaver(

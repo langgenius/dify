@@ -163,18 +163,12 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
 
         # Mock the select query to return some IDs first time, then empty to stop loop
         execution_ids = ["id1", "id2"]  # Less than batch_size to trigger break
+        mock_session.execute.return_value.scalars.return_value.all.return_value = execution_ids
 
-        # Mock execute method to handle both select and delete statements
-        def mock_execute(stmt):
-            mock_result = MagicMock()
-            # For select statements, return execution IDs
-            if hasattr(stmt, "limit"):  # This is our select statement
-                mock_result.scalars.return_value.all.return_value = execution_ids
-            else:  # This is our delete statement
-                mock_result.rowcount = 2
-            return mock_result
-
-        mock_session.execute.side_effect = mock_execute
+        # Mock the delete query
+        mock_query = MagicMock()
+        mock_session.query.return_value = mock_query
+        mock_query.filter.return_value.delete.return_value = 2
 
         before_date = datetime(2023, 1, 1)
 
@@ -187,7 +181,8 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
 
         # Assert
         assert result == 2
-        assert mock_session.execute.call_count == 2  # One select call, one delete call
+        mock_session.execute.assert_called_once()  # One select call
+        mock_session.query.assert_called_once()
         mock_session.commit.assert_called_once()
 
     def test_delete_executions_by_app(self, repository):
@@ -198,18 +193,12 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
 
         # Mock the select query to return some IDs first time, then empty to stop loop
         execution_ids = ["id1", "id2"]
+        mock_session.execute.return_value.scalars.return_value.all.return_value = execution_ids
 
-        # Mock execute method to handle both select and delete statements
-        def mock_execute(stmt):
-            mock_result = MagicMock()
-            # For select statements, return execution IDs
-            if hasattr(stmt, "limit"):  # This is our select statement
-                mock_result.scalars.return_value.all.return_value = execution_ids
-            else:  # This is our delete statement
-                mock_result.rowcount = 2
-            return mock_result
-
-        mock_session.execute.side_effect = mock_execute
+        # Mock the delete query
+        mock_query = MagicMock()
+        mock_session.query.return_value = mock_query
+        mock_query.filter.return_value.delete.return_value = 2
 
         # Act
         result = repository.delete_executions_by_app(
@@ -220,7 +209,8 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
 
         # Assert
         assert result == 2
-        assert mock_session.execute.call_count == 2  # One select call, one delete call
+        mock_session.execute.assert_called_once()  # One select call
+        mock_session.query.assert_called_once()
         mock_session.commit.assert_called_once()
 
     def test_get_expired_executions_batch(self, repository):
@@ -258,10 +248,10 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         mock_session = MagicMock(spec=Session)
         repository._session_maker.return_value.__enter__.return_value = mock_session
 
-        # Mock the delete query result
-        mock_result = MagicMock()
-        mock_result.rowcount = 3
-        mock_session.execute.return_value = mock_result
+        # Mock the delete query
+        mock_query = MagicMock()
+        mock_session.query.return_value = mock_query
+        mock_query.filter.return_value.delete.return_value = 3
 
         execution_ids = ["id1", "id2", "id3"]
 
@@ -270,7 +260,7 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
 
         # Assert
         assert result == 3
-        mock_session.execute.assert_called_once()
+        mock_session.query.assert_called_once()
         mock_session.commit.assert_called_once()
 
     def test_delete_executions_by_ids_empty_list(self, repository):

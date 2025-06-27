@@ -124,10 +124,6 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         This method replicates the query pattern from WorkflowDraftVariableService
         and WorkflowService.single_step_run_workflow_node() using SQLAlchemy 2.0 style syntax.
 
-        When `tenant_id` is None, it's the caller's responsibility to ensure proper data isolation between tenants.
-        If the `execution_id` comes from untrusted sources (e.g., retrieved from an API request), the caller should
-        set `tenant_id` to prevent horizontal privilege escalation.
-
         Args:
             execution_id: The execution identifier
             tenant_id: Optional tenant identifier for additional filtering

@@ -21,6 +21,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
 from core.workflow.variable_loader import VariableLoader
+from extensions.ext_database import db
 from factories.file_factory import StorageKeyLoader
 from factories.variable_factory import build_segment, segment_to_variable
 from models import App, Conversation
@@ -129,11 +130,8 @@ class WorkflowDraftVariableService:
             AssertionError: If the provided session is not bound to an `Engine` object.
         """
         self._session = session
-        engine = session.get_bind()
-        # Ensure the session is bound to a engine.
-        assert isinstance(engine, Engine)
-        session_maker = sessionmaker(bind=engine, expire_on_commit=False)
-        self._api_node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
 
@@ -266,7 +264,7 @@ class WorkflowDraftVariableService:
             _logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
 
-        node_exec = self._api_node_execution_repo.get_execution_by_id(variable.node_execution_id)
+        node_exec = self._node_execution_service_repo.get_execution_by_id(variable.node_execution_id)
         if node_exec is None:
             _logger.warning(
                 "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",
