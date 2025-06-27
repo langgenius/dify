@@ -118,20 +118,11 @@ class DraftVarLoader(VariableLoader):
 class WorkflowDraftVariableService:
     _session: Session
 
-    def __init__(self, session: Session) -> None:
-        """
-        Initialize the WorkflowDraftVariableService with a SQLAlchemy session.
-
-        Args:
-            session (Session): The SQLAlchemy session used to execute database queries.
-            The provided session must be bound to an `Engine` object, not a specific `Connection`.
-
-        Raises:
-            AssertionError: If the provided session is not bound to an `Engine` object.
-        """
+    def __init__(self, session: Session, session_maker: sessionmaker | None = None) -> None:
         self._session = session
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-        self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+        if session_maker is None:
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        self._api_node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
 
@@ -264,7 +255,7 @@ class WorkflowDraftVariableService:
             _logger.warning("draft variable has no node_execution_id, id=%s, name=%s", variable.id, variable.name)
             return None
 
-        node_exec = self._node_execution_service_repo.get_execution_by_id(variable.node_execution_id)
+        node_exec = self._api_node_execution_repo.get_execution_by_id(variable.node_execution_id)
         if node_exec is None:
             _logger.warning(
                 "Node exectution not found for draft variable, id=%s, name=%s, node_execution_id=%s",

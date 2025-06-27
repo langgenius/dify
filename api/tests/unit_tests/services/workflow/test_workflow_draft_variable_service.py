@@ -1,5 +1,6 @@
 import dataclasses
 import secrets
+from unittest import mock
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -119,7 +120,9 @@ class TestWorkflowDraftVariableService:
 
     def test_reset_conversation_variable(self, mock_session):
         """Test resetting a conversation variable"""
-        service = WorkflowDraftVariableService(mock_session)
+        mock_session = Mock(spec=Session)
+        mock_session_maker = Mock()
+        service = WorkflowDraftVariableService(mock_session, mock_session_maker)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -144,7 +147,9 @@ class TestWorkflowDraftVariableService:
 
     def test_reset_node_variable_with_no_execution_id(self, mock_session):
         """Test resetting a node variable with no execution ID - should delete variable"""
-        service = WorkflowDraftVariableService(mock_session)
+        mock_session = Mock(spec=Session)
+        mock_session_maker = Mock()
+        service = WorkflowDraftVariableService(mock_session, mock_session_maker)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
@@ -175,14 +180,17 @@ class TestWorkflowDraftVariableService:
         monkeypatch,
     ):
         """Test resetting a node variable when execution record doesn't exist"""
-        mock_repo_session = Mock(spec=Session)
-
+        mock_session = Mock(spec=Session)
         mock_session_maker = MagicMock()
         # Mock the context manager protocol for sessionmaker
-        mock_session_maker.return_value.__enter__.return_value = mock_repo_session
+        mock_session_maker.return_value.__enter__.return_value = mock_session
         mock_session_maker.return_value.__exit__.return_value = None
-        monkeypatch.setattr("services.workflow_draft_variable_service.sessionmaker", mock_session_maker)
-        service = WorkflowDraftVariableService(mock_session)
+        service = WorkflowDraftVariableService(mock_session, mock_session_maker)
+
+        # Mock the repository to return None (no execution record found)
+        service._api_node_execution_repo = Mock()
+        service._api_node_execution_repo.get_execution_by_id.return_value = None
+
 
         # Mock the repository to return None (no execution record found)
         service._api_node_execution_repo = Mock()
@@ -196,7 +204,7 @@ class TestWorkflowDraftVariableService:
         variable = WorkflowDraftVariable.new_node_variable(
             app_id=test_app_id, node_id="test_node_id", name="test_var", value=test_value, node_execution_id="exec-id"
         )
-        # Variable is editable by default from factory method
+        mock_variable.editable = True
 
         result = service._reset_node_var_or_sys_var(workflow, variable)
 
@@ -212,16 +220,22 @@ class TestWorkflowDraftVariableService:
         monkeypatch,
     ):
         """Test resetting a node variable with valid execution record - should restore from execution"""
-        mock_repo_session = Mock(spec=Session)
-
+        mock_session = Mock(spec=Session)
         mock_session_maker = MagicMock()
         # Mock the context manager protocol for sessionmaker
-        mock_session_maker.return_value.__enter__.return_value = mock_repo_session
+        mock_session_maker.return_value.__enter__.return_value = mock_session
         mock_session_maker.return_value.__exit__.return_value = None
-        mock_session_maker = monkeypatch.setattr(
-            "services.workflow_draft_variable_service.sessionmaker", mock_session_maker
-        )
-        service = WorkflowDraftVariableService(mock_session)
+        service = WorkflowDraftVariableService(mock_session, mock_session_maker)
+
+        # Create mock execution record
+        mock_execution = Mock(spec=WorkflowNodeExecutionModel)
+        mock_execution.process_data_dict = {"test_var": "process_value"}
+        mock_execution.outputs_dict = {"test_var": "output_value"}
+
+        # Mock the repository to return the execution record
+        service._api_node_execution_repo = Mock()
+        service._api_node_execution_repo.get_execution_by_id.return_value = mock_execution
+
 
         # Create mock execution record
         mock_execution = Mock(spec=WorkflowNodeExecutionModel)
@@ -239,7 +253,7 @@ class TestWorkflowDraftVariableService:
         variable = WorkflowDraftVariable.new_node_variable(
             app_id=test_app_id, node_id="test_node_id", name="test_var", value=test_value, node_execution_id="exec-id"
         )
-        # Variable is editable by default from factory method
+        mock_variable.editable = True
 
         # Mock workflow methods
         mock_node_config = {"type": "test_node"}
@@ -259,7 +273,9 @@ class TestWorkflowDraftVariableService:
 
     def test_reset_non_editable_system_variable_raises_error(self, mock_session):
         """Test that resetting a non-editable system variable raises an error"""
-        service = WorkflowDraftVariableService(mock_session)
+        mock_session = Mock(spec=Session)
+        mock_session_maker = Mock()
+        service = WorkflowDraftVariableService(mock_session, mock_session_maker)
 
         test_app_id = self._get_test_app_id()
         workflow = self._create_test_workflow(test_app_id)
