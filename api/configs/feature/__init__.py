@@ -175,6 +175,11 @@ class PluginConfig(BaseSettings):
         default=15728640 * 12,
     )
 
+    KAGENTS_URL: HttpUrl = Field(
+        description="KAGENTS JAVA API URL",
+        default=HttpUrl("http://192.168.8.41:10002"),
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """

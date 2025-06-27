@@ -1,16 +1,19 @@
+import copy
 import json
 import time
 from collections.abc import Callable, Generator, Sequence
 from datetime import UTC, datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional, Union
 from uuid import uuid4
 
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
@@ -38,6 +41,220 @@ from services.errors.app import WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+
+
+class OutputSelector(BaseModel):
+    variable: str
+    value_selector: list[str]
+
+
+class Kvariable(BaseModel):
+    variable: str
+    label: str
+    type: str
+    max_length: int
+    required: Union[str, bool]
+    options: list[str]
+
+
+class NodeData(BaseModel):
+    type: str
+    title: str
+    desc: str
+    variables: Optional[list[Kvariable]] = []
+    selected: bool = False
+
+
+class GeneralNodeData(NodeData):
+    tool_parameters: Optional[dict] = {}
+    tool_configurations: Optional[dict] = {}
+    provider_id: Optional[str] = None
+    provider_type: Optional[str] = None
+    provider_name: Optional[str] = None
+    tool_name: Optional[str] = None
+    tool_label: Optional[str] = None
+    tool_description: Optional[str] = None
+    is_team_authorization: Optional[bool] = None
+    output_schema: Optional[dict] = None
+    paramSchemas: Optional[list[dict]] = None
+    params: Optional[dict[str, str]] = None
+    outputs: Optional[list[OutputSelector]] = None
+
+
+class Position(BaseModel):
+    x: Union[int, float]
+    y: Union[int, float]
+
+
+class Node(BaseModel):
+    id: str
+    type: Literal["custom"]
+    data: GeneralNodeData
+    position: Position
+    targetPosition: Literal["left"]
+    sourcePosition: Literal["right"]
+    positionAbsolute: Position
+    width: int
+    height: int
+    selected: bool
+
+
+class EdgeData(BaseModel):
+    sourceType: str
+    targetType: str
+    isInLoop: bool
+
+
+class Edge(BaseModel):
+    id: str
+    type: Literal["custom"]
+    source: str
+    target: str
+    sourceHandle: str
+    targetHandle: str
+    data: EdgeData
+    zIndex: int = 0
+
+
+class Viewport(BaseModel):
+    x: float
+    y: float
+    zoom: float
+
+
+class AutoGenWorkflow(BaseModel):
+    nodes: list[Node]
+    edges: list[Edge]
+    viewport: Viewport
+
+
+WORKFLOW_INIT_DICT = {"viewport": {"x": 420, "y": 220, "zoom": 0.5}}
+
+NODE_TEMPLATE = Node(
+    id="0",
+    type="custom",
+    data=GeneralNodeData(
+        type="",
+        title="",
+        desc="",
+        variables=[Kvariable(variable="url", label="url", type="paragraph", max_length=482, required="", options=[])],
+        selected=False,
+    ),
+    position=Position(x=0, y=0),
+    targetPosition="left",
+    sourcePosition="right",
+    positionAbsolute=Position(x=0, y=0),
+    width=244,
+    height=90,
+    selected=False,
+)
+
+EDGE_TEMPLATE = Edge(
+    id="template-edge-id",
+    type="custom",
+    source="source-id",
+    target="target-id",
+    sourceHandle="source",
+    targetHandle="target",
+    data=EdgeData(sourceType="start", targetType="tool", isInLoop=False),
+    zIndex=0,
+)
+
+def generate_nodes(tools_to_use: list[ToolApiEntity], providers_to_use: list[ToolProviderApiEntity], draft):
+    position_x = 50
+    position_y = 50
+    now = int(time.time() * 1000)
+
+    # Start node
+    start_node = copy.deepcopy(NODE_TEMPLATE)
+    start_node.id = str(now)
+    start_node.data = GeneralNodeData(
+        type="start",
+        title="Start",
+        desc="",
+        variables=[
+            Kvariable(variable="text", label="text", type="paragraph", max_length=1000, required=True, options=[])
+        ],
+        selected=True,
+    )
+    time.sleep(0.15)
+    start_node.position = Position(x=position_x, y=position_y)
+    start_node.positionAbsolute = Position(x=position_x, y=position_y)
+    draft.setdefault("nodes", []).append(start_node.model_dump())
+
+    pre_id = start_node.id
+    for index, payload in enumerate(tools_to_use):
+        node = copy.deepcopy(NODE_TEMPLATE)
+        node.id = str(int(time.time() * 1000) + index)
+        provider = providers_to_use[index]
+        params = {item.name: "" for item in payload.parameters}
+        tool_parameters = {
+            item.name: {"type": "mixed", "value": f"{{{{#{pre_id}.text#}}}}"} for item in payload.parameters
+        }
+        param_schemas = [p.model_dump(mode="json") for p in payload.parameters]
+
+        node.data = GeneralNodeData(
+            type="tool",
+            title=payload.label.zh_Hans,
+            desc=payload.description.zh_Hans,
+            provider_id=provider.id,
+            provider_type=provider.type,
+            provider_name=provider.name,
+            tool_name=payload.name,
+            tool_parameters=tool_parameters,
+            tool_label=payload.label.zh_Hans,
+            tool_description=payload.description.zh_Hans,
+            is_team_authorization=provider.is_team_authorization,
+            output_schema=payload.output_schema,
+            paramSchemas=param_schemas,
+            params=params,
+        )
+        node.position = Position(x=position_x + (index + 1) * 300, y=position_y)
+        node.positionAbsolute = node.position
+        draft.setdefault("nodes", []).append(node.model_dump())
+        pre_id = node.id
+        time.sleep(0.15)
+
+    # End node
+    end_node = copy.deepcopy(NODE_TEMPLATE)
+    end_node.id = str(int(time.time() * 1000) + 100)
+    end_node.data = GeneralNodeData(type="end",
+                                    title="End",
+                                    desc="",
+                                    outputs=[OutputSelector(
+                                        variable="text",
+                                        value_selector=[pre_id, "text" ]
+                                    )],
+                                    selected=False)
+    end_node.position = Position(x=position_x + (len(tools_to_use) + 1) * 300, y=position_y + 100)
+    end_node.positionAbsolute = end_node.position
+    draft.setdefault("nodes", []).append(end_node.model_dump())
+
+
+def generate_edges(plan_info, draft):
+    nodes = draft.get("nodes", [])
+    edges = []
+
+    for i in range(len(nodes) - 1):
+        src = nodes[i]["id"]
+        tgt = nodes[i + 1]["id"]
+        if i == 0:
+            src_type = "start"
+        else:
+            src_type = "tool"
+        if i + 1 == len(nodes) - 1:
+            tgt_type = "end"
+        else:
+            tgt_type = "tool"
+
+        edge = copy.deepcopy(EDGE_TEMPLATE)
+        edge.id = f"{src}-source-{tgt}-target"
+        edge.source = src
+        edge.target = tgt
+        edge.data = EdgeData(sourceType=src_type, targetType=tgt_type, isInLoop=False)
+        edges.append(edge.model_dump())
+
+    draft.setdefault("edges", []).extend(edges)
 
 
 class WorkflowService:
@@ -531,3 +748,11 @@ class WorkflowService:
 
         session.delete(workflow)
         return True
+
+    def generate_kagents_workflow(
+        self, tools_to_use: list[ToolApiEntity], providers_to_use: list[ToolProviderApiEntity]
+    ):
+        draft = copy.deepcopy(WORKFLOW_INIT_DICT)
+        generate_nodes(tools_to_use, providers_to_use, draft)
+        generate_edges(tools_to_use, draft)
+        return draft

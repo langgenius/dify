@@ -2,7 +2,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Optional, Union
 
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import AppNotFoundError, TenantNotFoundError
 from extensions.ext_database import db
 from libs.login import current_user
 from models import App, AppMode
@@ -45,6 +45,25 @@ def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[
 
             kwargs["app_model"] = app_model
 
+            return view_func(*args, **kwargs)
+
+        return decorated_view
+
+    if view is None:
+        return decorator
+    else:
+        return decorator(view)
+
+
+def get_tenant_id(view: Optional[Callable] = None):
+    def decorator(view_func):
+        @wraps(view_func)
+        def decorated_view(*args, **kwargs):
+            current_tenant_id = current_user.current_tenant_id
+            if not current_tenant_id:
+                raise TenantNotFoundError()
+
+            kwargs["tenant_id"] = current_tenant_id
             return view_func(*args, **kwargs)
 
         return decorated_view

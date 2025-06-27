@@ -1,6 +1,12 @@
 from libs.exception import BaseHTTPException
 
 
+class TenantNotFoundError(BaseHTTPException):
+    error_code = "tenant_not_found"
+    description = "tenant not found."
+    code = 401
+
+
 class AppNotFoundError(BaseHTTPException):
     error_code = "app_not_found"
     description = "App not found."
