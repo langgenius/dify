@@ -12,6 +12,7 @@ import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import ToolItem from './tool-item'
+import Loading from '@/app/components/base/loading'
 
 type Props = {
   trigger: React.ReactNode
@@ -64,7 +65,7 @@ const ToolPicker: FC<Props> = ({
   const [pluginType, setPluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
   const [query, setQuery] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const { data } = useFetchPluginListOrBundleList({
+  const { data, isLoading } = useFetchPluginListOrBundleList({
     query,
     tags,
     category: pluginType,
@@ -79,6 +80,26 @@ const ToolPicker: FC<Props> = ({
       onChange(newValue)
     }
   }, [onChange, value])
+
+  const listContent = (
+    <div className='max-h-[396px] overflow-y-auto'>
+      {list.map(item => (
+        <ToolItem
+          key={item.plugin_id}
+          payload={item}
+          isChecked={value.includes(item.plugin_id)}
+          onCheckChange={handleCheckChange(item.plugin_id)}
+        />
+      ))}
+    </div>
+  )
+
+  const loadingContent = (
+    <div className='flex h-[396px] items-center justify-center'>
+      <Loading />
+    </div>
+  )
+
   return (
     <PortalToFollowElem
         placement='top'
@@ -123,21 +144,12 @@ const ToolPicker: FC<Props> = ({
                 }
               </div>
             </div>
-            {list.length > 0 && (
-              <div className='max-h-[396px] overflow-y-auto'>
-                {list.map(item => (
-                  <ToolItem
-                    key={item.plugin_id}
-                    payload={item}
-                    isChecked={value.includes(item.plugin_id)}
-                    onCheckChange={handleCheckChange(item.plugin_id)}
-                  />
-                ))}
-              </div>
-            )}
+            {!isLoading && list.length > 0 && listContent}
+            {isLoading && loadingContent}
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
   )
 }
+
 export default React.memo(ToolPicker)
