@@ -5,9 +5,9 @@ from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
     GetOnlineDocumentPageContentRequest,
     OnlineDocumentPagesMessage,
-    OnlineDriverBrowseFilesRequest,
-    OnlineDriverBrowseFilesResponse,
-    OnlineDriverDownloadFileRequest,
+    OnlineDriveBrowseFilesRequest,
+    OnlineDriveBrowseFilesResponse,
+    OnlineDriveDownloadFileRequest,
     WebsiteCrawlMessage,
 )
 from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
@@ -194,16 +194,16 @@ class PluginDatasourceManager(BasePluginClient):
         )
         yield from response
 
-    def online_driver_browse_files(
+    def online_drive_browse_files(
         self,
         tenant_id: str,
         user_id: str,
         datasource_provider: str,
         datasource_name: str,
         credentials: dict[str, Any],
-        request: OnlineDriverBrowseFilesRequest,
+        request: OnlineDriveBrowseFilesRequest,
         provider_type: str,
-    ) -> Generator[OnlineDriverBrowseFilesResponse, None, None]:
+    ) -> Generator[OnlineDriveBrowseFilesResponse, None, None]:
         """
         Invoke the datasource with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
@@ -212,8 +212,8 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/online_driver_browse_files",
-            OnlineDriverBrowseFilesResponse,
+            f"plugin/{tenant_id}/dispatch/datasource/online_drive_browse_files",
+            OnlineDriveBrowseFilesResponse,
             data={
                 "user_id": user_id,
                 "data": {
@@ -230,14 +230,14 @@ class PluginDatasourceManager(BasePluginClient):
         )
         yield from response
 
-    def online_driver_download_file(
+    def online_drive_download_file(
         self,
         tenant_id: str,
         user_id: str,
         datasource_provider: str,
         datasource_name: str,
         credentials: dict[str, Any],
-        request: OnlineDriverDownloadFileRequest,
+        request: OnlineDriveDownloadFileRequest,
         provider_type: str,
     ) -> Generator[DatasourceMessage, None, None]:
         """
@@ -248,7 +248,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/dispatch/datasource/online_driver_download_file",
+            f"plugin/{tenant_id}/dispatch/datasource/online_drive_download_file",
             DatasourceMessage,
             data={
                 "user_id": user_id,

@@ -1,10 +1,10 @@
 from core.datasource.__base.datasource_provider import DatasourcePluginProviderController
 from core.datasource.__base.datasource_runtime import DatasourceRuntime
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin, DatasourceProviderType
-from core.datasource.online_driver.online_driver_plugin import OnlineDriverDatasourcePlugin
+from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 
 
-class OnlineDriverDatasourcePluginProviderController(DatasourcePluginProviderController):
+class OnlineDriveDatasourcePluginProviderController(DatasourcePluginProviderController):
     entity: DatasourceProviderEntityWithPlugin
     plugin_id: str
     plugin_unique_identifier: str
@@ -21,9 +21,9 @@ class OnlineDriverDatasourcePluginProviderController(DatasourcePluginProviderCon
         """
         returns the type of the provider
         """
-        return DatasourceProviderType.ONLINE_DRIVER
+        return DatasourceProviderType.ONLINE_DRIVE
 
-    def get_datasource(self, datasource_name: str) -> OnlineDriverDatasourcePlugin:  # type: ignore
+    def get_datasource(self, datasource_name: str) -> OnlineDriveDatasourcePlugin:  # type: ignore
         """
         return datasource with given name
         """
@@ -39,7 +39,7 @@ class OnlineDriverDatasourcePluginProviderController(DatasourcePluginProviderCon
         if not datasource_entity:
             raise ValueError(f"Datasource with name {datasource_name} not found")
 
-        return OnlineDriverDatasourcePlugin(
+        return OnlineDriveDatasourcePlugin(
             entity=datasource_entity,
             runtime=DatasourceRuntime(tenant_id=self.tenant_id),
             tenant_id=self.tenant_id,

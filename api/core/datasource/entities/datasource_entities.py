@@ -26,7 +26,7 @@ class DatasourceProviderType(enum.StrEnum):
     ONLINE_DOCUMENT = "online_document"
     LOCAL_FILE = "local_file"
     WEBSITE_CRAWL = "website_crawl"
-    ONLINE_DRIVER = "online_driver"
+    ONLINE_DRIVE = "online_drive"
 
     @classmethod
     def value_of(cls, value: str) -> "DatasourceProviderType":
@@ -311,7 +311,7 @@ class DatasourceMessage(ToolInvokeMessage):
 #########################
 
 
-class OnlineDriverFile(BaseModel):
+class OnlineDriveFile(BaseModel):
     """
     Online driver file
     """
@@ -320,17 +320,17 @@ class OnlineDriverFile(BaseModel):
     size: int = Field(..., description="The size of the file")
 
 
-class OnlineDriverFileBucket(BaseModel):
+class OnlineDriveFileBucket(BaseModel):
     """
     Online driver file bucket
     """
 
     bucket: Optional[str] = Field(None, description="The bucket of the file")
-    files: list[OnlineDriverFile] = Field(..., description="The files of the bucket")
+    files: list[OnlineDriveFile] = Field(..., description="The files of the bucket")
     is_truncated: bool = Field(False, description="Whether the bucket has more files")
 
 
-class OnlineDriverBrowseFilesRequest(BaseModel):
+class OnlineDriveBrowseFilesRequest(BaseModel):
     """
     Get online driver file list request
     """
@@ -343,15 +343,15 @@ class OnlineDriverBrowseFilesRequest(BaseModel):
     )
 
 
-class OnlineDriverBrowseFilesResponse(BaseModel):
+class OnlineDriveBrowseFilesResponse(BaseModel):
     """
     Get online driver file list response
     """
 
-    result: list[OnlineDriverFileBucket] = Field(..., description="The bucket of the files")
+    result: list[OnlineDriveFileBucket] = Field(..., description="The bucket of the files")
 
 
-class OnlineDriverDownloadFileRequest(BaseModel):
+class OnlineDriveDownloadFileRequest(BaseModel):
     """
     Get online driver file
     """

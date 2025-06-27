@@ -6,14 +6,14 @@ from core.datasource.entities.datasource_entities import (
     DatasourceEntity,
     DatasourceMessage,
     DatasourceProviderType,
-    OnlineDriverBrowseFilesRequest,
-    OnlineDriverBrowseFilesResponse,
-    OnlineDriverDownloadFileRequest,
+    OnlineDriveBrowseFilesRequest,
+    OnlineDriveBrowseFilesResponse,
+    OnlineDriveDownloadFileRequest,
 )
 from core.plugin.impl.datasource import PluginDatasourceManager
 
 
-class OnlineDriverDatasourcePlugin(DatasourcePlugin):
+class OnlineDriveDatasourcePlugin(DatasourcePlugin):
     tenant_id: str
     icon: str
     plugin_unique_identifier: str
@@ -33,15 +33,15 @@ class OnlineDriverDatasourcePlugin(DatasourcePlugin):
         self.icon = icon
         self.plugin_unique_identifier = plugin_unique_identifier
 
-    def online_driver_browse_files(
+    def online_drive_browse_files(
         self,
         user_id: str,
-        request: OnlineDriverBrowseFilesRequest,
+        request: OnlineDriveBrowseFilesRequest,
         provider_type: str,
-    ) -> Generator[OnlineDriverBrowseFilesResponse, None, None]:
+    ) -> Generator[OnlineDriveBrowseFilesResponse, None, None]:
         manager = PluginDatasourceManager()
 
-        return manager.online_driver_browse_files(
+        return manager.online_drive_browse_files(
             tenant_id=self.tenant_id,
             user_id=user_id,
             datasource_provider=self.entity.identity.provider,
@@ -51,15 +51,15 @@ class OnlineDriverDatasourcePlugin(DatasourcePlugin):
             provider_type=provider_type,
         )
 
-    def online_driver_download_file(
+    def online_drive_download_file(
         self,
         user_id: str,
-        request: OnlineDriverDownloadFileRequest,
+        request: OnlineDriveDownloadFileRequest,
         provider_type: str,
     ) -> Generator[DatasourceMessage, None, None]:
         manager = PluginDatasourceManager()
 
-        return manager.online_driver_download_file(
+        return manager.online_drive_download_file(
             tenant_id=self.tenant_id,
             user_id=user_id,
             datasource_provider=self.entity.identity.provider,
@@ -70,4 +70,4 @@ class OnlineDriverDatasourcePlugin(DatasourcePlugin):
         )
 
     def datasource_provider_type(self) -> str:
-        return DatasourceProviderType.ONLINE_DRIVER
+        return DatasourceProviderType.ONLINE_DRIVE
