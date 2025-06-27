@@ -49,6 +49,7 @@ from core.workflow.entities.workflow_execution import WorkflowExecution
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models import (
     Account,
@@ -63,8 +64,10 @@ class WorkflowResponseConverter:
         self,
         *,
         application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
+        workflow_execution_repository: WorkflowExecutionRepository,
     ) -> None:
         self._application_generate_entity = application_generate_entity
+        self._workflow_execution_repository = workflow_execution_repository
 
     def workflow_start_to_stream_response(
         self,
