@@ -283,7 +283,7 @@ class DatasetApi(DatasetApiResource):
         # check embedding model setting
         if data.get("indexing_technique") == "high_quality" or data.get("embedding_model_provider"):
             DatasetService.check_embedding_model_setting(
-            dataset.tenant_id, data.get("embedding_model_provider"), data.get("embedding_model")
+                dataset.tenant_id, data.get("embedding_model_provider"), data.get("embedding_model")
             )
         if (
             data.get("retrieval_model")
