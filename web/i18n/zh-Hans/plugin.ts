@@ -135,7 +135,7 @@ const translation = {
     },
     updateTimeTitle: '更新时间',
     upgradeMode: {
-      update_all: '更新全部',
+      all: '更新全部',
       exclude: '排除选定',
       partial: '仅选定',
     },
