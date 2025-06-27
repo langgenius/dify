@@ -279,6 +279,23 @@ class DatasetService:
             raise ValueError(ex.description)
 
     @staticmethod
+    def check_reranking_model_setting(tenant_id: str, reranking_model_provider: str, reranking_model: str):
+        try:
+            model_manager = ModelManager()
+            model_manager.get_model_instance(
+                tenant_id=tenant_id,
+                provider=reranking_model_provider,
+                model_type=ModelType.RERANK,
+                model=reranking_model,
+            )
+        except LLMBadRequestError:
+            raise ValueError(
+                "No Rerank Model available. Please configure a valid provider in the Settings -> Model Provider."
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ValueError(ex.description)
+
+    @staticmethod
     def update_dataset(dataset_id, data, user):
         """
         Update dataset configuration and settings.
