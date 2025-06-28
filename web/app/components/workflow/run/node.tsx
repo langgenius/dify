@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import {
   RiAlertFill,
   RiArrowRightSLine,
@@ -30,6 +30,9 @@ import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/err
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
 import Tooltip from '@/app/components/base/tooltip'
+import NodePosition from '@/app/components/workflow/nodes/_base/components/node-position'
+import type { XYPosition } from 'reactflow'
+import { WorkflowHistoryStoreContext } from '@/app/components/workflow/workflow-history-store'
 
 type Props = {
   className?: string
@@ -60,6 +63,24 @@ const NodePanel: FC<Props> = ({
   notShowIterationNav,
   notShowLoopNav,
 }) => {
+  const { store } = useContext(WorkflowHistoryStoreContext)
+  let inPublishMode = true
+  let hasNode = false
+  let nodePosition: XYPosition = { x: 0, y: 0 }
+  let nodeWidth = 0
+  let nodeHeight = 0
+
+  if (store) {
+    inPublishMode = false
+    const nodes = store.getState().nodes
+    const currentNodeIndex = nodes.findIndex(node => node.id === nodeInfo.node_id)
+    const currentNode = nodes[currentNodeIndex]
+    nodePosition = currentNode?.position ?? { x: -1, y: -1 }
+    nodeWidth = currentNode?.width ?? -1
+    nodeHeight = currentNode?.height ?? -1
+    hasNode = !!currentNode
+  }
+
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback((state: boolean) => {
     if (hideProcessDetail)
@@ -159,6 +180,11 @@ const NodePanel: FC<Props> = ({
             <div className='flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-text-accent'>
               <span className='mr-2 text-xs font-normal'>Running</span>
               <RiLoader2Line className='h-3.5 w-3.5 animate-spin' />
+            </div>
+          )}
+          {!inPublishMode && (
+            <div className='ml-1' style={{ pointerEvents: hasNode ? 'auto' : 'none', opacity: hasNode ? 1 : 0.5 }}>
+              <NodePosition nodePosition={nodePosition} nodeWidth={nodeWidth} nodeHeight={nodeHeight}></NodePosition>
             </div>
           )}
         </div>
