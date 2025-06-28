@@ -550,7 +550,7 @@ const translation = {
       advancedDependencies: '高级依赖',
       advancedDependenciesTip: '在这里添加一些预加载需要消耗较多时间或非默认内置的依赖包',
       searchDependencies: '搜索依赖',
-      syncFuctionSignature: '同步函数签名至代码',
+      syncFunctionSignature: '同步函数签名至代码',
     },
     templateTransform: {
       inputVars: '输入变量',

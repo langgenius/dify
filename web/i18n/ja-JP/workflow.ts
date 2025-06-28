@@ -550,7 +550,7 @@ const translation = {
       advancedDependencies: '高度な依存関係',
       advancedDependenciesTip: '消費に時間がかかる、またはデフォルトで組み込まれていない事前ロードされた依存関係を追加します',
       searchDependencies: '依存関係を検索',
-      syncFuctionSignature: 'コードの関数署名を同期',
+      syncFunctionSignature: 'コードの関数署名を同期',
     },
     templateTransform: {
       inputVars: '入力変数',
