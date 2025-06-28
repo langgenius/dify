@@ -65,10 +65,11 @@ const VarList: FC<Props> = ({
   }, [list, onVarNameChange, onChange])
 
   const handleVarReferenceChange = useCallback((index: number) => {
-    return (value: ValueSelector | string, varKindType: VarKindType) => {
+    return (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => {
       const newList = produce(list, (draft) => {
         if (!isSupportConstantValue || varKindType === VarKindType.variable) {
           draft[index].value_selector = value as ValueSelector
+          draft[index].value_type = varInfo?.type
           if (isSupportConstantValue)
             draft[index].variable_type = VarKindType.variable
 
