@@ -148,11 +148,16 @@ class ToolTransformService:
         convert provider controller to user provider
         """
         # package tool provider controller
+        auth_type = ApiProviderAuthType.NONE
+        credentials_auth_type = db_provider.credentials.get("auth_type")
+        if credentials_auth_type in ("api_key_header", "api_key"):  # backward compatibility
+            auth_type = ApiProviderAuthType.API_KEY_HEADER
+        elif credentials_auth_type == "api_key_query":
+            auth_type = ApiProviderAuthType.API_KEY_QUERY
+
         controller = ApiToolProviderController.from_db(
             db_provider=db_provider,
-            auth_type=ApiProviderAuthType.API_KEY
-            if db_provider.credentials["auth_type"] == "api_key"
-            else ApiProviderAuthType.NONE,
+            auth_type=auth_type,
         )
 
         return controller
