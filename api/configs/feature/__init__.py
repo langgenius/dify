@@ -237,6 +237,13 @@ class FileAccessConfig(BaseSettings):
         default="",
     )
 
+    INTERNAL_FILES_URL: str = Field(
+        description="Internal base URL for file access within Docker network,"
+        " used for plugin daemon and internal service communication."
+        " Falls back to FILES_URL if not specified.",
+        default="",
+    )
+
     FILES_ACCESS_TIMEOUT: int = Field(
         description="Expiration time in seconds for file access URLs",
         default=300,
