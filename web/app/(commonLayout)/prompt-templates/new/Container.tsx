@@ -18,7 +18,8 @@ const Container = () => {
         message: t('common.api.saved'),
       })
       router.push('/prompt-templates')
-    } catch (e: any) {
+    }
+ catch (e: any) {
       Toast.notify({
         type: 'error',
         message: e.message || 'Failed to create template',
@@ -31,7 +32,7 @@ const Container = () => {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       <div className="grow overflow-y-auto">
         <Form
           type="create"
@@ -43,4 +44,4 @@ const Container = () => {
   )
 }
 
-export default Container 
+export default Container

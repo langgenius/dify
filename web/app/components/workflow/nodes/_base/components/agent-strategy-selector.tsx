@@ -158,7 +158,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           alt='icon'
         /></div>}
         <p
-          className={classNames(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'text-xs px-1')}
+          className={classNames(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
         >
           {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
         </p>

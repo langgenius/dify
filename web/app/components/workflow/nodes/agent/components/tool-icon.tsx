@@ -58,7 +58,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   >
     <div
       className={classNames(
-        'size-5 border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge relative flex items-center justify-center rounded-[6px]',
+        'relative flex size-5 items-center justify-center rounded-[6px] border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge',
       )}
       ref={containerRef}
     >
@@ -68,7 +68,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
           src={icon}
           alt='tool icon'
           className={classNames(
-            'w-full h-full size-3.5 object-cover',
+            'size-3.5 h-full w-full object-cover',
             notSuccess && 'opacity-50',
           )}
           onError={() => setIconFetchError(true)}

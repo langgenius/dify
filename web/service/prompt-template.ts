@@ -1,4 +1,4 @@
-import { get, post, del, put } from './base'
+import { del, get, post, put } from './base'
 import type { PromptTemplate, PromptTemplateRequest } from '@/models/prompt-template'
 
 export const fetchPromptTemplates = async () => {
@@ -19,4 +19,4 @@ export const getPromptTemplate = async (id: string) => {
 
 export const updatePromptTemplate = async (id: string, data: Partial<PromptTemplate>) => {
   return put(`/prompt-templates/${id}`, { body: data })
-} 
+}

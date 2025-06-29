@@ -155,8 +155,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             # If a prompt template is used, load it and override node data
             if self.node_data.prompt_template_id:
                 prompt_template_entity = PromptTemplateService.get_prompt_template_for_workflow(
-                    template_id=self.node_data.prompt_template_id,
-                    tenant_id=self.tenant_id
+                    template_id=self.node_data.prompt_template_id, tenant_id=self.tenant_id
                 )
                 latest_version = prompt_template_entity.get_latest_version()
 

@@ -12,10 +12,10 @@ const PromptTemplatesNav = () => {
     <Link
       href="/prompt-templates"
       className={cn(
-        'flex items-center mr-3 px-3 h-8 text-sm font-medium rounded-lg',
+        'mr-3 flex h-8 items-center rounded-lg px-3 text-sm font-medium',
         isSelected
           ? 'bg-primary-50 text-primary-600'
-          : 'text-gray-700 hover:bg-gray-200'
+          : 'text-gray-700 hover:bg-gray-200',
       )}
     >
       Prompts
@@ -23,4 +23,4 @@ const PromptTemplatesNav = () => {
   )
 }
 
-export default PromptTemplatesNav 
+export default PromptTemplatesNav

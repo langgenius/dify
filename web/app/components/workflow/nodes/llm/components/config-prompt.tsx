@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { ReactSortable } from 'react-sortablejs'
@@ -14,6 +14,12 @@ import cn from '@/utils/classnames'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import { DragHandle } from '@/app/components/base/icons/src/vender/line/others'
+import {
+  SparklesSoft,
+} from '@/app/components/base/icons/src/public/common'
+import PromptTemplateSelectModal from './prompt-template-select-modal'
+import type { PromptTemplate } from '@/models/prompt-template'
+import Tooltip from '@/app/components/base/tooltip'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -55,6 +61,7 @@ const ConfigPrompt: FC<Props> = ({
   const {
     setControlPromptEditorRerenderKey,
   } = workflowStore.getState()
+  const [showPromptTemplateModal, setShowPromptTemplateModal] = useState(false)
   const payloadWithIds = (isChatModel && Array.isArray(payload))
     ? payload.map((item) => {
       const id = uuid4()
@@ -123,6 +130,15 @@ const ConfigPrompt: FC<Props> = ({
       onChange(newPrompt)
     }
   }, [onChange, payload])
+
+  const handleSelectTemplate = (template: PromptTemplate) => {
+    const newPrompt = produce(payload as PromptItem, (draft) => {
+      draft.text = template.prompt_content || ''
+    })
+    onChange(newPrompt)
+    setShowPromptTemplateModal(false)
+    setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
+  }
 
   const handleCompletionPromptChange = useCallback((prompt: string) => {
     const newPrompt = produce(payload as PromptItem, (draft) => {
@@ -221,6 +237,16 @@ const ConfigPrompt: FC<Props> = ({
             <Editor
               instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
               title={<span className='capitalize'>{t(`${i18nPrefix}.prompt`)}</span>}
+              rightTools={
+                <Tooltip popupContent={t('common.promptTemplate.title')}>
+                  <div
+                    className='mr-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md hover:bg-state-base-hover'
+                    onClick={() => setShowPromptTemplateModal(true)}
+                  >
+                    <SparklesSoft className='h-4 w-4 text-text-secondary' />
+                  </div>
+                </Tooltip>
+              }
               value={((payload as PromptItem).edition_type === EditionType.basic || !(payload as PromptItem).edition_type) ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
               onChange={handleCompletionPromptChange}
               readOnly={readOnly}
@@ -239,6 +265,13 @@ const ConfigPrompt: FC<Props> = ({
               onGenerated={handleGenerated}
               modelConfig={modelConfig}
             />
+            {showPromptTemplateModal && (
+              <PromptTemplateSelectModal
+                isShow
+                onClose={() => setShowPromptTemplateModal(false)}
+                onSelect={handleSelectTemplate}
+              />
+            )}
           </div>
         )}
     </div>

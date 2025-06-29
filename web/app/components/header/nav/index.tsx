@@ -54,7 +54,7 @@ const Nav = ({
         <div
           onClick={() => setAppDetail()}
           className={classNames(`
-            flex items-center h-7 px-2.5 cursor-pointer rounded-[10px]
+            flex h-7 cursor-pointer items-center rounded-[10px] px-2.5
             ${isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text'}
             ${curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover'}
           `)}

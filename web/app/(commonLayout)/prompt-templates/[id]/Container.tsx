@@ -18,15 +18,17 @@ const Container = ({ id }: { id: string }) => {
       try {
         const data = await getPromptTemplate(id)
         setTemplate(data)
-      } catch (e) {
+      }
+ catch (e) {
         // handle error
         console.error(e)
-      } finally {
+      }
+ finally {
         setLoading(false)
       }
     })()
   }, [id])
-  
+
   const handleSave = async (data: any) => {
     try {
       await updatePromptTemplate(id, data)
@@ -34,7 +36,8 @@ const Container = ({ id }: { id: string }) => {
         type: 'success',
         message: t('common.api.saved'),
       })
-    } catch(e: any) {
+    }
+ catch(e: any) {
       Toast.notify({
         type: 'error',
         message: e.message || 'Failed to save template',
@@ -42,9 +45,8 @@ const Container = ({ id }: { id: string }) => {
     }
   }
 
-  if (loading) {
+  if (loading)
     return <div>Loading...</div>
-  }
 
   if (!template) {
     // TODO: better error/not found display
@@ -56,7 +58,7 @@ const Container = ({ id }: { id: string }) => {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       <div className="grow overflow-y-auto">
         <Form
           type="edit"
@@ -70,4 +72,4 @@ const Container = ({ id }: { id: string }) => {
   )
 }
 
-export default Container 
+export default Container

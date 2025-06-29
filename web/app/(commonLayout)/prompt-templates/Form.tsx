@@ -42,7 +42,7 @@ const Form = ({ type, template, templateId, onSave, onCancel }: FormProps) => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSelectChange = (item: {value: string | number}) => {
+  const handleSelectChange = (item: { value: string | number }) => {
     setFormData(prev => ({ ...prev, mode: item.value as string }))
   }
 
@@ -68,12 +68,12 @@ const Form = ({ type, template, templateId, onSave, onCancel }: FormProps) => {
     const { provider, ...restData } = formData
     onSave(restData as PromptTemplateRequest)
   }
-  
+
   const title = type === 'create' ? 'Create Prompt Template' : 'Edit Prompt Template'
 
   return (
     <div className="p-8">
-      <h1 className="text-2xl font-semibold mb-6">{title}</h1>
+      <h1 className="mb-6 text-2xl font-semibold">{title}</h1>
       <form onSubmit={handleSubmit} className="space-y-6">
         {type === 'edit' && (
           <div>
@@ -81,7 +81,7 @@ const Form = ({ type, template, templateId, onSave, onCancel }: FormProps) => {
             <p className="mt-1 text-sm text-gray-500">{templateId}</p>
           </div>
         )}
-        
+
       <div>
         <label className="block text-sm font-medium text-gray-700">Name</label>
         <Input
@@ -92,7 +92,7 @@ const Form = ({ type, template, templateId, onSave, onCancel }: FormProps) => {
           required
         />
       </div>
-        
+
       <div>
           <label className="block text-sm font-medium text-gray-700">Mode</label>
           <Select
@@ -108,7 +108,7 @@ const Form = ({ type, template, templateId, onSave, onCancel }: FormProps) => {
       </div>
 
       <div className=''>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+        <label className="mb-1 block text-sm font-medium text-gray-700">Model</label>
         <PortalToFollowElem
             open={open}
             onOpenChange={setOpen}
@@ -158,7 +158,7 @@ const Form = ({ type, template, templateId, onSave, onCancel }: FormProps) => {
             placeholder="Enter description"
           />
           </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700">Tags (comma-separated)</label>
           <TagInput
@@ -184,4 +184,4 @@ const Form = ({ type, template, templateId, onSave, onCancel }: FormProps) => {
   )
 }
 
-export default Form 
+export default Form

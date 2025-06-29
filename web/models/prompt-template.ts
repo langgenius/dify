@@ -21,4 +21,4 @@ export type PromptTemplateRequest = {
   tags?: string[]
   model_name?: string
   model_parameters?: Record<string, any>
-} 
+}

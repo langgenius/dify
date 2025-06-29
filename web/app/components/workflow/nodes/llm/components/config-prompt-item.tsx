@@ -8,8 +8,10 @@ import { EditionType } from '../../../types'
 import { useWorkflowStore } from '../../../store'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import Tooltip from '@/app/components/base/tooltip'
 import { PromptRole } from '@/models/debug'
+
+import PromptTemplateSelectModal from './prompt-template-select-modal'
+import type { PromptTemplate } from '@/models/prompt-template'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -85,6 +87,8 @@ const ConfigPromptItem: FC<Props> = ({
     setControlPromptEditorRerenderKey,
   } = workflowStore.getState()
   const [instanceId, setInstanceId] = useState(uniqueId())
+  const [showPromptTemplateModal, setShowPromptTemplateModal] = useState(false)
+
   useEffect(() => {
     setInstanceId(`${id}-${uniqueId()}`)
   }, [id])
@@ -94,58 +98,72 @@ const ConfigPromptItem: FC<Props> = ({
     setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
   }, [onPromptChange, setControlPromptEditorRerenderKey])
 
-  return (
-    <Editor
-      className={className}
-      headerClassName={headerClassName}
-      instanceId={instanceId}
-      key={instanceId}
-      title={
-        <div className='relative left-1 flex items-center'>
-          {payload.role === PromptRole.system
-            ? (<div className='relative left-[-4px] text-xs font-semibold uppercase text-text-secondary'>
-              SYSTEM
-            </div>)
-            : (
-              <TypeSelector
-                value={payload.role as string}
-                allOptions={roleOptions}
-                options={canNotChooseSystemRole ? roleOptionsWithoutSystemRole : roleOptions}
-                onChange={handleChatModeMessageRoleChange}
-                triggerClassName='text-xs font-semibold text-text-secondary uppercase'
-                itemClassName='text-[13px] font-medium text-text-secondary'
-              />
-            )}
+  const handleSelectTemplate = (template: PromptTemplate) => {
+    onPromptChange(template.prompt_content || '')
+    setShowPromptTemplateModal(false)
+    setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
+  }
 
-          <Tooltip
-            popupContent={
-              <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${payload.role}`)}</div>
-            }
-            triggerClassName='w-4 h-4'
-          />
-        </div>
-      }
-      value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
-      onChange={onPromptChange}
-      readOnly={readOnly}
-      showRemove={canRemove}
-      onRemove={onRemove}
-      isChatModel={isChatModel}
-      isChatApp={isChatApp}
-      isShowContext={isShowContext}
-      hasSetBlockStatus={hasSetBlockStatus}
-      nodesOutputVars={availableVars}
-      availableNodes={availableNodes}
-      isSupportPromptGenerator={payload.role === PromptRole.system}
-      onGenerated={handleGenerated}
-      modelConfig={modelConfig}
-      isSupportJinja
-      editionType={payload.edition_type}
-      onEditionTypeChange={onEditionTypeChange}
-      varList={varList}
-      handleAddVariable={handleAddVariable}
-      isSupportFileVar
-    />
+  return (
+    <>
+      <Editor
+        className={className}
+        headerClassName={headerClassName}
+        instanceId={instanceId}
+        key={instanceId}
+        title={
+          payload.role === PromptRole.system
+            ? 'SYSTEM TEST'
+            : <TypeSelector
+              value={payload.role as string}
+              allOptions={roleOptions}
+              options={canNotChooseSystemRole ? roleOptionsWithoutSystemRole : roleOptions}
+              onChange={handleChatModeMessageRoleChange}
+              triggerClassName='text-xs font-semibold text-text-secondary uppercase'
+              itemClassName='text-[13px] font-medium text-text-secondary'
+            />
+        }
+        rightTools={
+          (payload.role === PromptRole.system || payload.role === PromptRole.user)
+            ? (
+              <div
+                className='mr-1 flex h-6 cursor-pointer items-center justify-center rounded-md bg-gray-100 px-2 text-xs font-semibold text-gray-700 hover:bg-gray-200'
+                onClick={() => setShowPromptTemplateModal(true)}
+              >
+                {t('common.promptTemplate.import')}
+              </div>
+            )
+            : undefined
+        }
+        value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
+        onChange={onPromptChange}
+        readOnly={readOnly}
+        showRemove={canRemove}
+        onRemove={onRemove}
+        isChatModel={isChatModel}
+        isChatApp={isChatApp}
+        isShowContext={isShowContext}
+        hasSetBlockStatus={hasSetBlockStatus}
+        nodesOutputVars={availableVars}
+        availableNodes={availableNodes}
+        isSupportPromptGenerator={payload.role === PromptRole.system}
+        onGenerated={handleGenerated}
+        modelConfig={modelConfig}
+        isSupportJinja
+        editionType={payload.edition_type}
+        onEditionTypeChange={onEditionTypeChange}
+        varList={varList}
+        handleAddVariable={handleAddVariable}
+        isSupportFileVar
+      />
+      {showPromptTemplateModal && (
+        <PromptTemplateSelectModal
+          isShow
+          onClose={() => setShowPromptTemplateModal(false)}
+          onSelect={handleSelectTemplate}
+        />
+      )}
+    </>
   )
 }
 export default React.memo(ConfigPromptItem)

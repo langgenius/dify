@@ -10,7 +10,6 @@ from models.prompt_template import PromptTemplate, PromptVersion
 
 
 class PromptTemplateService:
-
     @staticmethod
     def get_prompt_templates():
         """
@@ -75,9 +74,7 @@ class PromptTemplateService:
             raise NotFound("User not authenticated.")
 
         template = (
-            db.session.query(PromptTemplate)
-            .filter_by(id=template_id, tenant_id=current_user.current_tenant_id)
-            .first()
+            db.session.query(PromptTemplate).filter_by(id=template_id, tenant_id=current_user.current_tenant_id).first()
         )
         if not template:
             raise NotFound(f"Prompt template with id {template_id} not found.")
@@ -89,11 +86,7 @@ class PromptTemplateService:
         Get a specific prompt template by ID for a specific tenant.
         This method is designed for workflow context where current_user is not available.
         """
-        template = (
-            db.session.query(PromptTemplate)
-            .filter_by(id=template_id, tenant_id=tenant_id)
-            .first()
-        )
+        template = db.session.query(PromptTemplate).filter_by(id=template_id, tenant_id=tenant_id).first()
         if not template:
             raise NotFound(f"Prompt template with id {template_id} not found for the given tenant.")
         return template
@@ -124,13 +117,15 @@ class PromptTemplateService:
         template.mode = mode
         template.description = description
         template.tags = tags
-        
+
         latest_version = template.get_latest_version()
 
         # Create a new version only if the prompt content or model settings have changed
-        if (latest_version.prompt_text != prompt_content or
-            latest_version.model_name != model_name or
-            latest_version.model_parameters != model_parameters):
+        if (
+            latest_version.prompt_text != prompt_content
+            or latest_version.model_name != model_name
+            or latest_version.model_parameters != model_parameters
+        ):
             new_version = PromptVersion(
                 prompt_template=template,
                 prompt_text=prompt_content,
@@ -152,12 +147,10 @@ class PromptTemplateService:
             raise NotFound("User not authenticated.")
 
         template = (
-            db.session.query(PromptTemplate)
-            .filter_by(id=template_id, tenant_id=current_user.current_tenant_id)
-            .first()
+            db.session.query(PromptTemplate).filter_by(id=template_id, tenant_id=current_user.current_tenant_id).first()
         )
         if not template:
             raise NotFound(f"Prompt template with id {template_id} not found.")
 
         db.session.delete(template)
-        db.session.commit() 
+        db.session.commit()
