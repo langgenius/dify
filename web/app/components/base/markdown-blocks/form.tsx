@@ -39,7 +39,6 @@ const MarkdownForm = ({ node }: any) => {
     const initialValues: { [key: string]: any } = {}
     node.children.forEach((child: any) => {
       if ([SUPPORTED_TAGS.INPUT, SUPPORTED_TAGS.TEXTAREA].includes(child.tagName)) {
-        // Always set initial value for hidden inputs
         if (child.tagName === SUPPORTED_TAGS.INPUT && child.properties.type === SUPPORTED_TYPES.HIDDEN) {
           initialValues[child.properties.name] = child.properties.value || ''
         } else {
@@ -188,7 +187,6 @@ const MarkdownForm = ({ node }: any) => {
           }
 
           if (child.properties.type === SUPPORTED_TYPES.HIDDEN) {
-            // Hidden input is not displayed but maintains form value
             return (
               <input
                 key={index}
