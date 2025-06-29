@@ -50,11 +50,11 @@ export default function Modal({
           <div className="flex min-h-full items-center justify-center p-4 text-center">
             <TransitionChild>
               <DialogPanel className={classNames(
-                'w-full max-w-[480px] transform rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',
+                'w-full max-w-[480px] rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',
                 overflowVisible ? 'overflow-visible' : 'overflow-hidden',
-                'duration-100 ease-in data-[closed]:opacity-0 data-[closed]:scale-95',
-                'data-[enter]:opacity-100 data-[enter]:scale-100',
-                'data-[leave]:opacity-0 data-[enter]:scale-95',
+                'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100',
+                'data-[enter]:scale-95 data-[leave]:opacity-0',
                 className,
               )}>
                 {title && <DialogTitle

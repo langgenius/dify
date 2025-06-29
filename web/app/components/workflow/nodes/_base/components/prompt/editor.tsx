@@ -42,6 +42,7 @@ type Props = {
   headerClassName?: string
   instanceId?: string
   title: string | React.JSX.Element
+  rightTools?: ReactNode
   value: string
   onChange: (value: string) => void
   readOnly?: boolean
@@ -84,6 +85,7 @@ const Editor: FC<Props> = ({
   headerClassName,
   instanceId,
   title,
+  rightTools,
   value,
   onChange,
   readOnly,
@@ -157,6 +159,7 @@ const Editor: FC<Props> = ({
               {titleTooltip && <Tooltip popupContent={titleTooltip} />}
             </div>
             <div className='flex items-center'>
+              {rightTools}
               <div className='text-xs font-medium leading-[18px] text-text-tertiary'>{value?.length || 0}</div>
               {isSupportPromptGenerator && (
                 <PromptGeneratorBtn className='ml-[5px]' onGenerated={onGenerated} modelConfig={modelConfig} />

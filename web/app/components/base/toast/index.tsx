@@ -46,7 +46,7 @@ const Toast = ({
 
   return <div className={classNames(
     className,
-    'fixed w-[360px] rounded-xl my-4 mx-8 flex-grow z-[9999] overflow-hidden',
+    'fixed z-[9999] mx-8 my-4 w-[360px] grow overflow-hidden rounded-xl',
     size === 'md' ? 'p-3' : 'p-2',
     'border border-components-panel-border-subtle bg-components-panel-bg-blur shadow-sm',
     'top-0',

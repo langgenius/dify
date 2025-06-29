@@ -71,14 +71,14 @@ const Pricing: FC<Props> = ({
                   {
                     value: 'cloud',
                     text: <div className={
-                      classNames('inline-flex items-center system-md-semibold-uppercase text-text-secondary',
+                      classNames('system-md-semibold-uppercase inline-flex items-center text-text-secondary',
                         currentPlan === 'cloud' && 'text-text-accent-light-mode-only')} >
                       <RiCloudFill className='mr-2 size-4' />{t('billing.plansCommon.cloud')}</div>,
                   },
                   {
                     value: 'self',
                     text: <div className={
-                      classNames('inline-flex items-center system-md-semibold-uppercase text-text-secondary',
+                      classNames('system-md-semibold-uppercase inline-flex items-center text-text-secondary',
                         currentPlan === 'self' && 'text-text-accent-light-mode-only')}>
                       <RiTerminalBoxFill className='mr-2 size-4' />{t('billing.plansCommon.self')}</div>,
                   }]}

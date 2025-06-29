@@ -56,6 +56,7 @@ from .model import (
     TraceAppConfig,
     UploadFile,
 )
+from .prompt_template import PromptTemplate, PromptVersion
 from .provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -140,6 +141,8 @@ __all__ = [
     "MessageFile",
     "OperationLog",
     "PinnedConversation",
+    "PromptTemplate",
+    "PromptVersion",
     "Provider",
     "ProviderModel",
     "ProviderModelSetting",

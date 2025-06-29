@@ -60,6 +60,7 @@ class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
 
 class LLMNodeData(BaseNodeData):
     model: ModelConfig
+    prompt_template_id: Optional[str] = None
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
     prompt_config: PromptConfig = Field(default_factory=PromptConfig)
     memory: Optional[MemoryConfig] = None
