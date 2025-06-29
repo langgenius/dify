@@ -3,6 +3,7 @@ export enum TracingProvider {
   langfuse = 'langfuse',
   opik = 'opik',
   weave = 'weave',
+  aliyun = 'aliyun',
 }
 
 export type LangSmithConfig = {
@@ -30,4 +31,10 @@ export type WeaveConfig = {
   project: string
   endpoint: string
   host: string
+}
+
+export type AliyunConfig = {
+  app_name: string
+  license_key: string
+  endpoint: string
 }

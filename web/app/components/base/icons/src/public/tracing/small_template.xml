@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" version="1.1" width="106" height="16" viewBox="0 0 106 16">
+  <defs>
+    <clipPath id="master_svg0_36_00924">
+      <rect x="0" y="0" width="19" height="16" rx="0"/>
+    </clipPath>
+  </defs>
+  <g>
+    <g clip-path="url(#master_svg0_36_00924)">
+      <g>
+        <g>
+          <path d="a" fill-rule="evenodd" fill="#000000" fill-opacity="1" style="mix-blend-mode:passthrough"/>
+        </g>
+        <g>
+          <path d="b" fill="#000000" fill-opacity="1" style="mix-blend-mode:passthrough"/>
+        </g>
+      </g>
+    </g>
+    <g>
+      <g>
+        <path d="c" fill="#000000" fill-opacity="1"/>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,107 @@
+{
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "xmlns": "http://www.w3.org/2000/svg",
+      "xmlns:xlink": "http://www.w3.org/1999/xlink",
+      "width": "120px",
+      "height": "16px",
+      "viewBox": "0 0 120 16",
+      "version": "1.1"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "defs",
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "master_svg0_36_00924"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "x": "0",
+                  "y": "0",
+                  "width": "16",
+                  "height": "16",
+                  "rx": "0"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "g",
+        "children": [
+          {
+            "type": "element",
+            "name": "g",
+            "attributes": {
+              "clip-path": "url(#master_svg0_36_00924)"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "g",
+                "children": [
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "d": "a",
+                      "fill-rule":"evenodd",
+                      "fill":"#000000",
+                      "fill-opacity":"1",
+                      "style":"mix-blend-mode:passthrough"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "element",
+                "name": "g",
+                "children": [
+                  {
+                    "type": "element",
+                    "name": "path",
+                    "attributes": {
+                      "d": "b",
+                      "fill":"#000000",
+                      "fill-opacity":"1",
+                      "style":"mix-blend-mode:passthrough"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "element",
+            "name": "g",
+            "children": [
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "d": "c",
+                  "fill":"#333333",
+                  "fill-opacity":"1"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "AliyunIcon"
+}

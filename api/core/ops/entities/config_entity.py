@@ -8,6 +8,7 @@ class TracingProviderEnum(StrEnum):
     LANGSMITH = "langsmith"
     OPIK = "opik"
     WEAVE = "weave"
+    ALIYUN = "aliyun"
 
 
 class BaseTracingConfig(BaseModel):
@@ -117,6 +118,16 @@ class WeaveConfig(BaseTracingConfig):
             if not v.startswith(("https://", "http://")):
                 raise ValueError("host must start with https:// or http://")
         return v
+
+
+class AliyunConfig(BaseTracingConfig):
+    """
+    Model class for Aliyun tracing config.
+    """
+
+    app_name: str = "dify_app"
+    license_key: str
+    endpoint: str
 
 
 OPS_FILE_PATH = "ops_trace/"
