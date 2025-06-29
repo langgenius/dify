@@ -63,7 +63,6 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
                 '/plugins',
               )}
               asChild={false}
-              needsDelay={true}
             >
               <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />
             </Tooltip>
@@ -87,7 +86,6 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
             '/plugins',
           )}
           asChild={false}
-          needsDelay
         >
           <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />
         </Tooltip>

@@ -149,7 +149,6 @@ const ToolItem = ({
       {isError && (
         <Tooltip
           popupContent={errorTip}
-          needsDelay
         >
           <div>
             <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />

@@ -62,7 +62,6 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
           <Tooltip
             position='right'
             noDecoration
-            needsDelay
             popupContent={
               <LinkedAppsPanel
                 relatedApps={relatedApps.data}
@@ -87,7 +86,6 @@ const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
       <Tooltip
         position='right'
         noDecoration
-        needsDelay
         popupContent={
           <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4'>
             <div className='inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2'>
