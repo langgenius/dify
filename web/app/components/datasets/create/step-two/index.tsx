@@ -513,7 +513,10 @@ const StepTwo = ({
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
 
-      if (documentDetail.dataset_process_rule.mode === 'hierarchical') {
+      const isHierarchicalDocument = documentDetail.doc_form === 'hierarchical_model'
+                              || (rules.parent_mode && rules.subchunk_segmentation)
+
+      if (isHierarchicalDocument) {
         setParentChildConfig({
           chunkForContext: rules.parent_mode || 'paragraph',
           parent: {
