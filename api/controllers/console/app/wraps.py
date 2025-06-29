@@ -35,8 +35,6 @@ def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[
                 raise AppNotFoundError()
 
             app_mode = AppMode.value_of(app_model.mode)
-            if app_mode == AppMode.CHANNEL:
-                raise AppNotFoundError()
 
             if mode is not None:
                 if isinstance(mode, list):
