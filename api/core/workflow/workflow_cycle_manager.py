@@ -160,12 +160,13 @@ class WorkflowCycleManager:
         exceptions_count: int = 0,
     ) -> WorkflowExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
+        now = datetime.now(UTC).replace(tzinfo=None)
 
         workflow_execution.status = WorkflowExecutionStatus(status.value)
         workflow_execution.error_message = error_message
         workflow_execution.total_tokens = total_tokens
         workflow_execution.total_steps = total_steps
-        workflow_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow_execution.finished_at = now
         workflow_execution.exceptions_count = exceptions_count
 
         # Use the instance repository to find running executions for a workflow run
@@ -174,7 +175,6 @@ class WorkflowCycleManager:
         )
 
         # Update the domain models
-        now = datetime.now(UTC).replace(tzinfo=None)
         for node_execution in running_node_executions:
             if node_execution.node_execution_id:
                 # Update the domain model
