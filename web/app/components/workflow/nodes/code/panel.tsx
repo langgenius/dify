@@ -71,7 +71,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           title={t(`${i18nPrefix}.inputVars`)}
           operations={
             !readOnly ? (
-              <div className="flex gap-1">
+              <div className="flex gap-2">
                 <SyncButton popupContent={t(`${i18nPrefix}.syncFunctionSignature`)} onClick={handleSyncFunctionSignature} />
                 <AddButton onClick={handleAddVariable} />
               </div>
