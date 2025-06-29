@@ -19,7 +19,7 @@ import PlanBadge from './plan-badge'
 import LicenseNav from './license-env'
 import { Plan } from '../billing/type'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-
+import PromptTemplatesNav from './prompt-templates-nav'
 const navClassName = `
   flex items-center relative px-3 h-8 rounded-xl
   font-medium text-sm
@@ -101,6 +101,7 @@ const Header = () => {
         {!isCurrentWorkspaceDatasetOperator && <AppNav />}
         {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
         {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
+        <PromptTemplatesNav />
       </div>
       <div className='flex min-w-0 flex-[1] items-center justify-end pl-2 pr-3 min-[1280px]:pl-3'>
         <EnvNav />

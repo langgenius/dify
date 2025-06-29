@@ -68,6 +68,7 @@ from core.workflow.nodes.event import (
     RunStreamChunkEvent,
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
+from services.prompt_template_service import PromptTemplateService
 
 from . import llm_utils
 from .entities import (
@@ -151,6 +152,28 @@ class LLMNode(BaseNode[LLMNodeData]):
         variable_pool = self.graph_runtime_state.variable_pool
 
         try:
+            # If a prompt template is used, load it and override node data
+            if self.node_data.prompt_template_id:
+                prompt_template_entity = PromptTemplateService.get_prompt_template_for_workflow(
+                    template_id=self.node_data.prompt_template_id,
+                    tenant_id=self.tenant_id
+                )
+                latest_version = prompt_template_entity.get_latest_version()
+
+                if latest_version:
+                    # Override prompt_template based on its type
+                    if isinstance(self.node_data.prompt_template, LLMNodeCompletionModelPromptTemplate):
+                        self.node_data.prompt_template.text = latest_version.prompt_text
+                    elif isinstance(self.node_data.prompt_template, list) and self.node_data.prompt_template:
+                        # For chat mode, typically we modify the last user message or a specific system message.
+                        # Here, for simplicity, we'll assume the main prompt is the first message.
+                        self.node_data.prompt_template[0].text = latest_version.prompt_text
+
+                    # Override model settings
+                    if latest_version.model_name and latest_version.model_parameters:
+                        self.node_data.model.name = latest_version.model_name
+                        self.node_data.model.completion_params = latest_version.model_parameters
+
             # init messages template
             self.node_data.prompt_template = self._transform_chat_messages(self.node_data.prompt_template)
 
