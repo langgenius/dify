@@ -7,7 +7,8 @@ export enum LOC {
 
 export enum AuthType {
   none = 'none',
-  apiKey = 'api_key',
+  apiKeyHeader = 'api_key_header',
+  apiKeyQuery = 'api_key_query',
 }
 
 export enum AuthHeaderPrefix {
@@ -21,6 +22,7 @@ export type Credential = {
   api_key_header?: string
   api_key_value?: string
   api_key_header_prefix?: AuthHeaderPrefix
+  api_key_query_param?: string
 }
 
 export enum CollectionType {
