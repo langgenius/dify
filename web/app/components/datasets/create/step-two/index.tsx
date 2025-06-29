@@ -507,7 +507,7 @@ const StepTwo = ({
       const separator = rules.segmentation.separator
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
-      const isHierarchicalDocument = documentDetail.doc_form === 'hierarchical_model'
+      const isHierarchicalDocument = documentDetail.doc_form === ChunkingMode.parentChild
                               || (rules.parent_mode && rules.subchunk_segmentation)
       setSegmentIdentifier(separator)
       setMaxChunkLength(max)
