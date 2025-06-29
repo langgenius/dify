@@ -317,6 +317,9 @@ const translation = {
       atLeastOneOption: 'Wymagana jest co najmniej jedna opcja',
       optionRepeat: 'Powtarzają się opcje',
     },
+    'defaultValue': 'Wartość domyślna',
+    'noDefaultValue': 'Brak wartości domyślnej',
+    'selectDefaultValue': 'Wybierz wartość domyślną',
   },
   vision: {
     name: 'Wizja',
