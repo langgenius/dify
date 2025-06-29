@@ -507,14 +507,13 @@ const StepTwo = ({
       const separator = rules.segmentation.separator
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
+      const isHierarchicalDocument = documentDetail.doc_form === 'hierarchical_model'
+                              || (rules.parent_mode && rules.subchunk_segmentation)
       setSegmentIdentifier(separator)
       setMaxChunkLength(max)
       setOverlap(overlap!)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
-
-      const isHierarchicalDocument = documentDetail.doc_form === 'hierarchical_model'
-                              || (rules.parent_mode && rules.subchunk_segmentation)
 
       if (isHierarchicalDocument) {
         setParentChildConfig({
