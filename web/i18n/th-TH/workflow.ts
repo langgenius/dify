@@ -129,6 +129,8 @@ const translation = {
       value: 'ค่า',
       valuePlaceholder: 'ค่า env',
       secretTip: 'ใช้เพื่อกําหนดข้อมูลหรือข้อมูลที่ละเอียดอ่อน โดยมีการตั้งค่า DSL ที่กําหนดค่าไว้เพื่อป้องกันการรั่วไหล',
+      description: 'คำอธิบาย',
+      descriptionPlaceholder: 'อธิบายตัวแปร',
     },
     export: {
       title: 'ส่งออกตัวแปรสภาพแวดล้อม Secret หรือไม่',

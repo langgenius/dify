@@ -127,6 +127,8 @@ const translation = {
       value: '値',
       valuePlaceholder: '変数値を入力',
       secretTip: 'この変数は機密情報やデータを定義するために使用されます。DSL をエクスポートするときに漏洩防止メカニズムを設定されます。',
+      description: '説明',
+      descriptionPlaceholder: '変数の説明を入力',
     },
     export: {
       title: 'シークレット環境変数をエクスポートしますか？',
