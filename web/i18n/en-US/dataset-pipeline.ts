@@ -115,11 +115,12 @@ const translation = {
     breadcrumbs: {
       allBuckets: 'All Cloud Storage Buckets',
       searchResult: 'Find {{searchResultsLength}} items in "{{folderName}}" folder',
-      noSearchResult: 'No items were found',
-      resetKeywords: 'Reset keywords',
       searchPlaceholder: 'Search files...',
     },
     notSupportedFileType: 'This file type is not supported',
+    emptyFolder: 'This folder is empty',
+    emptySearchResult: 'No items were found',
+    resetKeywords: 'Reset keywords',
   },
 }
 

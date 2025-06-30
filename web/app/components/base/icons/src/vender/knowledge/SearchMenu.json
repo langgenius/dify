@@ -1,0 +1,77 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "32",
+			"height": "33",
+			"viewBox": "0 0 32 33",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M28.0049 16.5C28.0049 20.9183 24.4231 24.5 20.0049 24.5C15.5866 24.5 12.0049 20.9183 12.0049 16.5C12.0049 12.0817 15.5866 8.5 20.0049 8.5C24.4231 8.5 28.0049 12.0817 28.0049 16.5Z",
+					"stroke": "currentColor",
+					"stroke-width": "2",
+					"stroke-linecap": "round",
+					"stroke-linejoin": "round"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M4.00488 16.5H6.67155",
+					"stroke": "currentColor",
+					"stroke-width": "2",
+					"stroke-linecap": "round",
+					"stroke-linejoin": "round"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M4.00488 9.83301H8.00488",
+					"stroke": "currentColor",
+					"stroke-width": "2",
+					"stroke-linecap": "round",
+					"stroke-linejoin": "round"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M4.00488 23.167H8.00488",
+					"stroke": "currentColor",
+					"stroke-width": "2",
+					"stroke-linecap": "round",
+					"stroke-linejoin": "round"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M26 22.5L29.3333 25.8333",
+					"stroke": "currentColor",
+					"stroke-width": "2",
+					"stroke-linecap": "round",
+					"stroke-linejoin": "round"
+				},
+				"children": []
+			}
+		]
+	},
+	"name": "SearchMenu"
+}

@@ -115,11 +115,12 @@ const translation = {
     breadcrumbs: {
       allBuckets: '所有云存储桶',
       searchResult: '在 "{{folderName}}" 文件夹中找到 {{searchResultsLength}} 个项目',
-      noSearchResult: '未找到项目',
-      resetKeywords: '重置关键词',
       searchPlaceholder: '搜索文件...',
     },
     notSupportedFileType: '不支持此文件类型',
+    emptyFolder: '此文件夹为空',
+    emptySearchResult: '未找到任何项目',
+    resetKeywords: '重置关键词',
   },
 }
 

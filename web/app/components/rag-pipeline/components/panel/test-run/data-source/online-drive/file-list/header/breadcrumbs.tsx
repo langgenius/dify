@@ -4,14 +4,12 @@ import { useTranslation } from 'react-i18next'
 type BreadcrumbsProps = {
   prefix: string[]
   keywords: string
-  resetKeywords: () => void
   searchResultsLength: number
 }
 
 const Breadcrumbs = ({
   prefix,
   keywords,
-  resetKeywords,
   searchResultsLength,
 }: BreadcrumbsProps) => {
   const { t } = useTranslation()
