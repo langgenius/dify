@@ -41,9 +41,10 @@ import { AuthCategory } from '@/app/components/plugins/plugin-auth'
 import { useAllToolProviders } from '@/service/use-tools'
 import DeprecationNotice from '../base/deprecation-notice'
 import { AutoUpdateLine } from '../../base/icons/src/vender/system'
-import { timeOfDayToDayjs } from '../reference-setting-modal/auto-update-setting/utils'
+import { convertUTCDaySecondsToLocalSeconds, timeOfDayToDayjs } from '../reference-setting-modal/auto-update-setting/utils'
 import useReferenceSetting from '../plugin-page/use-reference-setting'
 import { AUTO_UPDATE_MODE } from '../reference-setting-modal/auto-update-setting/types'
+import { useAppContext } from '@/context/app-context'
 
 const i18nPrefix = 'plugin.action'
 
@@ -59,6 +60,8 @@ const DetailHeader = ({
   onUpdate,
 }: Props) => {
   const { t } = useTranslation()
+    const { userProfile: { timezone } } = useAppContext()
+
   const { theme } = useTheme()
   const locale = useGetLanguage()
   const { locale: currentLocale } = useI18N()
@@ -240,7 +243,7 @@ const DetailHeader = ({
             />
             {/* Auto update info */}
             {isAutoUpgradeEnabled && (
-              <Tooltip popupContent={t('plugin.autoUpdate.nextUpdateTime', { time: timeOfDayToDayjs(autoUpgradeInfo?.upgrade_time_of_day || 0).format('hh:mm A') })}>
+              <Tooltip popupContent={t('plugin.autoUpdate.nextUpdateTime', { time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}>
                 {/* add a a div to fix tooltip hover not show problem */}
                 <div>
                   <Badge className='mr-1 cursor-pointer px-1'>
