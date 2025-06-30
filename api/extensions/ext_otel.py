@@ -49,7 +49,7 @@ def init_app(app: DifyApp):
         logging.getLogger().addHandler(exception_handler)
 
     def init_flask_instrumentor(app: DifyApp):
-        meter = get_meter("http_metrics", version=dify_config.CURRENT_VERSION)
+        meter = get_meter("http_metrics", version=dify_config.project.version)
         _http_response_counter = meter.create_counter(
             "http.server.response.count",
             description="Total number of HTTP responses by status code, method and target",
@@ -163,7 +163,7 @@ def init_app(app: DifyApp):
     resource = Resource(
         attributes={
             ResourceAttributes.SERVICE_NAME: dify_config.APPLICATION_NAME,
-            ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.CURRENT_VERSION}-{dify_config.COMMIT_SHA}",
+            ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
             ResourceAttributes.PROCESS_PID: os.getpid(),
             ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
             ResourceAttributes.HOST_NAME: socket.gethostname(),
