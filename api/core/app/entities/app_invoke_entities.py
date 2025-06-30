@@ -36,6 +36,7 @@ class InvokeFrom(Enum):
     # DEBUGGER indicates that this invocation is from
     # the workflow (or chatflow) edit page.
     DEBUGGER = "debugger"
+    MCP_SERVER = "mcp-server"
 
     @classmethod
     def value_of(cls, value: str):
@@ -64,6 +65,8 @@ class InvokeFrom(Enum):
             return "explore_app"
         elif self == InvokeFrom.SERVICE_API:
             return "api"
+        elif self == InvokeFrom.MCP_SERVER:
+            return "mcp_server"
 
         return "dev"
 

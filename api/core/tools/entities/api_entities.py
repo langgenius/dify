@@ -1,4 +1,5 @@
-from typing import Literal, Optional
+from datetime import datetime
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -18,7 +19,7 @@ class ToolApiEntity(BaseModel):
     output_schema: Optional[dict] = None
 
 
-ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow"]]
+ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow", "mcp"]]
 
 
 class ToolProviderApiEntity(BaseModel):
@@ -37,6 +38,10 @@ class ToolProviderApiEntity(BaseModel):
     plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the tool")
     tools: list[ToolApiEntity] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
+    # MCP
+    server_url: Optional[str] = Field(default="", description="The server url of the tool")
+    updated_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
+    server_identifier: Optional[str] = Field(default="", description="The server identifier of the MCP tool")
 
     @field_validator("tools", mode="before")
     @classmethod
@@ -52,8 +57,13 @@ class ToolProviderApiEntity(BaseModel):
                 for parameter in tool.get("parameters"):
                     if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES.value:
                         parameter["type"] = "files"
+                    if parameter.get("input_schema") is None:
+                        parameter.pop("input_schema", None)
         # -------------
-
+        optional_fields = self.optional_field("server_url", self.server_url)
+        if self.type == ToolProviderType.MCP.value:
+            optional_fields.update(self.optional_field("updated_at", self.updated_at))
+            optional_fields.update(self.optional_field("server_identifier", self.server_identifier))
         return {
             "id": self.id,
             "author": self.author,
@@ -69,4 +79,9 @@ class ToolProviderApiEntity(BaseModel):
             "allow_delete": self.allow_delete,
             "tools": tools,
             "labels": self.labels,
+            **optional_fields,
         }
+
+    def optional_field(self, key: str, value: Any) -> dict:
+        """Return dict with key-value if value is truthy, empty dict otherwise."""
+        return {key: value} if value else {}

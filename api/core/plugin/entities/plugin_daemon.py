@@ -53,6 +53,7 @@ class PluginAgentProviderEntity(BaseModel):
     plugin_unique_identifier: str
     plugin_id: str
     declaration: AgentProviderEntityWithPlugin
+    meta: PluginDeclaration.Meta
 
 
 class PluginBasicBooleanResponse(BaseModel):
