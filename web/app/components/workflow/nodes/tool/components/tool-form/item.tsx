@@ -12,6 +12,8 @@ import Tooltip from '@/app/components/base/tooltip'
 import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 import { useBoolean } from 'ahooks'
 import SchemaModal from '@/app/components/plugins/plugin-detail-panel/tool-selector/schema-modal'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { Tool } from '@/app/components/tools/types'
 
 type Props = {
   readOnly: boolean
@@ -20,6 +22,8 @@ type Props = {
   value: ToolVarInputs
   onChange: (value: ToolVarInputs) => void
   inPanel?: boolean
+  currentTool?: Tool
+  currentProvider?: ToolWithProvider
 }
 
 const ToolFormItem: FC<Props> = ({
@@ -29,6 +33,8 @@ const ToolFormItem: FC<Props> = ({
   value,
   onChange,
   inPanel,
+  currentTool,
+  currentProvider,
 }) => {
   const language = useLanguage()
   const { name, label, type, required, tooltip, input_schema } = schema
@@ -81,6 +87,8 @@ const ToolFormItem: FC<Props> = ({
         value={value}
         onChange={onChange}
         inPanel={inPanel}
+        currentTool={currentTool}
+        currentProvider={currentProvider}
       />
 
       {isShowSchema && (

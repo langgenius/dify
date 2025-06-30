@@ -1284,6 +1284,7 @@ dev = [
     { name = "coverage" },
     { name = "dotenv-linter" },
     { name = "faker" },
+    { name = "hypothesis" },
     { name = "lxml-stubs" },
     { name = "mypy" },
     { name = "pandas-stubs" },
@@ -1322,6 +1323,7 @@ dev = [
     { name = "types-pymysql" },
     { name = "types-pyopenssl" },
     { name = "types-python-dateutil" },
+    { name = "types-python-http-client" },
     { name = "types-pywin32" },
     { name = "types-pyyaml" },
     { name = "types-regex" },
@@ -1461,6 +1463,7 @@ dev = [
     { name = "coverage", specifier = "~=7.2.4" },
     { name = "dotenv-linter", specifier = "~=0.5.0" },
     { name = "faker", specifier = "~=32.1.0" },
+    { name = "hypothesis", specifier = ">=6.131.15" },
     { name = "lxml-stubs", specifier = "~=0.5.1" },
     { name = "mypy", specifier = "~=1.16.0" },
     { name = "pandas-stubs", specifier = "~=2.2.3" },
@@ -1499,6 +1502,7 @@ dev = [
     { name = "types-pymysql", specifier = "~=1.1.0" },
     { name = "types-pyopenssl", specifier = ">=24.1.0" },
     { name = "types-python-dateutil", specifier = "~=2.9.0" },
+    { name = "types-python-http-client", specifier = ">=3.3.7.20240910" },
     { name = "types-pywin32", specifier = "~=310.0.0" },
     { name = "types-pyyaml", specifier = "~=6.0.12" },
     { name = "types-regex", specifier = "~=2024.11.6" },
@@ -1543,7 +1547,7 @@ vdb = [
     { name = "pymochow", specifier = "==1.3.1" },
     { name = "pyobvector", specifier = "~=0.1.6" },
     { name = "qdrant-client", specifier = "==1.9.0" },
-    { name = "tablestore", specifier = "==6.1.0" },
+    { name = "tablestore", specifier = "==6.2.0" },
     { name = "tcvectordb", specifier = "~=1.6.4" },
     { name = "tidb-vector", specifier = "==0.0.9" },
     { name = "upstash-vector", specifier = "==0.6.0" },
@@ -1611,9 +1615,9 @@ source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "six" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c0/1f/924e3caae75f471eae4b26bd13b698f6af2c44279f67af317439c2f4c46a/ecdsa-0.19.1.tar.gz", hash = "sha256:478cba7b62555866fcb3bb3fe985e06decbdb68ef55713c4e5ab98c57d508e61", size = 201793, upload-time = "2025-03-13T11:52:43.25Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c0/1f/924e3caae75f471eae4b26bd13b698f6af2c44279f67af317439c2f4c46a/ecdsa-0.19.1.tar.gz", hash = "sha256:478cba7b62555866fcb3bb3fe985e06decbdb68ef55713c4e5ab98c57d508e61", size = 201793 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/a3/460c57f094a4a165c84a1341c373b0a4f5ec6ac244b998d5021aade89b77/ecdsa-0.19.1-py2.py3-none-any.whl", hash = "sha256:30638e27cf77b7e15c4c4cc1973720149e1033827cfd00661ca5c8cc0cdb24c3", size = 150607, upload-time = "2025-03-13T11:52:41.757Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/a3/460c57f094a4a165c84a1341c373b0a4f5ec6ac244b998d5021aade89b77/ecdsa-0.19.1-py2.py3-none-any.whl", hash = "sha256:30638e27cf77b7e15c4c4cc1973720149e1033827cfd00661ca5c8cc0cdb24c3", size = 150607 },
 ]
 
 [[package]]
@@ -1648,15 +1652,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cb/7d/01cddcbb6f5cc0ba72e00ddf9b1fa206c802d557fd0a20b18e130edf1336/emoji-2.14.1.tar.gz", hash = "sha256:f8c50043d79a2c1410ebfae833ae1868d5941a67a6cd4d18377e2eb0bd79346b", size = 597182 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/91/db/a0335710caaa6d0aebdaa65ad4df789c15d89b7babd9a30277838a7d9aac/emoji-2.14.1-py3-none-any.whl", hash = "sha256:35a8a486c1460addb1499e3bf7929d3889b2e2841a57401903699fef595e942b", size = 590617 },
-]
-
-[[package]]
-name = "enum34"
-version = "1.1.10"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/11/c4/2da1f4952ba476677a42f25cd32ab8aaf0e1c0d0e00b89822b835c7e654c/enum34-1.1.10.tar.gz", hash = "sha256:cce6a7477ed816bd2542d03d53db9f0db935dd013b70f336a95c73979289f248", size = 28187 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/63/f6/ccb1c83687756aeabbf3ca0f213508fcfb03883ff200d201b3a4c60cedcc/enum34-1.1.10-py3-none-any.whl", hash = "sha256:c3858660960c984d6ab0ebad691265180da2b43f07e061c0f8dca9ef3cffd328", size = 11224 },
 ]
 
 [[package]]
@@ -2554,6 +2549,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/02/e7/94f8232d4a74cc99514c13a9f995811485a6903d48e5d952771ef6322e30/hyperframe-6.1.0.tar.gz", hash = "sha256:f630908a00854a7adeabd6382b43923a4c4cd4b821fcb527e6ab9e15382a3b08", size = 26566 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/48/30/47d0bf6072f7252e6521f3447ccfa40b421b6824517f82854703d0f5a98b/hyperframe-6.1.0-py3-none-any.whl", hash = "sha256:b03380493a519fce58ea5af42e4a42317bf9bd425596f7a0835ffce80f1a42e5", size = 13007 },
+]
+
+[[package]]
+name = "hypothesis"
+version = "6.131.15"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "sortedcontainers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f1/6f/1e291f80627f3e043b19a86f9f6b172b910e3575577917d3122a6558410d/hypothesis-6.131.15.tar.gz", hash = "sha256:11849998ae5eecc8c586c6c98e47677fcc02d97475065f62768cfffbcc15ef7a", size = 436596 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b6/c7/78597bcec48e1585ea9029deb2bf2341516e90dd615a3db498413d68a4cc/hypothesis-6.131.15-py3-none-any.whl", hash = "sha256:e02e67e9f3cfd4cd4a67ccc03bf7431beccc1a084c5e90029799ddd36ce006d7", size = 501128 },
 ]
 
 [[package]]
@@ -4615,9 +4623,9 @@ wheels = [
 name = "python-http-client"
 version = "3.3.7"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/56/fa/284e52a8c6dcbe25671f02d217bf2f85660db940088faf18ae7a05e97313/python_http_client-3.3.7.tar.gz", hash = "sha256:bf841ee45262747e00dec7ee9971dfb8c7d83083f5713596488d67739170cea0", size = 9377, upload-time = "2022-03-09T20:23:56.386Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/fa/284e52a8c6dcbe25671f02d217bf2f85660db940088faf18ae7a05e97313/python_http_client-3.3.7.tar.gz", hash = "sha256:bf841ee45262747e00dec7ee9971dfb8c7d83083f5713596488d67739170cea0", size = 9377 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/29/31/9b360138f4e4035ee9dac4fe1132b6437bd05751aaf1db2a2d83dc45db5f/python_http_client-3.3.7-py3-none-any.whl", hash = "sha256:ad371d2bbedc6ea15c26179c6222a78bc9308d272435ddf1d5c84f068f249a36", size = 8352, upload-time = "2022-03-09T20:23:54.862Z" },
+    { url = "https://files.pythonhosted.org/packages/29/31/9b360138f4e4035ee9dac4fe1132b6437bd05751aaf1db2a2d83dc45db5f/python_http_client-3.3.7-py3-none-any.whl", hash = "sha256:ad371d2bbedc6ea15c26179c6222a78bc9308d272435ddf1d5c84f068f249a36", size = 8352 },
 ]
 
 [[package]]
@@ -5103,9 +5111,9 @@ dependencies = [
     { name = "python-http-client" },
     { name = "werkzeug" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/11/31/62e00433878dccf33edf07f8efa417b9030a2464eb3b04bbd797a11b4447/sendgrid-6.12.4.tar.gz", hash = "sha256:9e88b849daf0fa4bdf256c3b5da9f5a3272402c0c2fd6b1928c9de440db0a03d", size = 50271, upload-time = "2025-06-12T10:29:37.213Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/11/31/62e00433878dccf33edf07f8efa417b9030a2464eb3b04bbd797a11b4447/sendgrid-6.12.4.tar.gz", hash = "sha256:9e88b849daf0fa4bdf256c3b5da9f5a3272402c0c2fd6b1928c9de440db0a03d", size = 50271 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/9c/45d068fd831a65e6ed1e2ab3233de58784842afdc62fdcdd0a01bbb6b39d/sendgrid-6.12.4-py3-none-any.whl", hash = "sha256:9a211b96241e63bd5b9ed9afcc8608f4bcac426e4a319b3920ab877c8426e92c", size = 102122, upload-time = "2025-06-12T10:29:35.457Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/9c/45d068fd831a65e6ed1e2ab3233de58784842afdc62fdcdd0a01bbb6b39d/sendgrid-6.12.4-py3-none-any.whl", hash = "sha256:9a211b96241e63bd5b9ed9afcc8608f4bcac426e4a319b3920ab877c8426e92c", size = 102122 },
 ]
 
 [[package]]
@@ -5242,6 +5250,15 @@ wheels = [
 ]
 
 [[package]]
+name = "sortedcontainers"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/c4/ba2f8066cceb6f23394729afe52f3bf7adec04bf9ed2c820b39e19299111/sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88", size = 30594 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/46/9cb0e58b2deb7f82b84065f37f3bffeb12413f947f9388e4cac22c4621ce/sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0", size = 29575 },
+]
+
+[[package]]
 name = "soupsieve"
 version = "2.7"
 source = { registry = "https://pypi.org/simple" }
@@ -5349,12 +5366,11 @@ wheels = [
 
 [[package]]
 name = "tablestore"
-version = "6.1.0"
+version = "6.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "certifi" },
     { name = "crc32c" },
-    { name = "enum34" },
     { name = "flatbuffers" },
     { name = "future" },
     { name = "numpy" },
@@ -5362,7 +5378,10 @@ dependencies = [
     { name = "six" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0f/ed/5bdd906ec9d2dbae3909525dbb7602558c377e0cbcdddb6405d2d0d3f1af/tablestore-6.1.0.tar.gz", hash = "sha256:bfe6a3e0fe88a230729723c357f4a46b8869a06a4b936db20692ed587a721c1c", size = 135690 }
+sdist = { url = "https://files.pythonhosted.org/packages/a1/58/48d65d181a69f7db19f7cdee01d252168fbfbad2d1bb25abed03e6df3b05/tablestore-6.2.0.tar.gz", hash = "sha256:0773e77c00542be1bfebbc3c7a85f72a881c63e4e7df7c5a9793a54144590e68", size = 85942 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/da/30451712a769bcf417add8e81163d478a4d668b0e8d489a9d667260d55df/tablestore-6.2.0-py3-none-any.whl", hash = "sha256:6af496d841ab1ff3f78b46abbd87b95a08d89605c51664d2b30933b1d1c5583a", size = 106297 },
+]
 
 [[package]]
 name = "tabulate"
@@ -5863,6 +5882,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ef/88/d65ed807393285204ab6e2801e5d11fbbea811adcaa979a2ed3b67a5ef41/types_python_dateutil-2.9.0.20250516.tar.gz", hash = "sha256:13e80d6c9c47df23ad773d54b2826bd52dbbb41be87c3f339381c1700ad21ee5", size = 13943 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c5/3f/b0e8db149896005adc938a1e7f371d6d7e9eca4053a29b108978ed15e0c2/types_python_dateutil-2.9.0.20250516-py3-none-any.whl", hash = "sha256:2b2b3f57f9c6a61fba26a9c0ffb9ea5681c9b83e69cd897c6b5f668d9c0cab93", size = 14356 },
+]
+
+[[package]]
+name = "types-python-http-client"
+version = "3.3.7.20240910"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/d7/bb2754c2d1b20c1890593ec89799c99e8875b04f474197c41354f41e9d31/types-python-http-client-3.3.7.20240910.tar.gz", hash = "sha256:8a6ebd30ad4b90a329ace69c240291a6176388624693bc971a5ecaa7e9b05074", size = 2804 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/95/8f492d37d99630e096acbb4071788483282a34a73ae89dd1a5727f4189cc/types_python_http_client-3.3.7.20240910-py3-none-any.whl", hash = "sha256:58941bd986fb8bb0f4f782ef376be145ece8023f391364fbcd22bd26b13a140e", size = 3917 },
 ]
 
 [[package]]

@@ -1,9 +1,8 @@
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
 import Split from '../_base/components/split'
-import ResultPanel from '../../run/result-panel'
 import InputNumberWithSlider from '../_base/components/input-number-with-slider'
 import type { LoopNodeType } from './types'
 import useConfig from './use-config'
@@ -11,10 +10,7 @@ import ConditionWrap from './components/condition-wrap'
 import LoopVariable from './components/loop-variables'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import formatTracing from '@/app/components/workflow/run/utils/format-log'
 
-import { useLogs } from '@/app/components/workflow/run/hooks'
 import { LOOP_NODE_MAX_COUNT } from '@/config'
 
 const i18nPrefix = 'workflow.nodes.loop'
@@ -30,13 +26,6 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     inputs,
     childrenNodeVars,
     loopChildrenNodes,
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
-    loopRunResult,
     handleAddCondition,
     handleUpdateCondition,
     handleRemoveCondition,
@@ -50,23 +39,6 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     handleRemoveLoopVariable,
     handleUpdateLoopVariable,
   } = useConfig(id, data)
-
-  const nodeInfo = useMemo(() => {
-    const formattedNodeInfo = formatTracing(loopRunResult, t)[0]
-
-    if (runResult && formattedNodeInfo) {
-      return {
-        ...formattedNodeInfo,
-        execution_metadata: {
-          ...runResult.execution_metadata,
-          ...formattedNodeInfo.execution_metadata,
-        },
-      }
-    }
-
-    return formattedNodeInfo
-  }, [runResult, loopRunResult, t])
-  const logsParams = useLogs()
 
   return (
     <div className='mt-2'>
@@ -139,20 +111,6 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
           </Select>
         </Field>
       </div> */}
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          onHide={hideSingleRun}
-          forms={[]}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          {...logsParams}
-          result={
-            <ResultPanel {...runResult} showSteps={false} nodeInfo={nodeInfo} {...logsParams} />
-          }
-        />
-      )}
     </div>
   )
 }

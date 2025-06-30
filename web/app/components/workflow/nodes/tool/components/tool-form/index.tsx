@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import type { ToolVarInputs } from '../../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ToolFormItem from './item'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { Tool } from '@/app/components/tools/types'
 
 type Props = {
   readOnly: boolean
@@ -12,6 +14,8 @@ type Props = {
   onChange: (value: ToolVarInputs) => void
   onOpen?: (index: number) => void
   inPanel?: boolean
+  currentTool?: Tool
+  currentProvider?: ToolWithProvider
 }
 
 const ToolForm: FC<Props> = ({
@@ -21,6 +25,8 @@ const ToolForm: FC<Props> = ({
   value,
   onChange,
   inPanel,
+  currentTool,
+  currentProvider,
 }) => {
   return (
     <div className='space-y-1'>
@@ -34,6 +40,8 @@ const ToolForm: FC<Props> = ({
             value={value}
             onChange={onChange}
             inPanel={inPanel}
+            currentTool={currentTool}
+            currentProvider={currentProvider}
           />
         ))
       }

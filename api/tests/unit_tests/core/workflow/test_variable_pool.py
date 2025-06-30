@@ -1,8 +1,12 @@
 import pytest
+from pydantic import ValidationError
 
 from core.file import File, FileTransferMethod, FileType
 from core.variables import FileSegment, StringSegment
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariableKey
+from factories.variable_factory import build_segment, segment_to_variable
 
 
 @pytest.fixture
@@ -44,3 +48,38 @@ def test_use_long_selector(pool):
     result = pool.get(("node_1", "part_1", "part_2"))
     assert result is not None
     assert result.value == "test_value"
+
+
+class TestVariablePool:
+    def test_constructor(self):
+        pool = VariablePool()
+        pool = VariablePool(
+            variable_dictionary={},
+            user_inputs={},
+            system_variables={},
+            environment_variables=[],
+            conversation_variables=[],
+        )
+
+        pool = VariablePool(
+            user_inputs={"key": "value"},
+            system_variables={SystemVariableKey.WORKFLOW_ID: "test_workflow_id"},
+            environment_variables=[
+                segment_to_variable(
+                    segment=build_segment(1),
+                    selector=[ENVIRONMENT_VARIABLE_NODE_ID, "env_var_1"],
+                    name="env_var_1",
+                )
+            ],
+            conversation_variables=[
+                segment_to_variable(
+                    segment=build_segment("1"),
+                    selector=[CONVERSATION_VARIABLE_NODE_ID, "conv_var_1"],
+                    name="conv_var_1",
+                )
+            ],
+        )
+
+    def test_constructor_with_invalid_system_variable_key(self):
+        with pytest.raises(ValidationError):
+            VariablePool(system_variables={"invalid_key": "value"})  # type: ignore

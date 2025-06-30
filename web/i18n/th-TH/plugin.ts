@@ -137,6 +137,7 @@ const translation = {
     installedSuccessfully: 'การติดตั้งสําเร็จ',
     installComplete: 'การติดตั้งเสร็จสมบูรณ์',
     pluginLoadError: 'ข้อผิดพลาดในการโหลดปลั๊กอิน',
+    installWarning: 'ไม่อนุญาตให้ติดตั้งปลั๊กอินนี้',
   },
   installFromGitHub: {
     updatePlugin: 'อัปเดตปลั๊กอินจาก GitHub',

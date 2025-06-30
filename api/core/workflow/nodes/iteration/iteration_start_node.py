@@ -13,6 +13,10 @@ class IterationStartNode(BaseNode[IterationStartNodeData]):
     _node_data_cls = IterationStartNodeData
     _node_type = NodeType.ITERATION_START
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
         """
         Run the node.

@@ -97,20 +97,31 @@ const Prompt: FC<ISimplePromptInput> = ({
       },
     })
   }
-  const promptVariablesObj = (() => {
-    const obj: Record<string, boolean> = {}
-    promptVariables.forEach((item) => {
-      obj[item.key] = true
-    })
-    return obj
-  })()
 
   const [newPromptVariables, setNewPromptVariables] = React.useState<PromptVariable[]>(promptVariables)
   const [newTemplates, setNewTemplates] = React.useState('')
   const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
 
   const handleChange = (newTemplates: string, keys: string[]) => {
-    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.find(item => item.variable === key)).map(key => getNewVar(key, ''))
+    // Filter out keys that are not properly defined (either not exist or exist but without valid name)
+    const newPromptVariables = keys.filter((key) => {
+      // Check if key exists in external data tools
+      if (externalDataToolsConfig.find((item: ExternalDataTool) => item.variable === key))
+        return false
+
+      // Check if key exists in prompt variables
+      const existingVar = promptVariables.find((item: PromptVariable) => item.key === key)
+      if (!existingVar) {
+        // Variable doesn't exist at all
+        return true
+      }
+
+      // Variable exists but check if it has valid name and key
+      return !existingVar.name || !existingVar.name.trim() || !existingVar.key || !existingVar.key.trim()
+
+      return false
+    }).map(key => getNewVar(key, ''))
+
     if (newPromptVariables.length > 0) {
       setNewPromptVariables(newPromptVariables)
       setNewTemplates(newTemplates)
@@ -210,14 +221,14 @@ const Prompt: FC<ISimplePromptInput> = ({
             }}
             variableBlock={{
               show: true,
-              variables: modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({
+              variables: modelConfig.configs.prompt_variables.filter((item: PromptVariable) => item.type !== 'api' && item.key && item.key.trim() && item.name && item.name.trim()).map((item: PromptVariable) => ({
                 name: item.name,
                 value: item.key,
               })),
             }}
             externalToolBlock={{
               show: true,
-              externalTools: modelConfig.configs.prompt_variables.filter(item => item.type === 'api').map(item => ({
+              externalTools: modelConfig.configs.prompt_variables.filter((item: PromptVariable) => item.type === 'api').map((item: PromptVariable) => ({
                 name: item.name,
                 variableName: item.key,
                 icon: item.icon,

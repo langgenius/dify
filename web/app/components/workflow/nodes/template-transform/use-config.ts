@@ -6,7 +6,6 @@ import { VarType } from '../../types'
 import { useStore } from '../../store'
 import type { TemplateTransformNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
@@ -66,7 +65,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
         ...defaultConfig,
       })
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleCodeChange = useCallback((template: string) => {
@@ -75,37 +74,6 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     })
     setInputs(newInputs)
   }, [setInputs])
-
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    toVarInputs,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<TemplateTransformNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {},
-  })
-  const varInputs = toVarInputs(inputs.variables)
-
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
 
   const filterVar = useCallback((varPayload: Var) => {
     return [VarType.string, VarType.number, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(varPayload.type)
@@ -121,16 +89,6 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     handleAddEmptyVariable,
     handleCodeChange,
     filterVar,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    handleRun,
-    handleStop,
-    varInputs,
-    inputVarValues,
-    setInputVarValues,
-    runResult,
   }
 }
 

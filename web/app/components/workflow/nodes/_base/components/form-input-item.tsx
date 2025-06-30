@@ -7,7 +7,7 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import FormInputTypeSwitch from './form-input-type-switch'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import Input from '@/app/components/base/input'
@@ -20,6 +20,7 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import cn from '@/utils/classnames'
+import type { Tool } from '@/app/components/tools/types'
 
 type Props = {
   readOnly: boolean
@@ -28,6 +29,8 @@ type Props = {
   value: ToolVarInputs
   onChange: (value: any) => void
   inPanel?: boolean
+  currentTool?: Tool
+  currentProvider?: ToolWithProvider
 }
 
 const FormInputItem: FC<Props> = ({
@@ -37,6 +40,8 @@ const FormInputItem: FC<Props> = ({
   value,
   onChange,
   inPanel,
+  currentTool,
+  currentProvider,
 }) => {
   const language = useLanguage()
 
@@ -56,7 +61,7 @@ const FormInputItem: FC<Props> = ({
   const isShowJSONEditor = isObject || isArray
   const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
   const isBoolean = type === FormTypeEnum.boolean
-  const isSelect = type === FormTypeEnum.select
+  const isSelect = type === FormTypeEnum.select || type === FormTypeEnum.dynamicSelect
   const isAppSelector = type === FormTypeEnum.appSelector
   const isModelSelector = type === FormTypeEnum.modelSelector
   const showTypeSwitch = isNumber || isObject || isArray
@@ -265,6 +270,8 @@ const FormInputItem: FC<Props> = ({
           filterVar={getFilterVar()}
           schema={schema}
           valueTypePlaceHolder={targetVarType()}
+          currentTool={currentTool}
+          currentProvider={currentProvider}
         />
       )}
     </div>

@@ -23,12 +23,14 @@ export enum FormTypeEnum {
   appSelector = 'app-selector',
   object = 'object',
   array = 'array',
+  dynamicSelect = 'dynamic-select',
 }
 
 export type FormOption = {
   label: TypeWithI18N
   value: string
   show_on: FormShowOnObject[]
+  icon?: string
 }
 
 export enum ModelTypeEnum {

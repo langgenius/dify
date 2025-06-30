@@ -309,6 +309,8 @@ const translation = {
     organizeBlocks: 'Organize nodes',
     change: 'Change',
     optional: '(optional)',
+    maximize: 'Maximize Canvas',
+    minimize: 'Exit Full Screen',
   },
   nodes: {
     common: {
@@ -922,6 +924,35 @@ const translation = {
       deleteFailure: 'Failed to delete version',
       updateSuccess: 'Version updated',
       updateFailure: 'Failed to update version',
+    },
+  },
+  debug: {
+    settingsTab: 'Settings',
+    lastRunTab: 'Last Run',
+    noData: {
+      description: 'The results of the last run will be displayed here',
+      runThisNode: 'Run this node',
+    },
+    variableInspect: {
+      title: 'Variable Inspect',
+      emptyTip: 'After stepping through a node on the canvas or running a node step by step, you can view the current value of the node variable in Variable Inspect',
+      emptyLink: 'Learn more',
+      clearAll: 'Reset all',
+      clearNode: 'Clear cached variable',
+      resetConversationVar: 'Reset conversation variable to default value',
+      view: 'View log',
+      edited: 'Edited',
+      reset: 'Reset to last run value',
+      trigger: {
+        normal: 'Variable Inspect',
+        running: 'Caching running status',
+        stop: 'Stop run',
+        cached: 'View cached variables',
+        clear: 'Clear',
+      },
+      envNode: 'Environment',
+      chatNode: 'Conversation',
+      systemNode: 'System',
     },
   },
 }
