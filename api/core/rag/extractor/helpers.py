@@ -1,7 +1,7 @@
 """Document loader helpers."""
 
 import concurrent.futures
-from pathlib import Path
+import os
 from typing import NamedTuple, Optional, cast
 
 
@@ -28,8 +28,14 @@ def detect_file_encodings(file_path: str, timeout: int = 5) -> list[FileEncoding
     """
     import chardet
 
+    MAX_DETECTION_BYTES = 1024 * 1024  # 1 MB
+
     def read_and_detect(file_path: str) -> list[dict]:
-        rawdata = Path(file_path).read_bytes()
+        file_size = os.path.getsize(file_path)
+        # Read a portion of the file to detect encoding
+        read_size = min(file_size, MAX_DETECTION_BYTES)
+        with open(file_path, "rb") as f:
+            rawdata = f.read(read_size)
         return cast(list[dict], chardet.detect_all(rawdata))
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
