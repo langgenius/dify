@@ -28,6 +28,10 @@ class TemplateTransformNode(BaseNode[TemplateTransformNodeData]):
             "config": {"variables": [{"variable": "arg1", "value_selector": []}], "template": "{{ arg1 }}"},
         }
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> NodeRunResult:
         # Get variables
         variables = {}

@@ -59,10 +59,6 @@ export const useWorkflow = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
-  const setPanelWidth = useCallback((width: number) => {
-    localStorage.setItem('workflow-node-panel-width', `${width}`)
-    workflowStore.setState({ panelWidth: width })
-  }, [workflowStore])
 
   const getTreeLeafNodes = useCallback((nodeId: string) => {
     const {
@@ -399,7 +395,6 @@ export const useWorkflow = () => {
   }, [store])
 
   return {
-    setPanelWidth,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
     getBeforeNodesInSameBranchIncludeParent,
@@ -497,6 +492,8 @@ export const useToolIcon = (data: Node['data']) => {
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
   const toolIcon = useMemo(() => {
+    if(!data)
+      return ''
     if (data.type === BlockEnum.Tool) {
       let targetTools = buildInTools
       if (data.provider_type === CollectionType.builtIn)

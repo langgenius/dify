@@ -303,6 +303,8 @@ const translation = {
     addNextStep: 'Ajoutez la prochaine étape dans ce flux de travail',
     selectNextStep: 'Sélectionner la prochaine étape',
     changeBlock: 'Changer de nœud',
+    maximize: 'Maximiser le Canvas',
+    minimize: 'Sortir du mode plein écran',
   },
   nodes: {
     common: {
@@ -916,6 +918,35 @@ const translation = {
     restorationTip: 'Après la restauration de la version, le brouillon actuel sera écrasé.',
     deletionTip: 'La suppression est irreversible, veuillez confirmer.',
     latest: 'Dernier',
+  },
+  debug: {
+    noData: {
+      description: 'Les résultats de la dernière exécution seront affichés ici',
+      runThisNode: 'Exécutez ce nœud',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'Clair',
+        cached: 'Afficher les variables mises en cache',
+        running: 'État d\'exécution du cache',
+        stop: 'Arrête de courir',
+        normal: 'Inspection de Variable',
+      },
+      title: 'Inspection de Variable',
+      clearAll: 'Réinitialiser tout',
+      envNode: 'Environnement',
+      clearNode: 'Effacer la variable mise en cache',
+      view: 'Voir le journal',
+      systemNode: 'Système',
+      reset: 'Réinitialiser à la dernière valeur d\'exécution',
+      chatNode: 'Conversation',
+      emptyLink: 'En savoir plus',
+      edited: 'Édité',
+      resetConversationVar: 'Réinitialiser la variable de conversation à la valeur par défaut',
+      emptyTip: 'Après avoir dessiné un nœud sur le canevas ou exécuté un nœud étape par étape, vous pouvez voir la valeur actuelle de la variable du nœud dans l\'Inspecteur de Variables.',
+    },
+    settingsTab: 'Paramètres',
+    lastRunTab: 'Dernière Exécution',
   },
 }
 

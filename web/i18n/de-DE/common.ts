@@ -58,6 +58,8 @@ const translation = {
     downloadSuccess: 'Download abgeschlossen.',
     more: 'Mehr',
     format: 'Format',
+    selectAll: 'Alles auswählen',
+    deSelectAll: 'Alle abwählen',
   },
   placeholder: {
     input: 'Bitte eingeben',

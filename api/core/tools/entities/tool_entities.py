@@ -242,6 +242,7 @@ class ToolParameter(PluginParameter):
         FILES = PluginParameterType.FILES.value
         APP_SELECTOR = PluginParameterType.APP_SELECTOR.value
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR.value
+        DYNAMIC_SELECT = PluginParameterType.DYNAMIC_SELECT.value
 
         # MCP object and array type parameters
         ARRAY = MCPServerParameterType.ARRAY.value

@@ -308,6 +308,8 @@ const translation = {
     change: '変更',
     optional: '（任意）',
     moveToThisNode: 'このノードに移動する',
+    maximize: 'キャンバスを最大化する',
+    minimize: '全画面を終了する',
   },
   nodes: {
     common: {
@@ -915,6 +917,35 @@ const translation = {
       updateSuccess: '更新が完了しました',
       updateFailure: '更新に失敗しました',
     },
+  },
+  debug: {
+    noData: {
+      runThisNode: 'このノードを実行してください',
+      description: '最後の実行の結果がここに表示されます',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'クリア',
+        running: 'キャッシング実行状況',
+        cached: 'キャッシュされた変数を表示',
+        stop: '走るのを止めて',
+        normal: '変数検査',
+      },
+      clearAll: 'すべてリセット',
+      emptyLink: 'もっと学ぶ',
+      systemNode: 'システム',
+      view: 'ログを表示',
+      resetConversationVar: '会話の変数をデフォルト値にリセットする',
+      chatNode: '会話',
+      reset: '最後の実行値にリセットする',
+      clearNode: 'キャッシュされた変数をクリアする',
+      edited: '編集された',
+      title: '変数検査',
+      envNode: '環境',
+      emptyTip: 'キャンバス上でノードをステップ実行するか、ノードを一歩ずつ実行した後、変数インスペクトでノード変数の現在の値を確認できます。',
+    },
+    settingsTab: '設定',
+    lastRunTab: '最後の実行',
   },
 }
 

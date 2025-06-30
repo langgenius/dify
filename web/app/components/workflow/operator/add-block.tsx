@@ -96,7 +96,7 @@ const AddBlock = ({
       onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}
-      placement='top-start'
+      placement='right-start'
       offset={offset ?? {
         mainAxis: 4,
         crossAxis: -8,

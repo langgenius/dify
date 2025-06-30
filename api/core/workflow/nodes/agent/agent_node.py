@@ -41,6 +41,10 @@ class AgentNode(ToolNode):
     _node_data_cls = AgentNodeData  # type: ignore
     _node_type = NodeType.AGENT
 
+    @classmethod
+    def version(cls) -> str:
+        return "1"
+
     def _run(self) -> Generator:
         """
         Run the agent node

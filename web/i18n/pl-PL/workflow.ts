@@ -303,6 +303,8 @@ const translation = {
     addNextStep: 'Dodaj następny krok w tym procesie roboczym',
     changeBlock: 'Zmień węzeł',
     organizeBlocks: 'Organizuj węzły',
+    minimize: 'Wyjdź z trybu pełnoekranowego',
+    maximize: 'Maksymalizuj płótno',
   },
   nodes: {
     common: {
@@ -916,6 +918,35 @@ const translation = {
     editVersionInfo: 'Edytuj informacje o wersji',
     deletionTip: 'Usunięcie jest nieodwracalne, proszę potwierdzić.',
     restorationTip: 'Po przywróceniu wersji bieżący szkic zostanie nadpisany.',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Uruchom ten węzeł',
+      description: 'Wyniki ostatniego uruchomienia będą wyświetlane tutaj',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'Czysty',
+        running: 'Buforowanie statusu działania',
+        cached: 'Wyświetl zapisane zmienne',
+        stop: 'Zatrzymaj bieg',
+        normal: 'Inspekcja zmiennych',
+      },
+      title: 'Inspekcja zmiennych',
+      chatNode: 'Rozmowa',
+      envNode: 'Środowisko',
+      systemNode: 'System',
+      edited: 'Edytowany',
+      clearAll: 'Resetuj wszystko',
+      emptyLink: 'Dowiedz się więcej',
+      clearNode: 'Wyczyść pamięć podręczną zmiennej',
+      reset: 'Zresetuj do ostatniej wartości run',
+      view: 'Zobacz dziennik',
+      resetConversationVar: 'Zresetuj zmienną rozmowy do wartości domyślnej',
+      emptyTip: 'Po przejściu przez węzeł na kanwie lub uruchomieniu węzła krok po kroku, możesz zobaczyć bieżącą wartość zmiennej węzła w Inspektorze Zmiennych.',
+    },
+    settingsTab: 'Ustawienia',
+    lastRunTab: 'Ostatnie uruchomienie',
   },
 }
 

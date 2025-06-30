@@ -25,6 +25,11 @@ from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode as Var
 
 LATEST_VERSION = "latest"
 
+# NOTE(QuantumGhost): This should be in sync with subclasses of BaseNode.
+# Specifically, if you have introduced new node types, you should add them here.
+#
+# TODO(QuantumGhost): This could be automated with either metaclass or `__init_subclass__`
+# hook. Try to avoid duplication of node information.
 NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     NodeType.START: {
         LATEST_VERSION: StartNode,
