@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import Indicator from '@/app/components/header/indicator'
 import Operator from './operator'
 
@@ -22,4 +23,4 @@ const Item = () => {
   )
 }
 
-export default Item
+export default memo(Item)

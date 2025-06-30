@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useMemo,
 } from 'react'
@@ -70,4 +71,4 @@ const Operator = () => {
   )
 }
 
-export default Operator
+export default memo(Operator)

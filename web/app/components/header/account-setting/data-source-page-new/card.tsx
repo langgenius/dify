@@ -1,6 +1,6 @@
-import { RiAddLine } from '@remixicon/react'
+import { memo } from 'react'
 import Item from './item'
-import Button from '@/app/components/base/button'
+import Configure from './configure'
 
 const Card = () => {
   return (
@@ -17,12 +17,7 @@ const Card = () => {
             notion-data-source
           </div>
         </div>
-        <Button
-          variant='secondary-accent'
-        >
-          <RiAddLine className='h-4 w-4' />
-          Configure
-        </Button>
+        <Configure />
       </div>
       <div className='system-xs-medium flex h-4 items-center pl-3 text-text-tertiary'>
         Connected workspace
@@ -42,4 +37,4 @@ const Card = () => {
   )
 }
 
-export default Card
+export default memo(Card)

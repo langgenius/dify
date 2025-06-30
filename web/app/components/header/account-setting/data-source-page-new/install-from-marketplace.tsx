@@ -1,4 +1,8 @@
-import { useCallback, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useState,
+} from 'react'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
@@ -77,4 +81,4 @@ const InstallFromMarketplace = ({
   )
 }
 
-export default InstallFromMarketplace
+export default memo(InstallFromMarketplace)
