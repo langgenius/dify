@@ -28,6 +28,7 @@ export type DatePickerProps = {
   onClear: () => void
   triggerWrapClassName?: string
   renderTrigger?: (props: TriggerProps) => React.ReactNode
+  minuteFilter?: (minutes: string[]) => string[]
   popupZIndexClassname?: string
 }
 
@@ -54,6 +55,9 @@ export type TimePickerProps = {
   onChange: (date: Dayjs | undefined) => void
   onClear: () => void
   renderTrigger?: () => React.ReactNode
+  title?: string
+  minuteFilter?: (minutes: string[]) => string[]
+  popupClassName?: string
 }
 
 export type TimePickerFooterProps = {
@@ -81,6 +85,7 @@ export type CalendarItemProps = {
 
 export type TimeOptionsProps = {
   selectedTime: Dayjs | undefined
+  minuteFilter?: (minutes: string[]) => string[]
   handleSelectHour: (hour: string) => void
   handleSelectMinute: (minute: string) => void
   handleSelectPeriod: (period: Period) => void
