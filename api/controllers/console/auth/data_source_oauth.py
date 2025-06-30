@@ -41,7 +41,7 @@ class OAuthDataSource(Resource):
             if not internal_secret:
                 return ({"error": "Internal secret is not set"},)
             oauth_provider.save_internal_access_token(internal_secret)
-            return {"data": ""}
+            return {"data": "internal"}
         else:
             auth_url = oauth_provider.get_authorization_url()
             return {"data": auth_url}, 200
