@@ -56,7 +56,12 @@ external_knowledge_info_fields = {
 
 doc_metadata_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
 
-icon_info_fields = {"icon_type": fields.String, "icon": fields.String, "icon_background": fields.String}
+icon_info_fields = {
+    "icon_type": fields.String,
+    "icon": fields.String,
+    "icon_background": fields.String,
+    "icon_url": fields.String,
+}
 
 dataset_detail_fields = {
     "id": fields.String,
