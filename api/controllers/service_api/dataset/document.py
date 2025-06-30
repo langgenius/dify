@@ -372,6 +372,18 @@ class DocumentListApi(DatasetApiResource):
 
         return response
 
+class DocumentListApi2(DatasetApiResource):
+    def get(self, tenant_id, dataset_id):
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
+        if not dataset:
+            raise NotFound("未找到数据集")
+        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id, Document.tenant_id == tenant_id).all()
+
+        return {
+            "data": marshal(documents, document_fields)
+        }
 
 class DocumentIndexingStatusApi(DatasetApiResource):
     def get(self, tenant_id, dataset_id, batch):
@@ -444,4 +456,5 @@ api.add_resource(
 )
 api.add_resource(DocumentDeleteApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(DocumentListApi, "/datasets/<uuid:dataset_id>/documents")
+api.add_resource(DocumentListApi2, "/datasets/<uuid:dataset_id>/documents/list")
 api.add_resource(DocumentIndexingStatusApi, "/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status")
