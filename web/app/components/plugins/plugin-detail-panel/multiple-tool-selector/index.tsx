@@ -188,6 +188,8 @@ const MultipleToolSelector = ({
         panelShowState={panelShowState}
         onPanelShowStateChange={setPanelShowState}
         isEdit={false}
+        canChooseMCPTool={canChooseMCPTool}
+        onSelectMultiple={handleAddMultiple}
       />
     </>
   )
