@@ -170,7 +170,7 @@ const translation = {
       serverUrlPlaceholder: 'URL to server endpoint',
       serverUrlWarning: 'Updating the server address may disrupt applications that depend on this server',
       serverIdentifier: 'Server Identifier',
-      serverIdentifierTip: 'Unique identifier for the MCP server ID within the workspace. Lowercase letters, numbers, underscores, and hyphens only. Up to 24 characters.',
+      serverIdentifierTip: 'Unique identifier for the MCP server within the workspace. Lowercase letters, numbers, underscores, and hyphens only. Up to 24 characters.',
       serverIdentifierPlaceholder: 'Unique identifier, e.g., my-mcp-server',
       serverIdentifierWarning: 'The server won’t be recognized by existing apps after an ID change',
       cancel: 'Cancel',
