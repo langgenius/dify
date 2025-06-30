@@ -8,7 +8,8 @@ import { useTranslation } from 'react-i18next'
 import TimePicker from '@/app/components/base/date-and-time-picker/time-picker'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import PluginsPicker from './plugins-picker'
-import { dayjsToTimeOfDay, timeOfDayToDayjs } from './utils'
+import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds, dayjsToTimeOfDay, timeOfDayToDayjs } from './utils'
+import { useAppContext } from '@/context/app-context'
 
 const i18nPrefix = 'plugin.autoUpdate'
 
@@ -22,6 +23,8 @@ const AutoUpdateSetting: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
+  const { userProfile: { timezone } } = useAppContext()
+
   const {
     strategy_setting,
     upgrade_time_of_day,
@@ -97,9 +100,10 @@ const AutoUpdateSetting: FC<Props> = ({
             <div className='flex items-center justify-between'>
               <Label label={t(`${i18nPrefix}.updateTime`)} />
               <TimePicker
-                value={timeOfDayToDayjs(upgrade_time_of_day)}
-                onChange={v => handleChange('upgrade_time_of_day')(dayjsToTimeOfDay(v))}
-                onClear={() => handleChange('upgrade_time_of_day')(0)}
+                value={timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!))}
+                timezone={timezone}
+                onChange={v => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(v), timezone!))}
+                onClear={() => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(0, timezone!))}
                 popupClassName='z-[99]'
                 title={t(`${i18nPrefix}.updateTime`)}
                 minuteFilter={minuteFilter}
