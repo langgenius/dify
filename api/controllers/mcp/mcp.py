@@ -18,10 +18,8 @@ from models.model import App, AppMCPServer, AppMode
 class MCPAppApi(Resource):
     def post(self, server_code):
         def int_or_str(value):
-            if isinstance(value, int):
+            if isinstance(value, (int, str)):
                 return value
-            elif isinstance(value, str):
-                return int(value)
             else:
                 return None
 
@@ -31,6 +29,7 @@ class MCPAppApi(Resource):
         parser.add_argument("params", type=dict, required=False, location="json")
         parser.add_argument("id", type=int_or_str, required=False, location="json")
         args = parser.parse_args()
+
         server = db.session.query(AppMCPServer).filter(AppMCPServer.server_code == server_code).first()
         if not server:
             raise NotFound("Server Not Found")
