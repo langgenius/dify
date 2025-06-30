@@ -100,6 +100,10 @@ const InputFieldDialog = ({
     setPreviewPanelOpen(prev => !prev)
   }, [])
 
+  const allVariableNames = useMemo(() => {
+    return ragPipelineVariables?.map(variable => variable.variable) || []
+  }, [ragPipelineVariables])
+
   return (
     <>
       <DialogWrapper
@@ -160,6 +164,7 @@ const InputFieldDialog = ({
                       readonly={readonly}
                       labelClassName='pt-1 pb-1'
                       handleInputFieldsChange={updateInputFields}
+                      allVariableNames={allVariableNames}
                     />
                   )
                 })
@@ -173,6 +178,7 @@ const InputFieldDialog = ({
               readonly={readonly}
               labelClassName='pt-2 pb-1'
               handleInputFieldsChange={updateInputFields}
+              allVariableNames={allVariableNames}
             />
           </div>
           <FooterTip />

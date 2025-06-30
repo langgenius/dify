@@ -82,6 +82,9 @@ const translation = {
       stepOneTitle: 'Data Source',
       stepTwoTitle: 'Process Documents',
     },
+    error: {
+      variableDuplicate: 'Variable name already exists. Please choose a different name.',
+    },
   },
   addDocuments: {
     title: 'Add Documents',

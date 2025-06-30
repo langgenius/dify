@@ -82,6 +82,9 @@ const translation = {
       stepOneTitle: '数据源',
       stepTwoTitle: '处理文档',
     },
+    error: {
+      variableDuplicate: '变量名已存在。请选择其他名称。',
+    },
   },
   addDocuments: {
     title: '添加文档',

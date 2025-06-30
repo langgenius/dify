@@ -15,6 +15,7 @@ type FieldListProps = {
   handleInputFieldsChange: (key: string, value: InputVar[]) => void
   readonly?: boolean
   labelClassName?: string
+  allVariableNames: string[]
 }
 
 const FieldList = ({
@@ -24,6 +25,7 @@ const FieldList = ({
   handleInputFieldsChange,
   readonly,
   labelClassName,
+  allVariableNames,
 }: FieldListProps) => {
   const onInputFieldsChange = useCallback((value: InputVar[]) => {
     handleInputFieldsChange(nodeId, value)
@@ -41,7 +43,12 @@ const FieldList = ({
     isShowRemoveVarConfirm,
     hideRemoveVarConfirm,
     onRemoveVarConfirm,
-  } = useFieldList(initialInputFields, onInputFieldsChange, nodeId)
+  } = useFieldList({
+    initialInputFields,
+    onInputFieldsChange,
+    nodeId,
+    allVariableNames,
+  })
 
   return (
     <div className='flex flex-col'>

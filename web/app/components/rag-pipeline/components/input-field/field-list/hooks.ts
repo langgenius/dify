@@ -11,14 +11,24 @@ import { ChangeType } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
 import Toast from '@/app/components/base/toast'
 import { usePipeline } from '../../../hooks/use-pipeline'
+import { useTranslation } from 'react-i18next'
 
 const VARIABLE_PREFIX = 'rag'
 
-export const useFieldList = (
+type useFieldListProps = {
   initialInputFields: InputVar[],
   onInputFieldsChange: (value: InputVar[]) => void,
   nodeId: string,
-) => {
+  allVariableNames: string[],
+}
+
+export const useFieldList = ({
+  initialInputFields,
+  onInputFieldsChange,
+  nodeId,
+  allVariableNames,
+}: useFieldListProps) => {
+  const { t } = useTranslation()
   const [inputFields, setInputFields] = useState<InputVar[]>(initialInputFields)
   const inputFieldsRef = useRef<InputVar[]>(inputFields)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
@@ -81,12 +91,12 @@ export const useFieldList = (
   }, [removedIndex, handleInputFieldsChange, removeUsedVarInNodes, removedVar, hideRemoveVarConfirm])
 
   const handleSubmitField = useCallback((data: InputVar, moreInfo?: MoreInfo) => {
-    const isDuplicate = inputFieldsRef.current.some(field =>
-      field.variable === data.variable && field.variable !== editingField?.variable)
+    const isDuplicate = allVariableNames.some(name =>
+      name === data.variable && name !== editingField?.variable)
     if (isDuplicate) {
       Toast.notify({
         type: 'error',
-        message: 'Variable name already exists. Please choose a different name.',
+        message: t('datasetPipeline.inputFieldPanel.error.variableDuplicate'),
       })
       return
     }
@@ -103,7 +113,7 @@ export const useFieldList = (
     if (moreInfo?.type === ChangeType.changeVarName)
       handleInputVarRename(nodeId, [VARIABLE_PREFIX, nodeId, moreInfo.payload?.beforeKey || ''], [VARIABLE_PREFIX, nodeId, moreInfo.payload?.afterKey || ''])
     handleCloseInputFieldEditor()
-  }, [editingField?.variable, handleCloseInputFieldEditor, handleInputFieldsChange, handleInputVarRename, nodeId])
+  }, [allVariableNames, editingField?.variable, handleCloseInputFieldEditor, handleInputFieldsChange, handleInputVarRename, nodeId, t])
 
   return {
     inputFields,
