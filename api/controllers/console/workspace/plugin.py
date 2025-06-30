@@ -12,9 +12,9 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import login_required
-from services.plugin.plugin_parameter_service import PluginParameterService
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginPermission
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
+from services.plugin.plugin_parameter_service import PluginParameterService
 from services.plugin.plugin_permission_service import PluginPermissionService
 from services.plugin.plugin_service import PluginService
 
