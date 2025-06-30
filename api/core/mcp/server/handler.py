@@ -123,7 +123,7 @@ class MCPServerReuqestHandler:
             db.session.add(end_user)
             db.session.commit()
         return types.InitializeResult(
-            protocolVersion=types.LATEST_PROTOCOL_VERSION,
+            protocolVersion=types.SERVER_LATEST_PROTOCOL_VERSION,
             capabilities=self.capabilities,
             serverInfo=types.Implementation(name="Dify", version=dify_config.CURRENT_VERSION),
             instructions=self.mcp_server.description,

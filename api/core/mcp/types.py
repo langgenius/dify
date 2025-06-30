@@ -30,9 +30,10 @@ for reference.
 * Define additional model classes instead of using dictionaries. Do this even if they're
   not separate types in the schema.
 """
-
+# Client support both version, not support 2025-06-18 yet.
 LATEST_PROTOCOL_VERSION = "2025-03-26"
-
+# Server support 2024-11-05 to allow claude to use.
+SERVER_LATEST_PROTOCOL_VERSION = "2024-11-05"
 ProgressToken = str | int
 Cursor = str
 Role = Literal["user", "assistant"]
