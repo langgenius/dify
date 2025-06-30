@@ -17,7 +17,7 @@ const Types = ({
   return (
     <div className='mb-3'>
       <div className={cn('mb-0.5 flex cursor-pointer items-center rounded-lg p-1 pl-3 text-sm leading-5 hover:bg-white', value === 'builtin' && '!bg-white font-medium')} onClick={() => onSelect('builtin')}>
-        <div className="mr-2 h-4 w-4 shrink-0 bg-[url('~@/app/components/tools/add-tool-modal/D.png')] bg-cover bg-no-repeat" />
+        <div className="mr-2 h-4 w-4 shrink-0 bg-[url('/assets/D.png')] bg-cover bg-no-repeat" />
         <span className={cn('text-gray-700', value === 'builtin' && '!text-primary-600')}>{t('tools.type.builtIn')}</span>
       </div>
       <div className={cn('mb-0.5 flex cursor-pointer items-center rounded-lg p-1 pl-3 text-sm leading-5 text-gray-700 hover:bg-white', value === 'api' && '!bg-white font-medium !text-primary-600')} onClick={() => onSelect('api')}>
