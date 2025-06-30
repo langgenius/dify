@@ -847,6 +847,22 @@ class ToolManager:
             return {"background": "#252525", "content": "\ud83d\ude01"}
 
     @classmethod
+    def generate_mcp_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict[str, str] | str:
+        try:
+            mcp_provider: MCPToolProvider | None = (
+                db.session.query(MCPToolProvider)
+                .filter(MCPToolProvider.tenant_id == tenant_id, MCPToolProvider.server_identifier == provider_id)
+                .first()
+            )
+
+            if mcp_provider is None:
+                raise ToolProviderNotFoundError(f"mcp provider {provider_id} not found")
+
+            return mcp_provider.provider_icon
+        except Exception:
+            return {"background": "#252525", "content": "\ud83d\ude01"}
+
+    @classmethod
     def get_tool_icon(
         cls,
         tenant_id: str,
@@ -884,7 +900,7 @@ class ToolManager:
                     return {"background": "#252525", "content": "\ud83d\ude01"}
             raise ValueError(f"plugin provider {provider_id} not found")
         elif provider_type == ToolProviderType.MCP:
-            return {"background": "#252525", "content": "\ud83d\ude01"}
+            return cls.generate_mcp_tool_icon_url(tenant_id, provider_id)
         else:
             raise ValueError(f"provider type {provider_type} not found")
 
