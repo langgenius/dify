@@ -117,6 +117,7 @@ const MultipleToolSelector = ({
         )}
         {!disabled && (
           <ActionButton className='mx-1' onClick={() => {
+            setCollapse(false)
             setOpen(!open)
             setPanelShowState(true)
           }}>
@@ -126,23 +127,6 @@ const MultipleToolSelector = ({
       </div>
       {!collapse && (
         <>
-          <ToolSelector
-            nodeId={nodeId}
-            nodeOutputVars={nodeOutputVars}
-            availableNodes={availableNodes}
-            scope={scope}
-            value={undefined}
-            selectedTools={value}
-            onSelect={handleAdd}
-            controlledState={open}
-            onControlledStateChange={setOpen}
-            trigger={
-              <div className=''></div>
-            }
-            panelShowState={panelShowState}
-            onPanelShowStateChange={setPanelShowState}
-            isEdit={false}
-          />
           {value.length === 0 && (
             <div className='system-xs-regular flex justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary'>{t('plugin.detailPanel.toolSelector.empty')}</div>
           )}
@@ -164,6 +148,23 @@ const MultipleToolSelector = ({
           ))}
         </>
       )}
+      <ToolSelector
+        nodeId={nodeId}
+        nodeOutputVars={nodeOutputVars}
+        availableNodes={availableNodes}
+        scope={scope}
+        value={undefined}
+        selectedTools={value}
+        onSelect={handleAdd}
+        controlledState={open}
+        onControlledStateChange={setOpen}
+        trigger={
+          <div className=''></div>
+        }
+        panelShowState={panelShowState}
+        onPanelShowStateChange={setPanelShowState}
+        isEdit={false}
+      />
     </>
   )
 }
