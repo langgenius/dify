@@ -8,7 +8,6 @@ import { useStore } from '../../store'
 import type { CodeNodeType, OutputVar } from './types'
 import { CodeLanguage } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { fetchNodeDefault } from '@/service/workflow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
@@ -61,7 +60,7 @@ const useConfig = (id: string, payload: CodeNodeType) => {
       })
       syncOutputKeyOrders(defaultConfig.outputs)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleCodeChange = useCallback((code: string) => {
@@ -104,38 +103,6 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     return [VarType.string, VarType.number, VarType.secret, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject, VarType.file, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
-  // single run
-  const {
-    isShowSingleRun,
-    hideSingleRun,
-    toVarInputs,
-    runningStatus,
-    isCompleted,
-    handleRun,
-    handleStop,
-    runInputData,
-    setRunInputData,
-    runResult,
-  } = useOneStepRun<CodeNodeType>({
-    id,
-    data: inputs,
-    defaultRunInputData: {},
-  })
-
-  const varInputs = toVarInputs(inputs.variables)
-
-  const inputVarValues = (() => {
-    const vars: Record<string, any> = {}
-    Object.keys(runInputData)
-      .forEach((key) => {
-        vars[key] = runInputData[key]
-      })
-    return vars
-  })()
-
-  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
-    setRunInputData(newPayload)
-  }, [setRunInputData])
   const handleCodeAndVarsChange = useCallback((code: string, inputVariables: Variable[], outputVariables: OutputVar) => {
     const newInputs = produce(inputs, (draft) => {
       draft.code = code
@@ -160,17 +127,6 @@ const useConfig = (id: string, payload: CodeNodeType) => {
     isShowRemoveVarConfirm,
     hideRemoveVarConfirm,
     onRemoveVarConfirm,
-    // single run
-    isShowSingleRun,
-    hideSingleRun,
-    runningStatus,
-    isCompleted,
-    handleRun,
-    handleStop,
-    varInputs,
-    inputVarValues,
-    setInputVarValues,
-    runResult,
     handleCodeAndVarsChange,
   }
 }

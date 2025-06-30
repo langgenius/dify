@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Generic, Optional, TypeVar
@@ -9,6 +9,7 @@ from core.agent.plugin_entities import AgentProviderEntityWithPlugin
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
+from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
@@ -186,3 +187,7 @@ class PluginOAuthCredentialsResponse(BaseModel):
 class PluginListResponse(BaseModel):
     list: list[PluginEntity]
     total: int
+
+
+class PluginDynamicSelectOptionsResponse(BaseModel):
+    options: Sequence[PluginParameterOption] = Field(description="The options of the dynamic select.")

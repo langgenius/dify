@@ -303,6 +303,8 @@ const translation = {
     addNextStep: 'Bu iş akışına bir sonraki adımı ekleyin',
     organizeBlocks: 'Düğümleri düzenle',
     selectNextStep: 'Sonraki Adımı Seç',
+    minimize: 'Tam Ekrandan Çık',
+    maximize: 'Kanvası Maksimize Et',
   },
   nodes: {
     common: {
@@ -917,6 +919,35 @@ const translation = {
     releaseNotesPlaceholder: 'Değişen şeyleri tanımlayın',
     nameThisVersion: 'Bu versiyona isim ver',
     deletionTip: 'Silme işlemi geri alınamaz, lütfen onaylayın.',
+  },
+  debug: {
+    noData: {
+      runThisNode: 'Bu düğümü çalıştır',
+      description: 'Son çalışmanın sonuçları burada gösterilecektir.',
+    },
+    variableInspect: {
+      trigger: {
+        clear: 'Açık',
+        running: 'Önbellek çalışma durumu',
+        normal: 'Değişken İncele',
+        cached: 'Önbelleklenmiş değişkenleri görüntüle',
+        stop: 'Koşmayı durdur',
+      },
+      envNode: 'Çevre',
+      title: 'Değişken İncele',
+      edited: 'Düzenlenmiş',
+      chatNode: 'Konuşma',
+      resetConversationVar: 'Konuşma değişkenini varsayılan değere sıfırla',
+      emptyLink: 'Daha fazla öğrenin',
+      clearAll: 'Hepsini sıfırla',
+      systemNode: 'Sistem',
+      clearNode: 'Önbelleklenmiş değişkeni temizle',
+      reset: 'Son çalıştırma değerine sıfırla',
+      view: 'Günlüğü görüntüle',
+      emptyTip: 'Bir düğümü kanvas üzerinde geçtikten veya bir düğümü adım adım çalıştırdıktan sonra, Düğüm Değişkeni\'ndeki mevcut değeri Değişken İncele\'de görüntüleyebilirsiniz.',
+    },
+    lastRunTab: 'Son Koşu',
+    settingsTab: 'Ayarlar',
   },
 }
 

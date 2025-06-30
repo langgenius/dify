@@ -58,6 +58,8 @@ const translation = {
     more: 'Mais',
     downloadSuccess: 'Download concluído.',
     format: 'Formato',
+    deSelectAll: 'Desmarcar tudo',
+    selectAll: 'Selecionar tudo',
   },
   placeholder: {
     input: 'Por favor, insira',

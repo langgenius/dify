@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
@@ -11,12 +11,7 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import Loading from '@/app/components/base/loading'
-import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import ResultPanel from '@/app/components/workflow/run/result-panel'
-import { useToolIcon } from '@/app/components/workflow/hooks'
-import { useLogs } from '@/app/components/workflow/run/hooks'
-import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-log'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { Type } from '../llm/types'
 
@@ -45,23 +40,10 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
     hideSetAuthModal,
     handleSaveAuth,
     isLoading,
-    isShowSingleRun,
-    hideSingleRun,
-    singleRunForms,
-    runningStatus,
-    handleRun,
-    handleStop,
-    runResult,
     outputSchema,
     hasObjectOutput,
+    currTool,
   } = useConfig(id, data)
-  const toolIcon = useToolIcon(data)
-  const logsParams = useLogs()
-  const nodeInfo = useMemo(() => {
-    if (!runResult)
-      return null
-    return formatToTracingNodeList([runResult], t)[0]
-  }, [runResult, t])
 
   if (isLoading) {
     return <div className='flex h-[200px] items-center justify-center'>
@@ -99,6 +81,8 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 filterVar={filterVar}
                 isSupportConstantValue
                 onOpen={handleOnVarOpen}
+                currentProvider={currCollection}
+                currentTool={currTool}
               />
             </Field>
           )}
@@ -180,21 +164,6 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           </>
         </OutputVars>
       </div>
-
-      {isShowSingleRun && (
-        <BeforeRunForm
-          nodeName={inputs.title}
-          nodeType={inputs.type}
-          toolIcon={toolIcon}
-          onHide={hideSingleRun}
-          forms={singleRunForms}
-          runningStatus={runningStatus}
-          onRun={handleRun}
-          onStop={handleStop}
-          {...logsParams}
-          result={<ResultPanel {...runResult} showSteps={false} {...logsParams} nodeInfo={nodeInfo} />}
-        />
-      )}
     </div>
   )
 }

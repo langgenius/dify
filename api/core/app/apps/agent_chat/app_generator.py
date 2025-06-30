@@ -26,7 +26,6 @@ from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser
 from services.conversation_service import ConversationService
-from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +123,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             override_model_config_dict["retriever_resource"] = {"enabled": True}
 
         # parse files
+        # TODO(QuantumGhost): Move file parsing logic to the API controller layer
+        # for better separation of concerns.
+        #
+        # For implementation reference, see the `_parse_file` function and
+        # `DraftWorkflowNodeRunApi` class which handle this properly.
         files = args.get("files") or []
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:
@@ -233,8 +237,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
-                if message is None:
-                    raise MessageNotExistsError("Message not exists")
 
                 # chatbot app
                 runner = AgentChatAppRunner()
