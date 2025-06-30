@@ -199,9 +199,9 @@ const translation = {
   accessControl: 'Web App Access Control',
   accessItemsDescription: {
     anyone: 'Anyone can access the web app (no login required)',
-    specific: 'Only specific members within the platform can access the Web application',
-    organization: 'All members within the platform can access the Web application',
-    external: 'Only authenticated external users can access the Web application',
+    specific: 'Only specific members within the platform can access the web app',
+    organization: 'All members within the platform can access the web app',
+    external: 'Only authenticated external users can access the web app',
   },
   accessControlDialog: {
     title: 'Web App Access Control',
@@ -218,7 +218,7 @@ const translation = {
     members_one: '{{count}} MEMBER',
     members_other: '{{count}} MEMBERS',
     noGroupsOrMembers: 'No groups or members selected',
-    webAppSSONotEnabledTip: 'Please contact your organization administrator to configure external authentication for the Web application.',
+    webAppSSONotEnabledTip: 'Please contact your organization administrator to configure external authentication for the web app.',
     operateGroupAndMember: {
       searchPlaceholder: 'Search groups and members',
       allMembers: 'All members',
