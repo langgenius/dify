@@ -109,6 +109,14 @@ const translation = {
   onlineDrive: {
     notConnected: '{{name}} is not connected',
     notConnectedTip: 'To sync with {{name}}, connection to {{name}} must be established first.',
+    breadcrumbs: {
+      allBuckets: 'All Cloud Storage Buckets',
+      searchResult: 'Find {{searchResultsLength}} items in "{{folderName}}" folder',
+      noSearchResult: 'No items were found',
+      resetKeywords: 'Reset keywords',
+      searchPlaceholder: 'Search files...',
+    },
+    notSupportedFileType: 'This file type is not supported',
   },
 }
 

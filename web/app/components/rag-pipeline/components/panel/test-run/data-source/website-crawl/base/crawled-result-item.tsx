@@ -14,7 +14,7 @@ type CrawledResultItemProps = {
   isPreview: boolean
   showPreview: boolean
   onPreview: () => void
-  supportMultipleChoice?: boolean
+  isMultipleChoice?: boolean
 }
 
 const CrawledResultItem = ({
@@ -24,7 +24,7 @@ const CrawledResultItem = ({
   isPreview,
   onPreview,
   showPreview,
-  supportMultipleChoice = true,
+  isMultipleChoice = true,
 }: CrawledResultItemProps) => {
   const { t } = useTranslation()
 
@@ -38,7 +38,7 @@ const CrawledResultItem = ({
       isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover',
     )}>
       {
-        supportMultipleChoice ? (
+        isMultipleChoice ? (
           <Checkbox
             className='shrink-0'
             checked={isChecked}

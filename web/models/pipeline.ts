@@ -267,3 +267,15 @@ export type OnlineDocumentPreviewRequest = {
 export type OnlineDocumentPreviewResponse = {
   content: string
 }
+
+export enum OnlineDriveFileType {
+  file = 'file',
+  folder = 'folder',
+  bucket = 'bucket',
+}
+
+export type OnlineDriveFile = {
+  key: string
+  size?: number
+  type: OnlineDriveFileType
+}

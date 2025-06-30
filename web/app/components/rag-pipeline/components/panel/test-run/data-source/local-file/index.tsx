@@ -295,7 +295,8 @@ const LocalFile = ({
               >
                 <div className='flex w-12 shrink-0 items-center justify-center'>
                   <DocumentFileIcon
-                    className='size-6 shrink-0'
+                    size='lg'
+                    className='shrink-0'
                     name={fileItem.file.name}
                     extension={getFileType(fileItem.file)}
                   />

@@ -63,7 +63,7 @@ const FileInAttachmentItem = ({
             !isImageFile && (
               <FileTypeIcon
                 type={getFileAppearanceType(name, type)}
-                size='lg'
+                size='xl'
               />
             )
           }

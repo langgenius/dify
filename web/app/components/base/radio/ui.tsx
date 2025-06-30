@@ -7,12 +7,14 @@ type Props = {
   isChecked: boolean
   disabled?: boolean
   onCheck?: () => void
+  className?: string
 }
 
 const RadioUI: FC<Props> = ({
   isChecked,
   disabled = false,
   onCheck,
+  className,
 }) => {
   return (
     <div
@@ -23,8 +25,10 @@ const RadioUI: FC<Props> = ({
         isChecked && disabled && 'border-[5px] border-components-radio-border-checked-disabled',
         !isChecked && disabled && 'border border-components-radio-border-disabled bg-components-radio-bg-disabled',
         !disabled && 'bg-components-radio-bg shadow-xs shadow-shadow-shadow-3 hover:bg-components-radio-bg-hover',
+        className,
       )}
       onClick={() => {
+        if (disabled) return
         onCheck?.()
       }}
     />

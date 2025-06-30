@@ -16,7 +16,7 @@ type CrawledResultProps = {
   onSelectedChange: (selected: CrawlResultItem[]) => void
   onPreview?: (payload: CrawlResultItem, index: number) => void
   usedTime: number
-  supportMultipleChoice?: boolean
+  isMultipleChoice?: boolean
 }
 
 const CrawledResult = ({
@@ -27,7 +27,7 @@ const CrawledResult = ({
   onSelectedChange,
   usedTime,
   onPreview,
-  supportMultipleChoice = true,
+  isMultipleChoice = true,
 }: CrawledResultProps) => {
   const { t } = useTranslation()
 
@@ -44,11 +44,11 @@ const CrawledResult = ({
   const handleItemCheckChange = useCallback((item: CrawlResultItem) => {
     return (checked: boolean) => {
       if (checked)
-        supportMultipleChoice ? onSelectedChange([...checkedList, item]) : onSelectedChange([item])
+        isMultipleChoice ? onSelectedChange([...checkedList, item]) : onSelectedChange([item])
       else
         onSelectedChange(checkedList.filter(checkedItem => checkedItem.source_url !== item.source_url))
     }
-  }, [checkedList, onSelectedChange, supportMultipleChoice])
+  }, [checkedList, onSelectedChange, isMultipleChoice])
 
   const handlePreview = useCallback((index: number) => {
     if (!onPreview) return
@@ -64,7 +64,7 @@ const CrawledResult = ({
         })}
       </div>
       <div className='overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg'>
-        {supportMultipleChoice && (
+        {isMultipleChoice && (
           <div className='flex items-center px-4 py-2'>
             <CheckboxWithLabel
               isChecked={isCheckAll}
@@ -82,7 +82,7 @@ const CrawledResult = ({
               isPreview={index === previewIndex}
               onPreview={handlePreview.bind(null, index)}
               showPreview={!!onPreview}
-              supportMultipleChoice={supportMultipleChoice}
+              isMultipleChoice={isMultipleChoice}
             />
           ))}
         </div>

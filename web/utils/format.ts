@@ -14,8 +14,8 @@ export const formatNumber = (num: number | string) => {
 /**
  * Format file size into standard string format.
  * @param fileSize file size (Byte)
- * @example formatFileSize(1024) will return '1.00KB'
- * @example formatFileSize(1024 * 1024) will return '1.00MB'
+ * @example formatFileSize(1024) will return '1.00 KB'
+ * @example formatFileSize(1024 * 1024) will return '1.00 MB'
  */
 export const formatFileSize = (fileSize: number) => {
   if (!fileSize)
@@ -26,7 +26,9 @@ export const formatFileSize = (fileSize: number) => {
     fileSize = fileSize / 1024
     index++
   }
-  return `${fileSize.toFixed(2)}${units[index]}B`
+  if (index === 0)
+    return `${fileSize.toFixed(2)} bytes`
+  return `${fileSize.toFixed(2)} ${units[index]}B`
 }
 
 /**

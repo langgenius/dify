@@ -25,22 +25,22 @@ describe('formatFileSize', () => {
     expect(formatFileSize(0)).toBe(0)
   })
   test('should format bytes correctly', () => {
-    expect(formatFileSize(500)).toBe('500.00B')
+    expect(formatFileSize(500)).toBe('500.00 bytes')
   })
   test('should format kilobytes correctly', () => {
-    expect(formatFileSize(1500)).toBe('1.46KB')
+    expect(formatFileSize(1500)).toBe('1.46 KB')
   })
   test('should format megabytes correctly', () => {
-    expect(formatFileSize(1500000)).toBe('1.43MB')
+    expect(formatFileSize(1500000)).toBe('1.43 MB')
   })
   test('should format gigabytes correctly', () => {
-    expect(formatFileSize(1500000000)).toBe('1.40GB')
+    expect(formatFileSize(1500000000)).toBe('1.40 GB')
   })
   test('should format terabytes correctly', () => {
-    expect(formatFileSize(1500000000000)).toBe('1.36TB')
+    expect(formatFileSize(1500000000000)).toBe('1.36 TB')
   })
   test('should format petabytes correctly', () => {
-    expect(formatFileSize(1500000000000000)).toBe('1.33PB')
+    expect(formatFileSize(1500000000000000)).toBe('1.33 PB')
   })
 })
 describe('formatTime', () => {

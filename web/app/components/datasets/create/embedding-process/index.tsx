@@ -294,7 +294,8 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
               <div className='z-[1] flex h-full items-center gap-1 pl-[6px] pr-2'>
                 {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
                   <DocumentFileIcon
-                    className='size-4 shrink-0'
+                    size='sm'
+                    className='shrink-0'
                     name={getSourceName(indexingStatusDetail.id)}
                     extension={getFileType(getSourceName(indexingStatusDetail.id))}
                   />
