@@ -882,6 +882,130 @@ import { Row, Col, Properties, Property, Heading, SubProperty, PropertyInstructi
 <hr className='ml-0 mr-0' />
 
 <Heading
+  url='/datasets/{dataset_id}/documents/{document_id}'
+  method='GET'
+  title='ドキュメントの詳細を取得'
+  name='#get-document-detail'
+/>
+<Row>
+  <Col>
+  ドキュメントの詳細を取得.
+  ### Path
+  - `dataset_id` (string) ナレッジベースID
+  - `document_id` (string) ドキュメントID
+
+  ### Query
+  - `metadata` (string) metadataのフィルター条件 `all`、`only`、または`without`。デフォルトは `all`。
+
+  ### Response
+  ナレッジベースドキュメントの詳細を返す.
+  </Col>
+ <Col sticky>
+  ### Request Example
+  <CodeGroup title="Request" tag="GET" label="/datasets/{dataset_id}/documents/{document_id}" targetCode={`curl -X GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+    "id": "f46ae30c-5c11-471b-96d0-464f5f32a7b2", 
+    "position": 1, 
+    "data_source_type": "upload_file", 
+    "data_source_info": {
+        "upload_file": {
+            ...
+        }
+    }, 
+    "dataset_process_rule_id": "24b99906-845e-499f-9e3c-d5565dd6962c", 
+    "dataset_process_rule": {
+        "mode": "hierarchical", 
+        "rules": {
+            "pre_processing_rules": [
+                {
+                    "id": "remove_extra_spaces", 
+                    "enabled": true
+                }, 
+                {
+                    "id": "remove_urls_emails", 
+                    "enabled": false
+                }
+            ], 
+            "segmentation": {
+                "separator": "**********page_ending**********", 
+                "max_tokens": 1024, 
+                "chunk_overlap": 0
+            }, 
+            "parent_mode": "paragraph", 
+            "subchunk_segmentation": {
+                "separator": "\n", 
+                "max_tokens": 512, 
+                "chunk_overlap": 0
+            }
+        }
+    }, 
+    "document_process_rule": {
+        "id": "24b99906-845e-499f-9e3c-d5565dd6962c", 
+        "dataset_id": "48a0db76-d1a9-46c1-ae35-2baaa919a8a9", 
+        "mode": "hierarchical", 
+        "rules": {
+            "pre_processing_rules": [
+                {
+                    "id": "remove_extra_spaces", 
+                    "enabled": true
+                }, 
+                {
+                    "id": "remove_urls_emails", 
+                    "enabled": false
+                }
+            ], 
+            "segmentation": {
+                "separator": "**********page_ending**********", 
+                "max_tokens": 1024, 
+                "chunk_overlap": 0
+            }, 
+            "parent_mode": "paragraph", 
+            "subchunk_segmentation": {
+                "separator": "\n", 
+                "max_tokens": 512, 
+                "chunk_overlap": 0
+            }
+        }
+    }, 
+    "name": "xxxx", 
+    "created_from": "web", 
+    "created_by": "17f71940-a7b5-4c77-b60f-2bd645c1ffa0", 
+    "created_at": 1750464191, 
+    "tokens": null, 
+    "indexing_status": "waiting", 
+    "completed_at": null, 
+    "updated_at": 1750464191, 
+    "indexing_latency": null, 
+    "error": null, 
+    "enabled": true, 
+    "disabled_at": null, 
+    "disabled_by": null, 
+    "archived": false, 
+    "segment_count": 0, 
+    "average_segment_length": 0, 
+    "hit_count": null, 
+    "display_status": "queuing", 
+    "doc_form": "hierarchical_model", 
+    "doc_language": "Chinese Simplified"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+___
+<hr className='ml-0 mr-0' />
+
+
+<Heading
   url='/datasets/{dataset_id}/documents/status/{action}'
   method='PATCH'
   title='ドキュメントステータスの更新'
