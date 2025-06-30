@@ -81,8 +81,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       return acc
     }, [] as Node[])
 
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i]
+    for (let i = 0; i < filteredNodes.length; i++) {
+      const node = filteredNodes[i]
       let moreDataForCheckValid
 
       if (node.data.type === BlockEnum.Tool)
@@ -124,7 +124,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
 
     isRequiredNodesType.forEach((type: string) => {
-      if (!nodes.find(node => node.data.type === type)) {
+      if (!filteredNodes.find(node => node.data.type === type)) {
         list.push({
           id: `${type}-need-added`,
           type,
@@ -202,7 +202,7 @@ export const useChecklistBeforePublish = () => {
       }
     }
     // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
-    const knowledgeRetrievalNodes = nodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
+    const knowledgeRetrievalNodes = filteredNodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
     const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
       return Array.from(new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]))
     }, [])
@@ -220,8 +220,8 @@ export const useChecklistBeforePublish = () => {
       }
     }
 
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i]
+    for (let i = 0; i < filteredNodes.length; i++) {
+      const node = filteredNodes[i]
       let moreDataForCheckValid
       if (node.data.type === BlockEnum.Tool)
         moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
@@ -260,7 +260,7 @@ export const useChecklistBeforePublish = () => {
 
     for(let i = 0; i < isRequiredNodesType.length; i++) {
       const type = isRequiredNodesType[i]
-      if (!nodes.find(node => node.data.type === type)) {
+      if (!filteredNodes.find(node => node.data.type === type)) {
         notify({ type: 'error', message: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }) })
         return false
       }
