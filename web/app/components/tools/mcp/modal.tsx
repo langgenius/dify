@@ -57,6 +57,7 @@ const MCPModal = ({
   const { t } = useTranslation()
 
   const originalServerUrl = data?.server_url
+  const originalServerID = data?.server_identifier
   const [url, setUrl] = React.useState(data?.server_url || '')
   const [name, setName] = React.useState(data?.name || '')
   const [appIcon, setAppIcon] = useState<AppIconSelection>(getIcon(data))
@@ -145,7 +146,7 @@ const MCPModal = ({
             />
             {originalServerUrl && originalServerUrl !== url && (
               <div className='mt-1 flex h-5 items-center'>
-                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.warning')}</span>
+                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.serverUrlWarning')}</span>
               </div>
             )}
           </div>
@@ -170,9 +171,9 @@ const MCPModal = ({
                 className='relative cursor-pointer rounded-2xl'
                 coverElement={
                   isHovering
-                  ? (<div className='absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt'>
-                  <RiEditLine className='size-6 text-text-primary-on-surface' />
-                </div>) : null
+                    ? (<div className='absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt'>
+                      <RiEditLine className='size-6 text-text-primary-on-surface' />
+                    </div>) : null
                 }
                 onClick={() => { setShowAppIconPicker(true) }}
               />
@@ -188,6 +189,11 @@ const MCPModal = ({
               onChange={e => setServerIdentifier(e.target.value)}
               placeholder={t('tools.mcp.modal.serverIdentifierPlaceholder')}
             />
+            {originalServerID && originalServerID !== serverIdentifier && (
+              <div className='mt-1 flex h-5 items-center'>
+                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.serverIdentifierWarning')}</span>
+              </div>
+            )}
           </div>
         </div>
         <div className='flex flex-row-reverse pt-5'>
