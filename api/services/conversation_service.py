@@ -145,19 +145,32 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def get_conversation(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
-        conversation = (
-            db.session.query(Conversation)
-            .filter(
-                Conversation.id == conversation_id,
-                Conversation.app_id == app_model.id,
-                Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
-                Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-                Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
-                Conversation.is_deleted == False,
+    def get_conversation(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]],invoke_from: InvokeFrom =None):
+        if invoke_from and  invoke_from==invoke_from.SERVICE_API:
+            conversation = (
+                db.session.query(Conversation)
+                .filter(
+                    Conversation.id == conversation_id,
+                    Conversation.app_id == app_model.id,
+                    Conversation.from_source == "api",
+                    Conversation.from_end_user_id == user.id ,
+                    Conversation.is_deleted == False,
+                )
+                .first()
             )
-            .first()
-        )
+        else:
+            conversation = (
+                db.session.query(Conversation)
+                .filter(
+                    Conversation.id == conversation_id,
+                    Conversation.app_id == app_model.id,
+                    Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                    Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                    Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+                    Conversation.is_deleted == False,
+                )
+                .first()
+            )
 
         if not conversation:
             raise ConversationNotExistsError()
