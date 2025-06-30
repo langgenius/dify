@@ -3,7 +3,7 @@ import json
 from flask import request
 from flask_restful import marshal, reqparse
 from sqlalchemy import desc, select
-from werkzeug.exceptions import NotFound, Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.errors import FilenameNotExistsError
@@ -17,7 +17,8 @@ from controllers.service_api.app.error import (
 )
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
-    DocumentIndexingError, InvalidMetadataError,
+    DocumentIndexingError,
+    InvalidMetadataError,
 )
 from controllers.service_api.wraps import (
     DatasetApiResource,

@@ -11,7 +11,7 @@ from flask_restful import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, Unauthorized, NotFound
+from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
