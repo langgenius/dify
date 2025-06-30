@@ -96,6 +96,7 @@ def init_app(app: DifyApp):
         redis_client.initialize(
             RedisCluster(
                 startup_nodes=nodes,
+                username=dify_config.REDIS_CLUSTERS_USERNAME,
                 password=dify_config.REDIS_CLUSTERS_PASSWORD,
                 protocol=resp_protocol,
                 cache_config=clientside_cache_config,
