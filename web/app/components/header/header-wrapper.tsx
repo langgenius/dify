@@ -25,14 +25,12 @@ const HeaderWrapper = ({
       setHideHeader(v.payload)
   })
 
-  if (hideHeader && inWorkflowCanvas)
-    return null
-
   return (
     <div className={classNames(
       'sticky left-0 right-0 top-0 z-[15] flex min-h-[56px] shrink-0 grow-0 basis-auto flex-col',
       s.header,
       isBordered ? 'border-b border-divider-regular' : '',
+      hideHeader && inWorkflowCanvas && 'hidden',
     )}
     >
       {children}
