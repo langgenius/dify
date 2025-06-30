@@ -46,6 +46,7 @@ type ItemProps = {
   isSupportFileVar?: boolean
   isException?: boolean
   isLoopVar?: boolean
+  zIndex?: number
 }
 
 const objVarTypes = [VarType.object, VarType.file]
@@ -60,6 +61,7 @@ const Item: FC<ItemProps> = ({
   isSupportFileVar,
   isException,
   isLoopVar,
+  zIndex,
 }) => {
   const isStructureOutput = itemData.type === VarType.object && (itemData.children as StructuredOutput)?.schema?.properties
   const isFile = itemData.type === VarType.file && !isStructureOutput
@@ -171,7 +173,7 @@ const Item: FC<ItemProps> = ({
         </div >
       </PortalToFollowElemTrigger >
       <PortalToFollowElemContent style={{
-        zIndex: 100,
+        zIndex: zIndex || 100,
       }}>
         {(isStructureOutput || isObj) && (
           <PickerStructurePanel
@@ -260,6 +262,7 @@ type Props = {
   maxHeightClass?: string
   onClose?: () => void
   onBlur?: () => void
+  zIndex?: number
   autoFocus?: boolean
 }
 const VarReferenceVars: FC<Props> = ({
@@ -272,6 +275,7 @@ const VarReferenceVars: FC<Props> = ({
   maxHeightClass,
   onClose,
   onBlur,
+  zIndex,
   autoFocus = true,
 }) => {
   const { t } = useTranslation()
@@ -357,6 +361,7 @@ const VarReferenceVars: FC<Props> = ({
                     isSupportFileVar={isSupportFileVar}
                     isException={v.isException}
                     isLoopVar={item.isLoop}
+                    zIndex={zIndex}
                   />
                 ))}
               </div>))

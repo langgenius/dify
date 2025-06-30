@@ -13,9 +13,12 @@ type Props = {
   isShowLetterIndex: boolean
   hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  canNotSelectMultiple?: boolean
+  onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   letters: string[]
   toolRefs: any
   selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
 }
 
 const ToolViewFlatView: FC<Props> = ({
@@ -24,8 +27,11 @@ const ToolViewFlatView: FC<Props> = ({
   isShowLetterIndex,
   hasSearchText,
   onSelect,
+  canNotSelectMultiple,
+  onSelectMultiple,
   toolRefs,
   selectedTools,
+  canChooseMCPTool,
 }) => {
   const firstLetterToolIds = useMemo(() => {
     const res: Record<string, string> = {}
@@ -53,7 +59,10 @@ const ToolViewFlatView: FC<Props> = ({
             isShowLetterIndex={isShowLetterIndex}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            canNotSelectMultiple={canNotSelectMultiple}
+            onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
           />
         </div>
       ))}

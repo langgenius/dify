@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import {
   RiArrowLeftLine,
-  RiArrowRightUpLine,
 } from '@remixicon/react'
 import {
   PortalToFollowElem,
@@ -15,6 +14,7 @@ import {
 import ToolTrigger from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-trigger'
 import ToolItem from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-item'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
+import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import ToolCredentialForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-credentials-form'
@@ -23,13 +23,13 @@ import Textarea from '@/app/components/base/textarea'
 import Divider from '@/app/components/base/divider'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import ReasoningConfigForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form'
-import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 import { useAppContext } from '@/context/app-context'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
+  useAllMCPTools,
   useAllWorkflowTools,
   useInvalidateAllBuiltInTools,
   useUpdateProviderCredentials,
@@ -54,15 +54,9 @@ type Props = {
   scope?: string
   value?: ToolValue
   selectedTools?: ToolValue[]
+  onSelect: (tool: ToolValue) => void
+  onSelectMultiple: (tool: ToolValue[]) => void
   isEdit?: boolean
-  onSelect: (tool: {
-    provider_name: string
-    tool_name: string
-    tool_label: string
-    settings?: Record<string, any>
-    parameters?: Record<string, any>
-    extra?: Record<string, any>
-  }) => void
   onDelete?: () => void
   supportEnableSwitch?: boolean
   supportAddCustomTool?: boolean
@@ -74,6 +68,7 @@ type Props = {
   nodeOutputVars: NodeOutPutVar[],
   availableNodes: Node[],
   nodeId?: string,
+  canChooseMCPTool?: boolean,
 }
 const ToolSelector: FC<Props> = ({
   value,
@@ -83,6 +78,7 @@ const ToolSelector: FC<Props> = ({
   placement = 'left',
   offset = 4,
   onSelect,
+  onSelectMultiple,
   onDelete,
   scope,
   supportEnableSwitch,
@@ -94,6 +90,7 @@ const ToolSelector: FC<Props> = ({
   nodeOutputVars,
   availableNodes,
   nodeId = '',
+  canChooseMCPTool,
 }) => {
   const { t } = useTranslation()
   const [isShow, onShowChange] = useState(false)
@@ -105,6 +102,7 @@ const ToolSelector: FC<Props> = ({
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
@@ -112,18 +110,19 @@ const ToolSelector: FC<Props> = ({
   const { inMarketPlace, manifest } = usePluginInstalledCheck(value?.provider_name)
 
   const currentProvider = useMemo(() => {
-    const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || [])]
+    const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || []), ...(mcpTools || [])]
     return mergedTools.find((toolWithProvider) => {
       return toolWithProvider.id === value?.provider_name
     })
-  }, [value, buildInTools, customTools, workflowTools])
+  }, [value, buildInTools, customTools, workflowTools, mcpTools])
 
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const handleSelectTool = (tool: ToolDefaultValue) => {
+  const getToolValue = (tool: ToolDefaultValue) => {
     const settingValues = generateFormValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form !== 'llm') as any))
     const paramValues = generateFormValue(tool.params, toolParametersToFormSchemas(tool.paramSchemas.filter(param => param.form === 'llm') as any), true)
-    const toolValue = {
+    return {
       provider_name: tool.provider_id,
+      provider_show_name: tool.provider_name,
       type: tool.provider_type,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
@@ -136,8 +135,15 @@ const ToolSelector: FC<Props> = ({
       },
       schemas: tool.paramSchemas,
     }
+  }
+  const handleSelectTool = (tool: ToolDefaultValue) => {
+    const toolValue = getToolValue(tool)
     onSelect(toolValue)
     // setIsShowChooseTool(false)
+  }
+  const handleSelectMultipleTool = (tool: ToolDefaultValue[]) => {
+    const toolValues = tool.map(item => getToolValue(item))
+    onSelectMultiple(toolValues)
   }
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -169,7 +175,6 @@ const ToolSelector: FC<Props> = ({
 
   const handleSettingsFormChange = (v: Record<string, any>) => {
     const newValue = getStructureValue(v)
-
     const toolValue = {
       ...value,
       settings: newValue,
@@ -250,7 +255,9 @@ const ToolSelector: FC<Props> = ({
             <ToolItem
               open={isShow}
               icon={currentProvider?.icon || manifestIcon}
+              isMCPTool={currentProvider?.type === CollectionType.mcp}
               providerName={value.provider_name}
+              providerShowName={value.provider_show_name}
               toolLabel={value.tool_label || value.tool_name}
               showSwitch={supportEnableSwitch}
               switchValue={value.enabled}
@@ -272,6 +279,7 @@ const ToolSelector: FC<Props> = ({
                   </p>
                 </div>
               }
+              canChooseMCPTool={canChooseMCPTool}
             />
           )}
         </PortalToFollowElemTrigger>
@@ -285,7 +293,7 @@ const ToolSelector: FC<Props> = ({
                   <div className='flex flex-col gap-1'>
                     <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.toolSelector.toolLabel')}</div>
                     <ToolPicker
-                      panelClassName='w-[328px]'
+                      panelClassName='w-[400px]'
                       placement='bottom'
                       offset={offset}
                       trigger={
@@ -300,8 +308,10 @@ const ToolSelector: FC<Props> = ({
                       disabled={false}
                       supportAddCustomTool
                       onSelect={handleSelectTool}
+                      onSelectMultiple={handleSelectMultipleTool}
                       scope={scope}
                       selectedTools={selectedTools}
+                      canChooseMCPTool={canChooseMCPTool}
                     />
                   </div>
                   <div className='flex flex-col gap-1'>
@@ -390,24 +400,13 @@ const ToolSelector: FC<Props> = ({
                     {/* user settings form */}
                     {(currType === 'settings' || userSettingsOnly) && (
                       <div className='px-4 py-2'>
-                        <Form
+                        <ToolForm
+                          inPanel
+                          readOnly={false}
+                          nodeId={nodeId}
+                          schema={settingsFormSchemas as any}
                           value={getPlainValue(value?.settings || {})}
                           onChange={handleSettingsFormChange}
-                          formSchemas={settingsFormSchemas as any}
-                          isEditMode={true}
-                          showOnVariableMap={{}}
-                          validating={false}
-                          inputClassName='bg-components-input-bg-normal hover:bg-components-input-bg-hover'
-                          fieldMoreInfo={item => item.url
-                            ? (<a
-                              href={item.url}
-                              target='_blank' rel='noopener noreferrer'
-                              className='inline-flex items-center text-xs text-text-accent'
-                            >
-                              {t('tools.howToGet')}
-                              <RiArrowRightUpLine className='ml-1 h-3 w-3' />
-                            </a>)
-                            : null}
                         />
                       </div>
                     )}

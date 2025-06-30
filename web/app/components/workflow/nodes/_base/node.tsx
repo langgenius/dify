@@ -32,6 +32,7 @@ import {
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
 import { useNodeLoopInteractions } from '../loop/use-interactions'
 import type { IterationNodeType } from '../iteration/types'
+import CopyID from '../tool/components/copy-id'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -319,6 +320,11 @@ const BaseNode: FC<BaseNodeProps> = ({
             </div>
           )
         }
+        {data.type === BlockEnum.Tool && (
+          <div className='px-3 pb-2'>
+            <CopyID content={data.provider_id || ''} />
+          </div>
+        )}
       </div>
     </div>
   )

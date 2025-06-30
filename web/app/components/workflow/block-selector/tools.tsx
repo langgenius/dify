@@ -17,22 +17,30 @@ import classNames from '@/utils/classnames'
 type ToolsProps = {
   showWorkflowEmpty: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  canNotSelectMultiple?: boolean
+  onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   tools: ToolWithProvider[]
   viewType: ViewType
   hasSearchText: boolean
   className?: string
   indexBarClassName?: string
   selectedTools?: ToolValue[]
+  canChooseMCPTool?: boolean
+  hasScrollBar: boolean
 }
 const Blocks = ({
   showWorkflowEmpty,
   onSelect,
+  canNotSelectMultiple,
+  onSelectMultiple,
   tools,
   viewType,
   hasSearchText,
   className,
   indexBarClassName,
   selectedTools,
+  canChooseMCPTool,
+  hasScrollBar,
 }: ToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -87,7 +95,7 @@ const Blocks = ({
   const toolRefs = useRef({})
 
   return (
-    <div className={classNames('p-1 max-w-[320px]', className)}>
+    <div className={classNames('p-1 max-w-[100%]', className)}>
       {
         !tools.length && !showWorkflowEmpty && (
           <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
@@ -107,19 +115,25 @@ const Blocks = ({
             isShowLetterIndex={isShowLetterIndex}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            canNotSelectMultiple={canNotSelectMultiple}
+            onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
           />
         ) : (
           <ToolListTreeView
             payload={treeViewToolsData}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
+            canNotSelectMultiple={canNotSelectMultiple}
+            onSelectMultiple={onSelectMultiple}
             selectedTools={selectedTools}
+            canChooseMCPTool={canChooseMCPTool}
           />
         )
       )}
 
-      {isShowLetterIndex && <IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
+      {isShowLetterIndex && <IndexBar hasScrollBar={hasScrollBar} letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
     </div>
   )
 }
