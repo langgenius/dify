@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import WorkspaceSelector from '@/app/components/base/notion-page-selector/workspace-selector'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
-import PageSelector from '@/app/components/base/notion-page-selector/page-selector'
+import PageSelector from './page-selector'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import Header from '@/app/components/datasets/create/website/base/header'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'

@@ -149,8 +149,7 @@ const TestRunPanel = () => {
                   <OnlineDrive
                     nodeData={datasource!.nodeData}
                   />
-                )
-                }
+                )}
               </div>
               <Actions disabled={nextBtnDisabled} handleNextStep={handleNextStep} />
               <FooterTips />

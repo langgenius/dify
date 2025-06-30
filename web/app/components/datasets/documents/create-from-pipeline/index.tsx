@@ -27,6 +27,7 @@ import type { InitialDocumentDetail, PublishedPipelineRunPreviewResponse, Publis
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
 import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useWebsiteCrawl } from './hooks'
+import OnlineDrive from '@/app/components/rag-pipeline/components/panel/test-run/data-source/online-drive'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
@@ -280,6 +281,11 @@ const CreateFormPipeline = () => {
                       onCheckedCrawlResultChange={updataCheckedCrawlResultChange}
                       onPreview={updateCurrentWebsite}
                       previewIndex={previewIndex}
+                    />
+                  )}
+                  {datasourceType === DatasourceType.onlineDrive && (
+                    <OnlineDrive
+                      nodeData={datasource!.nodeData}
                     />
                   )}
                   {isShowVectorSpaceFull && (
