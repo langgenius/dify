@@ -3,9 +3,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useLocalFile, useOnlineDocuments, useTestRunSteps, useWebsiteCrawl } from './hooks'
 import DataSourceOptions from './data-source-options'
 import LocalFile from './data-source/local-file'
-import { useProviderContextSelector } from '@/context/provider-context'
 import OnlineDocuments from './data-source/online-documents'
-import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import WebsiteCrawl from './data-source/website-crawl'
 import Actions from './data-source/actions'
 import DocumentProcessing from './document-processing'
@@ -20,8 +18,6 @@ import OnlineDrive from './data-source/online-drive'
 
 const TestRunPanel = () => {
   const setShowDebugAndPreviewPanel = useWorkflowStoreWithSelector(state => state.setShowDebugAndPreviewPanel)
-  const plan = useProviderContextSelector(state => state.plan)
-  const enableBilling = useProviderContextSelector(state => state.enableBilling)
   const [datasource, setDatasource] = useState<Datasource>()
 
   const {
@@ -32,7 +28,6 @@ const TestRunPanel = () => {
   } = useTestRunSteps()
   const {
     fileList,
-    allFileLoaded,
     updateFile,
     updateFileList,
   } = useLocalFile()
@@ -50,20 +45,18 @@ const TestRunPanel = () => {
   } = useWebsiteCrawl()
   const { handleRun } = useWorkflowRun()
 
-  const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
-  const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && enableBilling
   const datasourceType = datasource?.nodeData.provider_type
 
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
     if (datasourceType === DatasourceType.localFile)
-      return isShowVectorSpaceFull || !fileList.length || fileList.some(file => !file.file.id)
+      return !fileList.length || fileList.some(file => !file.file.id)
     if (datasourceType === DatasourceType.onlineDocument)
-      return isShowVectorSpaceFull || !onlineDocuments.length
+      return !onlineDocuments.length
     if (datasourceType === DatasourceType.websiteCrawl)
-      return isShowVectorSpaceFull || !websitePages.length
+      return !websitePages.length
     return false
-  }, [datasource, datasourceType, isShowVectorSpaceFull, fileList, onlineDocuments.length, websitePages.length])
+  }, [datasource, datasourceType, fileList, onlineDocuments.length, websitePages.length])
 
   const handleClose = () => {
     setShowDebugAndPreviewPanel(false)
@@ -158,9 +151,6 @@ const TestRunPanel = () => {
                   />
                 )
                 }
-                {isShowVectorSpaceFull && (
-                  <VectorSpaceFull />
-                )}
               </div>
               <Actions disabled={nextBtnDisabled} handleNextStep={handleNextStep} />
               <FooterTips />

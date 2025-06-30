@@ -84,8 +84,6 @@ export const useDatasourceOptions = () => {
 export const useLocalFile = () => {
   const [fileList, setFileList] = useState<FileItem[]>([])
 
-  const allFileLoaded = useMemo(() => (fileList.length > 0 && fileList.every(file => file.file.id)), [fileList])
-
   const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
     const newList = produce(list, (draft) => {
       const targetIndex = draft.findIndex(file => file.fileID === fileItem.fileID)
@@ -103,7 +101,6 @@ export const useLocalFile = () => {
 
   return {
     fileList,
-    allFileLoaded,
     updateFile,
     updateFileList,
   }
