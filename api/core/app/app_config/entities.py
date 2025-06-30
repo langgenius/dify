@@ -158,6 +158,9 @@ SupportedComparisonOperator = Literal[
     # for time
     "before",
     "after",
+    # for array operations
+    "in",
+    "not in",
 ]
 
 
@@ -175,7 +178,7 @@ class Condition(BaseModel):
 
     name: str
     comparison_operator: SupportedComparisonOperator
-    value: str | Sequence[str] | None | int | float = None
+    value: str | Sequence[str] | Sequence[int] | Sequence[float] | None | int | float = None
 
 
 class MetadataFilteringCondition(BaseModel):
