@@ -1,38 +1,43 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import Header from './header'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback } from 'react'
 import FileList from './file-list'
-import { OnlineDriveFileType } from '@/models/pipeline'
+import type { OnlineDriveFile } from '@/models/pipeline'
 
 type OnlineDriveProps = {
   nodeData: DataSourceNodeType
+  prefix: string[]
+  setPrefix: (prefix: string[]) => void
+  keywords: string
+  setKeywords: (keywords: string) => void
+  startAfter: string
+  setStartAfter: (startAfter: string) => void
+  selectedFileList: string[]
+  setSelectedFileList: (selectedFileList: string[]) => void
+  fileList: OnlineDriveFile[]
+  setFileList: (fileList: OnlineDriveFile[]) => void
 }
 
 const OnlineDrive = ({
   nodeData,
+  prefix,
+  setPrefix,
+  keywords,
+  setKeywords,
+  startAfter,
+  setStartAfter,
+  selectedFileList,
+  setSelectedFileList,
+  fileList,
+  setFileList,
 }: OnlineDriveProps) => {
-  const [prefix, setPrefix] = useState<string[]>([])
-  const [keywords, setKeywords] = useState('')
-  const [startAfter, setStartAfter] = useState('')
-  const [selectedFileList, setSelectedFileList] = useState<string[]>([])
-
   const updateKeywords = useCallback((keywords: string) => {
     setKeywords(keywords)
-  }, [])
+  }, [setKeywords])
 
   const resetPrefix = useCallback(() => {
     setKeywords('')
-  }, [])
-
-  const fileList = useMemo(() => {
-    return [
-      {
-        key: 'Bucket_1',
-        size: 1024, // unit bytes
-        type: OnlineDriveFileType.bucket,
-      },
-    ]
-  }, [])
+  }, [setKeywords])
 
   return (
     <div className='flex flex-col gap-y-2'>

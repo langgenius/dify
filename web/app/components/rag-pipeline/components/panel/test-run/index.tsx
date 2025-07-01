@@ -1,6 +1,6 @@
 import { useStore as useWorkflowStoreWithSelector } from '@/app/components/workflow/store'
 import { useCallback, useMemo, useState } from 'react'
-import { useLocalFile, useOnlineDocuments, useTestRunSteps, useWebsiteCrawl } from './hooks'
+import { useLocalFile, useOnlineDocuments, useOnlineDrive, useTestRunSteps, useWebsiteCrawl } from './hooks'
 import DataSourceOptions from './data-source-options'
 import LocalFile from './data-source/local-file'
 import OnlineDocuments from './data-source/online-documents'
@@ -52,6 +52,18 @@ const TestRunPanel = () => {
     step,
     setStep,
   } = useWebsiteCrawl()
+  const {
+    prefix,
+    setPrefix,
+    keywords,
+    setKeywords,
+    startAfter,
+    setStartAfter,
+    selectedFileList,
+    setSelectedFileList,
+    fileList: onlineDriveFileList,
+    setFileList,
+  } = useOnlineDrive()
   const { handleRun } = useWorkflowRun()
 
   const datasourceType = datasource?.nodeData.provider_type
@@ -165,6 +177,16 @@ const TestRunPanel = () => {
                 {datasourceType === DatasourceType.onlineDrive && (
                   <OnlineDrive
                     nodeData={datasource!.nodeData}
+                    prefix={prefix}
+                    setPrefix={setPrefix}
+                    keywords={keywords}
+                    setKeywords={setKeywords}
+                    startAfter={startAfter}
+                    setStartAfter={setStartAfter}
+                    selectedFileList={selectedFileList}
+                    setSelectedFileList={setSelectedFileList}
+                    fileList={onlineDriveFileList}
+                    setFileList={setFileList}
                   />
                 )}
               </div>

@@ -8,6 +8,7 @@ import type { CrawlResult, CrawlResultItem, DocumentItem, FileItem } from '@/mod
 import { CrawlStep } from '@/models/datasets'
 import produce from 'immer'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
+import { type OnlineDriveFile, OnlineDriveFileType } from '@/models/pipeline'
 
 export const useAddDocumentsSteps = () => {
   const { t } = useTranslation()
@@ -225,5 +226,32 @@ export const useWebsiteCrawl = () => {
     updateCurrentWebsite,
     previewIndex,
     hideWebsitePreview,
+  }
+}
+
+export const useOnlineDrive = () => {
+  const [prefix, setPrefix] = useState<string[]>([])
+  const [keywords, setKeywords] = useState('')
+  const [startAfter, setStartAfter] = useState('')
+  const [selectedFileList, setSelectedFileList] = useState<string[]>([])
+  const [fileList, setFileList] = useState<OnlineDriveFile[]>([
+    {
+      key: 'Bucket_1',
+      size: 1024, // unit bytes
+      type: OnlineDriveFileType.bucket,
+    },
+  ])
+
+  return {
+    prefix,
+    setPrefix,
+    keywords,
+    setKeywords,
+    startAfter,
+    setStartAfter,
+    selectedFileList,
+    setSelectedFileList,
+    fileList,
+    setFileList,
   }
 }

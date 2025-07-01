@@ -26,7 +26,7 @@ import Processing from './processing'
 import type { InitialDocumentDetail, PublishedPipelineRunPreviewResponse, PublishedPipelineRunResponse } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
-import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useWebsiteCrawl } from './hooks'
+import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useOnlineDrive, useWebsiteCrawl } from './hooks'
 import OnlineDrive from '@/app/components/rag-pipeline/components/panel/test-run/data-source/online-drive'
 
 const CreateFormPipeline = () => {
@@ -90,6 +90,18 @@ const CreateFormPipeline = () => {
     previewIndex,
     hideWebsitePreview,
   } = useWebsiteCrawl()
+  const {
+    prefix,
+    setPrefix,
+    keywords,
+    setKeywords,
+    startAfter,
+    setStartAfter,
+    selectedFileList,
+    setSelectedFileList,
+    fileList: onlineDriveFileList,
+    setFileList,
+  } = useOnlineDrive()
 
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && enableBilling
@@ -302,6 +314,16 @@ const CreateFormPipeline = () => {
                   {datasourceType === DatasourceType.onlineDrive && (
                     <OnlineDrive
                       nodeData={datasource!.nodeData}
+                      prefix={prefix}
+                      setPrefix={setPrefix}
+                      keywords={keywords}
+                      setKeywords={setKeywords}
+                      startAfter={startAfter}
+                      setStartAfter={setStartAfter}
+                      selectedFileList={selectedFileList}
+                      setSelectedFileList={setSelectedFileList}
+                      fileList={onlineDriveFileList}
+                      setFileList={setFileList}
                     />
                   )}
                   {isShowVectorSpaceFull && (
