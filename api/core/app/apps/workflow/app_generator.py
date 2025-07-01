@@ -482,7 +482,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
             try:
                 runner.run()
-            except GenerateTaskStoppedError:
+            except GenerateTaskStoppedError as e:
+                logger.warning(f"Task stopped: {str(e)}")
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(
