@@ -6,7 +6,6 @@ on:
       - "main"
       - "deploy/dev"
       - "deploy/enterprise"
-      - "fix/e-300"
     tags:
       - "*"
 
