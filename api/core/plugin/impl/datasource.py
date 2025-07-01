@@ -16,6 +16,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginDatasourceProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
+from services.tools.tools_transform_service import ToolTransformService
 
 
 class PluginDatasourceManager(BasePluginClient):
@@ -43,6 +44,8 @@ class PluginDatasourceManager(BasePluginClient):
         )
         local_file_datasource_provider = PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
 
+        for provider in response:
+            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=provider)
         all_response = [local_file_datasource_provider] + response
 
         for provider in all_response:
