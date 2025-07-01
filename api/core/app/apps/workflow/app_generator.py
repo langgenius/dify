@@ -219,6 +219,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         # new thread with request context and contextvars
         context = contextvars.copy_context()
 
+        # release database connection, because the following new thread operations may take a long time
+        db.session.close()
+        
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
