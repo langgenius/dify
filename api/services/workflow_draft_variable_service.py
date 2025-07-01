@@ -520,6 +520,7 @@ class DraftVariableSaver:
     _EXCLUDE_VARIABLE_NAMES_MAPPING: dict[NodeType, frozenset[str]] = {
         NodeType.LLM: frozenset(["finish_reason"]),
         NodeType.LOOP: frozenset(["loop_round"]),
+        NodeType.QUESTION_CLASSIFIER: frozenset(["finish_reason"]),
     }
 
     # Database session used for persisting draft variables.
