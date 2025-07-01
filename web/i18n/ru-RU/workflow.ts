@@ -669,6 +669,7 @@ const translation = {
       inputVars: 'Входные переменные',
       outputVars: {
         className: 'Имя класса',
+        usage: 'Информация об использовании модели',
       },
       class: 'Класс',
       classNamePlaceholder: 'Введите имя вашего класса',

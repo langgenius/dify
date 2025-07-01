@@ -676,6 +676,7 @@ const translation = {
       inputVars: '入力変数',
       outputVars: {
         className: 'クラス名',
+        usage: 'モデル使用量',
       },
       class: 'クラス',
       classNamePlaceholder: 'クラス名を入力してください',

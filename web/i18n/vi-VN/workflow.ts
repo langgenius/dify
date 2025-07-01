@@ -669,6 +669,7 @@ const translation = {
       inputVars: 'Biến đầu vào',
       outputVars: {
         className: 'Tên lớp',
+        usage: 'Thông tin sử dụng mô hình',
       },
       class: 'Lớp',
       classNamePlaceholder: 'Viết tên lớp của bạn',

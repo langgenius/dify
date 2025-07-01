@@ -669,6 +669,7 @@ const translation = {
       inputVars: 'Variabile de intrare',
       outputVars: {
         className: 'Nume clasă',
+        usage: 'Informații de utilizare a modelului',
       },
       class: 'Clasă',
       classNamePlaceholder: 'Scrieți numele clasei',

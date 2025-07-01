@@ -685,6 +685,7 @@ const translation = {
       inputVars: 'इनपुट वेरिएबल्स',
       outputVars: {
         className: 'क्लास नाम',
+        usage: 'मॉडल उपयोग जानकारी',
       },
       class: 'क्लास',
       classNamePlaceholder: 'अपना क्लास नाम लिखें',

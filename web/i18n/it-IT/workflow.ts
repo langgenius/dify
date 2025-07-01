@@ -688,6 +688,7 @@ const translation = {
       inputVars: 'Variabili di Input',
       outputVars: {
         className: 'Nome Classe',
+        usage: 'Informazioni sull\'utilizzo del modello',
       },
       class: 'Classe',
       classNamePlaceholder: 'Scrivi il nome della tua classe',

@@ -667,6 +667,7 @@ const translation = {
     questionClassifiers: {
       outputVars: {
         className: 'Ime razreda',
+        usage: 'Informacije o uporabi modela',
       },
       instruction: 'Navodilo',
       addClass: 'Dodaj razred',

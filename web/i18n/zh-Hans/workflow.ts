@@ -674,6 +674,7 @@ const translation = {
       inputVars: '输入变量',
       outputVars: {
         className: '分类名称',
+        usage: '模型用量信息',
       },
       class: '分类',
       classNamePlaceholder: '输入你的分类名称',

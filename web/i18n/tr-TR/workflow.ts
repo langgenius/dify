@@ -670,6 +670,7 @@ const translation = {
       inputVars: 'Giriş Değişkenleri',
       outputVars: {
         className: 'Sınıf Adı',
+        usage: 'Model Kullanım Bilgileri',
       },
       class: 'Sınıf',
       classNamePlaceholder: 'Sınıf adınızı yazın',

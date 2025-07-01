@@ -668,6 +668,7 @@ const translation = {
       inputVars: 'ตัวแปรอินพุต',
       outputVars: {
         className: 'ชื่อคลาส',
+        usage: 'ข้อมูลการใช้งานรุ่น',
       },
       class: 'ประเภท',
       classNamePlaceholder: 'เขียนชื่อชั้นเรียนของคุณ',
