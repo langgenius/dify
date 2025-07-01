@@ -193,6 +193,8 @@ const translation = {
     updateTools: 'Updating Tools...',
     toolsEmpty: 'Tools not loaded',
     getTools: 'Get tools',
+    toolUpdateConfirmTitle: 'Update Tool List',
+    toolUpdateConfirmContent: 'Updating the tool list may affect existing apps. Do you wish to proceed?',
     toolsNum: '{{count}} tools included',
     onlyTool: '1 tool included',
     identifier: 'Server Identifier (Click to Copy)',

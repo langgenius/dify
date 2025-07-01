@@ -78,9 +78,9 @@ const MCPDetailContent: FC<Props> = ({
   })
 
   const [isShowUpdateModal, {
-      setTrue: showUpdateModal,
-      setFalse: hideUpdateModal,
-    }] = useBoolean(false)
+    setTrue: showUpdateModal,
+    setFalse: hideUpdateModal,
+  }] = useBoolean(false)
 
   const [isShowDeleteConfirm, {
     setTrue: showDeleteConfirm,
@@ -144,7 +144,7 @@ const MCPDetailContent: FC<Props> = ({
   useEffect(() => {
     if (isCreation)
       handleAuthorize()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (!detail)
@@ -298,7 +298,8 @@ const MCPDetailContent: FC<Props> = ({
       {isShowUpdateConfirm && (
         <Confirm
           isShow
-          title={t('tools.mcp.update')}
+          title={t('tools.mcp.toolUpdateConfirmTitle')}
+          content={t('tools.mcp.toolUpdateConfirmContent')}
           onCancel={hideUpdateConfirm}
           onConfirm={handleUpdateTools}
         />
