@@ -36,7 +36,7 @@ type Props = {
   detail: ToolWithProvider
   onUpdate: (isDelete?: boolean) => void
   onHide: () => void
-  isCreation: boolean
+  isTriggerAuthorize: boolean
   onFirstCreate: () => void
 }
 
@@ -44,7 +44,7 @@ const MCPDetailContent: FC<Props> = ({
   detail,
   onUpdate,
   onHide,
-  isCreation,
+  isTriggerAuthorize,
   onFirstCreate,
 }) => {
   const { t } = useTranslation()
@@ -70,12 +70,8 @@ const MCPDetailContent: FC<Props> = ({
     onUpdate()
   }, [detail, hideUpdateConfirm, invalidateMCPTools, onUpdate, updateTools])
 
-  const { mutate: updateMCP } = useUpdateMCP({
-    onSuccess: onUpdate,
-  })
-  const { mutate: deleteMCP } = useDeleteMCP({
-    onSuccess: onUpdate,
-  })
+  const { mutateAsync: updateMCP } = useUpdateMCP({})
+  const { mutateAsync: deleteMCP } = useDeleteMCP({})
 
   const [isShowUpdateModal, {
     setTrue: showUpdateModal,
@@ -126,8 +122,9 @@ const MCPDetailContent: FC<Props> = ({
     if ((res as any)?.result === 'success') {
       hideUpdateModal()
       onUpdate()
+      handleAuthorize()
     }
-  }, [detail, updateMCP, hideUpdateModal, onUpdate])
+  }, [detail, updateMCP, hideUpdateModal, onUpdate, handleAuthorize])
 
   const handleDelete = useCallback(async () => {
     if (!detail)
@@ -142,7 +139,7 @@ const MCPDetailContent: FC<Props> = ({
   }, [detail, showDeleting, deleteMCP, hideDeleting, hideDeleteConfirm, onUpdate])
 
   useEffect(() => {
-    if (isCreation)
+    if (isTriggerAuthorize)
       handleAuthorize()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

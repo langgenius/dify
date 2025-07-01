@@ -18,7 +18,8 @@ type Props = {
   currentProvider?: ToolWithProvider
   data: ToolWithProvider
   handleSelect: (providerID: string) => void
-  onUpdate: () => void
+  onUpdate: (providerID: string) => void
+  onDeleted: () => void
 }
 
 const MCPCard = ({
@@ -26,17 +27,14 @@ const MCPCard = ({
   data,
   onUpdate,
   handleSelect,
+  onDeleted,
 }: Props) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { isCurrentWorkspaceManager } = useAppContext()
 
-  const { mutate: updateMCP } = useUpdateMCP({
-    onSuccess: onUpdate,
-  })
-  const { mutate: deleteMCP } = useDeleteMCP({
-    onSuccess: onUpdate,
-  })
+  const { mutateAsync: updateMCP } = useUpdateMCP({})
+  const { mutateAsync: deleteMCP } = useDeleteMCP({})
 
   const [isOperationShow, setIsOperationShow] = useState(false)
 
@@ -62,7 +60,7 @@ const MCPCard = ({
     })
     if ((res as any)?.result === 'success') {
       hideUpdateModal()
-      onUpdate()
+      onUpdate(data.id)
     }
   }, [data, updateMCP, hideUpdateModal, onUpdate])
 
@@ -72,9 +70,9 @@ const MCPCard = ({
     hideDeleting()
     if ((res as any)?.result === 'success') {
       hideDeleteConfirm()
-      onUpdate()
+      onDeleted()
     }
-  }, [showDeleting, deleteMCP, data.id, hideDeleting, hideDeleteConfirm, onUpdate])
+  }, [showDeleting, deleteMCP, data.id, hideDeleting, hideDeleteConfirm, onDeleted])
 
   return (
     <div

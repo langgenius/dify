@@ -55,6 +55,7 @@ const MCPModal = ({
   onHide,
 }: DuplicateAppModalProps) => {
   const { t } = useTranslation()
+  const isCreate = !data
 
   const originalServerUrl = data?.server_url
   const originalServerID = data?.server_identifier
@@ -119,7 +120,8 @@ const MCPModal = ({
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       server_identifier: serverIdentifier.trim(),
     })
-    onHide()
+    if(isCreate)
+      onHide()
   }
 
   return (
@@ -132,7 +134,7 @@ const MCPModal = ({
         <div className='absolute right-5 top-5 z-10 cursor-pointer p-1.5' onClick={onHide}>
           <RiCloseLine className='h-5 w-5 text-text-tertiary' />
         </div>
-        <div className='title-2xl-semi-bold relative pb-3 text-xl text-text-primary'>{data ? t('tools.mcp.modal.editTitle') : t('tools.mcp.modal.title')}</div>
+        <div className='title-2xl-semi-bold relative pb-3 text-xl text-text-primary'>{!isCreate ? t('tools.mcp.modal.editTitle') : t('tools.mcp.modal.title')}</div>
         <div className='space-y-5 py-3'>
           <div>
             <div className='mb-1 flex h-6 items-center'>
