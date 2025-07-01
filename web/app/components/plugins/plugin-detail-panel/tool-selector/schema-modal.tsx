@@ -44,6 +44,7 @@ const SchemaModal: FC<Props> = ({
           <MittProvider>
             <VisualEditorContextProvider>
               <VisualEditor
+                className='w-full'
                 schema={schema}
                 rootName={rootName}
                 readOnly
