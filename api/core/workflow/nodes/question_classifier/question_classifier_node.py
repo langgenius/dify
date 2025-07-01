@@ -140,12 +140,10 @@ class QuestionClassifierNode(LLMNode):
                 "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
                     model_mode=model_config.mode, prompt_messages=prompt_messages
                 ),
-                "usage": jsonable_encoder(usage),
-                "finish_reason": finish_reason,
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
             }
-            outputs = {"class_name": category_name, "class_id": category_id}
+            outputs = {"class_name": category_name, "class_id": category_id, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
 
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
