@@ -30,7 +30,7 @@ const MCPToolItem = ({
       )}
     >
       <div
-        className={cn('bg-components-panel-item-bg mb-2 cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover')}
+        className={cn('bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover')}
       >
         <div className='system-md-semibold pb-0.5 text-text-secondary'>{tool.label[language]}</div>
         <div className='system-xs-regular line-clamp-2 text-text-tertiary' title={tool.description[language]}>{tool.description[language]}</div>
