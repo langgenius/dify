@@ -753,59 +753,6 @@ class RagPipelineService:
 
         return workflow
 
-    def get_published_second_step_parameters(self, pipeline: Pipeline, node_id: str) -> list[dict]:
-        """
-        Get second step parameters of rag pipeline
-        """
-
-        workflow = self.get_published_workflow(pipeline=pipeline)
-        if not workflow:
-            raise ValueError("Workflow not initialized")
-
-        # get second step node
-        rag_pipeline_variables = workflow.rag_pipeline_variables
-        if not rag_pipeline_variables:
-            return []
-
-        # get datasource provider
-        datasource_provider_variables = [
-            item
-            for item in rag_pipeline_variables
-            if item.get("belong_to_node_id") == node_id or item.get("belong_to_node_id") == "shared"
-        ]
-        return datasource_provider_variables
-
-    def get_published_first_step_parameters(self, pipeline: Pipeline, node_id: str) -> list[dict]:
-        """
-        Get first step parameters of rag pipeline
-        """
-
-        published_workflow = self.get_published_workflow(pipeline=pipeline)
-        if not published_workflow:
-            raise ValueError("Workflow not initialized")
-
-        # get second step node
-        datasource_node_data = None
-        datasource_nodes = published_workflow.graph_dict.get("nodes", [])
-        for datasource_node in datasource_nodes:
-            if datasource_node.get("id") == node_id:
-                datasource_node_data = datasource_node.get("data", {})
-                break
-        if not datasource_node_data:
-            raise ValueError("Datasource node data not found")
-        variables = published_workflow.rag_pipeline_variables
-        if variables:
-            variables_map = {item["variable"]: item for item in variables}
-        else:
-            return []
-        datasource_parameters = datasource_node_data.get("datasource_parameters", {})
-        user_input_variables = []
-        for key, value in datasource_parameters.items():
-            if value.get("value") and isinstance(value.get("value"), str):
-                if re.match(r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}", value["value"]):
-                    user_input_variables.append(variables_map.get(key, {}))
-        return user_input_variables
-
     def get_first_step_parameters(self, pipeline: Pipeline, node_id: str, is_draft: bool = False) -> list[dict]:
         """
         Get first step parameters of rag pipeline
@@ -833,7 +780,7 @@ class RagPipelineService:
         user_input_variables = []
         for key, value in datasource_parameters.items():
             if value.get("value") and isinstance(value.get("value"), str):
-                pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                 match = re.match(pattern, value["value"])
                 if match:
                     full_path = match.group(1)
@@ -868,7 +815,7 @@ class RagPipelineService:
 
             for key, value in datasource_parameters.items():
                 if value.get("value") and isinstance(value.get("value"), str):
-                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
+                    pattern = r"\{\{#([a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z0-9_][a-zA-Z0-9_]{0,29}){1,10})#\}\}"
                     match = re.match(pattern, value["value"])
                     if match:
                         full_path = match.group(1)
