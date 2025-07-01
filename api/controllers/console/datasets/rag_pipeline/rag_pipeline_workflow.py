@@ -804,7 +804,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
         if not node_id:
             raise ValueError("Node ID is required")
         rag_pipeline_service = RagPipelineService()
-        variables = rag_pipeline_service.get_published_second_step_parameters(pipeline=pipeline, node_id=node_id)
+        variables = rag_pipeline_service.get_second_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=False)
         return {
             "variables": variables,
         }
@@ -829,7 +829,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         if not node_id:
             raise ValueError("Node ID is required")
         rag_pipeline_service = RagPipelineService()
-        variables = rag_pipeline_service.get_published_first_step_parameters(pipeline=pipeline, node_id=node_id)
+        variables = rag_pipeline_service.get_first_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=False)
         return {
             "variables": variables,
         }
@@ -854,7 +854,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         if not node_id:
             raise ValueError("Node ID is required")
         rag_pipeline_service = RagPipelineService()
-        variables = rag_pipeline_service.get_draft_first_step_parameters(pipeline=pipeline, node_id=node_id)
+        variables = rag_pipeline_service.get_first_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=True)
         return {
             "variables": variables,
         }
@@ -880,7 +880,7 @@ class DraftRagPipelineSecondStepApi(Resource):
             raise ValueError("Node ID is required")
 
         rag_pipeline_service = RagPipelineService()
-        variables = rag_pipeline_service.get_draft_second_step_parameters(pipeline=pipeline, node_id=node_id)
+        variables = rag_pipeline_service.get_second_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=True)
         return {
             "variables": variables,
         }
