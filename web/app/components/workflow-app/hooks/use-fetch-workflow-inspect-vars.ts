@@ -1,11 +1,12 @@
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { useWorkflowStore } from '../../workflow/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useStoreApi } from 'reactflow'
 import type { Node } from '@/app/components/workflow/types'
 import { fetchAllInspectVars } from '@/service/workflow'
 import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
-import { useNodesInteractionsWithoutSync } from '../../workflow/hooks/use-nodes-interactions-without-sync'
-const useSetWorkflowVarsWithValue = () => {
+import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+
+export const useSetWorkflowVarsWithValue = () => {
   const workflowStore = useWorkflowStore()
   const { setNodesWithInspectVars, appId } = workflowStore.getState()
   const store = useStoreApi()
@@ -64,5 +65,3 @@ const useSetWorkflowVarsWithValue = () => {
     fetchInspectVars,
   }
 }
-
-export default useSetWorkflowVarsWithValue

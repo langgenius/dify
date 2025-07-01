@@ -20,7 +20,7 @@ import type { VersionHistory } from '@/types/workflow'
 import { noop } from 'lodash-es'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
-import useSetWorkflowVarsWithValue from './use-fetch-workflow-inspect-vars'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-set-workflow-vars-with-value'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
