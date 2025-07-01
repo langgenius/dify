@@ -1,7 +1,7 @@
-from enum import StrEnum
+from enum import Enum
 
 
-class SystemVariableKey(StrEnum):
+class SystemVariableKey(str, Enum):
     """
     System Variables.
     """
@@ -10,6 +10,7 @@ class SystemVariableKey(StrEnum):
     FILES = "files"
     CONVERSATION_ID = "conversation_id"
     USER_ID = "user_id"
+    USER_EMAIL = "user_email"
     DIALOGUE_COUNT = "dialogue_count"
     APP_ID = "app_id"
     WORKFLOW_ID = "workflow_id"

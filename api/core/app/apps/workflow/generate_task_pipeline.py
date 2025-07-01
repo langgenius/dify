@@ -98,10 +98,12 @@ class WorkflowAppGenerateTaskPipeline:
             self._user_id = user.id
             user_session_id = user.session_id
             self._created_by_role = CreatorUserRole.END_USER
+            user_email = user.email if hasattr(user, 'email') else None
         elif isinstance(user, Account):
             self._user_id = user.id
             user_session_id = user.id
             self._created_by_role = CreatorUserRole.ACCOUNT
+            user_email = user.email
         else:
             raise ValueError(f"Invalid user type: {type(user)}")
 
@@ -110,6 +112,7 @@ class WorkflowAppGenerateTaskPipeline:
             workflow_system_variables={
                 SystemVariableKey.FILES: application_generate_entity.files,
                 SystemVariableKey.USER_ID: user_session_id,
+                SystemVariableKey.USER_EMAIL: user_email,
                 SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
                 SystemVariableKey.WORKFLOW_ID: workflow.id,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID: application_generate_entity.workflow_execution_id,

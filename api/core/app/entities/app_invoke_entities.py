@@ -220,6 +220,7 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig
     workflow_execution_id: str
+    user_email: Optional[str] = None
 
     class SingleIterationRunEntity(BaseModel):
         """

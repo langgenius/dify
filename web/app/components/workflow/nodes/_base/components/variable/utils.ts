@@ -210,6 +210,10 @@ const formatItem = (
         type: VarType.string,
       })
       res.vars.push({
+        variable: 'sys.user_email',
+        type: VarType.string,
+      })
+      res.vars.push({
         variable: 'sys.files',
         type: VarType.arrayFile,
       })

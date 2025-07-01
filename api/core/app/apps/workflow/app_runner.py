@@ -16,8 +16,8 @@ from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.enums import UserFrom
-from models.model import App, EndUser
-from models.workflow import WorkflowType
+from models.model import Account, App, EndUser
+from models.workflow import Workflow, WorkflowType
 
 logger = logging.getLogger(__name__)
 
@@ -54,12 +54,20 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         app_config = cast(WorkflowAppConfig, app_config)
 
         user_id = None
+        user_email = None
         if self.application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
             end_user = db.session.query(EndUser).filter(EndUser.id == self.application_generate_entity.user_id).first()
             if end_user:
                 user_id = end_user.session_id
         else:
             user_id = self.application_generate_entity.user_id
+
+        # 获取 workflow 创建者邮箱
+        workflow_obj = db.session.query(Workflow).filter(Workflow.id == app_config.workflow_id).first()
+        if workflow_obj:
+            creator_account = db.session.query(Account).filter(Account.id == workflow_obj.created_by).first()
+            if creator_account:
+                user_email = creator_account.email
 
         app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
         if not app_record:
@@ -98,10 +106,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             system_inputs = {
                 SystemVariableKey.FILES: files,
                 SystemVariableKey.USER_ID: user_id,
+                SystemVariableKey.USER_EMAIL: user_email,
                 SystemVariableKey.APP_ID: app_config.app_id,
                 SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
                 SystemVariableKey.WORKFLOW_EXECUTION_ID: self.application_generate_entity.workflow_execution_id,
             }
+            logger.info(f"[sys.user_email debug] system_inputs={system_inputs}")
 
             variable_pool = VariablePool(
                 system_variables=system_inputs,
