@@ -10,7 +10,7 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveDownloadFileRequest,
     WebsiteCrawlMessage,
 )
-from core.plugin.entities.plugin import GenericProviderID, ToolProviderID
+from core.plugin.entities.plugin import DatasourceProviderID, GenericProviderID
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDatasourceProviderEntity,
@@ -61,7 +61,7 @@ class PluginDatasourceManager(BasePluginClient):
         if provider_id == "langgenius/file/file":
             return PluginDatasourceProviderEntity(**self._get_local_file_datasource_provider())
 
-        tool_provider_id = ToolProviderID(provider_id)
+        tool_provider_id = DatasourceProviderID(provider_id)
 
         def transformer(json_response: dict[str, Any]) -> dict:
             data = json_response.get("data")
