@@ -1,7 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import dayjs from 'dayjs'
 import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -45,7 +44,7 @@ export default function AccountAbout({
 
           <div className='text-center text-xs font-normal text-text-tertiary'>Version {langeniusVersionInfo?.current_version}</div>
           <div className='flex flex-col items-center gap-2 text-center text-xs font-normal text-text-secondary'>
-            <div>© {dayjs().year()} LangGenius, Inc., Contributors.</div>
+
             <div className='text-text-accent'>
               {
                 IS_CE_EDITION
