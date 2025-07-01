@@ -683,6 +683,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Eingabevariable',
+      outputVars: {
+        isSuccess: 'Ist Erfolg. Bei Erfolg beträgt der Wert 1, bei Misserfolg beträgt der Wert 0.',
+        errorReason: 'Fehlergrund',
+        usage: 'Nutzungsinformationen des Modells',
+      },
       extractParameters: 'Parameter extrahieren',
       importFromTool: 'Aus Tools importieren',
       addExtractParameter: 'Extraktionsparameter hinzufügen',
@@ -702,8 +707,6 @@ const translation = {
       advancedSetting: 'Erweiterte Einstellung',
       reasoningMode: 'Schlussfolgerungsmodus',
       reasoningModeTip: 'Sie können den entsprechenden Schlussfolgerungsmodus basierend auf der Fähigkeit des Modells wählen, auf Anweisungen zur Funktionsaufruf- oder Eingabeaufforderungen zu reagieren.',
-      isSuccess: 'Ist Erfolg. Bei Erfolg beträgt der Wert 1, bei Misserfolg beträgt der Wert 0.',
-      errorReason: 'Fehlergrund',
     },
     iteration: {
       deleteTitle: 'Iterationsknoten löschen?',

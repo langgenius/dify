@@ -687,6 +687,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Input Variable',
+      outputVars: {
+        isSuccess: 'Is Success.On success the value is 1, on failure the value is 0.',
+        errorReason: 'Error Reason',
+        usage: 'Model Usage Information',
+      },
       extractParameters: 'Extract Parameters',
       importFromTool: 'Import from tools',
       addExtractParameter: 'Add Extract Parameter',
@@ -706,8 +711,6 @@ const translation = {
       advancedSetting: 'Advanced Setting',
       reasoningMode: 'Reasoning Mode',
       reasoningModeTip: 'You can choose the appropriate reasoning mode based on the model\'s ability to respond to instructions for function calling or prompts.',
-      isSuccess: 'Is Success.On success the value is 1, on failure the value is 0.',
-      errorReason: 'Error Reason',
     },
     iteration: {
       deleteTitle: 'Delete Iteration Node?',

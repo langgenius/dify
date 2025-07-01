@@ -683,6 +683,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '입력 변수',
+      outputVars: {
+        isSuccess: '성공 여부. 성공 시 값은 1 이고, 실패 시 값은 0 입니다.',
+        errorReason: '오류 원인',
+        usage: '모델 사용 정보',
+      },
       extractParameters: '매개변수 추출',
       importFromTool: '도구에서 가져오기',
       addExtractParameter: '추출 매개변수 추가',
@@ -702,8 +707,6 @@ const translation = {
       advancedSetting: '고급 설정',
       reasoningMode: '추론 모드',
       reasoningModeTip: '모델의 함수 호출 또는 프롬프트에 대한 지시 응답 능력을 기반으로 적절한 추론 모드를 선택할 수 있습니다.',
-      isSuccess: '성공 여부. 성공 시 값은 1 이고, 실패 시 값은 0 입니다.',
-      errorReason: '오류 원인',
     },
     iteration: {
       deleteTitle: '반복 노드를 삭제하시겠습니까?',

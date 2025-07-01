@@ -684,6 +684,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '輸入變量',
+      outputVars: {
+        isSuccess: '是否成功。成功時值為 1，失敗時值為 0。',
+        errorReason: '錯誤原因',
+        usage: '模型用量信息',
+      },
       extractParameters: '提取參數',
       importFromTool: '從工具導入',
       addExtractParameter: '添加提取參數',
@@ -703,8 +708,6 @@ const translation = {
       advancedSetting: '高級設置',
       reasoningMode: '推理模式',
       reasoningModeTip: '你可以根據模型對於 Function calling 或 Prompt 的指令響應能力選擇合適的推理模式',
-      isSuccess: '是否成功。成功時值為 1，失敗時值為 0。',
-      errorReason: '錯誤原因',
     },
     iteration: {
       deleteTitle: '刪除迭代節點？',

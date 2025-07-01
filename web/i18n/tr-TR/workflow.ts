@@ -684,6 +684,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Giriş Değişkeni',
+      outputVars: {
+        isSuccess: 'Başarılı mı. Başarılı olduğunda değer 1, başarısız olduğunda değer 0\'dır.',
+        errorReason: 'Hata Nedeni',
+        usage: 'Model Kullanım Bilgileri',
+      },
       extractParameters: 'Parametreleri Çıkar',
       importFromTool: 'Araçlardan içe aktar',
       addExtractParameter: 'Çıkarma Parametresi Ekle',
@@ -703,8 +708,6 @@ const translation = {
       advancedSetting: 'Gelişmiş Ayarlar',
       reasoningMode: 'Akıl Yürütme Modu',
       reasoningModeTip: 'Modelin fonksiyon çağırma veya istemler için talimatlara yanıt verme yeteneğine bağlı olarak uygun akıl yürütme modunu seçebilirsiniz.',
-      isSuccess: 'Başarılı mı. Başarılı olduğunda değer 1, başarısız olduğunda değer 0\'dır.',
-      errorReason: 'Hata Nedeni',
     },
     iteration: {
       deleteTitle: 'Yineleme Düğümünü Sil?',

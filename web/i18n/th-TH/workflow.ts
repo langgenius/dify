@@ -682,6 +682,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'ตัวแปรอินพุต',
+      outputVars: {
+        isSuccess: 'คือ Success เมื่อสําเร็จค่าคือ 1 เมื่อล้มเหลวค่าเป็น 0',
+        errorReason: 'สาเหตุข้อผิดพลาด',
+        usage: 'ข้อมูลการใช้งานรุ่น',
+      },
       extractParameters: 'แยกพารามิเตอร์',
       importFromTool: 'นําเข้าจากเครื่องมือ',
       addExtractParameter: 'เพิ่มพารามิเตอร์การแยกข้อมูล',
@@ -701,8 +706,6 @@ const translation = {
       advancedSetting: 'การตั้งค่าขั้นสูง',
       reasoningMode: 'โหมดการให้เหตุผล',
       reasoningModeTip: 'คุณสามารถเลือกโหมดการให้เหตุผลที่เหมาะสมตามความสามารถของโมเดลในการตอบสนองต่อคําแนะนําสําหรับการเรียกใช้ฟังก์ชันหรือข้อความแจ้ง',
-      isSuccess: 'คือ Success เมื่อสําเร็จค่าคือ 1 เมื่อล้มเหลวค่าเป็น 0',
-      errorReason: 'สาเหตุข้อผิดพลาด',
     },
     iteration: {
       deleteTitle: 'ลบโหนดการทําซ้ํา?',

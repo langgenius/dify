@@ -681,6 +681,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Variable de entrada',
+      outputVars: {
+        isSuccess: 'Es éxito. En caso de éxito el valor es 1, en caso de fallo el valor es 0.',
+        errorReason: 'Motivo del error',
+        usage: 'Información de uso del modelo',
+      },
       extractParameters: 'Extraer parámetros',
       importFromTool: 'Importar desde herramientas',
       addExtractParameter: 'Agregar parámetro de extracción',
@@ -700,8 +705,6 @@ const translation = {
       advancedSetting: 'Configuración avanzada',
       reasoningMode: 'Modo de razonamiento',
       reasoningModeTip: 'Puede elegir el modo de razonamiento apropiado basado en la capacidad del modelo para responder a instrucciones para llamadas de funciones o indicaciones.',
-      isSuccess: 'Es éxito. En caso de éxito el valor es 1, en caso de fallo el valor es 0.',
-      errorReason: 'Motivo del error',
     },
     iteration: {
       deleteTitle: '¿Eliminar nodo de iteración?',

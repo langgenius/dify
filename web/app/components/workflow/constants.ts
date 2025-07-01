@@ -554,6 +554,10 @@ export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
     variable: '__reason',
     type: VarType.string,
   },
+  {
+    variable: 'usage',
+    type: VarType.object,
+  },
 ]
 
 export const FILE_STRUCT: Var[] = [

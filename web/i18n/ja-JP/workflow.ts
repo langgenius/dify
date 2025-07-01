@@ -690,6 +690,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: '入力変数',
+      outputVars: {
+        isSuccess: '成功。成功した場合の値は 1、失敗した場合の値は 0 です。',
+        errorReason: 'エラーの理由',
+        usage: 'モデル使用量',
+      },
       extractParameters: 'パラメーターを抽出',
       importFromTool: 'ツールからインポート',
       addExtractParameter: '抽出パラメーターを追加',
@@ -709,8 +714,6 @@ const translation = {
       advancedSetting: '高度な設定',
       reasoningMode: '推論モード',
       reasoningModeTip: '関数呼び出しやプロンプトの指示に応答するモデルの能力に基づいて、適切な推論モードを選択できます。',
-      isSuccess: '成功。成功した場合の値は 1、失敗した場合の値は 0 です。',
-      errorReason: 'エラーの理由',
     },
     iteration: {
       deleteTitle: 'イテレーションノードを削除しますか？',

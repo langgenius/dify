@@ -683,6 +683,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Biến đầu vào',
+      outputVars: {
+        isSuccess: 'Thành công. Khi thành công giá trị là 1, khi thất bại giá trị là 0.',
+        errorReason: 'Lý do lỗi',
+        usage: 'Thông tin sử dụng mô hình',
+      },
       extractParameters: 'Trích xuất tham số',
       importFromTool: 'Nhập từ công cụ',
       addExtractParameter: 'Thêm tham số trích xuất',
@@ -702,8 +707,6 @@ const translation = {
       advancedSetting: 'Cài đặt nâng cao',
       reasoningMode: 'Chế độ suy luận',
       reasoningModeTip: 'Bạn có thể chọn chế độ suy luận phù hợp dựa trên khả năng của mô hình để phản hồi các hướng dẫn về việc gọi hàm hoặc prompt.',
-      isSuccess: 'Thành công. Khi thành công giá trị là 1, khi thất bại giá trị là 0.',
-      errorReason: 'Lý do lỗi',
     },
     iteration: {
       deleteTitle: 'Xóa nút lặp?',

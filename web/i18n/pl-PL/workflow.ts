@@ -683,6 +683,11 @@ const translation = {
     },
     parameterExtractor: {
       inputVar: 'Zmienna wejściowa',
+      outputVars: {
+        isSuccess: 'Czy się udało. W przypadku sukcesu wartość wynosi 1, w przypadku niepowodzenia wartość wynosi 0.',
+        errorReason: 'Powód błędu',
+        usage: 'Informacje o użyciu modelu',
+      },
       extractParameters: 'Wyodrębnij parametry',
       importFromTool: 'Importuj z narzędzi',
       addExtractParameter: 'Dodaj parametr wyodrębniania',
@@ -702,8 +707,6 @@ const translation = {
       advancedSetting: 'Zaawansowane ustawienia',
       reasoningMode: 'Tryb wnioskowania',
       reasoningModeTip: 'Możesz wybrać odpowiedni tryb wnioskowania w zależności od zdolności modelu do reagowania na instrukcje dotyczące wywoływania funkcji lub zapytań.',
-      isSuccess: 'Czy się udało. W przypadku sukcesu wartość wynosi 1, w przypadku niepowodzenia wartość wynosi 0.',
-      errorReason: 'Powód błędu',
     },
     iteration: {
       deleteTitle: 'Usunąć węzeł iteracji?',
