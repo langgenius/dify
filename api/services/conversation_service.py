@@ -146,7 +146,7 @@ class ConversationService:
 
     @classmethod
     def get_conversation(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]],invoke_from: InvokeFrom =None):
-        if invoke_from and  invoke_from==invoke_from.SERVICE_API:
+        if invoke_from and invoke_from == InvokeFrom.SERVICE_API:
             conversation = (
                 db.session.query(Conversation)
                 .filter(
