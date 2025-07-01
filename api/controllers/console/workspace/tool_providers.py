@@ -733,7 +733,7 @@ class ToolMCPDetailApi(Resource):
     def get(self, provider_id):
         user = current_user
         provider = MCPToolManageService.get_mcp_provider_by_provider_id(provider_id, user.current_tenant_id)
-        return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider))
+        return jsonable_encoder(ToolTransformService.mcp_provider_to_user_provider(provider, for_list=True))
 
 
 class ToolMCPListAllApi(Resource):

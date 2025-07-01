@@ -93,7 +93,7 @@ class MCPToolManageService:
         )
         db.session.add(mcp_tool)
         db.session.commit()
-        return ToolTransformService.mcp_provider_to_user_provider(mcp_tool)
+        return ToolTransformService.mcp_provider_to_user_provider(mcp_tool, for_list=True)
 
     @staticmethod
     def retrieve_mcp_tools(tenant_id: str, for_list: bool = False) -> list[ToolProviderApiEntity]:
