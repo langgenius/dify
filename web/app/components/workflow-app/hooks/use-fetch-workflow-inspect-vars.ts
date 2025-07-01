@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useStoreApi } from 'reactflow'
@@ -14,7 +15,7 @@ export const useSetWorkflowVarsWithValue = () => {
   const invalidateSysVarValues = useInvalidateSysVarValues(appId)
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
 
-  const setInspectVarsToStore = (inspectVars: VarInInspect[]) => {
+  const setInspectVarsToStore = useCallback((inspectVars: VarInInspect[]) => {
     const { getNodes } = store.getState()
     const nodeArr = getNodes()
     const nodesKeyValue: Record<string, Node> = {}
@@ -52,15 +53,15 @@ export const useSetWorkflowVarsWithValue = () => {
       return nodeWithVar
     })
     setNodesWithInspectVars(res)
-  }
+  }, [setNodesWithInspectVars, store])
 
-  const fetchInspectVars = async () => {
+  const fetchInspectVars = useCallback(async () => {
     invalidateConversationVarValues()
     invalidateSysVarValues()
     const data = await fetchAllInspectVars(appId)
     setInspectVarsToStore(data)
     handleCancelAllNodeSuccessStatus() // to make sure clear node output show the unset status
-  }
+  }, [appId, invalidateConversationVarValues, invalidateSysVarValues, setInspectVarsToStore, handleCancelAllNodeSuccessStatus])
   return {
     fetchInspectVars,
   }
