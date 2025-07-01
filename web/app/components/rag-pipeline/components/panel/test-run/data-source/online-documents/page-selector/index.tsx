@@ -6,7 +6,7 @@ import Item from './item'
 import { recursivePushInParentDescendants } from './utils'
 
 type PageSelectorProps = {
-  value: Set<string>
+  checkedIds: Set<string>
   disabledValue: Set<string>
   searchValue: string
   pagesMap: DataSourceNotionPageMap
@@ -16,6 +16,7 @@ type PageSelectorProps = {
   previewPageId?: string
   onPreview?: (selectedPageId: string) => void
   isMultipleChoice?: boolean
+  currentWorkspaceId: string
 }
 
 export type NotionPageTreeItem = {
@@ -33,7 +34,7 @@ type NotionPageItem = {
 } & DataSourceNotionPage
 
 const PageSelector = ({
-  value,
+  checkedIds,
   disabledValue,
   searchValue,
   pagesMap,
@@ -43,24 +44,22 @@ const PageSelector = ({
   previewPageId,
   onPreview,
   isMultipleChoice = true,
+  currentWorkspaceId,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
-  const [prevDataList, setPrevDataList] = useState(list)
   const [dataList, setDataList] = useState<NotionPageItem[]>([])
   const [localPreviewPageId, setLocalPreviewPageId] = useState('')
 
   useEffect(() => {
-    if (prevDataList !== list) {
-      setPrevDataList(list)
-      setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
-        return {
-          ...item,
-          expand: false,
-          depth: 0,
-        }
-      }))
-    }
-  }, [prevDataList, list, pagesMap])
+    setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
+      return {
+        ...item,
+        expand: false,
+        depth: 0,
+      }
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentWorkspaceId])
 
   const searchDataList = list.filter((item) => {
     return item.page_name.includes(searchValue)
@@ -108,13 +107,14 @@ const PageSelector = ({
           expand: false,
           depth: listMapWithChildrenAndDescendants[item].depth,
         })),
-        ...dataList.slice(index + 1)]
+        ...dataList.slice(index + 1),
+      ]
     }
     setDataList(newDataList)
   }, [dataList, listMapWithChildrenAndDescendants, pagesMap])
 
   const handleCheck = useCallback((index: number) => {
-    const copyValue = new Set([...value])
+    const copyValue = new Set([...checkedIds])
     const current = currentDataList[index]
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
@@ -143,7 +143,7 @@ const PageSelector = ({
     }
 
     onSelect(new Set([...copyValue]))
-  }, [currentDataList, isMultipleChoice, listMapWithChildrenAndDescendants, onSelect, searchValue, value])
+  }, [currentDataList, isMultipleChoice, listMapWithChildrenAndDescendants, onSelect, searchValue, checkedIds])
 
   const handlePreview = useCallback((index: number) => {
     const current = currentDataList[index]
@@ -174,7 +174,7 @@ const PageSelector = ({
       itemData={{
         dataList: currentDataList,
         handleToggle,
-        checkedIds: value,
+        checkedIds,
         disabledCheckedIds: disabledValue,
         handleCheck,
         canPreview,

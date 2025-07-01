@@ -15,7 +15,6 @@ type NotionPageSelectorProps = {
   previewPageId?: string
   onPreview?: (selectedPage: NotionPage) => void
   datasetId?: string
-  isInPipeline?: boolean
 }
 
 const NotionPageSelector = ({
@@ -25,7 +24,6 @@ const NotionPageSelector = ({
   previewPageId,
   onPreview,
   datasetId = '',
-  isInPipeline = false,
 }: NotionPageSelectorProps) => {
   const { data, refetch } = usePreImportNotionPages({ url: '/notion/pre-import/pages', datasetId })
   const [prevData, setPrevData] = useState(data)
@@ -98,7 +96,6 @@ const NotionPageSelector = ({
           ? (
             <div className='flex flex-col gap-y-2'>
               <Header
-                isInPipeline={isInPipeline}
                 onClickConfiguration={handleConfigureNotion}
                 title={'Choose notion pages'}
                 buttonText={'Configure Notion'}

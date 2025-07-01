@@ -8,7 +8,7 @@ import type { NotionPage } from '@/models/common'
 import OnlineDocuments from '@/app/components/rag-pipeline/components/panel/test-run/data-source/online-documents'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 import WebsiteCrawl from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website-crawl'
-import Actions from './data-source/actions'
+import Actions from './actions'
 import { useTranslation } from 'react-i18next'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import LeftHeader from './left-header'
@@ -61,6 +61,15 @@ const CreateFormPipeline = () => {
     hideFilePreview,
   } = useLocalFile()
   const {
+    documentsData,
+    setDocumentsData,
+    searchValue,
+    setSearchValue,
+    currentWorkspaceId,
+    setCurrentWorkspaceId,
+    PagesMapAndSelectedPagesId,
+    selectedPagesId,
+    setSelectedPagesId,
     onlineDocuments,
     previewOnlineDocument,
     updateOnlineDocuments,
@@ -261,9 +270,17 @@ const CreateFormPipeline = () => {
                   )}
                   {datasourceType === DatasourceType.onlineDocument && (
                     <OnlineDocuments
+                      documentsData={documentsData}
+                      setDocumentsData={setDocumentsData}
+                      searchValue={searchValue}
+                      setSearchValue={setSearchValue}
+                      currentWorkspaceId={currentWorkspaceId}
+                      setCurrentWorkspaceId={setCurrentWorkspaceId}
+                      PagesMapAndSelectedPagesId={PagesMapAndSelectedPagesId}
+                      selectedPagesId={selectedPagesId}
+                      setSelectedPagesId={setSelectedPagesId}
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
-                      pageIdList={onlineDocuments.map(doc => doc.page_id)}
                       onSelect={updateOnlineDocuments}
                       onPreview={updateCurrentPage}
                     />

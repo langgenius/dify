@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import WorkspaceSelector from '@/app/components/base/notion-page-selector/workspace-selector'
 import SearchInput from '@/app/components/base/notion-page-selector/search-input'
 import PageSelector from './page-selector'
@@ -12,28 +12,41 @@ import type { DataSourceNodeCompletedResponse } from '@/types/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 
 type OnlineDocumentsProps = {
-  pageIdList?: string[]
   onSelect: (selectedPages: NotionPage[]) => void
   previewPageId?: string
   onPreview?: (selectedPage: NotionPage) => void
   isInPipeline?: boolean
   nodeId: string
   nodeData: DataSourceNodeType
+  documentsData: DataSourceNotionWorkspace[]
+  setDocumentsData: (documentsData: DataSourceNotionWorkspace[]) => void
+  searchValue: string
+  setSearchValue: (value: string) => void
+  currentWorkspaceId: string
+  setCurrentWorkspaceId: (workspaceId: string) => void
+  PagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>]
+  selectedPagesId: Set<string>
+  setSelectedPagesId: (selectedPagesId: Set<string>) => void
 }
 
 const OnlineDocuments = ({
-  pageIdList,
   onSelect,
   previewPageId,
   onPreview,
   isInPipeline = false,
   nodeId,
   nodeData,
+  documentsData,
+  setDocumentsData,
+  searchValue,
+  setSearchValue,
+  currentWorkspaceId,
+  setCurrentWorkspaceId,
+  PagesMapAndSelectedPagesId,
+  selectedPagesId,
+  setSelectedPagesId,
 }: OnlineDocumentsProps) => {
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const [documentsData, setDocumentsData] = useState<DataSourceNotionWorkspace[]>([])
-  const [searchValue, setSearchValue] = useState('')
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
 
   const datasourceNodeRunURL = !isInPipeline
     ? `/rag/pipelines/${pipelineId}/workflows/published/datasource/nodes/${nodeId}/run`
@@ -51,6 +64,7 @@ const OnlineDocuments = ({
       {
         onDataSourceNodeCompleted: (documentsData: DataSourceNodeCompletedResponse) => {
           setDocumentsData(documentsData.data as DataSourceNotionWorkspace[])
+          setCurrentWorkspaceId(documentsData.data[0].workspace_id)
         },
         onError: (message: string) => {
           Toast.notify({
@@ -60,61 +74,35 @@ const OnlineDocuments = ({
         },
       },
     )
-  }, [datasourceNodeRunURL])
+  }, [datasourceNodeRunURL, setCurrentWorkspaceId, setDocumentsData])
 
   useEffect(() => {
-    getOnlineDocuments()
+    if (!documentsData.length)
+      getOnlineDocuments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const firstWorkspaceId = documentsData[0]?.workspace_id
   const currentWorkspace = documentsData.find(workspace => workspace.workspace_id === currentWorkspaceId)
-
-  const PagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
-    const selectedPagesId = new Set<string>()
-    const boundPagesId = new Set<string>()
-    const pagesMap = documentsData.reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
-      next.pages.forEach((page) => {
-        if (page.is_bound) {
-          selectedPagesId.add(page.page_id)
-          boundPagesId.add(page.page_id)
-        }
-        prev[page.page_id] = {
-          ...page,
-          workspace_id: next.workspace_id,
-        }
-      })
-
-      return prev
-    }, {})
-    return [pagesMap, selectedPagesId, boundPagesId]
-  }, [documentsData])
-  const defaultSelectedPagesId = [...Array.from(PagesMapAndSelectedPagesId[1]), ...(pageIdList || [])]
-  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
 
   const handleSearchValueChange = useCallback((value: string) => {
     setSearchValue(value)
-  }, [])
+  }, [setSearchValue])
 
   const handleSelectWorkspace = useCallback((workspaceId: string) => {
     setCurrentWorkspaceId(workspaceId)
-  }, [])
+  }, [setCurrentWorkspaceId])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[0][pageId])
 
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     onSelect(selectedPages)
-  }, [onSelect, PagesMapAndSelectedPagesId])
+  }, [setSelectedPagesId, onSelect, PagesMapAndSelectedPagesId])
 
   const handlePreviewPage = useCallback((previewPageId: string) => {
     if (onPreview)
       onPreview(PagesMapAndSelectedPagesId[0][previewPageId])
   }, [PagesMapAndSelectedPagesId, onPreview])
-
-  useEffect(() => {
-    setCurrentWorkspaceId(firstWorkspaceId)
-  }, [firstWorkspaceId])
 
   const headerInfo = useMemo(() => {
     return {
@@ -137,7 +125,7 @@ const OnlineDocuments = ({
         <div className='flex h-12 items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-2'>
           <div className='flex grow items-center gap-x-1'>
             <WorkspaceSelector
-              value={currentWorkspaceId || firstWorkspaceId}
+              value={currentWorkspaceId}
               items={documentsData}
               onSelect={handleSelectWorkspace}
             />
@@ -149,7 +137,7 @@ const OnlineDocuments = ({
         </div>
         <div className='overflow-hidden rounded-b-xl'>
           <PageSelector
-            value={selectedPagesId}
+            checkedIds={selectedPagesId}
             disabledValue={PagesMapAndSelectedPagesId[2]}
             searchValue={searchValue}
             list={currentWorkspace?.pages || []}
@@ -159,6 +147,7 @@ const OnlineDocuments = ({
             previewPageId={previewPageId}
             onPreview={handlePreviewPage}
             isMultipleChoice={!isInPipeline}
+            currentWorkspaceId={currentWorkspaceId}
           />
         </div>
       </div>

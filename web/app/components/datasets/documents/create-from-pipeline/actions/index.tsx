@@ -8,6 +8,7 @@ import Link from 'next/link'
 type ActionsProps = {
   disabled?: boolean
   handleNextStep: () => void
+  showSelect?: boolean
 }
 
 const Actions = ({

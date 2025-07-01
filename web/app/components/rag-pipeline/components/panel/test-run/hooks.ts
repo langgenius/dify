@@ -8,7 +8,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { CrawlResult } from '@/models/datasets'
 import { type CrawlResultItem, CrawlStep, type FileItem } from '@/models/datasets'
 import produce from 'immer'
-import type { NotionPage } from '@/models/common'
+import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 
 export const useTestRunSteps = () => {
   const { t } = useTranslation()
@@ -107,13 +107,47 @@ export const useLocalFile = () => {
 }
 
 export const useOnlineDocuments = () => {
+  const [documentsData, setDocumentsData] = useState<DataSourceNotionWorkspace[]>([])
+  const [searchValue, setSearchValue] = useState('')
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
   const [onlineDocuments, setOnlineDocuments] = useState<NotionPage[]>([])
+
+  const PagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
+    const selectedPagesId = new Set<string>()
+    const boundPagesId = new Set<string>()
+    const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
+      next.pages.forEach((page) => {
+        if (page.is_bound) {
+          selectedPagesId.add(page.page_id)
+          boundPagesId.add(page.page_id)
+        }
+        prev[page.page_id] = {
+          ...page,
+          workspace_id: next.workspace_id,
+        }
+      })
+
+      return prev
+    }, {})
+    return [pagesMap, selectedPagesId, boundPagesId]
+  }, [documentsData])
+  const defaultSelectedPagesId = [...Array.from(PagesMapAndSelectedPagesId[1]), ...(onlineDocuments.map(doc => doc.page_id) || [])]
+  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
 
   const updateOnlineDocuments = (value: NotionPage[]) => {
     setOnlineDocuments(value)
   }
 
   return {
+    documentsData,
+    setDocumentsData,
+    searchValue,
+    setSearchValue,
+    currentWorkspaceId,
+    setCurrentWorkspaceId,
+    PagesMapAndSelectedPagesId,
+    selectedPagesId,
+    setSelectedPagesId,
     onlineDocuments,
     updateOnlineDocuments,
   }

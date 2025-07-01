@@ -32,6 +32,15 @@ const TestRunPanel = () => {
     updateFileList,
   } = useLocalFile()
   const {
+    documentsData,
+    setDocumentsData,
+    searchValue,
+    setSearchValue,
+    currentWorkspaceId,
+    setCurrentWorkspaceId,
+    PagesMapAndSelectedPagesId,
+    selectedPagesId,
+    setSelectedPagesId,
     onlineDocuments,
     updateOnlineDocuments,
   } = useOnlineDocuments()
@@ -125,9 +134,17 @@ const TestRunPanel = () => {
                 )}
                 {datasourceType === DatasourceType.onlineDocument && (
                   <OnlineDocuments
+                    documentsData={documentsData}
+                    setDocumentsData={setDocumentsData}
+                    searchValue={searchValue}
+                    setSearchValue={setSearchValue}
+                    currentWorkspaceId={currentWorkspaceId}
+                    setCurrentWorkspaceId={setCurrentWorkspaceId}
+                    PagesMapAndSelectedPagesId={PagesMapAndSelectedPagesId}
+                    selectedPagesId={selectedPagesId}
+                    setSelectedPagesId={setSelectedPagesId}
                     nodeId={datasource!.nodeId}
                     nodeData={datasource!.nodeData}
-                    pageIdList={onlineDocuments.map(doc => doc.page_id)}
                     onSelect={updateOnlineDocuments}
                     isInPipeline
                   />
