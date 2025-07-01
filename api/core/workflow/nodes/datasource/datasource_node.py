@@ -9,8 +9,10 @@ from core.datasource.entities.datasource_entities import (
     DatasourceParameter,
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
+    OnlineDriveDownloadFileRequest,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
+from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.utils.message_transformer import DatasourceFileMessageTransformer
 from core.file import File
 from core.file.enums import FileTransferMethod, FileType
@@ -125,7 +127,31 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                         parameters_for_log=parameters_for_log,
                         datasource_info=datasource_info,
                     )
-
+                case DatasourceProviderType.ONLINE_DRIVE:
+                    datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
+                    datasource_provider_service = DatasourceProviderService()
+                    credentials = datasource_provider_service.get_real_datasource_credentials(
+                        tenant_id=self.tenant_id,
+                        provider=node_data.provider_name,
+                        plugin_id=node_data.plugin_id,
+                    )
+                    if credentials:
+                        datasource_runtime.runtime.credentials = credentials[0].get("credentials")
+                    online_drive_result: Generator[DatasourceMessage, None, None] = (
+                        datasource_runtime.online_drive_download_file(
+                            user_id=self.user_id,
+                            request=OnlineDriveDownloadFileRequest(
+                                key=datasource_info.get("key"),
+                                bucket=datasource_info.get("bucket"),
+                            ),
+                            provider_type=datasource_type,
+                        )
+                    )
+                    yield from self._transform_message(
+                        messages=online_drive_result,
+                        parameters_for_log=parameters_for_log,
+                        datasource_info=datasource_info,
+                    )
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     yield RunCompletedEvent(
                         run_result=NodeRunResult(
