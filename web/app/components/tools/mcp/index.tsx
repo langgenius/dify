@@ -35,7 +35,7 @@ const MCPList = ({
   searchText,
 }: Props) => {
   const { data: list = [] as ToolWithProvider[], refetch } = useAllToolProviders()
-  const [isCreation, setIsCreation] = useState<boolean>(false)
+  const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
     return list.filter((collection) => {
@@ -54,9 +54,14 @@ const MCPList = ({
   const handleCreate = async (provider: ToolWithProvider) => {
     await refetch() // update list
     setCurrentProviderID(provider.id)
-    setIsCreation(true)
+    setIsTriggerAuthorize(true)
   }
 
+  const handleUpdate = async (providerID: string) => {
+    await refetch() // update list
+    setCurrentProviderID(providerID)
+    setIsTriggerAuthorize(true)
+  }
   return (
     <>
       <div
@@ -72,7 +77,8 @@ const MCPList = ({
             data={provider}
             currentProvider={currentProvider as ToolWithProvider}
             handleSelect={setCurrentProviderID}
-            onUpdate={refetch}
+            onUpdate={handleUpdate}
+            onDeleted={refetch}
           />
         ))}
         {!list.length && renderDefaultCard()}
@@ -82,8 +88,8 @@ const MCPList = ({
           detail={currentProvider as ToolWithProvider}
           onHide={() => setCurrentProviderID(undefined)}
           onUpdate={refetch}
-          isCreation={isCreation}
-          onFirstCreate={() => setIsCreation(false)}
+          isTriggerAuthorize={isTriggerAuthorize}
+          onFirstCreate={() => setIsTriggerAuthorize(false)}
         />
       )}
     </>

@@ -10,7 +10,7 @@ type Props = {
   detail?: ToolWithProvider
   onUpdate: () => void
   onHide: () => void
-  isCreation: boolean
+  isTriggerAuthorize: boolean
   onFirstCreate: () => void
 }
 
@@ -18,7 +18,7 @@ const MCPDetailPanel: FC<Props> = ({
   detail,
   onUpdate,
   onHide,
-  isCreation,
+  isTriggerAuthorize,
   onFirstCreate,
 }) => {
   const handleUpdate = (isDelete = false) => {
@@ -45,7 +45,7 @@ const MCPDetailPanel: FC<Props> = ({
           detail={detail}
           onHide={onHide}
           onUpdate={handleUpdate}
-          isCreation={isCreation}
+          isTriggerAuthorize={isTriggerAuthorize}
           onFirstCreate={onFirstCreate}
         />
       )}
