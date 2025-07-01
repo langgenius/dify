@@ -193,6 +193,8 @@ const translation = {
     updateTools: '更新工具中...',
     toolsEmpty: '工具未加载',
     getTools: '获取工具',
+    toolUpdateConfirmTitle: '更新工具列表',
+    toolUpdateConfirmContent: '更新工具列表可能影响现有应用。您想继续吗？',
     toolsNum: '包含 {{count}} 个工具',
     onlyTool: '包含 1 个工具',
     identifier: '服务器标识符 (点击复制)',
