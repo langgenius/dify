@@ -27,6 +27,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
+from libs.datetime_utils import naive_utc_now
 
 
 @dataclass
@@ -160,7 +161,7 @@ class WorkflowCycleManager:
         exceptions_count: int = 0,
     ) -> WorkflowExecution:
         workflow_execution = self._get_workflow_execution_or_raise_error(workflow_run_id)
-        now = datetime.now(UTC).replace(tzinfo=None)
+        now = naive_utc_now()
 
         workflow_execution.status = WorkflowExecutionStatus(status.value)
         workflow_execution.error_message = error_message
