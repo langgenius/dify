@@ -26,7 +26,7 @@ const CopyFeedbackNew = ({ content }: Props) => {
   }, 100)
 
   return (
-    <div className='inline-flex pb-0.5' onClick={e => e.stopPropagation()}>
+    <div className='inline-flex pb-0.5' onClick={e => e.stopPropagation()} onMouseLeave={onMouseLeave}>
       <Tooltip
         popupContent={
           (isCopied
@@ -37,12 +37,11 @@ const CopyFeedbackNew = ({ content }: Props) => {
         <div
           className='group/copy flex items-center gap-0.5 '
           onClick={onClickCopy}
-          onMouseLeave={onMouseLeave}
         >
           <div
             className='system-2xs-regular cursor-pointer text-text-quaternary group-hover:text-text-tertiary'
           >{content}</div>
-          <RiFileCopyLine className='hidden h-3 w-3 text-text-tertiary group-hover/copy:block' />
+          <RiFileCopyLine className='h-3 w-3 text-text-tertiary opacity-0 group-hover/copy:opacity-100' />
         </div>
       </Tooltip>
     </div>
