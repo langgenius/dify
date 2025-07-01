@@ -389,6 +389,8 @@ const translation = {
     chunk: 'Kos',
     addChunk: 'Dodajanje kosa',
     childChunkAdded: 'Dodan je 1 kos otroka',
+    keywordDuplicate: 'Ključna beseda že obstaja',
+    keywordEmpty: 'Ključna beseda ne more biti prazna',
   },
 }
 
