@@ -387,6 +387,8 @@ const translation = {
     editedAt: '编辑于',
     expandChunks: '展开分段',
     collapseChunks: '折叠分段',
+    keywordEmpty: '关键词不能为空',
+    keywordDuplicate: '关键词已经存在',
   },
 }
 

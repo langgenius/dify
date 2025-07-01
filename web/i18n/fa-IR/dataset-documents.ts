@@ -388,6 +388,8 @@ const translation = {
     regeneratingMessage: 'این ممکن است یک لحظه طول بکشد، لطفا صبر کنید...',
     regenerationConfirmTitle: 'آیا می خواهید تکه های کودک را بازسازی کنید؟',
     regenerationSuccessMessage: 'می توانید این پنجره را ببندید.',
+    keywordEmpty: 'کلمه کلیدی نمی‌تواند خالی باشد',
+    keywordDuplicate: 'این کلیدواژه قبلاً وجود دارد',
   },
 }
 
