@@ -9,7 +9,7 @@ const BuiltInPipelineList = () => {
     return null
 
   return (
-    <div className='grid grow grid-cols-1 gap-3 overflow-y-auto px-16 pt-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
+    <div className='grid grid-cols-1 gap-3 py-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
       {list.map((pipeline, index) => (
         <TemplateCard
           key={index}

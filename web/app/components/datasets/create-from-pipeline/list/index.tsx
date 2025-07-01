@@ -20,18 +20,20 @@ const List = () => {
   }, [])
 
   return (
-    <div className='flex grow flex-col'>
+    <div className='flex grow flex-col overflow-hidden'>
       <Tab
         activeTab={activeTab}
         handleTabChange={handleTabChange}
         options={options}
       />
-      {
-        activeTab === 'built-in' && <BuiltInPipelineList />
-      }
-      {
-        activeTab === 'customized' && <CustomizedList />
-      }
+      <div className='grow overflow-y-auto px-16'>
+        {
+          activeTab === 'built-in' && <BuiltInPipelineList />
+        }
+        {
+          activeTab === 'customized' && <CustomizedList />
+        }
+      </div>
     </div>
   )
 }
