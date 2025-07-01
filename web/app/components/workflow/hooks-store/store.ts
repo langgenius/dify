@@ -7,6 +7,7 @@ import {
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
+import type { IOtherOptions } from '@/service/base'
 
 type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
@@ -22,11 +23,12 @@ type CommonHooksFnMap = {
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
-  handleRun: (...args: any[]) => void
+  handleRun: (params: any, callback?: IOtherOptions,) => void
   handleStopRun: (...args: any[]) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
+  fetchInspectVars: () => Promise<void>
 }
 
 export type Shape = {
@@ -45,6 +47,7 @@ export const createHooksStore = ({
   handleStartWorkflowRun = noop,
   handleWorkflowStartRunInWorkflow = noop,
   handleWorkflowStartRunInChatflow = noop,
+  fetchInspectVars = async () => noop(),
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
@@ -59,6 +62,7 @@ export const createHooksStore = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
+    fetchInspectVars,
   }))
 }
 

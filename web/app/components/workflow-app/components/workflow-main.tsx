@@ -8,6 +8,7 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
 import {
   useNodesSyncDraft,
+  useSetWorkflowVarsWithValue,
   useWorkflowRefreshDraft,
   useWorkflowRun,
   useWorkflowStartRun,
@@ -61,6 +62,7 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
   const hooksStore = useMemo(() => {
     return {
@@ -75,6 +77,7 @@ const WorkflowMain = ({
       handleStartWorkflowRun,
       handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow,
+      fetchInspectVars,
     }
   }, [
     syncWorkflowDraftWhenPageClose,
@@ -88,6 +91,7 @@ const WorkflowMain = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
+    fetchInspectVars,
   ])
 
   return (
