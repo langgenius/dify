@@ -233,6 +233,10 @@ const translation = {
     notSetDesc: 'Currently nobody can access the web app. Please set permissions.',
   },
   noAccessPermission: 'No permission to access web app',
+  checkLegacy: {
+    title: 'Apps affected by image upload legacy',
+    description: 'The current workspace has {{num}} applications affected, {{publishedNum}} of which have been published.',
+  },
 }
 
 export default translation

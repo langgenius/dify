@@ -234,6 +234,10 @@ const translation = {
     notSetDesc: '当前任何人都无法访问 Web 应用。请设置访问权限。',
   },
   noAccessPermission: '没有权限访问 web 应用',
+  checkLegacy: {
+    title: '受图像上传遗留问题影响的应用',
+    description: '当前工作区有 {{num}} 个应用受图像上传遗留问题影响，其中 {{publishedNum}} 个已发布。',
+  },
 }
 
 export default translation
