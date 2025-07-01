@@ -22,10 +22,10 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
-from models.account import Account
 from models.enums import UserFrom
 from models.model import App, Conversation, EndUser, Message
-from models.workflow import ConversationVariable, Workflow, WorkflowType
+from models.workflow import ConversationVariable, WorkflowType, Workflow
+from models.account import Account
 
 logger = logging.getLogger(__name__)
 
