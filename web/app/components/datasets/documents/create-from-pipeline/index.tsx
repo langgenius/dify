@@ -265,7 +265,6 @@ const CreateFormPipeline = () => {
                       nodeData={datasource!.nodeData}
                       pageIdList={onlineDocuments.map(doc => doc.page_id)}
                       onSelect={updateOnlineDocuments}
-                      canPreview
                       onPreview={updateCurrentPage}
                     />
                   )}

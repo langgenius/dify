@@ -7,6 +7,7 @@ import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
 import cn from '@/utils/classnames'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import Radio from '@/app/components/base/radio/ui'
 
 type NotionPageTreeItem = {
   children: Set<string>
@@ -34,6 +35,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
   searchValue: string
   previewPageId: string
   pagesMap: DataSourceNotionPageMap
+  isMultipleChoice?: boolean
 }>) => {
   const { t } = useTranslation()
   const {
@@ -48,6 +50,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
     searchValue,
     previewPageId,
     pagesMap,
+    isMultipleChoice,
   } = data
   const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
@@ -88,16 +91,24 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
         previewPageId === current.page_id && 'bg-state-base-hover')}
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
     >
-      <Checkbox
-        className='mr-2 shrink-0'
-        checked={checkedIds.has(current.page_id)}
-        disabled={disabled}
-        onCheck={() => {
-          if (disabled)
-            return
-          handleCheck(index)
-        }}
-      />
+      {isMultipleChoice ? (
+        <Checkbox
+          className='mr-2 shrink-0'
+          checked={checkedIds.has(current.page_id)}
+          disabled={disabled}
+          onCheck={() => {
+            handleCheck(index)
+          }}
+        />) : (
+        <Radio
+          className='mr-2 shrink-0'
+          isChecked={checkedIds.has(current.page_id)}
+          disabled={disabled}
+          onCheck={() => {
+            handleCheck(index)
+          }}
+        />
+      )}
       {!searchValue && renderArrow()}
       <NotionIcon
         className='mr-1 shrink-0'

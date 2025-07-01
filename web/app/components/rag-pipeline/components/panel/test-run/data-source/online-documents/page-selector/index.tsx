@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList as List } from 'react-window'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
@@ -15,6 +15,7 @@ type PageSelectorProps = {
   canPreview?: boolean
   previewPageId?: string
   onPreview?: (selectedPageId: string) => void
+  isMultipleChoice?: boolean
 }
 
 export type NotionPageTreeItem = {
@@ -41,21 +42,26 @@ const PageSelector = ({
   canPreview = true,
   previewPageId,
   onPreview,
+  isMultipleChoice = true,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
   const [prevDataList, setPrevDataList] = useState(list)
   const [dataList, setDataList] = useState<NotionPageItem[]>([])
   const [localPreviewPageId, setLocalPreviewPageId] = useState('')
-  if (prevDataList !== list) {
-    setPrevDataList(list)
-    setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
-      return {
-        ...item,
-        expand: false,
-        depth: 0,
-      }
-    }))
-  }
+
+  useEffect(() => {
+    if (prevDataList !== list) {
+      setPrevDataList(list)
+      setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
+        return {
+          ...item,
+          expand: false,
+          depth: 0,
+        }
+      }))
+    }
+  }, [prevDataList, list, pagesMap])
+
   const searchDataList = list.filter((item) => {
     return item.page_name.includes(searchValue)
   }).map((item) => {
@@ -79,7 +85,7 @@ const PageSelector = ({
     }, {})
   }, [list, pagesMap])
 
-  const handleToggle = (index: number) => {
+  const handleToggle = useCallback((index: number) => {
     const current = dataList[index]
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
@@ -105,16 +111,16 @@ const PageSelector = ({
         ...dataList.slice(index + 1)]
     }
     setDataList(newDataList)
-  }
+  }, [dataList, listMapWithChildrenAndDescendants, pagesMap])
 
-  const copyValue = new Set([...value])
-  const handleCheck = (index: number) => {
+  const handleCheck = useCallback((index: number) => {
+    const copyValue = new Set([...value])
     const current = currentDataList[index]
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
 
     if (copyValue.has(pageId)) {
-      if (!searchValue) {
+      if (!searchValue && isMultipleChoice) {
         for (const item of currentWithChildrenAndDescendants.descendants)
           copyValue.delete(item)
       }
@@ -122,18 +128,24 @@ const PageSelector = ({
       copyValue.delete(pageId)
     }
     else {
-      if (!searchValue) {
+      if (!searchValue && isMultipleChoice) {
         for (const item of currentWithChildrenAndDescendants.descendants)
           copyValue.add(item)
       }
-
-      copyValue.add(pageId)
+      // Single choice mode, clear previous selection
+      if (!isMultipleChoice && copyValue.size > 0) {
+        copyValue.clear()
+        copyValue.add(pageId)
+      }
+      else {
+        copyValue.add(pageId)
+      }
     }
 
     onSelect(new Set([...copyValue]))
-  }
+  }, [currentDataList, isMultipleChoice, listMapWithChildrenAndDescendants, onSelect, searchValue, value])
 
-  const handlePreview = (index: number) => {
+  const handlePreview = useCallback((index: number) => {
     const current = currentDataList[index]
     const pageId = current.page_id
 
@@ -141,7 +153,7 @@ const PageSelector = ({
 
     if (onPreview)
       onPreview(pageId)
-  }
+  }, [currentDataList, onPreview])
 
   if (!currentDataList.length) {
     return (
@@ -171,6 +183,7 @@ const PageSelector = ({
         searchValue,
         previewPageId: currentPreviewPageId,
         pagesMap,
+        isMultipleChoice,
       }}
     >
       {Item}

@@ -14,7 +14,6 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 type OnlineDocumentsProps = {
   pageIdList?: string[]
   onSelect: (selectedPages: NotionPage[]) => void
-  canPreview?: boolean
   previewPageId?: string
   onPreview?: (selectedPage: NotionPage) => void
   isInPipeline?: boolean
@@ -25,7 +24,6 @@ type OnlineDocumentsProps = {
 const OnlineDocuments = ({
   pageIdList,
   onSelect,
-  canPreview,
   previewPageId,
   onPreview,
   isInPipeline = false,
@@ -97,19 +95,22 @@ const OnlineDocuments = ({
   const handleSearchValueChange = useCallback((value: string) => {
     setSearchValue(value)
   }, [])
+
   const handleSelectWorkspace = useCallback((workspaceId: string) => {
     setCurrentWorkspaceId(workspaceId)
   }, [])
-  const handleSelectPages = (newSelectedPagesId: Set<string>) => {
+
+  const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[0][pageId])
 
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     onSelect(selectedPages)
-  }
-  const handlePreviewPage = (previewPageId: string) => {
+  }, [onSelect, PagesMapAndSelectedPagesId])
+
+  const handlePreviewPage = useCallback((previewPageId: string) => {
     if (onPreview)
       onPreview(PagesMapAndSelectedPagesId[0][previewPageId])
-  }
+  }, [PagesMapAndSelectedPagesId, onPreview])
 
   useEffect(() => {
     setCurrentWorkspaceId(firstWorkspaceId)
@@ -154,9 +155,10 @@ const OnlineDocuments = ({
             list={currentWorkspace?.pages || []}
             pagesMap={PagesMapAndSelectedPagesId[0]}
             onSelect={handleSelectPages}
-            canPreview={canPreview}
+            canPreview={!isInPipeline}
             previewPageId={previewPageId}
             onPreview={handlePreviewPage}
+            isMultipleChoice={!isInPipeline}
           />
         </div>
       </div>
