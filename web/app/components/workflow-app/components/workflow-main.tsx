@@ -7,6 +7,7 @@ import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
 import {
+  useConfigsMap,
   useInspectVarsCrud,
   useNodesSyncDraft,
   useSetWorkflowVarsWithValue,
@@ -65,8 +66,6 @@ const WorkflowMain = ({
   } = useWorkflowStartRun()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const {
-    conversationVars,
-    systemVars,
     hasNodeInspectVars,
     hasSetInspectVar,
     fetchInspectVarValue,
@@ -82,6 +81,7 @@ const WorkflowMain = ({
     resetConversationVar,
     invalidateConversationVarValues,
   } = useInspectVarsCrud()
+  const configsMap = useConfigsMap()
 
   const hooksStore = useMemo(() => {
     return {
@@ -97,8 +97,6 @@ const WorkflowMain = ({
       handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow,
       fetchInspectVars,
-      conversationVars,
-      systemVars,
       hasNodeInspectVars,
       hasSetInspectVar,
       fetchInspectVarValue,
@@ -113,6 +111,7 @@ const WorkflowMain = ({
       invalidateSysVarValues,
       resetConversationVar,
       invalidateConversationVarValues,
+      configsMap,
     }
   }, [
     syncWorkflowDraftWhenPageClose,
@@ -127,8 +126,6 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
     fetchInspectVars,
-    conversationVars,
-    systemVars,
     hasNodeInspectVars,
     hasSetInspectVar,
     fetchInspectVarValue,
@@ -143,6 +140,7 @@ const WorkflowMain = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
+    configsMap,
   ])
 
   return (
