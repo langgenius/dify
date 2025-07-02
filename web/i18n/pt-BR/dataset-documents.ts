@@ -389,6 +389,8 @@ const translation = {
     newChildChunk: 'Novo pedaço filho',
     characters_one: 'personagem',
     parentChunk: 'Pedaço pai',
+    keywordEmpty: 'A palavra-chave não pode estar vazia',
+    keywordDuplicate: 'A palavra-chave já existe',
   },
 }
 

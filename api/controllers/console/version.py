@@ -18,7 +18,7 @@ class VersionApi(Resource):
         check_update_url = dify_config.CHECK_UPDATE_URL
 
         result = {
-            "version": dify_config.CURRENT_VERSION,
+            "version": dify_config.project.version,
             "release_date": "",
             "release_notes": "",
             "can_auto_update": False,

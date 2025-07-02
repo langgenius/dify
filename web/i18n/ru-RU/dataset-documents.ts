@@ -389,6 +389,8 @@ const translation = {
     characters_one: 'характер',
     addChildChunk: 'Добавить дочерний чанк',
     newChildChunk: 'Новый дочерний чанк',
+    keywordEmpty: 'Ключевое слово не может быть пустым',
+    keywordDuplicate: 'Ключевое слово уже существует',
   },
 }
 

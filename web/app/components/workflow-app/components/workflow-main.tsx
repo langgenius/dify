@@ -8,9 +8,12 @@ import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
 import {
   useAvailableNodesMetaData,
+  useConfigsMap,
   useDSL,
   useGetRunAndTraceUrl,
+  useInspectVarsCrud,
   useNodesSyncDraft,
+  useSetWorkflowVarsWithValue,
   useWorkflowRefreshDraft,
   useWorkflowRun,
   useWorkflowStartRun,
@@ -70,6 +73,24 @@ const WorkflowMain = ({
     exportCheck,
     handleExportDSL,
   } = useDSL()
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
+  const {
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
+  } = useInspectVarsCrud()
+  const configsMap = useConfigsMap()
 
   const hooksStore = useMemo(() => {
     return {
@@ -88,6 +109,22 @@ const WorkflowMain = ({
       getWorkflowRunAndTraceUrl,
       exportCheck,
       handleExportDSL,
+      fetchInspectVars,
+      hasNodeInspectVars,
+      hasSetInspectVar,
+      fetchInspectVarValue,
+      editInspectVarValue,
+      renameInspectVarName,
+      appendNodeInspectVars,
+      deleteInspectVar,
+      deleteNodeInspectorVars,
+      deleteAllInspectorVars,
+      isInspectVarEdited,
+      resetToLastRunVar,
+      invalidateSysVarValues,
+      resetConversationVar,
+      invalidateConversationVarValues,
+      configsMap,
     }
   }, [
     syncWorkflowDraftWhenPageClose,
@@ -105,6 +142,22 @@ const WorkflowMain = ({
     getWorkflowRunAndTraceUrl,
     exportCheck,
     handleExportDSL,
+    fetchInspectVars,
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
+    configsMap,
   ])
 
   return (

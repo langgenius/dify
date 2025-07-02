@@ -144,6 +144,7 @@ export type Variable = {
     variable: string
   }
   value_selector: ValueSelector
+  value_type?: VarType
   variable_type?: VarKindType
   value?: string
   options?: string[]

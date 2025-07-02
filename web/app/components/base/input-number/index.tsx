@@ -84,8 +84,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
   return <div className={classNames('flex', wrapClassName)}>
     <Input {...rest}
       // disable default controller
-      type='text'
-      className={classNames('rounded-r-none', className)}
+      type='number'
+      className={classNames('no-spinner rounded-r-none', className)}
       value={value}
       max={max}
       min={min}

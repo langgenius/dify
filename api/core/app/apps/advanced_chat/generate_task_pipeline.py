@@ -64,6 +64,7 @@ from core.workflow.entities.workflow_execution import WorkflowExecutionStatus, W
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes import NodeType
+from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
@@ -94,6 +95,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         dialogue_count: int,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        draft_var_saver_factory: DraftVariableSaverFactory,
     ) -> None:
         self._base_task_pipeline = BasedGenerateTaskPipeline(
             application_generate_entity=application_generate_entity,
@@ -153,6 +155,7 @@ class AdvancedChatAppGenerateTaskPipeline:
         self._conversation_name_generate_thread: Thread | None = None
         self._recorded_files: list[Mapping[str, Any]] = []
         self._workflow_run_id: str = ""
+        self._draft_var_saver_factory = draft_var_saver_factory
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
@@ -371,6 +374,7 @@ class AdvancedChatAppGenerateTaskPipeline:
                         workflow_node_execution=workflow_node_execution,
                     )
                     session.commit()
+                self._save_output_for_event(event, workflow_node_execution.id)
 
                 if node_finish_resp:
                     yield node_finish_resp
@@ -390,6 +394,8 @@ class AdvancedChatAppGenerateTaskPipeline:
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
+                if isinstance(event, QueueNodeExceptionEvent):
+                    self._save_output_for_event(event, workflow_node_execution.id)
 
                 if node_finish_resp:
                     yield node_finish_resp
@@ -759,3 +765,15 @@ class AdvancedChatAppGenerateTaskPipeline:
         if not message:
             raise ValueError(f"Message not found: {self._message_id}")
         return message
+
+    def _save_output_for_event(self, event: QueueNodeSucceededEvent | QueueNodeExceptionEvent, node_execution_id: str):
+        with Session(db.engine) as session, session.begin():
+            saver = self._draft_var_saver_factory(
+                session=session,
+                app_id=self._application_generate_entity.app_config.app_id,
+                node_id=event.node_id,
+                node_type=event.node_type,
+                node_execution_id=node_execution_id,
+                enclosing_node_id=event.in_loop_id or event.in_iteration_id,
+            )
+            saver.save(event.process_data, event.outputs)

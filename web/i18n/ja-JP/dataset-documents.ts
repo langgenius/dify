@@ -388,6 +388,8 @@ const translation = {
     editedAt: '編集日時',
     expandChunks: 'チャンクを展開',
     collapseChunks: 'チャンクを折りたたむ',
+    keywordDuplicate: 'そのキーワードは既に存在しています',
+    keywordEmpty: 'キーワードは空であってはいけません',
   },
 }
 

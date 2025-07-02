@@ -21,6 +21,7 @@ def init_app(app: DifyApp) -> Celery:
             "master_name": dify_config.CELERY_SENTINEL_MASTER_NAME,
             "sentinel_kwargs": {
                 "socket_timeout": dify_config.CELERY_SENTINEL_SOCKET_TIMEOUT,
+                "password": dify_config.CELERY_SENTINEL_PASSWORD,
             },
         }
 

@@ -29,6 +29,7 @@ import type {
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string
@@ -129,10 +130,16 @@ const NodePanel: FC<Props> = ({
             />
           )}
           <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
-          <div className={cn(
-            'system-xs-semibold-uppercase grow truncate text-text-secondary',
-            hideInfo && '!text-xs',
-          )} title={nodeInfo.title}>{nodeInfo.title}</div>
+          <Tooltip
+            popupContent={
+              <div className='max-w-xs'>{nodeInfo.title}</div>
+            }
+          >
+            <div className={cn(
+              'system-xs-semibold-uppercase grow truncate text-text-secondary',
+              hideInfo && '!text-xs',
+            )}>{nodeInfo.title}</div>
+          </Tooltip>
           {nodeInfo.status !== 'running' && !hideInfo && (
             <div className='system-xs-regular shrink-0 text-text-tertiary'>{nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}{`${getTime(nodeInfo.elapsed_time || 0)}`}</div>
           )}
