@@ -46,7 +46,7 @@ server {
     }
 
     location /admin {
-      proxy_pass http://host.docker.internal:3000;
+      proxy_pass http://admin:3000;
       include proxy.conf;
     }
     

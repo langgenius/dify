@@ -627,6 +627,20 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
+
+  # Admin platform frontend
+  admin:
+    image: akiyu303/jim-admin:latest
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: ${ADMIN_API_URL:-https://qingsu.chat}
+    depends_on:
+      - api
+    healthcheck:
+      test: [ 'CMD', 'curl', '-f', 'http://localhost:3000/admin' ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
   # The postgres database.
   db:
     image: postgres:15-alpine
@@ -820,6 +834,7 @@ services:
     depends_on:
       - api
       - web
+      - admin
     ports:
       - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
       - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
