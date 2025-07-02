@@ -4,7 +4,6 @@ import type { ValueSelector } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import {
-  useConversationVarValues,
   useDeleteAllInspectorVars,
   useDeleteInspectVar,
   useDeleteNodeInspectorVars,
@@ -13,7 +12,6 @@ import {
   useInvalidateSysVarValues,
   useResetConversationVar,
   useResetToLastRunValue,
-  useSysVarValues,
 } from '@/service/use-workflow'
 import { useCallback } from 'react'
 import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
@@ -21,6 +19,7 @@ import produce from 'immer'
 import type { Node } from '@/app/components/workflow/types'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
+import { useConfigsMap } from './use-configs-map'
 
 export const useInspectVarsCrud = () => {
   const workflowStore = useWorkflowStore()
@@ -36,13 +35,11 @@ export const useInspectVarsCrud = () => {
     setNodesWithInspectVars,
     resetToLastRunVar: resetToLastRunVarInStore,
   } = workflowStore.getState()
-
-  const { data: conversationVars } = useConversationVarValues(appId)
-  const invalidateConversationVarValues = useInvalidateConversationVarValues(appId)
+  const { conversationVarsUrl, systemVarsUrl } = useConfigsMap()
+  const invalidateConversationVarValues = useInvalidateConversationVarValues(conversationVarsUrl)
   const { mutateAsync: doResetConversationVar } = useResetConversationVar(appId)
   const { mutateAsync: doResetToLastRunValue } = useResetToLastRunValue(appId)
-  const { data: systemVars } = useSysVarValues(appId)
-  const invalidateSysVarValues = useInvalidateSysVarValues(appId)
+  const invalidateSysVarValues = useInvalidateSysVarValues(systemVarsUrl)
 
   const { mutateAsync: doDeleteAllInspectorVars } = useDeleteAllInspectorVars(appId)
   const { mutate: doDeleteNodeInspectorVars } = useDeleteNodeInspectorVars(appId)
@@ -212,9 +209,6 @@ export const useInspectVarsCrud = () => {
   }, [doResetToLastRunValue, invalidateSysVarValues, resetToLastRunVarInStore])
 
   return {
-    conversationVars: conversationVars || [],
-    systemVars: systemVars || [],
-    nodesWithInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,
     fetchInspectVarValue,

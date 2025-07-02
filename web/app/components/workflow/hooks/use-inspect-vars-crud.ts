@@ -1,10 +1,15 @@
 import { useStore } from '../store'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import {
+  useConversationVarValues,
+  useSysVarValues,
+} from '@/service/use-workflow'
 
 const useInspectVarsCrud = () => {
   const nodesWithInspectVars = useStore(s => s.nodesWithInspectVars)
-  const conversationVars = useHooksStore(s => s.conversationVars)
-  const systemVars = useHooksStore(s => s.systemVars)
+  const configsMap = useHooksStore(s => s.configsMap)
+  const { data: conversationVars } = useConversationVarValues(configsMap?.conversationVarsUrl)
+  const { data: systemVars } = useSysVarValues(configsMap?.systemVarsUrl)
   const hasNodeInspectVars = useHooksStore(s => s.hasNodeInspectVars)
   const hasSetInspectVar = useHooksStore(s => s.hasSetInspectVar)
   const fetchInspectVarValue = useHooksStore(s => s.fetchInspectVarValue)
@@ -21,8 +26,8 @@ const useInspectVarsCrud = () => {
   const invalidateConversationVarValues = useHooksStore(s => s.invalidateConversationVarValues)
 
   return {
-    conversationVars,
-    systemVars,
+    conversationVars: conversationVars || [],
+    systemVars: systemVars || [],
     nodesWithInspectVars,
     hasNodeInspectVars,
     hasSetInspectVar,

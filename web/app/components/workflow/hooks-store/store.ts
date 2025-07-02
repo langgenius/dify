@@ -34,8 +34,6 @@ type CommonHooksFnMap = {
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
   fetchInspectVars: () => Promise<void>
-  conversationVars: VarInInspect[]
-  systemVars: VarInInspect[]
   hasNodeInspectVars: (nodeId: string) => boolean
   hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
   fetchInspectVarValue: (selector: ValueSelector) => Promise<void>
@@ -50,6 +48,10 @@ type CommonHooksFnMap = {
   invalidateSysVarValues: () => void
   resetConversationVar: (varId: string) => Promise<void>
   invalidateConversationVarValues: () => void
+  configsMap?: {
+    conversationVarsUrl: string
+    systemVarsUrl: string
+  }
 }
 
 export type Shape = {
@@ -69,8 +71,6 @@ export const createHooksStore = ({
   handleWorkflowStartRunInWorkflow = noop,
   handleWorkflowStartRunInChatflow = noop,
   fetchInspectVars = async () => noop(),
-  conversationVars = [],
-  systemVars = [],
   hasNodeInspectVars = () => false,
   hasSetInspectVar = () => false,
   fetchInspectVarValue = async () => noop(),
@@ -100,8 +100,6 @@ export const createHooksStore = ({
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
     fetchInspectVars,
-    conversationVars,
-    systemVars,
     hasNodeInspectVars,
     hasSetInspectVar,
     fetchInspectVarValue,
