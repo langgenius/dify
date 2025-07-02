@@ -210,6 +210,9 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
+        
+        if dataset.provider == "external":
+            raise ValueError("External datasets are not supported.")
 
         indexing_technique = args.get("indexing_technique") or dataset.indexing_technique
         if not indexing_technique:
@@ -300,6 +303,9 @@ class DocumentUpdateByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
+        
+        if dataset.provider == "external":
+            raise ValueError("External datasets are not supported.")
 
         # indexing_technique is already set in dataset since this is an update
         args["indexing_technique"] = dataset.indexing_technique
