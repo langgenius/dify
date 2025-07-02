@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import { RiCrosshairLine } from '@remixicon/react'
 import { useReactFlow, useStore } from 'reactflow'
 import TooltipPlus from '@/app/components/base/tooltip'
@@ -14,9 +15,20 @@ const NodePosition = ({
   const { t } = useTranslation()
   const reactflow = useReactFlow()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
-  const nodePosition = useStore(s => s.getNodes().find(node => node.id === nodeId)?.position)
-  const nodeWidth = useStore(s => s.getNodes().find(node => node.id === nodeId)?.width)
-  const nodeHeight = useStore(s => s.getNodes().find(node => node.id === nodeId)?.height)
+  const {
+    nodePosition,
+    nodeWidth,
+    nodeHeight,
+  } = useStore(useShallow((s) => {
+    const nodes = s.getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)!
+
+    return {
+      nodePosition: currentNode.position,
+      nodeWidth: currentNode.width,
+      nodeHeight: currentNode.height,
+    }
+  }))
   const transform = useStore(s => s.transform)
 
   if (!nodePosition || !nodeWidth || !nodeHeight) return null
