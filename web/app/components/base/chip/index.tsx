@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { RiArrowDownSLine, RiCheckLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import {
@@ -20,6 +20,7 @@ type Props = {
   leftIcon?: any
   value: number | string
   items: Item[]
+  renderTriggerContent?: () => React.ReactNode
   onSelect: (item: any) => void
   onClear: () => void
 }
@@ -30,14 +31,17 @@ const Chip: FC<Props> = ({
   leftIcon,
   value,
   items,
+  renderTriggerContent,
   onSelect,
   onClear,
 }) => {
   const [open, setOpen] = useState(false)
 
   const triggerContent = useMemo(() => {
+    if(renderTriggerContent)
+      return renderTriggerContent()
     return items.find(item => item.value === value)?.name || ''
-  }, [items, value])
+  }, [items, renderTriggerContent, value])
 
   return (
     <PortalToFollowElem

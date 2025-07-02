@@ -4,7 +4,8 @@ import Header from './components/header'
 import List from './components/list'
 import useLegacyList from './use-legacy-list'
 import Chip from '@/app/components/base/chip'
-import { RiFile3Line } from '@remixicon/react'
+import { RiFilter3Line } from '@remixicon/react'
+import { useCallback } from 'react'
 
 const Page = () => {
   const {
@@ -14,6 +15,21 @@ const Page = () => {
     setPublished,
     clearPublished,
   } = useLegacyList()
+
+  const handleSelectPublished = useCallback(({ value }: { value: number }) => {
+    setPublished(value)
+  }, [setPublished])
+
+  const renderTriggerContent = useCallback(() => {
+    if(published === undefined)
+      return 'Published'
+    return (
+      <div>
+        Published <span>{published === 1 ? 'Yes' : 'No'}</span>
+      </div>
+    )
+  }, [published])
+
   return (
     <div className='h-full rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle px-6 pt-4'>
       <Header appNum={5} publishedNum={3}/>
@@ -22,9 +38,10 @@ const Page = () => {
         <Chip
           className='min-w-[150px]'
           panelClassName='w-[270px]'
-          leftIcon={<RiFile3Line className='h-4 w-4 text-text-secondary' />}
+          leftIcon={<RiFilter3Line className='h-4 w-4 text-text-secondary' />}
           value={published}
-          onSelect={setPublished}
+          renderTriggerContent={renderTriggerContent}
+          onSelect={handleSelectPublished}
           onClear={clearPublished}
           items={[
             { value: 1, name: 'Yes' },
