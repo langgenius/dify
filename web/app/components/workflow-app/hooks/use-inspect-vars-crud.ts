@@ -113,7 +113,7 @@ export const useInspectVarsCrud = () => {
         if (nodeInfo) {
           const index = draft.findIndex(node => node.nodeId === nodeId)
           if (index === -1) {
-            draft.push({
+            draft.unshift({
               nodeId,
               nodeType: nodeInfo.data.type,
               title: nodeInfo.data.title,
