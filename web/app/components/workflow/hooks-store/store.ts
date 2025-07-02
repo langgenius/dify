@@ -8,6 +8,11 @@ import {
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
 import type { IOtherOptions } from '@/service/base'
+import type { VarInInspect } from '@/types/workflow'
+import type {
+  Node,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 
 type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
@@ -29,6 +34,22 @@ type CommonHooksFnMap = {
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
   fetchInspectVars: () => Promise<void>
+  conversationVars: VarInInspect[]
+  systemVars: VarInInspect[]
+  hasNodeInspectVars: (nodeId: string) => boolean
+  hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
+  fetchInspectVarValue: (selector: ValueSelector) => Promise<void>
+  editInspectVarValue: (nodeId: string, varId: string, value: any) => Promise<void>
+  renameInspectVarName: (nodeId: string, oldName: string, newName: string) => Promise<void>
+  appendNodeInspectVars: (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => void
+  deleteInspectVar: (nodeId: string, varId: string) => Promise<void>
+  deleteNodeInspectorVars: (nodeId: string) => Promise<void>
+  deleteAllInspectorVars: () => Promise<void>
+  isInspectVarEdited: (nodeId: string, name: string) => boolean
+  resetToLastRunVar: (nodeId: string, varId: string) => Promise<void>
+  invalidateSysVarValues: () => void
+  resetConversationVar: (varId: string) => Promise<void>
+  invalidateConversationVarValues: () => void
 }
 
 export type Shape = {
@@ -48,6 +69,22 @@ export const createHooksStore = ({
   handleWorkflowStartRunInWorkflow = noop,
   handleWorkflowStartRunInChatflow = noop,
   fetchInspectVars = async () => noop(),
+  conversationVars = [],
+  systemVars = [],
+  hasNodeInspectVars = () => false,
+  hasSetInspectVar = () => false,
+  fetchInspectVarValue = async () => noop(),
+  editInspectVarValue = async () => noop(),
+  renameInspectVarName = async () => noop(),
+  appendNodeInspectVars = () => noop(),
+  deleteInspectVar = async () => noop(),
+  deleteNodeInspectorVars = async () => noop(),
+  deleteAllInspectorVars = async () => noop(),
+  isInspectVarEdited = () => false,
+  resetToLastRunVar = async () => noop(),
+  invalidateSysVarValues = noop,
+  resetConversationVar = async () => noop(),
+  invalidateConversationVarValues = noop,
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
@@ -63,6 +100,22 @@ export const createHooksStore = ({
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
     fetchInspectVars,
+    conversationVars,
+    systemVars,
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
   }))
 }
 
