@@ -241,6 +241,14 @@ const translation = {
     no: 'No',
     createAt: 'Created At',
     lastRequest: 'Last Request',
+    list: {
+      appName: 'App Name',
+      published: 'Published',
+      createBy: 'Created By',
+      lastRequest: 'Last Request',
+      createAt: 'Created At',
+      noData: 'No items found',
+    },
   },
 }
 

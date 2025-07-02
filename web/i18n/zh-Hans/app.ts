@@ -242,6 +242,14 @@ const translation = {
     no: '否',
     createAt: '创建时间',
     lastRequest: '最后请求',
+    list: {
+      appName: '应用名称',
+      published: '已发布',
+      createBy: '创建者',
+      lastRequest: '最后请求时间',
+      createAt: '创建时间',
+      noData: '暂无数据',
+    },
   },
 }
 
