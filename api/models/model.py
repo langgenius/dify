@@ -680,7 +680,7 @@ class Conversation(Base):
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
                     value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                     value["upload_file_id"] = value["related_id"]
                 inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
@@ -690,7 +690,7 @@ class Conversation(Base):
                 for item in value:
                     if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
                         item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                         item["upload_file_id"] = item["related_id"]
                     inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
 
@@ -950,7 +950,7 @@ class Message(Base):
             if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 if value["transfer_method"] == FileTransferMethod.TOOL_FILE:
                     value["tool_file_id"] = value["related_id"]
-                elif value["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                elif value["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                     value["upload_file_id"] = value["related_id"]
                 inputs[key] = file_factory.build_from_mapping(mapping=value, tenant_id=value["tenant_id"])
             elif isinstance(value, list) and all(
@@ -960,7 +960,7 @@ class Message(Base):
                 for item in value:
                     if item["transfer_method"] == FileTransferMethod.TOOL_FILE:
                         item["tool_file_id"] = item["related_id"]
-                    elif item["transfer_method"] == FileTransferMethod.LOCAL_FILE:
+                    elif item["transfer_method"] in [FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL]:
                         item["upload_file_id"] = item["related_id"]
                     inputs[key].append(file_factory.build_from_mapping(mapping=item, tenant_id=item["tenant_id"]))
         return inputs

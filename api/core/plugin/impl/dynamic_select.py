@@ -42,4 +42,4 @@ class DynamicSelectClient(BasePluginClient):
         for options in response:
             return options
 
-        raise ValueError("Plugin service returned no options")
+        raise ValueError(f"Plugin service returned no options for parameter '{parameter}' in provider '{provider}'")
