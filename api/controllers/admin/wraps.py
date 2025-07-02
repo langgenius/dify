@@ -43,8 +43,13 @@ def validate_admin_token_and_extract_info(view: Optional[Callable] = None):
                 raise Unauthorized("Invalid token: user not found")
             if account.status != AccountStatus.ACTIVE:
                 raise Unauthorized("Invalid token: account is not active")
-            if account.current_role != TenantAccountJoinRole.END_ADMIN.value:
-                raise Unauthorized("Invalid token: account is not end admin")
+            allowed_roles = [
+                TenantAccountJoinRole.END_ADMIN.value,
+                TenantAccountJoinRole.OWNER.value,
+                TenantAccountJoinRole.ADMIN.value
+            ]
+            if account.current_role not in allowed_roles:
+                raise Unauthorized("Invalid token: account does not have admin privileges")
 
             app_id = request.headers.get("X-App-Id")
             if not app_id:
