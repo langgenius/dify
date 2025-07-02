@@ -96,6 +96,7 @@ class DatasourceAuth(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
         parser.add_argument("plugin_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
@@ -108,6 +109,7 @@ class DatasourceAuth(Resource):
                 provider=args["provider"],
                 plugin_id=args["plugin_id"],
                 credentials=args["credentials"],
+                name=args["name"],
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))

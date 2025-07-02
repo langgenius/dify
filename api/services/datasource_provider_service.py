@@ -22,7 +22,7 @@ class DatasourceProviderService:
         self.provider_manager = PluginDatasourceManager()
 
     def datasource_provider_credentials_validate(
-        self, tenant_id: str, provider: str, plugin_id: str, credentials: dict
+        self, tenant_id: str, provider: str, plugin_id: str, credentials: dict, name: str
     ) -> None:
         """
         validate datasource provider credentials.
@@ -31,6 +31,15 @@ class DatasourceProviderService:
         :param provider:
         :param credentials:
         """
+        # check name is exist
+        datasource_provider = (
+            db.session.query(DatasourceProvider)
+            .filter_by(tenant_id=tenant_id, name=name)
+            .first()
+        )
+        if datasource_provider:
+            raise ValueError("Authorization name is already exists")
+        
         credential_valid = self.provider_manager.validate_provider_credentials(
             tenant_id=tenant_id,
             user_id=current_user.id,
@@ -55,6 +64,7 @@ class DatasourceProviderService:
                     credentials[key] = encrypter.encrypt_token(tenant_id, value)
             datasource_provider = DatasourceProvider(
                 tenant_id=tenant_id,
+                name=name,
                 provider=provider,
                 plugin_id=plugin_id,
                 auth_type="api_key",
@@ -120,6 +130,7 @@ class DatasourceProviderService:
                 {
                     "credentials": copy_credentials,
                     "type": datasource_provider.auth_type,
+                    "name": datasource_provider.name,
                 }
             )
 
