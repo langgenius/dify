@@ -9,7 +9,7 @@ import {
 import { useBoolean } from 'ahooks'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
-import { checkOrSetAccessToken, removeAccessToken } from '../utils'
+import { removeAccessToken } from '../utils'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
@@ -376,8 +376,8 @@ const TextGeneration: FC<IMainProps> = ({
   }
 
   const fetchInitData = async () => {
-    if (!isInstalledApp)
-      await checkOrSetAccessToken()
+    // if (!isInstalledApp)
+    //   await checkOrSetAccessToken()
 
     return Promise.all([
       isInstalledApp
