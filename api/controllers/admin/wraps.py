@@ -9,8 +9,8 @@ from configs import dify_config
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.account import AccountStatus, Tenant, TenantStatus
-from models.organization import OrganizationMember, OrganizationRole
 from models.model import App
+from models.organization import OrganizationMember, OrganizationRole
 from services.account_service import AccountService
 
 
