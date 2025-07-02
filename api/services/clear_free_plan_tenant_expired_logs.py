@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import click
 from flask import Flask, current_app
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -14,7 +14,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.model import App, Conversation, Message
-from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
@@ -105,84 +105,99 @@ class ClearFreePlanTenantExpiredLogs:
                         )
                     )
 
-            while True:
-                with Session(db.engine).no_autoflush as session:
-                    workflow_node_executions = (
-                        session.query(WorkflowNodeExecutionModel)
-                        .filter(
-                            WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                            WorkflowNodeExecutionModel.created_at
-                            < datetime.datetime.now() - datetime.timedelta(days=days),
-                        )
-                        .limit(batch)
-                        .all()
-                    )
-
-                    if len(workflow_node_executions) == 0:
-                        break
-
-                    # save workflow node executions
-                    storage.save(
-                        f"free_plan_tenant_expired_logs/"
-                        f"{tenant_id}/workflow_node_executions/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                        f"-{time.time()}.json",
-                        json.dumps(
-                            jsonable_encoder(workflow_node_executions),
-                        ).encode("utf-8"),
-                    )
-
-                    workflow_node_execution_ids = [
-                        workflow_node_execution.id for workflow_node_execution in workflow_node_executions
-                    ]
-
-                    # delete workflow node executions
-                    session.query(WorkflowNodeExecutionModel).filter(
-                        WorkflowNodeExecutionModel.id.in_(workflow_node_execution_ids),
-                    ).delete(synchronize_session=False)
-                    session.commit()
-
-                    click.echo(
-                        click.style(
-                            f"[{datetime.datetime.now()}] Processed {len(workflow_node_execution_ids)}"
-                            f" workflow node executions for tenant {tenant_id}"
-                        )
-                    )
+            # Process expired workflow node executions with backup
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            node_execution_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(session_maker)
+            before_date = datetime.datetime.now() - datetime.timedelta(days=days)
+            total_deleted = 0
 
             while True:
-                with Session(db.engine).no_autoflush as session:
-                    workflow_runs = (
-                        session.query(WorkflowRun)
-                        .filter(
-                            WorkflowRun.tenant_id == tenant_id,
-                            WorkflowRun.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
-                        )
-                        .limit(batch)
-                        .all()
+                # Get a batch of expired executions for backup
+                workflow_node_executions = node_execution_repo.get_expired_executions_batch(
+                    tenant_id=tenant_id,
+                    before_date=before_date,
+                    batch_size=batch,
+                )
+
+                if len(workflow_node_executions) == 0:
+                    break
+
+                # Save workflow node executions to storage
+                storage.save(
+                    f"free_plan_tenant_expired_logs/"
+                    f"{tenant_id}/workflow_node_executions/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                    f"-{time.time()}.json",
+                    json.dumps(
+                        jsonable_encoder(workflow_node_executions),
+                    ).encode("utf-8"),
+                )
+
+                # Extract IDs for deletion
+                workflow_node_execution_ids = [
+                    workflow_node_execution.id for workflow_node_execution in workflow_node_executions
+                ]
+
+                # Delete the backed up executions
+                deleted_count = node_execution_repo.delete_executions_by_ids(workflow_node_execution_ids)
+                total_deleted += deleted_count
+
+                click.echo(
+                    click.style(
+                        f"[{datetime.datetime.now()}] Processed {len(workflow_node_execution_ids)}"
+                        f" workflow node executions for tenant {tenant_id}"
                     )
+                )
 
-                    if len(workflow_runs) == 0:
-                        break
+                # If we got fewer than the batch size, we're done
+                if len(workflow_node_executions) < batch:
+                    break
 
-                    # save workflow runs
+            # Process expired workflow runs with backup
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            before_date = datetime.datetime.now() - datetime.timedelta(days=days)
+            total_deleted = 0
 
-                    storage.save(
-                        f"free_plan_tenant_expired_logs/"
-                        f"{tenant_id}/workflow_runs/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                        f"-{time.time()}.json",
-                        json.dumps(
-                            jsonable_encoder(
-                                [workflow_run.to_dict() for workflow_run in workflow_runs],
-                            ),
-                        ).encode("utf-8"),
+            while True:
+                # Get a batch of expired workflow runs for backup
+                workflow_runs = workflow_run_repo.get_expired_runs_batch(
+                    tenant_id=tenant_id,
+                    before_date=before_date,
+                    batch_size=batch,
+                )
+
+                if len(workflow_runs) == 0:
+                    break
+
+                # Save workflow runs to storage
+                storage.save(
+                    f"free_plan_tenant_expired_logs/"
+                    f"{tenant_id}/workflow_runs/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                    f"-{time.time()}.json",
+                    json.dumps(
+                        jsonable_encoder(
+                            [workflow_run.to_dict() for workflow_run in workflow_runs],
+                        ),
+                    ).encode("utf-8"),
+                )
+
+                # Extract IDs for deletion
+                workflow_run_ids = [workflow_run.id for workflow_run in workflow_runs]
+
+                # Delete the backed up workflow runs
+                deleted_count = workflow_run_repo.delete_runs_by_ids(workflow_run_ids)
+                total_deleted += deleted_count
+
+                click.echo(
+                    click.style(
+                        f"[{datetime.datetime.now()}] Processed {len(workflow_run_ids)}"
+                        f" workflow runs for tenant {tenant_id}"
                     )
+                )
 
-                    workflow_run_ids = [workflow_run.id for workflow_run in workflow_runs]
-
-                    # delete workflow runs
-                    session.query(WorkflowRun).filter(
-                        WorkflowRun.id.in_(workflow_run_ids),
-                    ).delete(synchronize_session=False)
-                    session.commit()
+                # If we got fewer than the batch size, we're done
+                if len(workflow_runs) < batch:
+                    break
 
     @classmethod
     def process(cls, days: int, batch: int, tenant_ids: list[str]):

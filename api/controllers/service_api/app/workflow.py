@@ -3,7 +3,7 @@ import logging
 from dateutil.parser import isoparse
 from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import InternalServerError
 
 from controllers.service_api import api
@@ -30,7 +30,7 @@ from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
 from libs.helper import TimestampField
 from models.model import App, AppMode, EndUser
-from models.workflow import WorkflowRun
+from repositories.factory import DifyAPIRepositoryFactory
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
@@ -63,7 +63,15 @@ class WorkflowRunDetailApi(Resource):
         if app_mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
             raise NotWorkflowAppError()
 
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).first()
+        # Use repository to get workflow run
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+
+        workflow_run = workflow_run_repo.get_workflow_run_by_id(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            run_id=workflow_run_id,
+        )
         return workflow_run
 
 
