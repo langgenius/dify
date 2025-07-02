@@ -168,7 +168,7 @@ const translation = {
       cardTitle: 'Add MCP Server (HTTP)',
       cardLink: 'Learn more about MCP server integration',
     },
-    noConfigured: 'Unconfigured Server',
+    noConfigured: 'Unconfigured',
     updateTime: 'Updated',
     toolsCount: '{{count}} tools',
     noTools: 'No tools available',
