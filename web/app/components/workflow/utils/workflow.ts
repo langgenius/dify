@@ -16,8 +16,6 @@ import type {
 import {
   BlockEnum,
 } from '../types'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
 
 export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
   // child node means in iteration or loop. Set value to iteration(or loop) may cause variable not exit problem in backend.
@@ -93,9 +91,7 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
-  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-
+export const getValidTreeNodes = (startNode: Node, nodes: Node[], edges: Edge[]) => {
   if (!startNode) {
     return {
       validNodes: [],
@@ -185,19 +181,7 @@ type NodeStreamInfo = {
   upstreamNodes: Set<string>
   downstreamEdges: Set<string>
 }
-export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: string) => {
-  let startNode
-
-  if (parentNodeId) {
-    const parentNode = nodes.find(node => node.id === parentNodeId)
-    if (!parentNode)
-      throw new Error('Parent node not found')
-
-    startNode = nodes.find(node => node.id === (parentNode.data as (IterationNodeType | LoopNodeType)).start_node_id)
-  }
-  else {
-    startNode = nodes.find(node => node.data.type === BlockEnum.Start)
-  }
+export const getParallelInfo = (startNode: Node, nodes: Node[], edges: Edge[]) => {
   if (!startNode)
     throw new Error('Start node not found')
 

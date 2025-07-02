@@ -43,10 +43,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const { isCurrentWorkspaceEditor, isLoadingCurrentWorkspace } = useAppContext()
-  const { appDetail, setAppDetail, setAppSiderbarExpand } = useStore(useShallow(state => ({
+  const { appDetail, setAppDetail, setAppSidebarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
-    setAppSiderbarExpand: state.setAppSiderbarExpand,
+    setAppSidebarExpand: state.setAppSidebarExpand,
   })))
   const [isLoadingAppDetail, setIsLoadingAppDetail] = useState(false)
   const [appDetailRes, setAppDetailRes] = useState<App | null>(null)
@@ -57,8 +57,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     selectedIcon: NavIcon
   }>>([])
 
-  const getNavigations = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
-    const navs = [
+  const getNavigationConfig = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
+    const navConfig = [
       ...(isCurrentWorkspaceEditor
         ? [{
           name: t('common.appMenus.promptEng'),
@@ -92,8 +92,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         selectedIcon: RiDashboard2Fill,
       },
     ]
-    return navs
-  }, [])
+    return navConfig
+  }, [t])
 
   useDocumentTitle(appDetail?.name || t('common.menus.appDetail'))
 
@@ -101,10 +101,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     if (appDetail) {
       const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
-      setAppSiderbarExpand(isMobile ? mode : localeMode)
+      setAppSidebarExpand(isMobile ? mode : localeMode)
       // TODO: consider screen size and mode
       // if ((appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
-      //   setAppSiderbarExpand('collapse')
+      //   setAppSidebarExpand('collapse')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appDetail, isMobile])
@@ -141,7 +141,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     }
     else {
       setAppDetail({ ...res, enable_sso: false })
-      setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
+      setNavigation(getNavigationConfig(appId, isCurrentWorkspaceEditor, res.mode))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appDetailRes, isCurrentWorkspaceEditor, isLoadingAppDetail, isLoadingCurrentWorkspace])
@@ -161,7 +161,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   return (
     <div className={cn(s.app, 'relative flex', 'overflow-hidden')}>
       {appDetail && (
-        <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background as string} desc={appDetail.mode} navigation={navigation} />
+        <AppSideBar
+          navigation={navigation}
+        />
       )}
       <div className="grow overflow-hidden bg-components-panel-bg">
         {children}

@@ -4,16 +4,19 @@ import {
 } from '../hooks'
 import type { HeaderInNormalProps } from './header-in-normal'
 import HeaderInNormal from './header-in-normal'
+import type { HeaderInHistoryProps } from './header-in-view-history'
 import HeaderInHistory from './header-in-view-history'
 import type { HeaderInRestoringProps } from './header-in-restoring'
 import HeaderInRestoring from './header-in-restoring'
 import { useStore } from '../store'
 export type HeaderProps = {
   normal?: HeaderInNormalProps
+  viewHistory?: HeaderInHistoryProps
   restoring?: HeaderInRestoringProps
 }
 const Header = ({
   normal: normalProps,
+  viewHistory: viewHistoryProps,
   restoring: restoringProps,
 }: HeaderProps) => {
   const pathname = usePathname()
@@ -39,7 +42,9 @@ const Header = ({
       }
       {
         viewHistory && (
-          <HeaderInHistory />
+          <HeaderInHistory
+            {...viewHistoryProps}
+          />
         )
       }
       {

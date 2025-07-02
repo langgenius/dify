@@ -6,6 +6,7 @@ import { RiCloseLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import Run from '@/app/components/workflow/run'
+import { useStore } from '@/app/components/app/store'
 
 type MessageLogModalProps = {
   currentLogItem?: IChatItem
@@ -24,6 +25,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
   const { t } = useTranslation()
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
+  const appDetail = useStore(state => state.appDetail)
 
   useClickAway(() => {
     if (mounted)
@@ -62,7 +64,8 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       <Run
         hideResult
         activeTab={defaultTab as any}
-        runID={currentLogItem.workflow_run_id}
+        runDetailUrl={`/apps/${appDetail?.id}/workflow-runs/${currentLogItem.workflow_run_id}`}
+        tracingListUrl={`/apps/${appDetail?.id}/workflow-runs/${currentLogItem.workflow_run_id}/node-executions`}
       />
     </div>
   )

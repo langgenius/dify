@@ -18,6 +18,8 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
 import classNames from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { IndexingType } from '../../../create/step-two'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
@@ -48,6 +50,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const mode = useDocumentContext(s => s.mode)
   const parentMode = useDocumentContext(s => s.parentMode)
+  const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
@@ -103,6 +106,8 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
     return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
   }, [isParentChildMode, t])
 
+  const isECOIndexing = indexingTechnique === IndexingType.ECONOMICAL
+
   return (
     <div className={'flex h-full flex-col'}>
       <div className={classNames('flex items-center justify-between', fullScreen ? 'py-3 pr-4 pl-6 border border-divider-subtle' : 'pt-3 pr-3 pl-4')}>
@@ -149,7 +154,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             isEditMode={isEditMode}
           />
         </div>
-        {mode === 'custom' && <Keywords
+        {isECOIndexing && <Keywords
           className={fullScreen ? 'w-1/5' : ''}
           actionType={isEditMode ? 'edit' : 'view'}
           segInfo={segInfo}

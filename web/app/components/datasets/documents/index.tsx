@@ -15,7 +15,7 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { get } from '@/service/base'
 import { createDocument } from '@/service/datasets'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
 import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
@@ -93,7 +93,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [limit, setLimit] = useState<number>(DEFAULT_LIMIT)
   const router = useRouter()
-  const { dataset } = useDatasetDetailContext()
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
   const [timerCanRun, setTimerCanRun] = useState(true)
   const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
@@ -171,6 +171,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const total = documentsRes?.total || 0
 
   const routeToDocCreate = () => {
+    // if dataset is create from pipeline, redirect to create from pipeline page
+    if (dataset?.runtime_mode === 'rag_pipeline') {
+      router.push(`/datasets/${datasetId}/documents/create-from-pipeline`)
+      return
+    }
     if (isDataSourceNotion) {
       setNotionPageSelectorModalVisible(true)
       return
@@ -312,6 +317,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         </div>
         {isListLoading
           ? <Loading type='app' />
+          // eslint-disable-next-line sonarjs/no-nested-conditional
           : total > 0
             ? <List
               embeddingAvailable={embeddingAvailable}

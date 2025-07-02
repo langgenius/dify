@@ -17,7 +17,7 @@ import FamilyMod from '../assets/family-mod.svg'
 import Note from '../assets/note-mod.svg'
 import FileList from '../assets/file-list-3-fill.svg'
 import { indexMethodIcon } from '../icons'
-import { PreviewContainer } from '../../preview/container'
+import PreviewContainer from '../../preview/container'
 import { ChunkContainer, QAPreview } from '../../chunk'
 import { PreviewHeader } from '../../preview/header'
 import { FormattedText } from '../../formatted-text/formatted'
@@ -42,7 +42,7 @@ import { isReRankModelSelected } from '@/app/components/datasets/common/check-re
 import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
-import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -152,7 +152,8 @@ const StepTwo = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
+  const currentDataset = useDatasetDetailContextWithSelector(state => state.dataset)
+  const mutateDatasetRes = useDatasetDetailContextWithSelector(state => state.mutateDatasetRes)
 
   const isInUpload = Boolean(currentDataset)
   const isUploadInEmptyDataset = isInUpload && !currentDataset?.doc_form

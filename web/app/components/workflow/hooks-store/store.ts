@@ -7,8 +7,16 @@ import {
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
+import type {
+  BlockEnum,
+  NodeDefault,
+} from '@/app/components/workflow/types'
 
-type CommonHooksFnMap = {
+export type AvailableNodesMetaData = {
+  nodes: NodeDefault[]
+  nodesMap?: Record<BlockEnum, NodeDefault<any>>
+}
+export type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
     callback?: {
@@ -27,6 +35,10 @@ type CommonHooksFnMap = {
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
+  availableNodesMetaData?: AvailableNodesMetaData
+  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
+  exportCheck?: () => Promise<void>
+  handleExportDSL?: (include?: boolean) => Promise<void>
 }
 
 export type Shape = {
@@ -45,6 +57,15 @@ export const createHooksStore = ({
   handleStartWorkflowRun = noop,
   handleWorkflowStartRunInWorkflow = noop,
   handleWorkflowStartRunInChatflow = noop,
+  availableNodesMetaData = {
+    nodes: [],
+  },
+  getWorkflowRunAndTraceUrl = () => ({
+    runUrl: '',
+    traceUrl: '',
+  }),
+  exportCheck = async () => noop(),
+  handleExportDSL = async () => noop(),
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
@@ -59,6 +80,10 @@ export const createHooksStore = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
+    availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
+    exportCheck,
+    handleExportDSL,
   }))
 }
 

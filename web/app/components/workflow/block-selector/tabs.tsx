@@ -1,33 +1,35 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
-import type { BlockEnum } from '../types'
-import { useTabs } from './hooks'
-import type { ToolDefaultValue } from './types'
+import type {
+  BlockEnum,
+  NodeDefault,
+  OnSelectBlock,
+  ToolWithProvider,
+} from '../types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
 import AllTools from './all-tools'
-import cn from '@/utils/classnames'
+import DataSources from './data-sources'
 
 export type TabsProps = {
   activeTab: TabsEnum
-  onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string
   tags: string[]
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
-  noBlocks?: boolean
+  blocks: NodeDefault[]
+  dataSources?: ToolWithProvider[]
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
-  onActiveTabChange,
   tags,
   searchText,
   onSelect,
   availableBlocksTypes,
-  noBlocks,
+  blocks,
+  dataSources = [],
 }) => {
-  const tabs = useTabs()
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -35,33 +37,21 @@ const Tabs: FC<TabsProps> = ({
   return (
     <div onClick={e => e.stopPropagation()}>
       {
-        !noBlocks && (
-          <div className='flex items-center border-b-[0.5px] border-divider-subtle px-3'>
-            {
-              tabs.map(tab => (
-                <div
-                  key={tab.key}
-                  className={cn(
-                    'system-sm-medium relative mr-4 cursor-pointer pb-2 pt-1',
-                    activeTab === tab.key
-                      ? 'text-text-primary after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-util-colors-blue-brand-blue-brand-600'
-                      : 'text-text-tertiary',
-                  )}
-                  onClick={() => onActiveTabChange(tab.key)}
-                >
-                  {tab.name}
-                </div>
-              ))
-            }
-          </div>
-        )
-      }
-      {
-        activeTab === TabsEnum.Blocks && !noBlocks && (
+        activeTab === TabsEnum.Blocks && !!blocks.length && (
           <Blocks
             searchText={searchText}
             onSelect={onSelect}
             availableBlocksTypes={availableBlocksTypes}
+            blocks={blocks}
+          />
+        )
+      }
+      {
+        activeTab === TabsEnum.Sources && !!dataSources.length && (
+          <DataSources
+            searchText={searchText}
+            onSelect={onSelect}
+            dataSources={dataSources}
           />
         )
       }

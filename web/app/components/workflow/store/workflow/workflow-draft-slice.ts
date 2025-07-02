@@ -12,7 +12,7 @@ export type WorkflowDraftSliceShape = {
     nodes: Node[]
     edges: Edge[]
     viewport: Viewport
-    features: Record<string, any>
+    features?: Record<string, any>
     environmentVariables: EnvironmentVariable[]
   }
   setBackupDraft: (backupDraft?: WorkflowDraftSliceShape['backupDraft']) => void

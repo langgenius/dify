@@ -2,14 +2,14 @@ import contextvars
 import datetime
 import json
 import logging
-import random
+import secrets
 import threading
 import time
 import uuid
 from collections.abc import Generator, Mapping
 from typing import Any, Literal, Optional, Union, overload
 
-from flask import Flask, copy_current_request_context, current_app, has_request_context
+from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy.orm import sessionmaker
 
@@ -110,7 +110,7 @@ class PipelineGenerator(BaseAppGenerator):
         start_node_id: str = args["start_node_id"]
         datasource_type: str = args["datasource_type"]
         datasource_info_list: list[Mapping[str, Any]] = args["datasource_info_list"]
-        batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
+        batch = time.strftime("%Y%m%d%H%M%S") + str(secrets.randbelow(900000) + 100000)
         documents = []
         if invoke_from == InvokeFrom.PUBLISHED:
             for datasource_info in datasource_info_list:
@@ -589,7 +589,7 @@ class PipelineGenerator(BaseAppGenerator):
         if datasource_type == "local_file":
             name = datasource_info["name"]
         elif datasource_type == "online_document":
-            name = datasource_info["page_title"]
+            name = datasource_info["page"]["page_name"]
         elif datasource_type == "website_crawl":
             name = datasource_info["title"]
         else:

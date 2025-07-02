@@ -57,7 +57,7 @@ export const fetchDatasetDetail: Fetcher<DataSet, string> = (datasetId: string) 
 export const updateDatasetSetting: Fetcher<DataSet, {
   datasetId: string
   body: Partial<Pick<DataSet,
-    'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider'
+    'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider' | 'icon_info' | 'doc_form'
   >>
 }> = ({ datasetId, body }) => {
   return patch<DataSet>(`/datasets/${datasetId}`, { body })
@@ -272,7 +272,7 @@ export const checkWatercrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId
   })
 }
 
-type FileTypesRes = {
+export type FileTypesRes = {
   allowed_extensions: string[]
 }
 

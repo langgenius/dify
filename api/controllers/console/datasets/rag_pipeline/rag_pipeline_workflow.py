@@ -414,16 +414,18 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
             raise ValueError("missing datasource_type")
 
         rag_pipeline_service = RagPipelineService()
-        result = rag_pipeline_service.run_datasource_workflow_node(
-            pipeline=pipeline,
-            node_id=node_id,
-            user_inputs=inputs,
-            account=current_user,
-            datasource_type=datasource_type,
-            is_published=True,
+        return helper.compact_generate_response(
+            PipelineGenerator.convert_to_event_stream(
+                rag_pipeline_service.run_datasource_workflow_node(
+                    pipeline=pipeline,
+                    node_id=node_id,
+                    user_inputs=inputs,
+                    account=current_user,
+                    datasource_type=datasource_type,
+                    is_published=False,
+                )
+            )
         )
-
-        return result
 
 
 class RagPipelineDraftDatasourceNodeRunApi(Resource):
@@ -455,21 +457,18 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
             raise ValueError("missing datasource_type")
 
         rag_pipeline_service = RagPipelineService()
-        try:
-            return helper.compact_generate_response(
-                PipelineGenerator.convert_to_event_stream(
-                    rag_pipeline_service.run_datasource_workflow_node(
-                        pipeline=pipeline,
-                        node_id=node_id,
-                        user_inputs=inputs,
-                        account=current_user,
-                        datasource_type=datasource_type,
-                        is_published=False,
-                    )
+        return helper.compact_generate_response(
+            PipelineGenerator.convert_to_event_stream(
+                rag_pipeline_service.run_datasource_workflow_node(
+                    pipeline=pipeline,
+                    node_id=node_id,
+                    user_inputs=inputs,
+                    account=current_user,
+                    datasource_type=datasource_type,
+                    is_published=False,
                 )
             )
-        except Exception as e:
-            print(e)
+        )
 
 
 class RagPipelinePublishedNodeRunApi(Resource):

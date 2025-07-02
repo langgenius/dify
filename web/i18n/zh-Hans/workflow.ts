@@ -45,6 +45,7 @@ const translation = {
     setVarValuePlaceholder: '设置变量值',
     needConnectTip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
+    needAdd: '必须添加{{node}}节点',
     needEndNode: '必须添加结束节点',
     needAnswerNode: '必须添加直接回复节点',
     workflowProcess: '工作流',
@@ -230,6 +231,8 @@ const translation = {
     'utilities': '工具',
     'noResult': '未找到匹配项',
     'agent': 'Agent 策略',
+    'sources': '数据源',
+    'searchDataSource': '搜索数据源',
   },
   blocks: {
     'start': '开始',
@@ -254,6 +257,8 @@ const translation = {
     'loop-start': '循环开始',
     'loop': '循环',
     'loop-end': '退出循环',
+    'knowledge-index': '知识库',
+    'datasource': '数据源',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
@@ -276,6 +281,8 @@ const translation = {
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
     'list-operator': '用于过滤或排序数组内容。',
     'agent': '调用大型语言模型回答问题或处理自然语言',
+    'knowledge-index': '知识库节点',
+    'datasource': '数据源节点',
   },
   operator: {
     zoomIn: '放大',
@@ -367,6 +374,7 @@ const translation = {
         ms: '毫秒',
         retries: '{{num}} 重试次数',
       },
+      inputVars: '输入变量',
     },
     start: {
       required: '必填',
@@ -879,6 +887,19 @@ const translation = {
         install: '安装',
         cancel: '取消',
       },
+    },
+    dataSource: {
+      supportedFileFormats: '支持的文件格式',
+      supportedFileFormatsPlaceholder: '文件格式，例如：doc',
+    },
+    knowledgeBase: {
+      chunkStructure: '分段结构',
+      chooseChunkStructure: '选择分段结构',
+      changeChunkStructure: '更改分段结构',
+      aboutRetrieval: '关于知识检索。',
+      chunkIsRequired: '分段结构是必需的',
+      indexMethodIsRequired: '索引方法是必需的',
+      retrievalSettingIsRequired: '检索设置是必需的',
     },
   },
   tracing: {

@@ -36,7 +36,7 @@ export const useWorkflowInit = () => {
 
     setWorkflowConfig(config)
   }, [workflowStore])
-  useWorkflowConfig(appDetail.id, handleUpdateWorkflowConfig)
+  useWorkflowConfig(`/apps/${appDetail.id}/workflows/draft/config`, handleUpdateWorkflowConfig)
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {

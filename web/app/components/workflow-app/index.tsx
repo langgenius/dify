@@ -21,6 +21,7 @@ import WorkflowWithDefaultContext from '@/app/components/workflow'
 import {
   WorkflowContextProvider,
 } from '@/app/components/workflow/context'
+import type { InjectWorkflowStoreSliceFn } from '@/app/components/workflow/store'
 import { createWorkflowSlice } from './store/workflow/workflow-slice'
 import WorkflowAppMain from './components/workflow-main'
 
@@ -98,7 +99,7 @@ const WorkflowAppWithAdditionalContext = () => {
 const WorkflowAppWrapper = () => {
   return (
     <WorkflowContextProvider
-      injectWorkflowStoreSliceFn={createWorkflowSlice}
+      injectWorkflowStoreSliceFn={createWorkflowSlice as InjectWorkflowStoreSliceFn}
     >
       <WorkflowAppWithAdditionalContext />
     </WorkflowContextProvider>

@@ -9,6 +9,7 @@ const translation = {
     agents: 'Agent Strategies',
     extensions: 'Extensions',
     bundles: 'Bundles',
+    datasources: 'Data Sources',
   },
   categorySingle: {
     model: 'Model',
@@ -16,6 +17,7 @@ const translation = {
     agent: 'Agent Strategy',
     extension: 'Extension',
     bundle: 'Bundle',
+    datasource: 'Data Source',
   },
   search: 'Search',
   allCategories: 'All Categories',

@@ -16,6 +16,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useStore } from '@/app/components/workflow/store'
 
 const ExportImage: FC = () => {
   const { t } = useTranslation()
@@ -23,9 +24,10 @@ const ExportImage: FC = () => {
 
   const appDetail = useAppStore(s => s.appDetail)
   const [open, setOpen] = useState(false)
+  const knowledgeName = useStore(s => s.knowledgeName)
 
   const handleExportImage = useCallback(async (type: 'png' | 'jpeg' | 'svg') => {
-    if (!appDetail)
+    if (!appDetail && !knowledgeName)
       return
 
     if (getNodesReadOnly())
@@ -60,7 +62,7 @@ const ExportImage: FC = () => {
 
       const link = document.createElement('a')
       link.href = dataUrl
-      link.download = `${appDetail.name}.${type}`
+      link.download = `${appDetail ? appDetail.name : knowledgeName}.${type}`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -68,7 +70,7 @@ const ExportImage: FC = () => {
     catch (error) {
       console.error('Export image failed:', error)
     }
-  }, [getNodesReadOnly, appDetail])
+  }, [getNodesReadOnly, appDetail, knowledgeName])
 
   const handleTrigger = useCallback(() => {
     if (getNodesReadOnly())

@@ -24,31 +24,31 @@ export type NavItem = {
   link: string
   icon_type: AppIconType | null
   icon: string
-  icon_background: string
+  icon_background: string | null
   icon_url: string | null
   mode?: string
 }
 export type INavSelectorProps = {
-  navs: NavItem[]
+  navigationItems: NavItem[]
   curNav?: Omit<NavItem, 'link'>
   createText: string
   isApp?: boolean
   onCreate: (state: string) => void
-  onLoadmore?: () => void
+  onLoadMore?: () => void
 }
 
-const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: INavSelectorProps) => {
+const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onLoadMore }: INavSelectorProps) => {
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
   const handleScroll = useCallback(debounce((e) => {
-    if (typeof onLoadmore === 'function') {
+    if (typeof onLoadMore === 'function') {
       const { clientHeight, scrollHeight, scrollTop } = e.target
 
       if (clientHeight + scrollTop > scrollHeight - 50)
-        onLoadmore()
+        onLoadMore()
     }
   }, 50), [])
 
@@ -75,7 +75,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
           >
             <div className="overflow-auto px-1 py-1" style={{ maxHeight: '50vh' }} onScroll={handleScroll}>
               {
-                navs.map(nav => (
+                navigationItems.map(nav => (
                   <MenuItem key={nav.id}>
                     <div className='flex w-full cursor-pointer items-center truncate rounded-lg px-3 py-[6px] text-[14px] font-normal text-text-secondary hover:bg-state-base-hover' onClick={() => {
                       if (curNav?.id === nav.id)

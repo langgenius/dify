@@ -24,8 +24,8 @@ type Props = {
 const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (
     <div className={className}>
-      <div className="flex items-center justify-between">
-        <div className="flex h-6 items-center">
+      <div className='flex items-center justify-between'>
+        <div className='flex h-6 items-center'>
           {hasSwitch && (
             <Switch
               size='md'
@@ -36,20 +36,20 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
               }}
             />
           )}
-          <span className="system-sm-semibold mr-1 text-text-secondary">{name}</span>
+          <span className='system-sm-semibold mr-1 text-text-secondary'>{name}</span>
           {!noTooltip && (
             <Tooltip
               triggerClassName='w-4 h-4 shrink-0'
-              popupContent={<div className="w-[200px]">{tip}</div>}
+              popupContent={<div className='w-[200px]'>{tip}</div>}
             />
           )}
         </div>
       </div>
-      <div className="mt-1 flex items-center">
-        <div className="mr-3 flex shrink-0 items-center">
+      <div className='mt-1 flex items-center'>
+        <div className='mr-3 flex shrink-0 items-center'>
           <InputNumber
             disabled={!enable}
-            type="number"
+            type='number'
             min={min}
             max={max}
             step={step}
@@ -62,7 +62,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             className='w-[72px]'
           />
         </div>
-        <div className="flex grow items-center">
+        <div className='flex grow items-center'>
           <Slider
             className='w-full'
             disabled={!enable}

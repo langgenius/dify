@@ -60,6 +60,12 @@ export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}
   })
 }
 
+export const fetchPipelineNodeDefault = (pipelineId: string, blockType: BlockEnum, query = {}) => {
+  return get(`rag/pipelines/${pipelineId}/workflows/default-workflow-block-configs/${blockType}`, {
+    params: { q: JSON.stringify(query) },
+  })
+}
+
 // TODO: archived
 export const updateWorkflowDraftFromDSL = (appId: string, data: string) => {
   return post<FetchWorkflowDraftResponse>(`apps/${appId}/workflows/draft/import`, { body: { data } })

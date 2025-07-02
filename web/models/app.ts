@@ -1,5 +1,5 @@
 import type { LangFuseConfig, LangSmithConfig, OpikConfig, TracingProvider, WeaveConfig } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App, AppTemplate, SiteConfig } from '@/types/app'
+import type { App, AppMode, AppTemplate, SiteConfig } from '@/types/app'
 import type { Dependency } from '@/app/components/plugins/types'
 
 /* export type App = {

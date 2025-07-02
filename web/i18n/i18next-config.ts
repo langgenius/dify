@@ -34,6 +34,7 @@ const loadLangResources = (lang: string) => ({
     datasetHitTesting: require(`./${lang}/dataset-hit-testing`).default,
     datasetSettings: require(`./${lang}/dataset-settings`).default,
     datasetCreation: require(`./${lang}/dataset-creation`).default,
+    datasetPipeline: require(`./${lang}/dataset-pipeline`).default,
     explore: require(`./${lang}/explore`).default,
     billing: require(`./${lang}/billing`).default,
     custom: require(`./${lang}/custom`).default,
@@ -43,6 +44,7 @@ const loadLangResources = (lang: string) => ({
     plugin: require(`./${lang}/plugin`).default,
     pluginTags: require(`./${lang}/plugin-tags`).default,
     time: require(`./${lang}/time`).default,
+    pipeline: require(`./${lang}/pipeline`).default,
     education: requireSilent(lang),
   },
 })

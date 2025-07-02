@@ -17,12 +17,12 @@ import type {
 } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
 
-type Option = {
+export type Option = {
   label: string
   value: string
 }
 
-type PureSelectProps = {
+export type PureSelectProps = {
   options: Option[]
   value?: string
   onChange?: (value: string) => void

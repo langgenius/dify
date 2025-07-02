@@ -31,7 +31,6 @@ export default function WorkspaceSelector({
                 name={currentWorkspace?.workspace_name}
               />
               <div className='mr-1 w-[90px] truncate text-left text-sm font-medium text-text-secondary' title={currentWorkspace?.workspace_name}>{currentWorkspace?.workspace_name}</div>
-              {/* <div className='mr-1 px-1 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-text-accent'>{currentWorkspace?.pages.length}</div> */}
               <RiArrowDownSLine className='h-4 w-4 text-text-secondary' />
             </MenuButton>
             <Transition
@@ -46,7 +45,7 @@ export default function WorkspaceSelector({
               <MenuItems
                 className='absolute left-0 top-8 z-10 w-80
                   origin-top-right rounded-lg border-[0.5px]
-                  border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'
+                  border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5'
               >
                 <div className="max-h-50 overflow-auto p-1">
                   {

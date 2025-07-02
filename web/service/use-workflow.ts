@@ -23,11 +23,13 @@ export const useAppWorkflow = (appID: string) => {
   })
 }
 
-export const useWorkflowConfig = (appId: string, onSuccess: (v: WorkflowConfigResponse) => void) => {
+export const useWorkflowConfig = <T = WorkflowConfigResponse>(url: string, onSuccess: (v: T) => void) => {
   return useQuery({
-    queryKey: [NAME_SPACE, 'config', appId],
+    enabled: !!url,
+    queryKey: [NAME_SPACE, 'config', url],
+    staleTime: 0,
     queryFn: async () => {
-      const data = await get<WorkflowConfigResponse>(`/apps/${appId}/workflows/draft/config`)
+      const data = await get<T>(url)
       onSuccess(data)
       return data
     },
@@ -37,10 +39,11 @@ export const useWorkflowConfig = (appId: string, onSuccess: (v: WorkflowConfigRe
 const WorkflowVersionHistoryKey = [NAME_SPACE, 'versionHistory']
 
 export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) => {
-  const { appId, initialPage, limit, userId, namedOnly } = params
+  const { url, initialPage, limit, userId, namedOnly } = params
   return useInfiniteQuery({
-    queryKey: [...WorkflowVersionHistoryKey, appId, initialPage, limit, userId, namedOnly],
-    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(`/apps/${appId}/workflows`, {
+    enabled: !!url,
+    queryKey: [...WorkflowVersionHistoryKey, url, initialPage, limit, userId, namedOnly],
+    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(url, {
       params: {
         page: pageParam,
         limit,
@@ -53,14 +56,14 @@ export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) 
   })
 }
 
-export const useResetWorkflowVersionHistory = (appId: string) => {
-  return useReset([...WorkflowVersionHistoryKey, appId])
+export const useResetWorkflowVersionHistory = () => {
+  return useReset([...WorkflowVersionHistoryKey])
 }
 
-export const useUpdateWorkflow = (appId: string) => {
+export const useUpdateWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'update'],
-    mutationFn: (params: UpdateWorkflowParams) => patch(`/apps/${appId}/workflows/${params.workflowId}`, {
+    mutationFn: (params: UpdateWorkflowParams) => patch(params.url, {
       body: {
         marked_name: params.title,
         marked_comment: params.releaseNotes,
@@ -69,17 +72,17 @@ export const useUpdateWorkflow = (appId: string) => {
   })
 }
 
-export const useDeleteWorkflow = (appId: string) => {
+export const useDeleteWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete'],
-    mutationFn: (workflowId: string) => del(`/apps/${appId}/workflows/${workflowId}`),
+    mutationFn: (url: string) => del(url),
   })
 }
 
-export const usePublishWorkflow = (appId: string) => {
+export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
-    mutationFn: (params: PublishWorkflowParams) => post<CommonResponse & { created_at: number }>(`/apps/${appId}/workflows/publish`, {
+    mutationFn: (params: PublishWorkflowParams) => post<CommonResponse & { created_at: number }>(params.url, {
       body: {
         marked_name: params.title,
         marked_comment: params.releaseNotes,

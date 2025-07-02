@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import React, { useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
+import type { RemixiconComponentType } from '@remixicon/react'
 import {
+  RiAttachmentLine,
   RiEqualizer2Fill,
   RiEqualizer2Line,
   RiFileTextFill,
@@ -13,12 +13,8 @@ import {
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
-import {
-  PaperClipIcon,
-} from '@heroicons/react/24/outline'
-import { RiApps2AddLine, RiBookOpenLine, RiInformation2Line } from '@remixicon/react'
+import { RiInformation2Line } from '@remixicon/react'
 import classNames from '@/utils/classnames'
-import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
 import type { RelatedAppResponse } from '@/models/datasets'
 import AppSideBar from '@/app/components/app-sidebar'
 import Loading from '@/app/components/base/loading'
@@ -30,6 +26,10 @@ import { useDocLink } from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
+import { Divider } from '@/app/components/base/icons/src/vender/knowledge'
+import NoLinkedAppsPanel from '@/app/components/datasets/no-linked-apps-panel'
+import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import useDocumentTitle from '@/hooks/use-document-title'
 
 export type IAppDetailLayoutProps = {
@@ -38,81 +38,72 @@ export type IAppDetailLayoutProps = {
 }
 
 type IExtraInfoProps = {
-  isMobile: boolean
   relatedApps?: RelatedAppResponse
+  documentCount?: number
   expand: boolean
 }
 
-const ExtraInfo = ({ isMobile, relatedApps, expand }: IExtraInfoProps) => {
-  const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
+const ExtraInfo = React.memo(({
+  relatedApps,
+  documentCount,
+  expand,
+}: IExtraInfoProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
 
   const hasRelatedApps = relatedApps?.data && relatedApps?.data?.length > 0
   const relatedAppsTotal = relatedApps?.data?.length || 0
 
-  useEffect(() => {
-    setShowTips(!isMobile)
-  }, [isMobile, setShowTips])
-
-  return <div>
-    {hasRelatedApps && (
-      <>
-        {!isMobile && (
-          <Tooltip
-            position='right'
-            noDecoration
-            needsDelay
-            popupContent={
-              <LinkedAppsPanel
-                relatedApps={relatedApps.data}
-                isMobile={isMobile}
-              />
-            }
-          >
-            <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
-              <span>{relatedAppsTotal || '--'} {t('common.datasetMenus.relatedApp')}</span>
-              <RiInformation2Line className='h-4 w-4' />
+  return (
+    <>
+      {!expand && (
+        <div className='flex items-center gap-x-0.5'>
+          <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
+            <div className='system-md-semibold-uppercase text-text-secondary'>
+              {documentCount ?? '--'}
             </div>
-          </Tooltip>
-        )}
-
-        {isMobile && <div className={classNames('uppercase text-xs text-text-tertiary font-medium pb-2 pt-4', 'flex items-center justify-center !px-0 gap-1')}>
-          {relatedAppsTotal || '--'}
-          <PaperClipIcon className='h-4 w-4 text-text-secondary' />
-        </div>}
-      </>
-    )}
-    {!hasRelatedApps && !expand && (
-      <Tooltip
-        position='right'
-        noDecoration
-        needsDelay
-        popupContent={
-          <div className='w-[240px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4'>
-            <div className='inline-flex rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle p-2'>
-              <RiApps2AddLine className='h-4 w-4 text-text-tertiary' />
+            <div className='system-2xs-medium-uppercase text-text-tertiary'>
+              {t('common.datasetMenus.documents')}
             </div>
-            <div className='my-2 text-xs text-text-tertiary'>{t('common.datasetMenus.emptyTip')}</div>
-            <a
-              className='mt-2 inline-flex cursor-pointer items-center text-xs text-text-accent'
-              href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
-              target='_blank' rel='noopener noreferrer'
-            >
-              <RiBookOpenLine className='mr-1 text-text-accent' />
-              {t('common.datasetMenus.viewDoc')}
-            </a>
           </div>
-        }
-      >
-        <div className='system-xs-medium-uppercase inline-flex cursor-pointer items-center space-x-1 text-text-secondary'>
-          <span>{t('common.datasetMenus.noRelatedApp')}</span>
-          <RiInformation2Line className='h-4 w-4' />
+          <div className='py-2 pl-0.5 pr-1.5'>
+            <Divider className='text-test-divider-regular h-full w-fit' />
+          </div>
+          <div className='flex grow flex-col px-2 pb-1.5 pt-1'>
+            <div className='system-md-semibold-uppercase text-text-secondary'>
+              {relatedAppsTotal ?? '--'}
+            </div>
+            <Tooltip
+              position='bottom-start'
+              noDecoration
+              needsDelay
+              popupContent={
+                hasRelatedApps ? (
+                  <LinkedAppsPanel
+                    relatedApps={relatedApps.data}
+                    isMobile={expand}
+                  />
+                ) : <NoLinkedAppsPanel />
+              }
+            >
+              <div className='system-2xs-medium-uppercase flex cursor-pointer items-center gap-x-0.5 text-text-tertiary'>
+                <span>{t('common.datasetMenus.relatedApp')}</span>
+                <RiInformation2Line className='size-3' />
+              </div>
+            </Tooltip>
+          </div>
         </div>
-      </Tooltip>
-    )}
-  </div>
-}
+      )}
+
+      {expand && (
+        <div className={classNames('uppercase text-xs text-text-tertiary font-medium pb-2 pt-4', 'flex items-center justify-center !px-0 gap-1')}>
+          {relatedAppsTotal ?? '--'}
+          <RiAttachmentLine className='size-4 text-text-secondary' />
+        </div>
+      )}
+    </>
+  )
+})
 
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
@@ -120,70 +111,98 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     params: { datasetId },
   } = props
   const pathname = usePathname()
-  const hideSideBar = /documents\/create$/.test(pathname)
+  const hideSideBar = pathname.endsWith('documents/create') || pathname.endsWith('documents/create-from-pipeline')
   const { t } = useTranslation()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const { data: datasetRes, error, mutate: mutateDatasetRes } = useSWR({
-    url: 'fetchDatasetDetail',
-    datasetId,
-  }, apiParams => fetchDatasetDetail(apiParams.datasetId))
+  const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
 
-  const { data: relatedApps } = useSWR({
-    action: 'fetchDatasetRelatedApps',
-    datasetId,
-  }, apiParams => fetchDatasetRelatedApps(apiParams.datasetId))
+  const { data: relatedApps } = useDatasetRelatedApps(datasetId)
+
+  const isButtonDisabledWithPipeline = useMemo(() => {
+    if (!datasetRes)
+      return true
+    if (datasetRes.provider === 'external')
+      return false
+    if (datasetRes.runtime_mode === 'general')
+      return false
+    return !datasetRes.is_published
+  }, [datasetRes])
 
   const navigation = useMemo(() => {
     const baseNavigation = [
-      { name: t('common.datasetMenus.hitTesting'), href: `/datasets/${datasetId}/hitTesting`, icon: RiFocus2Line, selectedIcon: RiFocus2Fill },
-      { name: t('common.datasetMenus.settings'), href: `/datasets/${datasetId}/settings`, icon: RiEqualizer2Line, selectedIcon: RiEqualizer2Fill },
+      {
+        name: t('common.datasetMenus.hitTesting'),
+        href: `/datasets/${datasetId}/hitTesting`,
+        icon: RiFocus2Line,
+        selectedIcon: RiFocus2Fill,
+        disabled: isButtonDisabledWithPipeline,
+      },
+      {
+        name: t('common.datasetMenus.settings'),
+        href: `/datasets/${datasetId}/settings`,
+        icon: RiEqualizer2Line,
+        selectedIcon: RiEqualizer2Fill,
+        disabled: false,
+      },
     ]
 
     if (datasetRes?.provider !== 'external') {
+      if (datasetRes?.runtime_mode === 'rag_pipeline') {
+        baseNavigation.unshift({
+          name: t('common.datasetMenus.pipeline'),
+          href: `/datasets/${datasetId}/pipeline`,
+          icon: PipelineLine as RemixiconComponentType,
+          selectedIcon: PipelineFill as RemixiconComponentType,
+          disabled: false,
+        })
+      }
       baseNavigation.unshift({
         name: t('common.datasetMenus.documents'),
         href: `/datasets/${datasetId}/documents`,
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
+        disabled: isButtonDisabledWithPipeline,
       })
     }
+
     return baseNavigation
-  }, [datasetRes?.provider, datasetId, t])
+  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetRes?.runtime_mode])
 
   useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
 
-  const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
+  const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
 
   useEffect(() => {
     const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
     const mode = isMobile ? 'collapse' : 'expand'
-    setAppSiderbarExpand(isMobile ? mode : localeMode)
-  }, [isMobile, setAppSiderbarExpand])
+    setAppSidebarExpand(isMobile ? mode : localeMode)
+  }, [isMobile, setAppSidebarExpand])
 
   if (!datasetRes && !error)
     return <Loading type='app' />
 
   return (
     <div className='flex grow overflow-hidden'>
-      {!hideSideBar && <AppSideBar
-        title={datasetRes?.name || '--'}
-        icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
-        icon_background={datasetRes?.icon_background || '#F5F5F5'}
-        desc={datasetRes?.description || '--'}
-        isExternal={datasetRes?.provider === 'external'}
-        navigation={navigation}
-        extraInfo={!isCurrentWorkspaceDatasetOperator ? mode => <ExtraInfo isMobile={mode === 'collapse'} relatedApps={relatedApps} expand={mode === 'collapse'} /> : undefined}
-        iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
-      />}
       <DatasetDetailContext.Provider value={{
         indexingTechnique: datasetRes?.indexing_technique,
         dataset: datasetRes,
-        mutateDatasetRes: () => mutateDatasetRes(),
+        mutateDatasetRes,
       }}>
+        {!hideSideBar && (
+          <AppSideBar
+            navigation={navigation}
+            extraInfo={
+              !isCurrentWorkspaceDatasetOperator
+                ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'collapse'} documentCount={datasetRes?.document_count} />
+                : undefined
+            }
+            iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
+          />
+        )}
         <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
       </DatasetDetailContext.Provider>
     </div>

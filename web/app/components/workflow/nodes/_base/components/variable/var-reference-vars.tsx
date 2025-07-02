@@ -18,11 +18,13 @@ import { checkKeys } from '@/utils/var'
 import type { StructuredOutput } from '../../../llm/types'
 import { Type } from '../../../llm/types'
 import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
-import { varTypeToStructType } from './utils'
+import { isSpecialVar, varTypeToStructType } from './utils'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 import { FILE_STRUCT } from '@/app/components/workflow/constants'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { noop } from 'lodash-es'
+import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
+import ManageInputField from './manage-input-field'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -67,6 +69,7 @@ const Item: FC<ItemProps> = ({
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
+  const isRagVariable = itemData.isRagVariable
 
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
     if (!isObj) return null
@@ -123,7 +126,7 @@ const Item: FC<ItemProps> = ({
     if (!isSupportFileVar && isFile)
       return
 
-    if (isSys || isEnv || isChatVar) { // system variable | environment variable | conversation variable
+    if (isSys || isEnv || isChatVar || isRagVariable) { // system variable | environment variable | conversation variable
       onChange([...objPath, ...itemData.variable.split('.')], itemData)
     }
     else {
@@ -148,11 +151,12 @@ const Item: FC<ItemProps> = ({
           onMouseDown={e => e.preventDefault()}
         >
           <div className='flex w-0 grow items-center'>
-            {!isEnv && !isChatVar && !isLoopVar && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
+            {!isEnv && !isChatVar && !isLoopVar && !isRagVariable && <Variable02 className={cn('h-3.5 w-3.5 shrink-0 text-text-accent', isException && 'text-text-warning')} />}
             {isEnv && <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />}
             {isChatVar && <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />}
             {isLoopVar && <Loop className='h-3.5 w-3.5 shrink-0 text-util-colors-cyan-cyan-500' />}
-            {!isEnv && !isChatVar && (
+            {isRagVariable && <InputField className='h-3.5 w-3.5 shrink-0 text-text-accent' />}
+            {!isEnv && !isChatVar && !isRagVariable && (
               <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable}</div>
             )}
             {isEnv && (
@@ -160,6 +164,9 @@ const Item: FC<ItemProps> = ({
             )}
             {isChatVar && (
               <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('conversation.', '')}</div>
+            )}
+            {isRagVariable && (
+              <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.split('.').slice(-1)[0]}</div>
             )}
           </div>
           <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{itemData.type}</div>
@@ -260,6 +267,8 @@ type Props = {
   maxHeightClass?: string
   onClose?: () => void
   onBlur?: () => void
+  showManageInputField?: boolean
+  onManageInputField?: () => void
   autoFocus?: boolean
 }
 const VarReferenceVars: FC<Props> = ({
@@ -272,6 +281,8 @@ const VarReferenceVars: FC<Props> = ({
   maxHeightClass,
   onClose,
   onBlur,
+  showManageInputField,
+  onManageInputField,
   autoFocus = true,
 }) => {
   const { t } = useTranslation()
@@ -285,7 +296,7 @@ const VarReferenceVars: FC<Props> = ({
   }
 
   const filteredVars = vars.filter((v) => {
-    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))
+    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
     return children.length > 0
   }).filter((node) => {
     if (!searchText)
@@ -296,7 +307,7 @@ const VarReferenceVars: FC<Props> = ({
     })
     return children.length > 0
   }).map((node) => {
-    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))
+    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || isSpecialVar(v.variable.split('.')[0]))
     if (searchText) {
       const searchTextLower = searchText.toLowerCase()
       if (!node.title.toLowerCase().includes(searchTextLower))
@@ -363,6 +374,13 @@ const VarReferenceVars: FC<Props> = ({
           }
         </div>
         : <div className='pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500'>{t('workflow.common.noVar')}</div>}
+      {
+        showManageInputField && (
+          <ManageInputField
+            onManage={onManageInputField || noop}
+          />
+        )
+      }
     </>
   )
 }

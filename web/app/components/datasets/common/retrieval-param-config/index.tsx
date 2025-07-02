@@ -202,7 +202,7 @@ const RetrievalParamConfig: FC<Props> = ({
                       option.value === RerankingModeEnum.WeightedScore
                         ? ProgressIndicator
                         : Reranking
-                    } alt=''/>}
+                    } alt='' />}
                     title={option.label}
                     description={option.tips}
                     className='flex-1'

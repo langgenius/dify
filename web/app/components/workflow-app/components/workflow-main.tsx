@@ -7,6 +7,9 @@ import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import type { WorkflowProps } from '@/app/components/workflow'
 import WorkflowChildren from './workflow-children'
 import {
+  useAvailableNodesMetaData,
+  useDSL,
+  useGetRunAndTraceUrl,
   useNodesSyncDraft,
   useWorkflowRefreshDraft,
   useWorkflowRun,
@@ -61,6 +64,12 @@ const WorkflowMain = ({
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
   } = useWorkflowStartRun()
+  const availableNodesMetaData = useAvailableNodesMetaData()
+  const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
+  const {
+    exportCheck,
+    handleExportDSL,
+  } = useDSL()
 
   const hooksStore = useMemo(() => {
     return {
@@ -75,6 +84,10 @@ const WorkflowMain = ({
       handleStartWorkflowRun,
       handleWorkflowStartRunInChatflow,
       handleWorkflowStartRunInWorkflow,
+      availableNodesMetaData,
+      getWorkflowRunAndTraceUrl,
+      exportCheck,
+      handleExportDSL,
     }
   }, [
     syncWorkflowDraftWhenPageClose,
@@ -88,6 +101,10 @@ const WorkflowMain = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInChatflow,
     handleWorkflowStartRunInWorkflow,
+    availableNodesMetaData,
+    getWorkflowRunAndTraceUrl,
+    exportCheck,
+    handleExportDSL,
   ])
 
   return (
@@ -96,7 +113,7 @@ const WorkflowMain = ({
       edges={edges}
       viewport={viewport}
       onWorkflowDataUpdate={handleWorkflowDataUpdate}
-      hooksStore={hooksStore}
+      hooksStore={hooksStore as any}
     >
       <WorkflowChildren />
     </WorkflowWithInnerContext>

@@ -82,7 +82,19 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
   pagesMap: DataSourceNotionPageMap
 }>) => {
   const { t } = useTranslation()
-  const { dataList, handleToggle, checkedIds, disabledCheckedIds, handleCheck, canPreview, handlePreview, listMapWithChildrenAndDescendants, searchValue, previewPageId, pagesMap } = data
+  const {
+    dataList,
+    handleToggle,
+    checkedIds,
+    disabledCheckedIds,
+    handleCheck,
+    canPreview,
+    handlePreview,
+    listMapWithChildrenAndDescendants,
+    searchValue,
+    previewPageId,
+    pagesMap,
+  } = data
   const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
   const hasChild = currentWithChildrenAndDescendants.descendants.size > 0

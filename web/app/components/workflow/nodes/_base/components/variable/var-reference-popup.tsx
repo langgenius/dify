@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferenceVars from './var-reference-vars'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import ListEmpty from '@/app/components/base/list-empty'
+import { useStore } from '@/app/components/workflow/store'
 import { useDocLink } from '@/context/i18n'
 
 type Props = {
@@ -22,6 +23,9 @@ const VarReferencePopup: FC<Props> = ({
   isSupportFileVar = true,
 }) => {
   const { t } = useTranslation()
+  const pipelineId = useStore(s => s.pipelineId)
+  const showManageRagInputFields = useMemo(() => !!pipelineId, [pipelineId])
+  const setShowInputFieldDialog = useStore(s => s.setShowInputFieldDialog)
   const docLink = useDocLink()
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
@@ -60,6 +64,8 @@ const VarReferencePopup: FC<Props> = ({
           onChange={onChange}
           itemWidth={itemWidth}
           isSupportFileVar={isSupportFileVar}
+          showManageInputField={showManageRagInputFields}
+          onManageInputField={() => setShowInputFieldDialog?.(true)}
         />
       }
     </div >

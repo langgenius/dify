@@ -165,6 +165,8 @@ const ComponentPicker = ({
                         isSupportFileVar={isSupportFileVar}
                         onClose={handleClose}
                         onBlur={handleClose}
+                        showManageInputField={workflowVariableBlock.showManageInputField}
+                        onManageInputField={workflowVariableBlock.onManageInputField}
                         autoFocus={false}
                       />
                     </div>
@@ -206,7 +208,7 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable, handleClose, isSupportFileVar])
+  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable, handleClose, isSupportFileVar, workflowVariableBlock?.showManageInputField, workflowVariableBlock?.onManageInputField])
 
   return (
     <LexicalTypeaheadMenuPlugin

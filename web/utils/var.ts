@@ -5,6 +5,7 @@ import {
   PRE_PROMPT_PLACEHOLDER_TEXT,
   QUERY_PLACEHOLDER_TEXT,
 } from '@/app/components/base/prompt-editor/constants'
+import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
 
 const otherAllowedRegex = /^\w+$/
@@ -27,7 +28,7 @@ export const getNewVar = (key: string, type: string) => {
   }
 }
 
-export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) => {
+export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput): InputVar => {
   const { max_length, ...rest } = VAR_ITEM_TEMPLATE_IN_WORKFLOW
   if (type !== InputVarType.textInput) {
     return {
@@ -42,6 +43,9 @@ export const getNewVarInWorkflow = (key: string, type = InputVarType.textInput) 
     type,
     variable: key,
     label: key.slice(0, getMaxVarNameLength(key)),
+    placeholder: '',
+    default: '',
+    hint: '',
   }
 }
 

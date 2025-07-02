@@ -141,7 +141,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         datasource_provider_id = GenericProviderID(datasource_provider)
 
-        response = self._request_with_plugin_daemon_response_stream(
+        return self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_pages",
             OnlineDocumentPagesMessage,
@@ -159,7 +159,6 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        yield from response
 
     def get_online_document_page_content(
         self,
@@ -177,7 +176,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         datasource_provider_id = GenericProviderID(datasource_provider)
 
-        response = self._request_with_plugin_daemon_response_stream(
+        return self._request_with_plugin_daemon_response_stream(
             "POST",
             f"plugin/{tenant_id}/dispatch/datasource/get_online_document_page_content",
             DatasourceMessage,
@@ -195,7 +194,6 @@ class PluginDatasourceManager(BasePluginClient):
                 "Content-Type": "application/json",
             },
         )
-        yield from response
 
     def online_drive_browse_files(
         self,
