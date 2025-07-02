@@ -154,7 +154,7 @@ class WorkflowDraftVariableService:
         variables = (
             # Do not load the `value` field.
             query.options(orm.defer(WorkflowDraftVariable.value))
-            .order_by(WorkflowDraftVariable.id.desc())
+            .order_by(WorkflowDraftVariable.created_at.desc())
             .limit(limit)
             .offset((page - 1) * limit)
             .all()
@@ -168,7 +168,7 @@ class WorkflowDraftVariableService:
             WorkflowDraftVariable.node_id == node_id,
         )
         query = self._session.query(WorkflowDraftVariable).filter(*criteria)
-        variables = query.order_by(WorkflowDraftVariable.id.desc()).all()
+        variables = query.order_by(WorkflowDraftVariable.created_at.desc()).all()
         return WorkflowDraftVariableList(variables=variables)
 
     def list_node_variables(self, app_id: str, node_id: str) -> WorkflowDraftVariableList:
@@ -446,6 +446,9 @@ def _batch_upsert_draft_varaible(
         stmt = stmt.on_conflict_do_update(
             index_elements=WorkflowDraftVariable.unique_app_id_node_id_name(),
             set_={
+                # Refresh creation timestamp to ensure updated variables
+                # appear first in chronologically sorted result sets.
+                "created_at": stmt.excluded.created_at,
                 "updated_at": stmt.excluded.updated_at,
                 "last_edited_at": stmt.excluded.last_edited_at,
                 "description": stmt.excluded.description,
