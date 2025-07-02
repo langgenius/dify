@@ -11,12 +11,11 @@ import {
   useEditInspectorVar,
   useInvalidateConversationVarValues,
   useInvalidateSysVarValues,
-  useLastRun,
   useResetConversationVar,
   useResetToLastRunValue,
   useSysVarValues,
 } from '@/service/use-workflow'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { isConversationVar, isENV, isSystemVar } from '../nodes/_base/components/variable/utils'
 import produce from 'immer'
 import type { Node } from '@/app/components/workflow/types'
@@ -118,11 +117,12 @@ const useInspectVarsCrud = () => {
         if (nodeInfo) {
           const index = draft.findIndex(node => node.nodeId === nodeId)
           if (index === -1) {
-            draft.push({
+            draft.unshift({
               nodeId,
               nodeType: nodeInfo.data.type,
               title: nodeInfo.data.title,
               vars: payload,
+              nodePayload: nodeInfo.data,
             })
           }
           else {
@@ -180,16 +180,6 @@ const useInspectVarsCrud = () => {
       invalidateSysVarValues()
   }, [doEditInspectorVar, invalidateConversationVarValues, invalidateSysVarValues, setInspectVarValue])
 
-  const [currNodeId, setCurrNodeId] = useState<string | null>(null)
-  const [currEditVarId, setCurrEditVarId] = useState<string | null>(null)
-  const { data } = useLastRun(appId, currNodeId || '', !!currNodeId)
-  useEffect(() => {
-    if (data && currNodeId && currEditVarId) {
-      const inspectVar = getNodeInspectVars(currNodeId)?.vars?.find(item => item.id === currEditVarId)
-        resetToLastRunVarInStore(currNodeId, currEditVarId, data.outputs?.[inspectVar?.selector?.[1] || ''])
-    }
-  }, [data, currNodeId, currEditVarId, getNodeInspectVars, editInspectVarValue, resetToLastRunVarInStore])
-
   const renameInspectVarName = async (nodeId: string, oldName: string, newName: string) => {
     const varId = getVarId(nodeId, oldName)
     if (!varId)
@@ -212,9 +202,13 @@ const useInspectVarsCrud = () => {
   }, [getInspectVar])
 
   const resetToLastRunVar = async (nodeId: string, varId: string) => {
-    await doResetToLastRunValue(varId)
-    setCurrNodeId(nodeId)
-    setCurrEditVarId(varId)
+    const isSysVar = nodeId === 'sys'
+    const data = await doResetToLastRunValue(varId)
+
+    if(isSysVar)
+      invalidateSysVarValues()
+    else
+      resetToLastRunVarInStore(nodeId, varId, data.value)
   }
 
   return {

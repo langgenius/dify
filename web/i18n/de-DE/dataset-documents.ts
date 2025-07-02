@@ -390,6 +390,8 @@ const translation = {
     addChildChunk: 'Untergeordneten Block hinzufügen',
     regenerationConfirmTitle: 'Möchten Sie untergeordnete Chunks regenerieren?',
     searchResults_one: 'ERGEBNIS',
+    keywordEmpty: 'Das Schlüsselwort darf nicht leer sein.',
+    keywordDuplicate: 'Das Schlüsselwort existiert bereits',
   },
 }
 

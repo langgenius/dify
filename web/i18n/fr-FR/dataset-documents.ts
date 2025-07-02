@@ -389,6 +389,8 @@ const translation = {
     searchResults_zero: 'RÉSULTAT',
     empty: 'Aucun Chunk trouvé',
     editChildChunk: 'Modifier le morceau enfant',
+    keywordDuplicate: 'Le mot-clé existe déjà',
+    keywordEmpty: 'Le mot-clé ne peut pas être vide.',
   },
 }
 

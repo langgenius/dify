@@ -184,9 +184,11 @@ const VarReferencePicker: FC<Props> = ({
       return startNode?.data
 
     const node = getNodeInfoById(availableNodes, outputVarNodeId)?.data
-    return {
-      ...node,
-      id: outputVarNodeId,
+    if (node) {
+      return {
+        ...node,
+        id: outputVarNodeId,
+      }
     }
   }, [value, hasValue, isConstant, isIterationVar, iterationNode, availableNodes, outputVarNodeId, startNode, isLoopVar, loopNode])
 

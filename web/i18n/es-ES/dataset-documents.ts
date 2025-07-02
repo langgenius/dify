@@ -389,6 +389,8 @@ const translation = {
     characters_one: 'carácter',
     regenerationSuccessMessage: 'Puede cerrar esta ventana.',
     regenerationConfirmTitle: '¿Desea regenerar fragmentos secundarios?',
+    keywordEmpty: 'La palabra clave no puede estar vacía',
+    keywordDuplicate: 'La palabra clave ya existe',
   },
 }
 

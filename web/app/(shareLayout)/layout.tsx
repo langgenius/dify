@@ -25,10 +25,13 @@ const Layout: FC<{
       }
 
       let appCode: string | null = null
-      if (redirectUrl)
-        appCode = redirectUrl?.split('/').pop() || null
-      else
+      if (redirectUrl) {
+        const url = new URL(`${window.location.origin}${decodeURIComponent(redirectUrl)}`)
+        appCode = url.pathname.split('/').pop() || null
+      }
+      else {
         appCode = pathname.split('/').pop() || null
+      }
 
       if (!appCode)
         return

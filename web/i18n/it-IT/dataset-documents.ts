@@ -391,6 +391,8 @@ const translation = {
     regenerationSuccessMessage: 'È possibile chiudere questa finestra.',
     childChunkAdded: '1 blocco figlio aggiunto',
     childChunks_other: 'BLOCCHI FIGLIO',
+    keywordEmpty: 'La parola chiave non può essere vuota',
+    keywordDuplicate: 'La parola chiave esiste già',
   },
 }
 
