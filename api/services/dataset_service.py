@@ -344,10 +344,10 @@ class DatasetService:
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise ValueError("Dataset not found")
-                         #  check if dataset name is exists
+            #  check if dataset name is exists
         if (
             db.session.query(Dataset)
-                .filter(
+            .filter(
                 Dataset.id != dataset_id,
                 Dataset.name == data.get("name", dataset.name),
                 Dataset.tenant_id == dataset.tenant_id,
@@ -470,7 +470,7 @@ class DatasetService:
         filtered_data["updated_at"] = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         # update Retrieval model
         filtered_data["retrieval_model"] = data["retrieval_model"]
-                # update icon info
+        # update icon info
         if data.get("icon_info"):
             filtered_data["icon_info"] = data.get("icon_info")
 

@@ -32,14 +32,10 @@ class DatasourceProviderService:
         :param credentials:
         """
         # check name is exist
-        datasource_provider = (
-            db.session.query(DatasourceProvider)
-            .filter_by(tenant_id=tenant_id, name=name)
-            .first()
-        )
+        datasource_provider = db.session.query(DatasourceProvider).filter_by(tenant_id=tenant_id, name=name).first()
         if datasource_provider:
             raise ValueError("Authorization name is already exists")
-        
+
         credential_valid = self.provider_manager.validate_provider_credentials(
             tenant_id=tenant_id,
             user_id=current_user.id,

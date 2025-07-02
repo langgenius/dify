@@ -10,8 +10,12 @@ from core.variables import Segment, SegmentGroup, Variable
 from core.variables.consts import MIN_SELECTORS_LENGTH
 from core.variables.segments import FileSegment, NoneSegment
 from core.variables.variables import RAGPipelineVariableInput
-from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID, \
-    SYSTEM_VARIABLE_NODE_ID, RAG_PIPELINE_VARIABLE_NODE_ID
+from core.workflow.constants import (
+    CONVERSATION_VARIABLE_NODE_ID,
+    ENVIRONMENT_VARIABLE_NODE_ID,
+    RAG_PIPELINE_VARIABLE_NODE_ID,
+    SYSTEM_VARIABLE_NODE_ID,
+)
 from core.workflow.enums import SystemVariableKey
 from factories import variable_factory
 

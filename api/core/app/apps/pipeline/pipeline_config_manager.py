@@ -13,6 +13,7 @@ class PipelineConfig(WorkflowUIBasedAppConfig):
     """
     Pipeline Config Entity.
     """
+
     rag_pipeline_variables: list[RagPipelineVariableEntity] = []
     pass
 

@@ -47,6 +47,7 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
     def _get_app_id(self) -> str:
         return self.application_generate_entity.app_config.app_id
+
     def run(self) -> None:
         """
         Run application
@@ -114,9 +115,9 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 for v in workflow.rag_pipeline_variables:
                     rag_pipeline_variable = RAGPipelineVariable(**v)
                     if (
-                        (rag_pipeline_variable.belong_to_node_id == self.application_generate_entity.start_node_id or rag_pipeline_variable.belong_to_node_id == "shared")
-                        and rag_pipeline_variable.variable in inputs
-                    ):
+                        rag_pipeline_variable.belong_to_node_id
+                        in (self.application_generate_entity.start_node_id, "shared")
+                    ) and rag_pipeline_variable.variable in inputs:
                         rag_pipeline_variables.append(
                             RAGPipelineVariableInput(
                                 variable=rag_pipeline_variable,

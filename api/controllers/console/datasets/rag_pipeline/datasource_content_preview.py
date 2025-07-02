@@ -48,7 +48,8 @@ class DataSourceContentPreviewApi(Resource):
         )
         return preview_content, 200
 
+
 api.add_resource(
     DataSourceContentPreviewApi,
-    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview"
+    "/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview",
 )

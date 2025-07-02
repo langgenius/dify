@@ -462,6 +462,7 @@ class DatasourceNode(BaseNode[DatasourceNodeData]):
                 inputs=parameters_for_log,
             )
         )
+
     @classmethod
     def version(cls) -> str:
         return "1"

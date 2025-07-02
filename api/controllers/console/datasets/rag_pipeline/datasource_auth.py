@@ -96,7 +96,7 @@ class DatasourceAuth(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument("provider", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("name", type=str, required=False, nullable=False, location="json", default="test")
         parser.add_argument("plugin_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()

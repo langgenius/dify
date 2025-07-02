@@ -86,8 +86,9 @@ class ToolTransformService:
                     )
             else:
                 provider.declaration.identity.icon = ToolTransformService.get_tool_provider_icon_url(
-                    provider_type=provider.type.value, provider_name=provider.name,
-                    icon=provider.declaration.identity.icon
+                    provider_type=provider.type.value,
+                    provider_name=provider.name,
+                    icon=provider.declaration.identity.icon,
                 )
 
     @classmethod

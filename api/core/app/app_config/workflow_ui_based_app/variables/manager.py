@@ -1,5 +1,3 @@
-from typing import Any
-
 from core.app.app_config.entities import RagPipelineVariableEntity, VariableEntity
 from models.workflow import Workflow
 

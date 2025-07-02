@@ -1,4 +1,3 @@
-from ast import Str
 from collections.abc import Sequence
 from enum import Enum, StrEnum
 from typing import Any, Literal, Optional
@@ -128,13 +127,16 @@ class VariableEntity(BaseModel):
     def convert_none_options(cls, v: Any) -> Sequence[str]:
         return v or []
 
+
 class RagPipelineVariableEntity(VariableEntity):
     """
     Rag Pipeline Variable Entity.
     """
+
     tooltips: Optional[str] = None
     placeholder: Optional[str] = None
     belong_to_node_id: str
+
 
 class ExternalDataVariableEntity(BaseModel):
     """

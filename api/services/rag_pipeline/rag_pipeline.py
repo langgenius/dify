@@ -20,9 +20,12 @@ from core.datasource.entities.datasource_entities import (
     DatasourceProviderType,
     GetOnlineDocumentPageContentRequest,
     OnlineDocumentPagesMessage,
+    OnlineDriveBrowseFilesRequest,
+    OnlineDriveBrowseFilesResponse,
     WebsiteCrawlMessage,
 )
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
+from core.datasource.online_drive.online_drive_plugin import OnlineDriveDatasourcePlugin
 from core.datasource.website_crawl.website_crawl_plugin import WebsiteCrawlDatasourcePlugin
 from core.rag.entities.event import (
     BaseDatasourceEvent,
@@ -31,8 +34,9 @@ from core.rag.entities.event import (
     DatasourceProcessingEvent,
 )
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.variables.variables import Variable
+from core.variables.variables import RAGPipelineVariable, RAGPipelineVariableInput, Variable
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -381,6 +385,17 @@ class RagPipelineService:
 
         # run draft workflow node
         start_at = time.perf_counter()
+        rag_pipeline_variables = []
+        if draft_workflow.rag_pipeline_variables:
+            for v in draft_workflow.rag_pipeline_variables:
+                rag_pipeline_variable = RAGPipelineVariable(**v)
+                if rag_pipeline_variable.variable in user_inputs:
+                    rag_pipeline_variables.append(
+                        RAGPipelineVariableInput(   
+                            variable=rag_pipeline_variable,
+                            value=user_inputs[rag_pipeline_variable.variable],
+                        )
+                    )
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
@@ -388,6 +403,12 @@ class RagPipelineService:
                 node_id=node_id,
                 user_inputs=user_inputs,
                 user_id=account.id,
+                variable_pool=VariablePool(
+                    user_inputs=user_inputs,
+                    environment_variables=draft_workflow.environment_variables,
+                    conversation_variables=draft_workflow.conversation_variables,
+                    rag_pipeline_variables=rag_pipeline_variables,
+                ),
             ),
             start_at=start_at,
             tenant_id=pipeline.tenant_id,
@@ -413,6 +434,17 @@ class RagPipelineService:
 
         # run draft workflow node
         start_at = time.perf_counter()
+        rag_pipeline_variables = []
+        if published_workflow.rag_pipeline_variables:
+            for v in published_workflow.rag_pipeline_variables:
+                    rag_pipeline_variable = RAGPipelineVariable(**v)
+                    if rag_pipeline_variable.variable in user_inputs:
+                        rag_pipeline_variables.append(
+                            RAGPipelineVariableInput(
+                                variable=rag_pipeline_variable,
+                                value=user_inputs[rag_pipeline_variable.variable],
+                            )
+                        )
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
@@ -420,6 +452,12 @@ class RagPipelineService:
                 node_id=node_id,
                 user_inputs=user_inputs,
                 user_id=account.id,
+                variable_pool=VariablePool(
+                    user_inputs=user_inputs,
+                    environment_variables=published_workflow.environment_variables,
+                    conversation_variables=published_workflow.conversation_variables,
+                    rag_pipeline_variables=rag_pipeline_variables,
+                ),
             ),
             start_at=start_at,
             tenant_id=pipeline.tenant_id,
@@ -511,6 +549,33 @@ class RagPipelineService:
                     except Exception as e:
                         logger.exception("Error during online document.")
                         yield DatasourceErrorEvent(error=str(e)).model_dump()
+                case DatasourceProviderType.ONLINE_DRIVE:
+                    datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
+                    online_drive_result: Generator[OnlineDriveBrowseFilesResponse, None, None] = datasource_runtime.online_drive_browse_files(
+                        user_id=account.id,
+                        request=OnlineDriveBrowseFilesRequest(
+                            bucket=user_inputs.get("bucket"),
+                            prefix=user_inputs.get("prefix"),
+                            max_keys=user_inputs.get("max_keys", 20),
+                            start_after=user_inputs.get("start_after"),
+                        ),
+                        provider_type=datasource_runtime.datasource_provider_type(),
+                    )
+                    start_time = time.time()
+                    start_event = DatasourceProcessingEvent(
+                        total=0,
+                        completed=0,
+                    )
+                    yield start_event.model_dump()
+                    for message in online_drive_result:
+                        end_time = time.time()
+                        online_drive_event = DatasourceCompletedEvent(
+                            data=message.result,
+                            time_consuming=round(end_time - start_time, 2),
+                            total=None,
+                            completed=None,
+                        )
+                        yield online_drive_event.model_dump()
                 case DatasourceProviderType.WEBSITE_CRAWL:
                     datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
                     website_crawl_result: Generator[WebsiteCrawlMessage, None, None] = (
@@ -631,7 +696,7 @@ class RagPipelineService:
                     except Exception as e:
                         logger.exception("Error during get online document content.")
                         raise RuntimeError(str(e))
-                #TODO Online Drive
+                # TODO Online Drive
                 case _:
                     raise ValueError(f"Unsupported datasource provider: {datasource_runtime.datasource_provider_type}")
         except Exception as e:
