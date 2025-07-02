@@ -391,7 +391,7 @@ class RagPipelineService:
                 rag_pipeline_variable = RAGPipelineVariable(**v)
                 if rag_pipeline_variable.variable in user_inputs:
                     rag_pipeline_variables.append(
-                        RAGPipelineVariableInput(   
+                        RAGPipelineVariableInput(
                             variable=rag_pipeline_variable,
                             value=user_inputs[rag_pipeline_variable.variable],
                         )
@@ -437,14 +437,14 @@ class RagPipelineService:
         rag_pipeline_variables = []
         if published_workflow.rag_pipeline_variables:
             for v in published_workflow.rag_pipeline_variables:
-                    rag_pipeline_variable = RAGPipelineVariable(**v)
-                    if rag_pipeline_variable.variable in user_inputs:
-                        rag_pipeline_variables.append(
-                            RAGPipelineVariableInput(
-                                variable=rag_pipeline_variable,
-                                value=user_inputs[rag_pipeline_variable.variable],
-                            )
+                rag_pipeline_variable = RAGPipelineVariable(**v)
+                if rag_pipeline_variable.variable in user_inputs:
+                    rag_pipeline_variables.append(
+                        RAGPipelineVariableInput(
+                            variable=rag_pipeline_variable,
+                            value=user_inputs[rag_pipeline_variable.variable],
                         )
+                    )
 
         workflow_node_execution = self._handle_node_run_result(
             getter=lambda: WorkflowEntry.single_step_run(
@@ -551,15 +551,17 @@ class RagPipelineService:
                         yield DatasourceErrorEvent(error=str(e)).model_dump()
                 case DatasourceProviderType.ONLINE_DRIVE:
                     datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
-                    online_drive_result: Generator[OnlineDriveBrowseFilesResponse, None, None] = datasource_runtime.online_drive_browse_files(
-                        user_id=account.id,
-                        request=OnlineDriveBrowseFilesRequest(
-                            bucket=user_inputs.get("bucket"),
-                            prefix=user_inputs.get("prefix"),
-                            max_keys=user_inputs.get("max_keys", 20),
-                            start_after=user_inputs.get("start_after"),
-                        ),
-                        provider_type=datasource_runtime.datasource_provider_type(),
+                    online_drive_result: Generator[OnlineDriveBrowseFilesResponse, None, None] = (
+                        datasource_runtime.online_drive_browse_files(
+                            user_id=account.id,
+                            request=OnlineDriveBrowseFilesRequest(
+                                bucket=user_inputs.get("bucket"),
+                                prefix=user_inputs.get("prefix"),
+                                max_keys=user_inputs.get("max_keys", 20),
+                                start_after=user_inputs.get("start_after"),
+                            ),
+                            provider_type=datasource_runtime.datasource_provider_type(),
+                        )
                     )
                     start_time = time.time()
                     start_event = DatasourceProcessingEvent(
