@@ -191,9 +191,10 @@ class ToolTransformService:
 
     @staticmethod
     def mcp_provider_to_user_provider(db_provider: MCPToolProvider, for_list: bool = False) -> ToolProviderApiEntity:
+        user = db_provider.load_user()
         return ToolProviderApiEntity(
             id=db_provider.server_identifier if not for_list else db_provider.id,
-            author=db_provider.user.name if db_provider.user else "Anonymous",
+            author=user.name if user else "Anonymous",
             name=db_provider.name,
             icon=db_provider.provider_icon,
             type=ToolProviderType.MCP,
@@ -210,9 +211,10 @@ class ToolTransformService:
 
     @staticmethod
     def mcp_tool_to_user_tool(mcp_provider: MCPToolProvider, tools: list[MCPTool]) -> list[ToolApiEntity]:
+        user = mcp_provider.load_user()
         return [
             ToolApiEntity(
-                author=mcp_provider.user.name if mcp_provider.user else "Anonymous",
+                author=user.name if user else "Anonymous",
                 name=tool.name,
                 label=I18nObject(en_US=tool.name, zh_Hans=tool.name),
                 description=I18nObject(en_US=tool.description, zh_Hans=tool.description),

@@ -46,11 +46,11 @@ class MCPToolProviderController(ToolProviderController):
         tools = []
         tools_data = json.loads(db_provider.tools)
         remote_mcp_tools = [RemoteMCPTool(**tool) for tool in tools_data]
-
+        user = db_provider.load_user()
         tools = [
             ToolEntity(
                 identity=ToolIdentity(
-                    author=db_provider.user.name if db_provider.user else "Anonymous",
+                    author=user.name if user else "Anonymous",
                     name=remote_mcp_tool.name,
                     label=I18nObject(en_US=remote_mcp_tool.name, zh_Hans=remote_mcp_tool.name),
                     provider=db_provider.server_identifier,
@@ -72,7 +72,7 @@ class MCPToolProviderController(ToolProviderController):
         return cls(
             entity=ToolProviderEntityWithPlugin(
                 identity=ToolProviderIdentity(
-                    author=db_provider.user.name if db_provider.user else "Anonymous",
+                    author=user.name if user else "Anonymous",
                     name=db_provider.name,
                     label=I18nObject(en_US=db_provider.name, zh_Hans=db_provider.name),
                     description=I18nObject(en_US="", zh_Hans=""),

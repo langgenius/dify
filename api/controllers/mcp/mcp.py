@@ -8,7 +8,7 @@ from controllers.web.error import (
     AppUnavailableError,
 )
 from core.app.app_config.entities import VariableEntity
-from core.mcp.server.handler import MCPServerReuqestHandler
+from core.mcp.server.handler import MCPServerRequestHandler
 from core.mcp.types import ClientNotification, ClientRequest
 from extensions.ext_database import db
 from libs import helper
@@ -66,7 +66,7 @@ class MCPAppApi(Resource):
             except ValidationError as e:
                 raise ValueError(f"Invalid MCP request: {str(e)}")
 
-        mcp_server_handler = MCPServerReuqestHandler(app, request, user_input_form)
+        mcp_server_handler = MCPServerRequestHandler(app, request, user_input_form)
         response = mcp_server_handler.handle()
         return helper.compact_generate_response(response)
 

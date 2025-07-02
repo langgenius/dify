@@ -295,10 +295,6 @@ class App(Base):
         return tags or []
 
     @property
-    def mcp_server(self):
-        return db.session.query(AppMCPServer).filter(AppMCPServer.app_id == self.id).first()
-
-    @property
     def author_name(self):
         if self.created_by:
             account = db.session.query(Account).filter(Account.id == self.created_by).first()
@@ -1465,7 +1461,7 @@ class AppMCPServer(Base):
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_mcp_server_pkey"),
         db.UniqueConstraint("tenant_id", "app_id", name="unique_app_mcp_server_tenant_app_id"),
-        db.UniqueConstraint("tenant_id", "server_code", name="unique_app_mcp_server_tenant_server_code"),
+        db.UniqueConstraint("server_code", name="unique_app_mcp_server_server_code"),
     )
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
