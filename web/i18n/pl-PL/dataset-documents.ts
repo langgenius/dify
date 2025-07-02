@@ -390,6 +390,8 @@ const translation = {
     newChildChunk: 'Nowy fragment podrzędny',
     clearFilter: 'Wyczyść filtr',
     childChunks_one: 'FRAGMENT POTOMNY',
+    keywordDuplicate: 'Słowo kluczowe już istnieje',
+    keywordEmpty: 'Słowo kluczowe nie może być puste',
   },
 }
 

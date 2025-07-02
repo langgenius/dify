@@ -389,6 +389,8 @@ const translation = {
     regeneratingTitle: 'Regenerarea bucăților secundare',
     addChildChunk: 'Adăugați o bucată copil',
     searchResults_other: 'REZULTATELE',
+    keywordDuplicate: 'Cuvântul cheie există deja',
+    keywordEmpty: 'Cuvântul cheie nu poate fi gol',
   },
 }
 

@@ -388,6 +388,8 @@ const translation = {
     addChunk: '청크 추가 (Add Chunk)',
     characters_other: '문자',
     regeneratingMessage: '시간이 걸릴 수 있으니 잠시만 기다려 주십시오...',
+    keywordDuplicate: '키워드가 이미 존재합니다.',
+    keywordEmpty: '키워드는 비워둘 수 없습니다.',
   },
 }
 

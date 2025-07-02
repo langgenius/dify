@@ -388,6 +388,8 @@ const translation = {
     searchResults_zero: '結果',
     parentChunks_other: '父塊',
     newChildChunk: '新兒童塊',
+    keywordEmpty: '關鍵字不能為空',
+    keywordDuplicate: '關鍵字已經存在',
   },
 }
 

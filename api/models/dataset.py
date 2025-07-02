@@ -140,7 +140,7 @@ class Dataset(Base):
     def word_count(self):
         return (
             db.session.query(Document)
-            .with_entities(func.coalesce(func.sum(Document.word_count)))
+            .with_entities(func.coalesce(func.sum(Document.word_count), 0))
             .filter(Document.dataset_id == self.id)
             .scalar()
         )
@@ -448,7 +448,7 @@ class Document(Base):
     def hit_count(self):
         return (
             db.session.query(DocumentSegment)
-            .with_entities(func.coalesce(func.sum(DocumentSegment.hit_count)))
+            .with_entities(func.coalesce(func.sum(DocumentSegment.hit_count), 0))
             .filter(DocumentSegment.document_id == self.id)
             .scalar()
         )
