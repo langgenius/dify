@@ -106,6 +106,7 @@ const translation = {
   licenseExpired: 'ライセンスの有効期限が切れています',
   licenseLostTip: 'Dify ライセンスサーバーへの接続に失敗しました。続けて Dify を使用するために管理者に連絡してください。',
   webapp: {
+    login: 'ログイン',
     noLoginMethod: 'Web アプリに対して認証方法が構成されていません',
     noLoginMethodTip: 'システム管理者に連絡して、認証方法を追加してください。',
     disabled: 'Web アプリの認証が無効になっています。システム管理者に連絡して有効にしてください。直接アプリを使用してみてください。',
