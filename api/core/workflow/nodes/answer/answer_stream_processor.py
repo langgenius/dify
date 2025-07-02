@@ -2,7 +2,6 @@ import logging
 from collections.abc import Generator
 from typing import cast
 
-from core.file import FILE_MODEL_IDENTITY, File
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
@@ -201,44 +200,3 @@ class AnswerStreamProcessor(StreamProcessor):
                 stream_out_answer_node_ids.append(answer_node_id)
 
         return stream_out_answer_node_ids
-
-    @classmethod
-    def _fetch_files_from_variable_value(cls, value: dict | list) -> list[dict]:
-        """
-        Fetch files from variable value
-        :param value: variable value
-        :return:
-        """
-        if not value:
-            return []
-
-        files = []
-        if isinstance(value, list):
-            for item in value:
-                file_var = cls._get_file_var_from_value(item)
-                if file_var:
-                    files.append(file_var)
-        elif isinstance(value, dict):
-            file_var = cls._get_file_var_from_value(value)
-            if file_var:
-                files.append(file_var)
-
-        return files
-
-    @classmethod
-    def _get_file_var_from_value(cls, value: dict | list):
-        """
-        Get file var from value
-        :param value: variable value
-        :return:
-        """
-        if not value:
-            return None
-
-        if isinstance(value, dict):
-            if "dify_model_identity" in value and value["dify_model_identity"] == FILE_MODEL_IDENTITY:
-                return value
-        elif isinstance(value, File):
-            return value.to_dict()
-
-        return None

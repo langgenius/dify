@@ -36,6 +36,8 @@ const HeaderInNormal = ({
   const setShowWorkflowVersionHistoryPanel = useStore(s => s.setShowWorkflowVersionHistoryPanel)
   const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
   const setShowDebugAndPreviewPanel = useStore(s => s.setShowDebugAndPreviewPanel)
+  const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
+  const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const nodes = useNodes<StartNodeType>()
   const selectedNode = nodes.find(node => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
@@ -49,8 +51,10 @@ const HeaderInNormal = ({
     setShowWorkflowVersionHistoryPanel(true)
     setShowEnvPanel(false)
     setShowDebugAndPreviewPanel(false)
+    setShowVariableInspectPanel(false)
+    setShowChatVariablePanel(false)
   }, [handleBackupDraft, workflowStore, handleNodeSelect, selectedNode,
-    setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel])
+    setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel])
 
   return (
     <>

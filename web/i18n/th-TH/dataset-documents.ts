@@ -388,6 +388,8 @@ const translation = {
     searchResults_other: 'ผลลัพธ์',
     regenerationSuccessMessage: 'คุณสามารถปิดหน้าต่างนี้ได้',
     childChunks_one: 'ก้อนเด็ก',
+    keywordDuplicate: 'คำสำคัญมีอยู่แล้ว',
+    keywordEmpty: 'คีย์เวิร์ดไม่สามารถว่างเปล่าได้',
   },
 }
 

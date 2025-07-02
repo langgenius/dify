@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.variables import Variable
@@ -413,7 +412,6 @@ class WorkflowService:
                 app_id=app_model.id,
                 node_id=workflow_node_execution.node_id,
                 node_type=NodeType(workflow_node_execution.node_type),
-                invoke_from=InvokeFrom.DEBUGGER,
                 enclosing_node_id=enclosing_node_id,
                 node_execution_id=node_execution.id,
             )

@@ -508,13 +508,15 @@ const StepTwo = ({
       const separator = rules.segmentation.separator
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
+      const isHierarchicalDocument = documentDetail.doc_form === ChunkingMode.parentChild
+                              || (rules.parent_mode && rules.subchunk_segmentation)
       setSegmentIdentifier(separator)
       setMaxChunkLength(max)
       setOverlap(overlap!)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
 
-      if (documentDetail.dataset_process_rule.mode === 'hierarchical') {
+      if (isHierarchicalDocument) {
         setParentChildConfig({
           chunkForContext: rules.parent_mode || 'paragraph',
           parent: {
@@ -576,6 +578,7 @@ const StepTwo = ({
         onSuccess(data) {
           updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
           updateResultCache && updateResultCache(data)
+          updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
         },
       })
     }

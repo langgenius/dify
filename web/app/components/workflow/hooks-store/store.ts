@@ -7,9 +7,13 @@ import {
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
+import type { IOtherOptions } from '@/service/base'
+import type { VarInInspect } from '@/types/workflow'
 import type {
-  BlockEnum,
-  NodeDefault,
+    BlockEnum,
+  Node,
+  NodeDefault, 
+    ValueSelector,
 } from '@/app/components/workflow/types'
 
 export type AvailableNodesMetaData = {
@@ -30,11 +34,30 @@ export type CommonHooksFnMap = {
   handleBackupDraft: () => void
   handleLoadBackupDraft: () => void
   handleRestoreFromPublishedWorkflow: (...args: any[]) => void
-  handleRun: (...args: any[]) => void
+  handleRun: (params: any, callback?: IOtherOptions,) => void
   handleStopRun: (...args: any[]) => void
   handleStartWorkflowRun: () => void
   handleWorkflowStartRunInWorkflow: () => void
   handleWorkflowStartRunInChatflow: () => void
+  fetchInspectVars: () => Promise<void>
+  hasNodeInspectVars: (nodeId: string) => boolean
+  hasSetInspectVar: (nodeId: string, name: string, sysVars: VarInInspect[], conversationVars: VarInInspect[]) => boolean
+  fetchInspectVarValue: (selector: ValueSelector) => Promise<void>
+  editInspectVarValue: (nodeId: string, varId: string, value: any) => Promise<void>
+  renameInspectVarName: (nodeId: string, oldName: string, newName: string) => Promise<void>
+  appendNodeInspectVars: (nodeId: string, payload: VarInInspect[], allNodes: Node[]) => void
+  deleteInspectVar: (nodeId: string, varId: string) => Promise<void>
+  deleteNodeInspectorVars: (nodeId: string) => Promise<void>
+  deleteAllInspectorVars: () => Promise<void>
+  isInspectVarEdited: (nodeId: string, name: string) => boolean
+  resetToLastRunVar: (nodeId: string, varId: string) => Promise<void>
+  invalidateSysVarValues: () => void
+  resetConversationVar: (varId: string) => Promise<void>
+  invalidateConversationVarValues: () => void
+  configsMap?: {
+    conversationVarsUrl: string
+    systemVarsUrl: string
+  }
   availableNodesMetaData?: AvailableNodesMetaData
   getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
   exportCheck?: () => Promise<void>
@@ -57,6 +80,21 @@ export const createHooksStore = ({
   handleStartWorkflowRun = noop,
   handleWorkflowStartRunInWorkflow = noop,
   handleWorkflowStartRunInChatflow = noop,
+  fetchInspectVars = async () => noop(),
+  hasNodeInspectVars = () => false,
+  hasSetInspectVar = () => false,
+  fetchInspectVarValue = async () => noop(),
+  editInspectVarValue = async () => noop(),
+  renameInspectVarName = async () => noop(),
+  appendNodeInspectVars = () => noop(),
+  deleteInspectVar = async () => noop(),
+  deleteNodeInspectorVars = async () => noop(),
+  deleteAllInspectorVars = async () => noop(),
+  isInspectVarEdited = () => false,
+  resetToLastRunVar = async () => noop(),
+  invalidateSysVarValues = noop,
+  resetConversationVar = async () => noop(),
+  invalidateConversationVarValues = noop,
   availableNodesMetaData = {
     nodes: [],
   },
@@ -80,6 +118,21 @@ export const createHooksStore = ({
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
     handleWorkflowStartRunInChatflow,
+    fetchInspectVars,
+    hasNodeInspectVars,
+    hasSetInspectVar,
+    fetchInspectVarValue,
+    editInspectVarValue,
+    renameInspectVarName,
+    appendNodeInspectVars,
+    deleteInspectVar,
+    deleteNodeInspectorVars,
+    deleteAllInspectorVars,
+    isInspectVarEdited,
+    resetToLastRunVar,
+    invalidateSysVarValues,
+    resetConversationVar,
+    invalidateConversationVarValues,
     availableNodesMetaData,
     getWorkflowRunAndTraceUrl,
     exportCheck,
