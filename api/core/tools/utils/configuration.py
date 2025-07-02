@@ -106,6 +106,7 @@ class ProviderConfigEncrypter:
         cached_credentials = self.provider_config_cache.get()
         if cached_credentials:
             return cached_credentials
+
         data = self._deep_copy(data)
         # get fields need to be decrypted
         fields = dict[str, BasicProviderConfig]()

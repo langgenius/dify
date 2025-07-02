@@ -1010,6 +1010,9 @@ class DatasetRetrieval:
     def _process_metadata_filter_func(
         self, sequence: int, condition: str, metadata_name: str, value: Optional[Any], filters: list
     ):
+        if value is None:
+            return
+
         key = f"{metadata_name}_{sequence}"
         key_value = f"{metadata_name}_{sequence}_value"
         match condition:

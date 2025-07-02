@@ -36,6 +36,7 @@ import AccessControl from '@/app/components/app/app-access-control'
 import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { formatTime } from '@/utils/time'
+import { useGetUserCanAccessApp } from '@/service/access-control'
 
 export type AppCardProps = {
   app: App
@@ -190,6 +191,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   }, [onRefresh, mutateApps, setShowAccessControl])
 
   const Operations = (props: HtmlContentProps) => {
+    const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp } = useGetUserCanAccessApp({ appId: app?.id, enabled: (!!props?.open && systemFeatures.webapp_auth.enabled) })
     const onMouseLeave = async () => {
       props.onClose?.()
     }
@@ -267,10 +269,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </button>
           </>
         )}
-        <Divider className="my-1" />
-        <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
-          <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
-        </button>
+        {
+          (isGettingUserCanAccessApp || !userCanAccessApp?.result) ? null : <>
+            <Divider className="my-1" />
+            <button className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+              <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
+            </button>
+          </>
+        }
         <Divider className="my-1" />
         {
           systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor && <>

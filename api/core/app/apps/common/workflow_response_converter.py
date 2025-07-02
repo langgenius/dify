@@ -44,6 +44,7 @@ from core.app.entities.task_entities import (
 )
 from core.file import FILE_MODEL_IDENTITY, File
 from core.tools.tool_manager import ToolManager
+from core.variables.segments import ArrayFileSegment, FileSegment, Segment
 from core.workflow.entities.workflow_execution import WorkflowExecution
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecution, WorkflowNodeExecutionStatus
 from core.workflow.nodes import NodeType
@@ -506,7 +507,8 @@ class WorkflowResponseConverter:
         # Convert to tuple to match Sequence type
         return tuple(flattened_files)
 
-    def _fetch_files_from_variable_value(self, value: Union[dict, list]) -> Sequence[Mapping[str, Any]]:
+    @classmethod
+    def _fetch_files_from_variable_value(cls, value: Union[dict, list, Segment]) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from variable value
         :param value: variable value
@@ -515,20 +517,30 @@ class WorkflowResponseConverter:
         if not value:
             return []
 
-        files = []
-        if isinstance(value, list):
+        files: list[Mapping[str, Any]] = []
+        if isinstance(value, FileSegment):
+            files.append(value.value.to_dict())
+        elif isinstance(value, ArrayFileSegment):
+            files.extend([i.to_dict() for i in value.value])
+        elif isinstance(value, File):
+            files.append(value.to_dict())
+        elif isinstance(value, list):
             for item in value:
-                file = self._get_file_var_from_value(item)
+                file = cls._get_file_var_from_value(item)
                 if file:
                     files.append(file)
-        elif isinstance(value, dict):
-            file = self._get_file_var_from_value(value)
+        elif isinstance(
+            value,
+            dict,
+        ):
+            file = cls._get_file_var_from_value(value)
             if file:
                 files.append(file)
 
         return files
 
-    def _get_file_var_from_value(self, value: Union[dict, list]) -> Mapping[str, Any] | None:
+    @classmethod
+    def _get_file_var_from_value(cls, value: Union[dict, list]) -> Mapping[str, Any] | None:
         """
         Get file var from value
         :param value: variable value
