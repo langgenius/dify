@@ -81,6 +81,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
       provider: currentDataSource?.provider || '',
       pluginId: currentDataSource?.plugin_id || '',
       credentials: value,
+      name: 'd14249c6-abe3-47ad-b0f1-1e65a591e790', // todo: fake name field, need to be removed later
     })
 
     notify({

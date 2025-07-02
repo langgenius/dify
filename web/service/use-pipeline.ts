@@ -232,12 +232,14 @@ export const useUpdateDataSourceCredentials = (
       provider,
       pluginId,
       credentials,
-    }: { provider: string; pluginId: string; credentials: Record<string, any>; }) => {
+      name,
+    }: { provider: string; pluginId: string; credentials: Record<string, any>; name: string; }) => {
       return post('/auth/plugin/datasource', {
         body: {
           provider,
           plugin_id: pluginId,
           credentials,
+          name,
         },
       }).then(() => {
         queryClient.invalidateQueries({
