@@ -119,7 +119,7 @@ class RagPipelineService:
         # check template name is exist
         template_name = template_info.name
         if template_name:
-            template = db.session.query(PipelineCustomizedTemplate).filter(PipelineCustomizedTemplate.name == template_name, 
+            template = db.session.query(PipelineCustomizedTemplate).filter(PipelineCustomizedTemplate.name == template_name,
                                                                            PipelineCustomizedTemplate.tenant_id == current_user.current_tenant_id,
                                                                            PipelineCustomizedTemplate.id != template_id).first()
             if template:
@@ -558,32 +558,8 @@ class RagPipelineService:
                     online_document_event = DatasourceCompletedEvent(
                         data=message.result,
                         time_consuming=round(end_time - start_time, 2),
-                        total=None,
-                        completed=None,
                     )
                     yield online_document_event.model_dump()
-            case DatasourceProviderType.ONLINE_DRIVE:
-                datasource_runtime = cast(OnlineDriveDatasourcePlugin, datasource_runtime)
-                online_drive_result: Generator[OnlineDriveBrowseFilesResponse, None, None] = datasource_runtime.online_drive_browse_files(
-                    user_id=account.id,
-                    request=OnlineDriveBrowseFilesRequest(
-                        bucket=user_inputs.get("bucket"),
-                        prefix=user_inputs.get("prefix"),
-                        max_keys=user_inputs.get("max_keys", 20),
-                        start_after=user_inputs.get("start_after"),
-                    ),
-                    provider_type=datasource_runtime.datasource_provider_type(),
-                )
-                start_time = time.time()
-                for message in online_drive_result:
-                    end_time = time.time()
-                    online_drive_event = DatasourceCompletedEvent(
-                        data=message.result,
-                        time_consuming=round(end_time - start_time, 2),
-                        total=None,
-                        completed=None,
-                    )
-                    yield online_drive_event.model_dump()
             case DatasourceProviderType.WEBSITE_CRAWL:
                 datasource_runtime = cast(WebsiteCrawlDatasourcePlugin, datasource_runtime)
                 website_crawl_result: Generator[WebsiteCrawlMessage, None, None] = datasource_runtime.get_website_crawl(
@@ -973,7 +949,7 @@ class RagPipelineService:
         dataset = pipeline.dataset
         if not dataset:
             raise ValueError("Dataset not found")
-        
+
         # check template name is exist
         template_name = args.get("name")
         if template_name:
