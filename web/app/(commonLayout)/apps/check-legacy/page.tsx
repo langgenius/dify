@@ -4,14 +4,16 @@ import Header from './components/header'
 import List from './components/list'
 import useLegacyList from './use-legacy-list'
 import Chip from '@/app/components/base/chip'
-import { RiFilter3Line } from '@remixicon/react'
+import { RiFilter3Line, RiLoopLeftLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 
 const i18nPrefix = 'app.checkLegacy'
 const Page = () => {
   const { t } = useTranslation()
   const {
+    list,
     sort_by,
     setOrderBy,
     published,
@@ -38,34 +40,40 @@ const Page = () => {
     <div className='h-full rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle px-6 pt-4'>
       <Header appNum={5} publishedNum={3}/>
       {/* Filter */}
-      <div className='mb-2 mt-4 flex flex-row flex-wrap items-center gap-2'>
-        <Chip
-          className='min-w-[150px]'
-          panelClassName='w-[270px]'
-          leftIcon={<RiFilter3Line className='h-4 w-4 text-text-secondary' />}
-          value={published}
-          renderTriggerContent={renderTriggerContent}
-          onSelect={handleSelectPublished}
-          onClear={clearPublished}
-          items={[
-            { value: 1, name: t(`${i18nPrefix}.yes`) },
-            { value: 0, name: t(`${i18nPrefix}.no`) },
-          ]}
-        />
-        <div className='h-3.5 w-px bg-divider-regular'></div>
-        <Sort
-          // '-' means descending order
-          order={sort_by?.startsWith('-') ? '-' : ''}
-          value={sort_by?.replace('-', '') || 'created_at'}
-          items={[
-            { value: 'created_at', name: t(`${i18nPrefix}.createAt`) },
-            { value: 'last_request', name: t(`${i18nPrefix}.lastRequest`) },
-          ]}
-          onSelect={setOrderBy}
-        />
+      <div className='mb-2 mt-4 flex items-center justify-between'>
+        <div className='flex items-center gap-2'>
+          <Chip
+            className='min-w-[150px]'
+            panelClassName='w-[270px]'
+            leftIcon={<RiFilter3Line className='h-4 w-4 text-text-secondary' />}
+            value={published}
+            renderTriggerContent={renderTriggerContent}
+            onSelect={handleSelectPublished}
+            onClear={clearPublished}
+            items={[
+              { value: 1, name: t(`${i18nPrefix}.yes`) },
+              { value: 0, name: t(`${i18nPrefix}.no`) },
+            ]}
+          />
+          <div className='h-3.5 w-px bg-divider-regular'></div>
+          <Sort
+            // '-' means descending order
+            order={sort_by?.startsWith('-') ? '-' : ''}
+            value={sort_by?.replace('-', '') || 'created_at'}
+            items={[
+              { value: 'created_at', name: t(`${i18nPrefix}.createAt`) },
+              { value: 'last_request', name: t(`${i18nPrefix}.lastRequest`) },
+            ]}
+            onSelect={setOrderBy}
+          />
+        </div>
+        <Button >
+            <RiLoopLeftLine className='mr-1 h-4 w-4' />
+            {t('common.operation.reset')}
+          </Button>
       </div>
       <div>
-        <List list={[]} />
+        <List list={list} />
       </div>
     </div>
   )

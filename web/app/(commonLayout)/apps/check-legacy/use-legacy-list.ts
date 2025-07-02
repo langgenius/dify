@@ -2,6 +2,7 @@ import produce from 'immer'
 import { useCallback, useState } from 'react'
 
 const useLegacyList = () => {
+  const list: any[] = [{}, {}, {}] // Placeholder for the list, replace with actual data fetching logic
   const [queryParams, setQueryParams] = useState<Record<string, any>>({})
   const {
     sort_by,
@@ -29,6 +30,7 @@ const useLegacyList = () => {
   }, [queryParams])
 
   return {
+    list,
     sort_by,
     setOrderBy,
     published,
