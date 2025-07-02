@@ -33,6 +33,7 @@ import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
+import { useStore } from '@/app/components/workflow/store/workflow'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
@@ -67,6 +68,17 @@ const WorkflowVariableBlockComponent = ({
   const isEnv = isENV(variables)
   const isChatVar = isConversationVar(variables)
   const isException = isExceptionVariable(varName, node?.type)
+
+  const environmentVariables = useStore(s => s.environmentVariables)
+  const conversationVariables = useStore(s => s.conversationVariables)
+
+  let variableValid = true
+  if (isEnv)
+    variableValid = environmentVariables.some(v => v.name === (variables?.[1]))
+   else if (isChatVar)
+    variableValid = conversationVariables.some(v => v.name === variables?.[1])
+   else
+    variableValid = !!node
 
   const reactflow = useReactFlow()
   const store = useStoreApi()
@@ -113,7 +125,7 @@ const WorkflowVariableBlockComponent = ({
       className={cn(
         'group/wrap relative mx-0.5 flex h-[18px] select-none items-center rounded-[5px] border pl-0.5 pr-[3px] hover:border-state-accent-solid hover:bg-state-accent-hover',
         isSelected ? ' border-state-accent-solid bg-state-accent-hover' : ' border-components-panel-border-subtle bg-components-badge-white-to-dark',
-        !node && !isEnv && !isChatVar && '!border-state-destructive-solid !bg-state-destructive-hover',
+        !variableValid && '!border-state-destructive-solid !bg-state-destructive-hover',
       )}
       onClick={(e) => {
         e.stopPropagation()
@@ -156,7 +168,7 @@ const WorkflowVariableBlockComponent = ({
           isException && 'text-text-warning',
         )} title={varName}>{varName}</div>
         {
-          !node && !isEnv && !isChatVar && (
+          !variableValid && (
             <RiErrorWarningFill className='ml-0.5 h-3 w-3 text-text-destructive' />
           )
         }
@@ -164,7 +176,7 @@ const WorkflowVariableBlockComponent = ({
     </div>
   )
 
-  if (!node && !isEnv && !isChatVar) {
+  if (!variableValid) {
     return (
       <Tooltip popupContent={t('workflow.errorMsg.invalidVariable')}>
         {Item}
