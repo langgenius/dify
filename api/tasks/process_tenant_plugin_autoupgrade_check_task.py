@@ -1,7 +1,8 @@
 import traceback
+import typing
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from core.helper import marketplace
 from core.helper.marketplace import MarketplacePluginDeclaration
@@ -12,7 +13,7 @@ from models.account import TenantPluginAutoUpgradeStrategy
 RETRY_TIMES_OF_ONE_PLUGIN_IN_ONE_TENANT = 3
 
 
-cached_plugin_manifests: dict[str, MarketplacePluginDeclaration] = {}
+cached_plugin_manifests: dict[str, typing.Union[MarketplacePluginDeclaration, None]] = {}
 
 
 def marketplace_batch_fetch_plugin_manifests(
@@ -34,11 +35,13 @@ def marketplace_batch_fetch_plugin_manifests(
             for plugin_id in not_included_plugin_ids:
                 cached_plugin_manifests[plugin_id] = None
 
-    return [
-        cached_plugin_manifests[plugin_id]
-        for plugin_id in plugin_ids_plain_list
-        if cached_plugin_manifests[plugin_id] is not None
-    ]
+    result: list[MarketplacePluginDeclaration] = []
+    for plugin_id in plugin_ids_plain_list:
+        final_manifest = cached_plugin_manifests.get(plugin_id)
+        if final_manifest is not None:
+            result.append(final_manifest)
+
+    return result
 
 
 @shared_task(queue="plugin")
