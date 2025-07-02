@@ -2,10 +2,11 @@ import { useStore as useWorkflowStoreWithSelector } from '@/app/components/workf
 import { useCallback, useMemo, useState } from 'react'
 import { useLocalFile, useOnlineDocuments, useOnlineDrive, useTestRunSteps, useWebsiteCrawl } from './hooks'
 import DataSourceOptions from './data-source-options'
-import LocalFile from './data-source/local-file'
-import OnlineDocuments from './data-source/online-documents'
-import WebsiteCrawl from './data-source/website-crawl'
-import Actions from './data-source/actions'
+import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
+import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
+import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
+import OnlineDrive from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive'
+import Actions from './actions'
 import DocumentProcessing from './document-processing'
 import { useWorkflowRun } from '@/app/components/workflow/hooks'
 import type { Datasource } from './types'
@@ -14,7 +15,6 @@ import { TransferMethod } from '@/types/app'
 import CloseButton from './close-button'
 import Header from './header'
 import FooterTips from './footer-tips'
-import OnlineDrive from './data-source/online-drive'
 
 const TestRunPanel = () => {
   const setShowDebugAndPreviewPanel = useWorkflowStoreWithSelector(state => state.setShowDebugAndPreviewPanel)

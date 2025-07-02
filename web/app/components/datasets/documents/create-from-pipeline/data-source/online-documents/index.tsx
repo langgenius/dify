@@ -24,7 +24,7 @@ type OnlineDocumentsProps = {
   setSearchValue: (value: string) => void
   currentWorkspaceId: string
   setCurrentWorkspaceId: (workspaceId: string) => void
-  PagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>]
+  PagesMapAndSelectedPagesId: DataSourceNotionPageMap
   selectedPagesId: Set<string>
   setSelectedPagesId: (selectedPagesId: Set<string>) => void
 }
@@ -93,7 +93,7 @@ const OnlineDocuments = ({
   }, [setCurrentWorkspaceId])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
-    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[0][pageId])
+    const selectedPages = Array.from(newSelectedPagesId).map(pageId => PagesMapAndSelectedPagesId[pageId])
 
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     onSelect(selectedPages)
@@ -101,7 +101,7 @@ const OnlineDocuments = ({
 
   const handlePreviewPage = useCallback((previewPageId: string) => {
     if (onPreview)
-      onPreview(PagesMapAndSelectedPagesId[0][previewPageId])
+      onPreview(PagesMapAndSelectedPagesId[previewPageId])
   }, [PagesMapAndSelectedPagesId, onPreview])
 
   const headerInfo = useMemo(() => {
@@ -138,10 +138,10 @@ const OnlineDocuments = ({
         <div className='overflow-hidden rounded-b-xl'>
           <PageSelector
             checkedIds={selectedPagesId}
-            disabledValue={PagesMapAndSelectedPagesId[2]}
+            disabledValue={new Set()}
             searchValue={searchValue}
             list={currentWorkspace?.pages || []}
-            pagesMap={PagesMapAndSelectedPagesId[0]}
+            pagesMap={PagesMapAndSelectedPagesId}
             onSelect={handleSelectPages}
             canPreview={!isInPipeline}
             previewPageId={previewPageId}

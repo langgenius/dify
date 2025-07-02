@@ -2,12 +2,13 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import DataSourceOptions from './data-source-options'
 import type { CrawlResultItem, DocumentItem, CustomFile as File, FileIndexingEstimateResponse } from '@/models/datasets'
-import LocalFile from '@/app/components/rag-pipeline/components/panel/test-run/data-source/local-file'
+import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
 import { useProviderContextSelector } from '@/context/provider-context'
 import type { NotionPage } from '@/models/common'
-import OnlineDocuments from '@/app/components/rag-pipeline/components/panel/test-run/data-source/online-documents'
+import OnlineDocuments from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-documents'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import WebsiteCrawl from '@/app/components/rag-pipeline/components/panel/test-run/data-source/website-crawl'
+import WebsiteCrawl from '@/app/components/datasets/documents/create-from-pipeline/data-source/website-crawl'
+import OnlineDrive from '@/app/components/datasets/documents/create-from-pipeline/data-source/online-drive'
 import Actions from './actions'
 import { useTranslation } from 'react-i18next'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
@@ -27,7 +28,6 @@ import type { InitialDocumentDetail, PublishedPipelineRunPreviewResponse, Publis
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
 import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useOnlineDrive, useWebsiteCrawl } from './hooks'
-import OnlineDrive from '@/app/components/rag-pipeline/components/panel/test-run/data-source/online-drive'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()

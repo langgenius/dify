@@ -114,15 +114,9 @@ export const useOnlineDocuments = () => {
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
   const [onlineDocuments, setOnlineDocuments] = useState<NotionPage[]>([])
 
-  const PagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
-    const selectedPagesId = new Set<string>()
-    const boundPagesId = new Set<string>()
+  const PagesMapAndSelectedPagesId: DataSourceNotionPageMap = useMemo(() => {
     const pagesMap = (documentsData || []).reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
       next.pages.forEach((page) => {
-        if (page.is_bound) {
-          selectedPagesId.add(page.page_id)
-          boundPagesId.add(page.page_id)
-        }
         prev[page.page_id] = {
           ...page,
           workspace_id: next.workspace_id,
@@ -131,9 +125,9 @@ export const useOnlineDocuments = () => {
 
       return prev
     }, {})
-    return [pagesMap, selectedPagesId, boundPagesId]
+    return pagesMap
   }, [documentsData])
-  const defaultSelectedPagesId = [...Array.from(PagesMapAndSelectedPagesId[1]), ...(onlineDocuments.map(doc => doc.page_id) || [])]
+  const defaultSelectedPagesId = [...(onlineDocuments.map(doc => doc.page_id) || [])]
   const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
 
   const updateOnlineDocuments = (value: NotionPage[]) => {
