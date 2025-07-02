@@ -63,6 +63,17 @@ const Right = ({
     resetConversationVar(currentNodeVar.var.id)
   }
 
+  const getCopyContent = () => {
+    const value = currentNodeVar?.var.value
+    if (value === null || value === undefined)
+      return ''
+
+    if (typeof value === 'object')
+      return JSON.stringify(value)
+
+    return String(value)
+  }
+
   return (
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
@@ -124,7 +135,7 @@ const Right = ({
                 </Tooltip>
               )}
               {currentNodeVar.var.value_type !== 'secret' && (
-                <CopyFeedback content={currentNodeVar.var.value ? JSON.stringify(currentNodeVar.var.value) : ''} />
+                <CopyFeedback content={getCopyContent()} />
               )}
             </>
           )}

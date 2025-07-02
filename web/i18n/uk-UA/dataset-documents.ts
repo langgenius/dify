@@ -389,6 +389,8 @@ const translation = {
     regenerationSuccessMessage: 'Ви можете закрити це вікно.',
     expandChunks: 'Розгортання фрагментів',
     regenerationConfirmTitle: 'Хочете регенерувати дитячі шматки?',
+    keywordEmpty: 'Ключове слово не може бути порожнім',
+    keywordDuplicate: 'Ключове слово вже існує',
   },
 }
 

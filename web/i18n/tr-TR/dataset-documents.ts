@@ -388,6 +388,8 @@ const translation = {
     chunks_other: 'Parçalar',
     editedAt: 'Şurada düzenlendi:',
     addChildChunk: 'Alt Parça Ekle',
+    keywordDuplicate: 'Anahtar kelime zaten var',
+    keywordEmpty: 'Anahtar kelime boş olamaz',
   },
 }
 
