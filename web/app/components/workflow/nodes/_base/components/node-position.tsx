@@ -1,30 +1,27 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCrosshairLine } from '@remixicon/react'
-import type { XYPosition } from 'reactflow'
-import { useReactFlow, useStoreApi } from 'reactflow'
+import { useReactFlow, useStore } from 'reactflow'
 import TooltipPlus from '@/app/components/base/tooltip'
 import { useNodesSyncDraft } from '@/app/components/workflow-app/hooks'
 
 type NodePositionProps = {
-  nodePosition: XYPosition,
-  nodeWidth?: number | null,
-  nodeHeight?: number | null,
+  nodeId: string
 }
 const NodePosition = ({
-  nodePosition,
-  nodeWidth,
-  nodeHeight,
+  nodeId,
 }: NodePositionProps) => {
   const { t } = useTranslation()
   const reactflow = useReactFlow()
-  const store = useStoreApi()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const nodePosition = useStore(s => s.getNodes().find(node => node.id === nodeId)?.position)
+  const nodeWidth = useStore(s => s.getNodes().find(node => node.id === nodeId)?.width)
+  const nodeHeight = useStore(s => s.getNodes().find(node => node.id === nodeId)?.height)
+  const transform = useStore(s => s.transform)
 
   if (!nodePosition || !nodeWidth || !nodeHeight) return null
 
   const workflowContainer = document.getElementById('workflow-container')
-  const { transform } = store.getState()
   const zoom = transform[2]
 
   const { clientWidth, clientHeight } = workflowContainer!

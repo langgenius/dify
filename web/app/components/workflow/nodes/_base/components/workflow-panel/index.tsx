@@ -62,15 +62,14 @@ import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevice
 
 type BasePanelProps = {
   children: ReactNode
-} & Node
+  id: Node['id']
+  data: Node['data']
+}
 
 const BasePanel: FC<BasePanelProps> = ({
   id,
   data,
   children,
-  position,
-  width,
-  height,
 }) => {
   const { t } = useTranslation()
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
@@ -330,7 +329,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   </Tooltip>
                 )
               }
-              <NodePosition nodePosition={position} nodeWidth={width} nodeHeight={height}></NodePosition>
+              <NodePosition nodeId={id}></NodePosition>
               <HelpLink nodeType={data.type} />
               <PanelOperator id={id} data={data} showHelpLink={false} />
               <div className='mx-3 h-3.5 w-[1px] bg-divider-regular' />
