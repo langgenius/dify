@@ -376,8 +376,10 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
         user = current_user
         tenant_id = user.current_tenant_id
 
-        return BuiltinToolManageService.list_builtin_provider_credentials_schema(
-            provider, ToolProviderCredentialType.of(credential_type), tenant_id
+        return jsonable_encoder(
+            BuiltinToolManageService.list_builtin_provider_credentials_schema(
+                provider, ToolProviderCredentialType.of(credential_type), tenant_id
+            )
         )
 
 
@@ -795,6 +797,33 @@ class ToolOAuthCustomClient(Resource):
         )
 
 
+class ToolBuiltinProviderGetOauthClientSchemaApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        return jsonable_encoder(
+            BuiltinToolManageService.get_builtin_tool_provider_oauth_client_schema(
+                tenant_id=current_user.current_tenant_id, provider_name=provider
+            )
+        )
+
+
+class ToolBuiltinProviderGetCredentialInfoApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        tenant_id = current_user.current_tenant_id
+
+        return jsonable_encoder(
+            BuiltinToolManageService.get_builtin_tool_provider_credential_info(
+                tenant_id=tenant_id,
+                provider=provider,
+            )
+        )
+
+
 # tool oauth
 api.add_resource(ToolPluginOAuthApi, "/oauth/plugin/<path:provider>/tool/authorization-url")
 api.add_resource(ToolOAuthCallback, "/oauth/plugin/<path:provider>/tool/callback")
@@ -814,11 +843,18 @@ api.add_resource(
     ToolBuiltinProviderSetDefaultApi, "/workspaces/current/tool-provider/builtin/<path:provider>/default-credential"
 )
 api.add_resource(
+    ToolBuiltinProviderGetCredentialInfoApi, "/workspaces/current/tool-provider/builtin/<path:provider>/credential/info"
+)
+api.add_resource(
     ToolBuiltinProviderGetCredentialsApi, "/workspaces/current/tool-provider/builtin/<path:provider>/credentials"
 )
 api.add_resource(
     ToolBuiltinProviderCredentialsSchemaApi,
-    "/workspaces/current/tool-provider/builtin/<path:provider>/credentials_schema/<path:credential_type>",
+    "/workspaces/current/tool-provider/builtin/<path:provider>/credential/schema/<path:credential_type>",
+)
+api.add_resource(
+    ToolBuiltinProviderGetOauthClientSchemaApi,
+    "/workspaces/current/tool-provider/builtin/<path:provider>/oauth/client-schema",
 )
 api.add_resource(ToolBuiltinProviderIconApi, "/workspaces/current/tool-provider/builtin/<path:provider>/icon")
 

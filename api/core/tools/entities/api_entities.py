@@ -81,3 +81,8 @@ class ToolProviderCredentialApiEntity(BaseModel):
         default=False, description="Whether the credential is the default credential for the provider in the workspace"
     )
     credentials: dict = Field(description="The credentials of the provider")
+
+
+class ToolProviderCredentialInfoApiEntity(BaseModel):
+    supported_credential_types: list[str] = Field(description="The supported credential types of the provider")
+    credentials: list[ToolProviderCredentialApiEntity] = Field(description="The credentials of the provider")

@@ -9,12 +9,16 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
-from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity, ToolProviderCredentialApiEntity
+from core.tools.entities.api_entities import (
+    ToolApiEntity,
+    ToolProviderApiEntity,
+    ToolProviderCredentialApiEntity,
+    ToolProviderCredentialInfoApiEntity,
+)
 from core.tools.entities.tool_entities import ToolProviderCredentialType
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
@@ -30,6 +34,14 @@ logger = logging.getLogger(__name__)
 
 class BuiltinToolManageService:
     __MAX_BUILTIN_TOOL_PROVIDER_COUNT__ = 100
+
+    @staticmethod
+    def get_builtin_tool_provider_oauth_client_schema(tenant_id: str, provider_name: str):
+        """
+        get builtin tool provider oauth client schema
+        """
+        provider = ToolManager.get_builtin_provider(provider_name, tenant_id)
+        return provider.get_oauth_client_schema()
 
     @staticmethod
     def list_builtin_tool_provider_tools(tenant_id: str, provider: str) -> list[ToolApiEntity]:
@@ -89,7 +101,7 @@ class BuiltinToolManageService:
         :return: the list of tool providers
         """
         provider = ToolManager.get_builtin_provider(provider_name, tenant_id)
-        return jsonable_encoder(provider.get_credentials_schema_by_type(credential_type))
+        return provider.get_credentials_schema_by_type(credential_type)
 
     @staticmethod
     def update_builtin_tool_provider(
@@ -296,6 +308,21 @@ class BuiltinToolManageService:
                 )
                 credentials.append(credential_entity)
             return credentials
+
+    @staticmethod
+    def get_builtin_tool_provider_credential_info(tenant_id: str, provider: str) -> ToolProviderCredentialInfoApiEntity:
+        """
+        get builtin tool provider credential info
+        """
+        provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        supported_credential_types = provider_controller.get_supported_credential_types()
+        credentials = BuiltinToolManageService.get_builtin_tool_provider_credentials(tenant_id, provider)
+        credential_info = ToolProviderCredentialInfoApiEntity(
+            supported_credential_types=supported_credential_types,
+            credentials=credentials,
+        )
+        
+        return credential_info
 
     @staticmethod
     def delete_builtin_tool_provider(tenant_id: str, provider: str, credential_id: str):

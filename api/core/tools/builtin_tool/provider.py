@@ -134,6 +134,17 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.entity.oauth_schema.client_schema.copy() if self.entity.oauth_schema else []
 
+    def get_supported_credential_types(self) -> list[str]:
+        """
+        returns the credential support type of the provider
+        """
+        types = []
+        if self.entity.credentials_schema is not None:
+            types.append(ToolProviderCredentialType.API_KEY.value)
+        if self.entity.oauth_schema is not None:
+            types.append(ToolProviderCredentialType.OAUTH2.value)
+        return types
+
     def get_tools(self) -> list[BuiltinTool]:
         """
         returns a list of tools that the provider can provide
