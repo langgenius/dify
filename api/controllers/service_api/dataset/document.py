@@ -210,7 +210,7 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
-        
+
         if dataset.provider == "external":
             raise ValueError("External datasets are not supported.")
 
@@ -303,7 +303,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError("Dataset does not exist.")
-        
+
         if dataset.provider == "external":
             raise ValueError("External datasets are not supported.")
 
