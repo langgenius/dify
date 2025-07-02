@@ -8,7 +8,7 @@ from werkzeug.datastructures import FileStorage
 from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from models.model import App, AppMode, AppModelConfig, Message
+from models.model import App, AppMode, AppModelConfig, Message, MessageStatus
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -132,7 +132,7 @@ class AudioService:
             message = db.session.query(Message).filter(Message.id == message_id).first()
             if message is None:
                 return None
-            if message.answer == "" and message.status == "normal":
+            if message.answer == "" and message.status == MessageStatus.NORMAL:
                 return None
 
             else:
