@@ -85,4 +85,7 @@ class ToolProviderCredentialApiEntity(BaseModel):
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):
     supported_credential_types: list[str] = Field(description="The supported credential types of the provider")
+    is_oauth_custom_client_enabled: bool = Field(
+        default=False, description="Whether the OAuth custom client is enabled for the provider"
+    )
     credentials: list[ToolProviderCredentialApiEntity] = Field(description="The credentials of the provider")

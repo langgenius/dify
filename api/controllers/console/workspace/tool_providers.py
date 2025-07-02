@@ -675,18 +675,17 @@ class ToolPluginOAuthApi(Resource):
             raise Forbidden()
 
         tenant_id = user.current_tenant_id
-        plugin_oauth_config = BuiltinToolManageService.get_builtin_tool_oauth_client(
+        oauth_client_params = BuiltinToolManageService.get_oauth_client(
             tenant_id=tenant_id,
-            provider=provider_name,
-            plugin_id=plugin_id,
+            provider=provider
         )
+        if oauth_client_params is None:
+            raise Forbidden("no oauth available client config found for this tool provider")
 
         oauth_handler = OAuthHandler()
         context_id = OAuthProxyService.create_proxy_context(
             user_id=current_user.id, tenant_id=tenant_id, plugin_id=plugin_id, provider=provider_name
         )
-        # TODO decrypt oauth params
-        oauth_params = plugin_oauth_config.oauth_params
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         authorization_url_response = oauth_handler.get_authorization_url(
             tenant_id=tenant_id,
@@ -694,7 +693,7 @@ class ToolPluginOAuthApi(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_params,
+            system_credentials=oauth_client_params,
         )
         response = make_response(jsonable_encoder(authorization_url_response))
         response.set_cookie(
@@ -724,12 +723,10 @@ class ToolOAuthCallback(Resource):
         user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
 
         oauth_handler = OAuthHandler()
-        plugin_oauth_config = BuiltinToolManageService.get_builtin_tool_oauth_client(
-            tenant_id=tenant_id,
-            provider=provider_name,
-            plugin_id=plugin_id,
-        )
-        oauth_params = plugin_oauth_config.oauth_params
+        oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id, provider)
+        if oauth_client_params is None:
+            raise Forbidden("no oauth available client config found for this tool provider")
+
         redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider}/tool/callback"
         credentials = oauth_handler.get_credentials(
             tenant_id=tenant_id,
@@ -737,7 +734,7 @@ class ToolOAuthCallback(Resource):
             plugin_id=plugin_id,
             provider=provider_name,
             redirect_uri=redirect_uri,
-            system_credentials=oauth_params,
+            system_credentials=oauth_client_params,
             request=request,
         ).credentials
 
@@ -774,7 +771,8 @@ class ToolOAuthCustomClient(Resource):
     @account_initialization_required
     def post(self, provider):
         parser = reqparse.RequestParser()
-        parser.add_argument("client_params", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("client_params", type=dict, required=False, nullable=True, location="json")
+        parser.add_argument("enable_oauth_custom_client", type=bool, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         user = current_user
@@ -782,18 +780,21 @@ class ToolOAuthCustomClient(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        return BuiltinToolManageService.setup_oauth_custom_client(
+        return BuiltinToolManageService.save_custom_oauth_client_params(
             tenant_id=user.current_tenant_id,
             provider=provider,
-            client_params=args["client_params"],
+            client_params=args.get("client_params", {}),
+            enable_oauth_custom_client=args.get("enable_oauth_custom_client", True),
         )
 
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider):
-        return BuiltinToolManageService.get_builtin_tool_provider_credentials(
-            tenant_id=current_user.current_tenant_id, provider_name=provider
+        return jsonable_encoder(
+            BuiltinToolManageService.get_custom_oauth_client_params(
+                tenant_id=current_user.current_tenant_id, provider=provider
+            )
         )
 
 
