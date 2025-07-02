@@ -127,6 +127,8 @@ const useInspectVarsCrud = () => {
           }
           else {
             draft[index].vars = payload
+            // put the node to the top
+            draft.unshift(draft.splice(index, 1)[0])
           }
         }
     })
