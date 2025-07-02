@@ -125,13 +125,14 @@ class MCPToolManageService:
         mcp_provider.authed = True
         mcp_provider.updated_at = datetime.now()
         db.session.commit()
+        user = mcp_provider.load_user()
         return ToolProviderApiEntity(
             id=mcp_provider.id,
             name=mcp_provider.name,
             tools=ToolTransformService.mcp_tool_to_user_tool(mcp_provider, tools),
             type=ToolProviderType.MCP,
             icon=mcp_provider.icon,
-            author=mcp_provider.user.name if mcp_provider.user else "Anonymous",
+            author=user.name if user else "Anonymous",
             server_url=mcp_provider.masked_server_url,
             updated_at=int(mcp_provider.updated_at.timestamp()),
             description=I18nObject(en_US="", zh_Hans=""),

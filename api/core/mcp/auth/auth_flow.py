@@ -8,7 +8,7 @@ from typing import Optional
 from urllib.parse import urljoin
 
 import requests
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from core.mcp.auth.auth_provider import OAuthClientProvider
 from core.mcp.types import (
@@ -60,7 +60,7 @@ def _create_secure_redis_state(state_data: OAuthCallbackState) -> str:
 
 
 def _retrieve_redis_state(state_key: str) -> OAuthCallbackState:
-    """Retrieve and decode OAuth state data from Redis using the state key."""
+    """Retrieve and decode OAuth state data from Redis using the state key, then delete it."""
     redis_key = f"{OAUTH_STATE_REDIS_KEY_PREFIX}{state_key}"
 
     # Get state data from Redis
@@ -69,26 +69,22 @@ def _retrieve_redis_state(state_key: str) -> OAuthCallbackState:
     if not state_data:
         raise ValueError("State parameter has expired or does not exist")
 
+    # Delete the state data from Redis immediately after retrieval to prevent reuse
+    redis_client.delete(redis_key)
+
     try:
         # Parse and validate the state data
-        if isinstance(state_data, bytes):
-            state_data = state_data.decode("utf-8")
-
         oauth_state = OAuthCallbackState.model_validate_json(state_data)
 
         return oauth_state
-    except Exception as e:
+    except ValidationError as e:
         raise ValueError(f"Invalid state parameter: {str(e)}")
 
 
 def handle_callback(state_key: str, authorization_code: str) -> OAuthCallbackState:
     """Handle the callback from the OAuth provider."""
-    # Retrieve state data from Redis
+    # Retrieve state data from Redis (state is automatically deleted after retrieval)
     full_state_data = _retrieve_redis_state(state_key)
-
-    # Clean up the state data from Redis after successful retrieval
-    redis_key = f"{OAUTH_STATE_REDIS_KEY_PREFIX}{state_key}"
-    redis_client.delete(redis_key)
 
     tokens = exchange_authorization(
         full_state_data.server_url,

@@ -4,20 +4,8 @@ from configs import dify_config
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
-HTTP_REQUEST_NODE_SSL_VERIFY = True  # Default value for HTTP_REQUEST_NODE_SSL_VERIFY is True
-try:
-    HTTP_REQUEST_NODE_SSL_VERIFY = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
-    http_request_node_ssl_verify_lower = str(HTTP_REQUEST_NODE_SSL_VERIFY).lower()
-    if http_request_node_ssl_verify_lower == "true":
-        HTTP_REQUEST_NODE_SSL_VERIFY = True
-    elif http_request_node_ssl_verify_lower == "false":
-        HTTP_REQUEST_NODE_SSL_VERIFY = False
-    else:
-        raise ValueError("Invalid value. HTTP_REQUEST_NODE_SSL_VERIFY should be 'True' or 'False'")
-except NameError:
-    HTTP_REQUEST_NODE_SSL_VERIFY = True
+HTTP_REQUEST_NODE_SSL_VERIFY = dify_config.HTTP_REQUEST_NODE_SSL_VERIFY
 
-BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
 

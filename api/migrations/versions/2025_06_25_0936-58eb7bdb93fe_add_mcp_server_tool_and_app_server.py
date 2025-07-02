@@ -32,7 +32,7 @@ def upgrade():
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
     sa.PrimaryKeyConstraint('id', name='app_mcp_server_pkey'),
     sa.UniqueConstraint('tenant_id', 'app_id', name='unique_app_mcp_server_tenant_app_id'),
-    sa.UniqueConstraint('tenant_id', 'server_code', name='unique_app_mcp_server_tenant_server_code')
+    sa.UniqueConstraint('server_code', name='unique_app_mcp_server_server_code')
     )
     op.create_table('tool_mcp_providers',
     sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),

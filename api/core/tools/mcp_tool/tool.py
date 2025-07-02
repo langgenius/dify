@@ -1,4 +1,5 @@
 import base64
+import json
 from collections.abc import Generator
 from typing import Any, Optional
 
@@ -49,6 +50,11 @@ class MCPTool(Tool):
         for content in result.content:
             if isinstance(content, TextContent):
                 yield self.create_text_message(content.text)
+                try:
+                    yield self.create_json_message(json.loads(content.text))
+                except json.JSONDecodeError:
+                    pass
+
             elif isinstance(content, ImageContent):
                 yield self.create_blob_message(
                     blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType}

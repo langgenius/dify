@@ -1,9 +1,9 @@
 import json
-from enum import Enum
+from enum import StrEnum
 
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import NotFound
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
@@ -14,7 +14,7 @@ from libs.login import login_required
 from models.model import AppMCPServer
 
 
-class AppMCPServerStatus(str, Enum):
+class AppMCPServerStatus(StrEnum):
     ACTIVE = "active"
     INACTIVE = "inactive"
 
@@ -37,7 +37,7 @@ class AppMCPServerController(Resource):
     def post(self, app_model):
         # The role of the current user in the ta table must be editor, admin, or owner
         if not current_user.is_editor:
-            raise Forbidden()
+            raise NotFound()
         parser = reqparse.RequestParser()
         parser.add_argument("description", type=str, required=True, location="json")
         parser.add_argument("parameters", type=dict, required=True, location="json")
@@ -62,7 +62,7 @@ class AppMCPServerController(Resource):
     @marshal_with(app_server_fields)
     def put(self, app_model):
         if not current_user.is_editor:
-            raise Forbidden()
+            raise NotFound()
         parser = reqparse.RequestParser()
         parser.add_argument("id", type=str, required=True, location="json")
         parser.add_argument("description", type=str, required=True, location="json")
@@ -71,7 +71,7 @@ class AppMCPServerController(Resource):
         args = parser.parse_args()
         server = db.session.query(AppMCPServer).filter(AppMCPServer.id == args["id"]).first()
         if not server:
-            raise Forbidden()
+            raise NotFound()
         server.description = args["description"]
         server.parameters = json.dumps(args["parameters"], ensure_ascii=False)
         if args["status"]:
@@ -89,10 +89,10 @@ class AppMCPServerRefreshController(Resource):
     @marshal_with(app_server_fields)
     def get(self, server_id):
         if not current_user.is_editor:
-            raise Forbidden()
+            raise NotFound()
         server = db.session.query(AppMCPServer).filter(AppMCPServer.id == server_id).first()
         if not server:
-            raise Forbidden()
+            raise NotFound()
         server.server_code = AppMCPServer.generate_server_code(16)
         db.session.commit()
         return server

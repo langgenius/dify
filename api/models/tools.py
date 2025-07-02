@@ -234,8 +234,7 @@ class MCPToolProvider(Base):
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
 
-    @property
-    def user(self) -> Account | None:
+    def load_user(self) -> Account | None:
         return db.session.query(Account).filter(Account.id == self.user_id).first()
 
     @property

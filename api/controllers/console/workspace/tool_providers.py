@@ -1,6 +1,6 @@
 import io
+from urllib.parse import urlparse
 
-import validators
 from flask import redirect, send_file
 from flask_login import current_user
 from flask_restful import Resource, reqparse
@@ -25,6 +25,17 @@ from services.tools.tool_labels_service import ToolLabelsService
 from services.tools.tools_manage_service import ToolCommonService
 from services.tools.tools_transform_service import ToolTransformService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+
+
+def is_valid_url(url: str) -> bool:
+    if not url:
+        return False
+
+    try:
+        parsed = urlparse(url)
+        return all([parsed.scheme, parsed.netloc]) and parsed.scheme in ["http", "https"]
+    except Exception:
+        return False
 
 
 class ToolProviderListApi(Resource):
@@ -634,7 +645,7 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
         user = current_user
-        if not validators.url(args["server_url"]):
+        if not is_valid_url(args["server_url"]):
             raise ValueError("Server URL is not valid.")
         return jsonable_encoder(
             MCPToolManageService.create_mcp_provider(
@@ -662,7 +673,7 @@ class ToolProviderMCPApi(Resource):
         parser.add_argument("provider_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("server_identifier", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        if not validators.url(args["server_url"]):
+        if not is_valid_url(args["server_url"]):
             if "[__HIDDEN__]" in args["server_url"]:
                 pass
             else:

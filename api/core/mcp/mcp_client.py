@@ -94,14 +94,15 @@ class MCPClient:
             if self._streams_context is None:
                 raise MCPConnectionError("Failed to create connection context")
 
+            # Use exit_stack to manage context managers properly
             if method_name == "mcp":
-                read_stream, write_stream, _ = self._streams_context.__enter__()
+                read_stream, write_stream, _ = self.exit_stack.enter_context(self._streams_context)
                 streams = (read_stream, write_stream)
             else:  # sse_client
-                streams = self._streams_context.__enter__()
+                streams = self.exit_stack.enter_context(self._streams_context)
 
             self._session_context = ClientSession(*streams)
-            self._session = self._session_context.__enter__()
+            self._session = self.exit_stack.enter_context(self._session_context)
             session = cast(ClientSession, self._session)
             session.initialize()
             return
@@ -138,14 +139,12 @@ class MCPClient:
     def cleanup(self):
         """Clean up resources"""
         try:
-            if self._session_context:
-                self._session_context.__exit__(None, None, None)
-
-            if self._streams_context:
-                self._streams_context.__exit__(None, None, None)
-            self._session = None
-            self._initialized = False
+            # ExitStack will handle proper cleanup of all managed context managers
             self.exit_stack.close()
+            self._session = None
+            self._session_context = None
+            self._streams_context = None
+            self._initialized = False
         except Exception as e:
             logging.exception("Error during cleanup")
             raise ValueError(f"Error during cleanup: {e}")
