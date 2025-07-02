@@ -533,7 +533,8 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
             raise ValueError(e)
 
         return jsonable_encoder({"options": options})
-    
+
+
 class PluginChangePreferencesApi(Resource):
     @setup_required
     @login_required
