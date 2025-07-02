@@ -1,12 +1,10 @@
 from copy import deepcopy
-from typing import Any
-
-from pydantic import BaseModel
+from typing import Any, Optional, Protocol
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
+from core.helper.provider_cache import GenericProviderCredentialsCache
 from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
-from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolProviderCredentialsCacheType
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolParameter,
@@ -14,11 +12,38 @@ from core.tools.entities.tool_entities import (
 )
 
 
-class ProviderConfigEncrypter(BaseModel):
+class ProviderConfigCache(Protocol):
+    """
+    Interface for provider configuration cache operations
+    """
+
+    def get(self) -> Optional[dict]:
+        """Get cached provider configuration"""
+        ...
+
+    def set(self, config: dict[str, Any]) -> None:
+        """Cache provider configuration"""
+        ...
+
+    def delete(self) -> None:
+        """Delete cached provider configuration"""
+        ...
+
+
+class ProviderConfigEncrypter:
     tenant_id: str
     config: list[BasicProviderConfig]
-    provider_type: str
-    provider_identity: str
+    provider_config_cache: ProviderConfigCache
+
+    def __init__(
+        self,
+        tenant_id: str,
+        config: list[BasicProviderConfig],
+        provider_config_cache: ProviderConfigCache,
+    ):
+        self.tenant_id = tenant_id
+        self.config = config
+        self.provider_config_cache = provider_config_cache
 
     def _deep_copy(self, data: dict[str, str]) -> dict[str, str]:
         """
@@ -72,18 +97,13 @@ class ProviderConfigEncrypter(BaseModel):
 
         return data
 
-    def decrypt(self, data: dict[str, str]) -> dict[str, str]:
+    def decrypt(self, data: dict[str, str]) -> dict[str, Any]:
         """
         decrypt tool credentials with tenant id
 
         return a deep copy of credentials with decrypted values
         """
-        cache = ToolProviderCredentialsCache(
-            tenant_id=self.tenant_id,
-            identity_id=f"{self.provider_type}.{self.provider_identity}",
-            cache_type=ToolProviderCredentialsCacheType.PROVIDER,
-        )
-        cached_credentials = cache.get()
+        cached_credentials = self.provider_config_cache.get()
         if cached_credentials:
             return cached_credentials
         data = self._deep_copy(data)
@@ -104,16 +124,24 @@ class ProviderConfigEncrypter(BaseModel):
                     except Exception:
                         pass
 
-        cache.set(data)
+        self.provider_config_cache.set(data)
         return data
 
-    def delete_tool_credentials_cache(self):
-        cache = ToolProviderCredentialsCache(
-            tenant_id=self.tenant_id,
-            identity_id=f"{self.provider_type}.{self.provider_identity}",
-            cache_type=ToolProviderCredentialsCacheType.PROVIDER,
-        )
-        cache.delete()
+
+def create_encrypter(
+    tenant_id: str, config: list[BasicProviderConfig], cache: ProviderConfigCache
+):
+    return ProviderConfigEncrypter(
+        tenant_id=tenant_id, config=config, provider_config_cache=cache
+    ), cache
+
+
+def create_generic_encrypter(
+    tenant_id: str, config: list[BasicProviderConfig], provider_type: str, provider_identity: str
+):
+    cache = GenericProviderCredentialsCache(tenant_id=tenant_id, identity_id=f"{provider_type}.{provider_identity}")
+    encrypt = ProviderConfigEncrypter(tenant_id=tenant_id, config=config, provider_config_cache=cache)
+    return encrypt, cache
 
 
 class ToolParameterConfigurationManager:

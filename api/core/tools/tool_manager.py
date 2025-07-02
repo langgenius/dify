@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Union, cast
 from yarl import URL
 
 import contexts
+from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.plugin.entities.plugin import ToolProviderID
 from core.plugin.impl.tool import PluginToolManager
 from core.tools.__base.tool_provider import ToolProviderController
@@ -38,12 +39,16 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolInvokeFrom,
     ToolParameter,
-    ToolProviderCredentialType,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.utils.configuration import ProviderConfigEncrypter, ToolParameterConfigurationManager
+from core.tools.utils.configuration import (
+    ProviderConfigEncrypter,
+    ToolParameterConfigurationManager,
+    create_encrypter,
+    create_generic_encrypter,
+)
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
@@ -206,19 +211,18 @@ class ToolManager:
 
             # decrypt the credentials
             credentials = builtin_provider.credentials
-            tool_configuration = ProviderConfigEncrypter(
+            encrypter, _ = create_encrypter(
                 tenant_id=tenant_id,
                 config=[
                     x.to_basic_provider_config()
-                    for x in provider_controller.get_credentials_schema(
-                        ToolProviderCredentialType.of(builtin_provider.credential_type)
-                    )
+                    for x in provider_controller.get_credentials_schema_by_type(builtin_provider.credential_type)
                 ],
-                provider_type=provider_controller.provider_type.value,
-                provider_identity=provider_controller.entity.identity.name,
+                cache=ToolProviderCredentialsCache(
+                    tenant_id=tenant_id, provider=provider_id, credential_id=builtin_provider.id
+                ),
             )
 
-            decrypted_credentials = tool_configuration.decrypt(credentials)
+            decrypted_credentials = encrypter.decrypt(credentials)
 
             return cast(
                 BuiltinTool,
@@ -235,22 +239,18 @@ class ToolManager:
 
         elif provider_type == ToolProviderType.API:
             api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
-
-            # decrypt the credentials
-            tool_configuration = ProviderConfigEncrypter(
+            encrypter, _ = create_generic_encrypter(
                 tenant_id=tenant_id,
                 config=[x.to_basic_provider_config() for x in api_provider.get_credentials_schema()],
                 provider_type=api_provider.provider_type.value,
                 provider_identity=api_provider.entity.identity.name,
             )
-            decrypted_credentials = tool_configuration.decrypt(credentials)
-
             return cast(
                 ApiTool,
                 api_provider.get_tool(tool_name).fork_tool_runtime(
                     runtime=ToolRuntime(
                         tenant_id=tenant_id,
-                        credentials=decrypted_credentials,
+                        credentials=encrypter.decrypt(credentials),
                         invoke_from=invoke_from,
                         tool_invoke_from=tool_invoke_from,
                     )
@@ -730,7 +730,7 @@ class ToolManager:
             ApiProviderAuthType.API_KEY if credentials["auth_type"] == "api_key" else ApiProviderAuthType.NONE,
         )
         # init tool configuration
-        tool_configuration = ProviderConfigEncrypter(
+        tool_configuration = ProviderConfigEncrypter.create_cached(
             tenant_id=tenant_id,
             config=[x.to_basic_provider_config() for x in controller.get_credentials_schema()],
             provider_type=controller.provider_type.value,

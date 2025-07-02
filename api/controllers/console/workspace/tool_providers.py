@@ -82,7 +82,7 @@ class ToolBuiltinProviderInfoApi(Resource):
         user_id = user.id
         tenant_id = user.current_tenant_id
 
-        return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(user_id, tenant_id, provider))
+        return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(tenant_id, provider))
 
 
 class ToolBuiltinProviderDeleteApi(Resource):
@@ -159,7 +159,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
             result = BuiltinToolManageService.update_builtin_tool_provider(
                 user_id=user_id,
                 tenant_id=tenant_id,
-                provider_name=provider,
+                provider=provider,
                 credentials=args["credentials"],
                 credential_id=args["credential_id"],
                 name=args["name"],
@@ -782,7 +782,6 @@ class ToolOAuthCustomClient(Resource):
 
         return BuiltinToolManageService.setup_oauth_custom_client(
             tenant_id=user.current_tenant_id,
-            user_id=user.id,
             provider=provider,
             client_params=args["client_params"],
         )

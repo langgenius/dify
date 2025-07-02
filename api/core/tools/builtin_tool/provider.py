@@ -105,20 +105,34 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.tools
 
-    def get_credentials_schema(
-        self, credential_type: ToolProviderCredentialType = ToolProviderCredentialType.API_KEY
-    ) -> list[ProviderConfig]:
+    def get_credentials_schema(self) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
 
         :return: the credentials schema
         """
-        if credential_type == ToolProviderCredentialType.OAUTH2:
+        return self.get_credentials_schema_by_type(ToolProviderCredentialType.API_KEY.value)
+
+    def get_credentials_schema_by_type(self, credential_type: str) -> list[ProviderConfig]:
+        """
+        returns the credentials schema of the provider
+
+        :param credential_type: the type of the credential
+        :return: the credentials schema of the provider
+        """
+        if credential_type == ToolProviderCredentialType.OAUTH2.value:
             return self.entity.oauth_schema.credentials_schema.copy() if self.entity.oauth_schema else []
-        elif credential_type == ToolProviderCredentialType.API_KEY:
+        if credential_type == ToolProviderCredentialType.API_KEY.value:
             return self.entity.credentials_schema.copy() if self.entity.credentials_schema else []
-        else:
-            raise ValueError(f"Invalid credential type: {credential_type}")
+        raise ValueError(f"Invalid credential type: {credential_type}")
+    
+    def get_oauth_client_schema(self) -> list[ProviderConfig]:
+        """
+        returns the oauth client schema of the provider
+
+        :return: the oauth client schema
+        """
+        return self.entity.oauth_schema.client_schema.copy() if self.entity.oauth_schema else []
 
     def get_tools(self) -> list[BuiltinTool]:
         """
@@ -141,7 +155,11 @@ class BuiltinToolProviderController(ToolProviderController):
 
         :return: whether the provider needs credentials
         """
-        return self.entity.credentials_schema is not None and len(self.entity.credentials_schema) != 0
+        return (
+            self.entity.credentials_schema is not None
+            and len(self.entity.credentials_schema) != 0
+            or (self.entity.oauth_schema is not None and len(self.entity.oauth_schema.credentials_schema) != 0)
+        )
 
     @property
     def provider_type(self) -> ToolProviderType:
