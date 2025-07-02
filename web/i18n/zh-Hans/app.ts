@@ -237,6 +237,11 @@ const translation = {
   checkLegacy: {
     title: '受图像上传遗留问题影响的应用',
     description: '当前工作区有 {{num}} 个应用受图像上传遗留问题影响，其中 {{publishedNum}} 个已发布。',
+    published: '已发布',
+    yes: '是',
+    no: '否',
+    createAt: '创建时间',
+    lastRequest: '最后请求',
   },
 }
 

@@ -75,7 +75,7 @@ const Chip: FC<Props> = ({
               </div>
             </div>
             {!value && <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />}
-            {!!value && (
+            {(!!value || value === 0) && (
               <div className='group/clear cursor-pointer p-[1px]' onClick={(e) => {
                 e.stopPropagation()
                 onClear()

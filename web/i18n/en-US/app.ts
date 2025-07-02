@@ -236,6 +236,11 @@ const translation = {
   checkLegacy: {
     title: 'Apps affected by image upload legacy',
     description: 'The current workspace has {{num}} applications affected, {{publishedNum}} of which have been published.',
+    published: 'Published',
+    yes: 'Yes',
+    no: 'No',
+    createAt: 'Created At',
+    lastRequest: 'Last Request',
   },
 }
 

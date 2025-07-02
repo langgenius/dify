@@ -6,8 +6,11 @@ import useLegacyList from './use-legacy-list'
 import Chip from '@/app/components/base/chip'
 import { RiFilter3Line } from '@remixicon/react'
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 
+const i18nPrefix = 'app.checkLegacy'
 const Page = () => {
+  const { t } = useTranslation()
   const {
     sort_by,
     setOrderBy,
@@ -22,13 +25,14 @@ const Page = () => {
 
   const renderTriggerContent = useCallback(() => {
     if(published === undefined)
-      return 'Published'
+      return t(`${i18nPrefix}.published`)
     return (
-      <div>
-        Published <span>{published === 1 ? 'Yes' : 'No'}</span>
+      <div className='flex space-x-1'>
+        <div>{t(`${i18nPrefix}.published`)}</div>
+        <span className='system-sm-medium text-text-secondary'>{published === 1 ? t(`${i18nPrefix}.yes`) : t(`${i18nPrefix}.no`)}</span>
       </div>
     )
-  }, [published])
+  }, [published, t])
 
   return (
     <div className='h-full rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle px-6 pt-4'>
@@ -44,8 +48,8 @@ const Page = () => {
           onSelect={handleSelectPublished}
           onClear={clearPublished}
           items={[
-            { value: 1, name: 'Yes' },
-            { value: 0, name: 'No' },
+            { value: 1, name: t(`${i18nPrefix}.yes`) },
+            { value: 0, name: t(`${i18nPrefix}.no`) },
           ]}
         />
         <div className='h-3.5 w-px bg-divider-regular'></div>
@@ -54,8 +58,8 @@ const Page = () => {
           order={sort_by?.startsWith('-') ? '-' : ''}
           value={sort_by?.replace('-', '') || 'created_at'}
           items={[
-            { value: 'created_at', name: 'Created At' },
-            { value: 'last_request', name: 'Last request' },
+            { value: 'created_at', name: t(`${i18nPrefix}.createAt`) },
+            { value: 'last_request', name: t(`${i18nPrefix}.lastRequest`) },
           ]}
           onSelect={setOrderBy}
         />
