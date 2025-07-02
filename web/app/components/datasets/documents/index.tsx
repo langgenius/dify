@@ -30,6 +30,7 @@ import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata
 import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata-drawer'
 import StatusWithAction from '../common/document-status-with-action/status-with-action'
 import { useDocLink } from '@/context/i18n'
+import { useFetchDefaultProcessRule } from '@/service/knowledge/use-create-dataset'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -178,6 +179,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     router.push(`/datasets/${datasetId}/documents/create`)
   }
 
+  const fetchDefaultProcessRuleMutation = useFetchDefaultProcessRule()
+
   const handleSaveNotionPageSelected = async (selectedPages: NotionPage[]) => {
     const workspacesMap = groupBy(selectedPages, 'workspace_id')
     const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
@@ -186,6 +189,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         pages: workspacesMap[workspaceId],
       }
     })
+    const { rules } = await fetchDefaultProcessRuleMutation.mutateAsync('/datasets/process-rule')
     const params = {
       data_source: {
         type: dataset?.data_source_type,
@@ -209,7 +213,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       },
       indexing_technique: dataset?.indexing_technique,
       process_rule: {
-        rules: {},
+        rules,
         mode: ProcessMode.general,
       },
     } as CreateDocumentReq
