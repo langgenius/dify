@@ -24,14 +24,6 @@ import { useConfigsMap } from './use-configs-map'
 export const useInspectVarsCrud = () => {
   const workflowStore = useWorkflowStore()
   const appId = useStore(s => s.appId)
-  const setNodeInspectVars = useStore(s => s.setNodeInspectVars)
-  const setInspectVarValue = useStore(s => s.setInspectVarValue)
-  const renameInspectVarNameInStore = useStore(s => s.renameInspectVarName)
-  const deleteAllInspectVarsInStore = useStore(s => s.deleteAllInspectVars)
-  const deleteNodeInspectVarsInStore = useStore(s => s.deleteNodeInspectVars)
-  const deleteInspectVarInStore = useStore(s => s.deleteInspectVar)
-  const setNodesWithInspectVars = useStore(s => s.setNodesWithInspectVars)
-  const resetToLastRunVarInStore = useStore(s => s.resetToLastRunVar)
   const { conversationVarsUrl, systemVarsUrl } = useConfigsMap()
   const invalidateConversationVarValues = useInvalidateConversationVarValues(conversationVarsUrl)
   const { mutateAsync: doResetConversationVar } = useResetConversationVar(appId)
@@ -90,6 +82,10 @@ export const useInspectVarsCrud = () => {
   }, [getNodeInspectVars])
 
   const fetchInspectVarValue = useCallback(async (selector: ValueSelector) => {
+    const {
+      appId,
+      setNodeInspectVars,
+    } = workflowStore.getState()
     const nodeId = selector[0]
     const isSystemVar = nodeId === 'sys'
     const isConversationVar = nodeId === 'conversation'
@@ -103,11 +99,14 @@ export const useInspectVarsCrud = () => {
     }
     const vars = await fetchNodeInspectVars(appId, nodeId)
     setNodeInspectVars(nodeId, vars)
-  }, [appId, invalidateSysVarValues, invalidateConversationVarValues, setNodeInspectVars])
+  }, [workflowStore, invalidateSysVarValues, invalidateConversationVarValues])
 
   // after last run would call this
   const appendNodeInspectVars = useCallback((nodeId: string, payload: VarInInspect[], allNodes: Node[]) => {
-    const { nodesWithInspectVars } = workflowStore.getState()
+    const {
+      nodesWithInspectVars,
+      setNodesWithInspectVars,
+    } = workflowStore.getState()
     const nodes = produce(nodesWithInspectVars, (draft) => {
       const nodeInfo = allNodes.find(node => node.id === nodeId)
         if (nodeInfo) {
@@ -128,7 +127,7 @@ export const useInspectVarsCrud = () => {
     })
     setNodesWithInspectVars(nodes)
     handleCancelNodeSuccessStatus(nodeId)
-  }, [workflowStore, setNodesWithInspectVars, handleCancelNodeSuccessStatus])
+  }, [workflowStore, handleCancelNodeSuccessStatus])
 
   const hasNodeInspectVar = useCallback((nodeId: string, varId: string) => {
     const { nodesWithInspectVars } = workflowStore.getState()
@@ -139,11 +138,12 @@ export const useInspectVarsCrud = () => {
   }, [workflowStore])
 
   const deleteInspectVar = useCallback(async (nodeId: string, varId: string) => {
+    const { deleteInspectVar } = workflowStore.getState()
     if(hasNodeInspectVar(nodeId, varId)) {
       await doDeleteInspectVar(varId)
-      deleteInspectVarInStore(nodeId, varId)
+      deleteInspectVar(nodeId, varId)
     }
-  }, [doDeleteInspectVar, deleteInspectVarInStore, hasNodeInspectVar])
+  }, [doDeleteInspectVar, workflowStore, hasNodeInspectVar])
 
   const resetConversationVar = useCallback(async (varId: string) => {
     await doResetConversationVar(varId)
@@ -151,21 +151,24 @@ export const useInspectVarsCrud = () => {
   }, [doResetConversationVar, invalidateConversationVarValues])
 
   const deleteNodeInspectorVars = useCallback(async (nodeId: string) => {
+    const { deleteNodeInspectVars } = workflowStore.getState()
     if (hasNodeInspectVars(nodeId)) {
       await doDeleteNodeInspectorVars(nodeId)
-      deleteNodeInspectVarsInStore(nodeId)
+      deleteNodeInspectVars(nodeId)
     }
-  }, [doDeleteNodeInspectorVars, deleteNodeInspectVarsInStore, hasNodeInspectVars])
+  }, [doDeleteNodeInspectorVars, workflowStore, hasNodeInspectVars])
 
   const deleteAllInspectorVars = useCallback(async () => {
+    const { deleteAllInspectVars } = workflowStore.getState()
     await doDeleteAllInspectorVars()
     await invalidateConversationVarValues()
     await invalidateSysVarValues()
-    deleteAllInspectVarsInStore()
+    deleteAllInspectVars()
     handleEdgeCancelRunningStatus()
-  }, [doDeleteAllInspectorVars, invalidateConversationVarValues, invalidateSysVarValues, deleteAllInspectVarsInStore, handleEdgeCancelRunningStatus])
+  }, [doDeleteAllInspectorVars, invalidateConversationVarValues, invalidateSysVarValues, workflowStore, handleEdgeCancelRunningStatus])
 
   const editInspectVarValue = useCallback(async (nodeId: string, varId: string, value: any) => {
+    const { setInspectVarValue } = workflowStore.getState()
     await doEditInspectorVar({
       varId,
       value,
@@ -175,9 +178,10 @@ export const useInspectVarsCrud = () => {
       invalidateConversationVarValues()
     if (nodeId === VarInInspectType.system)
       invalidateSysVarValues()
-  }, [doEditInspectorVar, invalidateConversationVarValues, invalidateSysVarValues, setInspectVarValue])
+  }, [doEditInspectorVar, invalidateConversationVarValues, invalidateSysVarValues, workflowStore])
 
   const renameInspectVarName = useCallback(async (nodeId: string, oldName: string, newName: string) => {
+    const { renameInspectVarName } = workflowStore.getState()
     const varId = getVarId(nodeId, oldName)
     if (!varId)
       return
@@ -187,8 +191,8 @@ export const useInspectVarsCrud = () => {
       varId,
       name: newName,
     })
-    renameInspectVarNameInStore(nodeId, varId, newSelector)
-  }, [doEditInspectorVar, getVarId, renameInspectVarNameInStore])
+    renameInspectVarName(nodeId, varId, newSelector)
+  }, [doEditInspectorVar, getVarId, workflowStore])
 
   const isInspectVarEdited = useCallback((nodeId: string, name: string) => {
     const inspectVar = getInspectVar(nodeId, name)
@@ -199,14 +203,15 @@ export const useInspectVarsCrud = () => {
   }, [getInspectVar])
 
   const resetToLastRunVar = useCallback(async (nodeId: string, varId: string) => {
+    const { resetToLastRunVar } = workflowStore.getState()
     const isSysVar = nodeId === 'sys'
     const data = await doResetToLastRunValue(varId)
 
     if(isSysVar)
       invalidateSysVarValues()
     else
-      resetToLastRunVarInStore(nodeId, varId, data.value)
-  }, [doResetToLastRunValue, invalidateSysVarValues, resetToLastRunVarInStore])
+      resetToLastRunVar(nodeId, varId, data.value)
+  }, [doResetToLastRunValue, invalidateSysVarValues, workflowStore])
 
   return {
     hasNodeInspectVars,
