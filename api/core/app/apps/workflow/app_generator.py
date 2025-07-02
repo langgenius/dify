@@ -25,6 +25,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
+from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
@@ -236,6 +237,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         worker_thread.start()
 
+        draft_var_saver_factory = self._get_draft_var_saver_factory(
+            invoke_from,
+        )
+
         # return response or stream generator
         response = self._handle_response(
             application_generate_entity=application_generate_entity,
@@ -244,6 +249,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
+            draft_var_saver_factory=draft_var_saver_factory,
             stream=streaming,
         )
 
@@ -474,6 +480,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user: Union[Account, EndUser],
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
     ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """
@@ -494,6 +501,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             workflow_execution_repository=workflow_execution_repository,
             workflow_node_execution_repository=workflow_node_execution_repository,
+            draft_var_saver_factory=draft_var_saver_factory,
             stream=stream,
         )
 
