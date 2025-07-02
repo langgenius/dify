@@ -44,7 +44,7 @@ const VariableModal = ({
 
   const handleVarNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     replaceSpaceWithUnderscreInVarNameInput(e.target)
-    if (!checkVariableName(e.target.value))
+    if (!!e.target.value && !checkVariableName(e.target.value))
       return
     setName(e.target.value || '')
   }
