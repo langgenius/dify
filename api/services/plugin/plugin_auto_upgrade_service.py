@@ -22,7 +22,7 @@ class PluginAutoUpgradeService:
         upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode,
         exclude_plugins: list[str],
         include_plugins: list[str],
-    ) -> None:
+    ) -> bool:
         with Session(db.engine) as session:
             exist_strategy = (
                 session.query(TenantPluginAutoUpgradeStrategy)
