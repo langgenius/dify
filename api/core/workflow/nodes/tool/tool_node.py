@@ -167,7 +167,9 @@ class ToolNode(BaseNode[ToolNodeData]):
             if tool_input.type == "variable":
                 variable = variable_pool.get(tool_input.value)
                 if variable is None:
-                    raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                    if parameter.required:
+                        raise ToolParameterError(f"Variable {tool_input.value} does not exist")
+                    continue
                 parameter_value = variable.value
             elif tool_input.type in {"mixed", "constant"}:
                 segment_group = variable_pool.convert_template(str(tool_input.value))

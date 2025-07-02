@@ -1,8 +1,9 @@
 from pydantic import Field
-from pydantic_settings import BaseSettings
+
+from configs.packaging.pyproject import PyProjectConfig, PyProjectTomlConfig
 
 
-class PackagingInfo(BaseSettings):
+class PackagingInfo(PyProjectTomlConfig):
     """
     Packaging build information
     """
