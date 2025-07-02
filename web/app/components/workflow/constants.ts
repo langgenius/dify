@@ -555,7 +555,7 @@ export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
     type: VarType.string,
   },
   {
-    variable: 'usage',
+    variable: '__usage',
     type: VarType.object,
   },
 ]

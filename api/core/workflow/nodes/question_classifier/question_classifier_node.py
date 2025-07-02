@@ -11,10 +11,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.workflow_node_execution import (
-    WorkflowNodeExecutionMetadataKey,
-    WorkflowNodeExecutionStatus,
-)
+from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import ModelInvokeCompletedEvent
 from core.workflow.nodes.llm import (
@@ -143,6 +140,8 @@ class QuestionClassifierNode(LLMNode):
                 "prompts": PromptMessageUtil.prompt_messages_to_prompt_for_saving(
                     model_mode=model_config.mode, prompt_messages=prompt_messages
                 ),
+                "usage": jsonable_encoder(usage),
+                "finish_reason": finish_reason,
                 "model_provider": model_config.provider,
                 "model_name": model_config.model,
             }
@@ -150,7 +149,6 @@ class QuestionClassifierNode(LLMNode):
                 "class_name": category_name,
                 "class_id": category_id,
                 "usage": jsonable_encoder(usage),
-                "finish_reason": finish_reason,
             }
 
             return NodeRunResult(
@@ -240,8 +238,7 @@ class QuestionClassifierNode(LLMNode):
         model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
         if model_context_tokens:
             model_instance = ModelInstance(
-                provider_model_bundle=model_config.provider_model_bundle,
-                model=model_config.model,
+                provider_model_bundle=model_config.provider_model_bundle, model=model_config.model
             )
 
             curr_message_tokens = model_instance.get_llm_num_tokens(prompt_messages)
@@ -280,13 +277,12 @@ class QuestionClassifierNode(LLMNode):
         if memory:
             memory_str = memory.get_history_prompt_text(
                 max_token_limit=max_token_limit,
-                message_limit=(node_data.memory.window.size if node_data.memory and node_data.memory.window else None),
+                message_limit=node_data.memory.window.size if node_data.memory and node_data.memory.window else None,
             )
         prompt_messages: list[LLMNodeChatModelMessage] = []
         if model_mode == ModelMode.CHAT:
             system_prompt_messages = LLMNodeChatModelMessage(
-                role=PromptMessageRole.SYSTEM,
-                text=QUESTION_CLASSIFIER_SYSTEM_PROMPT.format(histories=memory_str),
+                role=PromptMessageRole.SYSTEM, text=QUESTION_CLASSIFIER_SYSTEM_PROMPT.format(histories=memory_str)
             )
             prompt_messages.append(system_prompt_messages)
             user_prompt_message_1 = LLMNodeChatModelMessage(
@@ -294,8 +290,7 @@ class QuestionClassifierNode(LLMNode):
             )
             prompt_messages.append(user_prompt_message_1)
             assistant_prompt_message_1 = LLMNodeChatModelMessage(
-                role=PromptMessageRole.ASSISTANT,
-                text=QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1,
+                role=PromptMessageRole.ASSISTANT, text=QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1
             )
             prompt_messages.append(assistant_prompt_message_1)
             user_prompt_message_2 = LLMNodeChatModelMessage(
@@ -303,8 +298,7 @@ class QuestionClassifierNode(LLMNode):
             )
             prompt_messages.append(user_prompt_message_2)
             assistant_prompt_message_2 = LLMNodeChatModelMessage(
-                role=PromptMessageRole.ASSISTANT,
-                text=QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2,
+                role=PromptMessageRole.ASSISTANT, text=QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2
             )
             prompt_messages.append(assistant_prompt_message_2)
             user_prompt_message_3 = LLMNodeChatModelMessage(
