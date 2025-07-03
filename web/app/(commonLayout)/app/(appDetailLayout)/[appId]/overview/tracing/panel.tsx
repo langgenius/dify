@@ -62,20 +62,15 @@ const Panel: FC = () => {
   }
   const inUseTracingProvider: TracingProvider | null = tracingStatus?.tracing_provider || null
 
-  const InUseProviderIcon
-    = inUseTracingProvider === TracingProvider.arize
-      ? ArizeIcon
-      : inUseTracingProvider === TracingProvider.phoenix
-        ? PhoenixIcon
-        : inUseTracingProvider === TracingProvider.langSmith
-          ? LangsmithIcon
-          : inUseTracingProvider === TracingProvider.langfuse
-            ? LangfuseIcon
-            : inUseTracingProvider === TracingProvider.opik
-              ? OpikIcon
-              : inUseTracingProvider === TracingProvider.weave
-                ? WeaveIcon
-                : LangsmithIcon
+  const providerIconMap: Record<TracingProvider, React.FC<{ className?: string }>> = {
+    [TracingProvider.arize]: ArizeIcon,
+    [TracingProvider.phoenix]: PhoenixIcon,
+    [TracingProvider.langSmith]: LangsmithIcon,
+    [TracingProvider.langfuse]: LangfuseIcon,
+    [TracingProvider.opik]: OpikIcon,
+    [TracingProvider.weave]: WeaveIcon,
+  }
+  const InUseProviderIcon = inUseTracingProvider ? providerIconMap[inUseTracingProvider] : undefined
 
   const [arizeConfig, setArizeConfig] = useState<ArizeConfig | null>(null)
   const [phoenixConfig, setPhoenixConfig] = useState<PhoenixConfig | null>(null)
@@ -83,15 +78,15 @@ const Panel: FC = () => {
   const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
   const [opikConfig, setOpikConfig] = useState<OpikConfig | null>(null)
   const [weaveConfig, setWeaveConfig] = useState<WeaveConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig)
+  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig || opikConfig || weaveConfig || arizeConfig || phoenixConfig)
 
   const fetchTracingConfig = async () => {
     const { tracing_config: arizeConfig, has_not_configured: arizeHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.arize })
     if (!arizeHasNotConfig)
-      setLangSmithConfig(arizeConfig as ArizeConfig)
+      setArizeConfig(arizeConfig as ArizeConfig)
     const { tracing_config: phoenixConfig, has_not_configured: phoenixHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.phoenix })
     if (!phoenixHasNotConfig)
-      setLangSmithConfig(phoenixConfig as PhoenixConfig)
+      setPhoenixConfig(phoenixConfig as PhoenixConfig)
     const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
     if (!langSmithHasNotConfig)
       setLangSmithConfig(langSmithConfig as LangSmithConfig)

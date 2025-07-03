@@ -170,12 +170,6 @@ const ConfigPopup: FC<PopupProps> = ({
   const configuredProviderPanel = () => {
     const configuredPanels: JSX.Element[] = []
 
-    if (arizeConfig)
-      configuredPanels.push(arizePanel)
-
-    if (phoenixConfig)
-      configuredPanels.push(phoenixPanel)
-
     if (langFuseConfig)
       configuredPanels.push(langfusePanel)
 
@@ -187,6 +181,12 @@ const ConfigPopup: FC<PopupProps> = ({
 
     if (weaveConfig)
       configuredPanels.push(weavePanel)
+
+    if (arizeConfig)
+      configuredPanels.push(arizePanel)
+
+    if (phoenixConfig)
+      configuredPanels.push(phoenixPanel)
 
     return configuredPanels
   }
