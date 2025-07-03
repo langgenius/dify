@@ -12,7 +12,6 @@ from controllers.service_api_with_auth.error import (
     AccountInFreezeError,
     EmailSendIpLimitError,
     OrganizationMismatchError,
-    OrganizationNotFoundError,
     TenantNotFoundError,
 )
 from libs.helper import email, extract_remote_ip
@@ -196,9 +195,6 @@ class EmailCodeLoginApi(Resource):
         # Find organization based on email domain
         organization = OrganizationService.find_organization_by_email_domain(user_email, tenant.id)
 
-        if organization is None:
-            raise OrganizationNotFoundError()
-
         is_new_user = account is None
 
         if account is None:
@@ -211,11 +207,14 @@ class EmailCodeLoginApi(Resource):
                 interface_language=languages[0],
             )
 
-            OrganizationService.assign_account_to_organization(account, organization.id)
+            # Assign to organization if domain match found, otherwise leave organization_id as NULL
+            if organization is not None:
+                OrganizationService.assign_account_to_organization(account, organization.id)
 
         else:
 
-            if account.current_organization_id is not None and account.current_organization_id != organization.id:
+            if (organization is not None and account.current_organization_id is not None 
+                and account.current_organization_id != organization.id):
                 raise OrganizationMismatchError()
 
             connected_tenant = TenantService.get_join_tenants(account)
