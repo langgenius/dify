@@ -2,6 +2,8 @@ import base64
 import io
 import json
 import logging
+import os
+import re
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
 
@@ -95,6 +97,9 @@ if TYPE_CHECKING:
     from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
+
+# Environment variable to control thinking tags preservation (default: true to maintain backward compatibility)
+LLM_NODE_THINKING_TAGS_ENABLED = os.getenv("LLM_NODE_THINKING_TAGS_ENABLED", "true").lower() == "true"
 
 
 class LLMNode(BaseNode[LLMNodeData]):
@@ -374,7 +379,12 @@ class LLMNode(BaseNode[LLMNodeData]):
         except OutputParserError as e:
             raise LLMNodeError(f"Failed to parse structured output: {e}")
 
-        yield ModelInvokeCompletedEvent(text=full_text_buffer.getvalue(), usage=usage, finish_reason=finish_reason)
+        # Apply thinking tags removal if disabled
+        result_text = full_text_buffer.getvalue()
+        if not LLM_NODE_THINKING_TAGS_ENABLED:
+            result_text = self._remove_thinking_tags(result_text)
+
+        yield ModelInvokeCompletedEvent(text=result_text, usage=usage, finish_reason=finish_reason)
 
     def _image_file_to_markdown(self, file: "File", /):
         text_chunk = f"![]({file.generate_url()})"
@@ -900,8 +910,13 @@ class LLMNode(BaseNode[LLMNodeData]):
         for text_part in self._save_multimodal_output_and_convert_result_to_markdown(invoke_result.message.content):
             buffer.write(text_part)
 
+        # Apply thinking tags removal if disabled
+        result_text = buffer.getvalue()
+        if not LLM_NODE_THINKING_TAGS_ENABLED:
+            result_text = self._remove_thinking_tags(result_text)
+
         return ModelInvokeCompletedEvent(
-            text=buffer.getvalue(),
+            text=result_text,
             usage=invoke_result.usage,
             finish_reason=None,
         )
@@ -1001,6 +1016,32 @@ class LLMNode(BaseNode[LLMNodeData]):
         else:
             logger.warning("unknown contents type encountered, type=%s", type(contents))
             yield str(contents)
+
+    def _remove_thinking_tags(self, text: str) -> str:
+        """
+        Remove thinking tags like <think></think> from the response text.
+        This handles reasoning models like qwen, deepseek-r1 that include thinking process.
+
+        Args:
+            text: The text content to clean
+
+        Returns:
+            Cleaned text with thinking tags removed
+        """
+        if not isinstance(text, str) or not text.strip():
+            return text
+
+        # Remove <think>...</think> blocks (case-insensitive, multiline)
+        # Pattern explanation:
+        # \s* - optional whitespace before <think>
+        # <think>.*?</think> - the thinking tag block (non-greedy)
+        # \s* - optional whitespace after </think>
+        cleaned_text = re.sub(r"\s*<think>.*?</think>\s*", " ", text, flags=re.IGNORECASE | re.DOTALL)
+
+        # Clean up multiple spaces and strip
+        cleaned_text = re.sub(r"\s+", " ", cleaned_text).strip()
+
+        return cleaned_text
 
 
 def _combine_message_content_with_role(
