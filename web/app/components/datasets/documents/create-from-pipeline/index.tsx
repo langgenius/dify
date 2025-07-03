@@ -28,6 +28,7 @@ import type { InitialDocumentDetail, PublishedPipelineRunPreviewResponse, Publis
 import { DatasourceType } from '@/models/pipeline'
 import { TransferMethod } from '@/types/app'
 import { useAddDocumentsSteps, useLocalFile, useOnlineDocuments, useOnlineDrive, useWebsiteCrawl } from './hooks'
+import DataSourceProvider from './data-source/store/provider'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
@@ -399,4 +400,12 @@ const CreateFormPipeline = () => {
   )
 }
 
-export default CreateFormPipeline
+const CreateFormPipelineWrapper = () => {
+  return (
+    <DataSourceProvider>
+      <CreateFormPipeline />
+    </DataSourceProvider>
+  )
+}
+
+export default CreateFormPipelineWrapper

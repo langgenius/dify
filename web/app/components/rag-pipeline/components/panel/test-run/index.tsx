@@ -15,6 +15,7 @@ import { TransferMethod } from '@/types/app'
 import CloseButton from './close-button'
 import Header from './header'
 import FooterTips from './footer-tips'
+import DataSourceProvider from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
 
 const TestRunPanel = () => {
   const setShowDebugAndPreviewPanel = useWorkflowStoreWithSelector(state => state.setShowDebugAndPreviewPanel)
@@ -209,4 +210,12 @@ const TestRunPanel = () => {
   )
 }
 
-export default TestRunPanel
+const TestRunPanelWrapper = () => {
+  return (
+    <DataSourceProvider>
+      <TestRunPanel />
+    </DataSourceProvider>
+  )
+}
+
+export default TestRunPanelWrapper

@@ -1,20 +1,21 @@
 const translation = {
   creation: {
-    title: '创建知识库流水线',
+    title: '创建知识库 pipeline',
     createFromScratch: {
       title: '从零开始创建',
-      description: '空白知识库流水线',
+      description: '空白知识库 pipeline',
     },
     ImportDSL: {
       title: '导入',
       description: '从 DSL 文件导入',
     },
     createKnowledge: '创建知识库',
-    errorTip: '创建知识库流水线失败',
-    successTip: '成功创建知识库流水线',
+    errorTip: '创建知识库',
+    successTip: '成功创建知识库',
+    caution: '注意',
   },
   tabs: {
-    builtInPipeline: '内置流水线',
+    builtInPipeline: '内置 pipeline',
     customized: '自定义',
   },
   operations: {
@@ -22,7 +23,7 @@ const translation = {
     details: '详情',
     editInfo: '编辑信息',
     exportDSL: '导出 DSL',
-    useTemplate: '使用此知识库流水线',
+    useTemplate: '使用此知识库 pipeline',
     backToDataSource: '返回数据源',
     process: '处理',
     dataSource: '数据源',
@@ -34,15 +35,15 @@ const translation = {
   knowledgeDescription: '知识库描述',
   knowledgeDescriptionPlaceholder: '描述知识库中的内容。详细的描述可以让 AI 更准确地访问数据集的内容。如果为空，Dify 将使用默认的命中策略。（可选）',
   knowledgePermissions: '权限',
-  editPipelineInfo: '编辑流水线信息',
-  pipelineNameAndIcon: '流水线名称和图标',
+  editPipelineInfo: '编辑 pipeline 信息',
+  pipelineNameAndIcon: 'pipeline 名称和图标',
   deletePipeline: {
-    title: '要删除此流水线模板吗？',
-    content: '删除流水线模板是不可逆的。',
+    title: '要删除此 pipeline 模板吗？',
+    content: '删除 pipeline 模板是不可逆的。',
   },
   exportDSL: {
-    successTip: '成功导出流水线 DSL',
-    errorTip: '导出流水线 DSL 失败',
+    successTip: '成功导出 pipeline DSL',
+    errorTip: '导出 pipeline DSL 失败',
   },
   details: {
     createdBy: '由 {{author}} 创建',
@@ -67,7 +68,7 @@ const translation = {
   inputField: '输入字段',
   inputFieldPanel: {
     title: '用户输入字段',
-    description: '用户输入字段用于定义和收集流水线执行过程中所需的变量，用户可以自定义字段类型，并灵活配置输入，以满足不同数据源或文档处理的需求。',
+    description: '用户输入字段用于定义和收集 pipeline 执行过程中所需的变量，用户可以自定义字段类型，并灵活配置输入，以满足不同数据源或文档处理的需求。',
     uniqueInputs: {
       title: '非共享输入',
       tooltip: '非共享输入只能被选定的数据源及其下游节点访问。用户在选择其他数据源时不需要填写它。只有数据源变量引用的输入字段才会出现在第一步（数据源）中。所有其他字段将在第二步（Process Documents）中显示。',

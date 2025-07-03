@@ -10,8 +10,9 @@ const translation = {
       description: 'Import from a DSL file',
     },
     createKnowledge: 'Create Knowledge',
-    errorTip: 'Failed to create a Knowledge Pipeline',
-    successTip: 'Successfully created a Knowledge Pipeline',
+    errorTip: 'Failed to create a Knowledge Base',
+    successTip: 'Successfully created a Knowledge Base',
+    caution: 'Caution',
   },
   tabs: {
     builtInPipeline: 'Built-in pipeline',
