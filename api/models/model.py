@@ -29,7 +29,7 @@ from libs.helper import generate_string
 from .account import Account, Tenant
 from .base import Base
 from .engine import db
-from .enums import CreatorUserRole
+from .enums import CreatorUserRole, MessageStatus
 from .types import StringUUID
 
 if TYPE_CHECKING:
@@ -890,15 +890,6 @@ class Conversation(Base):
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
-
-
-class MessageStatus(StrEnum):
-    """
-    Message Status Enum
-    """
-
-    NORMAL = "normal"
-    ERROR = "error"
 
 
 class Message(Base):
