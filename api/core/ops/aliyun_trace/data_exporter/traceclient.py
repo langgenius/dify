@@ -39,7 +39,7 @@ class TraceClient:
         self.resource = Resource(
             attributes={
                 ResourceAttributes.SERVICE_NAME: service_name,
-                ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.CURRENT_VERSION}-{dify_config.COMMIT_SHA}",
+                ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
                 ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
                 ResourceAttributes.HOST_NAME: socket.gethostname(),
             }
