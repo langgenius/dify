@@ -99,7 +99,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Environment variable to control thinking tags preservation (default: true to maintain backward compatibility)
-LLM_NODE_THINKING_TAGS_ENABLED = os.getenv("LLM_NODE_THINKING_TAGS_ENABLED", "true").lower() == "true"
+# helper & env‑flag
+
+def _env_flag(name: str, default: bool = True) -> bool:
+    """Return an env var as bool (1/0 | true/false | yes/no)."""
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.lower() in {"1", "true", "yes"}
+
+# keep `<think>` blocks unless explicitly disabled
+LLM_NODE_THINKING_TAGS_ENABLED = _env_flag("LLM_NODE_THINKING_TAGS_ENABLED")
 
 
 class LLMNode(BaseNode[LLMNodeData]):
