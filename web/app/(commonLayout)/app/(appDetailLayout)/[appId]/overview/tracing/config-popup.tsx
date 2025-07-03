@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import TracingIcon from './tracing-icon'
 import ProviderPanel from './provider-panel'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
+import type { ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
@@ -23,11 +23,13 @@ export type PopupProps = {
   onStatusChange: (enabled: boolean) => void
   chosenProvider: TracingProvider | null
   onChooseProvider: (provider: TracingProvider) => void
+  arizeConfig: ArizeConfig | null
+  phoenixConfig: PhoenixConfig | null
   langSmithConfig: LangSmithConfig | null
   langFuseConfig: LangFuseConfig | null
   opikConfig: OpikConfig | null
   weaveConfig: WeaveConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => void
+  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -38,6 +40,8 @@ const ConfigPopup: FC<PopupProps> = ({
   onStatusChange,
   chosenProvider,
   onChooseProvider,
+  arizeConfig,
+  phoenixConfig,
   langSmithConfig,
   langFuseConfig,
   opikConfig,
@@ -65,7 +69,7 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => {
+  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => {
     onConfigUpdated(currentProvider!, payload)
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigUpdated])
@@ -75,8 +79,8 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
-  const providerAllConfigured = langSmithConfig && langFuseConfig && opikConfig && weaveConfig
-  const providerAllNotConfigured = !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig
+  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig
+  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig
 
   const switchContent = (
     <Switch
@@ -86,6 +90,32 @@ const ConfigPopup: FC<PopupProps> = ({
       disabled={providerAllNotConfigured}
     />
   )
+  const arizePanel = (
+    <ProviderPanel
+      type={TracingProvider.arize}
+      readOnly={readOnly}
+      config={arizeConfig}
+      hasConfigured={!!arizeConfig}
+      onConfig={handleOnConfig(TracingProvider.arize)}
+      isChosen={chosenProvider === TracingProvider.arize}
+      onChoose={handleOnChoose(TracingProvider.arize)}
+      key="arize-provider-panel"
+    />
+  )
+
+  const phoenixPanel = (
+    <ProviderPanel
+      type={TracingProvider.phoenix}
+      readOnly={readOnly}
+      config={phoenixConfig}
+      hasConfigured={!!phoenixConfig}
+      onConfig={handleOnConfig(TracingProvider.phoenix)}
+      isChosen={chosenProvider === TracingProvider.phoenix}
+      onChoose={handleOnChoose(TracingProvider.phoenix)}
+      key="phoenix-provider-panel"
+    />
+  )
+
   const langSmithPanel = (
     <ProviderPanel
       type={TracingProvider.langSmith}
@@ -152,11 +182,23 @@ const ConfigPopup: FC<PopupProps> = ({
     if (weaveConfig)
       configuredPanels.push(weavePanel)
 
+    if (arizeConfig)
+      configuredPanels.push(arizePanel)
+
+    if (phoenixConfig)
+      configuredPanels.push(phoenixPanel)
+
     return configuredPanels
   }
 
   const moreProviderPanel = () => {
     const notConfiguredPanels: JSX.Element[] = []
+
+    if (!arizeConfig)
+      notConfiguredPanels.push(arizePanel)
+
+    if (!phoenixConfig)
+      notConfiguredPanels.push(phoenixPanel)
 
     if (!langFuseConfig)
       notConfiguredPanels.push(langfusePanel)
@@ -174,6 +216,10 @@ const ConfigPopup: FC<PopupProps> = ({
   }
 
   const configuredProviderConfig = () => {
+    if (currentProvider === TracingProvider.arize)
+      return arizeConfig
+    if (currentProvider === TracingProvider.phoenix)
+      return phoenixConfig
     if (currentProvider === TracingProvider.langSmith)
       return langSmithConfig
     if (currentProvider === TracingProvider.langfuse)
@@ -220,22 +266,24 @@ const ConfigPopup: FC<PopupProps> = ({
           ? (
             <>
               <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`)}</div>
-              <div className='mt-2 space-y-2'>
+              <div className='mt-2 max-h-96 space-y-2 overflow-y-auto'>
                 {langfusePanel}
                 {langSmithPanel}
                 {opikPanel}
                 {weavePanel}
+                {arizePanel}
+                {phoenixPanel}
               </div>
             </>
           )
           : (
             <>
               <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.configured`)}</div>
-              <div className='mt-2 space-y-2'>
+              <div className='mt-2 max-h-40 space-y-2 overflow-y-auto'>
                 {configuredProviderPanel()}
               </div>
               <div className='system-xs-medium-uppercase mt-3 text-text-tertiary'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
-              <div className='mt-2 space-y-2'>
+              <div className='mt-2 max-h-40 space-y-2 overflow-y-auto'>
                 {moreProviderPanel()}
               </div>
             </>

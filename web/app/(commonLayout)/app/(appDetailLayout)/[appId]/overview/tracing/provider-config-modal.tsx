@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { LangFuseConfig, LangSmithConfig, OpikConfig, WeaveConfig } from './type'
+import type { ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -22,14 +22,27 @@ import Divider from '@/app/components/base/divider'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | null
+  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => void
+  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
 const I18N_PREFIX = 'app.tracing.configProvider'
+
+const arizeConfigTemplate = {
+  api_key: '',
+  space_id: '',
+  project: '',
+  endpoint: '',
+}
+
+const phoenixConfigTemplate = {
+  api_key: '',
+  project: '',
+  endpoint: '',
+}
 
 const langSmithConfigTemplate = {
   api_key: '',
@@ -71,11 +84,17 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig>((() => {
+  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig>((() => {
     if (isEdit)
       return payload
 
-    if (type === TracingProvider.langSmith)
+    if (type === TracingProvider.arize)
+      return arizeConfigTemplate
+
+    else if (type === TracingProvider.phoenix)
+      return phoenixConfigTemplate
+
+    else if (type === TracingProvider.langSmith)
       return langSmithConfigTemplate
 
     else if (type === TracingProvider.langfuse)
@@ -115,6 +134,24 @@ const ProviderConfigModal: FC<Props> = ({
 
   const checkValid = useCallback(() => {
     let errorMessage = ''
+    if (type === TracingProvider.arize) {
+      const postData = config as ArizeConfig
+      if (!postData.api_key)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'API Key' })
+      if (!postData.space_id)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Space ID' })
+      if (!errorMessage && !postData.project)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.project`) })
+    }
+
+    if (type === TracingProvider.phoenix) {
+      const postData = config as PhoenixConfig
+      if (!postData.api_key)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'API Key' })
+      if (!errorMessage && !postData.project)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.project`) })
+    }
+
     if (type === TracingProvider.langSmith) {
       const postData = config as LangSmithConfig
       if (!postData.api_key)
@@ -195,6 +232,68 @@ const ProviderConfigModal: FC<Props> = ({
                     </div>
 
                     <div className='space-y-4'>
+                      {type === TracingProvider.arize && (
+                        <>
+                          <Field
+                            label='API Key'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as ArizeConfig).api_key}
+                            onChange={handleConfigChange('api_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
+                          />
+                          <Field
+                            label='Space ID'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as ArizeConfig).space_id}
+                            onChange={handleConfigChange('space_id')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'Space ID' })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.project`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as ArizeConfig).project}
+                            onChange={handleConfigChange('project')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            value={(config as ArizeConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder={'https://otlp.arize.com'}
+                          />
+                        </>
+                      )}
+                      {type === TracingProvider.phoenix && (
+                        <>
+                          <Field
+                            label='API Key'
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as PhoenixConfig).api_key}
+                            onChange={handleConfigChange('api_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.project`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as PhoenixConfig).project}
+                            onChange={handleConfigChange('project')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
+                          />
+                          <Field
+                            label='Endpoint'
+                            labelClassName='!text-sm'
+                            value={(config as PhoenixConfig).endpoint}
+                            onChange={handleConfigChange('endpoint')}
+                            placeholder={'https://app.phoenix.arize.com'}
+                          />
+                        </>
+                      )}
                       {type === TracingProvider.weave && (
                         <>
                           <Field
