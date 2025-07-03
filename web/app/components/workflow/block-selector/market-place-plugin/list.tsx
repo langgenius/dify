@@ -80,7 +80,7 @@ const List = forwardRef<ListRef, ListProps>(({
     )
   }
 
-  const maxWidthClassName = toolContentClassName || 'max-w-[300px]'
+  const maxWidthClassName = toolContentClassName || 'max-w-[100%]'
 
   return (
     <>
