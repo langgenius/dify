@@ -255,6 +255,7 @@ const translation = {
       description: '您现在可以在开始表单中创建文件类型变量。未来我们将不再支持图片上传功能。',
       learnMore: '了解更多',
     },
+    toSolve: '去解决',
   },
 }
 

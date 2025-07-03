@@ -30,7 +30,7 @@ const useLegacyList = () => {
   }, [queryParams])
 
   return {
-    total: 100,
+    total: 5,
     list,
     sort_by,
     setOrderBy,

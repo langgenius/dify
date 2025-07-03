@@ -254,6 +254,7 @@ const translation = {
       description: 'You can now create file type variables in the start form. We will no longer support the image upload feature in the future.',
       learnMore: 'Learn more',
     },
+    toSolve: 'To resolve',
   },
 }
 
