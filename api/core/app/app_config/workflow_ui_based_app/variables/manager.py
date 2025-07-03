@@ -22,7 +22,7 @@ class WorkflowVariablesConfigManager:
         return variables
 
     @classmethod
-    def convert_rag_pipeline_variable(cls, workflow: Workflow) -> list[RagPipelineVariableEntity]:
+    def convert_rag_pipeline_variable(cls, workflow: Workflow, start_node_id: str) -> list[RagPipelineVariableEntity]:
         """
         Convert workflow start variables to variables
 
@@ -31,8 +31,9 @@ class WorkflowVariablesConfigManager:
         variables = []
 
         user_input_form = workflow.rag_pipeline_user_input_form()
-        # variables
+        # filter variables by start_node_id
         for variable in user_input_form:
-            variables.append(RagPipelineVariableEntity.model_validate(variable))
+            if variable.get("belong_to_node_id") == start_node_id or variable.get("belong_to_node_id") == "shared":
+                variables.append(RagPipelineVariableEntity.model_validate(variable))
 
         return variables

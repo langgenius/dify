@@ -20,13 +20,13 @@ class PipelineConfig(WorkflowUIBasedAppConfig):
 
 class PipelineConfigManager(BaseAppConfigManager):
     @classmethod
-    def get_pipeline_config(cls, pipeline: Pipeline, workflow: Workflow) -> PipelineConfig:
+    def get_pipeline_config(cls, pipeline: Pipeline, workflow: Workflow, start_node_id: str) -> PipelineConfig:
         pipeline_config = PipelineConfig(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
             app_mode=AppMode.RAG_PIPELINE,
             workflow_id=workflow.id,
-            rag_pipeline_variables=WorkflowVariablesConfigManager.convert_rag_pipeline_variable(workflow=workflow),
+            rag_pipeline_variables=WorkflowVariablesConfigManager.convert_rag_pipeline_variable(workflow=workflow, start_node_id=start_node_id),
         )
 
         return pipeline_config
