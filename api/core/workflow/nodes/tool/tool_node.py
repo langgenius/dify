@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -191,6 +191,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         messages: Generator[ToolInvokeMessage, None, None],
         tool_info: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
+        agent_thoughts: Optional[list] = None,
     ) -> Generator:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
@@ -369,10 +370,41 @@ class ToolNode(BaseNode[ToolNodeData]):
 
                 yield agent_log
 
+        # Add agent_logs to outputs['json'] to ensure frontend can access thinking process
+        json_output = json.copy()
+        if agent_logs:
+            if not json_output:
+                json_output = {}
+            elif isinstance(json_output, list) and len(json_output) == 1:
+                # If json is a list with only one element, convert it to a dictionary
+                json_output = json_output[0] if isinstance(json_output[0], dict) else {"data": json_output[0]}
+            elif isinstance(json_output, list):
+                # If json is a list with multiple elements, create a dictionary containing all data
+                json_output = {"data": json_output}
+            
+            # Ensure json_output is a dictionary type
+            if not isinstance(json_output, dict):
+                json_output = {"data": json_output}
+            
+            # Add agent_logs to json output
+            json_output["agent_logs"] = [
+                {
+                    "id": log.id,
+                    "parent_id": log.parent_id,
+                    "error": log.error,
+                    "status": log.status,
+                    "data": log.data,
+                    "label": log.label,
+                    "metadata": log.metadata,
+                    "node_id": log.node_id,
+                }
+                for log in agent_logs
+            ]
+
         yield RunCompletedEvent(
             run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json, **variables},
+                outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
                 metadata={
                     **agent_execution_metadata,
                     WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,

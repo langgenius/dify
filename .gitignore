@@ -215,3 +215,8 @@ mise.toml
 # AI Assistant
 .roo/
 api/.env.backup
+
+# custom untracked files
+venv312/
+web/.env.local.save
+core/
